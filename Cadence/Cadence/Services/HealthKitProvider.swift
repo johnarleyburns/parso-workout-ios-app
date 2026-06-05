@@ -130,6 +130,58 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
         }
     }
 
+    // MARK: Write summary cardio workout (FR-2.5)
+
+    func saveCardioWorkout(_ summary: CardioWorkoutSummary) async -> UUID? {
+        guard isHealthDataAvailable else { return nil }
+        let config = HKWorkoutConfiguration()
+        config.activityType = Self.activityType(for: summary.type)
+        let builder = HKWorkoutBuilder(healthStore: store, configuration: config, device: .local())
+        do {
+            try await builder.beginCollection(at: summary.start)
+            var samples: [HKSample] = []
+            if let kcal = summary.activeEnergyKcal,
+               let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
+                samples.append(HKCumulativeQuantitySample(
+                    type: energyType, quantity: HKQuantity(unit: .kilocalorie(), doubleValue: kcal),
+                    start: summary.start, end: summary.end))
+            }
+            if let meters = summary.distanceMeters,
+               let distType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
+                samples.append(HKCumulativeQuantitySample(
+                    type: distType, quantity: HKQuantity(unit: .meter(), doubleValue: meters),
+                    start: summary.start, end: summary.end))
+            }
+            if let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
+                let unit = HKUnit.count().unitDivided(by: .minute())
+                for p in summary.hrSamples {
+                    let t = summary.start.addingTimeInterval(p.t)
+                    samples.append(HKQuantitySample(type: hrType,
+                        quantity: HKQuantity(unit: unit, doubleValue: p.bpm), start: t, end: t))
+                }
+            }
+            if !samples.isEmpty { try await builder.addSamples(samples) }
+            try await builder.endCollection(at: summary.end)
+            let workout = try await builder.finishWorkout()
+            return workout?.uuid
+        } catch {
+            return nil
+        }
+    }
+
+    static func activityType(for t: CardioType) -> HKWorkoutActivityType {
+        switch t {
+        case .run: return .running
+        case .cycle: return .cycling
+        case .swim: return .swimming
+        case .boxing: return .boxing
+        case .hiit: return .highIntensityIntervalTraining
+        case .walk: return .walking
+        case .rowing: return .rowing
+        case .other: return .mixedCardio
+        }
+    }
+
     // MARK: Mapping
 
     static func cardioType(from t: HKWorkoutActivityType) -> CardioType {

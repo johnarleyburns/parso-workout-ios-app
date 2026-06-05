@@ -9,10 +9,12 @@ struct SessionView: View {
     @Bindable var session: WorkoutSession
     @Environment(\.modelContext) private var context
     @Environment(AppSettings.self) private var settings
+    @Environment(AppModel.self) private var model
 
     @State private var rest = RestTimerModel()
     @State private var pickerPresented = false
     @State private var setEditor: SetEditorContext?
+    @State private var healthSaved = false
 
     var body: some View {
         ScrollView {
@@ -45,6 +47,23 @@ struct SessionView: View {
         }
         .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task { await saveToHealth() }
+                } label: { Image(systemName: healthSaved ? "checkmark.circle.fill" : "heart.text.square") }
+                    .disabled(session.orderedSets.isEmpty)
+                    .accessibilityIdentifier("session.saveHealth")
+            }
+        }
+        .overlay(alignment: .top) {
+            if healthSaved {
+                Text("Saved to Apple Health")
+                    .font(.caption).padding(8)
+                    .background(.thinMaterial, in: Capsule())
+                    .accessibilityIdentifier("session.healthSaved")
+            }
+        }
         .sheet(isPresented: $pickerPresented) {
             ExercisePickerView { exercise in
                 // Open the set editor immediately for the chosen exercise.
@@ -199,6 +218,22 @@ struct SessionView: View {
             },
             onDelete: ctx.editing.map { set in { try? WorkoutRepository.deleteSet(set, in: context) } }
         )
+    }
+
+    /// Writes a summary HKWorkout for this session (FR-4.3). Detailed sets stay
+    /// local; only duration + estimated energy go to Health.
+    private func saveToHealth() async {
+        let sets = session.orderedSets
+        guard let first = sets.first?.completedAt else { return }
+        let last = sets.last?.completedAt ?? first
+        // Minimum 1-minute duration so Health accepts it.
+        let end = max(last, first.addingTimeInterval(60))
+        let minutes = end.timeIntervalSince(first) / 60
+        let summary = StrengthWorkoutSummary(id: session.id, start: first, end: end,
+                                             activeEnergyKcal: max(50, minutes * 5))
+        let hkID = await model.health.saveStrengthWorkout(summary)
+        if let hkID { session.healthKitWorkoutUUID = hkID; try? context.save() }
+        withAnimation { healthSaved = true }
     }
 
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,

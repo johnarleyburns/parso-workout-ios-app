@@ -60,6 +60,20 @@ Branch `feat/fr3-steps`. UI 2×2 (iPhone+iPad) ✓
 | FR-3.2 prominent steps + goal ring + 7-day trend | ✅ | `StepRing` + Swift Charts trend |
 | FR-3.3 flights / distance / active energy | ✅ | activity tiles from `DayActivity` |
 
-## FR-4 Data, HealthKit & sensors — ⏳ pending
+## FR-4 Data, HealthKit & sensors — ✅ COMPLETE
+Branch `feat/fr4-data-sensors`. UI 4×2 (iPhone+iPad) ✓
+
+| Bullet | Status | Notes |
+|---|---|---|
+| FR-4.1 least-privilege auth + in-context priming | ✅ | `HealthPrimingView` before system sheet |
+| FR-4.2 local-first storage as source of truth | ✅ | SwiftData + `WorkoutRepository` (repo suite) |
+| FR-4.3 write summary strength workouts to Health | ✅ | `SessionView` → `saveStrengthWorkout` |
+| FR-4.4 chest strap discover/connect/reconnect/battery | ✅ | `HRMSettingsView` + `HeartRateMonitor` (0x180D) |
+| FR-4.5 optional iCloud sync, off by default | ✅ | Settings toggle → `makeModelContainer(cloudKitEnabled:)` |
+
+> a11y lesson applied repo-wide: a container-level `accessibilityIdentifier`
+> overrides child identifiers — keep IDs on the leaf controls.
+
+## FR-5 History, PRs & trends — ⏳ pending
 ## FR-5 History, PRs & trends — ⏳ pending
 ## FR-6 Migration & export — ⏳ pending

@@ -1,16 +1,103 @@
 import SwiftUI
 import CadenceCore
 
-// Placeholder — built out under FR-4 / FR-6.
+/// App settings (FR-4.1, 4.5; FR-1 preferences; FR-6 data) — resolves the
+/// REQUIREMENTS §9 open questions with user-overridable defaults.
 struct SettingsView: View {
-    @Environment(AppSettings.self) private var settings
+    @Environment(AppModel.self) private var model
+    @Environment(AppSettings.self) private var settingsObject
+
+    @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
+    @State private var primingPresented = false
 
     var body: some View {
+        @Bindable var settings = settingsObject
         NavigationStack {
             Form {
-                Text("Settings")
+                Section("Units & Records") {
+                    Picker("Weight unit", selection: $settings.unit) {
+                        ForEach(MeasurementUnitPreference.allCases) { Text($0.displayName).tag($0) }
+                    }
+                    .accessibilityIdentifier("settings.unit")
+                    Picker("PR rule", selection: $settings.prRule) {
+                        ForEach(PRRule.allCases) { Text($0.displayName).tag($0) }
+                    }
+                    .accessibilityIdentifier("settings.prRule")
+                    Picker("1RM formula", selection: $settings.formula) {
+                        ForEach(OneRepMaxFormula.allCases) { Text($0.displayName).tag($0) }
+                    }
+                    .accessibilityIdentifier("settings.formula")
+                }
+
+                Section("Workout") {
+                    Stepper("Step goal: \(Format.integer(settings.stepGoal))",
+                            value: $settings.stepGoal, in: 1000...50000, step: 500)
+                        .accessibilityIdentifier("settings.stepGoal")
+                    Stepper("Rest timer: \(settings.restSeconds)s",
+                            value: $settings.restSeconds, in: 15...600, step: 15)
+                        .accessibilityIdentifier("settings.restSeconds")
+                    Toggle("Auto-start rest timer", isOn: $settings.autoStartRest)
+                        .accessibilityIdentifier("settings.autoRest")
+                }
+
+                Section {
+                    Button {
+                        primingPresented = true
+                    } label: {
+                        HStack {
+                            Label("Apple Health", systemImage: "heart.text.square")
+                            Spacer()
+                            Text(statusText).foregroundStyle(.secondary)
+                                .accessibilityIdentifier("settings.health.status")
+                        }
+                    }
+                    .accessibilityIdentifier("settings.health.connect")
+
+                    NavigationLink {
+                        HRMSettingsView()
+                    } label: {
+                        Label("Heart-Rate Monitor", systemImage: "antenna.radiowaves.left.and.right")
+                    }
+                    .accessibilityIdentifier("settings.hrm")
+                } header: {
+                    Text("Health & Sensors")
+                } footer: {
+                    Text("Your health data stays on your device. Detailed sets stay local; only workout summaries are written to Apple Health.")
+                }
+
+                Section {
+                    Toggle("iCloud Sync", isOn: $settings.cloudSyncEnabled)
+                        .accessibilityIdentifier("settings.cloudSync")
+                } header: {
+                    Text("iCloud")
+                } footer: {
+                    Text("Off by default — Cadence runs fully on this device. When on, your data syncs through your private iCloud database. Takes effect after the app restarts.")
+                }
+
+                Section("Data") {
+                    NavigationLink {
+                        ImportView()
+                    } label: { Label("Import", systemImage: "square.and.arrow.down") }
+                        .accessibilityIdentifier("settings.import")
+                    NavigationLink {
+                        ExportView()
+                    } label: { Label("Export", systemImage: "square.and.arrow.up") }
+                        .accessibilityIdentifier("settings.export")
+                }
             }
             .navigationTitle("Settings")
+            .sheet(isPresented: $primingPresented) {
+                HealthPrimingView { status in healthStatus = status }
+            }
+        }
+    }
+
+    private var statusText: String {
+        switch healthStatus {
+        case .authorized: return "Connected"
+        case .denied: return "Denied"
+        case .unavailable: return "Unavailable"
+        case .notDetermined: return "Not connected"
         }
     }
 }

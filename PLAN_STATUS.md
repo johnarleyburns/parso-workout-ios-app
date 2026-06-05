@@ -51,8 +51,15 @@ Branch `feat/fr2-cardio`. Core 55 tests ✓ · UI 3×2 (iPhone+iPad) ✓
 > fakes so the flows are real and UI-tested; real CoreLocation/CoreBluetooth
 > paths are wired for device runs.
 
-## FR-3 Daily activity & steps — ⏳ pending
-## FR-3 Daily activity & steps — ⏳ pending
+## FR-3 Daily activity & steps — ✅ COMPLETE
+Branch `feat/fr3-steps`. UI 2×2 (iPhone+iPad) ✓
+
+| Bullet | Status | Notes |
+|---|---|---|
+| FR-3.1 read steps from HealthKit | ✅ | `HealthKitProvider` step sum; `TodayView` |
+| FR-3.2 prominent steps + goal ring + 7-day trend | ✅ | `StepRing` + Swift Charts trend |
+| FR-3.3 flights / distance / active energy | ✅ | activity tiles from `DayActivity` |
+
 ## FR-4 Data, HealthKit & sensors — ⏳ pending
 ## FR-5 History, PRs & trends — ⏳ pending
 ## FR-6 Migration & export — ⏳ pending

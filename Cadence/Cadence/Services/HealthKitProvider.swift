@@ -1,0 +1,147 @@
+import Foundation
+import CadenceCore
+import HealthKit
+
+/// Real HealthKit-backed provider (FR-3, FR-2.1, FR-4.1/4.3). Reads steps and
+/// Watch-recorded workouts; writes summary strength workouts. Detailed set/rep
+/// data stays in SwiftData — HealthKit has no schema for it.
+final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
+    private let store = HKHealthStore()
+
+    var isHealthDataAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
+
+    private var readTypes: Set<HKObjectType> {
+        var types: Set<HKObjectType> = [HKObjectType.workoutType()]
+        let ids: [HKQuantityTypeIdentifier] = [.stepCount, .distanceWalkingRunning,
+                                               .flightsClimbed, .activeEnergyBurned, .heartRate]
+        for id in ids { if let t = HKObjectType.quantityType(forIdentifier: id) { types.insert(t) } }
+        return types
+    }
+
+    private var writeTypes: Set<HKSampleType> {
+        var types: Set<HKSampleType> = [HKObjectType.workoutType()]
+        if let e = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) { types.insert(e) }
+        return types
+    }
+
+    func requestAuthorization() async -> HealthAuthorizationStatus {
+        guard isHealthDataAvailable else { return .unavailable }
+        do {
+            try await store.requestAuthorization(toShare: writeTypes, read: readTypes)
+            return .authorized
+        } catch {
+            return .denied
+        }
+    }
+
+    // MARK: Steps & activity (FR-3)
+
+    func todayActivity() async -> DayActivity {
+        let cal = Calendar.current
+        let start = cal.startOfDay(for: Date())
+        return await activity(on: start)
+    }
+
+    func activityTrend(days: Int) async -> [DayActivity] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        var result: [DayActivity] = []
+        for i in stride(from: days - 1, through: 0, by: -1) {
+            guard let day = cal.date(byAdding: .day, value: -i, to: today) else { continue }
+            result.append(await activity(on: day))
+        }
+        return result
+    }
+
+    private func activity(on dayStart: Date) async -> DayActivity {
+        let cal = Calendar.current
+        let dayEnd = cal.date(byAdding: .day, value: 1, to: dayStart) ?? Date()
+        async let steps = sum(.stepCount, unit: .count(), start: dayStart, end: dayEnd)
+        async let dist = sum(.distanceWalkingRunning, unit: .meter(), start: dayStart, end: dayEnd)
+        async let flights = sum(.flightsClimbed, unit: .count(), start: dayStart, end: dayEnd)
+        async let energy = sum(.activeEnergyBurned, unit: .kilocalorie(), start: dayStart, end: dayEnd)
+        return DayActivity(date: dayStart,
+                           steps: Int(await steps),
+                           distanceMeters: await dist,
+                           flightsClimbed: Int(await flights),
+                           activeEnergyKcal: await energy)
+    }
+
+    private func sum(_ id: HKQuantityTypeIdentifier, unit: HKUnit, start: Date, end: Date) async -> Double {
+        guard let type = HKQuantityType.quantityType(forIdentifier: id) else { return 0 }
+        return await withCheckedContinuation { cont in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+            let q = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate,
+                                      options: .cumulativeSum) { _, stats, _ in
+                cont.resume(returning: stats?.sumQuantity()?.doubleValue(for: unit) ?? 0)
+            }
+            store.execute(q)
+        }
+    }
+
+    // MARK: Workout ingest (FR-2.1)
+
+    func newWorkouts(since: Date?) async -> [IngestedWorkout] {
+        let workouts: [HKWorkout] = await withCheckedContinuation { cont in
+            let predicate = since.map { HKQuery.predicateForSamples(withStart: $0, end: nil) }
+            let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+            let q = HKSampleQuery(sampleType: .workoutType(), predicate: predicate, limit: 50,
+                                  sortDescriptors: [sort]) { _, samples, _ in
+                cont.resume(returning: (samples as? [HKWorkout]) ?? [])
+            }
+            store.execute(q)
+        }
+        var result: [IngestedWorkout] = []
+        for w in workouts {
+            let distance = w.totalDistance?.doubleValue(for: .meter())
+            let energy = w.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+            result.append(IngestedWorkout(
+                id: w.uuid,
+                type: Self.cardioType(from: w.workoutActivityType),
+                start: w.startDate, end: w.endDate,
+                distanceMeters: distance, activeEnergyKcal: energy,
+                source: w.sourceRevision.source.name.localizedCaseInsensitiveContains("watch") ? .watch : .iphone,
+                hrSamples: []))
+        }
+        return result
+    }
+
+    // MARK: Write summary strength workout (FR-4.3)
+
+    func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID? {
+        guard isHealthDataAvailable else { return nil }
+        let config = HKWorkoutConfiguration()
+        config.activityType = .traditionalStrengthTraining
+        let builder = HKWorkoutBuilder(healthStore: store, configuration: config, device: .local())
+        do {
+            try await builder.beginCollection(at: summary.start)
+            if let kcal = summary.activeEnergyKcal,
+               let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
+                let quantity = HKQuantity(unit: .kilocalorie(), doubleValue: kcal)
+                let sample = HKCumulativeQuantitySample(type: energyType, quantity: quantity,
+                                                        start: summary.start, end: summary.end)
+                try await builder.addSamples([sample])
+            }
+            try await builder.endCollection(at: summary.end)
+            let workout = try await builder.finishWorkout()
+            return workout?.uuid
+        } catch {
+            return nil
+        }
+    }
+
+    // MARK: Mapping
+
+    static func cardioType(from t: HKWorkoutActivityType) -> CardioType {
+        switch t {
+        case .running: return .run
+        case .cycling: return .cycle
+        case .swimming: return .swim
+        case .boxing, .martialArts: return .boxing
+        case .highIntensityIntervalTraining: return .hiit
+        case .walking: return .walk
+        case .rowing: return .rowing
+        default: return .other
+        }
+    }
+}

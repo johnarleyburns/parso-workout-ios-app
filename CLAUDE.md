@@ -3,7 +3,14 @@
 Project memory for Claude Code. Read `docs/REQUIREMENTS.md` for the full spec; this file is the quick, durable context. Keep it short — prune anything Claude learns on its own.
 
 ## What this is
-Cadence: an open-source, **watch-first** health tracker. The Apple Watch is the primary in-workout surface (wrist strength logging + live cardio); the iPhone is the review/progress hub and the fallback logger for watchless days. Free, privacy-first, no accounts, no server.
+Cadence: an open-source, privacy-first health tracker (free, no accounts, no server). Long-term it's **watch-first** — the Apple Watch as the primary in-workout surface — but see the release scope below.
+
+## Current release (v1) — iPhone-only
+The watch app is **deferred** (hardware-blocked for now) but stays in the repo; do **not** prioritize it. v1 ships on iPhone:
+- Log **strength** workouts on the phone — the core loop, replaces a hand-kept Gmail draft.
+- Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**. This is how watch data appears in v1.
+- Review history, PRs, and trends.
+CloudKit sync stays wired (single-device iCloud backup + future multi-device) but is non-blocking for v1.
 
 ## Stack
 - Swift + SwiftUI, **SwiftData** for the local store
@@ -21,13 +28,13 @@ Cadence: an open-source, **watch-first** health tracker. The Apple Watch is the 
 
 ## Commands
 - Core package: `cd CadenceCore && swift build` / `swift test`
-- Generate the Xcode project from text: `xcodegen generate` (defined in `project.yml`)
-- Build app: `xcodebuild -scheme CadenceiOS -destination 'platform=iOS Simulator,name=iPhone 16' build`
-- Real-device runs are required to test HealthKit/CloudKit/BLE — the simulator has no Health data, no chest strap, no Watch sensors.
+- App: open `Cadence.xcodeproj`; schemes are **Cadence** (iOS) and **Cadence Watch App**. The `.xcodeproj` is committed (created in Xcode, not generated).
+- CLI build: `xcodebuild -scheme Cadence -destination 'platform=iOS Simulator,name=iPhone 16' build`
+- Real-device runs are required to test HealthKit/CloudKit — the simulator has no real Health data.
 
 ## Conventions
 - Small, focused commits; one feature per branch; never commit to `main`.
-- Reference spec IDs in commits/PRs (e.g. "FR-8.2 wrist logging", "UC-10").
+- Reference spec IDs in commits/PRs (e.g. "FR-1 strength logging", "FR-3 steps").
 - Follow the phasing in `docs/REQUIREMENTS.md` §8. Build the `CadenceCore` package first.
 - Accessibility is not optional: VoiceOver labels + Dynamic Type on every new view (NFR-2).
 

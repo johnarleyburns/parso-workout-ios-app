@@ -35,7 +35,23 @@ Branch `feat/fr1-strength`. Core 48 tests ✓ · app unit 9 ✓ · UI 7×2 (iPho
 | FR-1.6 reusable templates | ✅ | `TemplatesView`, `TemplateEditorView`, `startSession(from:)` |
 | FR-1.7 edit/delete sets & sessions | ✅ | editor edit/delete, swipe-delete, confirm dialog |
 
-## FR-2 Cardio tracking — ⏳ pending
+## FR-2 Cardio tracking — ✅ COMPLETE
+Branch `feat/fr2-cardio`. Core 55 tests ✓ · UI 3×2 (iPhone+iPad) ✓
+
+| Bullet | Status | Notes |
+|---|---|---|
+| FR-2.1 ingest Watch workouts + HR, no double-entry | ✅ | `CardioView` sync → `ingest` dedup by HK UUID |
+| FR-2.2 iPhone GPS outdoor / manual indoor recording | ✅ | `CardioRecorder` + `LocationTracker`, `RecordCardioView` |
+| FR-2.3 pair BLE chest strap, live HR | ✅ | `HeartRateMonitor` (0x180D), connect during recording |
+| FR-2.4 live metrics (time/distance/pace/HR/zone/cal) | ✅ | `CardioMath` zones+pace+calories, metric tiles |
+| FR-2.5 save HKWorkout (route + HR) | ✅ | `saveCardioWorkout` + `saveRecordedCardio` (HK-linked) |
+
+> v1 scope note: REQUIREMENTS §8 defers on-device GPS/chest-strap cardio to v3.
+> Implemented here behind protocol abstractions with deterministic simulator
+> fakes so the flows are real and UI-tested; real CoreLocation/CoreBluetooth
+> paths are wired for device runs.
+
+## FR-3 Daily activity & steps — ⏳ pending
 ## FR-3 Daily activity & steps — ⏳ pending
 ## FR-4 Data, HealthKit & sensors — ⏳ pending
 ## FR-5 History, PRs & trends — ⏳ pending

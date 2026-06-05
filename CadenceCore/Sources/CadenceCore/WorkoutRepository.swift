@@ -260,6 +260,36 @@ public enum WorkoutRepository {
         try context.fetch(FetchDescriptor<CardioWorkout>(sortBy: [SortDescriptor(\.start, order: .reverse)]))
     }
 
+    /// Persists a workout recorded on the iPhone (FR-2.2–2.5) into the local
+    /// store, computing avg/max HR and attaching HR + route samples. The
+    /// `healthKitWorkoutUUID` links to the HK copy so re-ingest won't duplicate.
+    @discardableResult
+    public static func saveRecordedCardio(_ summary: CardioWorkoutSummary,
+                                          source: CardioSource,
+                                          healthKitWorkoutUUID: UUID?,
+                                          in context: ModelContext) throws -> CardioWorkout {
+        let bpms = summary.hrSamples.map(\.bpm).filter { $0 > 0 }
+        let avg = bpms.isEmpty ? nil : bpms.reduce(0, +) / Double(bpms.count)
+        let maxHR = bpms.max()
+        let c = CardioWorkout(id: summary.id, type: summary.type, start: summary.start,
+                              end: summary.end, distance: summary.distanceMeters,
+                              activeEnergy: summary.activeEnergyKcal, avgHeartRate: avg,
+                              maxHeartRate: maxHR, source: source,
+                              healthKitWorkoutUUID: healthKitWorkoutUUID)
+        context.insert(c)
+        for p in summary.hrSamples { context.insert(HRSample(t: p.t, bpm: p.bpm, cardio: c)) }
+        for f in summary.route {
+            context.insert(RouteSample(t: f.t, lat: f.lat, lon: f.lon, elevation: f.elevation, cardio: c))
+        }
+        try context.save()
+        return c
+    }
+
+    public static func deleteCardio(_ c: CardioWorkout, in context: ModelContext) throws {
+        context.delete(c)
+        try context.save()
+    }
+
     // MARK: Export / Import (FR-6)
 
     public static func buildExport(_ context: ModelContext) throws -> CadenceExport {

@@ -52,4 +52,10 @@ final class FakeHealthProvider: HealthDataProviding, @unchecked Sendable {
         savedSummaries.append(summary)
         return summary.id
     }
+
+    var savedCardio: [CardioWorkoutSummary] = []
+    func saveCardioWorkout(_ summary: CardioWorkoutSummary) async -> UUID? {
+        savedCardio.append(summary)
+        return summary.id
+    }
 }

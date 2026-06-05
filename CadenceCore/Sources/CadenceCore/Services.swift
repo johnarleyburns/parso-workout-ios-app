@@ -68,6 +68,25 @@ public struct StrengthWorkoutSummary: Equatable, Sendable {
     }
 }
 
+/// Summary of a recorded cardio workout to write back to HealthKit (FR-2.5).
+public struct CardioWorkoutSummary: Equatable, Sendable {
+    public var id: UUID
+    public var type: CardioType
+    public var start: Date
+    public var end: Date
+    public var distanceMeters: Double?
+    public var activeEnergyKcal: Double?
+    public var hrSamples: [HRSamplePoint]
+    public var route: [LocationFix]
+    public init(id: UUID, type: CardioType, start: Date, end: Date,
+                distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
+                hrSamples: [HRSamplePoint] = [], route: [LocationFix] = []) {
+        self.id = id; self.type = type; self.start = start; self.end = end
+        self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
+        self.hrSamples = hrSamples; self.route = route
+    }
+}
+
 public enum HealthAuthorizationStatus: String, Sendable {
     case notDetermined, authorized, denied, unavailable
 }
@@ -83,6 +102,8 @@ public protocol HealthDataProviding: AnyObject, Sendable {
     func newWorkouts(since: Date?) async -> [IngestedWorkout]
     /// Write a summary strength workout (FR-4.3). Returns the HK UUID on success.
     func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID?
+    /// Write a recorded cardio workout with HR + route (FR-2.5).
+    func saveCardioWorkout(_ summary: CardioWorkoutSummary) async -> UUID?
 }
 
 // MARK: - Heart-rate monitor (FR-2.3, FR-4.4)

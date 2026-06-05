@@ -120,6 +120,29 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertEqual(all[0].orderedHRSamples.count, 2)
     }
 
+    func testSaveRecordedCardioComputesHRAndLinksHK() throws {
+        let ctx = try makeContext()
+        let hkID = UUID()
+        let summary = CardioWorkoutSummary(
+            id: UUID(), type: .run, start: Date(timeIntervalSince1970: 0),
+            end: Date(timeIntervalSince1970: 1800), distanceMeters: 5000, activeEnergyKcal: 400,
+            hrSamples: [HRSamplePoint(t: 0, bpm: 120), HRSamplePoint(t: 60, bpm: 160)],
+            route: [LocationFix(t: 0, lat: 1, lon: 1), LocationFix(t: 1, lat: 1.001, lon: 1)])
+        let c = try WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
+                                                         healthKitWorkoutUUID: hkID, in: ctx)
+        XCTAssertEqual(c.avgHeartRate, 140) // (120+160)/2
+        XCTAssertEqual(c.maxHeartRate, 160)
+        XCTAssertEqual(c.healthKitWorkoutUUID, hkID)
+        XCTAssertEqual(c.orderedHRSamples.count, 2)
+        XCTAssertEqual(c.orderedRouteSamples.count, 2)
+
+        // A later HealthKit ingest of the same workout must not duplicate it.
+        let ingestSame = IngestedWorkout(id: hkID, type: .run,
+                                         start: summary.start, end: summary.end)
+        XCTAssertEqual(try WorkoutRepository.ingest([ingestSame], in: ctx), 0)
+        XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
+    }
+
     func testRecentPRs() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)

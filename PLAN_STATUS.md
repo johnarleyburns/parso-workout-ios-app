@@ -74,6 +74,14 @@ Branch `feat/fr4-data-sensors`. UI 4×2 (iPhone+iPad) ✓
 > a11y lesson applied repo-wide: a container-level `accessibilityIdentifier`
 > overrides child identifiers — keep IDs on the leaf controls.
 
-## FR-5 History, PRs & trends — ⏳ pending
-## FR-5 History, PRs & trends — ⏳ pending
+## FR-5 History, PRs & trends — ✅ COMPLETE
+Branch `feat/fr5-trends`. Core 58 tests ✓ · UI 3×2 (iPhone+iPad) ✓
+
+| Bullet | Status | Notes |
+|---|---|---|
+| FR-5.1 per-exercise history + trend chart | ✅ | `ExerciseTrendView`, `trendSeries`, metric picker |
+| FR-5.2 PR timeline + global recent PRs | ✅ | `prTimeline`, `recentPRs`, PR markers |
+| FR-5.3 cardio history (HR overlay, splits, route) | ✅ | `CardioDetailView` HR chart + km splits + map |
+| FR-5.4 consistency calendar/heatmap | ✅ | `ConsistencyHeatmap` from `trainingDays` |
+
 ## FR-6 Migration & export — ⏳ pending

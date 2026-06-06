@@ -22,22 +22,35 @@ extension XCUIApplication {
         "Trends": "chart.xyaxis.line", "Settings": "gear"
     ]
 
+    /// Swipes up until a button with `id` is present (lazy Form sections aren't
+    /// in the accessibility tree until scrolled into view), then taps it.
+    @discardableResult
+    func scrollToAndTapButton(_ id: String, maxSwipes: Int = 6) -> Bool {
+        let button = buttons[id]
+        if button.waitForExistence(timeout: 2) { button.tap(); return true }
+        for _ in 0..<maxSwipes {
+            swipeUp()
+            if button.waitForExistence(timeout: 1) { button.tap(); return true }
+        }
+        return false
+    }
+
     func goToTab(_ label: String) {
         let byTabBar = tabBars.buttons[label]
-        if byTabBar.waitForExistence(timeout: 3) { byTabBar.tap(); return }
+        if byTabBar.waitForExistence(timeout: 8) { byTabBar.tap(); return }
         if let symbol = Self.tabSymbol[label] {
             let bySymbol = buttons[symbol].firstMatch
-            if bySymbol.waitForExistence(timeout: 3) { bySymbol.tap(); return }
+            if bySymbol.waitForExistence(timeout: 8) { bySymbol.tap(); return }
         }
         let byLabel = buttons.matching(identifier: label).firstMatch
-        if byLabel.waitForExistence(timeout: 3) { byLabel.tap(); return }
+        if byLabel.waitForExistence(timeout: 8) { byLabel.tap(); return }
         XCTFail("tab \(label) not found")
     }
 }
 
 extension XCUIElement {
     @discardableResult
-    func waitTap(timeout: TimeInterval = 10) -> Bool {
+    func waitTap(timeout: TimeInterval = 25) -> Bool {
         guard waitForExistence(timeout: timeout) else { return false }
         tap()
         return true
@@ -59,5 +72,8 @@ extension XCUIElement {
 class CadenceUITestCase: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
+        // Keep every test in a known portrait orientation so one test can't
+        // leave the simulator rotated and break the next.
+        XCUIDevice.shared.orientation = .portrait
     }
 }

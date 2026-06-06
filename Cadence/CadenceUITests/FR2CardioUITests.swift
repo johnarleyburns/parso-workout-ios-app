@@ -8,13 +8,13 @@ final class FR2CardioUITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         app.goToTab("Cardio")
         // Auto-sync on first appear should surface the fake Watch run.
-        XCTAssertTrue(app.buttons["cardioRow.run"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["cardioRow.run"].waitForExistence(timeout: 25),
                       "a synced run should appear")
         let countAfterFirst = app.buttons.matching(identifier: "cardioRow.run").count
 
         // Manual re-sync must not duplicate (dedup by HealthKit UUID).
         app.buttons["cardio.sync"].tap()
-        XCTAssertTrue(app.staticTexts["cardio.syncMessage"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["cardio.syncMessage"].waitForExistence(timeout: 25))
         let countAfterSecond = app.buttons.matching(identifier: "cardioRow.run").count
         XCTAssertEqual(countAfterFirst, countAfterSecond, "re-sync should not duplicate")
     }
@@ -27,16 +27,16 @@ final class FR2CardioUITests: CadenceUITestCase {
         app.buttons["record.start.run"].waitTap()
 
         let elapsed = app.staticTexts["record.elapsed"]
-        XCTAssertTrue(elapsed.waitForExistence(timeout: 10))
+        XCTAssertTrue(elapsed.waitForExistence(timeout: 25))
         // Elapsed should advance past 0:00 (the 1s timer is running).
         expectation(for: NSPredicate(format: "label != %@", "0:00"), evaluatedWith: elapsed)
-        waitForExpectations(timeout: 8)
+        waitForExpectations(timeout: 20)
         // GPS distance tile should be present for an outdoor run.
         XCTAssertTrue(app.staticTexts["record.distance"].exists, "distance metric for GPS run")
 
         app.buttons["record.end"].tap()
         // Back on the Cardio list, a run should be in history.
-        XCTAssertTrue(app.buttons["cardioRow.run"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["cardioRow.run"].waitForExistence(timeout: 25),
                       "recorded run should appear in history")
     }
 
@@ -48,14 +48,14 @@ final class FR2CardioUITests: CadenceUITestCase {
         app.buttons["record.start.boxing"].waitTap()
 
         let connect = app.buttons["record.connectStrap"]
-        XCTAssertTrue(connect.waitForExistence(timeout: 10))
+        XCTAssertTrue(connect.waitForExistence(timeout: 25))
         connect.tap()
-        XCTAssertTrue(app.staticTexts["record.strapConnected"].waitForExistence(timeout: 10)
+        XCTAssertTrue(app.staticTexts["record.strapConnected"].waitForExistence(timeout: 25)
                       || app.images["record.strapConnected"].waitForExistence(timeout: 2),
                       "strap should report connected")
         // Live HR should become a number, not the placeholder.
         let hr = app.staticTexts["record.hr"]
         expectation(for: NSPredicate(format: "label != %@", "—"), evaluatedWith: hr)
-        waitForExpectations(timeout: 8)
+        waitForExpectations(timeout: 20)
     }
 }

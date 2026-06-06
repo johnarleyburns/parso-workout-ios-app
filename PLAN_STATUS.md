@@ -100,8 +100,21 @@ All six functional requirement groups (26 bullets) are implemented and green:
 - **CadenceCore**: 58 `swift test` cases (math, PR, importer, export, cardio,
   geo, repository).
 - **CadenceTests** (app unit): 9 cases (rest timer, HR parsing).
-- **CadenceUITests**: 21 tests, each passing on **iPhone 17** and
-  **iPad Pro 11-inch (M5)**.
+- **CadenceUITests**: 21 tests — the **entire suite** passes in one run on both
+  **iPhone 17** and **iPad Pro 11-inch (M5)** (exit 0, 0 failures), as well as
+  per-FR.
+
+### Full-suite stability fix
+The whole-suite run initially had 8 deterministic failures that did not occur
+per-FR. Root cause: Xcode's default `CadenceUITestsLaunchTests` had
+`runsForEachTargetApplicationUIConfiguration = true`, which cycled the simulator
+through orientations and left it in **landscape**, breaking the portrait-assuming
+functional tests (off-screen coordinates). Fixes:
+- removed the non-functional launch smoke test;
+- force `.portrait` in `CadenceUITestCase.setUp`;
+- reset preferences in `-uiTest` mode so UserDefaults can't bleed across tests;
+- run with `-parallel-testing-enabled NO` and a single booted simulator (two
+  booted sims starved resources and slowed launches ~10×).
 
 REQUIREMENTS §8 defers some FR-2/FR-4 hardware paths (on-device GPS/BLE) to
 later releases; they're implemented here behind protocol abstractions with

@@ -11,15 +11,15 @@ final class FR6MigrationUITests: CadenceUITestCase {
 
         app.buttons["import.sample"].waitTap()
         app.buttons["import.parse"].waitTap()
-        XCTAssertTrue(app.staticTexts["import.preview"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["import.preview"].waitForExistence(timeout: 25),
                       "parse preview should appear")
         app.buttons["import.confirm"].waitTap()
-        XCTAssertTrue(app.staticTexts["import.done"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["import.done"].waitForExistence(timeout: 25),
                       "import should report success")
 
         // The imported sessions should now be in Train history.
         app.goToTab("Train")
-        XCTAssertTrue(app.staticTexts["Push Day"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["Push Day"].waitForExistence(timeout: 25),
                       "imported session should appear in history")
     }
 
@@ -30,11 +30,11 @@ final class FR6MigrationUITests: CadenceUITestCase {
         XCTAssertTrue(app.scrollToAndTapButton("settings.export"), "open Export")
 
         let preview = app.staticTexts["export.preview"]
-        XCTAssertTrue(preview.waitForExistence(timeout: 10), "export preview should render")
+        XCTAssertTrue(preview.waitForExistence(timeout: 25), "export preview should render")
         // Switch to CSV; the preview should contain the CSV header.
         app.buttons["CSV"].waitTap()
         let csv = app.staticTexts["export.preview"]
         expectation(for: NSPredicate(format: "label CONTAINS %@", "session_id"), evaluatedWith: csv)
-        waitForExpectations(timeout: 8)
+        waitForExpectations(timeout: 20)
     }
 }

@@ -7,7 +7,7 @@ final class FR1StrengthUITests: CadenceUITestCase {
     private func startWorkout(_ app: XCUIApplication) {
         app.goToTab("Train")
         XCTAssertTrue(app.buttons["train.newWorkout"].waitTap(), "New Workout button")
-        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 10), "session screen")
+        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25), "session screen")
     }
 
     // Helper: add an exercise by name via the picker, then save a set.
@@ -15,7 +15,7 @@ final class FR1StrengthUITests: CadenceUITestCase {
         app.buttons["session.addExercise"].tap()
         if search {
             let field = app.searchFields.firstMatch
-            XCTAssertTrue(field.waitForExistence(timeout: 10))
+            XCTAssertTrue(field.waitForExistence(timeout: 25))
             field.tap()
             field.typeText(name)
         }
@@ -27,7 +27,7 @@ final class FR1StrengthUITests: CadenceUITestCase {
         }
         // Set editor appears; fill weight and save.
         let weightField = app.textFields["set.weight"]
-        XCTAssertTrue(weightField.waitForExistence(timeout: 10), "set editor")
+        XCTAssertTrue(weightField.waitForExistence(timeout: 25), "set editor")
         weightField.tap()
         weightField.typeText(weight)
         app.buttons["set.save"].tap()
@@ -39,11 +39,11 @@ final class FR1StrengthUITests: CadenceUITestCase {
         startWorkout(app)
 
         addExercise(app, named: "Bench Press", weight: "100")
-        XCTAssertTrue(app.staticTexts["exerciseCard.Bench Press"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["exerciseCard.Bench Press"].waitForExistence(timeout: 25),
                       "library exercise card should appear")
 
         addExercise(app, named: "Zercher Squat", weight: "60", search: true)
-        XCTAssertTrue(app.staticTexts["exerciseCard.Zercher Squat"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["exerciseCard.Zercher Squat"].waitForExistence(timeout: 25),
                       "custom exercise card should appear")
     }
 
@@ -56,16 +56,16 @@ final class FR1StrengthUITests: CadenceUITestCase {
         // Second set, different weight.
         app.buttons["set.add.Bench Press"].tap()
         let weightField = app.textFields["set.weight"]
-        XCTAssertTrue(weightField.waitForExistence(timeout: 10))
+        XCTAssertTrue(weightField.waitForExistence(timeout: 25))
         weightField.tap(); weightField.typeText("105")
         app.buttons["set.save"].tap()
 
-        XCTAssertTrue(app.buttons["set.row.Bench Press.0"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["set.row.Bench Press.1"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["set.row.Bench Press.0"].waitForExistence(timeout: 25))
+        XCTAssertTrue(app.buttons["set.row.Bench Press.1"].waitForExistence(timeout: 25))
 
         // Repeat last → a third set.
         app.buttons["set.repeat.Bench Press"].tap()
-        XCTAssertTrue(app.buttons["set.row.Bench Press.2"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["set.row.Bench Press.2"].waitForExistence(timeout: 25),
                       "repeat-last should add a third set")
     }
 
@@ -76,7 +76,7 @@ final class FR1StrengthUITests: CadenceUITestCase {
         app.buttons["session.addExercise"].tap()
         app.buttons["picker.row.Bench Press"].waitTap()
         // In the set editor, last-time + PR context is visible.
-        XCTAssertTrue(app.staticTexts["exercise.lastTime"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["exercise.lastTime"].waitForExistence(timeout: 25),
                       "last-time should be shown")
         XCTAssertTrue(app.staticTexts["exercise.pr"].exists, "PR should be shown")
     }
@@ -86,7 +86,7 @@ final class FR1StrengthUITests: CadenceUITestCase {
         let app = XCUIApplication.launched(seeds: ["priorBench"]) // prior best 100kg
         startWorkout(app)
         addExercise(app, named: "Bench Press", weight: "110") // heavier → PR
-        XCTAssertTrue(app.images["set.prBadge"].waitForExistence(timeout: 10)
+        XCTAssertTrue(app.images["set.prBadge"].waitForExistence(timeout: 25)
                       || app.staticTexts["set.prBadge"].waitForExistence(timeout: 2),
                       "a PR badge should appear for a record set")
     }
@@ -96,8 +96,8 @@ final class FR1StrengthUITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         startWorkout(app)
         addExercise(app, named: "Bench Press", weight: "100")
-        XCTAssertTrue(app.otherElements["rest.bar"].waitForExistence(timeout: 10)
-                      || app.buttons["rest.skip"].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.otherElements["rest.bar"].waitForExistence(timeout: 25)
+                      || app.buttons["rest.skip"].waitForExistence(timeout: 15),
                       "rest timer should auto-start")
         app.buttons["rest.skip"].tap()
         XCTAssertFalse(app.buttons["rest.skip"].waitForExistence(timeout: 3),
@@ -112,7 +112,7 @@ final class FR1StrengthUITests: CadenceUITestCase {
         app.buttons["templates.new"].waitTap()
 
         let name = app.textFields["templateEditor.name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 10))
+        XCTAssertTrue(name.waitForExistence(timeout: 25))
         name.tap(); name.typeText("Push Day")
 
         app.buttons["templateEditor.addExercise"].tap()
@@ -120,14 +120,14 @@ final class FR1StrengthUITests: CadenceUITestCase {
         app.buttons["templateEditor.save"].waitTap()
 
         // Back on the templates list, then dismiss.
-        XCTAssertTrue(app.staticTexts["templateRow.Push Day"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["templateRow.Push Day"].waitForExistence(timeout: 25))
         app.buttons["Done"].tap()
 
         // Quick Start entry should appear and launch a titled session.
         let start = app.buttons["template.start.Push Day"]
-        XCTAssertTrue(start.waitForExistence(timeout: 10), "template quick-start should appear")
+        XCTAssertTrue(start.waitForExistence(timeout: 25), "template quick-start should appear")
         start.tap()
-        XCTAssertTrue(app.navigationBars["Push Day"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.navigationBars["Push Day"].waitForExistence(timeout: 25),
                       "session titled after the template should open")
     }
 
@@ -140,13 +140,13 @@ final class FR1StrengthUITests: CadenceUITestCase {
         // Edit: tap the set row, change the weight, save.
         app.buttons["set.row.Bench Press.0"].waitTap()
         let weightField = app.textFields["set.weight"]
-        XCTAssertTrue(weightField.waitForExistence(timeout: 10))
+        XCTAssertTrue(weightField.waitForExistence(timeout: 25))
         weightField.clearAndType("110")
         app.buttons["set.save"].tap()
 
         // Verify the edit persisted by reopening the editor.
         app.buttons["set.row.Bench Press.0"].waitTap()
-        XCTAssertTrue(weightField.waitForExistence(timeout: 10))
+        XCTAssertTrue(weightField.waitForExistence(timeout: 25))
         XCTAssertEqual((weightField.value as? String) ?? "", "110", "edited weight should persist")
 
         // Delete from the editor.

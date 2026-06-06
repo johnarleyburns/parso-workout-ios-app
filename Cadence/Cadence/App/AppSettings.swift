@@ -12,6 +12,15 @@ final class AppSettings {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        // In UI-test mode, start from a clean, deterministic preference set so
+        // test order can never bleed through persisted UserDefaults.
+        if ProcessInfo.processInfo.arguments.contains("-uiTest") {
+            for key in [SettingsKey.unit, SettingsKey.prRule, SettingsKey.oneRepMaxFormula,
+                        SettingsKey.stepGoal, SettingsKey.restSeconds, SettingsKey.cloudSyncEnabled,
+                        SettingsKey.lastHealthSync, "settings.autoRest"] {
+                defaults.removeObject(forKey: key)
+            }
+        }
         self.unit = Self.read(defaults, SettingsKey.unit, MeasurementUnitPreference.self) ?? SettingsDefault.unit
         self.prRule = Self.read(defaults, SettingsKey.prRule, PRRule.self) ?? SettingsDefault.prRule
         self.formula = Self.read(defaults, SettingsKey.oneRepMaxFormula, OneRepMaxFormula.self) ?? SettingsDefault.oneRepMaxFormula

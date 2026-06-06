@@ -22,6 +22,19 @@ extension XCUIApplication {
         "Trends": "chart.xyaxis.line", "Settings": "gear"
     ]
 
+    /// Swipes up until a button with `id` is present (lazy Form sections aren't
+    /// in the accessibility tree until scrolled into view), then taps it.
+    @discardableResult
+    func scrollToAndTapButton(_ id: String, maxSwipes: Int = 6) -> Bool {
+        let button = buttons[id]
+        if button.waitForExistence(timeout: 2) { button.tap(); return true }
+        for _ in 0..<maxSwipes {
+            swipeUp()
+            if button.waitForExistence(timeout: 1) { button.tap(); return true }
+        }
+        return false
+    }
+
     func goToTab(_ label: String) {
         let byTabBar = tabBars.buttons[label]
         if byTabBar.waitForExistence(timeout: 3) { byTabBar.tap(); return }

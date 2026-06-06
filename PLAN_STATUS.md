@@ -84,4 +84,26 @@ Branch `feat/fr5-trends`. Core 58 tests ✓ · UI 3×2 (iPhone+iPad) ✓
 | FR-5.3 cardio history (HR overlay, splits, route) | ✅ | `CardioDetailView` HR chart + km splits + map |
 | FR-5.4 consistency calendar/heatmap | ✅ | `ConsistencyHeatmap` from `trainingDays` |
 
-## FR-6 Migration & export — ⏳ pending
+## FR-6 Migration & export — ✅ COMPLETE
+Branch `feat/fr6-migration`. Core 58 tests ✓ · UI 2×2 (iPhone+iPad) ✓
+
+| Bullet | Status | Notes |
+|---|---|---|
+| FR-6.1 Gmail-draft importer (preview + flagged lines) | ✅ | `ImportView` → `GmailImporter.parse` → `apply` |
+| FR-6.2 full JSON/CSV export + JSON restore | ✅ | `ExportView` → `DataExport` + `merge` + `ShareLink` |
+
+---
+
+## Summary — FR-1…FR-6 COMPLETE ✅
+
+All six functional requirement groups (26 bullets) are implemented and green:
+- **CadenceCore**: 58 `swift test` cases (math, PR, importer, export, cardio,
+  geo, repository).
+- **CadenceTests** (app unit): 9 cases (rest timer, HR parsing).
+- **CadenceUITests**: 21 tests, each passing on **iPhone 17** and
+  **iPad Pro 11-inch (M5)**.
+
+REQUIREMENTS §8 defers some FR-2/FR-4 hardware paths (on-device GPS/BLE) to
+later releases; they're implemented here behind protocol abstractions with
+deterministic simulator fakes so every flow is real and UI-tested, with the
+real CoreLocation/CoreBluetooth/HealthKit paths wired for device runs.

@@ -190,6 +190,57 @@ public enum WorkoutRepository {
         return prs.sorted { $0.achievedAt > $1.achievedAt }
     }
 
+    // MARK: Trends (FR-5.1)
+
+    public struct TrendPoint: Identifiable, Sendable, Equatable {
+        public var date: Date
+        public var value: Double
+        public var id: Date { date }
+    }
+
+    /// Best metric per training day for an exercise, ascending by date (FR-5.1).
+    /// Each point is the best working-set value that day under the rule.
+    public static func trendSeries(for exercise: Exercise,
+                                   rule: PRRule,
+                                   formula: OneRepMaxFormula,
+                                   calendar: Calendar = .current) -> [TrendPoint] {
+        let sets = (exercise.sets ?? []).filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 }
+        let byDay = Dictionary(grouping: sets) { calendar.startOfDay(for: $0.completedAt) }
+        return byDay.map { day, daySets in
+            let samples = daySets.map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: false) }
+            let best = PRCalculator.best(samples, rule: rule, formula: formula) ?? 0
+            return TrendPoint(date: day, value: best)
+        }
+        .sorted { $0.date < $1.date }
+    }
+
+    /// The progressive PR history for an exercise: each point that set a new
+    /// all-time record under the rule, ascending by date (FR-5.2).
+    public static func prTimeline(for exercise: Exercise,
+                                  rule: PRRule,
+                                  formula: OneRepMaxFormula) -> [TrendPoint] {
+        let samples = (exercise.sets ?? [])
+            .map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: $0.isWarmup) }
+            .filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 }
+            .sorted { $0.date < $1.date }
+        var result: [TrendPoint] = []
+        var best = -Double.greatestFiniteMagnitude
+        for s in samples {
+            let v = PRCalculator.metric(s, rule: rule, formula: formula)
+            if v > best + 1e-9 {
+                best = v
+                result.append(TrendPoint(date: s.date, value: v))
+            }
+        }
+        return result
+    }
+
+    /// Distinct training days (start-of-day) across all sessions (FR-5.4 heatmap).
+    public static func trainingDays(_ context: ModelContext, calendar: Calendar = .current) throws -> Set<Date> {
+        let sessions = try allSessions(context)
+        return Set(sessions.map { calendar.startOfDay(for: $0.date) })
+    }
+
     // MARK: Templates (FR-1.6)
 
     @discardableResult

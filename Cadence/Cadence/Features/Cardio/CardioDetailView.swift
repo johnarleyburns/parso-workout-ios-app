@@ -44,10 +44,41 @@ struct CardioDetailView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .accessibilityIdentifier("cardioDetail.map")
                 }
+                let splits = kmSplits(route)
+                if !splits.isEmpty {
+                    Section("Pace Splits") {
+                        ForEach(Array(splits.enumerated()), id: \.offset) { i, secPerKm in
+                            HStack {
+                                Text("km \(i + 1)")
+                                Spacer()
+                                Text(CardioMath.formatPace(secPerKm: secPerKm)).monospacedDigit()
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("cardioDetail.splits")
+                }
             }
         }
         .navigationTitle(workout.typeValue.displayName)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// Seconds-per-km for each completed kilometer, from the route samples.
+    private func kmSplits(_ route: [RouteSample]) -> [Double] {
+        guard route.count > 1 else { return [] }
+        var splits: [Double] = []
+        var accumDist = 0.0
+        var splitStartTime = route.first!.t
+        for i in 1..<route.count {
+            let a = route[i - 1], b = route[i]
+            accumDist += GeoMath.distance(lat1: a.lat, lon1: a.lon, lat2: b.lat, lon2: b.lon)
+            if accumDist >= 1000 {
+                splits.append(b.t - splitStartTime)
+                splitStartTime = b.t
+                accumDist -= 1000
+            }
+        }
+        return splits
     }
 }
 

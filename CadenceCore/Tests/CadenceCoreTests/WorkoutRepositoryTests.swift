@@ -157,6 +157,48 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertEqual(prs.first?.exerciseName, "Squat") // most recent first
     }
 
+    func testTrendSeriesBestPerDay() throws {
+        let ctx = try makeContext()
+        let ex = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let d1 = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 0), in: ctx)
+        _ = try WorkoutRepository.addSet(to: d1, exercise: ex, weightKg: 100, reps: 5,
+                                         completedAt: Date(timeIntervalSince1970: 0), in: ctx)
+        _ = try WorkoutRepository.addSet(to: d1, exercise: ex, weightKg: 110, reps: 5,
+                                         completedAt: Date(timeIntervalSince1970: 100), in: ctx)
+        let d2 = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 200_000), in: ctx)
+        _ = try WorkoutRepository.addSet(to: d2, exercise: ex, weightKg: 105, reps: 5,
+                                         completedAt: Date(timeIntervalSince1970: 200_000), in: ctx)
+        let series = WorkoutRepository.trendSeries(for: ex, rule: .topWeight, formula: .epley)
+        XCTAssertEqual(series.count, 2)        // two days
+        XCTAssertEqual(series[0].value, 110)   // best of day 1
+        XCTAssertEqual(series[1].value, 105)
+    }
+
+    func testPRTimelineProgressiveOnly() throws {
+        let ctx = try makeContext()
+        let ex = try WorkoutRepository.findOrCreateExercise(named: "Squat", in: ctx)
+        let s = try WorkoutRepository.createSession(in: ctx)
+        // 100 (PR), 95 (no), 110 (PR), 110 (tie, no)
+        let weights = [100.0, 95, 110, 110]
+        for (i, w) in weights.enumerated() {
+            _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: w, reps: 5,
+                                             completedAt: Date(timeIntervalSince1970: TimeInterval(i)), in: ctx)
+        }
+        let timeline = WorkoutRepository.prTimeline(for: ex, rule: .topWeight, formula: .epley)
+        XCTAssertEqual(timeline.map(\.value), [100, 110])
+    }
+
+    func testTrainingDays() throws {
+        let ctx = try makeContext()
+        _ = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 0), in: ctx)
+        _ = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 3600), in: ctx) // same day
+        _ = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 200_000), in: ctx)
+        let days = try WorkoutRepository.trainingDays(ctx, calendar: {
+            var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "UTC")!; return c
+        }())
+        XCTAssertEqual(days.count, 2)
+    }
+
     func testExportImportRoundTrip() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(title: "Push", in: ctx)

@@ -8,17 +8,41 @@ public enum WorkoutRepository {
 
     // MARK: Seeding (FR-1.1)
 
-    /// Inserts the starter exercise library if the store has no exercises yet.
+    /// Ensures every built-in exercise is present, adding any that are missing
+    /// and backfilling facets/keywords on older built-ins (field-testing §03).
+    /// Idempotent and never touches custom exercises, so existing stores upgrade
+    /// to the larger catalog without duplicating user entries. Returns whether
+    /// anything changed.
     @discardableResult
     public static func seedStarterLibraryIfNeeded(_ context: ModelContext) throws -> Bool {
-        let count = try context.fetchCount(FetchDescriptor<Exercise>())
-        guard count == 0 else { return false }
+        let existing = try allExercises(context)
+        var byName: [String: Exercise] = [:]
+        for ex in existing { byName[ex.name.lowercased()] = ex }
+        var changed = false
+
         for t in ExerciseLibrary.starter {
-            context.insert(Exercise(name: t.name, category: t.category,
-                                    muscleGroups: t.muscleGroups, isCustom: false))
+            if let ex = byName[t.name.lowercased()] {
+                // Backfill facets on a pre-facets built-in (e.g. the legacy 25).
+                if !ex.isCustom && ex.searchKeywords.isEmpty {
+                    ex.categoryValue = t.category
+                    ex.equipmentValue = t.equipment
+                    ex.isLateral = t.isLateral
+                    ex.mechanicsValue = t.mechanics
+                    ex.forceValue = t.force
+                    ex.primaryMuscles = t.primaryMuscles
+                    ex.secondaryMuscles = t.secondaryMuscles
+                    ex.muscleGroups = t.muscleGroups
+                    ex.searchKeywords = t.searchKeywords
+                    ex.updatedAt = Date()
+                    changed = true
+                }
+            } else {
+                context.insert(ExerciseLibrary.makeExercise(from: t))
+                changed = true
+            }
         }
-        try context.save()
-        return true
+        if changed { try context.save() }
+        return changed
     }
 
     // MARK: Exercises (FR-1.1)
@@ -27,24 +51,37 @@ public enum WorkoutRepository {
         try context.fetch(FetchDescriptor<Exercise>(sortBy: [SortDescriptor(\.name)]))
     }
 
+    /// Ranked, keyword-aware exercise search (field-testing §03): matches name,
+    /// equipment ("cable"), muscle synonyms ("lats"/"pecs"), and force ("push").
     public static func searchExercises(_ query: String, in context: ModelContext) throws -> [Exercise] {
-        let all = try allExercises(context)
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return all }
-        return all.filter { $0.name.range(of: q, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
+        ExerciseSearch.rank(query, over: try allExercises(context))
     }
 
-    /// Finds an existing exercise by case-insensitive name or creates a custom one.
+    /// Finds an existing exercise by case-insensitive name or creates a custom
+    /// one. New customs carry any provided facets and derived search keywords
+    /// (field-testing §03).
     @discardableResult
     public static func findOrCreateExercise(named name: String,
                                             category: ExerciseCategory? = nil,
+                                            equipment: Equipment? = nil,
+                                            isLateral: Bool = false,
+                                            mechanics: Mechanics? = nil,
+                                            force: Force? = nil,
+                                            primaryMuscles: [String] = [],
+                                            secondaryMuscles: [String] = [],
                                             in context: ModelContext) throws -> Exercise {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let all = try allExercises(context)
         if let existing = all.first(where: { $0.name.compare(trimmed, options: .caseInsensitive) == .orderedSame }) {
             return existing
         }
-        let ex = Exercise(name: trimmed, category: category, isCustom: true)
+        let keywords = ExerciseSearch.keywords(name: trimmed, equipment: equipment, isLateral: isLateral,
+                                               force: force, mechanics: mechanics,
+                                               primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles)
+        let ex = Exercise(name: trimmed, category: category, muscleGroups: primaryMuscles + secondaryMuscles,
+                          isCustom: true, equipment: equipment, isLateral: isLateral, mechanics: mechanics,
+                          force: force, primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles,
+                          searchKeywords: keywords)
         context.insert(ex)
         try context.save()
         return ex

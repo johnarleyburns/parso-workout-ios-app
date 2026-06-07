@@ -47,7 +47,7 @@ struct ExerciseTrendView: View {
             }
 
             if !prTimeline.isEmpty {
-                Section("PR Timeline") {
+                Section {
                     ForEach(prTimeline.reversed()) { p in
                         HStack {
                             Image(systemName: "trophy.fill").foregroundStyle(.orange)
@@ -58,11 +58,13 @@ struct ExerciseTrendView: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
+                } header: {
+                    Text("PR Timeline").textCase(nil)
                 }
                 .accessibilityIdentifier("trend.prList")
             }
 
-            Section("History") {
+            Section {
                 ForEach(history) { set in
                     HStack {
                         Text(set.completedAt.formatted(date: .abbreviated, time: .omitted))
@@ -74,6 +76,8 @@ struct ExerciseTrendView: View {
                         }
                     }
                 }
+            } header: {
+                Text("History").textCase(nil)
             }
             .accessibilityIdentifier("trend.history")
         }

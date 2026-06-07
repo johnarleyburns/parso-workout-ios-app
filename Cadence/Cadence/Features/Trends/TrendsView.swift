@@ -28,7 +28,7 @@ struct TrendsView: View {
                 }
 
                 if !recentPRs.isEmpty {
-                    Section("Personal Records") {
+                    Section {
                         ForEach(recentPRs.prefix(8)) { pr in
                             HStack {
                                 Image(systemName: "trophy.fill").foregroundStyle(.orange)
@@ -43,19 +43,23 @@ struct TrendsView: View {
                             }
                             .accessibilityIdentifier("recentPR.\(pr.exerciseName)")
                         }
+                    } header: {
+                        Text("Personal Records").textCase(nil)
                     }
                     .accessibilityIdentifier("trends.recentPRs")
                 }
 
                 if !sessions.isEmpty {
-                    Section("Consistency") {
+                    Section {
                         ConsistencyHeatmap(trainingDays: (try? WorkoutRepository.trainingDays(context)) ?? [])
                             .padding(.vertical, 4)
+                    } header: {
+                        Text("Consistency").textCase(nil)
                     }
                 }
 
                 if !trainedExercises.isEmpty {
-                    Section("Exercises") {
+                    Section {
                         ForEach(trainedExercises) { ex in
                             NavigationLink {
                                 ExerciseTrendView(exercise: ex)
@@ -69,6 +73,8 @@ struct TrendsView: View {
                             }
                             .accessibilityIdentifier("trends.exercise.\(ex.name)")
                         }
+                    } header: {
+                        Text("Exercises").textCase(nil)
                     }
                 }
             }

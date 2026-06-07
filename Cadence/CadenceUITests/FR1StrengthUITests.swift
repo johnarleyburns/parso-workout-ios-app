@@ -53,18 +53,23 @@ final class FR1StrengthUITests: CadenceUITestCase {
         startWorkout(app)
         addExercise(app, named: "Bench Press", weight: "100")
 
-        // Second set, different weight.
+        // Second set, different weight. Use clearAndType: the editor pre-fills
+        // the previous set's weight, so a bare typeText would concatenate.
         app.buttons["set.add.Bench Press"].tap()
         let weightField = app.textFields["set.weight"]
         XCTAssertTrue(weightField.waitForExistence(timeout: 25))
-        weightField.tap(); weightField.typeText("105")
+        weightField.clearAndType("105")
         app.buttons["set.save"].tap()
 
         XCTAssertTrue(app.buttons["set.row.Bench Press.0"].waitForExistence(timeout: 25))
         XCTAssertTrue(app.buttons["set.row.Bench Press.1"].waitForExistence(timeout: 25))
 
-        // Repeat last → a third set.
+        // Repeat last → a third set. Skip any running rest timer first so the
+        // 1 Hz timer animation doesn't stall the accessibility tree on a slow
+        // simulator (the repeat itself also auto-starts a rest timer).
+        if app.buttons["rest.skip"].exists { app.buttons["rest.skip"].tap() }
         app.buttons["set.repeat.Bench Press"].tap()
+        if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
         XCTAssertTrue(app.buttons["set.row.Bench Press.2"].waitForExistence(timeout: 25),
                       "repeat-last should add a third set")
     }

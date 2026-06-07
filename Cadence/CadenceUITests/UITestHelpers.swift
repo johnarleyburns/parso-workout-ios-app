@@ -14,12 +14,12 @@ extension XCUIApplication {
         return app
     }
 
-    /// Tab labels → their SF Symbol, which SwiftUI uses as the tab button's
-    /// accessibility identifier (stable on both the iPhone bottom bar and the
-    /// iPad top bar, and free of the nav-title label collision).
-    private static let tabSymbol = [
-        "Today": "sun.max", "Train": "dumbbell", "Cardio": "figure.run",
-        "Trends": "chart.xyaxis.line", "Settings": "gear"
+    /// Legacy tab labels → the Home launchpad card that now reaches the same
+    /// destination (field-testing §01 removed the tab bar). Lets the existing
+    /// FR1–FR6 suites navigate unchanged through `goToTab`.
+    private static let homeCard = [
+        "Today": "home.today", "Train": "home.train", "Cardio": "home.cardio",
+        "Trends": "home.stats", "Settings": "home.settings"
     ]
 
     /// Swipes up until a button with `id` is present (lazy Form sections aren't
@@ -35,16 +35,26 @@ extension XCUIApplication {
         return false
     }
 
+    /// Navigates from anywhere back to the Home launchpad, then into the
+    /// destination that used to be a tab (field-testing §01).
     func goToTab(_ label: String) {
-        let byTabBar = tabBars.buttons[label]
-        if byTabBar.waitForExistence(timeout: 8) { byTabBar.tap(); return }
-        if let symbol = Self.tabSymbol[label] {
-            let bySymbol = buttons[symbol].firstMatch
-            if bySymbol.waitForExistence(timeout: 8) { bySymbol.tap(); return }
+        popToHome()
+        guard let id = Self.homeCard[label] else { XCTFail("unknown destination \(label)"); return }
+        let card = buttons[id]
+        if card.waitForExistence(timeout: 8) { card.tap(); return }
+        XCTFail("home destination \(label) (\(id)) not found")
+    }
+
+    /// Taps Back until the Home launchpad (its Start Workout button) is shown.
+    func popToHome() {
+        let homeMarker = buttons["home.startWorkout"]
+        var guardCount = 0
+        while !homeMarker.exists && guardCount < 8 {
+            let back = navigationBars.buttons.element(boundBy: 0)
+            if back.exists && back.isHittable { back.tap() } else { break }
+            guardCount += 1
         }
-        let byLabel = buttons.matching(identifier: label).firstMatch
-        if byLabel.waitForExistence(timeout: 8) { byLabel.tap(); return }
-        XCTFail("tab \(label) not found")
+        _ = homeMarker.waitForExistence(timeout: 5)
     }
 }
 

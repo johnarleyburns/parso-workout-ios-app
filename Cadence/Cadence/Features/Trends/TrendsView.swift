@@ -19,16 +19,15 @@ struct TrendsView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                if sessions.isEmpty {
+        List {
+            if sessions.isEmpty {
                     ContentUnavailableView("No data yet",
                                            systemImage: "chart.xyaxis.line",
                                            description: Text("Log some workouts to see trends and PRs."))
                 }
 
                 if !recentPRs.isEmpty {
-                    Section("Personal Records") {
+                    Section {
                         ForEach(recentPRs.prefix(8)) { pr in
                             HStack {
                                 Image(systemName: "trophy.fill").foregroundStyle(.orange)
@@ -43,19 +42,23 @@ struct TrendsView: View {
                             }
                             .accessibilityIdentifier("recentPR.\(pr.exerciseName)")
                         }
+                    } header: {
+                        Text("Personal Records").textCase(nil)
                     }
                     .accessibilityIdentifier("trends.recentPRs")
                 }
 
                 if !sessions.isEmpty {
-                    Section("Consistency") {
+                    Section {
                         ConsistencyHeatmap(trainingDays: (try? WorkoutRepository.trainingDays(context)) ?? [])
                             .padding(.vertical, 4)
+                    } header: {
+                        Text("Consistency").textCase(nil)
                     }
                 }
 
                 if !trainedExercises.isEmpty {
-                    Section("Exercises") {
+                    Section {
                         ForEach(trainedExercises) { ex in
                             NavigationLink {
                                 ExerciseTrendView(exercise: ex)
@@ -69,10 +72,11 @@ struct TrendsView: View {
                             }
                             .accessibilityIdentifier("trends.exercise.\(ex.name)")
                         }
+                    } header: {
+                        Text("Exercises").textCase(nil)
                     }
                 }
             }
-            .navigationTitle("Trends")
-        }
+        .navigationTitle("Trends")
     }
 }

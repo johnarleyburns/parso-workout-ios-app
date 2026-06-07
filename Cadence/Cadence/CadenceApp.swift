@@ -6,6 +6,7 @@ import CadenceCore
 struct CadenceApp: App {
     @State private var model = AppModel()
     @State private var settings = AppSettings()
+    @State private var active = ActiveWorkoutModel()
     let container: ModelContainer
 
     init() {
@@ -25,9 +26,10 @@ struct CadenceApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView()
+            HomeView()
                 .environment(model)
                 .environment(settings)
+                .environment(active)
         }
         .modelContainer(container)
     }

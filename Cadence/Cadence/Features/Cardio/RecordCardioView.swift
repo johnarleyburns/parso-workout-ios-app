@@ -3,6 +3,10 @@ import CadenceCore
 
 /// Live iPhone workout recording (FR-2.2–2.5).
 struct RecordCardioView: View {
+    /// When set (from the Start Workout picker, field-testing §02), recording
+    /// begins immediately for this type, skipping the in-view grid.
+    var initialType: CardioType? = nil
+
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var model
@@ -32,6 +36,14 @@ struct RecordCardioView: View {
         }
         .onReceive(timer) { _ in recorder?.tick() }
         .interactiveDismissDisabled(started)
+        .onAppear { if let t = initialType, !started { startRecorder(t) } }
+    }
+
+    private func startRecorder(_ type: CardioType) {
+        let r = CardioRecorder(location: model.location, hrm: model.hrm)
+        r.start(type: type)
+        recorder = r
+        started = true
     }
 
     private var activityPicker: some View {
@@ -39,10 +51,7 @@ struct RecordCardioView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 16)], spacing: 16) {
                 ForEach(types) { type in
                     Button {
-                        let r = CardioRecorder(location: model.location, hrm: model.hrm)
-                        r.start(type: type)
-                        recorder = r
-                        started = true
+                        startRecorder(type)
                     } label: {
                         VStack(spacing: 8) {
                             Image(systemName: type.symbol).font(.largeTitle)

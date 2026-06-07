@@ -14,24 +14,22 @@ struct TodayView: View {
     @State private var trend: [DayActivity] = []
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    StepRing(steps: today?.steps ?? 0, goal: settings.stepGoal)
-                        .padding(.top, 8)
+        ScrollView {
+            VStack(spacing: 24) {
+                StepRing(steps: today?.steps ?? 0, goal: settings.stepGoal)
+                    .padding(.top, 8)
 
-                    activityTiles
+                activityTiles
 
-                    trendChart
+                trendChart
 
-                    recentWorkouts
-                }
-                .padding()
+                recentWorkouts
             }
-            .navigationTitle("Today")
-            .task { await load() }
-            .refreshable { await load() }
+            .padding()
         }
+        .navigationTitle("Today")
+        .task { await load() }
+        .refreshable { await load() }
     }
 
     private var activityTiles: some View {

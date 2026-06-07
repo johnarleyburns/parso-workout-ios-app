@@ -6,16 +6,16 @@ import CadenceCore
 /// and review/delete past sessions.
 struct TrainView: View {
     @Environment(\.modelContext) private var context
+    @Environment(ActiveWorkoutModel.self) private var active
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \SessionTemplate.name) private var templates: [SessionTemplate]
 
-    @State private var path = NavigationPath()
+    @State private var startedSession: WorkoutSession?
     @State private var templatesPresented = false
     @State private var sessionToDelete: WorkoutSession?
 
     var body: some View {
-        NavigationStack(path: $path) {
-            List {
+        List {
                 Section {
                     Button {
                         startEmptySession()
@@ -58,7 +58,7 @@ struct TrainView: View {
                             .foregroundStyle(.secondary)
                     }
                     ForEach(sessions) { session in
-                        NavigationLink(value: session) {
+                        Button { startedSession = session } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(session.title.isEmpty ? "Workout" : session.title)
                                 Text(session.date.formatted(date: .abbreviated, time: .shortened))
@@ -67,6 +67,7 @@ struct TrainView: View {
                                     .font(.caption2).foregroundStyle(.tertiary)
                             }
                         }
+                        .buttonStyle(.plain)
                         .accessibilityIdentifier("session.row")
                         .swipeActions {
                             Button(role: .destructive) {
@@ -76,34 +77,35 @@ struct TrainView: View {
                     }
                 }
             }
-            .navigationTitle("Train")
-            .navigationDestination(for: WorkoutSession.self) { session in
-                SessionView(session: session)
-            }
-            .sheet(isPresented: $templatesPresented) {
-                TemplatesView()
-            }
-            .confirmationDialog("Delete this workout?",
-                                isPresented: Binding(get: { sessionToDelete != nil },
-                                                     set: { if !$0 { sessionToDelete = nil } }),
-                                presenting: sessionToDelete) { session in
-                Button("Delete", role: .destructive) {
-                    try? WorkoutRepository.deleteSession(session, in: context)
-                    sessionToDelete = nil
-                }
-            } message: { _ in Text("This removes the session and its sets.") }
+        .navigationTitle("Train")
+        .navigationDestination(item: $startedSession) { session in
+            SessionView(session: session)
         }
+        .sheet(isPresented: $templatesPresented) {
+            TemplatesView()
+        }
+        .confirmationDialog("Delete this workout?",
+                            isPresented: Binding(get: { sessionToDelete != nil },
+                                                 set: { if !$0 { sessionToDelete = nil } }),
+                            presenting: sessionToDelete) { session in
+            Button("Delete", role: .destructive) {
+                try? WorkoutRepository.deleteSession(session, in: context)
+                sessionToDelete = nil
+            }
+        } message: { _ in Text("This removes the session and its sets.") }
     }
 
     private func startEmptySession() {
         if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
-            path.append(s)
+            active.startStrength(s)
+            startedSession = s
         }
     }
 
     private func startFromTemplate(_ template: SessionTemplate) {
         if let s = try? WorkoutRepository.startSession(from: template, in: context) {
-            path.append(s)
+            active.startStrength(s)
+            startedSession = s
         }
     }
 }

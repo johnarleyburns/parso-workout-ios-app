@@ -12,8 +12,7 @@ struct SettingsView: View {
 
     var body: some View {
         @Bindable var settings = settingsObject
-        NavigationStack {
-            Form {
+        Form {
                 Section("Units & Records") {
                     Picker("Weight unit", selection: $settings.unit) {
                         ForEach(MeasurementUnitPreference.allCases) { Text($0.displayName).tag($0) }
@@ -85,10 +84,9 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settings.export")
                 }
             }
-            .navigationTitle("Settings")
-            .sheet(isPresented: $primingPresented) {
-                HealthPrimingView { status in healthStatus = status }
-            }
+        .navigationTitle("Settings")
+        .sheet(isPresented: $primingPresented) {
+            HealthPrimingView { status in healthStatus = status }
         }
     }
 

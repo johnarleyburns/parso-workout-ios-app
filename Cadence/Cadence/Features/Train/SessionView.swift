@@ -8,8 +8,10 @@ import CadenceCore
 struct SessionView: View {
     @Bindable var session: WorkoutSession
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
+    @Environment(ActiveWorkoutModel.self) private var active
 
     @State private var rest = RestTimerModel()
     @State private var pickerPresented = false
@@ -41,6 +43,19 @@ struct SessionView: View {
                                            systemImage: "dumbbell",
                                            description: Text("Tap Add Exercise to start logging."))
                         .padding(.top, 40)
+                }
+
+                if active.strengthSession?.id == session.id {
+                    Button(role: .destructive) {
+                        endWorkout()
+                    } label: {
+                        Label("End Workout", systemImage: "stop.circle.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("session.endWorkout")
                 }
             }
             .padding()
@@ -234,6 +249,14 @@ struct SessionView: View {
         let hkID = await model.health.saveStrengthWorkout(summary)
         if let hkID { session.healthKitWorkoutUUID = hkID; try? context.save() }
         withAnimation { healthSaved = true }
+    }
+
+    /// Finalizes the active session (field-testing §02): stamps `endedAt`,
+    /// clears the active reference, and returns to Home.
+    private func endWorkout() {
+        active.endStrength()
+        try? context.save()
+        dismiss()
     }
 
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,

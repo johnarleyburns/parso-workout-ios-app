@@ -14,9 +14,8 @@ struct CardioView: View {
     @State private var syncMessage: String?
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
+        List {
+            Section {
                     Button {
                         recordPresented = true
                     } label: { Label("Record Workout", systemImage: "record.circle") }
@@ -59,12 +58,11 @@ struct CardioView: View {
                     }
                 }
             }
-            .navigationTitle("Cardio")
-            .sheet(isPresented: $recordPresented) {
-                RecordCardioView()
-            }
-            .task { if workouts.isEmpty { await sync() } }
+        .navigationTitle("Cardio")
+        .sheet(isPresented: $recordPresented) {
+            RecordCardioView()
         }
+        .task { if workouts.isEmpty { await sync() } }
     }
 
     private func cardioRow(_ w: CardioWorkout) -> some View {

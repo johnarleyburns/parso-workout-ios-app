@@ -81,6 +81,9 @@ public final class WorkoutSession {
     public var id: UUID = UUID()
     public var title: String = ""
     public var date: Date = Date()
+    /// When the workout was finalized (field-testing §02). Optional for
+    /// CloudKit + back-compat; nil means in-progress or a legacy session.
+    public var endedAt: Date?
     public var notes: String?
     /// Name of the template this session was started from, if any (FR-1.6).
     public var templateName: String?
@@ -96,6 +99,7 @@ public final class WorkoutSession {
     public init(id: UUID = UUID(),
                 title: String = "",
                 date: Date = Date(),
+                endedAt: Date? = nil,
                 notes: String? = nil,
                 templateName: String? = nil,
                 healthKitWorkoutUUID: UUID? = nil,
@@ -104,6 +108,7 @@ public final class WorkoutSession {
         self.id = id
         self.title = title
         self.date = date
+        self.endedAt = endedAt
         self.notes = notes
         self.templateName = templateName
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
@@ -114,6 +119,16 @@ public final class WorkoutSession {
     /// Sets in logged order.
     public var orderedSets: [SetEntry] {
         (sets ?? []).sorted { $0.order < $1.order }
+    }
+
+    /// Wall-clock duration from start to finalize (field-testing §02). Falls
+    /// back to the span between first and last logged set when `endedAt` is
+    /// absent (legacy sessions), else zero.
+    public var duration: TimeInterval {
+        if let endedAt { return max(0, endedAt.timeIntervalSince(date)) }
+        let stamps = orderedSets.map(\.completedAt)
+        guard let first = stamps.min(), let last = stamps.max() else { return 0 }
+        return max(0, last.timeIntervalSince(first))
     }
 
     /// Distinct exercises in this session, in first-appearance order.

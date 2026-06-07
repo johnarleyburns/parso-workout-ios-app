@@ -40,6 +40,30 @@ final class FR2CardioUITests: CadenceUITestCase {
                       "recorded run should appear in history")
     }
 
+    // Field-testing §05 — Start Workout → Run opens the purpose-built outdoor
+    // GPS screen with a live map and advancing metrics, saved to history.
+    func testOutdoorRunViaHome() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["startType.run"].waitTap(), "Run type")
+
+        let elapsed = app.staticTexts["outdoor.elapsed"]
+        XCTAssertTrue(elapsed.waitForExistence(timeout: 25), "outdoor GPS screen")
+        XCTAssertTrue(app.staticTexts["outdoor.distance"].exists, "distance metric")
+        XCTAssertTrue(app.otherElements["outdoor.map"].waitForExistence(timeout: 10)
+                      || app.maps.firstMatch.waitForExistence(timeout: 5), "live route map")
+        // Elapsed should advance past 0:00.
+        expectation(for: NSPredicate(format: "label != %@", "0:00"), evaluatedWith: elapsed)
+        waitForExpectations(timeout: 20)
+
+        app.buttons["outdoor.end"].tap()
+        // Back on Home; the run is now in history.
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25))
+        app.goToTab("Cardio")
+        XCTAssertTrue(app.buttons["cardioRow.run"].waitForExistence(timeout: 25),
+                      "recorded outdoor run should appear in history")
+    }
+
     // FR-2.3 — connect a chest strap during recording and read live HR.
     func testConnectStrapLiveHR() {
         let app = XCUIApplication.launched()

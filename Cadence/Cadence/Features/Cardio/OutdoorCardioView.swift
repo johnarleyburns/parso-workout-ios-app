@@ -1,0 +1,144 @@
+import SwiftUI
+import MapKit
+import CadenceCore
+
+/// Purpose-built outdoor GPS screen for Run / Walk / Cycle (field-testing §05).
+/// Live map with a growing route polyline, big distance + pace, HR/zone, and
+/// wall-clock elapsed that survives backgrounding (a call / the phone in a
+/// pocket). Reuses `CardioRecorder` + the shared `LocationTracker`.
+struct OutdoorCardioView: View {
+    let type: CardioType
+
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var model
+
+    @State private var recorder: CardioRecorder?
+    @State private var clock = WorkoutClock()
+    @State private var now = Date()
+    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    private var elapsed: TimeInterval { clock.elapsed(now: now) }
+    private var coordinates: [CLLocationCoordinate2D] {
+        model.location.fixes.map { CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon) }
+    }
+    /// Pace from GPS distance over wall-clock elapsed (correct after background).
+    private var paceSecPerKm: Double? {
+        guard let r = recorder else { return nil }
+        return CardioMath.paceSecPerKm(distanceMeters: r.distanceMeters, seconds: elapsed)
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                liveMap
+                    .frame(maxWidth: .infinity, minHeight: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .accessibilityIdentifier("outdoor.map")
+                    .accessibilityLabel("Route map, \(Format.distance(recorder?.distanceMeters ?? 0))")
+
+                Text(Format.duration(elapsed))
+                    .font(.system(size: 52, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .accessibilityIdentifier("outdoor.elapsed")
+
+                HStack(spacing: 14) {
+                    bigMetric(Format.distance(recorder?.distanceMeters ?? 0), "Distance", id: "outdoor.distance")
+                    bigMetric(CardioMath.formatPace(secPerKm: paceSecPerKm), "Pace", id: "outdoor.pace")
+                }
+                HStack(spacing: 14) {
+                    bigMetric(Format.heartRate(recorder?.currentBPM), "Heart Rate", id: "outdoor.hr")
+                    bigMetric("\(Int(recorder?.calories ?? 0)) kcal", "Calories", id: "outdoor.calories")
+                }
+
+                if let r = recorder, !r.strapConnected {
+                    Button { r.connectStrap() } label: {
+                        Label("Connect HR Strap", systemImage: "antenna.radiowaves.left.and.right")
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("outdoor.connectStrap")
+                }
+
+                Spacer()
+
+                HStack(spacing: 16) {
+                    Button {
+                        togglePause()
+                    } label: {
+                        Label(clock.isPaused ? "Resume" : "Pause",
+                              systemImage: clock.isPaused ? "play.fill" : "pause.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered).controlSize(.large)
+                    .accessibilityIdentifier("outdoor.pause")
+
+                    Button {
+                        Task { await end() }
+                    } label: { Label("End", systemImage: "stop.fill").frame(maxWidth: .infinity) }
+                        .buttonStyle(.borderedProminent).controlSize(.large).tint(.red)
+                        .accessibilityIdentifier("outdoor.end")
+                }
+            }
+            .padding()
+            .navigationTitle(type.displayName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { recorder?.end(); dismiss() }
+                        .accessibilityIdentifier("outdoor.cancel")
+                }
+            }
+        }
+        .interactiveDismissDisabled(true)
+        .onAppear(perform: startIfNeeded)
+        .onReceive(tick) { _ in
+            now = Date()
+            recorder?.tick()
+        }
+    }
+
+    @ViewBuilder
+    private var liveMap: some View {
+        Map(position: .constant(.userLocation(fallback: .automatic))) {
+            UserAnnotation()
+            if coordinates.count > 1 {
+                MapPolyline(coordinates: coordinates).stroke(.blue, lineWidth: 5)
+            }
+        }
+    }
+
+    private func bigMetric(_ value: String, _ title: String, id: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value).font(.title2.weight(.semibold)).monospacedDigit()
+                .accessibilityIdentifier(id)
+            Text(title).font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func startIfNeeded() {
+        guard recorder == nil else { return }
+        model.location.requestAuthorization()
+        let r = CardioRecorder(location: model.location, hrm: model.hrm)
+        r.start(type: type)
+        recorder = r
+        clock = WorkoutClock(startedAt: Date())
+    }
+
+    private func togglePause() {
+        guard let r = recorder else { return }
+        if clock.isPaused { clock.resume(); r.resume() } else { clock.pause(); r.pause() }
+    }
+
+    private func end() async {
+        guard let r = recorder else { dismiss(); return }
+        clock.end()
+        let summary = r.end()
+        let hkID = await model.health.saveCardioWorkout(summary)
+        try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
+                                                  healthKitWorkoutUUID: hkID, in: context)
+        dismiss()
+    }
+}

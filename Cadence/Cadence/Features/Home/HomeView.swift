@@ -12,8 +12,10 @@ struct HomeView: View {
     @State private var typePickerPresented = false
     /// Push target for a strength session.
     @State private var startedSession: WorkoutSession?
-    /// Sheet target for a cardio/interval recording.
+    /// Sheet target for an indoor/timer cardio recording.
     @State private var cardioType: CardioType?
+    /// Full-screen target for an outdoor GPS workout (field-testing §05).
+    @State private var outdoorType: CardioType?
 
     var body: some View {
         NavigationStack {
@@ -59,6 +61,9 @@ struct HomeView: View {
             }
             .sheet(item: $cardioType) { type in
                 RecordCardioView(initialType: type)
+            }
+            .fullScreenCover(item: $outdoorType) { type in
+                OutdoorCardioView(type: type)
             }
         }
     }
@@ -143,8 +148,10 @@ struct HomeView: View {
                 active.startStrength(session)
                 startedSession = session
             }
+        } else if type.usesGPS, let cardio = type.cardioType {
+            outdoorType = cardio          // Run / Walk / Cycle → GPS screen (§05)
         } else if let cardio = type.cardioType {
-            cardioType = cardio
+            cardioType = cardio           // HIIT / Boxing / Other → timer screen
         }
     }
 }

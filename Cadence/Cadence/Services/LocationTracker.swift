@@ -51,11 +51,16 @@ final class LocationTracker: NSObject, LocationTracking {
             }
             return
         }
+        // Keep recording the route during a call / pocket (field-testing §05).
+        // The "location" background mode + usage string are in Info.plist.
+        manager?.allowsBackgroundLocationUpdates = true
+        manager?.showsBackgroundLocationIndicator = true
         manager?.startUpdatingLocation()
     }
 
     func stop() {
         simTimer?.invalidate(); simTimer = nil
+        manager?.allowsBackgroundLocationUpdates = false
         manager?.stopUpdatingLocation()
     }
 }

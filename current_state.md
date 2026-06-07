@@ -3,19 +3,33 @@
 Live progress tracker for the 2026-06-06 field-testing plan
 (`plans/field-testing/2026-06-06/`). Updated at the start of each phase.
 
-_Last updated: start of Phase 3 (2026-06-07)._
+_Last updated: start of Phase 4 (2026-06-07)._
+
+> **Phases 1–3 are merged to `main`** (fast-forward). Rebuilding `main` shows the
+> action Home, ~155-exercise library, partner bar, and dual lb/kg entry. The
+> `Could not materialize Array<String>` console log is a benign SwiftData fault
+> for `[String]` attributes (data verified by 85 tests); optional string-backed
+> fix available on request. Phase 4+ branch off `main`.
 
 ## Phase status
 
 | Phase | Scope | Branch | PR | Status |
 |-------|-------|--------|----|--------|
 | Planning | 8 design docs + decisions | — | — | ✅ done |
-| 1 | §01 home/nav + §02 engine core | `feat/ft-shell` | #7 | ✅ done — 67 core + 21/21 UI green |
-| 2 | §03 faceted exercise DB + search | `feat/ft-exercise-db` | #8 | ✅ core done — 68 core green, build green (UI: 17/21, 4 env-flaky) |
-| 3 | §04 weight-training screen | `feat/ft-strength` (stacked on 1+2) | — | 🚧 in progress |
-| 4 | §05 cardio outdoor GPS | `feat/ft-cardio-gps` | — | ⬜ todo |
+| 1 | §01 home/nav + §02 engine core | `feat/ft-shell` | #7 | ✅ merged — 21/21 UI green |
+| 2 | §03 faceted exercise DB + search | `feat/ft-exercise-db` | #8 | ✅ merged — 68 core green |
+| 3 | §04 weight-training screen | `feat/ft-strength` | #9 | ✅ merged — 23/23 UI + 85 core green |
+| 4 | §05 cardio outdoor GPS | `feat/ft-cardio-gps` | — | 🚧 in progress |
 | 5 | §06 interval engine (HIIT/boxing) | `feat/ft-intervals` | — | ⬜ todo |
 | 6 | polish + settings | `feat/ft-polish` | — | ⬜ todo |
+
+## Phase 4 plan (§05 — this phase)
+Per `plans/field-testing/2026-06-06/05-cardio-outdoor-gps.md` + decisions #17/#18/#19:
+1. `OutdoorCardioView` — Run/Walk/Cycle GPS screen: live MapKit route polyline, big distance/pace, HR/zone, pause/end. Reuses `CardioRecorder` + `LocationTracker`; wall-clock elapsed.
+2. Route the Start Workout picker: run/walk/cycle → `OutdoorCardioView`; others → `RecordCardioView`.
+3. Background location (Info.plist mode + `allowsBackgroundLocationUpdates`) so a call/pocket doesn't stop tracking.
+4. `CardioDetailView` renders the saved route on a map (FR-5.3).
+5. Settings: GPS accuracy + auto-pause (off). MapKit only (decision #18, no new deps).
 
 ## What's landed (cumulative on the Phase 3 base)
 - **Engine core**: `WorkoutClock`, `IdleWatchdog`, `WorkoutType`, `WorkoutSession.endedAt`, `ActiveWorkoutModel`.

@@ -27,6 +27,20 @@ public final class Exercise {
     /// Free-form muscle-group tags (e.g. "chest", "triceps").
     public var muscleGroups: [String] = []
     public var isCustom: Bool = false
+    // Field-testing §03 facets (all optional/defaulted for CloudKit + back-compat).
+    /// Raw value of `Equipment`.
+    public var equipment: String?
+    /// Isolateral / unilateral movement (decision #11).
+    public var isLateral: Bool = false
+    /// Raw value of `Mechanics` (compound/isolation).
+    public var mechanics: String?
+    /// Raw value of `Force` (push/pull/static).
+    public var force: String?
+    /// Canonical muscle ids (see `MuscleCatalog`).
+    public var primaryMuscles: [String] = []
+    public var secondaryMuscles: [String] = []
+    /// Flattened, lowercased search tokens derived at seed/create time.
+    public var searchKeywords: [String] = []
     public var createdAt: Date = Date()
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
@@ -39,6 +53,13 @@ public final class Exercise {
                 category: ExerciseCategory? = nil,
                 muscleGroups: [String] = [],
                 isCustom: Bool = false,
+                equipment: Equipment? = nil,
+                isLateral: Bool = false,
+                mechanics: Mechanics? = nil,
+                force: Force? = nil,
+                primaryMuscles: [String] = [],
+                secondaryMuscles: [String] = [],
+                searchKeywords: [String] = [],
                 createdAt: Date = Date(),
                 updatedAt: Date = Date(),
                 originDevice: String = "") {
@@ -47,6 +68,13 @@ public final class Exercise {
         self.category = category?.rawValue
         self.muscleGroups = muscleGroups
         self.isCustom = isCustom
+        self.equipment = equipment?.rawValue
+        self.isLateral = isLateral
+        self.mechanics = mechanics?.rawValue
+        self.force = force?.rawValue
+        self.primaryMuscles = primaryMuscles
+        self.secondaryMuscles = secondaryMuscles
+        self.searchKeywords = searchKeywords
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.originDevice = originDevice
@@ -55,6 +83,18 @@ public final class Exercise {
     public var categoryValue: ExerciseCategory? {
         get { category.flatMap(ExerciseCategory.init(rawValue:)) }
         set { category = newValue?.rawValue }
+    }
+    public var equipmentValue: Equipment? {
+        get { equipment.flatMap(Equipment.init(rawValue:)) }
+        set { equipment = newValue?.rawValue }
+    }
+    public var mechanicsValue: Mechanics? {
+        get { mechanics.flatMap(Mechanics.init(rawValue:)) }
+        set { mechanics = newValue?.rawValue }
+    }
+    public var forceValue: Force? {
+        get { force.flatMap(Force.init(rawValue:)) }
+        set { force = newValue?.rawValue }
     }
 }
 

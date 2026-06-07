@@ -14,7 +14,9 @@ struct ExercisePickerView: View {
     private var filtered: [Exercise] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return exercises }
-        return exercises.filter { $0.name.range(of: q, options: [.caseInsensitive, .diacriticInsensitive]) != nil }
+        // Keyword-aware ranked search (field-testing §03): "cable", "lats",
+        // "push" all resolve via equipment / muscle-synonym / force facets.
+        return ExerciseSearch.rank(q, over: exercises)
     }
 
     private var grouped: [(ExerciseCategory, [Exercise])] {

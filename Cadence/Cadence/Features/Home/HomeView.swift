@@ -16,6 +16,10 @@ struct HomeView: View {
     @State private var cardioType: CardioType?
     /// Full-screen target for an outdoor GPS workout (field-testing §05).
     @State private var outdoorType: CardioType?
+    /// Sheet target for interval setup — HIIT / Boxing (field-testing §06).
+    @State private var intervalType: WorkoutType?
+    /// Full-screen target for the launched interval runner.
+    @State private var intervalLaunch: IntervalLaunch?
 
     var body: some View {
         NavigationStack {
@@ -64,6 +68,15 @@ struct HomeView: View {
             }
             .fullScreenCover(item: $outdoorType) { type in
                 OutdoorCardioView(type: type)
+            }
+            .sheet(item: $intervalType) { wType in
+                IntervalSetupView(type: wType) { plan in
+                    intervalType = nil
+                    intervalLaunch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)
+                }
+            }
+            .fullScreenCover(item: $intervalLaunch) { launch in
+                IntervalView(plan: launch.plan, saveType: launch.saveType)
             }
         }
     }
@@ -150,8 +163,10 @@ struct HomeView: View {
             }
         } else if type.usesGPS, let cardio = type.cardioType {
             outdoorType = cardio          // Run / Walk / Cycle → GPS screen (§05)
+        } else if type == .hiit || type == .boxing {
+            intervalType = type           // HIIT / Boxing → interval engine (§06)
         } else if let cardio = type.cardioType {
-            cardioType = cardio           // HIIT / Boxing / Other → timer screen
+            cardioType = cardio           // Other → timer screen
         }
     }
 }

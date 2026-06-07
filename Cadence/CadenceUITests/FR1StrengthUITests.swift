@@ -109,31 +109,22 @@ final class FR1StrengthUITests: CadenceUITestCase {
                        "rest timer should dismiss after Skip")
     }
 
-    // FR-1.6 — create a template and start a workout from it.
-    func testTemplatesCreateAndStart() {
-        let app = XCUIApplication.launched()
+    // FR-1.6 / field-testing §04 (decision #16) — templates retired in favor of
+    // reusing a past workout fresh.
+    func testTemplatesRemovedAndReuseWorkout() {
+        let app = XCUIApplication.launched(seeds: ["priorBench"]) // a past "Push Day"
         app.goToTab("Train")
-        app.buttons["train.templates"].waitTap()
-        app.buttons["templates.new"].waitTap()
+        XCTAssertFalse(app.buttons["train.templates"].exists, "Templates UI should be gone")
 
-        let name = app.textFields["templateEditor.name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 25))
-        name.tap(); name.typeText("Push Day")
+        let row = app.buttons["session.row"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 25))
+        row.swipeRight()
+        XCTAssertTrue(app.buttons["Reuse"].waitTap(), "Reuse swipe action")
 
-        app.buttons["templateEditor.addExercise"].tap()
-        app.buttons["picker.row.Bench Press"].waitTap()
-        app.buttons["templateEditor.save"].waitTap()
-
-        // Back on the templates list, then dismiss.
-        XCTAssertTrue(app.staticTexts["templateRow.Push Day"].waitForExistence(timeout: 25))
-        app.buttons["Done"].tap()
-
-        // Quick Start entry should appear and launch a titled session.
-        let start = app.buttons["template.start.Push Day"]
-        XCTAssertTrue(start.waitForExistence(timeout: 25), "template quick-start should appear")
-        start.tap()
         XCTAssertTrue(app.navigationBars["Push Day"].waitForExistence(timeout: 25),
-                      "session titled after the template should open")
+                      "reused session opens titled after the original")
+        XCTAssertTrue(app.staticTexts["exerciseCard.Bench Press"].waitForExistence(timeout: 25),
+                      "reused workout pre-loads its exercises")
     }
 
     // FR-1.7 — edit a set then delete it.

@@ -104,7 +104,8 @@ public enum WorkoutRepository {
     }
 
     /// Appends a set to a session, assigning the next order index. Stamps
-    /// `updatedAt` for sync (FR-9.2).
+    /// `updatedAt` for sync (FR-9.2). `performedBy` attributes the set to a
+    /// training partner (nil ⇒ the owner; field-testing §04).
     @discardableResult
     public static func addSet(to session: WorkoutSession,
                               exercise: Exercise,
@@ -114,15 +115,64 @@ public enum WorkoutRepository {
                               isWarmup: Bool = false,
                               note: String? = nil,
                               completedAt: Date = Date(),
+                              performedBy: Person? = nil,
                               in context: ModelContext) throws -> SetEntry {
         let nextOrder = (session.sets ?? []).map(\.order).max().map { $0 + 1 } ?? 0
         let set = SetEntry(weight: weightKg, reps: reps, order: nextOrder,
                            isWarmup: isWarmup, rpe: rpe, note: note,
-                           completedAt: completedAt, session: session, exercise: exercise)
+                           completedAt: completedAt, session: session, exercise: exercise,
+                           performedBy: performedBy)
         context.insert(set)
         session.updatedAt = Date()
         try context.save()
         return set
+    }
+
+    /// Starts a fresh session pre-populated with a past session's exercises (in
+    /// order) but no sets, so the user logs anew (field-testing §04, decision
+    /// #16 — replaces templates). Only the owner's exercises are carried over.
+    @discardableResult
+    public static func reuseSession(from past: WorkoutSession,
+                                    date: Date = Date(),
+                                    in context: ModelContext) throws -> WorkoutSession {
+        let session = WorkoutSession(title: past.title, date: date)
+        // Carry over the owner's exercises (in order) as planned names; the
+        // session screen shows them as empty cards ready to log.
+        session.plannedExerciseNames = past.exercisesInOrder
+            .filter { ex in past.orderedSets.contains { $0.exercise?.id == ex.id && $0.isOwnerSet } }
+            .map(\.name)
+        context.insert(session)
+        try context.save()
+        return session
+    }
+
+    // MARK: People / partners (field-testing §04)
+
+    public static func allPeople(_ context: ModelContext) throws -> [Person] {
+        try context.fetch(FetchDescriptor<Person>(sortBy: [SortDescriptor(\.name)]))
+    }
+
+    /// The owner Person, creating it on first use.
+    @discardableResult
+    public static func me(in context: ModelContext) throws -> Person {
+        if let existing = try allPeople(context).first(where: { $0.isMe }) { return existing }
+        let me = Person(name: "Me", isMe: true)
+        context.insert(me)
+        try context.save()
+        return me
+    }
+
+    /// Finds a partner by case-insensitive name or creates one.
+    @discardableResult
+    public static func findOrCreatePerson(named name: String, in context: ModelContext) throws -> Person {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let existing = try allPeople(context).first(where: {
+            $0.name.compare(trimmed, options: .caseInsensitive) == .orderedSame
+        }) { return existing }
+        let p = Person(name: trimmed, isMe: false)
+        context.insert(p)
+        try context.save()
+        return p
     }
 
     public static func updateSet(_ set: SetEntry,
@@ -156,8 +206,11 @@ public enum WorkoutRepository {
     // MARK: Last-time & PRs (FR-1.3, FR-1.4, FR-5.2)
 
     /// All non-warmup sets for an exercise as pure samples, newest first.
+    /// Partner sets are excluded so they never affect the owner's stats
+    /// (field-testing §04, decision #13).
     public static func sampleHistory(for exercise: Exercise) -> [SetSample] {
         (exercise.sets ?? [])
+            .filter { $0.isOwnerSet }
             .map { SetSample(weight: $0.weight, reps: $0.reps,
                              date: $0.completedAt, isWarmup: $0.isWarmup) }
             .sorted { $0.date > $1.date }
@@ -167,7 +220,7 @@ public enum WorkoutRepository {
     /// excluding the given session. Returns sets in logged order.
     public static func lastTimeSets(for exercise: Exercise,
                                     excluding session: WorkoutSession?) -> [SetEntry] {
-        let sets = (exercise.sets ?? []).filter { $0.session?.id != session?.id }
+        let sets = (exercise.sets ?? []).filter { $0.session?.id != session?.id && $0.isOwnerSet }
         // Group by session, pick the most recent session by date.
         let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
         let mostRecent = grouped.values.max { a, b in
@@ -183,7 +236,7 @@ public enum WorkoutRepository {
                                  formula: OneRepMaxFormula,
                                  excluding session: WorkoutSession? = nil) -> Double? {
         let samples = (exercise.sets ?? [])
-            .filter { session == nil || $0.session?.id != session?.id }
+            .filter { (session == nil || $0.session?.id != session?.id) && $0.isOwnerSet }
             .map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: $0.isWarmup) }
         return PRCalculator.best(samples, rule: rule, formula: formula)
     }
@@ -198,7 +251,7 @@ public enum WorkoutRepository {
                                  excluding session: WorkoutSession? = nil) -> Bool {
         let candidate = SetSample(weight: weightKg, reps: reps, isWarmup: isWarmup)
         let previous = (exercise.sets ?? [])
-            .filter { session == nil || $0.session?.id != session?.id }
+            .filter { (session == nil || $0.session?.id != session?.id) && $0.isOwnerSet }
             .map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: $0.isWarmup) }
         return PRCalculator.isNewPR(candidate: candidate, previous: previous, rule: rule, formula: formula)
     }
@@ -241,7 +294,7 @@ public enum WorkoutRepository {
                                    rule: PRRule,
                                    formula: OneRepMaxFormula,
                                    calendar: Calendar = .current) -> [TrendPoint] {
-        let sets = (exercise.sets ?? []).filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 }
+        let sets = (exercise.sets ?? []).filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 && $0.isOwnerSet }
         let byDay = Dictionary(grouping: sets) { calendar.startOfDay(for: $0.completedAt) }
         return byDay.map { day, daySets in
             let samples = daySets.map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: false) }
@@ -257,6 +310,7 @@ public enum WorkoutRepository {
                                   rule: PRRule,
                                   formula: OneRepMaxFormula) -> [TrendPoint] {
         let samples = (exercise.sets ?? [])
+            .filter { $0.isOwnerSet }
             .map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: $0.isWarmup) }
             .filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 }
             .sorted { $0.date < $1.date }
@@ -388,7 +442,8 @@ public enum WorkoutRepository {
                           category: set.exercise?.category,
                           weightKg: set.weight, reps: set.reps, order: set.order,
                           isWarmup: set.isWarmup, rpe: set.rpe, note: set.note,
-                          completedAt: set.completedAt)
+                          completedAt: set.completedAt,
+                          performedBy: set.isOwnerSet ? nil : set.performedBy?.name)
             }
             return ExportSession(id: session.id, title: session.title,
                                  date: session.date, notes: session.notes, sets: sets)
@@ -435,9 +490,11 @@ public enum WorkoutRepository {
             for set in es.sets {
                 let cat = set.category.flatMap(ExerciseCategory.init(rawValue:))
                 let ex = try findOrCreateExercise(named: set.exerciseName, category: cat, in: context)
+                let person = try set.performedBy.map { try findOrCreatePerson(named: $0, in: context) }
                 let s = SetEntry(id: set.id, weight: set.weightKg, reps: set.reps, order: set.order,
                                  isWarmup: set.isWarmup, rpe: set.rpe, note: set.note,
-                                 completedAt: set.completedAt, session: session, exercise: ex)
+                                 completedAt: set.completedAt, session: session, exercise: ex,
+                                 performedBy: person)
                 context.insert(s)
             }
             added += 1

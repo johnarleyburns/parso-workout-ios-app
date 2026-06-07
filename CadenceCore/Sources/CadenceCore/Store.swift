@@ -18,7 +18,8 @@ public enum CadenceStore {
         CardioWorkout.self,
         HRSample.self,
         RouteSample.self,
-        HRMDevice.self
+        HRMDevice.self,
+        Person.self
     ])
 
     /// - Parameters:

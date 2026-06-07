@@ -46,11 +46,16 @@ public struct ExportSet: Codable, Equatable, Sendable {
     public var rpe: Double?
     public var note: String?
     public var completedAt: Date
+    /// Partner name when the set was performed by someone other than the owner
+    /// (field-testing §04, decision #14). nil ⇒ the owner.
+    public var performedBy: String?
     public init(id: UUID, exerciseName: String, category: String?, weightKg: Double,
-                reps: Int, order: Int, isWarmup: Bool, rpe: Double?, note: String?, completedAt: Date) {
+                reps: Int, order: Int, isWarmup: Bool, rpe: Double?, note: String?, completedAt: Date,
+                performedBy: String? = nil) {
         self.id = id; self.exerciseName = exerciseName; self.category = category
         self.weightKg = weightKg; self.reps = reps; self.order = order
         self.isWarmup = isWarmup; self.rpe = rpe; self.note = note; self.completedAt = completedAt
+        self.performedBy = performedBy
     }
 }
 
@@ -99,7 +104,7 @@ public enum DataExport {
     // MARK: CSV (sets, one row per set — the most portable strength format)
 
     public static func encodeCSV(_ export: CadenceExport) -> String {
-        var rows = ["session_id,session_title,session_date,exercise,category,weight_kg,reps,order,is_warmup,rpe,note,completed_at"]
+        var rows = ["session_id,session_title,session_date,exercise,category,weight_kg,reps,order,is_warmup,rpe,note,completed_at,performed_by"]
         let iso = ISO8601DateFormatter()
         for session in export.sessions {
             for set in session.sets.sorted(by: { $0.order < $1.order }) {
@@ -115,7 +120,8 @@ public enum DataExport {
                     set.isWarmup ? "true" : "false",
                     set.rpe.map { String($0) } ?? "",
                     set.note ?? "",
-                    iso.string(from: set.completedAt)
+                    iso.string(from: set.completedAt),
+                    set.performedBy ?? ""
                 ]
                 rows.append(fields.map(csvEscape).joined(separator: ","))
             }

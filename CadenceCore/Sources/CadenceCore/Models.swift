@@ -124,6 +124,9 @@ public final class WorkoutSession {
     /// When the workout was finalized (field-testing §02). Optional for
     /// CloudKit + back-compat; nil means in-progress or a legacy session.
     public var endedAt: Date?
+    /// Exercise names pre-loaded when reusing a past workout (field-testing §04,
+    /// decision #16) — shown as empty cards ready to log before any sets exist.
+    public var plannedExerciseNames: [String] = []
     public var notes: String?
     /// Name of the template this session was started from, if any (FR-1.6).
     public var templateName: String?
@@ -182,9 +185,10 @@ public final class WorkoutSession {
         return result
     }
 
-    /// Total working volume (kg) across all non-warmup sets.
+    /// Total working volume (kg) across the owner's non-warmup sets. Partner
+    /// sets are excluded (field-testing §04, decision #13).
     public var totalVolume: Double {
-        orderedSets.filter { !$0.isWarmup }
+        orderedSets.filter { !$0.isWarmup && $0.isOwnerSet }
             .reduce(0) { $0 + WorkoutMath.volume(weight: $1.weight, reps: $1.reps) }
     }
 }
@@ -209,6 +213,10 @@ public final class SetEntry {
     // To-one relationships (inverses declared on the parents above).
     public var session: WorkoutSession?
     public var exercise: Exercise?
+    /// Who performed the set (field-testing §04). nil ⇒ the owner ("me").
+    /// Partner sets are kept distinct: excluded from the owner's PRs/volume/
+    /// trends and never written to the owner's HealthKit (decision #13).
+    public var performedBy: Person?
 
     public init(id: UUID = UUID(),
                 weight: Double = 0,
@@ -221,7 +229,8 @@ public final class SetEntry {
                 updatedAt: Date = Date(),
                 originDevice: String = "",
                 session: WorkoutSession? = nil,
-                exercise: Exercise? = nil) {
+                exercise: Exercise? = nil,
+                performedBy: Person? = nil) {
         self.id = id
         self.weight = weight
         self.reps = reps
@@ -234,6 +243,45 @@ public final class SetEntry {
         self.originDevice = originDevice
         self.session = session
         self.exercise = exercise
+        self.performedBy = performedBy
+    }
+
+    /// True when the set belongs to the device owner (nobody attributed, or the
+    /// "me" person). Partner sets are false.
+    public var isOwnerSet: Bool {
+        guard let p = performedBy else { return true }
+        return p.isMe
+    }
+}
+
+// MARK: Person (training partners, field-testing §04)
+
+@Model
+public final class Person {
+    public var id: UUID = UUID()
+    public var name: String = ""
+    /// The device owner. Exactly one Person should be `isMe`; nil attribution
+    /// also means the owner.
+    public var isMe: Bool = false
+    public var createdAt: Date = Date()
+    public var updatedAt: Date = Date()
+    public var originDevice: String = ""
+
+    @Relationship(deleteRule: .nullify, inverse: \SetEntry.performedBy)
+    public var sets: [SetEntry]? = []
+
+    public init(id: UUID = UUID(),
+                name: String = "",
+                isMe: Bool = false,
+                createdAt: Date = Date(),
+                updatedAt: Date = Date(),
+                originDevice: String = "") {
+        self.id = id
+        self.name = name
+        self.isMe = isMe
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.originDevice = originDevice
     }
 }
 

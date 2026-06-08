@@ -83,6 +83,30 @@ struct SettingsView: View {
                     } label: { Label("Export", systemImage: "square.and.arrow.up") }
                         .accessibilityIdentifier("settings.export")
                 }
+
+                // Field-testing §06 polish — appended so existing rows keep their
+                // positions (and tests their reachability).
+                Section("Strength") {
+                    Stepper("Auto-end after \(settings.idleTimeoutMinutes) min idle",
+                            value: $settings.idleTimeoutMinutes, in: 2...30)
+                        .accessibilityIdentifier("settings.idleTimeout")
+                    Toggle("Round weights to nearest plate", isOn: $settings.plateRounding)
+                        .accessibilityIdentifier("settings.plateRounding")
+                }
+
+                Section("Cardio") {
+                    Toggle("High-accuracy GPS", isOn: $settings.gpsHighAccuracy)
+                        .accessibilityIdentifier("settings.gpsHighAccuracy")
+                    Toggle("Auto-pause when stopped", isOn: $settings.autoPause)
+                        .accessibilityIdentifier("settings.autoPause")
+                }
+
+                Section("Intervals") {
+                    Toggle("Color-blind palette", isOn: $settings.intervalColorBlind)
+                        .accessibilityIdentifier("settings.intervalColorBlind")
+                    Toggle("Spoken announcements", isOn: $settings.spokenCues)
+                        .accessibilityIdentifier("settings.spokenCues")
+                }
             }
         .navigationTitle("Settings")
         .sheet(isPresented: $primingPresented) {

@@ -17,7 +17,9 @@ final class AppSettings {
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {
             for key in [SettingsKey.unit, SettingsKey.prRule, SettingsKey.oneRepMaxFormula,
                         SettingsKey.stepGoal, SettingsKey.restSeconds, SettingsKey.cloudSyncEnabled,
-                        SettingsKey.lastHealthSync, "settings.autoRest"] {
+                        SettingsKey.lastHealthSync, "settings.autoRest",
+                        "settings.idleTimeout", "settings.gpsHighAccuracy", "settings.autoPause",
+                        "settings.intervalColorBlind", "settings.spokenCues", "settings.plateRounding"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -28,6 +30,13 @@ final class AppSettings {
         self.restSeconds = defaults.object(forKey: SettingsKey.restSeconds) as? Int ?? SettingsDefault.restSeconds
         self.autoStartRest = defaults.object(forKey: "settings.autoRest") as? Bool ?? true
         self.cloudSyncEnabled = defaults.object(forKey: SettingsKey.cloudSyncEnabled) as? Bool ?? SettingsDefault.cloudSyncEnabled
+        // Field-testing §06 polish settings.
+        self.idleTimeoutMinutes = defaults.object(forKey: "settings.idleTimeout") as? Int ?? 10
+        self.gpsHighAccuracy = defaults.object(forKey: "settings.gpsHighAccuracy") as? Bool ?? false
+        self.autoPause = defaults.object(forKey: "settings.autoPause") as? Bool ?? false
+        self.intervalColorBlind = defaults.object(forKey: "settings.intervalColorBlind") as? Bool ?? false
+        self.spokenCues = defaults.object(forKey: "settings.spokenCues") as? Bool ?? false
+        self.plateRounding = defaults.object(forKey: "settings.plateRounding") as? Bool ?? false
     }
 
     var unit: MeasurementUnitPreference { didSet { defaults.set(unit.rawValue, forKey: SettingsKey.unit) } }
@@ -37,6 +46,13 @@ final class AppSettings {
     var restSeconds: Int { didSet { defaults.set(restSeconds, forKey: SettingsKey.restSeconds) } }
     var autoStartRest: Bool { didSet { defaults.set(autoStartRest, forKey: "settings.autoRest") } }
     var cloudSyncEnabled: Bool { didSet { defaults.set(cloudSyncEnabled, forKey: SettingsKey.cloudSyncEnabled) } }
+    // Field-testing §06 polish settings.
+    var idleTimeoutMinutes: Int { didSet { defaults.set(idleTimeoutMinutes, forKey: "settings.idleTimeout") } }
+    var gpsHighAccuracy: Bool { didSet { defaults.set(gpsHighAccuracy, forKey: "settings.gpsHighAccuracy") } }
+    var autoPause: Bool { didSet { defaults.set(autoPause, forKey: "settings.autoPause") } }
+    var intervalColorBlind: Bool { didSet { defaults.set(intervalColorBlind, forKey: "settings.intervalColorBlind") } }
+    var spokenCues: Bool { didSet { defaults.set(spokenCues, forKey: "settings.spokenCues") } }
+    var plateRounding: Bool { didSet { defaults.set(plateRounding, forKey: "settings.plateRounding") } }
 
     private static func read<T: RawRepresentable>(_ d: UserDefaults, _ key: String, _ type: T.Type) -> T? where T.RawValue == String {
         guard let raw = d.string(forKey: key) else { return nil }

@@ -3,7 +3,11 @@
 Live progress tracker for the 2026-06-06 field-testing plan
 (`plans/field-testing/2026-06-06/`). Updated at the start of each phase.
 
-_Last updated: start of Phase 4 (2026-06-07)._
+_Last updated: start of Phase 6 (2026-06-07)._
+
+> Phases 1–5 merged to `main`. Phase 6 (final) wires deferred settings: idle
+> auto-terminate prompt (#6/#7), GPS accuracy + auto-pause (#19), interval
+> color-blind palette (#20) + spoken cues (#23), plate rounding (#15).
 
 > **Phases 1–3 are merged to `main`** (fast-forward). Rebuilding `main` shows the
 > action Home, ~155-exercise library, partner bar, and dual lb/kg entry. The
@@ -20,8 +24,8 @@ _Last updated: start of Phase 4 (2026-06-07)._
 | 2 | §03 faceted exercise DB + search | `feat/ft-exercise-db` | #8 | ✅ merged — 68 core green |
 | 3 | §04 weight-training screen | `feat/ft-strength` | #9 | ✅ merged — 23/23 UI + 85 core green |
 | 4 | §05 cardio outdoor GPS | `feat/ft-cardio-gps` | — | 🚧 in progress |
-| 5 | §06 interval engine (HIIT/boxing) | `feat/ft-intervals` | — | ⬜ todo |
-| 6 | polish + settings | `feat/ft-polish` | — | ⬜ todo |
+| 5 | §06 interval engine (HIIT/boxing) | `feat/ft-intervals` | #11 | ✅ merged — 26/26 UI + 90 core |
+| 6 | polish + settings | `feat/ft-polish` | — | 🚧 in progress |
 
 ## Phase 4 plan (§05 — this phase)
 Per `plans/field-testing/2026-06-06/05-cardio-outdoor-gps.md` + decisions #17/#18/#19:

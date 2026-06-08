@@ -11,6 +11,8 @@ struct SetEditorView: View {
     let prText: String?
     /// Roster for attribution (owner first, then partners). Empty ⇒ owner-only.
     let people: [Person]
+    /// Snap the saved weight to the nearest plate (decision #15, default off).
+    let plateRounding: Bool
     let onSave: (_ weightKg: Double, _ reps: Int, _ rpe: Double?, _ isWarmup: Bool, _ note: String?, _ performedBy: Person?) -> Void
     var onDelete: (() -> Void)? = nil
 
@@ -34,6 +36,7 @@ struct SetEditorView: View {
          lastTimeText: String? = nil,
          prText: String? = nil,
          people: [Person] = [],
+         plateRounding: Bool = false,
          initialWeightKg: Double = 0,
          initialReps: Int = 5,
          initialRPE: Double? = nil,
@@ -48,6 +51,7 @@ struct SetEditorView: View {
         self.lastTimeText = lastTimeText
         self.prText = prText
         self.people = people
+        self.plateRounding = plateRounding
         self.prCheck = isPRPredicate
         self.onSave = onSave
         self.onDelete = onDelete
@@ -174,7 +178,8 @@ struct SetEditorView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onSave(weightKg, reps, useRPE ? rpe : nil, isWarmup,
+                        let kg = plateRounding ? UnitEntry.plateRounded(kg: weightKg, unit: unit) : weightKg
+                        onSave(kg, reps, useRPE ? rpe : nil, isWarmup,
                                note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : note,
                                selectedPerson)
                         dismiss()

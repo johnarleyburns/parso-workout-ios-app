@@ -13,6 +13,7 @@ struct IntervalView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var model
+    @Environment(AppSettings.self) private var settings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var runner: IntervalRunner
@@ -70,6 +71,7 @@ struct IntervalView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(label), \(Int(runner.phaseRemaining)) seconds left")
         .statusBarHidden()
+        .onAppear { cues.spokenEnabled = settings.spokenCues }
         .onReceive(tick) { _ in advance() }
         .onChange(of: runner.currentPhaseID) { _, _ in
             if let kind = runner.phaseKind { cues.phaseChanged(to: kind, label: runner.phaseLabel) }
@@ -80,12 +82,15 @@ struct IntervalView: View {
     // MARK: Colour palette (label + icon also convey meaning, NFR-2)
 
     private var background: Color {
+        // Color-blind-safe palette swaps green/red for blue/purple (decision #20);
+        // meaning is also carried by the label + icon, never colour alone.
+        let cb = settings.intervalColorBlind
         switch state {
-        case .work: return .green
+        case .work: return cb ? .blue : .green
         case .warning: return .yellow
         case .imminent: return (reduceMotion ? .yellow : (flashOn ? .yellow : .orange))
-        case .rest: return .red
-        case .neutral: return .blue
+        case .rest: return cb ? .purple : .red
+        case .neutral: return cb ? .gray : .blue
         }
     }
     private var icon: String {

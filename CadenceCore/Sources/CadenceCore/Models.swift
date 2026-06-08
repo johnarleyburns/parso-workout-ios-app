@@ -1,6 +1,19 @@
 import Foundation
 import SwiftData
 
+/// Encodes `[String]` as a single delimited `String` for SwiftData storage.
+/// A plain `[String]` attribute is persisted via the legacy transformable,
+/// which logs "Could not materialize Objective-C class named Array" faults and
+/// the `NSKeyedUnarchiveFromData` deprecation. Storing a String avoids both.
+/// The delimiter is U+0001 (Start of Heading), which never occurs in our data.
+enum StringArray {
+    static let separator = "\u{1}"
+    static func encode(_ values: [String]) -> String { values.joined(separator: separator) }
+    static func decode(_ raw: String) -> [String] {
+        raw.isEmpty ? [] : raw.components(separatedBy: separator)
+    }
+}
+
 // MARK: - Models
 //
 // CloudKit compatibility rules (REQUIREMENTS §7, FR-9):
@@ -24,8 +37,8 @@ public final class Exercise {
     public var name: String = ""
     /// Raw value of `ExerciseCategory`; stored as String for CloudKit friendliness.
     public var category: String?
-    /// Free-form muscle-group tags (e.g. "chest", "triceps").
-    public var muscleGroups: [String] = []
+    /// Muscle-group tags (e.g. "chest"). Delimited-String storage (see `StringArray`).
+    private var muscleGroupsData: String = ""
     public var isCustom: Bool = false
     // Field-testing §03 facets (all optional/defaulted for CloudKit + back-compat).
     /// Raw value of `Equipment`.
@@ -36,11 +49,10 @@ public final class Exercise {
     public var mechanics: String?
     /// Raw value of `Force` (push/pull/static).
     public var force: String?
-    /// Canonical muscle ids (see `MuscleCatalog`).
-    public var primaryMuscles: [String] = []
-    public var secondaryMuscles: [String] = []
-    /// Flattened, lowercased search tokens derived at seed/create time.
-    public var searchKeywords: [String] = []
+    /// Canonical muscle ids + search tokens; delimited-String storage.
+    private var primaryMusclesData: String = ""
+    private var secondaryMusclesData: String = ""
+    private var searchKeywordsData: String = ""
     public var createdAt: Date = Date()
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
@@ -66,18 +78,35 @@ public final class Exercise {
         self.id = id
         self.name = name
         self.category = category?.rawValue
-        self.muscleGroups = muscleGroups
+        self.muscleGroupsData = StringArray.encode(muscleGroups)
         self.isCustom = isCustom
         self.equipment = equipment?.rawValue
         self.isLateral = isLateral
         self.mechanics = mechanics?.rawValue
         self.force = force?.rawValue
-        self.primaryMuscles = primaryMuscles
-        self.secondaryMuscles = secondaryMuscles
-        self.searchKeywords = searchKeywords
+        self.primaryMusclesData = StringArray.encode(primaryMuscles)
+        self.secondaryMusclesData = StringArray.encode(secondaryMuscles)
+        self.searchKeywordsData = StringArray.encode(searchKeywords)
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.originDevice = originDevice
+    }
+
+    public var muscleGroups: [String] {
+        get { StringArray.decode(muscleGroupsData) }
+        set { muscleGroupsData = StringArray.encode(newValue) }
+    }
+    public var primaryMuscles: [String] {
+        get { StringArray.decode(primaryMusclesData) }
+        set { primaryMusclesData = StringArray.encode(newValue) }
+    }
+    public var secondaryMuscles: [String] {
+        get { StringArray.decode(secondaryMusclesData) }
+        set { secondaryMusclesData = StringArray.encode(newValue) }
+    }
+    public var searchKeywords: [String] {
+        get { StringArray.decode(searchKeywordsData) }
+        set { searchKeywordsData = StringArray.encode(newValue) }
     }
 
     public var categoryValue: ExerciseCategory? {
@@ -125,8 +154,8 @@ public final class WorkoutSession {
     /// CloudKit + back-compat; nil means in-progress or a legacy session.
     public var endedAt: Date?
     /// Exercise names pre-loaded when reusing a past workout (field-testing §04,
-    /// decision #16) — shown as empty cards ready to log before any sets exist.
-    public var plannedExerciseNames: [String] = []
+    /// decision #16). Delimited-String storage (see `StringArray`).
+    private var plannedExerciseNamesData: String = ""
     public var notes: String?
     /// Name of the template this session was started from, if any (FR-1.6).
     public var templateName: String?
@@ -157,6 +186,11 @@ public final class WorkoutSession {
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
         self.updatedAt = updatedAt
         self.originDevice = originDevice
+    }
+
+    public var plannedExerciseNames: [String] {
+        get { StringArray.decode(plannedExerciseNamesData) }
+        set { plannedExerciseNamesData = StringArray.encode(newValue) }
     }
 
     /// Sets in logged order.

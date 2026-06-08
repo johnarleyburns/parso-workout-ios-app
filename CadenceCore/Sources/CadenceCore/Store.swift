@@ -51,6 +51,19 @@ public enum CadenceStore {
 
         return try ModelContainer(for: schema, configurations: [configuration])
     }
+
+    /// Deletes the on-disk default SwiftData store. Used as a dev-time recovery
+    /// when a schema change makes the existing local store incompatible (e.g.
+    /// the §06 `[String]` → delimited-String migration). Pre-release only; sync
+    /// is off by default so there's nothing remote to lose.
+    public static func destroyDefaultStore() {
+        let fm = FileManager.default
+        guard let support = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                        appropriateFor: nil, create: false) else { return }
+        for name in ["default.store", "default.store-shm", "default.store-wal"] {
+            try? fm.removeItem(at: support.appendingPathComponent(name))
+        }
+    }
 }
 
 // MARK: - Settings keys & defaults

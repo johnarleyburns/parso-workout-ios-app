@@ -20,6 +20,11 @@ struct SessionView: View {
     @Query(sort: \Person.name) private var allPeople: [Person]
     @State private var addPartnerPresented = false
     @State private var newPartnerName = ""
+    // Idle auto-terminate (field-testing §02/§04, decisions #6/#7).
+    @State private var lastActivity = Date()
+    @State private var idlePromptShown = false
+    @State private var idlePromptAt: Date?
+    private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     /// Owner first, then partners alphabetically.
     private var roster: [Person] {
@@ -106,6 +111,13 @@ struct SessionView: View {
             setEditorSheet(ctx)
         }
         .task { _ = try? WorkoutRepository.me(in: context) }
+        .onReceive(idleTimer) { _ in checkIdle() }
+        .alert("Still training?", isPresented: $idlePromptShown) {
+            Button("Keep going") { poke() }
+            Button("Save now", role: .destructive) { endWorkout() }
+        } message: {
+            Text("No activity for \(settings.idleTimeoutMinutes) min. This workout saves automatically soon.")
+        }
         .alert("Add training partner", isPresented: $addPartnerPresented) {
             TextField("Name", text: $newPartnerName)
                 .accessibilityIdentifier("partner.nameField")
@@ -293,6 +305,7 @@ struct SessionView: View {
             lastTimeText: last.map { Format.setLine($0, unit: settings.unit) },
             prText: pr.map { Format.weight($0, unit: settings.unit) },
             people: roster,
+            plateRounding: settings.plateRounding,
             initialWeightKg: ctx.editing?.weight ?? inSessionLast?.weight ?? 0,
             initialReps: ctx.editing?.reps ?? inSessionLast?.reps ?? 5,
             initialRPE: ctx.editing?.rpe,
@@ -334,6 +347,25 @@ struct SessionView: View {
         withAnimation { healthSaved = true }
     }
 
+    /// Idle watchdog: after `idleTimeoutMinutes` with no activity, prompt; if the
+    /// prompt is ignored for 30s, auto-save (field-testing §02, decisions #6/#7).
+    private func checkIdle() {
+        guard active.strengthSession?.id == session.id else { return }
+        if idlePromptShown {
+            if let at = idlePromptAt, Date().timeIntervalSince(at) >= 30 { endWorkout() }
+        } else {
+            let timeout = TimeInterval(max(1, settings.idleTimeoutMinutes) * 60)
+            if Date().timeIntervalSince(lastActivity) >= timeout {
+                idlePromptShown = true; idlePromptAt = Date()
+            }
+        }
+    }
+
+    /// Records activity, resetting the idle countdown.
+    private func poke() {
+        lastActivity = Date(); idlePromptShown = false; idlePromptAt = nil
+    }
+
     /// Finalizes the active session (field-testing §02): stamps `endedAt`,
     /// clears the active reference, and returns to Home.
     private func endWorkout() {
@@ -344,6 +376,7 @@ struct SessionView: View {
 
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,
                         rpe: Double?, isWarmup: Bool, note: String?, performedBy: Person? = nil) {
+        poke()
         let person = (performedBy?.isMe ?? true) ? nil : performedBy
         // PR is only the owner's concern; a partner's set never fires a PR.
         let isPR = person == nil && WorkoutRepository.wouldBePR(exercise: exercise, weightKg: weightKg, reps: reps,

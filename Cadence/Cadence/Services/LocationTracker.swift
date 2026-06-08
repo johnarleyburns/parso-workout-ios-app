@@ -31,6 +31,12 @@ final class LocationTracker: NSObject, LocationTracking {
 
     var distanceMeters: Double { GeoMath.pathDistance(fixes) }
 
+    /// GPS accuracy tier (field-testing §05/§06, decision #19). Balanced by
+    /// default to save battery (NFR-7); high for racing/precision.
+    func setHighAccuracy(_ high: Bool) {
+        manager?.desiredAccuracy = high ? kCLLocationAccuracyBest : kCLLocationAccuracyNearestTenMeters
+    }
+
     func requestAuthorization() {
         guard !simulated else { authorized = true; return }
         manager?.requestWhenInUseAuthorization()

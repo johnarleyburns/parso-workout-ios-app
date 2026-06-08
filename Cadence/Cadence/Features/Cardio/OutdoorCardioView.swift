@@ -12,6 +12,7 @@ struct OutdoorCardioView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var model
+    @Environment(AppSettings.self) private var settings
 
     @State private var recorder: CardioRecorder?
     @State private var clock = WorkoutClock()
@@ -120,6 +121,7 @@ struct OutdoorCardioView: View {
 
     private func startIfNeeded() {
         guard recorder == nil else { return }
+        model.location.setHighAccuracy(settings.gpsHighAccuracy)
         model.location.requestAuthorization()
         let r = CardioRecorder(location: model.location, hrm: model.hrm)
         r.start(type: type)

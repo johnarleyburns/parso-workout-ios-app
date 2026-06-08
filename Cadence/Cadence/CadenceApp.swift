@@ -16,7 +16,15 @@ struct CadenceApp: App {
         do {
             container = try CadenceStore.makeModelContainer(inMemory: uiTest, cloudKitEnabled: cloud)
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            // A dev schema change can leave an incompatible on-disk store.
+            // Reset it once and retry rather than crashing (pre-release; sync
+            // off by default so there's nothing remote to lose).
+            CadenceStore.destroyDefaultStore()
+            do {
+                container = try CadenceStore.makeModelContainer(inMemory: uiTest, cloudKitEnabled: cloud)
+            } catch {
+                fatalError("Failed to create ModelContainer after reset: \(error)")
+            }
         }
         // Seed starter library and (in UI-test mode) deterministic fixtures.
         let ctx = ModelContext(container)

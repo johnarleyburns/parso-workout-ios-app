@@ -3,11 +3,14 @@
 Live progress tracker for the 2026-06-06 field-testing plan
 (`plans/field-testing/2026-06-06/`). Updated at the start of each phase.
 
-_Last updated: start of Phase 6 (2026-06-07)._
+_Last updated: all phases complete (2026-06-07)._
 
-> Phases 1–5 merged to `main`. Phase 6 (final) wires deferred settings: idle
-> auto-terminate prompt (#6/#7), GPS accuracy + auto-pause (#19), interval
-> color-blind palette (#20) + spoken cues (#23), plate rounding (#15).
+> **All 6 phases merged to `main`.** The field-testing redesign is shipped:
+> action-oriented Home, per-type Start Workout, ~155-exercise faceted library
+> with keyword search, weight-training with dual units + partners + reuse,
+> outdoor GPS cardio, the HIIT/boxing interval engine with the full-screen
+> color signal, and the polish settings. The CoreData `[String]` array faults
+> are fixed (delimited-String storage). Rebuild `main` on device to get it all.
 
 > **Phases 1–3 are merged to `main`** (fast-forward). Rebuilding `main` shows the
 > action Home, ~155-exercise library, partner bar, and dual lb/kg entry. The
@@ -25,7 +28,7 @@ _Last updated: start of Phase 6 (2026-06-07)._
 | 3 | §04 weight-training screen | `feat/ft-strength` | #9 | ✅ merged — 23/23 UI + 85 core green |
 | 4 | §05 cardio outdoor GPS | `feat/ft-cardio-gps` | — | 🚧 in progress |
 | 5 | §06 interval engine (HIIT/boxing) | `feat/ft-intervals` | #11 | ✅ merged — 26/26 UI + 90 core |
-| 6 | polish + settings | `feat/ft-polish` | — | 🚧 in progress |
+| 6 | polish + settings (+CoreData array fix) | `feat/ft-polish` | #12 | ✅ merged — 27/27 UI + 90 core |
 
 ## Phase 4 plan (§05 — this phase)
 Per `plans/field-testing/2026-06-06/05-cardio-outdoor-gps.md` + decisions #17/#18/#19:

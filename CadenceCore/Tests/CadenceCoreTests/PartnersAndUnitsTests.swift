@@ -91,6 +91,21 @@ final class PartnersAndUnitsTests: XCTestCase {
         XCTAssertEqual(fresh.plannedExerciseNames, ["Bench Press", "Overhead Press"])
     }
 
+    func testCopyWorkoutDuplicatesExercisesAndSets() throws {
+        let ctx = try makeContext()
+        let past = try WorkoutRepository.createSession(title: "Push Day", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 102.5, reps: 5, in: ctx)
+
+        let fresh = try WorkoutRepository.createSession(in: ctx)
+        let copied = try WorkoutRepository.copyWorkout(from: past, into: fresh, in: ctx)
+        XCTAssertEqual(copied, 2)
+        XCTAssertEqual(fresh.orderedSets.count, 2, "sets are duplicated, not just exercises")
+        XCTAssertEqual(fresh.title, "Push Day")
+        XCTAssertEqual(fresh.orderedSets.first?.weight, 100)
+    }
+
     // MARK: Export carries partner tag (decision #14)
 
     func testExportTagsPartnerSets() throws {

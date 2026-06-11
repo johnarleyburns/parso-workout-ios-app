@@ -35,14 +35,41 @@ extension XCUIApplication {
         return false
     }
 
+    /// Scrolls a (scrollable) screen until `id` is on-screen and HITTABLE, then
+    /// taps it. Off-screen elements in a ScrollView "exist" but aren't hittable,
+    /// so existence alone isn't enough on the Home dashboard.
+    @discardableResult
+    func scrollToHittableAndTap(_ id: String, maxSwipes: Int = 8) -> Bool {
+        let el = buttons[id]
+        guard el.waitForExistence(timeout: 6) else { return false }
+        if el.isHittable { el.tap(); return true }
+        for _ in 0..<maxSwipes {
+            swipeUp()
+            if el.isHittable { el.tap(); return true }
+        }
+        // Fall back to a direct tap (XCUITest will attempt to scroll into view).
+        el.tap()
+        return true
+    }
+
     /// Navigates from anywhere back to the Home launchpad, then into the
     /// destination that used to be a tab (field-testing §01).
     func goToTab(_ label: String) {
         popToHome()
-        guard let id = Self.homeCard[label] else { XCTFail("unknown destination \(label)"); return }
-        let card = buttons[id]
-        if card.waitForExistence(timeout: 8) { card.tap(); return }
-        XCTFail("home destination \(label) (\(id)) not found")
+        switch label {
+        case "Today":
+            return  // activity (step count + trend) lives on Home now
+        case "Cardio":
+            // Cardio history reached via the Stats "See all" then the cardio link.
+            XCTAssertTrue(scrollToHittableAndTap("home.stats"), "open Stats")
+            XCTAssertTrue(scrollToHittableAndTap("stats.cardio"), "stats.cardio not found")
+        default:
+            // The Home dashboard scrolls, so the "See all" link may be below the
+            // fold — scroll until it's hittable before tapping.
+            let map = ["Train": "home.train", "Trends": "home.stats", "Settings": "home.settings"]
+            guard let id = map[label] else { XCTFail("unknown destination \(label)"); return }
+            XCTAssertTrue(scrollToHittableAndTap(id), "home destination \(label) (\(id)) not found")
+        }
     }
 
     /// Taps Back until the Home launchpad (its Start Workout button) is shown.

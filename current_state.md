@@ -1,60 +1,101 @@
-# Current State — field-testing redesign
+# Current State — Cadence field-testing redesign
 
-Live progress tracker for the 2026-06-06 field-testing plan
-(`plans/field-testing/2026-06-06/`). Updated at the start of each phase.
+Live handoff/progress tracker. Read this first, then
+`plans/field-testing/2026-06-11/round4-plan.md`.
 
-_Last updated: all phases complete (2026-06-07)._
+_Last updated: 2026-06-11 — round 2/3 + round-4 sounds MERGED to `main`; UI suite green._
 
-> **All 6 phases merged to `main`.** The field-testing redesign is shipped:
-> action-oriented Home, per-type Start Workout, ~155-exercise faceted library
-> with keyword search, weight-training with dual units + partners + reuse,
-> outdoor GPS cardio, the HIIT/boxing interval engine with the full-screen
-> color signal, and the polish settings. The CoreData `[String]` array faults
-> are fixed (delimited-String storage). Rebuild `main` on device to get it all.
+## Repo / branch
+- Repo: `/Users/arley/github/parso-workout-ios-app` (this is the user's working copy).
+- **`main`** = Phases 1–6 + round 2/3 Home-dashboard rebuild + intervals + round-4
+  A7 sounds, all merged. The app on `main` builds + runs clean.
+- **UI suite: 27/27 green; CadenceCore: 95/95 green** (verified 2026-06-11 on a
+  freshly-restarted iPhone 16 sim, non-parallel).
+- **Next branch to cut: `feat/ft4a-pause-summary`** off `main` for Round 4 Part A.
 
-> **Phases 1–3 are merged to `main`** (fast-forward). Rebuilding `main` shows the
-> action Home, ~155-exercise library, partner bar, and dual lb/kg entry. The
-> `Could not materialize Array<String>` console log is a benign SwiftData fault
-> for `[String]` attributes (data verified by 85 tests); optional string-backed
-> fix available on request. Phase 4+ branch off `main`.
+## What's DONE on this branch (uncommitted, builds green)
+- **Pre-workout countdown** (`PreWorkoutCountdownView`, default 30s, Skip/Cancel;
+  setting `settings.preWorkoutCountdown`; uiTest defaults to 0 unless `-preCountdown N`).
+- **Session screen**: "Use Previous Workout" (copies a full past workout —
+  `WorkoutRepository.copyWorkout`); Add Exercise moved to the bottom.
+- **Home dashboard rebuild** (`HomeView`): simple step count + workouts-this-week,
+  Start Workout hero (gradient), inline 7-day trend, inline Recent cardio + Recent
+  workouts with "See all" links (`home.stats`/`home.train`/`home.cardio`,
+  `home.cardioRow.*`, `home.sessionRow`). Step RING removed; 7-day chart also added
+  to Stats (`TrendsView`) which gained a `stats.cardio` link.
+- **Intervals**: 4 new science-backed protocols in core (`gibala`, `sit`, `rehit`,
+  `tenTwentyThirty`) + factories tested; `IntervalSetupView` now SELECT-then-START
+  (`interval.start`, no auto-launch); `IntervalView` shows the protocol name
+  persistently (`interval.planName`).
+- **Boxing/interval sounds** (round-4 A7): bundled `Cadence/Cadence/Sounds/
+  opening-closing-bell.mp3` (round start/end) + `warning-bell.mp3` (fires once at
+  30s left of a work phase); `IntervalCues` plays them via `AVAudioPlayer` + haptics.
+- **WorkoutTypePicker**: visual `WorkoutHero` cards (type-keyed gradients + glyph,
+  optional `hero-<type>` image asset slot).
+- `CadenceCore`: **95 tests green** (incl. new interval + copyWorkout tests).
+- iOS **build: green**.
 
-## Phase status
+## DONE — round-2/3 UI suite is green and merged
+**Two root causes fixed (was 18/27 red → 0 red):**
+1. **Plain-button + `Spacer()` activation point (14 of the failures).** The Home
+   "See all" headers/rows were `.buttonStyle(.plain)` wrapping `HStack { …; Spacer();
+   … }`. XCUITest puts a button's activation point at the frame CENTRE → it landed
+   on the empty `Spacer()` (non-interactive) → tap rejected ("Failed to compute hit
+   point … Activation point invalid") → no navigation. **Fix:**
+   `.contentShape(Rectangle())` on `sectionHeader`, `home.cardioRow`,
+   `home.sessionRow`, `home.resume`. (Also converted HomeView to a single
+   `NavigationPath` — fixed a latent mixed-`navigationDestination` bug too.)
+2. **TrendsView lazy-List below the fold (1 failure).** The new 7-day activity chart
+   was added at the TOP of TrendsView, pushing the "Exercises" section below the
+   fold. `FR5TrendsUITests.testExerciseTrendAndPRs` waited for `trends.exercise.Bench
+   Press` to *exist* without scrolling — off-screen lazy-List rows aren't in the AX
+   tree. **Fix:** test now uses `scrollToAndTapButton(...)` to bring the row in.
+- The other 3 originally-red tests (FR4 `testSaveStrengthToHealth` keyboard focus,
+  FR6 `testImportGmailDraft`, FR6 `testPolishSettingsPresentAndPersist` toggle tap)
+  were **degraded-sim flakiness** — they pass on a freshly-restarted sim. Watch for
+  Mach error -308 "server died"; restart CoreSimulator and re-run.
 
-| Phase | Scope | Branch | PR | Status |
-|-------|-------|--------|----|--------|
-| Planning | 8 design docs + decisions | — | — | ✅ done |
-| 1 | §01 home/nav + §02 engine core | `feat/ft-shell` | #7 | ✅ merged — 21/21 UI green |
-| 2 | §03 faceted exercise DB + search | `feat/ft-exercise-db` | #8 | ✅ merged — 68 core green |
-| 3 | §04 weight-training screen | `feat/ft-strength` | #9 | ✅ merged — 23/23 UI + 85 core green |
-| 4 | §05 cardio outdoor GPS | `feat/ft-cardio-gps` | — | 🚧 in progress |
-| 5 | §06 interval engine (HIIT/boxing) | `feat/ft-intervals` | #11 | ✅ merged — 26/26 UI + 90 core |
-| 6 | polish + settings (+CoreData array fix) | `feat/ft-polish` | #12 | ✅ merged — 27/27 UI + 90 core |
+Merged to `main` via fast-forward (established pattern). Next: Round 4 Part A.
 
-## Phase 4 plan (§05 — this phase)
-Per `plans/field-testing/2026-06-06/05-cardio-outdoor-gps.md` + decisions #17/#18/#19:
-1. `OutdoorCardioView` — Run/Walk/Cycle GPS screen: live MapKit route polyline, big distance/pace, HR/zone, pause/end. Reuses `CardioRecorder` + `LocationTracker`; wall-clock elapsed.
-2. Route the Start Workout picker: run/walk/cycle → `OutdoorCardioView`; others → `RecordCardioView`.
-3. Background location (Info.plist mode + `allowsBackgroundLocationUpdates`) so a call/pocket doesn't stop tracking.
-4. `CardioDetailView` renders the saved route on a map (FR-5.3).
-5. Settings: GPS accuracy + auto-pause (off). MapKit only (decision #18, no new deps).
+## NEXT (round 4 — see plans/field-testing/2026-06-11/round4-plan.md)
+**Part A (implement next, user EMPHASISED summary + history):**
+1. Universal Pause/Resume + End on EVERY workout type incl. during the countdown.
+2. End → "Are you sure?" confirmation.
+3. Always show a **WorkoutSummaryView** at end (cardio + strength).
+4. Unified workout history (a walk saved as `CardioWorkout` didn't show in the
+   strength-only "Recent workouts" — make history merge strength + cardio).
+5. History row → tap → the summary page.
+6. Apple-Watch HR backfill: query HealthKit for HR samples in the workout window
+   (`HealthDataProviding.heartRate(in:)`) and attach to the `CardioWorkout` when no
+   strap HR was captured (the phone can't stream the Watch's live HR by design).
+7. ✅ Sounds (done above).
 
-## What's landed (cumulative on the Phase 3 base)
-- **Engine core**: `WorkoutClock`, `IdleWatchdog`, `WorkoutType`, `WorkoutSession.endedAt`, `ActiveWorkoutModel`.
-- **Shell**: tab bar removed; `HomeView` launchpad + `WorkoutTypePicker`; old tabs re-homed; End Workout on session.
-- **Exercise DB**: faceted `Exercise` (equipment/laterality/mechanics/force/muscles/keywords), `MuscleCatalog` synonyms, `ExerciseSearch` ranking, ~155-exercise seed, idempotent re-seed, ranked picker search.
-- Core tests: **77 green** on the integrated base.
+**Part B (designed, build after A):** CrossFit — a `WorkoutPlan`/`PlanItem` core
+model, 15 benchmark "Girls" workouts (researched, in the plan doc), a
+`WorkoutType.crossfit` picker, CrossFit movements in the §03 library + a
+movement-guide link, and a "WOD of the day" Home card fetched from
+`crossfit.com/<YYMMDD>`.
 
-## Phase 3 plan (§04 — this phase)
-Per `plans/field-testing/2026-06-06/04-weight-training-screen.md` + decisions #4/#13/#14/#15/#16:
-1. **Core**: `UnitEntry` dual lb/kg helper (+ tests); add `ownerOnly` filtering to all PR/volume/last-time repo methods so partner sets are excluded.
-2. **Model**: new `Person` (`isMe`), `SetEntry.performedBy` (optional ⇒ owner); export carries partner tag.
-3. **Set editor**: dual lb/kg entry control (auto-fill, exact convert, optional plate-round off) + "For: Me/Partner" attribution.
-4. **Session screen**: partner bar; attribution on rows; reuse-workout from history/Home; full idle-watchdog UI integration (10-min "Still training?" prompt).
-5. **Templates**: removed from UI (schema retained); "Reuse workout" replaces them.
-6. **Create-exercise** UI carries §03 facets.
+## How to work here (methodology — also in CLAUDE.md)
+- Plan to disk first for big asks (`plans/field-testing/<date>/`); implement
+  phase-by-phase, one PR each; update THIS file at each phase start.
+- Logic in `CadenceCore` (`swift test` — reliable). UI via `xcodebuild` (flaky on a
+  degraded sim).
+- **Degraded-sim gotcha:** if `xcodebuild test` launches balloon to ~45s with
+  `no debugger version`, restart CoreSimulator:
+  `xcrun simctl shutdown all; killall -9 com.apple.CoreSimulator.CoreSimulatorService`
+  then boot the device again. Run non-parallel for reliable signal.
 
-## Known environment issue
-- The CI simulator degrades over a session (~45s launches, `no debugger version`); fix by restarting CoreSimulator service. `swift test` (Mac toolchain) is the reliable gate; the `xcodebuild` UI suite can show env-flaky timeouts on correctly-rendered elements (FR1 set-logging, FR4 toggle were flaky in Phase 2).
+## Commands
+- Core tests: `cd CadenceCore && swift test`
+- Build: `xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence -destination 'id=FC7B2F90-A27B-4BD5-9313-7B267636E165' build`
+- UI suite (non-parallel): same with `-parallel-testing-enabled NO test`
+  (sim id `FC7B2F90-A27B-4BD5-9313-7B267636E165` = iPhone 16; pick any booted one).
+- Inspect a failure: `xcrun xcresulttool get test-results test-details --test-id 'SuiteName/testName()' --path <latest .xcresult>`
 
-## What's left after Phase 3
-Phases 4 (cardio GPS), 5 (interval engine + full-screen color indicator), 6 (settings/polish). See the rollout table in `07-data-model-migration-and-rollout.md`.
+## Notes / decisions in effect
+- All merges to `main` so far were fast-forward; PRs #7–#13.
+- Schema changes additive + CloudKit-safe; `[String]` model attrs are delimited-
+  String-backed (`StringArray`) — do NOT reintroduce raw `[String]` `@Model` attrs.
+- `opening-closing-bell.mp3` / `warning-bell.mp3` also sit in the repo root (source
+  copies); the bundled copies are under `Cadence/Cadence/Sounds/`.

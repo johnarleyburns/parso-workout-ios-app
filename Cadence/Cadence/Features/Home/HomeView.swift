@@ -1,178 +1,252 @@
 import SwiftUI
 import SwiftData
+import Charts
 import CadenceCore
 
-/// Action-oriented launchpad (field-testing §01). Replaces the five-tab bar:
-/// the hero is **Start Workout**; stats and history are one tap away. Apple
-/// Health already mirrors raw activity, so Home is for *doing*, not a dashboard.
+/// Home dashboard (field-test round 3): a simple step count + workouts-this-week,
+/// the Start Workout hero, and trends / cardio history / workout history surfaced
+/// directly — not hidden under menus. A get-ready countdown runs before a workout.
 struct HomeView: View {
     @Environment(\.modelContext) private var context
+    @Environment(AppModel.self) private var model
+    @Environment(AppSettings.self) private var settings
     @Environment(ActiveWorkoutModel.self) private var active
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+    @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
 
     @State private var typePickerPresented = false
-    /// Push target for a strength session.
-    @State private var startedSession: WorkoutSession?
-    /// Sheet target for an indoor/timer cardio recording.
+    @State private var path = NavigationPath()
     @State private var cardioType: CardioType?
-    /// Full-screen target for an outdoor GPS workout (field-testing §05).
     @State private var outdoorType: CardioType?
-    /// Sheet target for interval setup — HIIT / Boxing (field-testing §06).
     @State private var intervalType: WorkoutType?
-    /// Full-screen target for the launched interval runner.
     @State private var intervalLaunch: IntervalLaunch?
+    @State private var pending: PendingWorkout?
+    @State private var today: DayActivity?
+    @State private var trend: [DayActivity] = []
+
+    private var weekCount: Int {
+        let weekAgo = Date().addingTimeInterval(-7 * 86_400)
+        return sessions.filter { $0.date >= weekAgo }.count + cardio.filter { $0.start >= weekAgo }.count
+    }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
-                VStack(spacing: 20) {
-                    if let session = active.strengthSession {
-                        resumeCard(session)
-                    }
-
+                VStack(alignment: .leading, spacing: 18) {
+                    if let s = active.strengthSession { resumeCard(s) }
+                    statRow
                     startButton
-
-                    secondaryGrid
+                    trendSection
+                    cardioSection
+                    historySection
                 }
                 .padding()
             }
             .navigationTitle("Cadence")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink(value: HomeRoute.settings) {
-                        Image(systemName: "gearshape")
-                    }
-                    .accessibilityIdentifier("home.settings")
-                    .accessibilityLabel("Settings")
+                    Button { path.append(HomeRoute.settings) } label: { Image(systemName: "gearshape") }
+                        .accessibilityIdentifier("home.settings").accessibilityLabel("Settings")
                 }
             }
-            .navigationDestination(item: $startedSession) { session in
-                SessionView(session: session)
-            }
+            .navigationDestination(for: WorkoutSession.self) { SessionView(session: $0) }
+            .navigationDestination(for: CardioWorkout.self) { CardioDetailView(workout: $0) }
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {
                 case .stats: TrendsView()
                 case .history: TrainView()
                 case .cardio: CardioView()
-                case .activity: TodayView()
                 case .settings: SettingsView()
                 }
             }
+            .task { today = await model.health.todayActivity(); trend = await model.health.activityTrend(days: 7) }
+            .refreshable { today = await model.health.todayActivity(); trend = await model.health.activityTrend(days: 7) }
             .sheet(isPresented: $typePickerPresented) {
-                WorkoutTypePicker { type in
-                    typePickerPresented = false
-                    start(type)
-                }
+                WorkoutTypePicker { type in typePickerPresented = false; start(type) }
             }
-            .sheet(item: $cardioType) { type in
-                RecordCardioView(initialType: type)
-            }
-            .fullScreenCover(item: $outdoorType) { type in
-                OutdoorCardioView(type: type)
-            }
+            .sheet(item: $cardioType) { RecordCardioView(initialType: $0) }
+            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0) }
             .sheet(item: $intervalType) { wType in
                 IntervalSetupView(type: wType) { plan in
                     intervalType = nil
-                    intervalLaunch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)
+                    begin(.interval(IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)))
                 }
             }
-            .fullScreenCover(item: $intervalLaunch) { launch in
-                IntervalView(plan: launch.plan, saveType: launch.saveType)
+            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType) }
+            .fullScreenCover(item: $pending) { p in
+                PreWorkoutCountdownView(seconds: settings.preWorkoutCountdown,
+                                        onStart: { let k = p.kind; pending = nil; launch(k) },
+                                        onCancel: { pending = nil })
             }
         }
     }
 
-    // MARK: Pieces
+    // MARK: Top stats
+
+    private var statRow: some View {
+        HStack(spacing: 14) {
+            statTile("\(Format.integer(today?.steps ?? 0))", "steps today", id: "today.steps")
+            statTile("\(weekCount)", "workouts this week", id: "home.weekCount")
+        }
+    }
+    private func statTile(_ value: String, _ label: String, id: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value).font(.title.bold()).monospacedDigit().accessibilityIdentifier(id)
+            Text(label).font(.caption).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 16)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+    }
 
     private var startButton: some View {
-        Button {
-            typePickerPresented = true
-        } label: {
+        Button { typePickerPresented = true } label: {
             HStack(spacing: 12) {
                 Image(systemName: "play.circle.fill").font(.largeTitle)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Start Workout").font(.title2.bold())
-                    Text("Pick a type").font(.subheadline).opacity(0.9)
-                }
+                Text("Start Workout").font(.title2.bold())
                 Spacer()
-                Image(systemName: "chevron.right").font(.headline).opacity(0.7)
+                Image(systemName: "chevron.right").font(.headline).opacity(0.8)
             }
             .padding(.vertical, 22).padding(.horizontal, 20)
-            .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 84)
             .foregroundStyle(.white)
-            .background(.tint, in: RoundedRectangle(cornerRadius: 20))
+            .background(LinearGradient(colors: [.green, .teal], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: 20))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("home.startWorkout")
-        .accessibilityLabel("Start a workout")
+        .accessibilityIdentifier("home.startWorkout").accessibilityLabel("Start a workout")
     }
 
-    private var secondaryGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 16),
-                            GridItem(.flexible(), spacing: 16)], spacing: 16) {
-            navCard("Stats", "chart.xyaxis.line", route: .stats, id: "home.stats")
-            navCard("History", "dumbbell", route: .history, id: "home.train")
-            navCard("Cardio", "figure.run", route: .cardio, id: "home.cardio")
-            navCard("Activity", "sun.max", route: .activity, id: "home.today")
+    // MARK: Inline sections (surfaced, not hidden)
+
+    private var trendSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader("Trends", route: .stats, id: "home.stats")
+            Chart(trend) { day in
+                BarMark(x: .value("Day", day.date, unit: .day), y: .value("Steps", day.steps))
+                    .foregroundStyle(.green.gradient)
+                RuleMark(y: .value("Goal", settings.stepGoal))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4])).foregroundStyle(.secondary)
+            }
+            .chartXAxis { AxisMarks(values: .stride(by: .day)) { _ in AxisValueLabel(format: .dateTime.weekday(.narrow)) } }
+            .frame(height: 120)
+            .accessibilityIdentifier("today.trendChart")
         }
     }
 
-    private func navCard(_ title: String, _ symbol: String, route: HomeRoute, id: String) -> some View {
-        NavigationLink(value: route) {
-            VStack(spacing: 10) {
-                Image(systemName: symbol).font(.title)
-                Text(title).font(.headline)
+    private var cardioSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader("Recent cardio", route: .cardio, id: "home.cardio")
+            if cardio.isEmpty {
+                Text("No cardio yet.").font(.caption).foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, minHeight: 96)
-            .padding(.vertical, 12)
-            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 18))
+            ForEach(cardio.prefix(3)) { w in
+                Button { path.append(w) } label: {
+                    HStack {
+                        Image(systemName: w.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
+                        Text(w.typeValue.displayName)
+                        Spacer()
+                        Text(w.start.formatted(date: .abbreviated, time: .omitted))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.cardioRow.\(w.typeValue.rawValue)")
+            }
+        }
+    }
+
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader("Recent workouts", route: .history, id: "home.train")
+            if sessions.isEmpty {
+                Text("No workouts yet.").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(sessions.prefix(3)) { s in
+                Button { path.append(s) } label: {
+                        HStack {
+                            Image(systemName: "dumbbell").foregroundStyle(.tint).frame(width: 26)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(s.title.isEmpty ? "Workout" : s.title)
+                                Text("\(s.orderedSets.count) sets").font(.caption2).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Text(s.date.formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("home.sessionRow")
+                }
+            }
+    }
+
+    private func sectionHeader(_ title: String, route: HomeRoute, id: String) -> some View {
+        Button { path.append(route) } label: {
+            HStack {
+                Text(title).font(.headline)
+                Spacer()
+                Text("See all").font(.caption)
+                Image(systemName: "chevron.right").font(.caption)
+            }
+            .foregroundStyle(.primary)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(id)
     }
 
     private func resumeCard(_ session: WorkoutSession) -> some View {
-        Button {
-            startedSession = session
-        } label: {
+        Button { path.append(session) } label: {
             HStack(spacing: 12) {
                 Image(systemName: "figure.strengthtraining.traditional").font(.title2)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Resume \(session.title.isEmpty ? "Workout" : session.title)")
-                        .font(.headline)
-                    Text("\(session.orderedSets.count) sets logged")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text("Resume \(session.title.isEmpty ? "Workout" : session.title)").font(.headline)
+                    Text("\(session.orderedSets.count) sets logged").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").foregroundStyle(.secondary)
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding().frame(maxWidth: .infinity, alignment: .leading)
             .background(.green.opacity(0.18), in: RoundedRectangle(cornerRadius: 18))
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.resume")
+        .buttonStyle(.plain).accessibilityIdentifier("home.resume")
     }
 
-    // MARK: Routing
+    // MARK: Routing (countdown gate)
 
     private func start(_ type: WorkoutType) {
-        if type.isStrength {
-            if let session = try? WorkoutRepository.createSession(title: "Workout", in: context) {
-                active.startStrength(session)
-                startedSession = session
+        if type.isStrength { begin(.strength) }
+        else if type.usesGPS, let c = type.cardioType { begin(.outdoor(c)) }
+        else if type == .hiit || type == .boxing { intervalType = type }
+        else if let c = type.cardioType { begin(.timer(c)) }
+    }
+    private func begin(_ kind: PendingWorkout.Kind) {
+        if settings.preWorkoutCountdown <= 0 { launch(kind) } else { pending = PendingWorkout(kind: kind) }
+    }
+    private func launch(_ kind: PendingWorkout.Kind) {
+        switch kind {
+        case .strength:
+            if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
+                active.startStrength(s); path.append(s)
             }
-        } else if type.usesGPS, let cardio = type.cardioType {
-            outdoorType = cardio          // Run / Walk / Cycle → GPS screen (§05)
-        } else if type == .hiit || type == .boxing {
-            intervalType = type           // HIIT / Boxing → interval engine (§06)
-        } else if let cardio = type.cardioType {
-            cardioType = cardio           // Other → timer screen
+        case .outdoor(let c): outdoorType = c
+        case .interval(let l): intervalLaunch = l
+        case .timer(let c): cardioType = c
         }
     }
 }
 
-/// Pushed destinations reachable from Home (field-testing §01). Re-homes the old
-/// tabs as navigation destinations rather than a tab bar.
-enum HomeRoute: Hashable {
-    case stats, history, cardio, activity, settings
+/// What to launch once the countdown finishes.
+struct PendingWorkout: Identifiable {
+    let id = UUID()
+    enum Kind { case strength, outdoor(CardioType), interval(IntervalLaunch), timer(CardioType) }
+    let kind: Kind
 }
+
+/// Pushed destinations reachable from Home.
+enum HomeRoute: Hashable { case stats, history, cardio, settings }

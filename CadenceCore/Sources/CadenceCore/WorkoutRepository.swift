@@ -146,6 +146,28 @@ public enum WorkoutRepository {
         return session
     }
 
+    /// Copies a full past workout — its owner exercises AND sets (weight/reps/
+    /// RPE/warmup) — into `session`, stamped now, as a ready-to-adjust starting
+    /// point ("use previous workout"). Returns the number of sets copied.
+    @discardableResult
+    public static func copyWorkout(from past: WorkoutSession,
+                                   into session: WorkoutSession,
+                                   in context: ModelContext) throws -> Int {
+        let now = Date()
+        var copied = 0
+        for set in past.orderedSets where set.isOwnerSet {
+            guard let ex = set.exercise else { continue }
+            _ = try addSet(to: session, exercise: ex, weightKg: set.weight, reps: set.reps,
+                           rpe: set.rpe, isWarmup: set.isWarmup, note: set.note,
+                           completedAt: now, in: context)
+            copied += 1
+        }
+        if session.title.isEmpty || session.title == "Workout" { session.title = past.title }
+        session.plannedExerciseNames = []
+        try context.save()
+        return copied
+    }
+
     // MARK: People / partners (field-testing §04)
 
     public static func allPeople(_ context: ModelContext) throws -> [Person] {

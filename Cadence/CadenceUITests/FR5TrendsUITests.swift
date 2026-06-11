@@ -11,7 +11,10 @@ final class FR5TrendsUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["Personal Records"].waitForExistence(timeout: 25),
                       "global recent-PRs section should be listed")
 
-        app.buttons["trends.exercise.Bench Press"].waitTap()
+        // The Exercises section sits below the new activity chart + PR list, so
+        // scroll the row into the lazy List before tapping it.
+        XCTAssertTrue(app.scrollToAndTapButton("trends.exercise.Bench Press"),
+                      "per-exercise row should be reachable")
         XCTAssertTrue(app.segmentedControls["trend.metric"].waitForExistence(timeout: 25),
                       "metric picker should be present")
         XCTAssertTrue(app.staticTexts["PR Timeline"].waitForExistence(timeout: 15),

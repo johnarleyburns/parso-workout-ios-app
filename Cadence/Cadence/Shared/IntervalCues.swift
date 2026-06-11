@@ -3,15 +3,33 @@ import AVFoundation
 import AudioToolbox
 import CadenceCore
 
-/// Non-visual interval cues (field-testing §06, decision #23): haptics + audio
-/// beeps on every transition, with optional spoken announcements — so the
-/// signal works with the phone in a pocket or for low-vision use. Uses system
-/// sounds (no bundled assets) and an audio session that ducks other audio.
+/// Non-visual interval cues (field-testing §06/round 4): haptics + bundled bell
+/// sounds on every transition, a 30-second warning bell, and optional spoken
+/// announcements — so the signal works with the phone in a pocket or for
+/// low-vision use. The audio session ducks other audio.
 @MainActor
 final class IntervalCues {
     var spokenEnabled = false
     private let synth = AVSpeechSynthesizer()
     private var sessionActive = false
+
+    /// Opening/closing bell (round start & end) and the 30-second warning bell,
+    /// from the bundled MP3s. Preloaded so playback is instant.
+    private let bell = IntervalCues.player(named: "opening-closing-bell")
+    private let warningBell = IntervalCues.player(named: "warning-bell")
+
+    private static func player(named name: String) -> AVAudioPlayer? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "mp3") else { return nil }
+        let p = try? AVAudioPlayer(contentsOf: url)
+        p?.prepareToPlay()
+        return p
+    }
+
+    private func play(_ player: AVAudioPlayer?) {
+        activateSession()
+        player?.currentTime = 0
+        player?.play()
+    }
 
     private func activateSession() {
         guard !sessionActive else { return }
@@ -26,33 +44,31 @@ final class IntervalCues {
         sessionActive = false
     }
 
-    /// Fire on entering a new phase.
+    /// Fire on entering a new phase — the opening bell starts work, the closing
+    /// bell ends a round (rest/cooldown). Same bell file for both.
     func phaseChanged(to kind: IntervalPhaseKind, label: String) {
-        activateSession()
+        play(bell)
         switch kind {
-        case .work:
-            AudioServicesPlaySystemSound(1057)   // a bright start tone
-            Haptics.prAchieved()
-        case .rest, .cooldown:
-            AudioServicesPlaySystemSound(1075)   // softer tone
-            Haptics.restComplete()
-        case .warmup:
-            AudioServicesPlaySystemSound(1075)
-            Haptics.setLogged()
+        case .work: Haptics.prAchieved()
+        case .rest, .cooldown: Haptics.restComplete()
+        case .warmup: Haptics.setLogged()
         }
         if spokenEnabled { speak(spokenPhrase(for: kind, label: label)) }
     }
 
-    /// Fire on each of the final 3 seconds of a phase.
+    /// 30-second warning during a work phase.
+    func warning() {
+        play(warningBell)
+        Haptics.restComplete()
+    }
+
+    /// Final-3-seconds tick (haptic only; the bells carry the audio).
     func countdownTick() {
-        activateSession()
-        AudioServicesPlaySystemSound(1103)       // tick
         Haptics.setLogged()
     }
 
     func completed() {
-        activateSession()
-        AudioServicesPlaySystemSound(1025)
+        play(bell)
         Haptics.prAchieved()
         if spokenEnabled { speak("Workout complete") }
     }

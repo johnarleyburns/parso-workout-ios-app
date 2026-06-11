@@ -48,6 +48,36 @@ final class IntervalEngineTests: XCTestCase {
         XCTAssertTrue(plan.isComplete(atElapsed: 999))
     }
 
+    func testGibalaExpansion() {
+        let plan = IntervalPlan.gibala(warmup: 180, rounds: 8, work: 60, rest: 60, cooldown: 120)
+        XCTAssertEqual(plan.name, "Gibala")
+        XCTAssertEqual(plan.phases.filter { $0.kind == .work }.count, 8)
+        XCTAssertEqual(plan.phases.filter { $0.kind == .rest }.count, 7)   // between rounds only
+    }
+
+    func testSITExpansion() {
+        let plan = IntervalPlan.sit()
+        XCTAssertEqual(plan.phases.filter { $0.kind == .work }.count, 4)
+        XCTAssertEqual(plan.phases.first(where: { $0.kind == .work })?.duration, 30)
+        XCTAssertTrue(plan.phases.contains { $0.kind == .rest && $0.duration == 240 })
+    }
+
+    func testREHITExpansion() {
+        let plan = IntervalPlan.rehit()
+        XCTAssertEqual(plan.phases.filter { $0.kind == .work }.count, 2)
+        XCTAssertEqual(plan.phases.filter { $0.kind == .rest }.count, 1)   // one recovery between
+        XCTAssertEqual(plan.phases.first?.kind, .warmup)
+        XCTAssertEqual(plan.phases.last?.kind, .cooldown)
+    }
+
+    func testTenTwentyThirtyExpansion() {
+        let plan = IntervalPlan.tenTwentyThirty(sets: 3, reps: 5)
+        // 3 sets × 5 reps × (moderate + sprint) work phases = 30 work phases.
+        XCTAssertEqual(plan.phases.filter { $0.kind == .work }.count, 30)
+        XCTAssertTrue(plan.phases.contains { $0.label == "Sprint!" && $0.duration == 10 })
+        XCTAssertTrue(plan.phases.contains { $0.label.hasPrefix("Recover") })
+    }
+
     func testColorStateThresholds() {
         XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 60), .work)     // green
         XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 30), .warning)  // yellow

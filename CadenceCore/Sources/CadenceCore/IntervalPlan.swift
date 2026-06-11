@@ -106,6 +106,75 @@ public struct IntervalPlan: Equatable, Sendable {
         return IntervalPlan(name: "Boxing", phases: phases)
     }
 
+    /// Gibala method: rounds × (60s work / 60s rest), ~20 min total.
+    public static func gibala(warmup: TimeInterval = 180, rounds: Int = 8,
+                              work: TimeInterval = 60, rest: TimeInterval = 60,
+                              cooldown: TimeInterval = 120) -> IntervalPlan {
+        rounded(name: "Gibala", warmup: warmup, rounds: rounds, work: work,
+                workLabel: { "Work · \($0)/\(rounds)" }, rest: rest, restLabel: "Rest",
+                cooldown: cooldown)
+    }
+
+    /// Sprint Interval Training (Wingate): rounds × (30s all-out / 4 min recovery).
+    public static func sit(warmup: TimeInterval = 180, rounds: Int = 4,
+                           work: TimeInterval = 30, recover: TimeInterval = 240,
+                           cooldown: TimeInterval = 180) -> IntervalPlan {
+        rounded(name: "SIT (Wingate)", warmup: warmup, rounds: rounds, work: work,
+                workLabel: { "Sprint · \($0)/\(rounds)" }, rest: recover, restLabel: "Recover",
+                cooldown: cooldown)
+    }
+
+    /// REHIT: warm-up → 2 × (20s all-out / 3 min recovery) → cool-down.
+    public static func rehit(warmup: TimeInterval = 120, rounds: Int = 2,
+                             work: TimeInterval = 20, recover: TimeInterval = 180,
+                             cooldown: TimeInterval = 120) -> IntervalPlan {
+        rounded(name: "REHIT", warmup: warmup, rounds: rounds, work: work,
+                workLabel: { "Sprint · \($0)/\(rounds)" }, rest: recover, restLabel: "Recover",
+                cooldown: cooldown)
+    }
+
+    /// 10-20-30: sets × ( reps × (30s easy / 20s moderate / 10s sprint) ) with a
+    /// 2-minute recovery between sets.
+    public static func tenTwentyThirty(warmup: TimeInterval = 300, sets: Int = 3,
+                                       reps: Int = 5, recover: TimeInterval = 120,
+                                       cooldown: TimeInterval = 120) -> IntervalPlan {
+        var phases: [IntervalPhase] = []
+        var id = 0
+        func add(_ kind: IntervalPhaseKind, _ dur: TimeInterval, _ label: String) {
+            if dur > 0 { phases.append(IntervalPhase(id: id, kind: kind, duration: dur, label: label)); id += 1 }
+        }
+        add(.warmup, warmup, "Warm Up")
+        for set in 1...max(1, sets) {
+            for _ in 1...max(1, reps) {
+                add(.rest, 30, "Easy")
+                add(.work, 20, "Moderate")
+                add(.work, 10, "Sprint!")
+            }
+            if set < sets { add(.rest, recover, "Recover · set \(set)/\(sets)") }
+        }
+        add(.cooldown, cooldown, "Cool Down")
+        return IntervalPlan(name: "10-20-30", phases: phases)
+    }
+
+    /// Shared builder: warmup → rounds × (work, then rest BETWEEN rounds) → cooldown.
+    private static func rounded(name: String, warmup: TimeInterval, rounds: Int,
+                                work: TimeInterval, workLabel: (Int) -> String,
+                                rest: TimeInterval, restLabel: String,
+                                cooldown: TimeInterval) -> IntervalPlan {
+        var phases: [IntervalPhase] = []
+        var id = 0
+        func add(_ kind: IntervalPhaseKind, _ dur: TimeInterval, _ label: String) {
+            if dur > 0 { phases.append(IntervalPhase(id: id, kind: kind, duration: dur, label: label)); id += 1 }
+        }
+        add(.warmup, warmup, "Warm Up")
+        for r in 1...max(1, rounds) {
+            add(.work, work, workLabel(r))
+            if r < rounds { add(.rest, rest, restLabel) }
+        }
+        add(.cooldown, cooldown, "Cool Down")
+        return IntervalPlan(name: name, phases: phases)
+    }
+
     /// Fully custom: warmup → rounds × (work / rest) → cooldown.
     public static func custom(name: String = "Custom", warmup: TimeInterval, rounds: Int,
                               work: TimeInterval, rest: TimeInterval, cooldown: TimeInterval) -> IntervalPlan {

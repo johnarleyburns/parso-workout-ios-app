@@ -1,14 +1,17 @@
 import SwiftUI
 import SwiftData
+import Charts
 import CadenceCore
 
-/// Analysis hub (FR-5): recent PRs, per-exercise trends, and a consistency
-/// heatmap. The phone is the review/progress surface (FR-9.3).
+/// Analysis hub (FR-5): activity trend, cardio, recent PRs, per-exercise trends,
+/// and a consistency heatmap. The phone is the review/progress surface (FR-9.3).
 struct TrendsView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppSettings.self) private var settings
+    @Environment(AppModel.self) private var model
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @Query private var sessions: [WorkoutSession]
+    @State private var trend: [DayActivity] = []
 
     private var trainedExercises: [Exercise] {
         exercises.filter { !($0.sets ?? []).isEmpty }
@@ -20,8 +23,32 @@ struct TrendsView: View {
 
     var body: some View {
         List {
+            Section {
+                Chart(trend) { day in
+                    BarMark(x: .value("Day", day.date, unit: .day), y: .value("Steps", day.steps))
+                        .foregroundStyle(.green.gradient)
+                    RuleMark(y: .value("Goal", settings.stepGoal))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4])).foregroundStyle(.secondary)
+                }
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .day)) { _ in
+                        AxisValueLabel(format: .dateTime.weekday(.narrow))
+                    }
+                }
+                .frame(height: 150)
+                .accessibilityIdentifier("today.trendChart")
+                .accessibilityLabel("Seven day step trend")
+
+                NavigationLink(value: HomeRoute.cardio) {
+                    Label("Cardio history", systemImage: "figure.run")
+                }
+                .accessibilityIdentifier("stats.cardio")
+            } header: {
+                Text("Activity").textCase(nil)
+            }
+
             if sessions.isEmpty {
-                    ContentUnavailableView("No data yet",
+                    ContentUnavailableView("No workouts yet",
                                            systemImage: "chart.xyaxis.line",
                                            description: Text("Log some workouts to see trends and PRs."))
                 }
@@ -78,5 +105,6 @@ struct TrendsView: View {
                 }
             }
         .navigationTitle("Trends")
+        .task { trend = await model.health.activityTrend(days: 7) }
     }
 }

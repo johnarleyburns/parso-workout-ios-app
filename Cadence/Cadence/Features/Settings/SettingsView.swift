@@ -86,6 +86,14 @@ struct SettingsView: View {
 
                 // Field-testing §06 polish — appended so existing rows keep their
                 // positions (and tests their reachability).
+                Section("Workout start") {
+                    Stepper(settings.preWorkoutCountdown == 0
+                            ? "Get-ready countdown: off"
+                            : "Get-ready countdown: \(settings.preWorkoutCountdown)s",
+                            value: $settings.preWorkoutCountdown, in: 0...60, step: 5)
+                        .accessibilityIdentifier("settings.preWorkoutCountdown")
+                }
+
                 Section("Strength") {
                     Stepper("Auto-end after \(settings.idleTimeoutMinutes) min idle",
                             value: $settings.idleTimeoutMinutes, in: 2...30)

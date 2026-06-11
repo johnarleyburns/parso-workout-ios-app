@@ -24,6 +24,7 @@ struct SessionView: View {
     @State private var lastActivity = Date()
     @State private var idlePromptShown = false
     @State private var idlePromptAt: Date?
+    @State private var usePreviousPresented = false
     private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     /// Owner first, then partners alphabetically.
@@ -35,6 +36,10 @@ struct SessionView: View {
         let logged = Set(session.exercisesInOrder.map(\.name))
         return session.plannedExerciseNames.filter { !logged.contains($0) }
     }
+    /// Nothing logged or planned yet → offer "Use Previous Workout".
+    private var isEmptySession: Bool {
+        session.exercisesInOrder.isEmpty && plannedOnlyNames.isEmpty
+    }
 
     var body: some View {
         ScrollView {
@@ -43,29 +48,42 @@ struct SessionView: View {
                     RestTimerBar(model: rest) { Haptics.restComplete() }
                 }
                 partnerBar
+
+                if isEmptySession {
+                    Button {
+                        usePreviousPresented = true
+                    } label: {
+                        Label("Use Previous Workout", systemImage: "clock.arrow.circlepath")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .accessibilityIdentifier("session.usePrevious")
+
+                    ContentUnavailableView("Empty workout",
+                                           systemImage: "dumbbell",
+                                           description: Text("Use a previous workout, or add exercises below."))
+                        .padding(.top, 16)
+                }
+
                 ForEach(session.exercisesInOrder) { exercise in
                     exerciseCard(exercise)
                 }
                 ForEach(plannedOnlyNames, id: \.self) { name in
                     plannedCard(name)
                 }
+
+                // Add Exercise sits at the bottom, just before End Workout.
                 Button {
                     pickerPresented = true
                 } label: {
                     Label("Add Exercise", systemImage: "plus.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .controlSize(.large)
                 .padding(.top, 4)
                 .accessibilityIdentifier("session.addExercise")
-
-                if session.exercisesInOrder.isEmpty {
-                    ContentUnavailableView("No exercises yet",
-                                           systemImage: "dumbbell",
-                                           description: Text("Tap Add Exercise to start logging."))
-                        .padding(.top, 40)
-                }
 
                 if active.strengthSession?.id == session.id {
                     Button(role: .destructive) {
@@ -109,6 +127,12 @@ struct SessionView: View {
         }
         .sheet(item: $setEditor) { ctx in
             setEditorSheet(ctx)
+        }
+        .sheet(isPresented: $usePreviousPresented) {
+            PreviousWorkoutPicker(excluding: session) { past in
+                _ = try? WorkoutRepository.copyWorkout(from: past, into: session, in: context)
+                poke()
+            }
         }
         .task { _ = try? WorkoutRepository.me(in: context) }
         .onReceive(idleTimer) { _ in checkIdle() }
@@ -396,4 +420,49 @@ struct SetEditorContext: Identifiable {
     let id = UUID()
     let exercise: Exercise
     let editing: SetEntry?
+}
+
+/// Pick a past workout to copy into the current session (field-test round 2).
+struct PreviousWorkoutPicker: View {
+    let excluding: WorkoutSession
+    let onPick: (WorkoutSession) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+
+    private var candidates: [WorkoutSession] {
+        sessions.filter { $0.id != excluding.id && !$0.orderedSets.isEmpty }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if candidates.isEmpty {
+                    ContentUnavailableView("No previous workouts", systemImage: "clock",
+                                           description: Text("Log a workout first."))
+                }
+                ForEach(candidates) { s in
+                    Button {
+                        onPick(s); dismiss()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(s.title.isEmpty ? "Workout" : s.title)
+                            Text(s.date.formatted(date: .abbreviated, time: .omitted))
+                                .font(.caption).foregroundStyle(.secondary)
+                            Text("\(s.exercisesInOrder.count) exercises · \(s.orderedSets.count) sets")
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                    }
+                    .accessibilityIdentifier("usePrevious.row")
+                }
+            }
+            .navigationTitle("Use Previous Workout")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.accessibilityIdentifier("usePrevious.cancel")
+                }
+            }
+        }
+    }
 }

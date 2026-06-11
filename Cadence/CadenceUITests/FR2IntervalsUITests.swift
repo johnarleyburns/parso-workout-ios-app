@@ -1,6 +1,7 @@
 import XCTest
 
-/// Field-testing §06 — HIIT & boxing interval engine launched from Start Workout.
+/// Field-testing §06 / round 3 — HIIT & boxing interval engine. Selecting a
+/// preset no longer auto-starts; a prominent START launches it.
 final class FR2IntervalsUITests: CadenceUITestCase {
 
     func testBoxingIntervalViaHome() {
@@ -8,32 +9,37 @@ final class FR2IntervalsUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["startType.boxing"].waitTap(), "Boxing type")
 
-        // Setup sheet → pick the 3 min / 1 min preset.
+        // Select the 3 min / 1 min preset, then START (no auto-launch).
         XCTAssertTrue(app.buttons["interval.preset.box-3-1"].waitTap(), "boxing preset")
+        XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")
 
-        // Full-screen runner shows the big countdown.
+        // Full-screen runner shows the protocol name + countdown.
         XCTAssertTrue(app.staticTexts["interval.countdown"].waitForExistence(timeout: 25),
                       "interval countdown should render")
+        XCTAssertTrue(app.staticTexts["interval.planName"].exists, "protocol name persists")
         app.buttons["interval.pause"].tap()
         app.buttons["interval.end"].tap()
 
-        // Back on Home; a boxing workout is now in history.
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25))
         app.goToTab("Cardio")
         XCTAssertTrue(app.buttons["cardioRow.boxing"].waitForExistence(timeout: 25),
                       "boxing session should be saved to history")
     }
 
-    func testHIITPresetsListed() {
+    func testHIITPresetsAndStart() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap())
         XCTAssertTrue(app.buttons["startType.hiit"].waitTap(), "HIIT type")
-        XCTAssertTrue(app.buttons["interval.preset.tabata"].waitForExistence(timeout: 15), "Tabata preset")
-        XCTAssertTrue(app.buttons["interval.preset.norwegian"].exists, "Norwegian 4×4 preset")
-        // Launch Tabata and confirm the runner appears.
-        app.buttons["interval.preset.tabata"].tap()
+        // All six science-backed presets are offered.
+        for id in ["tabata", "norwegian", "gibala", "sit", "ten", "rehit"] {
+            XCTAssertTrue(app.buttons["interval.preset.\(id)"].waitForExistence(timeout: 15),
+                          "\(id) preset should be listed")
+        }
+        // Select Gibala, then START → runner shows its name.
+        app.buttons["interval.preset.gibala"].tap()
+        XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")
         XCTAssertTrue(app.staticTexts["interval.countdown"].waitForExistence(timeout: 25),
-                      "Tabata runner should start")
+                      "runner should start")
         app.buttons["interval.end"].tap()
     }
 }

@@ -20,6 +20,7 @@ struct IntervalView: View {
     @State private var cues = IntervalCues()
     @State private var flashOn = false
     @State private var lastTickSecond = -1
+    @State private var lastWarnedPhase: Int?
     @State private var finished = false
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
@@ -37,6 +38,13 @@ struct IntervalView: View {
             background.ignoresSafeArea()
 
             VStack(spacing: 16) {
+                // The chosen protocol's name stays visible the whole workout.
+                Text(plan.name.uppercased())
+                    .font(.title3.weight(.heavy))
+                    .padding(.horizontal, 14).padding(.vertical, 6)
+                    .background(.black.opacity(0.25), in: Capsule())
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("interval.planName")
                 Spacer()
                 Image(systemName: icon).font(.system(size: 64, weight: .bold))
                 Text(label.uppercased())
@@ -110,8 +118,12 @@ struct IntervalView: View {
         if isImminent && !reduceMotion {
             withAnimation(.easeInOut(duration: 0.25)) { flashOn.toggle() }
         } else { flashOn = false }
-        // Countdown ticks on the final 3 whole seconds of a work phase.
+        // 30-second warning bell (once) during a work phase.
         let secs = Int(runner.phaseRemaining.rounded(.up))
+        if runner.phaseKind == .work, secs == 30, runner.currentPhaseID != lastWarnedPhase {
+            cues.warning(); lastWarnedPhase = runner.currentPhaseID
+        }
+        // Countdown ticks on the final 3 whole seconds of a work phase.
         if runner.phaseKind == .work, (1...3).contains(secs), secs != lastTickSecond {
             cues.countdownTick(); lastTickSecond = secs
         } else if secs > 3 { lastTickSecond = -1 }

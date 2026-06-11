@@ -19,7 +19,8 @@ final class AppSettings {
                         SettingsKey.stepGoal, SettingsKey.restSeconds, SettingsKey.cloudSyncEnabled,
                         SettingsKey.lastHealthSync, "settings.autoRest",
                         "settings.idleTimeout", "settings.gpsHighAccuracy", "settings.autoPause",
-                        "settings.intervalColorBlind", "settings.spokenCues", "settings.plateRounding"] {
+                        "settings.intervalColorBlind", "settings.spokenCues", "settings.plateRounding",
+                        "settings.preWorkoutCountdown"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -37,6 +38,17 @@ final class AppSettings {
         self.intervalColorBlind = defaults.object(forKey: "settings.intervalColorBlind") as? Bool ?? false
         self.spokenCues = defaults.object(forKey: "settings.spokenCues") as? Bool ?? false
         self.plateRounding = defaults.object(forKey: "settings.plateRounding") as? Bool ?? false
+        self.preWorkoutCountdown = defaults.object(forKey: "settings.preWorkoutCountdown") as? Int ?? 30
+        // In UI tests the countdown is off by default (so workout-start flows stay
+        // fast); a test can opt in with `-preCountdown N`.
+        if ProcessInfo.processInfo.arguments.contains("-uiTest") {
+            let a = ProcessInfo.processInfo.arguments
+            if let i = a.firstIndex(of: "-preCountdown"), i + 1 < a.count, let n = Int(a[i + 1]) {
+                self.preWorkoutCountdown = n
+            } else {
+                self.preWorkoutCountdown = 0
+            }
+        }
     }
 
     var unit: MeasurementUnitPreference { didSet { defaults.set(unit.rawValue, forKey: SettingsKey.unit) } }
@@ -53,6 +65,8 @@ final class AppSettings {
     var intervalColorBlind: Bool { didSet { defaults.set(intervalColorBlind, forKey: "settings.intervalColorBlind") } }
     var spokenCues: Bool { didSet { defaults.set(spokenCues, forKey: "settings.spokenCues") } }
     var plateRounding: Bool { didSet { defaults.set(plateRounding, forKey: "settings.plateRounding") } }
+    /// Get-ready countdown before a workout starts (seconds; 0 disables).
+    var preWorkoutCountdown: Int { didSet { defaults.set(preWorkoutCountdown, forKey: "settings.preWorkoutCountdown") } }
 
     private static func read<T: RawRepresentable>(_ d: UserDefaults, _ key: String, _ type: T.Type) -> T? where T.RawValue == String {
         guard let raw = d.string(forKey: key) else { return nil }

@@ -68,6 +68,7 @@ struct WorkoutHero: View {
     static func colors(_ type: WorkoutType) -> [Color] {
         switch type {
         case .weights: return [.indigo, .purple]
+        case .crossfit: return [.red, .black]
         case .run: return [.blue, .teal]
         case .walk: return [.teal, .green]
         case .cycle: return [.orange, .yellow]

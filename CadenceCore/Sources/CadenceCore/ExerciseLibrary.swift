@@ -44,10 +44,10 @@ public enum ExerciseLibrary {
 
     /// Built-in catalog seeded on first launch and version-upgraded thereafter.
     /// Bump `seedVersion` when entries are added so existing stores backfill.
-    public static let seedVersion = 2
+    public static let seedVersion = 3
 
     public static let starter: [ExerciseTemplate] = chest + back + shoulders
-        + arms + legs + glutes + core + olympicAndCarry
+        + arms + legs + glutes + core + olympicAndCarry + crossfit
 
     // MARK: Chest
     private static let chest: [ExerciseTemplate] = [
@@ -194,6 +194,28 @@ public enum ExerciseLibrary {
         .init("Kettlebell Clean", .pull, .kettlebell, .pull, .compound, primary: ["glutes", "traps"], secondary: ["quads"], lateral: true),
         .init("Farmer's Carry", .legs, .dumbbell, .static, .compound, primary: ["forearms", "traps"], secondary: ["abs", "quads"]),
         .init("Thruster", .legs, .barbell, .push, .compound, primary: ["quads", "delts"], secondary: ["glutes", "triceps"]),
+    ]
+
+    // MARK: CrossFit / functional movements (round4b §B-1)
+    // The named movements used by the benchmark "Girls" workouts plus common
+    // staples, so they're searchable and usable in custom workouts. Movements
+    // already in the catalog (Thruster, Clean and Jerk, Snatch, Power Clean,
+    // Kettlebell Swing, Deadlift, Push-Up, Pull-Up, Sit-Up) are reused as-is.
+    private static let crossfit: [ExerciseTemplate] = [
+        .init("Air Squat", .legs, .bodyweight, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"]),
+        .init("Overhead Squat", .legs, .barbell, .push, .compound, primary: ["quads", "glutes"], secondary: ["delts", "abs"]),
+        .init("Pistol Squat", .legs, .bodyweight, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"], lateral: true),
+        .init("Box Jump", .legs, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["calves"]),
+        .init("Clean", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "traps"], secondary: ["hamstrings", "delts"]),
+        .init("Wall Ball", .legs, .bodyweight, .push, .compound, primary: ["quads", "delts"], secondary: ["glutes", "triceps"]),
+        .init("Handstand Push-Up", .push, .bodyweight, .push, .compound, primary: ["delts", "triceps"], secondary: ["traps"]),
+        .init("Ring Dip", .push, .bodyweight, .push, .compound, primary: ["triceps", "chest"], secondary: ["front-delts"]),
+        .init("Muscle-Up", .pull, .bodyweight, .pull, .compound, primary: ["lats", "triceps"], secondary: ["chest", "biceps"]),
+        .init("Toes-to-Bar", .core, .bodyweight, .pull, .compound, primary: ["abs", "hip-flexors"], secondary: ["lats"]),
+        .init("Burpee", .legs, .bodyweight, .push, .compound, primary: ["quads", "chest"], secondary: ["triceps", "abs"]),
+        .init("Double-Under", .cardio, .plyometric, .push, .compound, primary: ["calves"], secondary: ["forearms"]),
+        .init("Run", .cardio, nil, nil, .compound, primary: ["quads", "hamstrings", "calves"], secondary: ["glutes"]),
+        .init("Rowing Machine", .cardio, .machine, .pull, .compound, primary: ["lats", "quads"], secondary: ["biceps", "hamstrings"]),
     ]
 
     /// Ranked, keyword-aware search (field-testing §03).

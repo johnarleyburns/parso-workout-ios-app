@@ -41,6 +41,21 @@ struct SessionView: View {
     private var isEmptySession: Bool {
         session.exercisesInOrder.isEmpty && plannedOnlyNames.isEmpty
     }
+    /// The CrossFit / preset plan that launched this session, if any (round4b §B-1).
+    private var plan: WorkoutPlan? {
+        session.planKey.flatMap { PlanCatalog.plan(forKey: $0) }
+    }
+    /// Rep-ladder for the plan's scheme (applies to every item), else nil.
+    private var planLadder: [Int]? {
+        if case let .forTime(rounds, _) = plan?.scheme { return rounds }
+        return nil
+    }
+    /// Prescription line for a planned movement, resolved from the plan.
+    private func prescription(for name: String) -> String? {
+        guard let item = plan?.items.first(where: { $0.movement == name }) else { return nil }
+        let line = Format.prescription(item, ladder: planLadder, unit: settings.unit)
+        return line.isEmpty ? nil : line
+    }
 
     var body: some View {
         ScrollView {
@@ -48,6 +63,7 @@ struct SessionView: View {
                 if rest.isRunning {
                     RestTimerBar(model: rest) { Haptics.restComplete() }
                 }
+                if let plan { planBanner(plan) }
                 partnerBar
 
                 if isEmptySession {
@@ -181,6 +197,23 @@ struct SessionView: View {
         }
     }
 
+    // MARK: Plan banner (CrossFit / preset scheme, round4b §B-1)
+
+    @ViewBuilder
+    private func planBanner(_ plan: WorkoutPlan) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(plan.schemeSummary)
+                .font(.headline)
+                .accessibilityIdentifier("session.planBanner")
+            if let notes = plan.notes {
+                Text(notes).font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 14))
+    }
+
     // MARK: Planned (reused) exercise card — no sets yet
 
     @ViewBuilder
@@ -188,7 +221,12 @@ struct SessionView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(name).font(.headline)
                 .accessibilityIdentifier("exerciseCard.\(name)")
-            Text("Planned — tap to log").font(.caption).foregroundStyle(.secondary)
+            if let rx = prescription(for: name) {
+                Text(rx).font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("session.rx.\(name)")
+            } else {
+                Text("Planned — tap to log").font(.caption).foregroundStyle(.secondary)
+            }
             Button {
                 if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
                     setEditor = SetEditorContext(exercise: ex, editing: nil)

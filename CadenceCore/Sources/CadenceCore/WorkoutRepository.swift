@@ -395,6 +395,25 @@ public enum WorkoutRepository {
         return session
     }
 
+    /// Starts a session from a concrete `WorkoutPlan` (CrossFit benchmark or
+    /// strength preset, round4b §B-1). Pre-loads the prescribed movements as
+    /// planned (ghost) cards and stamps `planKey` so the session view can render
+    /// the scheme banner + per-item prescription.
+    @discardableResult
+    public static func startSession(from plan: WorkoutPlan,
+                                    date: Date = Date(),
+                                    in context: ModelContext) throws -> WorkoutSession {
+        let session = WorkoutSession(title: plan.name, date: date)
+        session.planKey = plan.id
+        session.plannedExerciseNames = plan.movementNames
+        context.insert(session)
+        for name in plan.movementNames {
+            _ = try findOrCreateExercise(named: name, in: context)
+        }
+        try context.save()
+        return session
+    }
+
     // MARK: Cardio ingest (FR-2.1)
 
     /// Inserts ingested HealthKit workouts that aren't already present, keyed by

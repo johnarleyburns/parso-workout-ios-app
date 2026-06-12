@@ -159,6 +159,11 @@ public final class WorkoutSession {
     public var notes: String?
     /// Name of the template this session was started from, if any (FR-1.6).
     public var templateName: String?
+    /// Stable key of the `WorkoutPlan` that launched this session (round4b §B-1):
+    /// a CrossFit benchmark ("fran") or strength preset ("preset-5x5").
+    /// Resolved via `PlanCatalog`; nil for ad-hoc / legacy sessions. Additive +
+    /// optional for CloudKit + back-compat.
+    public var planKey: String?
     /// Links to the summary HKWorkout written for this session (FR-4.3) or the
     /// Watch-ingested workout this came from (FR-2.1). Used for de-dup.
     public var healthKitWorkoutUUID: UUID?

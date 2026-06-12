@@ -20,6 +20,7 @@ struct HomeView: View {
     @State private var outdoorType: CardioType?
     @State private var intervalType: WorkoutType?
     @State private var intervalLaunch: IntervalLaunch?
+    @State private var swimPresented = false
     @State private var pending: PendingWorkout?
     @State private var today: DayActivity?
     @State private var trend: [DayActivity] = []
@@ -74,7 +75,9 @@ struct HomeView: View {
             .refreshable { today = await model.health.todayActivity(); trend = await model.health.activityTrend(days: 7) }
             .sheet(isPresented: $typePickerPresented) {
                 WorkoutTypePicker(onSelect: { start($0) },
-                                  onPlan: { launchFromPicker(.plan($0)) })
+                                  onPlan: { launchFromPicker(.plan($0)) },
+                                  onWeightsQuickStart: { launchFromPicker(.strength) },
+                                  onWeightsReuse: { launchFromPicker(.reuse($0)) })
             }
             // P1 #9 — the post-workout summary is presented here, above the whole
             // NavigationStack, so the finished session can pop behind it.
@@ -91,6 +94,7 @@ struct HomeView: View {
                 }
             }
             .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType) }
+            .fullScreenCover(isPresented: $swimPresented) { SwimRecordView() }
         }
 
         // Get-ready countdown as a plain opaque overlay above the whole
@@ -264,7 +268,12 @@ struct HomeView: View {
     /// dismisses the sheet first, then presents its own flow.
     private func start(_ type: WorkoutType) {
         if type.isStrength {
+            // Weights/CrossFit are handled inside the sheet (WeightsStartView /
+            // CrossFitPickerView), so this branch is normally unreached.
             launchFromPicker(.strength)
+        } else if type == .swim {
+            // Swimming is a minimal time + laps recorder (feedback #3).
+            typePickerPresented = false; swimPresented = true
         } else if type.usesGPS, let c = type.cardioType {
             typePickerPresented = false; begin(.outdoor(c))
         } else if type == .hiit || type == .boxing {
@@ -299,6 +308,10 @@ struct HomeView: View {
             if let s = try? WorkoutRepository.startSession(from: plan, in: context) {
                 active.startStrength(s); path.append(s)
             }
+        case .reuse(let past):
+            if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
+                active.startStrength(s); path.append(s)
+            }
         case .outdoor(let c): outdoorType = c
         case .interval(let l): intervalLaunch = l
         case .timer(let c): cardioType = c
@@ -309,7 +322,7 @@ struct HomeView: View {
 /// What to launch once the countdown finishes.
 struct PendingWorkout: Identifiable {
     let id = UUID()
-    enum Kind { case strength, plan(WorkoutPlan), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType) }
+    enum Kind { case strength, plan(WorkoutPlan), reuse(WorkoutSession), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType) }
     let kind: Kind
 }
 

@@ -4,9 +4,7 @@ import XCTest
 final class FR1PartnersUnitsUITests: CadenceUITestCase {
 
     private func startWorkout(_ app: XCUIApplication) {
-        app.goToTab("Train")
-        XCTAssertTrue(app.buttons["train.newWorkout"].waitTap(), "New Workout")
-        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25), "session screen")
+        XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
     }
 
     private func openSetEditor(_ app: XCUIApplication) {

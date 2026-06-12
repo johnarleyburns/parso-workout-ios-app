@@ -104,14 +104,18 @@ struct WorkoutSummaryView: View {
                            id: "summary.metric.volume")
                 }
                 metric("Sets", Format.integer(data.setCount), id: "summary.metric.sets")
+                // Total reps across all exercises (round4b feedback #8) — useful
+                // for volume/work even on bodyweight days.
+                metric("Total Reps", Format.integer(data.totalReps), id: "summary.metric.reps")
             } else {
-                if let d = data.distanceM {
+                // Swimming (round4b feedback #3): laps, not distance/pace.
+                if let laps = data.laps {
+                    let value = data.targetLaps.map { "\(laps)/\($0)" } ?? "\(laps)"
+                    metric("Laps", value, id: "summary.metric.laps")
+                } else if let d = data.distanceM {
                     metric("Distance", Format.distance(d), id: "summary.metric.distance")
                     metric("Pace", CardioMath.formatPace(secPerKm: data.paceSecPerKm),
                            id: "summary.metric.pace")
-                }
-                if let cal = data.calories {
-                    metric("Calories", "\(Int(cal)) kcal", id: "summary.metric.calories")
                 }
                 if let avg = data.avgHR {
                     metric("Avg HR", Format.heartRate(avg), id: "summary.metric.avgHR")

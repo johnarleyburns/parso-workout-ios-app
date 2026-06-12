@@ -392,6 +392,10 @@ public final class CardioWorkout {
     public var activeEnergy: Double?      // kcal
     public var avgHeartRate: Double?      // bpm
     public var maxHeartRate: Double?      // bpm
+    /// Swimming (round4b feedback #3): completed laps and the lap goal, if set.
+    /// Optional/additive for CloudKit + back-compat; nil for non-swim workouts.
+    public var laps: Int?
+    public var targetLaps: Int?
     /// Raw value of `CardioSource`.
     public var source: String = CardioSource.iphone.rawValue
     public var healthKitWorkoutUUID: UUID?
@@ -413,6 +417,8 @@ public final class CardioWorkout {
                 activeEnergy: Double? = nil,
                 avgHeartRate: Double? = nil,
                 maxHeartRate: Double? = nil,
+                laps: Int? = nil,
+                targetLaps: Int? = nil,
                 source: CardioSource = .iphone,
                 healthKitWorkoutUUID: UUID? = nil,
                 notes: String? = nil,
@@ -426,6 +432,8 @@ public final class CardioWorkout {
         self.activeEnergy = activeEnergy
         self.avgHeartRate = avgHeartRate
         self.maxHeartRate = maxHeartRate
+        self.laps = laps
+        self.targetLaps = targetLaps
         self.source = source.rawValue
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
         self.notes = notes

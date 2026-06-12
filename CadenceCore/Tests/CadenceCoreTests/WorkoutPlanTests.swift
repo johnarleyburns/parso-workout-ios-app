@@ -65,11 +65,31 @@ final class WorkoutPlanTests: XCTestCase {
         XCTAssertNil(PlanCatalog.plan(forKey: "nope"))
     }
 
+    // round4b feedback #1 — strength presets ("Start from Library") resolve too,
+    // carry the .strength scheme, and keep a plain (un-prefixed) title.
+    func testStrengthPresetsResolveAndAreStrength() throws {
+        XCTAssertFalse(StrengthPresets.all.isEmpty)
+        let fiveByFive = try XCTUnwrap(PlanCatalog.plan(forKey: "preset-5x5"))
+        XCTAssertEqual(fiveByFive.name, "5×5")
+        XCTAssertEqual(fiveByFive.displayTitle, "5×5")   // no "CrossFit –" prefix
+        XCTAssertEqual(fiveByFive.scheme, .strength)
+        XCTAssertEqual(fiveByFive.movementNames, ["Back Squat", "Bench Press", "Barbell Row"])
+        // Every preset item carries target sets/reps.
+        for plan in StrengthPresets.all {
+            XCTAssertEqual(plan.source, .strengthPreset)
+            for item in plan.items {
+                XCTAssertNotNil(item.targetSets)
+                XCTAssertNotNil(item.reps)
+            }
+        }
+    }
+
     func testStartSessionFromPlanPreloadsMovements() throws {
         let ctx = try makeContext()
         let fran = PlanCatalog.plan(forKey: "fran")!
         let session = try WorkoutRepository.startSession(from: fran, in: ctx)
-        XCTAssertEqual(session.title, "Fran")
+        // CrossFit benchmarks are titled "CrossFit – <name>" (round4b feedback #5).
+        XCTAssertEqual(session.title, "CrossFit – Fran")
         XCTAssertEqual(session.planKey, "fran")
         XCTAssertEqual(session.plannedExerciseNames, ["Thruster", "Pull-Up"])
         // Both movements now exist as exercises.

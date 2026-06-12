@@ -317,9 +317,6 @@ struct SessionView: View {
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background(.quaternary, in: Capsule())
             }
-            if let rpe = set.rpe {
-                Text("RPE \(rpe, specifier: "%.1f")").font(.caption2).foregroundStyle(.secondary)
-            }
             if let p = set.performedBy, !p.isMe {
                 Text(p.name).font(.caption2).foregroundStyle(.secondary)
                     .padding(.horizontal, 6).padding(.vertical, 2)

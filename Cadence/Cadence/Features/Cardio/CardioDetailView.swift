@@ -11,12 +11,13 @@ struct CardioDetailView: View {
         List {
             Section {
                 LabeledContent("Duration", value: Format.duration(workout.duration))
-                if let d = workout.distance {
+                if let laps = workout.laps {
+                    LabeledContent("Laps", value: workout.targetLaps.map { "\(laps)/\($0)" } ?? "\(laps)")
+                } else if let d = workout.distance {
                     LabeledContent("Distance", value: Format.distance(d))
                     LabeledContent("Pace", value: CardioMath.formatPace(
                         secPerKm: CardioMath.paceSecPerKm(distanceMeters: d, seconds: workout.duration)))
                 }
-                if let e = workout.activeEnergy { LabeledContent("Calories", value: "\(Int(e)) kcal") }
                 if let hr = workout.avgHeartRate { LabeledContent("Avg HR", value: Format.heartRate(hr)) }
                 if let hr = workout.maxHeartRate { LabeledContent("Max HR", value: Format.heartRate(hr)) }
                 LabeledContent("Source", value: workout.sourceValue.rawValue.capitalized)

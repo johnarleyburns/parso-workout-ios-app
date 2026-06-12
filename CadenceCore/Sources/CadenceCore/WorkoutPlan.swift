@@ -76,6 +76,13 @@ public struct WorkoutPlan: Equatable, Sendable, Identifiable {
         return items.compactMap { seen.insert($0.movement).inserted ? $0.movement : nil }
     }
 
+    /// Title to stamp on a launched session. CrossFit benchmarks are prefixed so
+    /// history reads "CrossFit – Fran" rather than a bare "Fran" (round4b feedback
+    /// #5); strength presets keep their plain name ("5×5", "Push").
+    public var displayTitle: String {
+        source == .crossfit ? "CrossFit – \(name)" : name
+    }
+
     /// A short, human display of the scheme ("21-15-9 for time", "AMRAP 20 min").
     public var schemeSummary: String {
         switch scheme {
@@ -206,12 +213,69 @@ public enum BenchmarkWorkouts {
     ]
 }
 
+// MARK: - Strength preset library (round4b feedback #1)
+
+/// Built-in "Start from Library" strength workouts — the common splits a lifter
+/// reaches for (5×5, Push/Pull/Legs, Upper/Lower, body-part days, Olympic). Each
+/// is a `.strength` plan whose items carry target sets×reps; launching one
+/// pre-loads the movements as ghost cards with a prescription line, ready to log.
+/// Movement names match `ExerciseLibrary` so they resolve to real catalog rows.
+public enum StrengthPresets {
+    private static func plan(_ id: String, _ name: String,
+                             _ movements: [(String, Int, Int)]) -> WorkoutPlan {
+        WorkoutPlan(id: id, name: name, source: .strengthPreset, scheme: .strength,
+                    items: movements.enumerated().map { i, m in
+                        PlanItem(id: i, movement: m.0, reps: m.2, targetSets: m.1)
+                    })
+    }
+
+    public static let all: [WorkoutPlan] = [
+        plan("preset-5x5", "5×5", [
+            ("Back Squat", 5, 5), ("Bench Press", 5, 5), ("Barbell Row", 5, 5),
+        ]),
+        plan("preset-push", "Push", [
+            ("Bench Press", 4, 6), ("Overhead Press", 3, 8),
+            ("Incline Dumbbell Bench Press", 3, 10), ("Triceps Pushdown", 3, 12),
+            ("Dumbbell Lateral Raise", 3, 15),
+        ]),
+        plan("preset-pull", "Pull", [
+            ("Deadlift", 3, 5), ("Pull-Up", 3, 8), ("Seated Cable Row", 3, 10),
+            ("Face Pull", 3, 15), ("Barbell Curl", 3, 12),
+        ]),
+        plan("preset-legs", "Legs", [
+            ("Back Squat", 4, 6), ("Romanian Deadlift", 3, 8), ("Leg Press", 3, 12),
+            ("Lying Leg Curl", 3, 12), ("Standing Calf Raise", 4, 15),
+        ]),
+        plan("preset-upper", "Upper", [
+            ("Bench Press", 4, 6), ("Barbell Row", 4, 8), ("Overhead Press", 3, 8),
+            ("Lat Pulldown", 3, 10), ("Barbell Curl", 3, 12), ("Triceps Pushdown", 3, 12),
+        ]),
+        plan("preset-lower", "Lower", [
+            ("Back Squat", 4, 6), ("Romanian Deadlift", 3, 8), ("Leg Press", 3, 12),
+            ("Leg Extension", 3, 15), ("Standing Calf Raise", 4, 15),
+        ]),
+        plan("preset-chest", "Chest", [
+            ("Bench Press", 4, 6), ("Incline Dumbbell Bench Press", 3, 10),
+            ("Cable Fly", 3, 15), ("Dip", 3, 10),
+        ]),
+        plan("preset-back-bi", "Back & Biceps", [
+            ("Deadlift", 3, 5), ("Pull-Up", 3, 8), ("Seated Cable Row", 3, 10),
+            ("Barbell Curl", 3, 12), ("Hammer Curl", 3, 12),
+        ]),
+        plan("preset-olympic", "Olympic", [
+            ("Snatch", 5, 3), ("Clean and Jerk", 5, 2), ("Front Squat", 4, 5),
+            ("Overhead Squat", 3, 5), ("Power Clean", 4, 3),
+        ]),
+    ]
+}
+
 // MARK: - Plan resolution
 
 /// Resolves a `WorkoutSession.planKey` back to its plan across every built-in
-/// catalog. Extended in B-2 to also search `StrengthPresets`.
+/// catalog: CrossFit benchmarks and strength presets.
 public enum PlanCatalog {
     public static func plan(forKey key: String) -> WorkoutPlan? {
         BenchmarkWorkouts.girls.first { $0.id == key }
+            ?? StrengthPresets.all.first { $0.id == key }
     }
 }

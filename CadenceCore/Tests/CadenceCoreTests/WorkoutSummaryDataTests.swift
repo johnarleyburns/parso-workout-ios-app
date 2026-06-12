@@ -32,8 +32,12 @@ final class WorkoutSummaryDataTests: XCTestCase {
         // totalVolumeKg = 100*5 + 105*3 + 140*5 = 500 + 315 + 700 = 1515
         XCTAssertEqual(s.totalVolumeKg ?? 0, 1515, accuracy: 0.001)
         XCTAssertEqual(s.setCount, 3)
+        // totalReps = 5 + 3 + 5 = 13 (round4b feedback #8).
+        XCTAssertEqual(s.totalReps, 13)
 
-        // Exercise names/order match exercisesInOrder.
+        // Exercise names/order match exercisesInOrder — both exercises listed
+        // (round4b feedback #7: a second exercise must never go missing).
+        XCTAssertEqual(s.exercises.count, 2)
         XCTAssertEqual(s.exercises.map(\.name), ["Bench Press", "Back Squat"])
         let benchLine = try XCTUnwrap(s.exercises.first)
         XCTAssertEqual(benchLine.setCount, 2)
@@ -82,6 +86,38 @@ final class WorkoutSummaryDataTests: XCTestCase {
         XCTAssertEqual(s.setCount, 1)
         XCTAssertEqual(s.exercises.first?.reps, [5])
         XCTAssertEqual(s.exercises.first?.topSetWeightKg ?? 0, 140, accuracy: 0.001)
+    }
+
+    // round4b feedback #7 — an exercise whose only logged sets are warmups used to
+    // be silently dropped from the summary, so a logged movement could vanish from
+    // history. It must still be listed (its working-set line is simply empty).
+    func testStrengthSummaryKeepsExerciseWithOnlyWarmupSets() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Full Body", date: Date(timeIntervalSince1970: 4000), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let curl = try WorkoutRepository.findOrCreateExercise(named: "Barbell Curl", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        // Curl: only a warmup set was logged.
+        _ = try WorkoutRepository.addSet(to: session, exercise: curl, weightKg: 20, reps: 12, isWarmup: true, in: ctx)
+
+        let s = WorkoutSummaryData.from(session: session)
+        XCTAssertEqual(s.exercises.map(\.name), ["Bench Press", "Barbell Curl"],
+                       "both performed exercises must appear, even warmup-only ones")
+        XCTAssertEqual(s.exercises.last?.setCount, 0)   // working-set count
+        XCTAssertEqual(s.totalReps, 5)                  // only the working set's reps
+    }
+
+    func testSwimSummaryShowsLaps() throws {
+        let ctx = try makeContext()
+        let start = Date(timeIntervalSince1970: 5000)
+        let c = try WorkoutRepository.saveSwim(start: start, end: start.addingTimeInterval(900),
+                                               laps: 18, targetLaps: 20, in: ctx)
+        let s = WorkoutSummaryData.from(cardio: c)
+        XCTAssertEqual(s.kind, .cardio)
+        XCTAssertEqual(s.title, "Swim")
+        XCTAssertEqual(s.laps, 18)
+        XCTAssertEqual(s.targetLaps, 20)
+        XCTAssertNil(s.distanceM)
     }
 
     // MARK: Cardio

@@ -44,7 +44,7 @@ struct CadenceApp: App {
         }
         // Seed starter library and (in UI-test mode) deterministic fixtures.
         let ctx = ModelContext(container)
-        try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
+        _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
         if uiTest { UITestSeed.apply(args: args, context: ctx) }
     }
 

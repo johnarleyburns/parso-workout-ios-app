@@ -51,10 +51,20 @@ struct HomeView: View {
             }
             .navigationDestination(for: WorkoutSession.self) { SessionView(session: $0) }
             .navigationDestination(for: CardioWorkout.self) { CardioDetailView(workout: $0) }
+            .navigationDestination(for: HistorySummaryRoute.self) { route in
+                // A5 — history rows open the read-only summary; strength offers Edit
+                // (pushes the live session into the set editor).
+                switch route {
+                case .strength(let s):
+                    WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
+                case .cardio(let c):
+                    WorkoutSummaryView(data: .from(cardio: c))
+                }
+            }
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {
                 case .stats: TrendsView()
-                case .history: TrainView()
+                case .history: HistoryView(path: $path)
                 case .cardio: CardioView()
                 case .settings: SettingsView()
                 }
@@ -140,7 +150,7 @@ struct HomeView: View {
                 Text("No cardio yet.").font(.caption).foregroundStyle(.secondary)
             }
             ForEach(cardio.prefix(3)) { w in
-                Button { path.append(w) } label: {
+                Button { path.append(HistorySummaryRoute.cardio(w)) } label: {
                     HStack {
                         Image(systemName: w.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
                         Text(w.typeValue.displayName)
@@ -164,7 +174,7 @@ struct HomeView: View {
                 Text("No workouts yet.").font(.caption).foregroundStyle(.secondary)
             }
             ForEach(sessions.prefix(3)) { s in
-                Button { path.append(s) } label: {
+                Button { path.append(HistorySummaryRoute.strength(s)) } label: {
                         HStack {
                             Image(systemName: "dumbbell").foregroundStyle(.tint).frame(width: 26)
                             VStack(alignment: .leading, spacing: 1) {
@@ -250,3 +260,11 @@ struct PendingWorkout: Identifiable {
 
 /// Pushed destinations reachable from Home.
 enum HomeRoute: Hashable { case stats, history, cardio, settings }
+
+/// A history row's read-only summary destination (field-testing Round 4 A5).
+/// Wraps the `@Model` row (already `Hashable`) so the big `WorkoutSummaryData`
+/// value type needn't be `Hashable`.
+enum HistorySummaryRoute: Hashable {
+    case strength(WorkoutSession)
+    case cardio(CardioWorkout)
+}

@@ -121,4 +121,43 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["cardioRow.boxing"].waitForExistence(timeout: 25),
                       "the recorded session should be saved to history")
     }
+
+    // A4 — the unified history lists strength sessions and cardio workouts together.
+    func testUnifiedHistoryShowsCardioAndStrength() {
+        let app = XCUIApplication.launched(seeds: ["historyMixed"])
+        app.goToTab("Train") // Home "Recent workouts → See all" → unified HistoryView
+
+        XCTAssertTrue(app.buttons["session.row"].firstMatch.waitForExistence(timeout: 25),
+                      "strength sessions should list")
+        XCTAssertTrue(app.buttons["history.cardioRow.walk"].firstMatch.waitForExistence(timeout: 25),
+                      "the seeded walk should appear in the same list as strength")
+    }
+
+    // A5 — a history row opens the read-only summary (not the editor); a strength
+    // summary offers Edit, which opens the set editor.
+    func testHistoryRowOpensSummary() {
+        let app = XCUIApplication.launched(seeds: ["historyMixed"])
+        app.goToTab("Train")
+
+        // Cardio row → summary (duration), no Edit affordance.
+        let walk = app.buttons["history.cardioRow.walk"].firstMatch
+        XCTAssertTrue(walk.waitForExistence(timeout: 25), "walk row")
+        walk.tap()
+        XCTAssertTrue(app.staticTexts["summary.duration"].waitForExistence(timeout: 25),
+                      "the cardio row opens its summary")
+        XCTAssertFalse(app.buttons["summary.edit"].exists, "cardio summary has no Edit")
+        app.navigationBars.buttons.element(boundBy: 0).tap() // Back to history
+
+        // Strength row → summary with exercises + Edit → set editor.
+        let strength = app.buttons["session.row"].firstMatch
+        XCTAssertTrue(strength.waitForExistence(timeout: 25), "strength row")
+        strength.tap()
+        XCTAssertTrue(app.staticTexts["summary.exercise.Bench Press"].waitForExistence(timeout: 25),
+                      "the strength row opens its summary")
+        XCTAssertTrue(app.buttons["summary.edit"].waitForExistence(timeout: 5),
+                      "strength summary offers Edit")
+        app.buttons["summary.edit"].tap()
+        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
+                      "Edit opens the set editor for that session")
+    }
 }

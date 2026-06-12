@@ -3,7 +3,7 @@
 Live handoff/progress tracker. Read this first, then
 `plans/field-testing/2026-06-11/round4-plan.md`.
 
-_Last updated: 2026-06-12 — 4A-1 MERGED (#14), 4A-2 MERGED (#15); 4A-3 always-show summary in progress on `feat/ft4a-summary`._
+_Last updated: 2026-06-12 — 4A-1 MERGED (#14), 4A-2 MERGED (#15), 4A-3 MERGED (#16); 4A-4 unified history in progress on `feat/ft4a-history`._
 
 ## Repo / branch
 - Repo: `/Users/arley/github/parso-workout-ios-app` (this is the user's working copy).
@@ -73,14 +73,18 @@ integration + UI tests per phase. Scope confirmed by the user 2026-06-11:
   idle watchdog freezes while paused; outdoor/record/interval on the bar (keep
   `outdoor.*`/`record.*`/`interval.*` ids); countdown `countdown.pause`. FR2 end
   flows tap `workout.endConfirm`. `FR7LifecycleUITests`.
-- **4A-3 (in progress)** Always-show `WorkoutSummaryView` after End, all types (A3).
-  Branch `feat/ft4a-summary`. New `Features/Workout/WorkoutSummaryView.swift`
-  (`summary.title/duration/metric.*/exercise.*/hrChart/map/done/saveHealth`).
+- **4A-3 ✅ MERGED (PR #16)** Always-show `WorkoutSummaryView` after End, all types
+  (A3). `swift test` 104/104; UI 31/31. `Features/Workout/WorkoutSummaryView.swift`
+  (`summary.title/duration/metric.*/exercise.*/hrChart/map/done/saveHealth/edit`).
   Cardio/interval swap their live view for the summary inside the same cover after
-  save (`summary.done` dismisses); strength presents it as a cover over SessionView,
-  Done pops home. New FR7 tests: cardio/strength/outdoor summary.
-- **4A-4** Unified strength+cardio history + row→summary (A4, A5). Branch
-  `feat/ft4a-history`. Adds `-seed historyMixed`. New `FR7LifecycleUITests`.
+  save; strength presents it as a cover over SessionView, Done pops home.
+- **4A-4 (in progress)** Unified strength+cardio history + row→summary (A4, A5).
+  Branch `feat/ft4a-history`. New `Features/History/HistoryView.swift` (`train.newWorkout`
+  + `session.row` + `history.cardioRow.<type>`; rows push `HistorySummaryRoute`);
+  `HomeRoute.history` → HistoryView; Home recent rows + history rows open the
+  summary (`WorkoutSummaryView` gains pushed mode + `summary.edit` → editor).
+  `TrainView` retired. `-seed historyMixed` (history + a walk w/ HR). New FR7:
+  `testUnifiedHistoryShowsCardioAndStrength`, `testHistoryRowOpensSummary`.
 
 **DEFERRED (do NOT build now):**
 - **A6 Apple-Watch HR backfill + ALL watch integration** — later.

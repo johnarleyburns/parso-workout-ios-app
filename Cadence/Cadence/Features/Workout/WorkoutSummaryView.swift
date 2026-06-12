@@ -14,47 +14,64 @@ struct WorkoutSummaryView: View {
     /// Strength only: persist a summary `HKWorkout`. `nil` ⇒ no button (a recorded
     /// cardio workout is already saved to Health when it ends).
     var onSaveHealth: (() async -> Void)? = nil
-    let onDone: () -> Void
+    /// Strength history only: open the set editor. `nil` ⇒ no Edit button.
+    var onEdit: (() -> Void)? = nil
+    /// Modal (post-workout) presentation: shows a Done button and wraps itself in
+    /// a `NavigationStack`. `nil` ⇒ the view is *pushed* (history), so it relies on
+    /// the ambient stack's Back button instead.
+    var onDone: (() -> Void)? = nil
 
     @State private var healthSaved = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    header
-                    metricsGrid
-                    if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
-                    if !data.hr.isEmpty { hrChart }
-                    if data.route.count > 1 { routeMap }
-                }
-                .padding()
+        if onDone != nil {
+            NavigationStack { content }
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                header
+                metricsGrid
+                if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
+                if !data.hr.isEmpty { hrChart }
+                if data.route.count > 1 { routeMap }
             }
-            .navigationTitle("Summary")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+            .padding()
+        }
+        .navigationTitle("Summary")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let onEdit {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Edit") { onEdit() }.accessibilityIdentifier("summary.edit")
+                }
+            }
+            if let onDone {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { onDone() }
-                        .accessibilityIdentifier("summary.done")
+                    Button("Done") { onDone() }.accessibilityIdentifier("summary.done")
                 }
             }
-            .safeAreaInset(edge: .bottom) {
-                if let onSaveHealth {
-                    Button {
-                        Task { await onSaveHealth(); withAnimation { healthSaved = true } }
-                    } label: {
-                        Label(healthSaved ? "Saved to Apple Health" : "Save to Apple Health",
-                              systemImage: healthSaved ? "checkmark.circle.fill" : "heart.text.square")
-                            .frame(maxWidth: .infinity, minHeight: 50)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .tint(healthSaved ? .green : .pink)
-                    .disabled(healthSaved)
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
-                    .accessibilityIdentifier("summary.saveHealth")
+        }
+        .safeAreaInset(edge: .bottom) {
+            if let onSaveHealth {
+                Button {
+                    Task { await onSaveHealth(); withAnimation { healthSaved = true } }
+                } label: {
+                    Label(healthSaved ? "Saved to Apple Health" : "Save to Apple Health",
+                          systemImage: healthSaved ? "checkmark.circle.fill" : "heart.text.square")
+                        .frame(maxWidth: .infinity, minHeight: 50)
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .tint(healthSaved ? .green : .pink)
+                .disabled(healthSaved)
+                .padding(.horizontal)
+                .padding(.bottom, 8)
+                .accessibilityIdentifier("summary.saveHealth")
             }
         }
     }

@@ -10,6 +10,8 @@ enum UITestSeed {
         let seeds = seedNames(in: args)
         if seeds.contains("priorBench") { seedPriorBench(ctx) }
         if seeds.contains("history") { seedHistory(ctx) }
+        // Unified strength + cardio history (field-testing Round 4 A4).
+        if seeds.contains("historyMixed") { seedHistory(ctx); seedCardioWalk(ctx) }
     }
 
     private static func seedNames(in args: [String]) -> Set<String> {
@@ -50,6 +52,21 @@ enum UITestSeed {
             for i in 0..<3 {
                 ctx.insert(SetEntry(weight: squatKg, reps: 5, order: 3 + i, completedAt: s.date, session: s, exercise: squat))
             }
+        }
+        try? ctx.save()
+    }
+
+    /// One finished walk (10 days ago — between two seeded sessions) with HR
+    /// samples, so the unified history list has both kinds and a cardio summary
+    /// can render its HR chart.
+    private static func seedCardioWalk(_ ctx: ModelContext) {
+        let start = Date(timeIntervalSinceNow: -10 * 86_400)
+        let c = CardioWorkout(type: .walk, start: start, end: start.addingTimeInterval(1800),
+                              distance: 2200, activeEnergy: 140, avgHeartRate: 118,
+                              maxHeartRate: 135, source: .iphone)
+        ctx.insert(c)
+        for (t, bpm) in [(0.0, 100.0), (300.0, 115.0), (600.0, 120.0), (1200.0, 125.0), (1800.0, 118.0)] {
+            ctx.insert(HRSample(t: t, bpm: bpm, cardio: c))
         }
         try? ctx.save()
     }

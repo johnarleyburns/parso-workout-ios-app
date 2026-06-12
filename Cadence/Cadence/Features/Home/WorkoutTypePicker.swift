@@ -5,7 +5,10 @@ import CadenceCore
 /// type-keyed colour gradient with a large glyph, or a bundled photo if one is
 /// dropped into the named asset slot (`hero-<type>`). Large + legible.
 struct WorkoutTypePicker: View {
+    /// A non-CrossFit type was chosen — the parent maps it to a launch.
     let onSelect: (WorkoutType) -> Void
+    /// A CrossFit benchmark was chosen — the parent launches the planned session.
+    let onPlan: (WorkoutPlan) -> Void
     @Environment(\.dismiss) private var dismiss
 
     private let columns = [GridItem(.flexible(), spacing: 16),
@@ -16,10 +19,21 @@ struct WorkoutTypePicker: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(WorkoutType.allCases) { type in
-                        Button { onSelect(type) } label: { WorkoutHero(type: type) }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("startType.\(type.rawValue)")
-                            .accessibilityLabel(type.displayName)
+                        // CrossFit pushes its benchmark list within this same sheet
+                        // (P1 #1) — no sheet-swap, so Home doesn't flash behind it.
+                        if type == .crossfit {
+                            NavigationLink {
+                                CrossFitPickerView(onStart: onPlan)
+                            } label: { WorkoutHero(type: type) }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("startType.\(type.rawValue)")
+                                .accessibilityLabel(type.displayName)
+                        } else {
+                            Button { onSelect(type) } label: { WorkoutHero(type: type) }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("startType.\(type.rawValue)")
+                                .accessibilityLabel(type.displayName)
+                        }
                     }
                 }
                 .padding()

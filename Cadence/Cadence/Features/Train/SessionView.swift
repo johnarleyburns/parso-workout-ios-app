@@ -25,7 +25,6 @@ struct SessionView: View {
     @State private var idlePromptShown = false
     @State private var idlePromptAt: Date?
     @State private var usePreviousPresented = false
-    @State private var finishedSummary: FinishedSummary?
     private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     /// Owner first, then partners alphabetically.
@@ -167,13 +166,6 @@ struct SessionView: View {
             Button("Cancel", role: .cancel) { newPartnerName = "" }
         } message: {
             Text("Their sets are recorded separately and kept out of your PRs and Apple Health.")
-        }
-        // A3 — after a confirmed End, show the summary over the session, then pop
-        // back home when it's dismissed (Done).
-        .fullScreenCover(item: $finishedSummary, onDismiss: { dismiss() }) { finished in
-            WorkoutSummaryView(data: finished.data,
-                               onSaveHealth: { await saveToHealth() },
-                               onDone: { finishedSummary = nil })
         }
     }
 
@@ -441,13 +433,18 @@ struct SessionView: View {
         if active.isPaused { active.resume(); poke() } else { active.pause() }
     }
 
-    /// Finalizes the active session (field-testing §02): stamps `endedAt`, clears
-    /// the active reference, then shows the workout summary (A3). Dismissing the
-    /// summary pops back home.
+    /// Finalizes the active session (field-testing §02): optionally writes a Health
+    /// summary (P1 #8), stamps `endedAt`, clears the active reference, then hands the
+    /// summary to the app model so it presents *over Home* (P1 #9) — the session pops
+    /// behind it, so Done reveals Home without flashing the session screen.
     private func endWorkout() {
+        if settings.autoSaveHealth, session.healthKitWorkoutUUID == nil, !session.orderedSets.isEmpty {
+            Task { await saveToHealth() }
+        }
         active.endStrength()
         try? context.save()
-        finishedSummary = FinishedSummary(data: .from(session: session))
+        active.finishedSummary = FinishedSummary(data: .from(session: session))
+        dismiss()
     }
 
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,

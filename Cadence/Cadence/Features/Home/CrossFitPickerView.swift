@@ -4,47 +4,45 @@ import CadenceCore
 /// The CrossFit entry point (round4b §B-1). Lists the benchmark "Girls" workouts;
 /// tapping one shows a prescription preview, and Start launches a planned session
 /// pre-loaded with the movements + Rx (logged in the normal strength flow).
+///
+/// Pushed inside the Start-Workout sheet's navigation (P1 #1) so moving here from
+/// the type chooser is a push, not a sheet-swap that flashes Home. Launching is
+/// the parent's job (`onStart`), which dismisses the whole sheet at once.
 struct CrossFitPickerView: View {
     /// Called with the chosen plan once the user taps Start.
     let onStart: (WorkoutPlan) -> Void
-    @Environment(\.dismiss) private var dismiss
+
+    /// Benchmarks listed alphabetically (P1 #2).
+    private var benchmarks: [WorkoutPlan] {
+        BenchmarkWorkouts.girls.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Benchmark workouts") {
-                    ForEach(BenchmarkWorkouts.girls) { plan in
-                        NavigationLink {
-                            CrossFitPreviewView(plan: plan) {
-                                dismiss()
-                                onStart(plan)
-                            }
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(plan.name).font(.headline)
-                                Text(plan.schemeSummary)
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 2)
+        List {
+            Section("Benchmark workouts") {
+                ForEach(benchmarks) { plan in
+                    NavigationLink {
+                        CrossFitPreviewView(plan: plan) { onStart(plan) }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(plan.name).font(.headline)
+                            Text(plan.schemeSummary)
+                                .font(.caption).foregroundStyle(.secondary)
                         }
-                        .accessibilityIdentifier("crossfit.row.\(plan.id)")
+                        .padding(.vertical, 2)
                     }
-                }
-                Section {
-                    Link(destination: URL(string: "https://www.crossfit.com/crossfit-movements")!) {
-                        Label("CrossFit movement guide", systemImage: "arrow.up.right.square")
-                    }
-                    .accessibilityIdentifier("crossfit.movementGuide")
+                    .accessibilityIdentifier("crossfit.row.\(plan.id)")
                 }
             }
-            .navigationTitle("CrossFit")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("crossfit.cancel")
+            Section {
+                Link(destination: URL(string: "https://www.crossfit.com/crossfit-movements")!) {
+                    Label("CrossFit movement guide", systemImage: "arrow.up.right.square")
                 }
+                .accessibilityIdentifier("crossfit.movementGuide")
             }
         }
+        .navigationTitle("CrossFit")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

@@ -86,16 +86,13 @@ struct SessionView: View {
                 .accessibilityIdentifier("session.addExercise")
 
                 if active.strengthSession?.id == session.id {
-                    Button(role: .destructive) {
-                        endWorkout()
-                    } label: {
-                        Label("End Workout", systemImage: "stop.circle.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                    WorkoutControlBar(
+                        isPaused: active.isPaused,
+                        onPauseToggle: togglePause,
+                        onEnd: endWorkout,
+                        confirmMessage: "This finishes and saves your workout."
+                    )
                     .padding(.top, 8)
-                    .accessibilityIdentifier("session.endWorkout")
                 }
             }
             .padding()
@@ -375,6 +372,8 @@ struct SessionView: View {
     /// prompt is ignored for 30s, auto-save (field-testing §02, decisions #6/#7).
     private func checkIdle() {
         guard active.strengthSession?.id == session.id else { return }
+        // A paused workout never auto-saves — the clock and idle watchdog freeze.
+        guard !active.isPaused else { return }
         if idlePromptShown {
             if let at = idlePromptAt, Date().timeIntervalSince(at) >= 30 { endWorkout() }
         } else {
@@ -388,6 +387,12 @@ struct SessionView: View {
     /// Records activity, resetting the idle countdown.
     private func poke() {
         lastActivity = Date(); idlePromptShown = false; idlePromptAt = nil
+    }
+
+    /// Toggles the active session's pause (field-testing Round 4 A1). Resuming
+    /// also pokes the idle watchdog so it doesn't fire on the stale timestamp.
+    private func togglePause() {
+        if active.isPaused { active.resume(); poke() } else { active.pause() }
     }
 
     /// Finalizes the active session (field-testing §02): stamps `endedAt`,

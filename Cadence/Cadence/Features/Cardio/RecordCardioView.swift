@@ -106,28 +106,12 @@ struct RecordCardioView: View {
 
             Spacer()
 
-            HStack(spacing: 16) {
-                Button {
-                    recorder.isPaused ? recorder.resume() : recorder.pause()
-                } label: {
-                    Label(recorder.isPaused ? "Resume" : "Pause",
-                          systemImage: recorder.isPaused ? "play.fill" : "pause.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .accessibilityIdentifier("record.pause")
-
-                Button {
-                    Task { await endWorkout(recorder) }
-                } label: {
-                    Label("End", systemImage: "stop.fill").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .tint(.red)
-                .accessibilityIdentifier("record.end")
-            }
+            WorkoutControlBar(
+                isPaused: recorder.isPaused,
+                onPauseToggle: { recorder.isPaused ? recorder.resume() : recorder.pause() },
+                onEnd: { Task { await endWorkout(recorder) } },
+                idPrefix: "record"
+            )
         }
         .padding()
     }

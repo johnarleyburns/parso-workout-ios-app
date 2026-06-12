@@ -58,19 +58,14 @@ struct IntervalView: View {
                     .font(.headline).opacity(0.85)
                 Spacer()
 
-                HStack(spacing: 16) {
-                    Button { togglePause() } label: {
-                        Label(runner.isPaused ? "Resume" : "Pause",
-                              systemImage: runner.isPaused ? "play.fill" : "pause.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .accessibilityIdentifier("interval.pause")
-                    Button { Task { await finish() } } label: {
-                        Label("End", systemImage: "stop.fill").frame(maxWidth: .infinity)
-                    }
-                    .accessibilityIdentifier("interval.end")
-                }
-                .buttonStyle(.borderedProminent).controlSize(.large).tint(.black.opacity(0.4))
+                WorkoutControlBar(
+                    isPaused: runner.isPaused,
+                    onPauseToggle: togglePause,
+                    onEnd: { Task { await finish() } },
+                    idPrefix: "interval",
+                    endTint: .black.opacity(0.4),
+                    pauseTint: .black.opacity(0.4)
+                )
                 .padding(.bottom)
             }
             .foregroundStyle(.white)

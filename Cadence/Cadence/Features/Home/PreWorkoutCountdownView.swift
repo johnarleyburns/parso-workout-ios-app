@@ -9,6 +9,7 @@ struct PreWorkoutCountdownView: View {
 
     @State private var remaining: Int
     @State private var scale = 1.0
+    @State private var paused = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(seconds: Int, onStart: @escaping () -> Void, onCancel: @escaping () -> Void) {
@@ -30,11 +31,23 @@ struct PreWorkoutCountdownView: View {
                     .scaleEffect(scale)
                     .accessibilityIdentifier("countdown.remaining")
                 Spacer()
-                Button {
-                    onStart()
-                } label: { Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).controlSize(.large).tint(.black.opacity(0.4))
-                    .accessibilityIdentifier("countdown.skip")
+                HStack(spacing: 16) {
+                    Button {
+                        paused.toggle()
+                    } label: {
+                        Label(paused ? "Resume" : "Pause",
+                              systemImage: paused ? "play.fill" : "pause.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered).controlSize(.large).tint(.white)
+                    .accessibilityIdentifier("countdown.pause")
+
+                    Button {
+                        onStart()
+                    } label: { Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity) }
+                        .buttonStyle(.borderedProminent).controlSize(.large).tint(.black.opacity(0.4))
+                        .accessibilityIdentifier("countdown.skip")
+                }
                 Button("Cancel") { onCancel() }
                     .accessibilityIdentifier("countdown.cancel")
                     .padding(.bottom)
@@ -44,7 +57,7 @@ struct PreWorkoutCountdownView: View {
         }
         .onAppear { if remaining <= 0 { onStart() } }
         .onReceive(tick) { _ in
-            guard remaining > 0 else { return }
+            guard !paused, remaining > 0 else { return }
             withAnimation(.easeOut(duration: 0.2)) { scale = 1.25 }
             withAnimation(.easeIn(duration: 0.6).delay(0.2)) { scale = 1.0 }
             remaining -= 1

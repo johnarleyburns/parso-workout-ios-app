@@ -3,7 +3,7 @@
 Live handoff/progress tracker. Read this first, then
 `plans/field-testing/2026-06-11/round4-plan.md`.
 
-_Last updated: 2026-06-11 — round 2/3 + round-4 sounds MERGED to `main`; UI suite green._
+_Last updated: 2026-06-12 — 4A-1 MERGED (PR #14); 4A-2 control bar in progress on `feat/ft4a-controlbar`._
 
 ## Repo / branch
 - Repo: `/Users/arley/github/parso-workout-ios-app` (this is the user's working copy).
@@ -63,10 +63,17 @@ the data-model deltas, cross-cutting decisions, and a 4-phase rollout with unit 
 integration + UI tests per phase. Scope confirmed by the user 2026-06-11:
 
 **In scope (build these, in order — one branch+PR each, stacked):**
-- **4A-1** CadenceCore `WorkoutSummaryData` + `WorkoutHistoryEntry`/`unifiedHistory`
-  (+ unit tests). Branch `feat/ft4a-core-summary` off `main`.
-- **4A-2** Universal Pause/Resume + End incl. countdown (A1) + End "Are you sure?"
-  (A2) via a reusable `WorkoutControlBar`. Branch `feat/ft4a-controlbar`.
+- **4A-1 ✅ MERGED (PR #14)** CadenceCore `WorkoutSummaryData` +
+  `WorkoutHistoryEntry`/`unifiedHistory` (+ 9 unit tests). `swift test` 104/104.
+- **4A-2 (in progress)** Universal Pause/Resume + End incl. countdown (A1) + End "Are you
+  sure?" (A2) via a reusable `WorkoutControlBar`. Branch `feat/ft4a-controlbar`.
+  Done: `Features/Shared/WorkoutControlBar.swift` (owns the confirm dialog,
+  `idPrefix` per screen, `workout.endConfirm`/`workout.endCancel`);
+  `ActiveWorkoutModel.pause/resume/isPaused`; SessionView End→bar (`workout.*`) +
+  idle watchdog freezes while paused; outdoor/record/interval swapped to the bar
+  (keep `outdoor.*`/`record.*`/`interval.*` ids); countdown gains `countdown.pause`
+  (freezes tick). FR2 end flows now tap `workout.endConfirm`. New
+  `FR7LifecycleUITests` (testCountdownPause, testStrengthPauseAndConfirmEnd).
 - **4A-3** Always-show `WorkoutSummaryView` after End, all types (A3). Branch
   `feat/ft4a-summary`.
 - **4A-4** Unified strength+cardio history + row→summary (A4, A5). Branch

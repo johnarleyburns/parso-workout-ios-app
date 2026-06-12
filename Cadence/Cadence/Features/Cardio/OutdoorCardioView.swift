@@ -62,23 +62,12 @@ struct OutdoorCardioView: View {
 
                 Spacer()
 
-                HStack(spacing: 16) {
-                    Button {
-                        togglePause()
-                    } label: {
-                        Label(clock.isPaused ? "Resume" : "Pause",
-                              systemImage: clock.isPaused ? "play.fill" : "pause.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered).controlSize(.large)
-                    .accessibilityIdentifier("outdoor.pause")
-
-                    Button {
-                        Task { await end() }
-                    } label: { Label("End", systemImage: "stop.fill").frame(maxWidth: .infinity) }
-                        .buttonStyle(.borderedProminent).controlSize(.large).tint(.red)
-                        .accessibilityIdentifier("outdoor.end")
-                }
+                WorkoutControlBar(
+                    isPaused: clock.isPaused,
+                    onPauseToggle: togglePause,
+                    onEnd: { Task { await end() } },
+                    idPrefix: "outdoor"
+                )
             }
             .padding()
             .navigationTitle(type.displayName)

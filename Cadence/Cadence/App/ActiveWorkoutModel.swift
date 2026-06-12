@@ -16,10 +16,19 @@ final class ActiveWorkoutModel {
 
     var isActive: Bool { strengthSession != nil }
 
+    /// True while the active session's clock is paused (field-testing Round 4 A1).
+    var isPaused: Bool { clock.isPaused }
+
     func startStrength(_ session: WorkoutSession) {
         strengthSession = session
         clock = WorkoutClock(startedAt: session.date)
     }
+
+    /// Pauses the active session's wall-clock (also freezes the idle watchdog).
+    func pause() { clock.pause() }
+
+    /// Resumes the active session's wall-clock.
+    func resume() { clock.resume() }
 
     /// Marks the active strength session finished: stamps `endedAt` on the model
     /// and clears the active reference. The caller saves its `ModelContext`.

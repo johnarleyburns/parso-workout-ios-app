@@ -35,6 +35,7 @@ final class FR2CardioUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["record.distance"].exists, "distance metric for GPS run")
 
         app.buttons["record.end"].tap()
+        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
         // Back on the Cardio list, a run should be in history.
         XCTAssertTrue(app.buttons["cardioRow.run"].waitForExistence(timeout: 25),
                       "recorded run should appear in history")
@@ -57,6 +58,7 @@ final class FR2CardioUITests: CadenceUITestCase {
         waitForExpectations(timeout: 20)
 
         app.buttons["outdoor.end"].tap()
+        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
         // Back on Home; the run is now in history.
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25))
         app.goToTab("Cardio")

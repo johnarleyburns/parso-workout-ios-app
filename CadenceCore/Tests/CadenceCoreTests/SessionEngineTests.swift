@@ -76,11 +76,13 @@ final class SessionEngineTests: XCTestCase {
     func testWorkoutTypeRouting() {
         XCTAssertTrue(WorkoutType.weights.isStrength)
         XCTAssertNil(WorkoutType.weights.cardioType)
+        XCTAssertNil(WorkoutType.crossfit.cardioType)
+        XCTAssertTrue(WorkoutType.crossfit.isStrength)
         XCTAssertEqual(WorkoutType.run.cardioType, .run)
         XCTAssertEqual(WorkoutType.boxing.cardioType, .boxing)
         XCTAssertTrue(WorkoutType.run.usesGPS)
         XCTAssertTrue(WorkoutType.cycle.usesGPS)
         XCTAssertFalse(WorkoutType.boxing.usesGPS)
-        XCTAssertEqual(WorkoutType.allCases.count, 7)
+        XCTAssertEqual(WorkoutType.allCases.count, 8)
     }
 }

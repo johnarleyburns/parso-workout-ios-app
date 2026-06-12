@@ -15,6 +15,7 @@ struct HomeView: View {
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
 
     @State private var typePickerPresented = false
+    @State private var crossfitPresented = false
     @State private var path = NavigationPath()
     @State private var cardioType: CardioType?
     @State private var outdoorType: CardioType?
@@ -73,6 +74,9 @@ struct HomeView: View {
             .refreshable { today = await model.health.todayActivity(); trend = await model.health.activityTrend(days: 7) }
             .sheet(isPresented: $typePickerPresented) {
                 WorkoutTypePicker { type in typePickerPresented = false; start(type) }
+            }
+            .sheet(isPresented: $crossfitPresented) {
+                CrossFitPickerView { plan in crossfitPresented = false; begin(.plan(plan)) }
             }
             .sheet(item: $cardioType) { RecordCardioView(initialType: $0) }
             .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0) }
@@ -230,7 +234,8 @@ struct HomeView: View {
     // MARK: Routing (countdown gate)
 
     private func start(_ type: WorkoutType) {
-        if type.isStrength { begin(.strength) }
+        if type == .crossfit { crossfitPresented = true }
+        else if type.isStrength { begin(.strength) }
         else if type.usesGPS, let c = type.cardioType { begin(.outdoor(c)) }
         else if type == .hiit || type == .boxing { intervalType = type }
         else if let c = type.cardioType { begin(.timer(c)) }
@@ -244,6 +249,10 @@ struct HomeView: View {
             if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
                 active.startStrength(s); path.append(s)
             }
+        case .plan(let plan):
+            if let s = try? WorkoutRepository.startSession(from: plan, in: context) {
+                active.startStrength(s); path.append(s)
+            }
         case .outdoor(let c): outdoorType = c
         case .interval(let l): intervalLaunch = l
         case .timer(let c): cardioType = c
@@ -254,7 +263,7 @@ struct HomeView: View {
 /// What to launch once the countdown finishes.
 struct PendingWorkout: Identifiable {
     let id = UUID()
-    enum Kind { case strength, outdoor(CardioType), interval(IntervalLaunch), timer(CardioType) }
+    enum Kind { case strength, plan(WorkoutPlan), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType) }
     let kind: Kind
 }
 

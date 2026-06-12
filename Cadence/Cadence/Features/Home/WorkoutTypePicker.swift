@@ -7,8 +7,13 @@ import CadenceCore
 struct WorkoutTypePicker: View {
     /// A non-CrossFit type was chosen — the parent maps it to a launch.
     let onSelect: (WorkoutType) -> Void
-    /// A CrossFit benchmark was chosen — the parent launches the planned session.
+    /// A CrossFit benchmark or a strength-library preset was chosen — the parent
+    /// launches the planned session.
     let onPlan: (WorkoutPlan) -> Void
+    /// Weights → Quick Start (a blank strength session).
+    let onWeightsQuickStart: () -> Void
+    /// Weights → Start from Previous (reuse a past session as a template).
+    let onWeightsReuse: (WorkoutSession) -> Void
     @Environment(\.dismiss) private var dismiss
 
     private let columns = [GridItem(.flexible(), spacing: 16),
@@ -19,16 +24,27 @@ struct WorkoutTypePicker: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(WorkoutType.allCases) { type in
-                        // CrossFit pushes its benchmark list within this same sheet
-                        // (P1 #1) — no sheet-swap, so Home doesn't flash behind it.
-                        if type == .crossfit {
+                        // CrossFit and Weights push a chooser within this same sheet
+                        // (P1 #1 / feedback #1) — no sheet-swap, so Home doesn't flash
+                        // behind them.
+                        switch type {
+                        case .crossfit:
                             NavigationLink {
                                 CrossFitPickerView(onStart: onPlan)
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("startType.\(type.rawValue)")
                                 .accessibilityLabel(type.displayName)
-                        } else {
+                        case .weights:
+                            NavigationLink {
+                                WeightsStartView(onQuickStart: onWeightsQuickStart,
+                                                 onReuse: onWeightsReuse,
+                                                 onPlan: onPlan)
+                            } label: { WorkoutHero(type: type) }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("startType.\(type.rawValue)")
+                                .accessibilityLabel(type.displayName)
+                        default:
                             Button { onSelect(type) } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("startType.\(type.rawValue)")
@@ -86,6 +102,7 @@ struct WorkoutHero: View {
         case .run: return [.blue, .teal]
         case .walk: return [.teal, .green]
         case .cycle: return [.orange, .yellow]
+        case .swim: return [.cyan, .blue]
         case .hiit: return [.pink, .red]
         case .boxing: return [.red, .orange]
         case .other: return [.gray, .blue]

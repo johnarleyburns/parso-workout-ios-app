@@ -30,16 +30,9 @@ struct HistoryView: View {
 
     var body: some View {
         List {
-            Section {
-                Button { startEmptySession() } label: {
-                    Label("New Workout", systemImage: "plus.circle.fill")
-                }
-                .accessibilityIdentifier("train.newWorkout")
-            }
-
             Section("History") {
                 if entries.isEmpty {
-                    Text("No workouts yet — tap New Workout.")
+                    Text("No workouts yet — start one from Home.")
                         .foregroundStyle(.secondary)
                 }
                 ForEach(entries) { entry in
@@ -122,13 +115,6 @@ struct HistoryView: View {
     }
 
     // MARK: Actions
-
-    private func startEmptySession() {
-        if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
-            active.startStrength(s)
-            path.append(s)
-        }
-    }
 
     /// Start a fresh session pre-loaded with a past workout's exercises
     /// (field-testing §04, decision #16).

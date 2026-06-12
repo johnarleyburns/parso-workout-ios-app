@@ -72,6 +72,19 @@ extension XCUIApplication {
         }
     }
 
+    /// Starts a blank strength session the way the app now does it: Home → Start
+    /// Workout → Weights → Quick Start. (The New Workout button was removed from
+    /// History — round4b feedback #1/#4.) Lands on the session screen. In UI-test
+    /// mode the get-ready countdown defaults to 0, so this goes straight through.
+    @discardableResult
+    func startEmptyStrengthWorkout() -> Bool {
+        popToHome()
+        guard scrollToHittableAndTap("home.startWorkout") else { return false }
+        guard buttons["startType.weights"].waitTap() else { return false }
+        guard buttons["weights.quickStart"].waitTap() else { return false }
+        return buttons["session.addExercise"].waitForExistence(timeout: 25)
+    }
+
     /// Taps Back until the Home launchpad (its Start Workout button) is shown.
     func popToHome() {
         let homeMarker = buttons["home.startWorkout"]

@@ -22,7 +22,7 @@ struct RecordCardioView: View {
         Group {
             if let finishedSummary {
                 // A3 — the recorded workout is already saved; show its summary.
-                WorkoutSummaryView(data: finishedSummary) { dismiss() }
+                WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
             } else {
                 NavigationStack {
                     Group {
@@ -96,7 +96,6 @@ struct RecordCardioView: View {
                 }
                 metric("Heart Rate", Format.heartRate(recorder.currentBPM), id: "record.hr")
                 metric("Zone", recorder.currentBPM == nil ? "—" : "Z\(recorder.zone) · \(CardioMath.zoneName(recorder.zone))", id: "record.zone")
-                metric("Calories", "\(Int(recorder.calories)) kcal", id: "record.calories")
                 metric("Avg HR", Format.heartRate(recorder.avgHR), id: "record.avgHr")
             }
 

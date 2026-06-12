@@ -403,7 +403,7 @@ public enum WorkoutRepository {
     public static func startSession(from plan: WorkoutPlan,
                                     date: Date = Date(),
                                     in context: ModelContext) throws -> WorkoutSession {
-        let session = WorkoutSession(title: plan.name, date: date)
+        let session = WorkoutSession(title: plan.displayTitle, date: date)
         session.planKey = plan.id
         session.plannedExerciseNames = plan.movementNames
         context.insert(session)
@@ -464,6 +464,19 @@ public enum WorkoutRepository {
         for f in summary.route {
             context.insert(RouteSample(t: f.t, lat: f.lat, lon: f.lon, elevation: f.elevation, cardio: c))
         }
+        try context.save()
+        return c
+    }
+
+    /// Persists a pool swim (round4b feedback #3): time + lap count only, no
+    /// distance/calorie estimate. `targetLaps` is the goal the user set, `laps`
+    /// what they completed.
+    @discardableResult
+    public static func saveSwim(start: Date, end: Date, laps: Int, targetLaps: Int?,
+                                in context: ModelContext) throws -> CardioWorkout {
+        let c = CardioWorkout(type: .swim, start: start, end: end,
+                              laps: laps, targetLaps: targetLaps, source: .iphone)
+        context.insert(c)
         try context.save()
         return c
     }

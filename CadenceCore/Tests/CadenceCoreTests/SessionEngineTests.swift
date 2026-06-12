@@ -80,9 +80,11 @@ final class SessionEngineTests: XCTestCase {
         XCTAssertTrue(WorkoutType.crossfit.isStrength)
         XCTAssertEqual(WorkoutType.run.cardioType, .run)
         XCTAssertEqual(WorkoutType.boxing.cardioType, .boxing)
+        XCTAssertEqual(WorkoutType.swim.cardioType, .swim)
         XCTAssertTrue(WorkoutType.run.usesGPS)
         XCTAssertTrue(WorkoutType.cycle.usesGPS)
         XCTAssertFalse(WorkoutType.boxing.usesGPS)
-        XCTAssertEqual(WorkoutType.allCases.count, 8)
+        XCTAssertFalse(WorkoutType.swim.usesGPS)
+        XCTAssertEqual(WorkoutType.allCases.count, 9)
     }
 }

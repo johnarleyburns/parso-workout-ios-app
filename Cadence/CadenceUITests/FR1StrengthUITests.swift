@@ -5,9 +5,7 @@ final class FR1StrengthUITests: CadenceUITestCase {
 
     // Helper: start a new empty workout and land on the session screen.
     private func startWorkout(_ app: XCUIApplication) {
-        app.goToTab("Train")
-        XCTAssertTrue(app.buttons["train.newWorkout"].waitTap(), "New Workout button")
-        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25), "session screen")
+        XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
     }
 
     // Helper: add an exercise by name via the picker, then save a set.

@@ -23,8 +23,6 @@ struct SetEditorView: View {
     @State private var weightText: String      // primary, in `unit`
     @State private var altText: String         // opposite unit, auto-filled
     @State private var reps: Int
-    @State private var useRPE: Bool
-    @State private var rpe: Double
     @State private var isWarmup: Bool
     @State private var note: String
     @State private var performedByID: UUID?    // nil ⇒ owner
@@ -60,8 +58,6 @@ struct SetEditorView: View {
         _weightText = State(initialValue: primary)
         _altText = State(initialValue: alt)
         _reps = State(initialValue: initialReps)
-        _useRPE = State(initialValue: initialRPE != nil)
-        _rpe = State(initialValue: initialRPE ?? 8)
         _isWarmup = State(initialValue: initialWarmup)
         _note = State(initialValue: initialNote ?? "")
         _performedByID = State(initialValue: initialPerformedBy.flatMap { $0.isMe ? nil : $0.id })
@@ -124,15 +120,6 @@ struct SetEditorView: View {
 
                     Toggle("Warmup", isOn: $isWarmup)
                         .accessibilityIdentifier("set.warmup")
-
-                    Toggle("Track RPE", isOn: $useRPE)
-                    if useRPE {
-                        VStack(alignment: .leading) {
-                            Text("RPE \(rpe, specifier: "%.1f")")
-                            Slider(value: $rpe, in: 1...10, step: 0.5)
-                                .accessibilityIdentifier("set.rpe")
-                        }
-                    }
                 }
 
                 if !partners.isEmpty {
@@ -179,7 +166,7 @@ struct SetEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         let kg = plateRounding ? UnitEntry.plateRounded(kg: weightKg, unit: unit) : weightKg
-                        onSave(kg, reps, useRPE ? rpe : nil, isWarmup,
+                        onSave(kg, reps, nil, isWarmup,
                                note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : note,
                                selectedPerson)
                         dismiss()

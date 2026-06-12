@@ -48,8 +48,7 @@ final class FR4DataSensorsUITests: CadenceUITestCase {
     // FR-4.3 — save a summary strength workout to Apple Health.
     func testSaveStrengthToHealth() {
         let app = XCUIApplication.launched()
-        app.goToTab("Train")
-        app.buttons["train.newWorkout"].waitTap()
+        XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
         app.buttons["session.addExercise"].waitTap()
         app.buttons["picker.row.Bench Press"].waitTap()
         let weight = app.textFields["set.weight"]

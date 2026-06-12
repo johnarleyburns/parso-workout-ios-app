@@ -40,8 +40,11 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     public let calories: Double?
     public let avgHR: Double?
     public let maxHR: Double?
+    public let laps: Int?                     // swimming (round4b feedback #3)
+    public let targetLaps: Int?
     public let totalVolumeKg: Double?        // strength
     public let setCount: Int                 // strength: owner working-set count
+    public let totalReps: Int                // strength: owner working-set reps, summed
     public let exercises: [ExerciseLine]     // strength
     public let hr: [(t: TimeInterval, bpm: Double)]   // cardio chart
     public let route: [(lat: Double, lon: Double)]    // cardio map
@@ -55,8 +58,11 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                 calories: Double? = nil,
                 avgHR: Double? = nil,
                 maxHR: Double? = nil,
+                laps: Int? = nil,
+                targetLaps: Int? = nil,
                 totalVolumeKg: Double? = nil,
                 setCount: Int = 0,
+                totalReps: Int = 0,
                 exercises: [ExerciseLine] = [],
                 hr: [(t: TimeInterval, bpm: Double)] = [],
                 route: [(lat: Double, lon: Double)] = []) {
@@ -69,8 +75,11 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         self.calories = calories
         self.avgHR = avgHR
         self.maxHR = maxHR
+        self.laps = laps
+        self.targetLaps = targetLaps
         self.totalVolumeKg = totalVolumeKg
         self.setCount = setCount
+        self.totalReps = totalReps
         self.exercises = exercises
         self.hr = hr
         self.route = route
@@ -87,8 +96,11 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             && lhs.calories == rhs.calories
             && lhs.avgHR == rhs.avgHR
             && lhs.maxHR == rhs.maxHR
+            && lhs.laps == rhs.laps
+            && lhs.targetLaps == rhs.targetLaps
             && lhs.totalVolumeKg == rhs.totalVolumeKg
             && lhs.setCount == rhs.setCount
+            && lhs.totalReps == rhs.totalReps
             && lhs.exercises == rhs.exercises
             && lhs.hr.count == rhs.hr.count
             && zip(lhs.hr, rhs.hr).allSatisfy { $0 == $1 }
@@ -102,11 +114,15 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     /// Cardio fields are nil; `exercises`/`setCount`/`totalVolumeKg` reflect the
     /// owner's working sets only.
     public static func from(session: WorkoutSession) -> WorkoutSummaryData {
+        // List every exercise the owner actually performed, in order. Previously
+        // an exercise whose only sets were warmups was silently dropped, so a
+        // logged movement could vanish from history (round4b feedback #7). Now we
+        // keep any exercise with ≥1 owner set; the line still summarizes only the
+        // owner's working (non-warmup) sets. Partner-only exercises are excluded.
         let exercises: [ExerciseLine] = session.exercisesInOrder.compactMap { ex in
-            let working = session.orderedSets.filter {
-                $0.exercise?.id == ex.id && $0.isOwnerSet && !$0.isWarmup
-            }
-            guard !working.isEmpty else { return nil }
+            let ownerSets = session.orderedSets.filter { $0.exercise?.id == ex.id && $0.isOwnerSet }
+            guard !ownerSets.isEmpty else { return nil }
+            let working = ownerSets.filter { !$0.isWarmup }
             let top = working.map(\.weight).max()
             return ExerciseLine(name: ex.name,
                                 setCount: working.count,
@@ -114,6 +130,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                                 reps: working.map(\.reps))
         }
         let setCount = exercises.reduce(0) { $0 + $1.setCount }
+        let totalReps = exercises.reduce(0) { $0 + $1.reps.reduce(0, +) }
         return WorkoutSummaryData(
             kind: .strength,
             title: session.title,
@@ -121,6 +138,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             durationSec: session.duration,
             totalVolumeKg: session.totalVolume,
             setCount: setCount,
+            totalReps: totalReps,
             exercises: exercises
         )
     }
@@ -142,6 +160,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             calories: cardio.activeEnergy,
             avgHR: cardio.avgHeartRate,
             maxHR: cardio.maxHeartRate,
+            laps: cardio.laps,
+            targetLaps: cardio.targetLaps,
             totalVolumeKg: nil,
             setCount: 0,
             exercises: [],

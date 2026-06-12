@@ -7,9 +7,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
 
     // Helper: start a new empty strength workout via Train and land on the session.
     private func startStrength(_ app: XCUIApplication) {
-        app.goToTab("Train")
-        XCTAssertTrue(app.buttons["train.newWorkout"].waitTap(), "New Workout button")
-        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25), "session screen")
+        XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
     }
 
     // Helper: log one Bench Press set so the session is non-empty.
@@ -32,6 +30,9 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         let app = XCUIApplication.launched(extraArgs: ["-preCountdown", "30"])
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Weights type")
+        // Weights now opens its own chooser; Quick Start launches the session,
+        // which is where the get-ready countdown runs (feedback #1).
+        XCTAssertTrue(app.buttons["weights.quickStart"].waitTap(), "Quick Start")
 
         let remaining = app.staticTexts["countdown.remaining"]
         XCTAssertTrue(remaining.waitForExistence(timeout: 25), "countdown should render")
@@ -92,16 +93,16 @@ final class FR7LifecycleUITests: CadenceUITestCase {
                       "cancelling End keeps us on the session")
 
         // End again → confirm → the summary appears (A3); Done finishes & saves,
-        // leaving the session. (Started from Train, so we pop back to Train — the
-        // saved workout now lists there.)
+        // leaving the session. (Started from Home, so Done returns to Home — the
+        // saved workout now lists in Home's Recent workouts.)
         XCTAssertTrue(app.buttons["workout.end"].waitTap(), "End again")
         XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "summary Done")
-        XCTAssertTrue(app.buttons["train.newWorkout"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
                       "confirming End finishes the workout and leaves the session")
         XCTAssertFalse(app.buttons["session.addExercise"].exists,
                        "the live session screen should be gone after End")
-        XCTAssertTrue(app.buttons["session.row"].firstMatch.waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["home.sessionRow"].firstMatch.waitForExistence(timeout: 10),
                       "the finished workout should be saved to history")
     }
 
@@ -119,10 +120,12 @@ final class FR7LifecycleUITests: CadenceUITestCase {
                       "summary should list the logged exercise")
         XCTAssertTrue(app.staticTexts["summary.metric.volume"].exists,
                       "summary should show total volume")
+        XCTAssertTrue(app.staticTexts["summary.metric.reps"].exists,
+                      "summary should show total reps (feedback #8)")
         XCTAssertTrue(app.staticTexts["summary.duration"].exists, "summary should show duration")
 
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "Done")
-        XCTAssertTrue(app.buttons["train.newWorkout"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
                       "Done leaves the summary and the finished session")
     }
 

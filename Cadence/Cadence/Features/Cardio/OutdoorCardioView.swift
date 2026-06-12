@@ -33,7 +33,7 @@ struct OutdoorCardioView: View {
     var body: some View {
         if let finishedSummary {
             // A3 — the outdoor run is saved; show its summary (distance + route).
-            WorkoutSummaryView(data: finishedSummary) { dismiss() }
+            WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
         } else {
             liveView
         }
@@ -57,10 +57,7 @@ struct OutdoorCardioView: View {
                     bigMetric(Format.distance(recorder?.distanceMeters ?? 0), "Distance", id: "outdoor.distance")
                     bigMetric(CardioMath.formatPace(secPerKm: paceSecPerKm), "Pace", id: "outdoor.pace")
                 }
-                HStack(spacing: 14) {
-                    bigMetric(Format.heartRate(recorder?.currentBPM), "Heart Rate", id: "outdoor.hr")
-                    bigMetric("\(Int(recorder?.calories ?? 0)) kcal", "Calories", id: "outdoor.calories")
-                }
+                bigMetric(Format.heartRate(recorder?.currentBPM), "Heart Rate", id: "outdoor.hr")
 
                 if let r = recorder, !r.strapConnected {
                     Button { r.connectStrap() } label: {
@@ -84,7 +81,7 @@ struct OutdoorCardioView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { recorder?.end(); dismiss() }
+                    Button("Cancel") { _ = recorder?.end(); dismiss() }
                         .accessibilityIdentifier("outdoor.cancel")
                 }
             }

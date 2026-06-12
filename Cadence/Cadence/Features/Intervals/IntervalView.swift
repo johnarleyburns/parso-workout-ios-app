@@ -37,7 +37,7 @@ struct IntervalView: View {
     var body: some View {
         if let finishedSummary {
             // A3 — the interval session is saved; show its summary.
-            WorkoutSummaryView(data: finishedSummary) { dismiss() }
+            WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
         } else {
             runnerView
         }

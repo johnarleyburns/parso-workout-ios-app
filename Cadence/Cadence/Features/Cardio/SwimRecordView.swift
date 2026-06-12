@@ -1,0 +1,111 @@
+import SwiftUI
+import SwiftData
+import CadenceCore
+
+/// Pool swim recorder (round4b feedback #3): time + lap count only — no GPS,
+/// distance, or calorie estimate. Set a lap goal, start the clock, tap to count
+/// laps, then End to save. Deliberately minimal, per "just time and number of
+/// target laps, nothing complex."
+struct SwimRecordView: View {
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var started = false
+    @State private var startDate = Date()
+    @State private var now = Date()
+    @State private var targetLaps = 20
+    @State private var laps = 0
+    @State private var finishedSummary: WorkoutSummaryData?
+    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        Group {
+            if let finishedSummary {
+                // The swim is already saved; show its summary (laps + duration).
+                WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
+            } else {
+                NavigationStack {
+                    Group {
+                        if started { liveScreen } else { setupScreen }
+                    }
+                    .navigationTitle(started ? "Swimming" : "Swim")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { dismiss() }.accessibilityIdentifier("swim.cancel")
+                        }
+                    }
+                }
+            }
+        }
+        .interactiveDismissDisabled(started)
+        .onReceive(tick) { now = $0 }
+    }
+
+    private var setupScreen: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "figure.pool.swim").font(.system(size: 64)).foregroundStyle(.tint)
+            Stepper(value: $targetLaps, in: 1...200) {
+                HStack { Text("Target laps"); Spacer(); Text("\(targetLaps)").monospacedDigit() }
+            }
+            .accessibilityIdentifier("swim.targetLaps")
+            Button {
+                startDate = Date(); now = Date(); started = true
+            } label: {
+                Label("Start", systemImage: "play.fill")
+                    .font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 56)
+            }
+            .buttonStyle(.borderedProminent).controlSize(.large)
+            .accessibilityIdentifier("swim.start")
+            Spacer()
+        }
+        .padding()
+    }
+
+    private var liveScreen: some View {
+        VStack(spacing: 28) {
+            Text(Format.duration(now.timeIntervalSince(startDate)))
+                .font(.system(size: 56, weight: .bold, design: .rounded)).monospacedDigit()
+                .accessibilityIdentifier("swim.elapsed")
+
+            VStack(spacing: 4) {
+                Text("\(laps)/\(targetLaps)")
+                    .font(.system(size: 48, weight: .bold, design: .rounded)).monospacedDigit()
+                    .accessibilityIdentifier("swim.laps")
+                Text("laps").font(.caption).foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 32) {
+                Button { if laps > 0 { laps -= 1 } } label: {
+                    Image(systemName: "minus.circle.fill").font(.system(size: 48))
+                }
+                .accessibilityIdentifier("swim.lapMinus")
+                .accessibilityLabel("Remove a lap")
+                Button { laps += 1 } label: {
+                    Image(systemName: "plus.circle.fill").font(.system(size: 48))
+                }
+                .accessibilityIdentifier("swim.lapPlus")
+                .accessibilityLabel("Add a lap")
+            }
+            .tint(.blue)
+
+            Spacer()
+
+            Button(action: endSwim) {
+                Label("End", systemImage: "stop.fill").frame(maxWidth: .infinity, minHeight: 50)
+            }
+            .buttonStyle(.borderedProminent).controlSize(.large).tint(.red)
+            .accessibilityIdentifier("swim.end")
+        }
+        .padding()
+    }
+
+    private func endSwim() {
+        if let saved = try? WorkoutRepository.saveSwim(start: startDate, end: Date(),
+                                                       laps: laps, targetLaps: targetLaps, in: context) {
+            finishedSummary = WorkoutSummaryData.from(cardio: saved)
+        } else {
+            dismiss()
+        }
+    }
+}

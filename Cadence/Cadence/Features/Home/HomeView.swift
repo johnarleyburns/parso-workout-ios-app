@@ -31,7 +31,8 @@ struct HomeView: View {
 
     var body: some View {
         @Bindable var active = active
-        return NavigationStack(path: $path) {
+        return ZStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     if let s = active.strengthSession { resumeCard(s) }
@@ -90,11 +91,27 @@ struct HomeView: View {
                 }
             }
             .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType) }
-            .fullScreenCover(item: $pending) { p in
-                PreWorkoutCountdownView(seconds: settings.preWorkoutCountdown,
-                                        onStart: { let k = p.kind; launch(k); pending = nil },
-                                        onCancel: { pending = nil })
-            }
+        }
+
+        // Get-ready countdown as a plain opaque overlay above the whole
+        // NavigationStack — not a fullScreenCover (P1 #5 follow-up). As a sibling
+        // view (not a modal) it can appear in the same frame the Start sheet
+        // dismisses, so Home never shows between the two. On finish we push the
+        // session and drop the overlay in one animation-disabled transaction, so the
+        // session is already on screen when the overlay vanishes — no Home flash
+        // before the warm-up, and none after it.
+        if let p = pending {
+            PreWorkoutCountdownView(
+                seconds: settings.preWorkoutCountdown,
+                onStart: {
+                    let k = p.kind
+                    var t = Transaction(); t.disablesAnimations = true
+                    withTransaction(t) { launch(k); pending = nil }
+                },
+                onCancel: { pending = nil })
+                .transition(.identity)
+                .zIndex(1)
+        }
         }
     }
 

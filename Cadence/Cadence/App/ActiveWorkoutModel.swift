@@ -11,6 +11,11 @@ final class ActiveWorkoutModel {
     /// The active strength session, if any. nil when nothing is in progress.
     var strengthSession: WorkoutSession?
 
+    /// The just-finished workout's summary, presented over Home (P1 #9). Lifting
+    /// it above the session screen lets the session pop *behind* the summary, so
+    /// dismissing it (Done) reveals Home directly instead of flashing the session.
+    var finishedSummary: FinishedSummary?
+
     /// Wall-clock timer for the active session (field-testing §02).
     private(set) var clock = WorkoutClock()
 

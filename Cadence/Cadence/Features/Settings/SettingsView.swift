@@ -115,6 +115,17 @@ struct SettingsView: View {
                     Toggle("Spoken announcements", isOn: $settings.spokenCues)
                         .accessibilityIdentifier("settings.spokenCues")
                 }
+
+                // P1 #8 — appended (per the §06 convention) so existing rows keep
+                // their positions and their coordinate-tap tests stay valid.
+                Section {
+                    Toggle("Auto-save to Apple Health", isOn: $settings.autoSaveHealth)
+                        .accessibilityIdentifier("settings.autoSaveHealth")
+                } header: {
+                    Text("Apple Health")
+                } footer: {
+                    Text("When on, a workout summary is written to Apple Health each time you finish a workout.")
+                }
             }
         .navigationTitle("Settings")
         .sheet(isPresented: $primingPresented) {

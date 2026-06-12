@@ -20,7 +20,7 @@ final class AppSettings {
                         SettingsKey.lastHealthSync, "settings.autoRest",
                         "settings.idleTimeout", "settings.gpsHighAccuracy", "settings.autoPause",
                         "settings.intervalColorBlind", "settings.spokenCues", "settings.plateRounding",
-                        "settings.preWorkoutCountdown"] {
+                        "settings.preWorkoutCountdown", "settings.autoSaveHealth"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -38,6 +38,9 @@ final class AppSettings {
         self.intervalColorBlind = defaults.object(forKey: "settings.intervalColorBlind") as? Bool ?? false
         self.spokenCues = defaults.object(forKey: "settings.spokenCues") as? Bool ?? false
         self.plateRounding = defaults.object(forKey: "settings.plateRounding") as? Bool ?? false
+        // Finished workouts write a summary to Apple Health automatically (P1 #8);
+        // can be turned off in Settings.
+        self.autoSaveHealth = defaults.object(forKey: "settings.autoSaveHealth") as? Bool ?? true
         self.preWorkoutCountdown = defaults.object(forKey: "settings.preWorkoutCountdown") as? Int ?? 30
         // In UI tests the countdown is off by default (so workout-start flows stay
         // fast); a test can opt in with `-preCountdown N`.
@@ -65,6 +68,8 @@ final class AppSettings {
     var intervalColorBlind: Bool { didSet { defaults.set(intervalColorBlind, forKey: "settings.intervalColorBlind") } }
     var spokenCues: Bool { didSet { defaults.set(spokenCues, forKey: "settings.spokenCues") } }
     var plateRounding: Bool { didSet { defaults.set(plateRounding, forKey: "settings.plateRounding") } }
+    /// Write a workout summary to Apple Health automatically when a workout ends.
+    var autoSaveHealth: Bool { didSet { defaults.set(autoSaveHealth, forKey: "settings.autoSaveHealth") } }
     /// Get-ready countdown before a workout starts (seconds; 0 disables).
     var preWorkoutCountdown: Int { didSet { defaults.set(preWorkoutCountdown, forKey: "settings.preWorkoutCountdown") } }
 

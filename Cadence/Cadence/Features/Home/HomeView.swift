@@ -15,7 +15,6 @@ struct HomeView: View {
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
 
     @State private var typePickerPresented = false
-    @State private var crossfitPresented = false
     @State private var path = NavigationPath()
     @State private var cardioType: CardioType?
     @State private var outdoorType: CardioType?
@@ -31,15 +30,15 @@ struct HomeView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
+        @Bindable var active = active
+        return NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     if let s = active.strengthSession { resumeCard(s) }
                     statRow
                     startButton
                     trendSection
-                    cardioSection
-                    historySection
+                    recentWorkoutsSection
                 }
                 .padding()
             }
@@ -73,10 +72,14 @@ struct HomeView: View {
             .task { today = await model.health.todayActivity(); trend = await model.health.activityTrend(days: 7) }
             .refreshable { today = await model.health.todayActivity(); trend = await model.health.activityTrend(days: 7) }
             .sheet(isPresented: $typePickerPresented) {
-                WorkoutTypePicker { type in typePickerPresented = false; start(type) }
+                WorkoutTypePicker(onSelect: { start($0) },
+                                  onPlan: { launchFromPicker(.plan($0)) })
             }
-            .sheet(isPresented: $crossfitPresented) {
-                CrossFitPickerView { plan in crossfitPresented = false; begin(.plan(plan)) }
+            // P1 #9 — the post-workout summary is presented here, above the whole
+            // NavigationStack, so the finished session can pop behind it.
+            .fullScreenCover(item: $active.finishedSummary) { finished in
+                WorkoutSummaryView(data: finished.data,
+                                   onDone: { active.finishedSummary = nil })
             }
             .sheet(item: $cardioType) { RecordCardioView(initialType: $0) }
             .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0) }
@@ -89,7 +92,7 @@ struct HomeView: View {
             .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType) }
             .fullScreenCover(item: $pending) { p in
                 PreWorkoutCountdownView(seconds: settings.preWorkoutCountdown,
-                                        onStart: { let k = p.kind; pending = nil; launch(k) },
+                                        onStart: { let k = p.kind; launch(k); pending = nil },
                                         onCancel: { pending = nil })
             }
         }
@@ -147,55 +150,61 @@ struct HomeView: View {
         }
     }
 
-    private var cardioSection: some View {
+    /// One merged, date-sorted "Recent workouts" list — cardio counts as a workout
+    /// too, so strength sessions and cardio recordings share a single section (P1 #10).
+    private var recentItems: [RecentWorkoutItem] {
+        let merged = sessions.map { RecentWorkoutItem.strength($0) } + cardio.map { RecentWorkoutItem.cardio($0) }
+        return Array(merged.sorted { $0.date > $1.date }.prefix(5))
+    }
+
+    private var recentWorkoutsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            sectionHeader("Recent cardio", route: .cardio, id: "home.cardio")
-            if cardio.isEmpty {
-                Text("No cardio yet.").font(.caption).foregroundStyle(.secondary)
+            sectionHeader("Recent workouts", route: .history, id: "home.train")
+            if recentItems.isEmpty {
+                Text("No workouts yet.").font(.caption).foregroundStyle(.secondary)
             }
-            ForEach(cardio.prefix(3)) { w in
-                Button { path.append(HistorySummaryRoute.cardio(w)) } label: {
-                    HStack {
-                        Image(systemName: w.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
-                        Text(w.typeValue.displayName)
-                        Spacer()
-                        Text(w.start.formatted(date: .abbreviated, time: .omitted))
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 6)
-                    .contentShape(Rectangle())
+            ForEach(recentItems) { item in
+                switch item {
+                case .strength(let s): strengthRow(s)
+                case .cardio(let w): cardioRow(w)
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("home.cardioRow.\(w.typeValue.rawValue)")
             }
         }
     }
 
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionHeader("Recent workouts", route: .history, id: "home.train")
-            if sessions.isEmpty {
-                Text("No workouts yet.").font(.caption).foregroundStyle(.secondary)
-            }
-            ForEach(sessions.prefix(3)) { s in
-                Button { path.append(HistorySummaryRoute.strength(s)) } label: {
-                        HStack {
-                            Image(systemName: "dumbbell").foregroundStyle(.tint).frame(width: 26)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(s.title.isEmpty ? "Workout" : s.title)
-                                Text("\(s.orderedSets.count) sets").font(.caption2).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Text(s.date.formatted(date: .abbreviated, time: .omitted))
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 6)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("home.sessionRow")
+    private func strengthRow(_ s: WorkoutSession) -> some View {
+        Button { path.append(HistorySummaryRoute.strength(s)) } label: {
+            HStack {
+                Image(systemName: "dumbbell").foregroundStyle(.tint).frame(width: 26)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(s.title.isEmpty ? "Workout" : s.title)
+                    Text("\(s.orderedSets.count) sets").font(.caption2).foregroundStyle(.secondary)
                 }
+                Spacer()
+                Text(s.date.formatted(date: .abbreviated, time: .omitted))
+                    .font(.caption).foregroundStyle(.secondary)
             }
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.sessionRow")
+    }
+
+    private func cardioRow(_ w: CardioWorkout) -> some View {
+        Button { path.append(HistorySummaryRoute.cardio(w)) } label: {
+            HStack {
+                Image(systemName: w.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
+                Text(w.typeValue.displayName)
+                Spacer()
+                Text(w.start.formatted(date: .abbreviated, time: .omitted))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.cardioRow.\(w.typeValue.rawValue)")
     }
 
     private func sectionHeader(_ title: String, route: HomeRoute, id: String) -> some View {
@@ -233,12 +242,32 @@ struct HomeView: View {
 
     // MARK: Routing (countdown gate)
 
+    /// A non-CrossFit type was chosen in the Start sheet (CrossFit is handled
+    /// inside the sheet itself). Strength launches via the push-behind path; cardio
+    /// dismisses the sheet first, then presents its own flow.
     private func start(_ type: WorkoutType) {
-        if type == .crossfit { crossfitPresented = true }
-        else if type.isStrength { begin(.strength) }
-        else if type.usesGPS, let c = type.cardioType { begin(.outdoor(c)) }
-        else if type == .hiit || type == .boxing { intervalType = type }
-        else if let c = type.cardioType { begin(.timer(c)) }
+        if type.isStrength {
+            launchFromPicker(.strength)
+        } else if type.usesGPS, let c = type.cardioType {
+            typePickerPresented = false; begin(.outdoor(c))
+        } else if type == .hiit || type == .boxing {
+            typePickerPresented = false; intervalType = type
+        } else if let c = type.cardioType {
+            typePickerPresented = false; begin(.timer(c))
+        }
+    }
+    /// Launches a strength/plan workout chosen from the Start sheet without a Home
+    /// flash (P1 #1/#5): with no countdown, push the session *under* the still-open
+    /// sheet and then dismiss it (revealing the session); with a countdown, dismiss
+    /// first and present the countdown.
+    private func launchFromPicker(_ kind: PendingWorkout.Kind) {
+        if settings.preWorkoutCountdown <= 0 {
+            launch(kind)
+            typePickerPresented = false
+        } else {
+            typePickerPresented = false
+            pending = PendingWorkout(kind: kind)
+        }
     }
     private func begin(_ kind: PendingWorkout.Kind) {
         if settings.preWorkoutCountdown <= 0 { launch(kind) } else { pending = PendingWorkout(kind: kind) }
@@ -269,6 +298,26 @@ struct PendingWorkout: Identifiable {
 
 /// Pushed destinations reachable from Home.
 enum HomeRoute: Hashable { case stats, history, cardio, settings }
+
+/// A row in Home's merged "Recent workouts" list — strength and cardio together,
+/// sorted by date (P1 #10).
+enum RecentWorkoutItem: Identifiable {
+    case strength(WorkoutSession)
+    case cardio(CardioWorkout)
+
+    var id: String {
+        switch self {
+        case .strength(let s): return "s-\(s.id.uuidString)"
+        case .cardio(let c): return "c-\(c.id.uuidString)"
+        }
+    }
+    var date: Date {
+        switch self {
+        case .strength(let s): return s.date
+        case .cardio(let c): return c.start
+        }
+    }
+}
 
 /// A history row's read-only summary destination (field-testing Round 4 A5).
 /// Wraps the `@Model` row (already `Hashable`) so the big `WorkoutSummaryData`

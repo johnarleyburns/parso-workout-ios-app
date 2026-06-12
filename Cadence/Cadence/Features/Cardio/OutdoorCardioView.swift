@@ -17,6 +17,7 @@ struct OutdoorCardioView: View {
     @State private var recorder: CardioRecorder?
     @State private var clock = WorkoutClock()
     @State private var now = Date()
+    @State private var finishedSummary: WorkoutSummaryData?
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var elapsed: TimeInterval { clock.elapsed(now: now) }
@@ -30,6 +31,15 @@ struct OutdoorCardioView: View {
     }
 
     var body: some View {
+        if let finishedSummary {
+            // A3 — the outdoor run is saved; show its summary (distance + route).
+            WorkoutSummaryView(data: finishedSummary) { dismiss() }
+        } else {
+            liveView
+        }
+    }
+
+    private var liveView: some View {
         NavigationStack {
             VStack(spacing: 16) {
                 liveMap
@@ -128,8 +138,12 @@ struct OutdoorCardioView: View {
         clock.end()
         let summary = r.end()
         let hkID = await model.health.saveCardioWorkout(summary)
-        try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
-                                                  healthKitWorkoutUUID: hkID, in: context)
-        dismiss()
+        let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
+                                                              healthKitWorkoutUUID: hkID, in: context)
+        if let saved {
+            finishedSummary = WorkoutSummaryData.from(cardio: saved)
+        } else {
+            dismiss()
+        }
     }
 }

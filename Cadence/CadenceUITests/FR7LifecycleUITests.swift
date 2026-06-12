@@ -69,15 +69,56 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 10),
                       "cancelling End keeps us on the session")
 
-        // End again → confirm → finishes & saves, leaving the session. (Started
-        // from Train, so we pop back to Train — the saved workout now lists there.)
+        // End again → confirm → the summary appears (A3); Done finishes & saves,
+        // leaving the session. (Started from Train, so we pop back to Train — the
+        // saved workout now lists there.)
         XCTAssertTrue(app.buttons["workout.end"].waitTap(), "End again")
         XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.buttons["summary.done"].waitTap(), "summary Done")
         XCTAssertTrue(app.buttons["train.newWorkout"].waitForExistence(timeout: 25),
                       "confirming End finishes the workout and leaves the session")
         XCTAssertFalse(app.buttons["session.addExercise"].exists,
                        "the live session screen should be gone after End")
         XCTAssertTrue(app.buttons["session.row"].firstMatch.waitForExistence(timeout: 10),
                       "the finished workout should be saved to history")
+    }
+
+    // A3 — confirming End on a strength workout shows an always-on summary with the
+    // exercise roll-up + total volume; Done returns to where it was started.
+    func testStrengthEndShowsSummary() {
+        let app = XCUIApplication.launched()
+        startStrength(app)
+        logBenchSet(app, weight: "100")
+
+        XCTAssertTrue(app.buttons["workout.end"].waitTap(), "End")
+        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+
+        XCTAssertTrue(app.staticTexts["summary.exercise.Bench Press"].waitForExistence(timeout: 25),
+                      "summary should list the logged exercise")
+        XCTAssertTrue(app.staticTexts["summary.metric.volume"].exists,
+                      "summary should show total volume")
+        XCTAssertTrue(app.staticTexts["summary.duration"].exists, "summary should show duration")
+
+        XCTAssertTrue(app.buttons["summary.done"].waitTap(), "Done")
+        XCTAssertTrue(app.buttons["train.newWorkout"].waitForExistence(timeout: 25),
+                      "Done leaves the summary and the finished session")
+    }
+
+    // A3 — an indoor cardio recording shows a summary (duration + Done) after End.
+    func testCardioEndShowsSummary() {
+        let app = XCUIApplication.launched()
+        app.goToTab("Cardio")
+        XCTAssertTrue(app.buttons["cardio.record"].waitTap(), "Record")
+        XCTAssertTrue(app.buttons["record.start.boxing"].waitTap(), "boxing")
+
+        XCTAssertTrue(app.staticTexts["record.elapsed"].waitForExistence(timeout: 25), "recording")
+        XCTAssertTrue(app.buttons["record.end"].waitTap(), "End")
+        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+
+        XCTAssertTrue(app.staticTexts["summary.duration"].waitForExistence(timeout: 25),
+                      "cardio summary should show duration")
+        XCTAssertTrue(app.buttons["summary.done"].waitTap(), "Done")
+        XCTAssertTrue(app.buttons["cardioRow.boxing"].waitForExistence(timeout: 25),
+                      "the recorded session should be saved to history")
     }
 }

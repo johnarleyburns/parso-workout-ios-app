@@ -3,7 +3,7 @@
 Live handoff/progress tracker. Read this first, then
 `plans/field-testing/2026-06-11/round4-plan.md`.
 
-_Last updated: 2026-06-12 — 4A-1 MERGED (PR #14); 4A-2 control bar in progress on `feat/ft4a-controlbar`._
+_Last updated: 2026-06-12 — 4A-1 MERGED (#14), 4A-2 MERGED (#15); 4A-3 always-show summary in progress on `feat/ft4a-summary`._
 
 ## Repo / branch
 - Repo: `/Users/arley/github/parso-workout-ios-app` (this is the user's working copy).
@@ -65,17 +65,20 @@ integration + UI tests per phase. Scope confirmed by the user 2026-06-11:
 **In scope (build these, in order — one branch+PR each, stacked):**
 - **4A-1 ✅ MERGED (PR #14)** CadenceCore `WorkoutSummaryData` +
   `WorkoutHistoryEntry`/`unifiedHistory` (+ 9 unit tests). `swift test` 104/104.
-- **4A-2 (in progress)** Universal Pause/Resume + End incl. countdown (A1) + End "Are you
-  sure?" (A2) via a reusable `WorkoutControlBar`. Branch `feat/ft4a-controlbar`.
-  Done: `Features/Shared/WorkoutControlBar.swift` (owns the confirm dialog,
-  `idPrefix` per screen, `workout.endConfirm`/`workout.endCancel`);
+- **4A-2 ✅ MERGED (PR #15)** Universal Pause/Resume + End incl. countdown (A1) + End
+  "Are you sure?" (A2) via reusable `WorkoutControlBar`. `swift test` 104/104; UI 29/29.
+  `Features/Shared/WorkoutControlBar.swift` (owns confirm dialog, `idPrefix` per
+  screen, `workout.endConfirm`/`workout.endCancel`);
   `ActiveWorkoutModel.pause/resume/isPaused`; SessionView End→bar (`workout.*`) +
-  idle watchdog freezes while paused; outdoor/record/interval swapped to the bar
-  (keep `outdoor.*`/`record.*`/`interval.*` ids); countdown gains `countdown.pause`
-  (freezes tick). FR2 end flows now tap `workout.endConfirm`. New
-  `FR7LifecycleUITests` (testCountdownPause, testStrengthPauseAndConfirmEnd).
-- **4A-3** Always-show `WorkoutSummaryView` after End, all types (A3). Branch
-  `feat/ft4a-summary`.
+  idle watchdog freezes while paused; outdoor/record/interval on the bar (keep
+  `outdoor.*`/`record.*`/`interval.*` ids); countdown `countdown.pause`. FR2 end
+  flows tap `workout.endConfirm`. `FR7LifecycleUITests`.
+- **4A-3 (in progress)** Always-show `WorkoutSummaryView` after End, all types (A3).
+  Branch `feat/ft4a-summary`. New `Features/Workout/WorkoutSummaryView.swift`
+  (`summary.title/duration/metric.*/exercise.*/hrChart/map/done/saveHealth`).
+  Cardio/interval swap their live view for the summary inside the same cover after
+  save (`summary.done` dismisses); strength presents it as a cover over SessionView,
+  Done pops home. New FR7 tests: cardio/strength/outdoor summary.
 - **4A-4** Unified strength+cardio history + row→summary (A4, A5). Branch
   `feat/ft4a-history`. Adds `-seed historyMixed`. New `FR7LifecycleUITests`.
 

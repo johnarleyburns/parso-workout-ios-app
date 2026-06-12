@@ -25,6 +25,7 @@ struct SessionView: View {
     @State private var idlePromptShown = false
     @State private var idlePromptAt: Date?
     @State private var usePreviousPresented = false
+    @State private var finishedSummary: FinishedSummary?
     private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     /// Owner first, then partners alphabetically.
@@ -150,6 +151,13 @@ struct SessionView: View {
             Button("Cancel", role: .cancel) { newPartnerName = "" }
         } message: {
             Text("Their sets are recorded separately and kept out of your PRs and Apple Health.")
+        }
+        // A3 — after a confirmed End, show the summary over the session, then pop
+        // back home when it's dismissed (Done).
+        .fullScreenCover(item: $finishedSummary, onDismiss: { dismiss() }) { finished in
+            WorkoutSummaryView(data: finished.data,
+                               onSaveHealth: { await saveToHealth() },
+                               onDone: { finishedSummary = nil })
         }
     }
 
@@ -395,12 +403,13 @@ struct SessionView: View {
         if active.isPaused { active.resume(); poke() } else { active.pause() }
     }
 
-    /// Finalizes the active session (field-testing §02): stamps `endedAt`,
-    /// clears the active reference, and returns to Home.
+    /// Finalizes the active session (field-testing §02): stamps `endedAt`, clears
+    /// the active reference, then shows the workout summary (A3). Dismissing the
+    /// summary pops back home.
     private func endWorkout() {
         active.endStrength()
         try? context.save()
-        dismiss()
+        finishedSummary = FinishedSummary(data: .from(session: session))
     }
 
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,
@@ -425,6 +434,13 @@ struct SetEditorContext: Identifiable {
     let id = UUID()
     let exercise: Exercise
     let editing: SetEntry?
+}
+
+/// Identifiable wrapper so the post-workout `WorkoutSummaryData` (a pure value
+/// type, deliberately not `Identifiable`) can drive a `fullScreenCover(item:)`.
+struct FinishedSummary: Identifiable {
+    let id = UUID()
+    let data: WorkoutSummaryData
 }
 
 /// Pick a past workout to copy into the current session (field-test round 2).

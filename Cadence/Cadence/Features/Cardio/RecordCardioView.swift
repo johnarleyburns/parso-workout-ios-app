@@ -13,24 +13,32 @@ struct RecordCardioView: View {
 
     @State private var recorder: CardioRecorder?
     @State private var started = false
+    @State private var finishedSummary: WorkoutSummaryData?
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private let types: [CardioType] = [.run, .cycle, .walk, .boxing, .hiit, .rowing]
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if started, let recorder {
-                    liveScreen(recorder)
-                } else {
-                    activityPicker
-                }
-            }
-            .navigationTitle(started ? "Recording" : "Record Workout")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("record.cancel")
+        Group {
+            if let finishedSummary {
+                // A3 — the recorded workout is already saved; show its summary.
+                WorkoutSummaryView(data: finishedSummary) { dismiss() }
+            } else {
+                NavigationStack {
+                    Group {
+                        if started, let recorder {
+                            liveScreen(recorder)
+                        } else {
+                            activityPicker
+                        }
+                    }
+                    .navigationTitle(started ? "Recording" : "Record Workout")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { dismiss() }.accessibilityIdentifier("record.cancel")
+                        }
+                    }
                 }
             }
         }
@@ -130,8 +138,12 @@ struct RecordCardioView: View {
     private func endWorkout(_ recorder: CardioRecorder) async {
         let summary = recorder.end()
         let hkID = await model.health.saveCardioWorkout(summary)
-        try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
-                                                  healthKitWorkoutUUID: hkID, in: context)
-        dismiss()
+        let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
+                                                              healthKitWorkoutUUID: hkID, in: context)
+        if let saved {
+            finishedSummary = WorkoutSummaryData.from(cardio: saved)
+        } else {
+            dismiss()
+        }
     }
 }

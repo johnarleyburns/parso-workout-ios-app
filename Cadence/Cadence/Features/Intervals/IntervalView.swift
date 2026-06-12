@@ -22,6 +22,7 @@ struct IntervalView: View {
     @State private var lastTickSecond = -1
     @State private var lastWarnedPhase: Int?
     @State private var finished = false
+    @State private var finishedSummary: WorkoutSummaryData?
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     init(plan: IntervalPlan, saveType: CardioType) {
@@ -34,6 +35,15 @@ struct IntervalView: View {
     private var isImminent: Bool { state == .imminent }
 
     var body: some View {
+        if let finishedSummary {
+            // A3 — the interval session is saved; show its summary.
+            WorkoutSummaryView(data: finishedSummary) { dismiss() }
+        } else {
+            runnerView
+        }
+    }
+
+    private var runnerView: some View {
         ZStack {
             background.ignoresSafeArea()
 
@@ -143,8 +153,12 @@ struct IntervalView: View {
                                                type: saveType, seconds: end.timeIntervalSince(start), avgHR: nil),
                                            hrSamples: [], route: [])
         let hkID = await model.health.saveCardioWorkout(summary)
-        try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
-                                                  healthKitWorkoutUUID: hkID, in: context)
-        dismiss()
+        let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
+                                                              healthKitWorkoutUUID: hkID, in: context)
+        if let saved {
+            finishedSummary = WorkoutSummaryData.from(cardio: saved)
+        } else {
+            dismiss()
+        }
     }
 }

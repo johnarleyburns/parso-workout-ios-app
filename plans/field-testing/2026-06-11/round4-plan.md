@@ -5,6 +5,12 @@ emphasised *summary at end + history of all workouts*), and **B) CrossFit**
 (WOD-of-the-day, movements, a "Crossfit" workout type with benchmark workouts +
 a real workout-plan model — designed here, built next).
 
+> **SCOPE UPDATE (2026-06-11):** The user scoped the next build to **Part A
+> EXCEPT A6** (Apple-Watch HR backfill) — *all watch integration is deferred*.
+> **Part B (CrossFit) is deferred to the future.** The build-ready, test-by-test
+> implementation plan for the in-scope work lives in **`round4a-plan.md`** (same
+> dir). A6 §below and Part B §below stay here as design for when they're picked up.
+
 ---
 
 ## Part A — Workout lifecycle, summary, and fixes

@@ -57,24 +57,27 @@ _Last updated: 2026-06-11 — round 2/3 + round-4 sounds MERGED to `main`; UI su
 
 Merged to `main` via fast-forward (established pattern). Next: Round 4 Part A.
 
-## NEXT (round 4 — see plans/field-testing/2026-06-11/round4-plan.md)
-**Part A (implement next, user EMPHASISED summary + history):**
-1. Universal Pause/Resume + End on EVERY workout type incl. during the countdown.
-2. End → "Are you sure?" confirmation.
-3. Always show a **WorkoutSummaryView** at end (cardio + strength).
-4. Unified workout history (a walk saved as `CardioWorkout` didn't show in the
-   strength-only "Recent workouts" — make history merge strength + cardio).
-5. History row → tap → the summary page.
-6. Apple-Watch HR backfill: query HealthKit for HR samples in the workout window
-   (`HealthDataProviding.heartRate(in:)`) and attach to the `CardioWorkout` when no
-   strap HR was captured (the phone can't stream the Watch's live HR by design).
-7. ✅ Sounds (done above).
+## NEXT — Round 4 Part A (minus watch), build-ready plan in `round4a-plan.md`
+**THE PLAN TO EXECUTE:** `plans/field-testing/2026-06-11/round4a-plan.md` — it has
+the data-model deltas, cross-cutting decisions, and a 4-phase rollout with unit +
+integration + UI tests per phase. Scope confirmed by the user 2026-06-11:
 
-**Part B (designed, build after A):** CrossFit — a `WorkoutPlan`/`PlanItem` core
-model, 15 benchmark "Girls" workouts (researched, in the plan doc), a
-`WorkoutType.crossfit` picker, CrossFit movements in the §03 library + a
-movement-guide link, and a "WOD of the day" Home card fetched from
-`crossfit.com/<YYMMDD>`.
+**In scope (build these, in order — one branch+PR each, stacked):**
+- **4A-1** CadenceCore `WorkoutSummaryData` + `WorkoutHistoryEntry`/`unifiedHistory`
+  (+ unit tests). Branch `feat/ft4a-core-summary` off `main`.
+- **4A-2** Universal Pause/Resume + End incl. countdown (A1) + End "Are you sure?"
+  (A2) via a reusable `WorkoutControlBar`. Branch `feat/ft4a-controlbar`.
+- **4A-3** Always-show `WorkoutSummaryView` after End, all types (A3). Branch
+  `feat/ft4a-summary`.
+- **4A-4** Unified strength+cardio history + row→summary (A4, A5). Branch
+  `feat/ft4a-history`. Adds `-seed historyMixed`. New `FR7LifecycleUITests`.
+
+**DEFERRED (do NOT build now):**
+- **A6 Apple-Watch HR backfill + ALL watch integration** — later.
+- **Part B CrossFit** (WorkoutPlan model, 15 benchmark "Girls", crossfit type,
+  movements, WOD-of-the-day card) — future. Design stays in `round4-plan.md`.
+
+A7 sounds = already done & merged.
 
 ## How to work here (methodology — also in CLAUDE.md)
 - Plan to disk first for big asks (`plans/field-testing/<date>/`); implement

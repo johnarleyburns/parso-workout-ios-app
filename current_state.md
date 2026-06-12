@@ -3,7 +3,7 @@
 Live handoff/progress tracker. Read this first, then
 `plans/field-testing/2026-06-11/round4-plan.md`.
 
-_Last updated: 2026-06-12 — 4A-1 MERGED (#14), 4A-2 MERGED (#15), 4A-3 MERGED (#16); 4A-4 unified history in progress on `feat/ft4a-history`._
+_Last updated: 2026-06-12 — Round 4 Part A COMPLETE: 4A-1 (#14), 4A-2 (#15), 4A-3 (#16), 4A-4 (#17) all MERGED to `main`. CadenceCore 104/104; UI 33/33. Next: A6 watch-HR or Part B (both deferred)._
 
 ## Repo / branch
 - Repo: `/Users/arley/github/parso-workout-ios-app` (this is the user's working copy).
@@ -78,13 +78,16 @@ integration + UI tests per phase. Scope confirmed by the user 2026-06-11:
   (`summary.title/duration/metric.*/exercise.*/hrChart/map/done/saveHealth/edit`).
   Cardio/interval swap their live view for the summary inside the same cover after
   save; strength presents it as a cover over SessionView, Done pops home.
-- **4A-4 (in progress)** Unified strength+cardio history + row→summary (A4, A5).
-  Branch `feat/ft4a-history`. New `Features/History/HistoryView.swift` (`train.newWorkout`
-  + `session.row` + `history.cardioRow.<type>`; rows push `HistorySummaryRoute`);
-  `HomeRoute.history` → HistoryView; Home recent rows + history rows open the
-  summary (`WorkoutSummaryView` gains pushed mode + `summary.edit` → editor).
-  `TrainView` retired. `-seed historyMixed` (history + a walk w/ HR). New FR7:
+- **4A-4 ✅ MERGED (PR #17)** Unified strength+cardio history + row→summary (A4, A5).
+  `swift test` 104/104; UI 33/33. New `Features/History/HistoryView.swift`
+  (`train.newWorkout` + `session.row` + `history.cardioRow.<type>`; rows push
+  `HistorySummaryRoute`); `HomeRoute.history` → HistoryView; Home recent rows +
+  history rows open the summary (`WorkoutSummaryView` gained pushed mode +
+  `summary.edit` → editor). `TrainView` retired. `-seed historyMixed`. New FR7:
   `testUnifiedHistoryShowsCardioAndStrength`, `testHistoryRowOpensSummary`.
+
+**➡️ Round 4 Part A is COMPLETE.** All in-scope items (A1–A5, A7) shipped. The only
+remaining Round-4 work is the explicitly DEFERRED items below.
 
 **DEFERRED (do NOT build now):**
 - **A6 Apple-Watch HR backfill + ALL watch integration** — later.

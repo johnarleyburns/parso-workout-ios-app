@@ -49,6 +49,28 @@ final class FR7LifecycleUITests: CadenceUITestCase {
                       "skipping the countdown should open the session")
     }
 
+    // P2 (#7) — the strength/CrossFit session shows a prominent elapsed clock that
+    // advances while training and freezes the instant the workout is paused.
+    func testSessionElapsedTimerRunsAndFreezesOnPause() {
+        let app = XCUIApplication.launched()
+        startStrength(app)
+        logBenchSet(app)
+
+        let elapsed = app.staticTexts["session.elapsed"]
+        XCTAssertTrue(elapsed.waitForExistence(timeout: 25), "elapsed timer should show")
+
+        // It advances while the workout is active.
+        let running = elapsed.label
+        Thread.sleep(forTimeInterval: 2.5)
+        XCTAssertNotEqual(elapsed.label, running, "timer should advance while training")
+
+        // Pause freezes the display (the clock excludes paused time).
+        XCTAssertTrue(app.buttons["workout.pause"].waitTap(), "Pause")
+        let frozen = elapsed.label
+        Thread.sleep(forTimeInterval: 2.5)
+        XCTAssertEqual(elapsed.label, frozen, "timer should freeze while paused")
+    }
+
     // A1/A2 — strength Pause/Resume, and End routes through an "Are you sure?"
     // confirm (Keep going cancels; confirming leaves the session).
     func testStrengthPauseAndConfirmEnd() {

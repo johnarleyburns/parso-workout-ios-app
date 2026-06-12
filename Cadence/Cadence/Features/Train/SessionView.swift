@@ -115,6 +115,14 @@ struct SessionView: View {
         }
         .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
         .navigationBarTitleDisplayMode(.inline)
+        // P2 (#7) — a prominent elapsed clock, pinned above the scroll so it stays
+        // visible while logging. Only for the live session (not when reviewing/editing
+        // a past one from history), driven by the active session's WorkoutClock.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if active.strengthSession?.id == session.id {
+                WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused)
+            }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

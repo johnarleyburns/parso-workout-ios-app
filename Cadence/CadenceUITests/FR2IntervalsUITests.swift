@@ -13,6 +13,9 @@ final class FR2IntervalsUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["interval.preset.box-3-1"].waitTap(), "boxing preset")
         XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")
 
+        // Pre-workout HR gate (feedback batch 5) — continue without HR.
+        XCTAssertTrue(app.buttons["prehr.skip"].waitTap(), "Continue without HR")
+
         // Full-screen runner shows the protocol name + countdown.
         XCTAssertTrue(app.staticTexts["interval.countdown"].waitForExistence(timeout: 25),
                       "interval countdown should render")
@@ -40,6 +43,8 @@ final class FR2IntervalsUITests: CadenceUITestCase {
         // Select Gibala, then START → runner shows its name.
         app.buttons["interval.preset.gibala"].tap()
         XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")
+        // Pre-workout HR gate (feedback batch 5) — continue without HR.
+        XCTAssertTrue(app.buttons["prehr.skip"].waitTap(), "Continue without HR")
         XCTAssertTrue(app.staticTexts["interval.countdown"].waitForExistence(timeout: 25),
                       "runner should start")
         app.buttons["interval.end"].tap()

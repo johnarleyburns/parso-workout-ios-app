@@ -57,6 +57,16 @@ public struct HRSamplePoint: Equatable, Sendable {
     public init(t: TimeInterval, bpm: Double) { self.t = t; self.bpm = bpm }
 }
 
+/// The single most-recent heart-rate reading from HealthKit (e.g. the Apple
+/// Watch's latest sample), with how fresh it is. Used by the pre-workout HR
+/// screen to show the Watch's HR passively — it can lag, since Apple batches the
+/// Watch's background HR writes (feedback batch 5).
+public struct HRReading: Equatable, Sendable {
+    public var bpm: Double
+    public var date: Date
+    public init(bpm: Double, date: Date) { self.bpm = bpm; self.date = date }
+}
+
 /// Summary of a strength session to write back to HealthKit (FR-4.3).
 public struct StrengthWorkoutSummary: Equatable, Sendable {
     public var id: UUID
@@ -104,6 +114,9 @@ public protocol HealthDataProviding: AnyObject, Sendable {
     func activityTrend(days: Int) async -> [DayActivity]
     /// Workouts saved after `since` (e.g. by the Watch), for ingest (FR-2.1).
     func newWorkouts(since: Date?) async -> [IngestedWorkout]
+    /// The latest heart-rate sample HealthKit knows about (e.g. from the Watch),
+    /// for the pre-workout HR screen (feedback batch 5). `nil` if none/unavailable.
+    func latestHeartRate() async -> HRReading?
     /// Write a summary strength workout (FR-4.3). Returns the HK UUID on success.
     func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID?
     /// Write a recorded cardio workout with HR + route (FR-2.5).

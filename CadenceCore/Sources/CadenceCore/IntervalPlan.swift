@@ -54,6 +54,22 @@ public struct IntervalPlan: Equatable, Sendable {
         elapsed >= totalDuration
     }
 
+    /// The elapsed time at the start of the phase *after* the one active at
+    /// `elapsed` — i.e. where you land if you skip the current phase (feedback
+    /// batch 5). Returns `totalDuration` when already on (or past) the last phase,
+    /// so skipping the final phase ends the workout.
+    public func elapsedAtNextPhase(after elapsed: TimeInterval) -> TimeInterval {
+        guard elapsed >= 0 else { return phases.first?.duration ?? 0 }
+        var acc: TimeInterval = 0
+        for p in phases {
+            acc += p.duration
+            // First cumulative boundary strictly past `elapsed` is the end of the
+            // current phase = the start of the next one.
+            if acc > elapsed + 0.0001 { return min(acc, totalDuration) }
+        }
+        return totalDuration
+    }
+
     // MARK: Factories (decisions #21/#22)
 
     /// Tabata: warmup → rounds × (work / rest) → cooldown. Classic = 8×(20/10).

@@ -25,6 +25,9 @@ struct SessionView: View {
     @State private var idlePromptShown = false
     @State private var idlePromptAt: Date?
     @State private var usePreviousPresented = false
+    // Cool-down (feedback batch 4): a guided timer that, on finish/skip, ends the
+    // workout. The workout is paused while it runs so the clock doesn't advance.
+    @State private var coolingDown = false
     private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     /// Owner first, then partners alphabetically.
@@ -121,6 +124,7 @@ struct SessionView: View {
                         isPaused: active.isPaused,
                         onPauseToggle: togglePause,
                         onEnd: endWorkout,
+                        onCoolDown: { active.pause(); coolingDown = true },
                         confirmMessage: "This finishes and saves your workout."
                     )
                     .padding(.top, 8)
@@ -169,6 +173,14 @@ struct SessionView: View {
                 _ = try? WorkoutRepository.copyWorkout(from: past, into: session, in: context)
                 poke()
             }
+        }
+        .fullScreenCover(isPresented: $coolingDown) {
+            GuidedPhaseOverlay(
+                title: "Cool Down",
+                minutes: settings.cooldownMinutes,
+                tint: .teal,
+                idPrefix: "cooldown",
+                onFinish: { coolingDown = false; endWorkout() })
         }
         .task { _ = try? WorkoutRepository.me(in: context) }
         .onReceive(idleTimer) { _ in checkIdle() }

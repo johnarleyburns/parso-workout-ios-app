@@ -21,6 +21,7 @@ struct HomeView: View {
     @State private var intervalLaunch: IntervalLaunch?
     @State private var swimPresented = false
     @State private var pending: PendingWorkout?
+    @State private var warmupActive = false
     @State private var today: DayActivity?
 
     // Weekly tiles (feedback batch 3) — pure aggregates from CadenceCore.
@@ -76,6 +77,7 @@ struct HomeView: View {
                 WorkoutTypePicker(onSelect: { start($0) },
                                   onPlan: { plan, ladder in launchFromPicker(.plan(plan, ladder)) },
                                   onWeightsQuickStart: { launchFromPicker(.strength) },
+                                  onWeightsWarmup: { typePickerPresented = false; warmupActive = true },
                                   onWeightsReuse: { launchFromPicker(.reuse($0)) })
             }
             // P1 #9 — the post-workout summary is presented here, above the whole
@@ -115,15 +117,39 @@ struct HomeView: View {
                 .transition(.identity)
                 .zIndex(1)
         }
+
+        // "Start with Warm-Up" (feedback batch 4): a guided warm-up runs above the
+        // stack, then opens a blank strength session (same no-flash transaction).
+        if warmupActive {
+            GuidedPhaseOverlay(
+                title: "Warm Up",
+                minutes: settings.warmupMinutes,
+                tint: .orange,
+                idPrefix: "warmup",
+                onFinish: {
+                    var t = Transaction(); t.disablesAnimations = true
+                    withTransaction(t) { launch(.strength); warmupActive = false }
+                })
+                .transition(.identity)
+                .zIndex(1)
+        }
         }
     }
 
     // MARK: Top stats
 
     private var statRow: some View {
-        HStack(spacing: 14) {
-            statTile("\(Format.integer(today?.steps ?? 0))", "steps today", id: "today.steps")
-            statTile("\(cardioMinutesThisWeek)", "cardio min this week", id: "home.cardioMinutes")
+        let steps = today?.steps ?? 0
+        let stepGoal = max(1, settings.stepGoal)
+        let cardio = cardioMinutesThisWeek
+        let cardioGoal = max(1, settings.weeklyCardioMinutesGoal)
+        return HStack(spacing: 14) {
+            statTile("\(Format.integer(steps)) / \(Format.integer(stepGoal))", "steps today",
+                     id: "today.steps",
+                     progress: Double(steps) / Double(stepGoal), progressID: "today.steps.progress")
+            statTile("\(cardio) / \(cardioGoal)", "cardio min this week",
+                     id: "home.cardioMinutes",
+                     progress: Double(cardio) / Double(cardioGoal), progressID: "home.cardioMinutes.progress")
         }
     }
 
@@ -143,10 +169,18 @@ struct HomeView: View {
     }
 
     private func statTile(_ value: String, _ label: String, id: String,
-                          caption: String? = nil, captionID: String? = nil) -> some View {
+                          caption: String? = nil, captionID: String? = nil,
+                          progress: Double? = nil, progressID: String? = nil) -> some View {
         VStack(spacing: 4) {
             Text(value).font(.title.bold()).monospacedDigit().accessibilityIdentifier(id)
+                .minimumScaleFactor(0.6).lineLimit(1)
             Text(label).font(.caption).foregroundStyle(.secondary)
+            if let progress {
+                ProgressView(value: min(max(progress, 0), 1))
+                    .tint(.green)
+                    .accessibilityIdentifier(progressID ?? "")
+                    .padding(.top, 2).padding(.horizontal, 4)
+            }
             if let caption {
                 Text(caption).font(.caption2).foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)

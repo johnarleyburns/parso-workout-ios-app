@@ -420,6 +420,10 @@ public final class CardioWorkout {
     public var notes: String?
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
+    /// Interval (HIIT/boxing) structure as JSON (`IntervalSummary`), so history can
+    /// show rounds + work/rest + warm-up/cool-down. Additive; "" for non-interval
+    /// workouts (feedback batch 4 / roadmap P5).
+    public var intervalDetailData: String = ""
 
     @Relationship(deleteRule: .cascade, inverse: \HRSample.cardio)
     public var hrSamples: [HRSample]? = []
@@ -472,6 +476,24 @@ public final class CardioWorkout {
     public var duration: TimeInterval {
         guard let end else { return 0 }
         return end.timeIntervalSince(start)
+    }
+
+    /// Typed view over `intervalDetailData` (JSON in/out); nil when absent.
+    public var intervalSummary: IntervalSummary? {
+        get {
+            guard !intervalDetailData.isEmpty,
+                  let data = intervalDetailData.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(IntervalSummary.self, from: data)
+        }
+        set {
+            guard let newValue,
+                  let data = try? JSONEncoder().encode(newValue),
+                  let json = String(data: data, encoding: .utf8) else {
+                intervalDetailData = ""
+                return
+            }
+            intervalDetailData = json
+        }
     }
 
     public var orderedHRSamples: [HRSample] {

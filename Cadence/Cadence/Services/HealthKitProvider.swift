@@ -95,15 +95,44 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
         for w in workouts {
             let distance = w.totalDistance?.doubleValue(for: .meter())
             let energy = w.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+            // Pull the recorded heart-rate curve for this workout (e.g. one the
+            // Watch saved) — historical read only, no watch app needed. Capped to
+            // keep the stored series light (feedback batch 4).
+            let hr = await heartRateSamples(start: w.startDate, end: w.endDate)
+            let bpms = hr.map(\.bpm).filter { $0 > 0 }
             result.append(IngestedWorkout(
                 id: w.uuid,
                 type: Self.cardioType(from: w.workoutActivityType),
                 start: w.startDate, end: w.endDate,
                 distanceMeters: distance, activeEnergyKcal: energy,
+                avgHeartRate: bpms.isEmpty ? nil : bpms.reduce(0, +) / Double(bpms.count),
+                maxHeartRate: bpms.max(),
                 source: w.sourceRevision.source.name.localizedCaseInsensitiveContains("watch") ? .watch : .iphone,
-                hrSamples: []))
+                hrSamples: hr))
         }
         return result
+    }
+
+    /// Reads the heart-rate samples recorded across `[start, end]` and maps them to
+    /// `HRSamplePoint`s relative to `start`, downsampled so long workouts stay light.
+    private func heartRateSamples(start: Date, end: Date) async -> [HRSamplePoint] {
+        guard isHealthDataAvailable,
+              let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return [] }
+        let unit = HKUnit.count().unitDivided(by: .minute())
+        let samples: [HKQuantitySample] = await withCheckedContinuation { cont in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+            let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+            let q = HKSampleQuery(sampleType: hrType, predicate: predicate, limit: HKObjectQueryNoLimit,
+                                  sortDescriptors: [sort]) { _, samples, _ in
+                cont.resume(returning: (samples as? [HKQuantitySample]) ?? [])
+            }
+            store.execute(q)
+        }
+        let points = samples.map {
+            HRSamplePoint(t: $0.startDate.timeIntervalSince(start),
+                          bpm: $0.quantity.doubleValue(for: unit))
+        }
+        return HRSampling.downsample(points)
     }
 
     // MARK: Write summary strength workout (FR-4.3)

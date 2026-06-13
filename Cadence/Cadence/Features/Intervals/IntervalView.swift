@@ -147,11 +147,16 @@ struct IntervalView: View {
         cues.completed()
         let start = runner.clock.startedAt
         let end = Date()
+        // Capture the protocol structure (rounds, work/rest, warm-up/cool-down, and
+        // how many work rounds were actually finished) so history shows the detail
+        // (feedback batch 4 / roadmap P5).
+        let interval = IntervalSummary.from(plan: plan, elapsed: runner.elapsed)
         let summary = CardioWorkoutSummary(id: UUID(), type: saveType, start: start, end: end,
                                            distanceMeters: nil,
                                            activeEnergyKcal: CardioMath.estimateCalories(
                                                type: saveType, seconds: end.timeIntervalSince(start), avgHR: nil),
-                                           hrSamples: [], route: [])
+                                           hrSamples: [], route: [],
+                                           intervalSummary: interval)
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                               healthKitWorkoutUUID: hkID, in: context)

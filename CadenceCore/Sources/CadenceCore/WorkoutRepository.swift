@@ -481,6 +481,7 @@ public enum WorkoutRepository {
                               activeEnergy: summary.activeEnergyKcal, avgHeartRate: avg,
                               maxHeartRate: maxHR, source: source,
                               healthKitWorkoutUUID: healthKitWorkoutUUID)
+        c.intervalSummary = summary.intervalSummary
         context.insert(c)
         for p in summary.hrSamples { context.insert(HRSample(t: p.t, bpm: p.bpm, cardio: c)) }
         for f in summary.route {

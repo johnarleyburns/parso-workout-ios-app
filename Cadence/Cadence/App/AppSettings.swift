@@ -16,7 +16,9 @@ final class AppSettings {
         // test order can never bleed through persisted UserDefaults.
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {
             for key in [SettingsKey.unit, SettingsKey.prRule, SettingsKey.oneRepMaxFormula,
-                        SettingsKey.stepGoal, SettingsKey.restSeconds, SettingsKey.cloudSyncEnabled,
+                        SettingsKey.stepGoal, SettingsKey.weeklyCardioMinutesGoal,
+                        SettingsKey.restSeconds, SettingsKey.warmupMinutes, SettingsKey.cooldownMinutes,
+                        SettingsKey.cloudSyncEnabled,
                         SettingsKey.lastHealthSync, "settings.autoRest",
                         "settings.idleTimeout", "settings.gpsHighAccuracy", "settings.autoPause",
                         "settings.intervalColorBlind", "settings.spokenCues", "settings.plateRounding",
@@ -28,7 +30,10 @@ final class AppSettings {
         self.prRule = Self.read(defaults, SettingsKey.prRule, PRRule.self) ?? SettingsDefault.prRule
         self.formula = Self.read(defaults, SettingsKey.oneRepMaxFormula, OneRepMaxFormula.self) ?? SettingsDefault.oneRepMaxFormula
         self.stepGoal = defaults.object(forKey: SettingsKey.stepGoal) as? Int ?? SettingsDefault.stepGoal
+        self.weeklyCardioMinutesGoal = defaults.object(forKey: SettingsKey.weeklyCardioMinutesGoal) as? Int ?? SettingsDefault.weeklyCardioMinutesGoal
         self.restSeconds = defaults.object(forKey: SettingsKey.restSeconds) as? Int ?? SettingsDefault.restSeconds
+        self.warmupMinutes = defaults.object(forKey: SettingsKey.warmupMinutes) as? Int ?? SettingsDefault.warmupMinutes
+        self.cooldownMinutes = defaults.object(forKey: SettingsKey.cooldownMinutes) as? Int ?? SettingsDefault.cooldownMinutes
         self.autoStartRest = defaults.object(forKey: "settings.autoRest") as? Bool ?? true
         self.cloudSyncEnabled = defaults.object(forKey: SettingsKey.cloudSyncEnabled) as? Bool ?? SettingsDefault.cloudSyncEnabled
         // Field-testing §06 polish settings.
@@ -58,7 +63,12 @@ final class AppSettings {
     var prRule: PRRule { didSet { defaults.set(prRule.rawValue, forKey: SettingsKey.prRule) } }
     var formula: OneRepMaxFormula { didSet { defaults.set(formula.rawValue, forKey: SettingsKey.oneRepMaxFormula) } }
     var stepGoal: Int { didSet { defaults.set(stepGoal, forKey: SettingsKey.stepGoal) } }
+    /// Weekly cardio-minutes goal shown on the Home cardio tile (feedback batch 4).
+    var weeklyCardioMinutesGoal: Int { didSet { defaults.set(weeklyCardioMinutesGoal, forKey: SettingsKey.weeklyCardioMinutesGoal) } }
     var restSeconds: Int { didSet { defaults.set(restSeconds, forKey: SettingsKey.restSeconds) } }
+    /// Warm-up / cool-down countdown length for strength & CrossFit (minutes).
+    var warmupMinutes: Int { didSet { defaults.set(warmupMinutes, forKey: SettingsKey.warmupMinutes) } }
+    var cooldownMinutes: Int { didSet { defaults.set(cooldownMinutes, forKey: SettingsKey.cooldownMinutes) } }
     var autoStartRest: Bool { didSet { defaults.set(autoStartRest, forKey: "settings.autoRest") } }
     var cloudSyncEnabled: Bool { didSet { defaults.set(cloudSyncEnabled, forKey: SettingsKey.cloudSyncEnabled) } }
     // Field-testing §06 polish settings.

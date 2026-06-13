@@ -126,6 +126,27 @@ struct SettingsView: View {
                 } footer: {
                     Text("When on, a workout summary is written to Apple Health each time you finish a workout.")
                 }
+
+                // Feedback batch 4 — appended (per the §06 convention) so existing
+                // rows keep their positions and their coordinate-tap tests stay valid.
+                Section("Goals") {
+                    Stepper("Weekly cardio goal: \(settings.weeklyCardioMinutesGoal) min",
+                            value: $settings.weeklyCardioMinutesGoal, in: 50...1000, step: 10)
+                        .accessibilityIdentifier("settings.cardioGoal")
+                }
+
+                Section {
+                    Stepper("Warm-up: \(settings.warmupMinutes) min",
+                            value: $settings.warmupMinutes, in: 1...30)
+                        .accessibilityIdentifier("settings.warmupMinutes")
+                    Stepper("Cool-down: \(settings.cooldownMinutes) min",
+                            value: $settings.cooldownMinutes, in: 1...30)
+                        .accessibilityIdentifier("settings.cooldownMinutes")
+                } header: {
+                    Text("Warm-up & Cool-down")
+                } footer: {
+                    Text("Optional guided timers for strength and CrossFit workouts — start with a warm-up, or wind down with a cool-down before finishing.")
+                }
             }
         .navigationTitle("Settings")
         .sheet(isPresented: $primingPresented) {

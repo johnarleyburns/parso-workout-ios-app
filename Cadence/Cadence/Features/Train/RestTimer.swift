@@ -54,20 +54,22 @@ struct RestTimerBar: View {
             Text(Format.clock(model.remaining))
                 .monospacedDigit()
                 .accessibilityIdentifier("rest.remaining")
-            Spacer()
+            Spacer(minLength: 8)
             Button("+30s") { model.add(30) }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .lineLimit(1).fixedSize()
                 .accessibilityIdentifier("rest.add30")
             Button("Skip") { model.skip() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                .lineLimit(1).fixedSize()
+                .frame(minWidth: 56)
                 .accessibilityIdentifier("rest.skip")
         }
-        .padding(.horizontal)
+        .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .background(.thinMaterial, in: Capsule())
-        .padding(.horizontal)
         .overlay(alignment: .bottom) {
             ProgressView(value: model.progress)
                 .padding(.horizontal, 32)

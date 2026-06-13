@@ -130,11 +130,12 @@ final class FR7LifecycleUITests: CadenceUITestCase {
     }
 
     // A3 — an indoor cardio recording shows a summary (duration + Done) after End.
+    // Reached via Start Workout → Other (the indoor recorder) after the dedicated
+    // Cardio screen was removed (feedback batch 3).
     func testCardioEndShowsSummary() {
         let app = XCUIApplication.launched()
-        app.goToTab("Cardio")
-        XCTAssertTrue(app.buttons["cardio.record"].waitTap(), "Record")
-        XCTAssertTrue(app.buttons["record.start.boxing"].waitTap(), "boxing")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["startType.other"].waitTap(), "Other")
 
         XCTAssertTrue(app.staticTexts["record.elapsed"].waitForExistence(timeout: 25), "recording")
         XCTAssertTrue(app.buttons["record.end"].waitTap(), "End")
@@ -143,7 +144,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["summary.duration"].waitForExistence(timeout: 25),
                       "cardio summary should show duration")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "Done")
-        XCTAssertTrue(app.buttons["cardioRow.boxing"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.buttons["home.cardioRow.other"].waitForExistence(timeout: 25),
                       "the recorded session should be saved to history")
     }
 

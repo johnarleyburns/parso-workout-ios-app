@@ -13,7 +13,10 @@ struct SetEditorView: View {
     let people: [Person]
     /// Snap the saved weight to the nearest plate (decision #15, default off).
     let plateRounding: Bool
-    let onSave: (_ weightKg: Double, _ reps: Int, _ rpe: Double?, _ isWarmup: Bool, _ note: String?, _ performedBy: Person?) -> Void
+    /// The movement is a bodyweight exercise (feedback batch 3): default to a
+    /// bodyweight set and treat the weight field as *added* load.
+    let isBodyweightExercise: Bool
+    let onSave: (_ weightKg: Double, _ reps: Int, _ rpe: Double?, _ isWarmup: Bool, _ usesBodyweight: Bool, _ note: String?, _ performedBy: Person?) -> Void
     var onDelete: (() -> Void)? = nil
 
     /// Whether the current entry would set a new PR (live, FR-1.4).
@@ -24,6 +27,7 @@ struct SetEditorView: View {
     @State private var altText: String         // opposite unit, auto-filled
     @State private var reps: Int
     @State private var isWarmup: Bool
+    @State private var usesBodyweight: Bool
     @State private var note: String
     @State private var performedByID: UUID?    // nil ⇒ owner
 
@@ -35,14 +39,16 @@ struct SetEditorView: View {
          prText: String? = nil,
          people: [Person] = [],
          plateRounding: Bool = false,
+         isBodyweightExercise: Bool = false,
          initialWeightKg: Double = 0,
          initialReps: Int = 5,
          initialRPE: Double? = nil,
          initialWarmup: Bool = false,
+         initialBodyweight: Bool = false,
          initialNote: String? = nil,
          initialPerformedBy: Person? = nil,
          isPRPredicate: @escaping (Double, Int, Bool) -> Bool = { _, _, _ in false },
-         onSave: @escaping (Double, Int, Double?, Bool, String?, Person?) -> Void,
+         onSave: @escaping (Double, Int, Double?, Bool, Bool, String?, Person?) -> Void,
          onDelete: (() -> Void)? = nil) {
         self.exerciseName = exerciseName
         self.unit = unit
@@ -50,6 +56,7 @@ struct SetEditorView: View {
         self.prText = prText
         self.people = people
         self.plateRounding = plateRounding
+        self.isBodyweightExercise = isBodyweightExercise
         self.prCheck = isPRPredicate
         self.onSave = onSave
         self.onDelete = onDelete
@@ -59,6 +66,7 @@ struct SetEditorView: View {
         _altText = State(initialValue: alt)
         _reps = State(initialValue: initialReps)
         _isWarmup = State(initialValue: initialWarmup)
+        _usesBodyweight = State(initialValue: initialBodyweight)
         _note = State(initialValue: initialNote ?? "")
         _performedByID = State(initialValue: initialPerformedBy.flatMap { $0.isMe ? nil : $0.id })
     }
@@ -69,7 +77,9 @@ struct SetEditorView: View {
     private var weightKg: Double {
         WorkoutMath.canonical(parse(weightText) ?? 0, from: unit)
     }
-    private var canSave: Bool { weightKg >= 0 && reps > 0 && !weightText.isEmpty }
+    /// A bodyweight set may be saved with no added load; a regular set needs a weight.
+    private var canSave: Bool { weightKg >= 0 && reps > 0 && (usesBodyweight || !weightText.isEmpty) }
+    private var weightLabel: String { usesBodyweight ? "Added" : "Weight" }
     private var wouldBePR: Bool { canSave && prCheck(weightKg, reps, isWarmup) }
     private var partners: [Person] { people.filter { !$0.isMe } }
     private var selectedPerson: Person? { people.first { $0.id == performedByID } }
@@ -91,10 +101,14 @@ struct SetEditorView: View {
                 }
 
                 Section("Set") {
+                    if isBodyweightExercise {
+                        Toggle("Bodyweight", isOn: $usesBodyweight)
+                            .accessibilityIdentifier("set.bodyweight")
+                    }
                     HStack {
-                        Text("Weight (\(unit.abbreviation))")
+                        Text("\(weightLabel) (\(unit.abbreviation))")
                         Spacer()
-                        TextField("0", text: $weightText)
+                        TextField(usesBodyweight ? "0 (BW)" : "0", text: $weightText)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(maxWidth: 110)
@@ -102,10 +116,10 @@ struct SetEditorView: View {
                             .onChange(of: weightText) { _, new in syncAlt(from: new) }
                     }
                     HStack {
-                        Text("Weight (\(oppositeUnit.abbreviation))")
+                        Text("\(weightLabel) (\(oppositeUnit.abbreviation))")
                             .foregroundStyle(.secondary)
                         Spacer()
-                        TextField("0", text: $altText)
+                        TextField(usesBodyweight ? "0 (BW)" : "0", text: $altText)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(maxWidth: 110)
@@ -164,9 +178,9 @@ struct SetEditorView: View {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("set.cancel")
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("Record") {
                         let kg = plateRounding ? UnitEntry.plateRounded(kg: weightKg, unit: unit) : weightKg
-                        onSave(kg, reps, nil, isWarmup,
+                        onSave(kg, reps, nil, isWarmup, usesBodyweight,
                                note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : note,
                                selectedPerson)
                         dismiss()

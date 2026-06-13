@@ -15,11 +15,10 @@ extension XCUIApplication {
     }
 
     /// Legacy tab labels → the Home launchpad card that now reaches the same
-    /// destination (field-testing §01 removed the tab bar). Lets the existing
-    /// FR1–FR6 suites navigate unchanged through `goToTab`.
+    /// destination (field-testing §01 removed the tab bar). The Trends and Cardio
+    /// screens were removed in feedback batch 3, so only Train/Settings remain.
     private static let homeCard = [
-        "Today": "home.today", "Train": "home.train", "Cardio": "home.cardio",
-        "Trends": "home.stats", "Settings": "home.settings"
+        "Today": "home.today", "Train": "home.train", "Settings": "home.settings"
     ]
 
     /// Swipes up until a button with `id` is present (lazy Form sections aren't
@@ -58,15 +57,12 @@ extension XCUIApplication {
         popToHome()
         switch label {
         case "Today":
-            return  // activity (step count + trend) lives on Home now
-        case "Cardio":
-            // Cardio history reached via the Stats "See all" then the cardio link.
-            XCTAssertTrue(scrollToHittableAndTap("home.stats"), "open Stats")
-            XCTAssertTrue(scrollToHittableAndTap("stats.cardio"), "stats.cardio not found")
+            return  // activity (step count + weekly tiles) lives on Home now
         default:
             // The Home dashboard scrolls, so the "See all" link may be below the
-            // fold — scroll until it's hittable before tapping.
-            let map = ["Train": "home.train", "Trends": "home.stats", "Settings": "home.settings"]
+            // fold — scroll until it's hittable before tapping. (Trends/Cardio
+            // screens were removed in feedback batch 3.)
+            let map = ["Train": "home.train", "Settings": "home.settings"]
             guard let id = map[label] else { XCTFail("unknown destination \(label)"); return }
             XCTAssertTrue(scrollToHittableAndTap(id), "home destination \(label) (\(id)) not found")
         }

@@ -31,6 +31,13 @@ struct SessionView: View {
     private var roster: [Person] {
         allPeople.filter(\.isMe) + allPeople.filter { !$0.isMe }
     }
+    /// At least one training partner is in the roster — then owner sets are tagged
+    /// "Me" too, to disambiguate (feedback batch 3).
+    private var hasPartners: Bool { allPeople.contains { !$0.isMe } }
+    /// Whether the set editor should default to a bodyweight set for an exercise.
+    private func isBodyweight(_ exercise: Exercise) -> Bool {
+        exercise.equipmentValue == .bodyweight
+    }
     /// Planned exercise names from a reused workout that have no sets yet.
     private var plannedOnlyNames: [String] {
         let logged = Set(session.exercisesInOrder.map(\.name))
@@ -49,11 +56,19 @@ struct SessionView: View {
         if case let .forTime(rounds, _) = plan?.scheme { return rounds }
         return nil
     }
-    /// Prescription line for a planned movement, resolved from the plan.
+    /// Prescription line for a planned movement, resolved from the plan. A
+    /// flexible template launched with a chosen rep scheme (feedback batch 3)
+    /// shows that ladder, applied to every movement.
     private func prescription(for name: String) -> String? {
-        guard let item = plan?.items.first(where: { $0.movement == name }) else { return nil }
-        let line = Format.prescription(item, ladder: planLadder, unit: settings.unit)
-        return line.isEmpty ? nil : line
+        let chosen = session.plannedRepLadder
+        if let item = plan?.items.first(where: { $0.movement == name }) {
+            let ladder = chosen.isEmpty ? planLadder : chosen
+            let line = Format.prescription(item, ladder: ladder, unit: settings.unit)
+            return line.isEmpty ? nil : line
+        }
+        // No catalog item (e.g. a reused session) but a chosen scheme is present.
+        guard !chosen.isEmpty else { return nil }
+        return chosen.map(String.init).joined(separator: "-") + " reps"
     }
 
     var body: some View {
@@ -231,7 +246,7 @@ struct SessionView: View {
                 if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
                     setEditor = SetEditorContext(exercise: ex, editing: nil)
                 }
-            } label: { Label("Add Set", systemImage: "plus") }
+            } label: { Label("Record Set", systemImage: "plus") }
                 .buttonStyle(.bordered).controlSize(.small)
                 .accessibilityIdentifier("set.add.\(name)")
         }
@@ -265,13 +280,14 @@ struct SessionView: View {
             HStack {
                 Button {
                     setEditor = SetEditorContext(exercise: exercise, editing: nil)
-                } label: { Label("Add Set", systemImage: "plus") }
+                } label: { Label("Record Set", systemImage: "plus") }
                     .accessibilityIdentifier("set.add.\(exercise.name)")
                 if let last = sets.last {
                     Spacer()
                     Button {
                         addSet(to: exercise, weightKg: last.weight, reps: last.reps,
-                               rpe: last.rpe, isWarmup: last.isWarmup, note: nil)
+                               rpe: last.rpe, isWarmup: last.isWarmup,
+                               usesBodyweight: last.usesBodyweight, note: nil)
                     } label: { Label("Repeat last", systemImage: "arrow.clockwise") }
                         .accessibilityIdentifier("set.repeat.\(exercise.name)")
                 }
@@ -322,6 +338,12 @@ struct SessionView: View {
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background(.quaternary, in: Capsule())
                     .accessibilityIdentifier("set.performer.\(p.name)")
+            } else if hasPartners {
+                // With a partner in the session, tag the owner's own sets "Me".
+                Text("Me").font(.caption2).foregroundStyle(.secondary)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(.quaternary, in: Capsule())
+                    .accessibilityIdentifier("set.performer.Me")
             }
             Spacer()
             if isAllTimePR(set, exercise: exercise) {
@@ -370,25 +392,28 @@ struct SessionView: View {
             prText: pr.map { Format.weight($0, unit: settings.unit) },
             people: roster,
             plateRounding: settings.plateRounding,
+            isBodyweightExercise: isBodyweight(exercise),
             initialWeightKg: ctx.editing?.weight ?? inSessionLast?.weight ?? 0,
             initialReps: ctx.editing?.reps ?? inSessionLast?.reps ?? 5,
             initialRPE: ctx.editing?.rpe,
             initialWarmup: ctx.editing?.isWarmup ?? false,
+            initialBodyweight: ctx.editing?.usesBodyweight ?? inSessionLast?.usesBodyweight ?? isBodyweight(exercise),
             initialNote: ctx.editing?.note,
             initialPerformedBy: ctx.editing?.performedBy ?? inSessionLast?.performedBy,
             isPRPredicate: { kg, reps, warmup in
                 WorkoutRepository.wouldBePR(exercise: exercise, weightKg: kg, reps: reps, isWarmup: warmup,
                                             rule: settings.prRule, formula: settings.formula)
             },
-            onSave: { kg, reps, rpe, warmup, note, performedBy in
+            onSave: { kg, reps, rpe, warmup, bodyweight, note, performedBy in
                 if let editing = ctx.editing {
                     try? WorkoutRepository.updateSet(editing, weightKg: kg, reps: reps,
-                                                     rpe: .some(rpe), isWarmup: warmup, note: .some(note), in: context)
+                                                     rpe: .some(rpe), isWarmup: warmup,
+                                                     usesBodyweight: bodyweight, note: .some(note), in: context)
                     editing.performedBy = (performedBy?.isMe ?? true) ? nil : performedBy
                     try? context.save()
                 } else {
                     addSet(to: exercise, weightKg: kg, reps: reps, rpe: rpe, isWarmup: warmup,
-                           note: note, performedBy: performedBy)
+                           usesBodyweight: bodyweight, note: note, performedBy: performedBy)
                 }
             },
             onDelete: ctx.editing.map { set in { try? WorkoutRepository.deleteSet(set, in: context) } }
@@ -453,14 +478,16 @@ struct SessionView: View {
     }
 
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,
-                        rpe: Double?, isWarmup: Bool, note: String?, performedBy: Person? = nil) {
+                        rpe: Double?, isWarmup: Bool, usesBodyweight: Bool = false,
+                        note: String?, performedBy: Person? = nil) {
         poke()
         let person = (performedBy?.isMe ?? true) ? nil : performedBy
         // PR is only the owner's concern; a partner's set never fires a PR.
         let isPR = person == nil && WorkoutRepository.wouldBePR(exercise: exercise, weightKg: weightKg, reps: reps,
                                                isWarmup: isWarmup, rule: settings.prRule, formula: settings.formula)
         _ = try? WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: weightKg,
-                                          reps: reps, rpe: rpe, isWarmup: isWarmup, note: note,
+                                          reps: reps, rpe: rpe, isWarmup: isWarmup,
+                                          usesBodyweight: usesBodyweight, note: note,
                                           performedBy: person, in: context)
         if isPR { Haptics.prAchieved() } else { Haptics.setLogged() }
         if settings.autoStartRest && !isWarmup {

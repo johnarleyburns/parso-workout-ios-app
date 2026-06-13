@@ -37,6 +37,7 @@ struct WorkoutSummaryView: View {
                 header
                 metricsGrid
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
+                if data.kind == .strength, !data.partners.isEmpty { partnersSection }
                 if !data.hr.isEmpty { hrChart }
                 if data.route.count > 1 { routeMap }
             }
@@ -143,25 +144,52 @@ struct WorkoutSummaryView: View {
     private var strengthSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Exercises").font(.headline)
-            ForEach(data.exercises, id: \.name) { ex in
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text(ex.name).font(.subheadline.weight(.semibold))
-                            .accessibilityIdentifier("summary.exercise.\(ex.name)")
-                        Spacer()
-                        if let top = ex.topSetWeightKg {
-                            Text("top \(Format.weight(top, unit: settings.unit, decimals: 0))")
-                                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                        }
+            ForEach(data.exercises, id: \.name) { ex in exerciseRow(ex, idPrefix: "summary.exercise") }
+        }
+    }
+
+    /// Each training partner's roll-up (feedback batch 3) — partnered history
+    /// shows what the partner did, kept separate from the owner's PRs/volume.
+    private var partnersSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Partners").font(.headline)
+            ForEach(data.partners) { partner in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(partner.name).font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("summary.partner.\(partner.name)")
+                    ForEach(partner.exercises, id: \.name) { ex in
+                        exerciseRow(ex, idPrefix: "summary.partner.\(partner.name).exercise")
                     }
-                    Text("\(ex.setCount) set\(ex.setCount == 1 ? "" : "s") · reps \(ex.reps.map(String.init).joined(separator: ", "))")
-                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
             }
         }
+    }
+
+    private func exerciseRow(_ ex: WorkoutSummaryData.ExerciseLine, idPrefix: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(ex.name).font(.subheadline.weight(.semibold))
+                    .accessibilityIdentifier("\(idPrefix).\(ex.name)")
+                Spacer()
+                if let top = ex.topSetWeightKg {
+                    Text(topLabel(top, bodyweight: ex.usesBodyweight))
+                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                }
+            }
+            Text("\(ex.setCount) set\(ex.setCount == 1 ? "" : "s") · reps \(ex.reps.map(String.init).joined(separator: ", "))")
+                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    /// "top 100 kg", or for bodyweight: "BW" / "BW + 10 kg".
+    private func topLabel(_ topKg: Double, bodyweight: Bool) -> String {
+        if bodyweight {
+            return topKg > 0 ? "BW + \(Format.weight(topKg, unit: settings.unit, decimals: 0))" : "BW"
+        }
+        return "top \(Format.weight(topKg, unit: settings.unit, decimals: 0))"
     }
 
     // MARK: Cardio HR chart + route

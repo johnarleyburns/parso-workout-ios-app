@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-import Charts
 import CadenceCore
 
 /// Home dashboard (field-test round 3): a simple step count + workouts-this-week,
@@ -23,11 +22,13 @@ struct HomeView: View {
     @State private var swimPresented = false
     @State private var pending: PendingWorkout?
     @State private var today: DayActivity?
-    @State private var trend: [DayActivity] = []
 
-    private var weekCount: Int {
-        let weekAgo = Date().addingTimeInterval(-7 * 86_400)
-        return sessions.filter { $0.date >= weekAgo }.count + cardio.filter { $0.start >= weekAgo }.count
+    // Weekly tiles (feedback batch 3) — pure aggregates from CadenceCore.
+    private var weekStart: Date { WeeklyStats.weekStart() }
+    private var cardioMinutesThisWeek: Int { WeeklyStats.cardioMinutes(cardio, since: weekStart) }
+    private var volumeThisWeekKg: Double { WeeklyStats.volumeKg(sessions, since: weekStart) }
+    private var bodyPartsThisWeek: (hit: Set<BodyPart>, missing: [BodyPart]) {
+        WeeklyStats.bodyParts(sessions, since: weekStart)
     }
 
     var body: some View {
@@ -37,9 +38,9 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     if let s = active.strengthSession { resumeCard(s) }
-                    statRow
                     startButton
-                    trendSection
+                    statRow
+                    coverageRow
                     recentWorkoutsSection
                 }
                 .padding()
@@ -65,17 +66,15 @@ struct HomeView: View {
             }
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {
-                case .stats: TrendsView()
                 case .history: HistoryView(path: $path)
-                case .cardio: CardioView()
                 case .settings: SettingsView()
                 }
             }
-            .task { today = await model.health.todayActivity(); trend = await model.health.activityTrend(days: 7) }
-            .refreshable { today = await model.health.todayActivity(); trend = await model.health.activityTrend(days: 7) }
+            .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
+            .refreshable { today = await model.health.todayActivity(); await syncCardioFromHealth() }
             .sheet(isPresented: $typePickerPresented) {
                 WorkoutTypePicker(onSelect: { start($0) },
-                                  onPlan: { launchFromPicker(.plan($0)) },
+                                  onPlan: { plan, ladder in launchFromPicker(.plan(plan, ladder)) },
                                   onWeightsQuickStart: { launchFromPicker(.strength) },
                                   onWeightsReuse: { launchFromPicker(.reuse($0)) })
             }
@@ -124,16 +123,46 @@ struct HomeView: View {
     private var statRow: some View {
         HStack(spacing: 14) {
             statTile("\(Format.integer(today?.steps ?? 0))", "steps today", id: "today.steps")
-            statTile("\(weekCount)", "workouts this week", id: "home.weekCount")
+            statTile("\(cardioMinutesThisWeek)", "cardio min this week", id: "home.cardioMinutes")
         }
     }
-    private func statTile(_ value: String, _ label: String, id: String) -> some View {
+
+    /// Volume + body-part coverage for the trailing week (feedback batch 3).
+    private var coverageRow: some View {
+        let coverage = bodyPartsThisWeek
+        return HStack(spacing: 14) {
+            statTile(Format.weight(volumeThisWeekKg, unit: settings.unit, decimals: 0),
+                     "volume this week", id: "home.volume")
+            statTile("\(coverage.hit.count)/\(BodyPart.allCases.count)", "body parts",
+                     id: "home.bodyParts",
+                     caption: coverage.missing.isEmpty
+                        ? "All parts hit 💪"
+                        : "Missing: " + coverage.missing.map(\.displayName).joined(separator: ", "),
+                     captionID: "home.bodyParts.missing")
+        }
+    }
+
+    private func statTile(_ value: String, _ label: String, id: String,
+                          caption: String? = nil, captionID: String? = nil) -> some View {
         VStack(spacing: 4) {
             Text(value).font(.title.bold()).monospacedDigit().accessibilityIdentifier(id)
             Text(label).font(.caption).foregroundStyle(.secondary)
+            if let caption {
+                Text(caption).font(.caption2).foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier(captionID ?? "")
+            }
         }
-        .frame(maxWidth: .infinity).padding(.vertical, 16)
+        .frame(maxWidth: .infinity).padding(.vertical, 16).padding(.horizontal, 6)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// Pulls any new Watch/Health-recorded cardio into the local store (FR-2.1).
+    /// Formerly auto-run by the now-removed Cardio screen (feedback batch 3).
+    private func syncCardioFromHealth() async {
+        let new = await model.health.newWorkouts(since: model.lastHealthSync)
+        _ = try? WorkoutRepository.ingest(new, in: context)
+        model.lastHealthSync = Date()
     }
 
     private var startButton: some View {
@@ -155,21 +184,6 @@ struct HomeView: View {
     }
 
     // MARK: Inline sections (surfaced, not hidden)
-
-    private var trendSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionHeader("Trends", route: .stats, id: "home.stats")
-            Chart(trend) { day in
-                BarMark(x: .value("Day", day.date, unit: .day), y: .value("Steps", day.steps))
-                    .foregroundStyle(.green.gradient)
-                RuleMark(y: .value("Goal", settings.stepGoal))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4])).foregroundStyle(.secondary)
-            }
-            .chartXAxis { AxisMarks(values: .stride(by: .day)) { _ in AxisValueLabel(format: .dateTime.weekday(.narrow)) } }
-            .frame(height: 120)
-            .accessibilityIdentifier("today.trendChart")
-        }
-    }
 
     /// One merged, date-sorted "Recent workouts" list — cardio counts as a workout
     /// too, so strength sessions and cardio recordings share a single section (P1 #10).
@@ -304,8 +318,8 @@ struct HomeView: View {
             if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
                 active.startStrength(s); path.append(s)
             }
-        case .plan(let plan):
-            if let s = try? WorkoutRepository.startSession(from: plan, in: context) {
+        case .plan(let plan, let ladder):
+            if let s = try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) {
                 active.startStrength(s); path.append(s)
             }
         case .reuse(let past):
@@ -322,12 +336,12 @@ struct HomeView: View {
 /// What to launch once the countdown finishes.
 struct PendingWorkout: Identifiable {
     let id = UUID()
-    enum Kind { case strength, plan(WorkoutPlan), reuse(WorkoutSession), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType) }
+    enum Kind { case strength, plan(WorkoutPlan, [Int]?), reuse(WorkoutSession), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType) }
     let kind: Kind
 }
 
 /// Pushed destinations reachable from Home.
-enum HomeRoute: Hashable { case stats, history, cardio, settings }
+enum HomeRoute: Hashable { case history, settings }
 
 /// A row in Home's merged "Recent workouts" list — strength and cardio together,
 /// sorted by date (P1 #10).

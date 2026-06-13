@@ -49,11 +49,16 @@ struct CrossFitPickerView: View {
 /// A read-only prescription preview for one benchmark, with a big Start button.
 struct CrossFitPreviewView: View {
     let plan: WorkoutPlan
+    /// A chosen per-set rep ladder for a flexible strength template (feedback
+    /// batch 3) — applied to every movement in the preview + the launched session.
+    var repLadder: [Int]? = nil
     let onStart: () -> Void
     @Environment(AppSettings.self) private var settings
 
-    /// Rep-ladder schemes apply the ladder to every item; others use item reps.
+    /// Rep-ladder schemes apply the ladder to every item; a chosen template
+    /// ladder takes precedence, then a benchmark's `forTime` rounds.
     private var ladder: [Int]? {
+        if let repLadder, !repLadder.isEmpty { return repLadder }
         if case let .forTime(rounds, _) = plan.scheme { return rounds }
         return nil
     }

@@ -8,8 +8,9 @@ struct WorkoutTypePicker: View {
     /// A non-CrossFit type was chosen — the parent maps it to a launch.
     let onSelect: (WorkoutType) -> Void
     /// A CrossFit benchmark or a strength-library preset was chosen — the parent
-    /// launches the planned session.
-    let onPlan: (WorkoutPlan) -> Void
+    /// launches the planned session, optionally with a chosen per-set rep ladder
+    /// (flexible Strength templates carry one; everything else passes nil).
+    let onPlan: (WorkoutPlan, [Int]?) -> Void
     /// Weights → Quick Start (a blank strength session).
     let onWeightsQuickStart: () -> Void
     /// Weights → Start from Previous (reuse a past session as a template).
@@ -30,7 +31,7 @@ struct WorkoutTypePicker: View {
                         switch type {
                         case .crossfit:
                             NavigationLink {
-                                CrossFitPickerView(onStart: onPlan)
+                                CrossFitPickerView(onStart: { onPlan($0, nil) })
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("startType.\(type.rawValue)")

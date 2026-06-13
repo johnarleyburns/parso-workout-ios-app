@@ -5,12 +5,11 @@ import CadenceCore
 /// Pre-workout heart-rate connection screen (feedback batch 5). Shown before a
 /// HIIT/boxing interval so the user can get HR flowing — or knowingly skip it.
 ///
-/// Two honest sources:
-///  • **Chest strap (BLE)** — real-time `currentBPM` from `HeartRateMonitor`. The
-///    supported live path; connects/streams with no watch app.
-///  • **Apple Watch (via Health)** — the latest HR sample HealthKit has. The
-///    iPhone can't stream the Watch's *live* HR (needs a watchOS app, deferred),
-///    so this is passive and may lag; we label it with how stale it is.
+/// Source: the **chest strap (BLE)** — real-time `currentBPM` from
+/// `HeartRateMonitor`, the supported live path (no watch app). The Apple Watch is
+/// intentionally not shown here: the iPhone can't stream the Watch's *live* HR
+/// without a watchOS app, and its last Health sample is too stale to be useful
+/// in a workout, so we don't pretend otherwise.
 ///
 /// `onContinue(useHR)` proceeds to the workout — `true` if the user wants HR
 /// captured (strap), `false` to record without HR.
@@ -19,9 +18,6 @@ struct PreWorkoutHRView: View {
 
     @Environment(AppModel.self) private var model
     @Query private var savedDevices: [HRMDevice]
-
-    @State private var watchHR: HRReading?
-    @State private var now = Date()
 
     private var hrm: HeartRateMonitor { model.hrm }
     private var defaultDevice: HRMDevice? { savedDevices.first { $0.isDefault } }
@@ -48,11 +44,8 @@ struct PreWorkoutHRView: View {
                     .multilineTextAlignment(.center).padding(.horizontal)
             }
 
-            VStack(spacing: 12) {
-                strapRow
-                watchRow
-            }
-            .padding(.horizontal)
+            strapRow
+                .padding(.horizontal)
 
             Spacer()
 
@@ -83,14 +76,6 @@ struct PreWorkoutHRView: View {
             if let id = defaultDevice?.id { hrm.connect(id) }
         }
         .onDisappear { hrm.stopScanning() }
-        .task {
-            // Poll the Watch's latest HR from Health (passive; may lag).
-            while !Task.isCancelled {
-                watchHR = await model.health.latestHeartRate()
-                now = Date()
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
-            }
-        }
     }
 
     // MARK: Rows
@@ -114,22 +99,6 @@ struct PreWorkoutHRView: View {
         }
     }
 
-    private var watchRow: some View {
-        HRSourceCard(
-            icon: "applewatch",
-            title: "Apple Watch",
-            tint: .blue
-        ) {
-            if let hr = watchHR {
-                HRValueLabel(bpm: Int(hr.bpm), note: freshness(hr.date), noteColor: .secondary)
-                    .accessibilityIdentifier("prehr.watchBPM")
-            } else {
-                Text("—").foregroundStyle(.secondary)
-            }
-        }
-        .accessibilityHint("From Health; may lag. The strap is real-time.")
-    }
-
     // MARK: Helpers
 
     private func connectStrap() {
@@ -138,14 +107,6 @@ struct PreWorkoutHRView: View {
             hrm.connect(first.id)
             hrm.rememberDevice(first.id)
         }
-    }
-
-    /// "live"/"Ns ago"/"Nm ago" for a Watch sample's age.
-    private func freshness(_ date: Date) -> String {
-        let age = Int(max(0, now.timeIntervalSince(date)))
-        if age < 5 { return "just now" }
-        if age < 60 { return "\(age)s ago" }
-        return "\(age / 60)m ago"
     }
 }
 

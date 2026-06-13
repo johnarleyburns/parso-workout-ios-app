@@ -30,10 +30,6 @@ final class FR12Feedback5UITests: CadenceUITestCase {
     func testHRGateContinueWithout() {
         let app = XCUIApplication.launched()
         startGibalaToHRGate(app)
-        // The Watch row shows the seeded passive HR.
-        XCTAssertTrue(anyElement(app, "prehr.watchBPM").waitForExistence(timeout: 10),
-                      "the Apple Watch HR row should show a value from Health")
-
         XCTAssertTrue(app.buttons["prehr.skip"].waitTap(), "Continue without HR")
         XCTAssertTrue(app.staticTexts["interval.countdown"].waitForExistence(timeout: 25),
                       "the interval runner should start")

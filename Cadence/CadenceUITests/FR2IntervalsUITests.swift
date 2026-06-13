@@ -24,8 +24,7 @@ final class FR2IntervalsUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "summary Done")
 
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25))
-        app.goToTab("Cardio")
-        XCTAssertTrue(app.buttons["cardioRow.boxing"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.buttons["home.cardioRow.boxing"].waitForExistence(timeout: 25),
                       "boxing session should be saved to history")
     }
 

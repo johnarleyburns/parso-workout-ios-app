@@ -11,7 +11,9 @@ import CadenceCore
 struct WeightsStartView: View {
     let onQuickStart: () -> Void
     let onReuse: (WorkoutSession) -> Void
-    let onPlan: (WorkoutPlan) -> Void
+    /// Launches a library preset, optionally with a chosen per-set rep ladder
+    /// (flexible templates carry one; fixed programs pass nil).
+    let onPlan: (WorkoutPlan, [Int]?) -> Void
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
@@ -58,7 +60,13 @@ struct WeightsStartView: View {
             Section("Start from Library") {
                 ForEach(StrengthPresets.all) { plan in
                     NavigationLink {
-                        CrossFitPreviewView(plan: plan) { onPlan(plan) }
+                        // Flexible templates pick a set/rep scheme first; fixed
+                        // programs (5×5, Olympic) go straight to the preview.
+                        if plan.flexibleScheme {
+                            RepSchemePicker(plan: plan, onStart: onPlan)
+                        } else {
+                            CrossFitPreviewView(plan: plan) { onPlan(plan, nil) }
+                        }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(plan.name).font(.headline)
@@ -71,7 +79,7 @@ struct WeightsStartView: View {
                 }
             }
         }
-        .navigationTitle("Weights")
+        .navigationTitle("Strength")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

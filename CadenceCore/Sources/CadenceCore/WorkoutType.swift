@@ -19,7 +19,7 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
 
     public var displayName: String {
         switch self {
-        case .weights: return "Weights"
+        case .weights: return "Strength"
         case .crossfit: return "CrossFit"
         case .run: return "Run"
         case .walk: return "Walk"

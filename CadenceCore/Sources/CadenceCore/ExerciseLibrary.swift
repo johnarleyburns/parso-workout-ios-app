@@ -44,10 +44,10 @@ public enum ExerciseLibrary {
 
     /// Built-in catalog seeded on first launch and version-upgraded thereafter.
     /// Bump `seedVersion` when entries are added so existing stores backfill.
-    public static let seedVersion = 3
+    public static let seedVersion = 4
 
     public static let starter: [ExerciseTemplate] = chest + back + shoulders
-        + arms + legs + glutes + core + olympicAndCarry + crossfit
+        + arms + legs + glutes + core + olympicAndCarry + crossfit + bodyweight
 
     // MARK: Chest
     private static let chest: [ExerciseTemplate] = [
@@ -216,6 +216,30 @@ public enum ExerciseLibrary {
         .init("Double-Under", .cardio, .plyometric, .push, .compound, primary: ["calves"], secondary: ["forearms"]),
         .init("Run", .cardio, nil, nil, .compound, primary: ["quads", "hamstrings", "calves"], secondary: ["glutes"]),
         .init("Rowing Machine", .cardio, .machine, .pull, .compound, primary: ["lats", "quads"], secondary: ["biceps", "hamstrings"]),
+    ]
+
+    // MARK: Bodyweight / calisthenics (feedback batch 3)
+    // The popular bodyweight movements a lifter reaches for when training without
+    // load. Movements already present (Push-Up, Pull-Up, Chin-Up, Dip, Air Squat,
+    // Pistol Squat, Inverted Row, Glute Bridge, Plank, Side Plank, Sit-Up, Crunch,
+    // Hanging Leg Raise, Bench Dip, Mountain Climber, Burpee, Handstand Push-Up,
+    // Ring Dip, Muscle-Up, Nordic Curl) are reused as-is. All `.bodyweight`.
+    private static let bodyweight: [ExerciseTemplate] = [
+        .init("Pike Push-Up", .push, .bodyweight, .push, .compound, primary: ["delts"], secondary: ["triceps", "front-delts"]),
+        .init("Diamond Push-Up", .push, .bodyweight, .push, .compound, primary: ["triceps", "chest"], secondary: ["front-delts"]),
+        .init("Decline Push-Up", .push, .bodyweight, .push, .compound, primary: ["upper-chest", "chest"], secondary: ["triceps", "front-delts"]),
+        .init("Wide Push-Up", .push, .bodyweight, .push, .compound, primary: ["chest"], secondary: ["front-delts"]),
+        .init("Negative Pull-Up", .pull, .bodyweight, .pull, .compound, primary: ["lats"], secondary: ["biceps", "rhomboids"]),
+        .init("Commando Pull-Up", .pull, .bodyweight, .pull, .compound, primary: ["lats", "biceps"], secondary: ["rhomboids"]),
+        .init("Bodyweight Lunge", .legs, .bodyweight, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"], lateral: true),
+        .init("Wall Sit", .legs, .bodyweight, .static, .isolation, primary: ["quads"], secondary: ["glutes"]),
+        .init("Bodyweight Calf Raise", .legs, .bodyweight, .push, .isolation, primary: ["calves"]),
+        .init("Single-Leg Glute Bridge", .legs, .bodyweight, .push, .compound, primary: ["glutes"], secondary: ["hamstrings"], lateral: true),
+        .init("L-Sit", .core, .bodyweight, .static, .isolation, primary: ["abs", "hip-flexors"], secondary: ["quads"]),
+        .init("Hollow Hold", .core, .bodyweight, .static, .isolation, primary: ["abs"], secondary: ["hip-flexors"]),
+        .init("Superman", .core, .bodyweight, .pull, .isolation, primary: ["lower-back"], secondary: ["glutes"]),
+        .init("Bird Dog", .core, .bodyweight, .static, .isolation, primary: ["abs", "lower-back"], secondary: ["glutes"]),
+        .init("Flutter Kick", .core, .bodyweight, .pull, .isolation, primary: ["abs", "hip-flexors"]),
     ]
 
     /// Ranked, keyword-aware search (field-testing §03).

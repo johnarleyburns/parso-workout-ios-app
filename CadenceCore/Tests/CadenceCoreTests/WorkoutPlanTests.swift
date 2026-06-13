@@ -69,11 +69,13 @@ final class WorkoutPlanTests: XCTestCase {
     // carry the .strength scheme, and keep a plain (un-prefixed) title.
     func testStrengthPresetsResolveAndAreStrength() throws {
         XCTAssertFalse(StrengthPresets.all.isEmpty)
-        let fiveByFive = try XCTUnwrap(PlanCatalog.plan(forKey: "preset-5x5"))
-        XCTAssertEqual(fiveByFive.name, "5×5")
-        XCTAssertEqual(fiveByFive.displayTitle, "5×5")   // no "CrossFit –" prefix
+        // 5×5 is now four alternating days (feedback batch 3); 1A is Squat/Bench/Row.
+        let fiveByFive = try XCTUnwrap(PlanCatalog.plan(forKey: "preset-5x5-1a"))
+        XCTAssertEqual(fiveByFive.name, "5×5 Week 1A")
+        XCTAssertEqual(fiveByFive.displayTitle, "5×5 Week 1A")  // no "CrossFit –" prefix
         XCTAssertEqual(fiveByFive.scheme, .strength)
         XCTAssertEqual(fiveByFive.movementNames, ["Back Squat", "Bench Press", "Barbell Row"])
+        XCTAssertFalse(fiveByFive.flexibleScheme, "a fixed program needs no rep-scheme chooser")
         // Every preset item carries target sets/reps.
         for plan in StrengthPresets.all {
             XCTAssertEqual(plan.source, .strengthPreset)
@@ -82,6 +84,32 @@ final class WorkoutPlanTests: XCTestCase {
                 XCTAssertNotNil(item.reps)
             }
         }
+    }
+
+    // feedback batch 3 — Olympic split into three focused days; split templates
+    // are flexible (their scheme is chosen at launch).
+    func testStrengthPresetVariantsAndFlexibility() throws {
+        XCTAssertEqual(PlanCatalog.plan(forKey: "preset-oly-snatch")?.name, "Olympic Snatch Day")
+        let snatch = try XCTUnwrap(PlanCatalog.plan(forKey: "preset-oly-snatch"))
+        XCTAssertEqual(snatch.items.map(\.movement), ["Snatch"])
+        XCTAssertEqual(snatch.items.first?.targetSets, 20)
+        XCTAssertFalse(snatch.flexibleScheme)
+        XCTAssertTrue(try XCTUnwrap(PlanCatalog.plan(forKey: "preset-push")).flexibleScheme)
+        XCTAssertTrue(try XCTUnwrap(PlanCatalog.plan(forKey: "preset-cali-pull")).flexibleScheme)
+        // The 5×5 days and Olympic days all resolve.
+        for id in ["preset-5x5-1a", "preset-5x5-1b", "preset-5x5-2a", "preset-5x5-2b",
+                   "preset-oly-snatch", "preset-oly-cj", "preset-oly-mixed"] {
+            XCTAssertNotNil(PlanCatalog.plan(forKey: id), "\(id) should resolve")
+        }
+    }
+
+    // feedback batch 3 — launching a flexible template with a chosen rep ladder
+    // stamps the ladder on the session for the planned-card prescription.
+    func testStartSessionWithRepLadderStampsLadder() throws {
+        let ctx = try makeContext()
+        let push = try XCTUnwrap(PlanCatalog.plan(forKey: "preset-push"))
+        let session = try WorkoutRepository.startSession(from: push, repLadder: [12, 10, 8], in: ctx)
+        XCTAssertEqual(session.plannedRepLadder, [12, 10, 8])
     }
 
     func testStartSessionFromPlanPreloadsMovements() throws {

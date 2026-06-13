@@ -10,13 +10,16 @@ final class IntervalRunner {
     let plan: IntervalPlan
     private(set) var clock: WorkoutClock
     var now = Date()
+    /// Time skipped forward via `skipPhase()` (feedback batch 5) — added on top of
+    /// the wall-clock elapsed so skipping a phase jumps to the next boundary.
+    private(set) var skipped: TimeInterval = 0
 
     init(plan: IntervalPlan) {
         self.plan = plan
         self.clock = WorkoutClock(startedAt: Date())
     }
 
-    var elapsed: TimeInterval { clock.elapsed(now: now) }
+    var elapsed: TimeInterval { clock.elapsed(now: now) + skipped }
     var isComplete: Bool { clock.isEnded || plan.isComplete(atElapsed: elapsed) }
     var isPaused: Bool { clock.isPaused }
 
@@ -38,4 +41,19 @@ final class IntervalRunner {
     func pause() { clock.pause(now: Date()) }
     func resume() { clock.resume(now: Date()) }
     func end() { clock.end(now: Date()) }
+
+    /// Skips the active phase: jumps elapsed forward to the next phase boundary
+    /// (feedback batch 5). Skipping the last phase pushes past `totalDuration`, so
+    /// `isComplete` flips true and the view finishes.
+    func skipPhase() {
+        let target = plan.elapsedAtNextPhase(after: elapsed)
+        skipped += max(0, target - elapsed)
+    }
+
+    /// Restarts the clock from now and clears any skip offset — used when the
+    /// pre-workout HR gate is passed so elapsed starts at 0 (feedback batch 5).
+    func restart() {
+        clock = WorkoutClock(startedAt: Date())
+        skipped = 0
+    }
 }

@@ -23,6 +23,12 @@ struct IntervalView: View {
     @State private var lastWarnedPhase: Int?
     @State private var finished = false
     @State private var finishedSummary: WorkoutSummaryData?
+    // HR (feedback batch 5): the pre-workout gate decides whether we capture HR; if
+    // so we sample the strap's BPM once per whole second into `hrSamples`.
+    @State private var showingHRGate = true
+    @State private var captureHR = false
+    @State private var hrSamples: [HRSamplePoint] = []
+    @State private var lastHRSecond = -1
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     init(plan: IntervalPlan, saveType: CardioType) {
@@ -38,6 +44,14 @@ struct IntervalView: View {
         if let finishedSummary {
             // A3 — the interval session is saved; show its summary.
             WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
+        } else if showingHRGate {
+            // Pre-workout HR connect screen (feedback batch 5). The runner's clock
+            // only starts once the gate is passed, so setup time isn't counted.
+            PreWorkoutHRView { useHR in
+                captureHR = useHR
+                runner.restart()
+                showingHRGate = false
+            }
         } else {
             runnerView
         }
@@ -60,13 +74,30 @@ struct IntervalView: View {
                 Text(label.uppercased())
                     .font(.system(size: 40, weight: .heavy, design: .rounded))
                     .minimumScaleFactor(0.5).lineLimit(2).multilineTextAlignment(.center)
+                    .accessibilityIdentifier("interval.phaseLabel")
                 Text(Format.duration(runner.phaseRemaining))
                     .font(.system(size: 120, weight: .black, design: .rounded))
                     .monospacedDigit().minimumScaleFactor(0.4).lineLimit(1)
                     .accessibilityIdentifier("interval.countdown")
                 Text("Total left \(Format.duration(runner.overallRemaining))")
                     .font(.headline).opacity(0.85)
+                if captureHR, let bpm = model.hrm.currentBPM, bpm > 0 {
+                    Label("\(Int(bpm)) bpm", systemImage: "heart.fill")
+                        .font(.headline).opacity(0.9)
+                        .accessibilityIdentifier("interval.bpm")
+                }
                 Spacer()
+
+                // Skip the current phase (warm-up/work/rest/cool-down) — feedback
+                // batch 5. Big hit target above the Pause/End pair.
+                Button(action: skipPhase) {
+                    Label("Skip", systemImage: "forward.fill")
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                }
+                .buttonStyle(.bordered).controlSize(.large)
+                .tint(.black.opacity(0.4))
+                .accessibilityIdentifier("interval.skip")
+                .accessibilityLabel("Skip phase")
 
                 WorkoutControlBar(
                     isPaused: runner.isPaused,
@@ -119,6 +150,14 @@ struct IntervalView: View {
 
     private func advance() {
         runner.now = Date()
+        // Sample the strap's HR once per whole elapsed second (feedback batch 5).
+        if captureHR, !runner.isPaused {
+            let whole = Int(runner.elapsed)
+            if whole != lastHRSecond, let bpm = model.hrm.currentBPM, bpm > 0 {
+                hrSamples.append(HRSamplePoint(t: TimeInterval(whole), bpm: bpm))
+                lastHRSecond = whole
+            }
+        }
         // Flash toggle for the last-3s imminent state (honours Reduce Motion).
         if isImminent && !reduceMotion {
             withAnimation(.easeInOut(duration: 0.25)) { flashOn.toggle() }
@@ -140,6 +179,14 @@ struct IntervalView: View {
         runner.isPaused ? runner.resume() : runner.pause()
     }
 
+    /// Skips the active phase and re-arms the cue trackers for the new phase.
+    private func skipPhase() {
+        runner.skipPhase()
+        lastWarnedPhase = nil
+        lastTickSecond = -1
+        if runner.isComplete && !finished { Task { await finish() } }
+    }
+
     private func finish() async {
         guard !finished else { return }
         finished = true
@@ -151,11 +198,15 @@ struct IntervalView: View {
         // how many work rounds were actually finished) so history shows the detail
         // (feedback batch 4 / roadmap P5).
         let interval = IntervalSummary.from(plan: plan, elapsed: runner.elapsed)
+        // Real HR captured from the strap during the workout (feedback batch 5).
+        let hr = HRSampling.downsample(hrSamples)
+        let bpms = hr.map(\.bpm).filter { $0 > 0 }
+        let avgHR = bpms.isEmpty ? nil : bpms.reduce(0, +) / Double(bpms.count)
         let summary = CardioWorkoutSummary(id: UUID(), type: saveType, start: start, end: end,
                                            distanceMeters: nil,
                                            activeEnergyKcal: CardioMath.estimateCalories(
-                                               type: saveType, seconds: end.timeIntervalSince(start), avgHR: nil),
-                                           hrSamples: [], route: [],
+                                               type: saveType, seconds: end.timeIntervalSince(start), avgHR: avgHR),
+                                           hrSamples: hr, route: [],
                                            intervalSummary: interval)
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,

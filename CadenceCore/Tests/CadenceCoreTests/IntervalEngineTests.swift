@@ -78,6 +78,40 @@ final class IntervalEngineTests: XCTestCase {
         XCTAssertTrue(plan.phases.contains { $0.label.hasPrefix("Recover") })
     }
 
+    // MARK: Skip (feedback batch 5)
+
+    func testElapsedAtNextPhaseFromWarmup() {
+        // Gibala: warmup 180 → work 60 → rest 60 → …
+        let plan = IntervalPlan.gibala(warmup: 180, rounds: 8, work: 60, rest: 60, cooldown: 120)
+        // Anywhere inside the warm-up jumps to the end of the warm-up (180).
+        XCTAssertEqual(plan.elapsedAtNextPhase(after: 0), 180, accuracy: 0.001)
+        XCTAssertEqual(plan.elapsedAtNextPhase(after: 45), 180, accuracy: 0.001)
+        XCTAssertEqual(plan.elapsedAtNextPhase(after: 179), 180, accuracy: 0.001)
+    }
+
+    func testElapsedAtNextPhaseMidRound() {
+        let plan = IntervalPlan.gibala(warmup: 180, rounds: 8, work: 60, rest: 60, cooldown: 120)
+        // 200s in → inside the first work phase (180..240) → next boundary 240.
+        XCTAssertEqual(plan.elapsedAtNextPhase(after: 200), 240, accuracy: 0.001)
+        // 250s in → inside the first rest phase (240..300) → next boundary 300.
+        XCTAssertEqual(plan.elapsedAtNextPhase(after: 250), 300, accuracy: 0.001)
+    }
+
+    func testElapsedAtNextPhaseAtBoundary() {
+        let plan = IntervalPlan.gibala(warmup: 180, rounds: 8, work: 60, rest: 60, cooldown: 120)
+        // Exactly at a phase boundary skips the phase that *starts* there.
+        XCTAssertEqual(plan.elapsedAtNextPhase(after: 180), 240, accuracy: 0.001)
+    }
+
+    func testElapsedAtNextPhaseOnLastPhaseEndsWorkout() {
+        let plan = IntervalPlan.gibala(warmup: 180, rounds: 8, work: 60, rest: 60, cooldown: 120)
+        // Inside the final cool-down → totalDuration (skip ends the workout).
+        let total = plan.totalDuration
+        XCTAssertEqual(plan.elapsedAtNextPhase(after: total - 30), total, accuracy: 0.001)
+        // Past the end clamps to totalDuration too.
+        XCTAssertEqual(plan.elapsedAtNextPhase(after: total + 100), total, accuracy: 0.001)
+    }
+
     func testColorStateThresholds() {
         XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 60), .work)     // green
         XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 30), .warning)  // yellow

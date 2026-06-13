@@ -47,6 +47,11 @@ final class FakeHealthProvider: HealthDataProviding, @unchecked Sendable {
 
     func newWorkouts(since: Date?) async -> [IngestedWorkout] { pendingWorkouts }
 
+    /// A seeded "latest Watch HR" so the pre-workout HR screen (feedback batch 5)
+    /// shows a Watch row in previews/UI tests. ~40 s stale to exercise the lag copy.
+    var seededWatchHR: HRReading? = HRReading(bpm: 128, date: Date().addingTimeInterval(-40))
+    func latestHeartRate() async -> HRReading? { seededWatchHR }
+
     var savedSummaries: [StrengthWorkoutSummary] = []
     func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID? {
         savedSummaries.append(summary)

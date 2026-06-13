@@ -108,6 +108,8 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["startType.boxing"].waitTap(), "Boxing type")
         XCTAssertTrue(app.buttons["interval.preset.box-3-1"].waitTap(), "boxing preset")
         XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")
+        // Pre-workout HR gate (feedback batch 5) — continue without HR.
+        XCTAssertTrue(app.buttons["prehr.skip"].waitTap(), "Continue without HR")
         XCTAssertTrue(app.staticTexts["interval.countdown"].waitForExistence(timeout: 25),
                       "interval runner")
         app.buttons["interval.end"].tap()

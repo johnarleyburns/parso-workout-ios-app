@@ -91,7 +91,10 @@ struct HomeView: View {
             .sheet(item: $intervalType) { wType in
                 IntervalSetupView(type: wType) { plan in
                     intervalType = nil
-                    begin(.interval(IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)))
+                    // Intervals skip the numeric get-ready countdown: the pre-workout
+                    // HR gate (inside IntervalView) + the protocol's own warm-up phase
+                    // are the "get ready" (feedback batch 5).
+                    intervalLaunch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)
                 }
             }
             .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType) }

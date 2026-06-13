@@ -18,16 +18,35 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     public struct ExerciseLine: Equatable, Sendable {
         public let name: String
         public let setCount: Int
-        /// Heaviest owner working-set weight (kg) for this exercise, if any.
+        /// Heaviest working-set weight (kg) for this exercise, if any. For a
+        /// bodyweight exercise this is the heaviest *added* load (0 = pure BW).
         public let topSetWeightKg: Double?
-        /// Reps of each owner working set, in logged order.
+        /// Reps of each working set, in logged order.
         public let reps: [Int]
+        /// True when this exercise's working sets are bodyweight (feedback batch
+        /// 3) — the view renders "BW" / "BW + X" rather than a bare weight.
+        public let usesBodyweight: Bool
 
-        public init(name: String, setCount: Int, topSetWeightKg: Double?, reps: [Int]) {
+        public init(name: String, setCount: Int, topSetWeightKg: Double?, reps: [Int],
+                    usesBodyweight: Bool = false) {
             self.name = name
             self.setCount = setCount
             self.topSetWeightKg = topSetWeightKg
             self.reps = reps
+            self.usesBodyweight = usesBodyweight
+        }
+    }
+
+    /// A training partner's roll-up within a strength summary (feedback batch 3):
+    /// their working sets, so partnered history shows what the partner did too.
+    public struct PartnerSummary: Equatable, Sendable, Identifiable {
+        public let name: String
+        public let exercises: [ExerciseLine]
+        public var id: String { name }
+
+        public init(name: String, exercises: [ExerciseLine]) {
+            self.name = name
+            self.exercises = exercises
         }
     }
 
@@ -45,7 +64,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     public let totalVolumeKg: Double?        // strength
     public let setCount: Int                 // strength: owner working-set count
     public let totalReps: Int                // strength: owner working-set reps, summed
-    public let exercises: [ExerciseLine]     // strength
+    public let exercises: [ExerciseLine]     // strength: owner's working sets
+    public let partners: [PartnerSummary]    // strength: each partner's working sets
     public let hr: [(t: TimeInterval, bpm: Double)]   // cardio chart
     public let route: [(lat: Double, lon: Double)]    // cardio map
 
@@ -64,6 +84,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                 setCount: Int = 0,
                 totalReps: Int = 0,
                 exercises: [ExerciseLine] = [],
+                partners: [PartnerSummary] = [],
                 hr: [(t: TimeInterval, bpm: Double)] = [],
                 route: [(lat: Double, lon: Double)] = []) {
         self.kind = kind
@@ -81,6 +102,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         self.setCount = setCount
         self.totalReps = totalReps
         self.exercises = exercises
+        self.partners = partners
         self.hr = hr
         self.route = route
     }
@@ -102,6 +124,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             && lhs.setCount == rhs.setCount
             && lhs.totalReps == rhs.totalReps
             && lhs.exercises == rhs.exercises
+            && lhs.partners == rhs.partners
             && lhs.hr.count == rhs.hr.count
             && zip(lhs.hr, rhs.hr).allSatisfy { $0 == $1 }
             && lhs.route.count == rhs.route.count
@@ -119,18 +142,22 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         // logged movement could vanish from history (round4b feedback #7). Now we
         // keep any exercise with ≥1 owner set; the line still summarizes only the
         // owner's working (non-warmup) sets. Partner-only exercises are excluded.
-        let exercises: [ExerciseLine] = session.exercisesInOrder.compactMap { ex in
-            let ownerSets = session.orderedSets.filter { $0.exercise?.id == ex.id && $0.isOwnerSet }
-            guard !ownerSets.isEmpty else { return nil }
-            let working = ownerSets.filter { !$0.isWarmup }
-            let top = working.map(\.weight).max()
-            return ExerciseLine(name: ex.name,
-                                setCount: working.count,
-                                topSetWeightKg: top,
-                                reps: working.map(\.reps))
-        }
+        // Owner lines: every exercise with ≥1 owner set (warmup-only lines keep a
+        // setCount of 0 rather than vanishing — round4b feedback #7).
+        let exercises = lines(in: session) { $0.isOwnerSet }
         let setCount = exercises.reduce(0) { $0 + $1.setCount }
         let totalReps = exercises.reduce(0) { $0 + $1.reps.reduce(0, +) }
+        // Partner lines: grouped by partner name, in first-appearance order
+        // (feedback batch 3 — partnered history shows what the partner did too).
+        var partnerOrder: [String] = []
+        for set in session.orderedSets {
+            guard let p = set.performedBy, !p.isMe else { continue }
+            if !partnerOrder.contains(p.name) { partnerOrder.append(p.name) }
+        }
+        let partners: [PartnerSummary] = partnerOrder.map { name in
+            PartnerSummary(name: name,
+                           exercises: lines(in: session) { $0.performedBy?.name == name && !($0.performedBy?.isMe ?? true) })
+        }
         return WorkoutSummaryData(
             kind: .strength,
             title: session.title,
@@ -139,8 +166,25 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             totalVolumeKg: session.totalVolume,
             setCount: setCount,
             totalReps: totalReps,
-            exercises: exercises
+            exercises: exercises,
+            partners: partners
         )
+    }
+
+    /// Builds per-exercise lines for the sets matching `belongs`, keeping any
+    /// exercise with ≥1 matching set (working sets summarize the line).
+    private static func lines(in session: WorkoutSession,
+                             belongs: (SetEntry) -> Bool) -> [ExerciseLine] {
+        session.exercisesInOrder.compactMap { ex in
+            let mine = session.orderedSets.filter { $0.exercise?.id == ex.id && belongs($0) }
+            guard !mine.isEmpty else { return nil }
+            let working = mine.filter { !$0.isWarmup }
+            return ExerciseLine(name: ex.name,
+                                setCount: working.count,
+                                topSetWeightKg: working.map(\.weight).max(),
+                                reps: working.map(\.reps),
+                                usesBodyweight: working.contains { $0.usesBodyweight })
+        }
     }
 
     /// Builds a cardio summary from a recorded/ingested cardio workout.

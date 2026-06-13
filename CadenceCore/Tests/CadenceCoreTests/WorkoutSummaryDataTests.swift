@@ -107,6 +107,38 @@ final class WorkoutSummaryDataTests: XCTestCase {
         XCTAssertEqual(s.totalReps, 5)                  // only the working set's reps
     }
 
+    // feedback batch 3 — partner sets are excluded from the owner roll-up but
+    // surfaced as a separate partner summary so partnered history shows them.
+    func testStrengthSummaryCarriesPartnerLines() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Bench", date: Date(timeIntervalSince1970: 6000), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let sam = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 60, reps: 10, performedBy: sam, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 65, reps: 8, performedBy: sam, in: ctx)
+
+        let s = WorkoutSummaryData.from(session: session)
+        XCTAssertEqual(s.partners.count, 1)
+        let partner = try XCTUnwrap(s.partners.first)
+        XCTAssertEqual(partner.name, "Sam")
+        XCTAssertEqual(partner.exercises.map(\.name), ["Bench Press"])
+        XCTAssertEqual(partner.exercises.first?.reps, [10, 8])
+        XCTAssertEqual(partner.exercises.first?.topSetWeightKg ?? 0, 65, accuracy: 0.001)
+    }
+
+    // feedback batch 3 — a bodyweight set is flagged so the view shows "BW".
+    func testStrengthSummaryFlagsBodyweight() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Calisthenics", date: Date(timeIntervalSince1970: 7000), in: ctx)
+        let pullup = try WorkoutRepository.findOrCreateExercise(named: "Pull-Up", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: pullup, weightKg: 0, reps: 10,
+                                         usesBodyweight: true, in: ctx)
+        let s = WorkoutSummaryData.from(session: session)
+        XCTAssertEqual(s.exercises.first?.usesBodyweight, true)
+        XCTAssertEqual(s.exercises.first?.topSetWeightKg ?? -1, 0, accuracy: 0.001)
+    }
+
     func testSwimSummaryShowsLaps() throws {
         let ctx = try makeContext()
         let start = Date(timeIntervalSince1970: 5000)

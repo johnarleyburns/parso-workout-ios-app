@@ -58,15 +58,22 @@ public struct WorkoutPlan: Equatable, Sendable, Identifiable {
     public let scheme: WorkoutScheme
     public let items: [PlanItem]
     public let notes: String?
+    /// A "template" strength preset (Push/Pull/Legs, calisthenics …) whose
+    /// set/rep scheme is chosen at launch via the rep-scheme chooser and applied
+    /// to every movement (feedback batch 3). Fixed programs (5×5, Olympic days)
+    /// carry their own scheme and leave this false.
+    public let flexibleScheme: Bool
 
     public init(id: String, name: String, source: PlanSource,
-                scheme: WorkoutScheme, items: [PlanItem], notes: String? = nil) {
+                scheme: WorkoutScheme, items: [PlanItem], notes: String? = nil,
+                flexibleScheme: Bool = false) {
         self.id = id
         self.name = name
         self.source = source
         self.scheme = scheme
         self.items = items
         self.notes = notes
+        self.flexibleScheme = flexibleScheme
     }
 
     /// Movement names to pre-load into the session (first appearance order,
@@ -221,7 +228,9 @@ public enum BenchmarkWorkouts {
 /// pre-loads the movements as ghost cards with a prescription line, ready to log.
 /// Movement names match `ExerciseLibrary` so they resolve to real catalog rows.
 public enum StrengthPresets {
-    private static func plan(_ id: String, _ name: String,
+    /// A fixed program: each movement carries its own target sets×reps and
+    /// launches straight to the preview (no rep-scheme chooser).
+    private static func fixed(_ id: String, _ name: String,
                              _ movements: [(String, Int, Int)]) -> WorkoutPlan {
         WorkoutPlan(id: id, name: name, source: .strengthPreset, scheme: .strength,
                     items: movements.enumerated().map { i, m in
@@ -229,40 +238,73 @@ public enum StrengthPresets {
                     })
     }
 
+    /// A flexible template: just a movement list. The set/rep scheme is chosen at
+    /// launch and applied to every movement (the listed `defaultReps` is only a
+    /// sensible fallback for the preview).
+    private static func template(_ id: String, _ name: String,
+                                 _ movements: [String], defaultReps: Int = 10) -> WorkoutPlan {
+        WorkoutPlan(id: id, name: name, source: .strengthPreset, scheme: .strength,
+                    items: movements.enumerated().map { i, m in
+                        PlanItem(id: i, movement: m, reps: defaultReps, targetSets: 3)
+                    },
+                    flexibleScheme: true)
+    }
+
+    // StrongLifts-style 5×5: A = Squat/Bench/Row, B = Squat/Press/Deadlift.
+    // Weeks 1/2 are progression labels (load climbs week to week).
+    private static let fiveByFiveA: [(String, Int, Int)] = [
+        ("Back Squat", 5, 5), ("Bench Press", 5, 5), ("Barbell Row", 5, 5),
+    ]
+    private static let fiveByFiveB: [(String, Int, Int)] = [
+        ("Back Squat", 5, 5), ("Overhead Press", 5, 5), ("Deadlift", 1, 5),
+    ]
+
     public static let all: [WorkoutPlan] = [
-        plan("preset-5x5", "5×5", [
-            ("Back Squat", 5, 5), ("Bench Press", 5, 5), ("Barbell Row", 5, 5),
+        // 5×5 — four alternating days across two weeks (feedback batch 3).
+        fixed("preset-5x5-1a", "5×5 Week 1A", fiveByFiveA),
+        fixed("preset-5x5-1b", "5×5 Week 1B", fiveByFiveB),
+        fixed("preset-5x5-2a", "5×5 Week 2A", fiveByFiveA),
+        fixed("preset-5x5-2b", "5×5 Week 2B", fiveByFiveB),
+        // Flexible split templates — pick a set/rep scheme at launch.
+        template("preset-push", "Push", [
+            "Bench Press", "Overhead Press", "Incline Dumbbell Bench Press",
+            "Triceps Pushdown", "Dumbbell Lateral Raise",
         ]),
-        plan("preset-push", "Push", [
-            ("Bench Press", 4, 6), ("Overhead Press", 3, 8),
-            ("Incline Dumbbell Bench Press", 3, 10), ("Triceps Pushdown", 3, 12),
-            ("Dumbbell Lateral Raise", 3, 15),
+        template("preset-pull", "Pull", [
+            "Deadlift", "Pull-Up", "Seated Cable Row", "Face Pull", "Barbell Curl",
         ]),
-        plan("preset-pull", "Pull", [
-            ("Deadlift", 3, 5), ("Pull-Up", 3, 8), ("Seated Cable Row", 3, 10),
-            ("Face Pull", 3, 15), ("Barbell Curl", 3, 12),
+        template("preset-legs", "Legs", [
+            "Back Squat", "Romanian Deadlift", "Leg Press", "Lying Leg Curl",
+            "Standing Calf Raise",
         ]),
-        plan("preset-legs", "Legs", [
-            ("Back Squat", 4, 6), ("Romanian Deadlift", 3, 8), ("Leg Press", 3, 12),
-            ("Lying Leg Curl", 3, 12), ("Standing Calf Raise", 4, 15),
+        template("preset-upper", "Upper", [
+            "Bench Press", "Barbell Row", "Overhead Press", "Lat Pulldown",
+            "Barbell Curl", "Triceps Pushdown",
         ]),
-        plan("preset-upper", "Upper", [
-            ("Bench Press", 4, 6), ("Barbell Row", 4, 8), ("Overhead Press", 3, 8),
-            ("Lat Pulldown", 3, 10), ("Barbell Curl", 3, 12), ("Triceps Pushdown", 3, 12),
+        template("preset-lower", "Lower", [
+            "Back Squat", "Romanian Deadlift", "Leg Press", "Leg Extension",
+            "Standing Calf Raise",
         ]),
-        plan("preset-lower", "Lower", [
-            ("Back Squat", 4, 6), ("Romanian Deadlift", 3, 8), ("Leg Press", 3, 12),
-            ("Leg Extension", 3, 15), ("Standing Calf Raise", 4, 15),
+        template("preset-chest", "Chest", [
+            "Bench Press", "Incline Dumbbell Bench Press", "Cable Fly", "Dip",
         ]),
-        plan("preset-chest", "Chest", [
-            ("Bench Press", 4, 6), ("Incline Dumbbell Bench Press", 3, 10),
-            ("Cable Fly", 3, 15), ("Dip", 3, 10),
+        template("preset-back-bi", "Back & Biceps", [
+            "Deadlift", "Pull-Up", "Seated Cable Row", "Barbell Curl", "Hammer Curl",
         ]),
-        plan("preset-back-bi", "Back & Biceps", [
-            ("Deadlift", 3, 5), ("Pull-Up", 3, 8), ("Seated Cable Row", 3, 10),
-            ("Barbell Curl", 3, 12), ("Hammer Curl", 3, 12),
+        // Bodyweight / calisthenics templates (feedback batch 3).
+        template("preset-cali-push", "Calisthenics Push", [
+            "Push-Up", "Dip", "Pike Push-Up", "Decline Push-Up",
         ]),
-        plan("preset-olympic", "Olympic", [
+        template("preset-cali-pull", "Calisthenics Pull", [
+            "Pull-Up", "Chin-Up", "Inverted Row", "Hanging Leg Raise",
+        ]),
+        template("preset-cali-legs", "Calisthenics Legs & Core", [
+            "Air Squat", "Bulgarian Split Squat", "Glute Bridge", "Plank",
+        ]),
+        // Olympic — three focused days (feedback batch 3).
+        fixed("preset-oly-snatch", "Olympic Snatch Day", [("Snatch", 20, 1)]),
+        fixed("preset-oly-cj", "Olympic Clean & Jerk Day", [("Clean and Jerk", 20, 1)]),
+        fixed("preset-oly-mixed", "Olympic Mixed Day", [
             ("Snatch", 5, 3), ("Clean and Jerk", 5, 2), ("Front Squat", 4, 5),
             ("Overhead Squat", 3, 5), ("Power Clean", 4, 3),
         ]),

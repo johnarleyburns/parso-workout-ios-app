@@ -91,6 +91,23 @@ final class PartnersAndUnitsTests: XCTestCase {
         XCTAssertEqual(fresh.plannedExerciseNames, ["Bench Press", "Overhead Press"])
     }
 
+    // feedback batch 3 — "start from history" should carry a partner's movements
+    // too (the user often trains with the same partner), so reuse no longer drops
+    // exercises that only the partner performed.
+    func testReuseSessionIncludesPartnerExercises() throws {
+        let ctx = try makeContext()
+        let past = try WorkoutRepository.createSession(title: "Bench Day", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let curl = try WorkoutRepository.findOrCreateExercise(named: "Barbell Curl", in: ctx)
+        let sam = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        // Curl was only ever done by the partner.
+        _ = try WorkoutRepository.addSet(to: past, exercise: curl, weightKg: 20, reps: 12, performedBy: sam, in: ctx)
+
+        let fresh = try WorkoutRepository.reuseSession(from: past, in: ctx)
+        XCTAssertEqual(fresh.plannedExerciseNames, ["Bench Press", "Barbell Curl"])
+    }
+
     func testCopyWorkoutDuplicatesExercisesAndSets() throws {
         let ctx = try makeContext()
         let past = try WorkoutRepository.createSession(title: "Push Day", in: ctx)

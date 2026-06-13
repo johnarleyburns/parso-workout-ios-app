@@ -75,12 +75,26 @@ public enum WorkoutRepository {
         if let existing = all.first(where: { $0.name.compare(trimmed, options: .caseInsensitive) == .orderedSame }) {
             return existing
         }
-        let keywords = ExerciseSearch.keywords(name: trimmed, equipment: equipment, isLateral: isLateral,
-                                               force: force, mechanics: mechanics,
-                                               primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles)
-        let ex = Exercise(name: trimmed, category: category, muscleGroups: primaryMuscles + secondaryMuscles,
-                          isCustom: true, equipment: equipment, isLateral: isLateral, mechanics: mechanics,
-                          force: force, primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles,
+        // Backfill facets from the built-in catalog when the caller didn't supply
+        // them and the name matches a known movement, so body-part coverage and
+        // bodyweight detection work even for movements materialized by name (plan
+        // launches, reuse) before the library is fully seeded. An exact built-in
+        // is therefore not "custom".
+        let template = ExerciseLibrary.byName[trimmed.lowercased()]
+        let resolvedCategory = category ?? template?.category
+        let resolvedEquipment = equipment ?? template?.equipment
+        let resolvedLateral = isLateral || (template?.isLateral ?? false)
+        let resolvedMechanics = mechanics ?? template?.mechanics
+        let resolvedForce = force ?? template?.force
+        let resolvedPrimary = primaryMuscles.isEmpty ? (template?.primaryMuscles ?? []) : primaryMuscles
+        let resolvedSecondary = secondaryMuscles.isEmpty ? (template?.secondaryMuscles ?? []) : secondaryMuscles
+        let keywords = ExerciseSearch.keywords(name: trimmed, equipment: resolvedEquipment, isLateral: resolvedLateral,
+                                               force: resolvedForce, mechanics: resolvedMechanics,
+                                               primaryMuscles: resolvedPrimary, secondaryMuscles: resolvedSecondary)
+        let ex = Exercise(name: trimmed, category: resolvedCategory, muscleGroups: resolvedPrimary + resolvedSecondary,
+                          isCustom: template == nil, equipment: resolvedEquipment, isLateral: resolvedLateral,
+                          mechanics: resolvedMechanics, force: resolvedForce,
+                          primaryMuscles: resolvedPrimary, secondaryMuscles: resolvedSecondary,
                           searchKeywords: keywords)
         context.insert(ex)
         try context.save()
@@ -113,13 +127,14 @@ public enum WorkoutRepository {
                               reps: Int,
                               rpe: Double? = nil,
                               isWarmup: Bool = false,
+                              usesBodyweight: Bool = false,
                               note: String? = nil,
                               completedAt: Date = Date(),
                               performedBy: Person? = nil,
                               in context: ModelContext) throws -> SetEntry {
         let nextOrder = (session.sets ?? []).map(\.order).max().map { $0 + 1 } ?? 0
         let set = SetEntry(weight: weightKg, reps: reps, order: nextOrder,
-                           isWarmup: isWarmup, rpe: rpe, note: note,
+                           isWarmup: isWarmup, usesBodyweight: usesBodyweight, rpe: rpe, note: note,
                            completedAt: completedAt, session: session, exercise: exercise,
                            performedBy: performedBy)
         context.insert(set)
@@ -136,11 +151,12 @@ public enum WorkoutRepository {
                                     date: Date = Date(),
                                     in context: ModelContext) throws -> WorkoutSession {
         let session = WorkoutSession(title: past.title, date: date)
-        // Carry over the owner's exercises (in order) as planned names; the
-        // session screen shows them as empty cards ready to log.
-        session.plannedExerciseNames = past.exercisesInOrder
-            .filter { ex in past.orderedSets.contains { $0.exercise?.id == ex.id && $0.isOwnerSet } }
-            .map(\.name)
+        // Carry over every exercise anyone logged (in order) as planned names so a
+        // partner's movements aren't dropped — "start from history" should include
+        // the partner's work too, since the user often trains with the same partner
+        // (feedback batch 3). The partners themselves are global `Person`s and stay
+        // in the roster.
+        session.plannedExerciseNames = past.exercisesInOrder.map(\.name)
         context.insert(session)
         try context.save()
         return session
@@ -202,12 +218,14 @@ public enum WorkoutRepository {
                                  reps: Int? = nil,
                                  rpe: Double?? = nil,
                                  isWarmup: Bool? = nil,
+                                 usesBodyweight: Bool? = nil,
                                  note: String?? = nil,
                                  in context: ModelContext) throws {
         if let weightKg { set.weight = weightKg }
         if let reps { set.reps = reps }
         if let rpe { set.rpe = rpe }
         if let isWarmup { set.isWarmup = isWarmup }
+        if let usesBodyweight { set.usesBodyweight = usesBodyweight }
         if let note { set.note = note }
         set.updatedAt = Date()
         set.session?.updatedAt = Date()
@@ -401,11 +419,15 @@ public enum WorkoutRepository {
     /// the scheme banner + per-item prescription.
     @discardableResult
     public static func startSession(from plan: WorkoutPlan,
+                                    repLadder: [Int]? = nil,
                                     date: Date = Date(),
                                     in context: ModelContext) throws -> WorkoutSession {
         let session = WorkoutSession(title: plan.displayTitle, date: date)
         session.planKey = plan.id
         session.plannedExerciseNames = plan.movementNames
+        // A flexible template launched with a chosen rep scheme stamps the ladder
+        // so the planned cards show "N sets · a-b-c" (feedback batch 3).
+        if let repLadder, !repLadder.isEmpty { session.plannedRepLadder = repLadder }
         context.insert(session)
         for name in plan.movementNames {
             _ = try findOrCreateExercise(named: name, in: context)

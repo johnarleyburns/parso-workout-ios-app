@@ -156,6 +156,11 @@ public final class WorkoutSession {
     /// Exercise names pre-loaded when reusing a past workout (field-testing §04,
     /// decision #16). Delimited-String storage (see `StringArray`).
     private var plannedExerciseNamesData: String = ""
+    /// Chosen rep scheme (a per-set ladder, e.g. [12,10,8]) applied to every
+    /// planned movement when launched from a flexible library template
+    /// (feedback batch 3). Empty for fixed presets / ad-hoc sessions.
+    /// Delimited-String storage (see `StringArray`).
+    private var plannedRepLadderData: String = ""
     public var notes: String?
     /// Name of the template this session was started from, if any (FR-1.6).
     public var templateName: String?
@@ -196,6 +201,12 @@ public final class WorkoutSession {
     public var plannedExerciseNames: [String] {
         get { StringArray.decode(plannedExerciseNamesData) }
         set { plannedExerciseNamesData = StringArray.encode(newValue) }
+    }
+
+    /// The chosen per-set rep ladder for a flexible-template launch (e.g. 12-10-8).
+    public var plannedRepLadder: [Int] {
+        get { StringArray.decode(plannedRepLadderData).compactMap(Int.init) }
+        set { plannedRepLadderData = StringArray.encode(newValue.map(String.init)) }
     }
 
     /// Sets in logged order.
@@ -242,6 +253,11 @@ public final class SetEntry {
     public var reps: Int = 0
     public var order: Int = 0
     public var isWarmup: Bool = false
+    /// A bodyweight set (feedback batch 3): the movement is performed at body
+    /// weight and `weight` holds only the *added* external load (0 = pure
+    /// bodyweight, e.g. a strict pull-up; >0 = a weighted variant like a
+    /// weighted dip). Optional/defaulted for CloudKit + back-compat.
+    public var usesBodyweight: Bool = false
     /// Rate of perceived exertion, 1...10 (FR-1.2). Optional.
     public var rpe: Double?
     public var note: String?
@@ -262,6 +278,7 @@ public final class SetEntry {
                 reps: Int = 0,
                 order: Int = 0,
                 isWarmup: Bool = false,
+                usesBodyweight: Bool = false,
                 rpe: Double? = nil,
                 note: String? = nil,
                 completedAt: Date = Date(),
@@ -275,6 +292,7 @@ public final class SetEntry {
         self.reps = reps
         self.order = order
         self.isWarmup = isWarmup
+        self.usesBodyweight = usesBodyweight
         self.rpe = rpe
         self.note = note
         self.completedAt = completedAt

@@ -15,6 +15,11 @@ struct WorkoutControlBar: View {
     /// Called only AFTER the user confirms End (or immediately when
     /// `confirmEnd == false`).
     let onEnd: () -> Void
+    /// When set, a "Cool Down" button appears above Pause/End (feedback batch 4);
+    /// it runs a guided cool-down timer that finishes the workout on completion.
+    /// Strength + CrossFit pass this; cardio/interval (which bake in their own
+    /// cool-down) leave it nil.
+    var onCoolDown: (() -> Void)? = nil
 
     /// Prefixes the Pause/End accessibility ids (e.g. `outdoor` → `outdoor.pause`,
     /// `outdoor.end`). Defaults to the generic `workout`.
@@ -33,6 +38,17 @@ struct WorkoutControlBar: View {
     @State private var confirming = false
 
     var body: some View {
+        VStack(spacing: 12) {
+        if let onCoolDown {
+            Button(action: onCoolDown) {
+                Label("Cool Down", systemImage: "figure.cooldown")
+                    .frame(maxWidth: .infinity, minHeight: 56)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .tint(.teal)
+            .accessibilityIdentifier("\(idPrefix).coolDown")
+        }
         HStack(spacing: 16) {
             Button(action: onPauseToggle) {
                 Label(isPaused ? "Resume" : "Pause",
@@ -54,6 +70,7 @@ struct WorkoutControlBar: View {
             .controlSize(.large)
             .tint(endTint)
             .accessibilityIdentifier("\(idPrefix).end")
+        }
         }
         .confirmationDialog(confirmTitle, isPresented: $confirming, titleVisibility: .visible) {
             Button(endTitle, role: .destructive) { onEnd() }

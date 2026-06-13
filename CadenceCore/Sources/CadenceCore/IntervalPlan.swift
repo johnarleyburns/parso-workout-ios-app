@@ -193,6 +193,70 @@ public struct IntervalPlan: Equatable, Sendable {
     }
 }
 
+/// A compact, persistable description of an interval workout's structure, so
+/// history can show "Tabata · 8 × (20s / 10s) · 5:00 warm-up · completed 6/8"
+/// without re-deriving it from a live plan (roadmap P5 / feedback batch 4).
+/// Pure value type; stored as JSON on `CardioWorkout.intervalDetailData`.
+public struct IntervalSummary: Codable, Equatable, Sendable {
+    public let protocolName: String
+    public let rounds: Int
+    public let workSeconds: TimeInterval
+    public let restSeconds: TimeInterval
+    public let warmupSeconds: TimeInterval
+    public let cooldownSeconds: TimeInterval
+    public let completedRounds: Int
+
+    public init(protocolName: String, rounds: Int, workSeconds: TimeInterval,
+                restSeconds: TimeInterval, warmupSeconds: TimeInterval,
+                cooldownSeconds: TimeInterval, completedRounds: Int) {
+        self.protocolName = protocolName
+        self.rounds = rounds
+        self.workSeconds = workSeconds
+        self.restSeconds = restSeconds
+        self.warmupSeconds = warmupSeconds
+        self.cooldownSeconds = cooldownSeconds
+        self.completedRounds = completedRounds
+    }
+
+    /// Derives the structure from an expanded plan and how far the user got.
+    /// `rounds` = work phases; `workSeconds`/`restSeconds` are the most common
+    /// (modal) work/rest durations; warm-up/cool-down are summed; `completedRounds`
+    /// counts work phases fully finished at `elapsed` (ended-early aware).
+    public static func from(plan: IntervalPlan, elapsed: TimeInterval) -> IntervalSummary {
+        let workPhases = plan.phases.filter { $0.kind == .work }
+        let restPhases = plan.phases.filter { $0.kind == .rest }
+        let warmup = plan.phases.filter { $0.kind == .warmup }.reduce(0) { $0 + $1.duration }
+        let cooldown = plan.phases.filter { $0.kind == .cooldown }.reduce(0) { $0 + $1.duration }
+
+        func modal(_ values: [TimeInterval]) -> TimeInterval {
+            guard !values.isEmpty else { return 0 }
+            var counts: [TimeInterval: Int] = [:]
+            for v in values { counts[v, default: 0] += 1 }
+            // Highest count wins; ties break toward the larger duration.
+            return counts.max { a, b in a.value != b.value ? a.value < b.value : a.key < b.key }!.key
+        }
+
+        // Count work phases whose end time is at or before `elapsed`.
+        var acc: TimeInterval = 0
+        var completed = 0
+        for p in plan.phases {
+            let endsAt = acc + p.duration
+            if p.kind == .work, elapsed >= endsAt - 0.001 { completed += 1 }
+            acc = endsAt
+        }
+
+        return IntervalSummary(
+            protocolName: plan.name,
+            rounds: workPhases.count,
+            workSeconds: modal(workPhases.map { $0.duration }),
+            restSeconds: modal(restPhases.map { $0.duration }),
+            warmupSeconds: warmup,
+            cooldownSeconds: cooldown,
+            completedRounds: min(completed, workPhases.count)
+        )
+    }
+}
+
 /// The whole-screen color signal (field-testing §06, decision #20) — readable
 /// from across the room. Meaning is also carried by label + icon so it never
 /// relies on color alone (NFR-2 / color-blind support).

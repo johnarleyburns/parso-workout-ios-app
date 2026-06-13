@@ -38,6 +38,7 @@ struct WorkoutSummaryView: View {
                 metricsGrid
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, !data.partners.isEmpty { partnersSection }
+                if let interval = data.interval { intervalSection(interval) }
                 if !data.hr.isEmpty { hrChart }
                 if data.route.count > 1 { routeMap }
             }
@@ -190,6 +191,45 @@ struct WorkoutSummaryView: View {
             return topKg > 0 ? "BW + \(Format.weight(topKg, unit: settings.unit, decimals: 0))" : "BW"
         }
         return "top \(Format.weight(topKg, unit: settings.unit, decimals: 0))"
+    }
+
+    // MARK: Interval (HIIT/boxing) detail
+
+    /// Protocol structure for an interval workout (feedback batch 4 / roadmap P5):
+    /// rounds, work/rest, warm-up/cool-down, and how many rounds were completed.
+    private func intervalSection(_ s: IntervalSummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Intervals").font(.headline)
+            VStack(alignment: .leading, spacing: 6) {
+                intervalRow("Protocol", s.protocolName, id: "summary.interval.protocol")
+                intervalRow("Rounds",
+                            "completed \(s.completedRounds)/\(s.rounds)",
+                            id: "summary.interval.rounds")
+                intervalRow("Work / Rest",
+                            "\(Format.duration(s.workSeconds)) / \(Format.duration(s.restSeconds))",
+                            id: "summary.interval.workRest")
+                if s.warmupSeconds > 0 {
+                    intervalRow("Warm-up", Format.duration(s.warmupSeconds),
+                                id: "summary.interval.warmup")
+                }
+                if s.cooldownSeconds > 0 {
+                    intervalRow("Cool-down", Format.duration(s.cooldownSeconds),
+                                id: "summary.interval.cooldown")
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    private func intervalRow(_ title: String, _ value: String, id: String) -> some View {
+        HStack {
+            Text(title).font(.subheadline).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).font(.subheadline.weight(.semibold)).monospacedDigit()
+                .accessibilityIdentifier(id)
+        }
     }
 
     // MARK: Cardio HR chart + route

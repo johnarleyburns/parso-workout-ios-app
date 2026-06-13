@@ -78,12 +78,16 @@ public struct CardioWorkoutSummary: Equatable, Sendable {
     public var activeEnergyKcal: Double?
     public var hrSamples: [HRSamplePoint]
     public var route: [LocationFix]
+    /// Interval (HIIT/boxing) structure, when this is a recorded interval workout.
+    public var intervalSummary: IntervalSummary?
     public init(id: UUID, type: CardioType, start: Date, end: Date,
                 distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
-                hrSamples: [HRSamplePoint] = [], route: [LocationFix] = []) {
+                hrSamples: [HRSamplePoint] = [], route: [LocationFix] = [],
+                intervalSummary: IntervalSummary? = nil) {
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.hrSamples = hrSamples; self.route = route
+        self.intervalSummary = intervalSummary
     }
 }
 

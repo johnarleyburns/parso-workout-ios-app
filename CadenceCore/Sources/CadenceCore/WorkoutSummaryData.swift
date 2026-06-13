@@ -68,6 +68,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     public let partners: [PartnerSummary]    // strength: each partner's working sets
     public let hr: [(t: TimeInterval, bpm: Double)]   // cardio chart
     public let route: [(lat: Double, lon: Double)]    // cardio map
+    public let interval: IntervalSummary?             // HIIT/boxing structure
 
     public init(kind: Kind,
                 title: String,
@@ -86,7 +87,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                 exercises: [ExerciseLine] = [],
                 partners: [PartnerSummary] = [],
                 hr: [(t: TimeInterval, bpm: Double)] = [],
-                route: [(lat: Double, lon: Double)] = []) {
+                route: [(lat: Double, lon: Double)] = [],
+                interval: IntervalSummary? = nil) {
         self.kind = kind
         self.title = title
         self.date = date
@@ -105,6 +107,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         self.partners = partners
         self.hr = hr
         self.route = route
+        self.interval = interval
     }
 
     // Tuple-typed arrays block Equatable synthesis, so compare element-wise.
@@ -129,6 +132,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             && zip(lhs.hr, rhs.hr).allSatisfy { $0 == $1 }
             && lhs.route.count == rhs.route.count
             && zip(lhs.route, rhs.route).allSatisfy { $0 == $1 }
+            && lhs.interval == rhs.interval
     }
 
     // MARK: Builders
@@ -210,7 +214,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             setCount: 0,
             exercises: [],
             hr: cardio.orderedHRSamples.map { (t: $0.t, bpm: $0.bpm) },
-            route: cardio.orderedRouteSamples.map { (lat: $0.lat, lon: $0.lon) }
+            route: cardio.orderedRouteSamples.map { (lat: $0.lat, lon: $0.lon) },
+            interval: cardio.intervalSummary
         )
     }
 }

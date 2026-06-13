@@ -13,6 +13,8 @@ struct WorkoutTypePicker: View {
     let onPlan: (WorkoutPlan, [Int]?) -> Void
     /// Weights → Quick Start (a blank strength session).
     let onWeightsQuickStart: () -> Void
+    /// Weights → Start with Warm-Up (a guided warm-up, then a blank session).
+    let onWeightsWarmup: () -> Void
     /// Weights → Start from Previous (reuse a past session as a template).
     let onWeightsReuse: (WorkoutSession) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -39,6 +41,7 @@ struct WorkoutTypePicker: View {
                         case .weights:
                             NavigationLink {
                                 WeightsStartView(onQuickStart: onWeightsQuickStart,
+                                                 onWarmupStart: onWeightsWarmup,
                                                  onReuse: onWeightsReuse,
                                                  onPlan: onPlan)
                             } label: { WorkoutHero(type: type) }

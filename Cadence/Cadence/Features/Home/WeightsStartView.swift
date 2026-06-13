@@ -10,6 +10,8 @@ import CadenceCore
 /// is the parent's job and dismisses the whole sheet at once with no Home flash.
 struct WeightsStartView: View {
     let onQuickStart: () -> Void
+    /// Quick Start, but preceded by a guided warm-up timer (feedback batch 4).
+    let onWarmupStart: () -> Void
     let onReuse: (WorkoutSession) -> Void
     /// Launches a library preset, optionally with a chosen per-set rep ladder
     /// (flexible templates carry one; fixed programs pass nil).
@@ -33,8 +35,12 @@ struct WeightsStartView: View {
                     Label("Quick Start", systemImage: "bolt.fill").font(.headline)
                 }
                 .accessibilityIdentifier("weights.quickStart")
+                Button(action: onWarmupStart) {
+                    Label("Start with Warm-Up", systemImage: "figure.cooldown").font(.headline)
+                }
+                .accessibilityIdentifier("weights.warmupStart")
             } footer: {
-                Text("Start a blank workout and add exercises as you go.")
+                Text("Start a blank workout and add exercises as you go — or warm up first.")
             }
 
             Section("Start from Previous Workout") {

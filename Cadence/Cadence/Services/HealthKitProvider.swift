@@ -135,26 +135,6 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
         return HRSampling.downsample(points)
     }
 
-    /// The single most-recent heart-rate sample HealthKit has (e.g. the Watch's
-    /// latest reading) — for the pre-workout HR screen (feedback batch 5). Passive
-    /// historical read; no watch app and no `HKWorkoutSession` needed. Can lag,
-    /// since the Watch batches its background HR writes.
-    func latestHeartRate() async -> HRReading? {
-        guard isHealthDataAvailable,
-              let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return nil }
-        let unit = HKUnit.count().unitDivided(by: .minute())
-        let sample: HKQuantitySample? = await withCheckedContinuation { cont in
-            let sort = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-            let q = HKSampleQuery(sampleType: hrType, predicate: nil, limit: 1,
-                                  sortDescriptors: [sort]) { _, samples, _ in
-                cont.resume(returning: (samples as? [HKQuantitySample])?.first)
-            }
-            store.execute(q)
-        }
-        guard let sample else { return nil }
-        return HRReading(bpm: sample.quantity.doubleValue(for: unit), date: sample.endDate)
-    }
-
     // MARK: Write summary strength workout (FR-4.3)
 
     func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID? {

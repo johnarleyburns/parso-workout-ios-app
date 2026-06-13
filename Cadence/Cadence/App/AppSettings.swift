@@ -46,7 +46,7 @@ final class AppSettings {
         // Finished workouts write a summary to Apple Health automatically (P1 #8);
         // can be turned off in Settings.
         self.autoSaveHealth = defaults.object(forKey: "settings.autoSaveHealth") as? Bool ?? true
-        self.preWorkoutCountdown = defaults.object(forKey: "settings.preWorkoutCountdown") as? Int ?? 30
+        self.preWorkoutCountdown = defaults.object(forKey: "settings.preWorkoutCountdown") as? Int ?? 10
         // In UI tests the countdown is off by default (so workout-start flows stay
         // fast); a test can opt in with `-preCountdown N`.
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {

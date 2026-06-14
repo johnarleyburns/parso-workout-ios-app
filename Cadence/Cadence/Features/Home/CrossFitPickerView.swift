@@ -11,6 +11,10 @@ import CadenceCore
 struct CrossFitPickerView: View {
     /// Called with the chosen plan once the user taps Start.
     let onStart: (WorkoutPlan) -> Void
+    /// When set, an extra "Custom CrossFit" row is shown that skips the benchmarks
+    /// and starts an ad-hoc CrossFit session (manual-logging flow). nil for the live
+    /// Start flow, which only offers the benchmarks.
+    var onCustom: (() -> Void)? = nil
 
     /// Benchmarks listed alphabetically (P1 #2).
     private var benchmarks: [WorkoutPlan] {
@@ -19,6 +23,19 @@ struct CrossFitPickerView: View {
 
     var body: some View {
         List {
+            if let onCustom {
+                Section {
+                    Button {
+                        Haptics.selection(); onCustom()
+                    } label: {
+                        Label("Custom CrossFit", systemImage: "plus.circle.fill")
+                            .font(.headline)
+                    }
+                    .accessibilityIdentifier("crossfit.custom")
+                } footer: {
+                    Text("Log your own WOD — add any movements and sets.")
+                }
+            }
             Section("Benchmark workouts") {
                 ForEach(benchmarks) { plan in
                     NavigationLink {

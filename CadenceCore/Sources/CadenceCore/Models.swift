@@ -172,6 +172,13 @@ public final class WorkoutSession {
     /// Links to the summary HKWorkout written for this session (FR-4.3) or the
     /// Watch-ingested workout this came from (FR-2.1). Used for de-dup.
     public var healthKitWorkoutUUID: UUID?
+    /// Manually logged after the fact, rather than recorded live (feedback batch 6).
+    /// History shows a "Logged" tag. Additive/defaulted for CloudKit + back-compat.
+    public var isLogged: Bool = false
+    /// Actual warm-up / cool-down time consumed for this session, in seconds; 0 when
+    /// none was run (feedback batch 6). Surfaced in the summary alongside duration.
+    public var warmupSeconds: Double = 0
+    public var cooldownSeconds: Double = 0
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
 
@@ -185,6 +192,9 @@ public final class WorkoutSession {
                 notes: String? = nil,
                 templateName: String? = nil,
                 healthKitWorkoutUUID: UUID? = nil,
+                isLogged: Bool = false,
+                warmupSeconds: Double = 0,
+                cooldownSeconds: Double = 0,
                 updatedAt: Date = Date(),
                 originDevice: String = "") {
         self.id = id
@@ -194,6 +204,9 @@ public final class WorkoutSession {
         self.notes = notes
         self.templateName = templateName
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
+        self.isLogged = isLogged
+        self.warmupSeconds = warmupSeconds
+        self.cooldownSeconds = cooldownSeconds
         self.updatedAt = updatedAt
         self.originDevice = originDevice
     }
@@ -233,6 +246,20 @@ public final class WorkoutSession {
             if seen.insert(ex.id).inserted { result.append(ex) }
         }
         return result
+    }
+
+    /// SF Symbol for history rows (feedback batch 6): CrossFit → functional
+    /// training, an all-bodyweight session → the traditional-strength figure,
+    /// otherwise the dumbbell. Gives strength rows the leading glyph they lacked.
+    public var symbol: String {
+        if title.localizedCaseInsensitiveContains("crossfit") {
+            return "figure.strengthtraining.functional"
+        }
+        let working = orderedSets.filter { !$0.isWarmup }
+        if !working.isEmpty, working.allSatisfy({ $0.usesBodyweight }) {
+            return "figure.strengthtraining.traditional"
+        }
+        return "dumbbell"
     }
 
     /// Total working volume (kg) across the owner's non-warmup sets. Partner
@@ -418,6 +445,12 @@ public final class CardioWorkout {
     public var source: String = CardioSource.iphone.rawValue
     public var healthKitWorkoutUUID: UUID?
     public var notes: String?
+    /// Manually logged after the fact, rather than recorded live (feedback batch 6).
+    /// History shows a "Logged" tag. Additive/defaulted for CloudKit + back-compat.
+    public var isLogged: Bool = false
+    /// Free-text label for an "Other Cardio" workout (e.g. "Rowing", "Yardwork");
+    /// nil ⇒ use the type's display name (feedback batch 6).
+    public var customTitle: String?
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
     /// Interval (HIIT/boxing) structure as JSON (`IntervalSummary`), so history can
@@ -444,6 +477,8 @@ public final class CardioWorkout {
                 source: CardioSource = .iphone,
                 healthKitWorkoutUUID: UUID? = nil,
                 notes: String? = nil,
+                isLogged: Bool = false,
+                customTitle: String? = nil,
                 updatedAt: Date = Date(),
                 originDevice: String = "") {
         self.id = id
@@ -459,8 +494,19 @@ public final class CardioWorkout {
         self.source = source.rawValue
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
         self.notes = notes
+        self.isLogged = isLogged
+        self.customTitle = customTitle
         self.updatedAt = updatedAt
         self.originDevice = originDevice
+    }
+
+    /// Display title — the free-text label for an "Other Cardio" workout, else the
+    /// type's name (feedback batch 6).
+    public var displayTitle: String {
+        if let t = customTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty {
+            return t
+        }
+        return typeValue.displayName
     }
 
     public var typeValue: CardioType {

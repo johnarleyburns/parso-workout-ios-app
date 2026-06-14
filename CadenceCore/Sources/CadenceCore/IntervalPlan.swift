@@ -236,13 +236,14 @@ public struct IntervalSummary: Codable, Equatable, Sendable {
 
     /// Derives the structure from an expanded plan and how far the user got.
     /// `rounds` = work phases; `workSeconds`/`restSeconds` are the most common
-    /// (modal) work/rest durations; warm-up/cool-down are summed; `completedRounds`
-    /// counts work phases fully finished at `elapsed` (ended-early aware).
+    /// (modal) work/rest durations; `completedRounds` counts work phases fully
+    /// finished at `elapsed` (ended-early aware). Warm-up/cool-down are the
+    /// **actual time consumed** by `elapsed` — skipping the cool-down at 3:00 of a
+    /// planned 10:00 records 3:00, not 10:00 (feedback batch 6). Pass the elapsed
+    /// *before* any terminal skip is applied so the last phase isn't over-counted.
     public static func from(plan: IntervalPlan, elapsed: TimeInterval) -> IntervalSummary {
         let workPhases = plan.phases.filter { $0.kind == .work }
         let restPhases = plan.phases.filter { $0.kind == .rest }
-        let warmup = plan.phases.filter { $0.kind == .warmup }.reduce(0) { $0 + $1.duration }
-        let cooldown = plan.phases.filter { $0.kind == .cooldown }.reduce(0) { $0 + $1.duration }
 
         func modal(_ values: [TimeInterval]) -> TimeInterval {
             guard !values.isEmpty else { return 0 }
@@ -252,12 +253,22 @@ public struct IntervalSummary: Codable, Equatable, Sendable {
             return counts.max { a, b in a.value != b.value ? a.value < b.value : a.key < b.key }!.key
         }
 
-        // Count work phases whose end time is at or before `elapsed`.
+        // Walk the phases once: count work phases finished at `elapsed`, and sum the
+        // *actual* warm-up / cool-down time consumed (clamped to the elapsed window).
         var acc: TimeInterval = 0
         var completed = 0
+        var warmup: TimeInterval = 0
+        var cooldown: TimeInterval = 0
         for p in plan.phases {
+            let start = acc
             let endsAt = acc + p.duration
-            if p.kind == .work, elapsed >= endsAt - 0.001 { completed += 1 }
+            let consumed = max(0, min(elapsed, endsAt) - start)
+            switch p.kind {
+            case .work: if elapsed >= endsAt - 0.001 { completed += 1 }
+            case .warmup: warmup += consumed
+            case .cooldown: cooldown += consumed
+            default: break
+            }
             acc = endsAt
         }
 

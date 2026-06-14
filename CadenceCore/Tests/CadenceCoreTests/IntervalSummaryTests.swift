@@ -43,6 +43,25 @@ final class IntervalSummaryTests: XCTestCase {
         XCTAssertEqual(s.completedRounds, 0)
     }
 
+    func testCooldownSkippedEarlyRecordsActualTime() {
+        // Tabata cool-down is the last phase (5:00). Skipping it at 3:00 should
+        // record 3:00, not the planned 5:00 (feedback batch 6).
+        let plan = IntervalPlan.tabata()
+        let cooldownStart = plan.totalDuration - 300
+        let s = IntervalSummary.from(plan: plan, elapsed: cooldownStart + 180)
+        XCTAssertEqual(s.warmupSeconds, 300, "warm-up was fully completed earlier")
+        XCTAssertEqual(s.cooldownSeconds, 180, "only 3:00 of the planned 5:00 cool-down")
+        XCTAssertEqual(s.completedRounds, 8, "all work rounds finished before cool-down")
+    }
+
+    func testWarmupSkippedEarlyRecordsActualTime() {
+        let plan = IntervalPlan.tabata()
+        let s = IntervalSummary.from(plan: plan, elapsed: 120) // 2:00 into the 5:00 warm-up
+        XCTAssertEqual(s.warmupSeconds, 120, "actual warm-up time consumed")
+        XCTAssertEqual(s.cooldownSeconds, 0)
+        XCTAssertEqual(s.completedRounds, 0)
+    }
+
     func testRoundTripThroughJSON() {
         let s = IntervalSummary(protocolName: "Norwegian 4×4", rounds: 4,
                                 workSeconds: 240, restSeconds: 180,

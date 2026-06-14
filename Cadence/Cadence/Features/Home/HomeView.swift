@@ -53,7 +53,7 @@ struct HomeView: View {
             .navigationTitle("Cadence")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { path.append(HomeRoute.settings) } label: { Image(systemName: "gearshape") }
+                    Button { Haptics.selection(); path.append(HomeRoute.settings) } label: { Image(systemName: "gearshape") }
                         .accessibilityIdentifier("home.settings").accessibilityLabel("Settings")
                 }
             }
@@ -80,7 +80,7 @@ struct HomeView: View {
             .sheet(isPresented: $typePickerPresented) {
                 WorkoutTypePicker(onSelect: { start($0) },
                                   onPlan: { plan, ladder in launchFromPicker(.plan(plan, ladder)) },
-                                  onWeightsQuickStart: { launchFromPicker(.strength) },
+                                  onWeightsQuickStart: { launchFromPicker(.strength, skipCountdown: true) },
                                   onWeightsWarmup: { typePickerPresented = false; warmupActive = true },
                                   onWeightsReuse: { launchFromPicker(.reuse($0)) },
                                   onOtherCardio: { desc, gps in startOtherCardio(description: desc, gps: gps) })
@@ -137,6 +137,7 @@ struct HomeView: View {
                 minutes: settings.warmupMinutes,
                 tint: .orange,
                 idPrefix: "warmup",
+                soundsEnabled: settings.workoutSounds,
                 onFinish: { secs in
                     var t = Transaction(); t.disablesAnimations = true
                     withTransaction(t) {
@@ -218,7 +219,7 @@ struct HomeView: View {
     }
 
     private var startButton: some View {
-        Button { typePickerPresented = true } label: {
+        Button { Haptics.selection(); typePickerPresented = true } label: {
             HStack(spacing: 12) {
                 Image(systemName: "play.circle.fill").font(.largeTitle)
                 Text("Start Workout").font(.title2.bold())
@@ -238,7 +239,7 @@ struct HomeView: View {
     /// Log a past workout manually (feedback batch 6 item 3) — it lands in history
     /// just like a live one, flagged "Logged".
     private var logButton: some View {
-        Button { logPickerPresented = true } label: {
+        Button { Haptics.selection(); logPickerPresented = true } label: {
             HStack(spacing: 10) {
                 Image(systemName: "square.and.pencil").font(.headline)
                 Text("Log Workout").font(.headline)
@@ -279,7 +280,7 @@ struct HomeView: View {
     }
 
     private func strengthRow(_ s: WorkoutSession) -> some View {
-        Button { path.append(HistorySummaryRoute.strength(s)) } label: {
+        Button { Haptics.selection(); path.append(HistorySummaryRoute.strength(s)) } label: {
             HStack {
                 Image(systemName: s.symbol).foregroundStyle(.tint).frame(width: 26)
                 VStack(alignment: .leading, spacing: 1) {
@@ -301,7 +302,7 @@ struct HomeView: View {
     }
 
     private func cardioRow(_ w: CardioWorkout) -> some View {
-        Button { path.append(HistorySummaryRoute.cardio(w)) } label: {
+        Button { Haptics.selection(); path.append(HistorySummaryRoute.cardio(w)) } label: {
             HStack {
                 Image(systemName: w.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
                 Text(w.displayTitle)
@@ -318,7 +319,7 @@ struct HomeView: View {
     }
 
     private func sectionHeader(_ title: String, route: HomeRoute, id: String) -> some View {
-        Button { path.append(route) } label: {
+        Button { Haptics.selection(); path.append(route) } label: {
             HStack {
                 Text(title).font(.headline)
                 Spacer()
@@ -333,7 +334,7 @@ struct HomeView: View {
     }
 
     private func resumeCard(_ session: WorkoutSession) -> some View {
-        Button { path.append(session) } label: {
+        Button { Haptics.selection(); path.append(session) } label: {
             HStack(spacing: 12) {
                 Image(systemName: "figure.strengthtraining.traditional").font(.title2)
                 VStack(alignment: .leading, spacing: 2) {
@@ -386,8 +387,10 @@ struct HomeView: View {
     /// flash (P1 #1/#5): with no countdown, push the session *under* the still-open
     /// sheet and then dismiss it (revealing the session); with a countdown, dismiss
     /// first and present the countdown.
-    private func launchFromPicker(_ kind: PendingWorkout.Kind) {
-        if settings.preWorkoutCountdown <= 0 {
+    /// `skipCountdown` makes "Quick Start" truly immediate — no get-ready countdown,
+    /// regardless of the Settings value (which still applies to library/reuse/warm-up).
+    private func launchFromPicker(_ kind: PendingWorkout.Kind, skipCountdown: Bool = false) {
+        if skipCountdown || settings.preWorkoutCountdown <= 0 {
             launch(kind)
             typePickerPresented = false
         } else {
@@ -403,14 +406,17 @@ struct HomeView: View {
         case .strength:
             if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
                 active.startStrength(s); path.append(s)
+                WorkoutCues.transition(enabled: settings.workoutSounds)   // workout starts (item 9)
             }
         case .plan(let plan, let ladder):
             if let s = try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) {
                 active.startStrength(s); path.append(s)
+                WorkoutCues.transition(enabled: settings.workoutSounds)
             }
         case .reuse(let past):
             if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
                 active.startStrength(s); path.append(s)
+                WorkoutCues.transition(enabled: settings.workoutSounds)
             }
         case .outdoor(let c): outdoorType = c
         case .interval(let l): intervalLaunch = l

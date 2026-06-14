@@ -17,6 +17,8 @@ struct GuidedPhaseOverlay: View {
     let minutes: Int
     var tint: Color = .green
     var idPrefix: String
+    /// Play a transition bell when this phase begins (batch 7 item 9).
+    var soundsEnabled: Bool = false
     let onFinish: (_ elapsedSeconds: Int) -> Void
 
     private let total: Int
@@ -25,11 +27,13 @@ struct GuidedPhaseOverlay: View {
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(title: String, minutes: Int, tint: Color = .green,
-         idPrefix: String, onFinish: @escaping (_ elapsedSeconds: Int) -> Void) {
+         idPrefix: String, soundsEnabled: Bool = false,
+         onFinish: @escaping (_ elapsedSeconds: Int) -> Void) {
         self.title = title
         self.minutes = minutes
         self.tint = tint
         self.idPrefix = idPrefix
+        self.soundsEnabled = soundsEnabled
         self.onFinish = onFinish
         let seconds = max(1, minutes) * 60
         self.total = seconds
@@ -75,6 +79,8 @@ struct GuidedPhaseOverlay: View {
             .foregroundStyle(.white)
             .padding()
         }
+        // Bell as the phase begins (entering warm-up / cool-down).
+        .onAppear { WorkoutCues.transition(enabled: soundsEnabled) }
         .onReceive(tick) { _ in
             guard !paused, remaining > 0 else { return }
             remaining -= 1

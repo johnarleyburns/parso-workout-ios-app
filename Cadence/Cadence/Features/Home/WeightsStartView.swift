@@ -31,13 +31,42 @@ struct WeightsStartView: View {
     var body: some View {
         List {
             Section {
-                Button(action: onQuickStart) {
-                    Label("Quick Start", systemImage: "bolt.fill").font(.headline)
+                // Quick Start is the primary, positive action — green & prominent,
+                // mirroring Home's "Start Workout" (feedback batch 7 item 4).
+                Button { Haptics.selection(); onQuickStart() } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "bolt.fill").font(.title2)
+                        Text("Quick Start").font(.title3.bold())
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
+                    }
+                    .padding(.vertical, 16).padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, minHeight: 60)
+                    .foregroundStyle(.white)
+                    .background(LinearGradient(colors: [.green, .teal], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                in: RoundedRectangle(cornerRadius: 18))
                 }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
+                .listRowBackground(Color.clear)
                 .accessibilityIdentifier("weights.quickStart")
-                Button(action: onWarmupStart) {
-                    Label("Start with Warm-Up", systemImage: "figure.cooldown").font(.headline)
+
+                // Start with Warm-Up is the quieter secondary, like Home's "Log Workout".
+                Button { Haptics.selection(); onWarmupStart() } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "figure.cooldown").font(.headline)
+                        Text("Start with Warm-Up").font(.headline)
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
+                    }
+                    .padding(.vertical, 12).padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(.tint)
+                    .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
                 }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
                 .accessibilityIdentifier("weights.warmupStart")
             } footer: {
                 Text("Start a blank workout and add exercises as you go — or warm up first.")
@@ -49,7 +78,7 @@ struct WeightsStartView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 ForEach(previous) { s in
-                    Button { onReuse(s) } label: {
+                    Button { Haptics.selection(); onReuse(s) } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(s.title.isEmpty ? "Workout" : s.title).font(.headline)
                             Text("\(s.date.formatted(date: .abbreviated, time: .omitted)) · \(s.exercisesInOrder.count) exercises · \(s.orderedSets.count) sets")

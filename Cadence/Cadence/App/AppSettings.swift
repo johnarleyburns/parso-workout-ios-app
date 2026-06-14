@@ -22,7 +22,8 @@ final class AppSettings {
                         SettingsKey.lastHealthSync, "settings.autoRest",
                         "settings.idleTimeout", "settings.gpsHighAccuracy", "settings.autoPause",
                         "settings.intervalColorBlind", "settings.spokenCues", "settings.plateRounding",
-                        "settings.preWorkoutCountdown", "settings.autoSaveHealth"] {
+                        "settings.preWorkoutCountdown", "settings.autoSaveHealth",
+                        "settings.autoEndOnIdle", "settings.workoutSounds"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -46,6 +47,10 @@ final class AppSettings {
         // Finished workouts write a summary to Apple Health automatically (P1 #8);
         // can be turned off in Settings.
         self.autoSaveHealth = defaults.object(forKey: "settings.autoSaveHealth") as? Bool ?? true
+        // Strength idle watchdog is opt-out (batch 7 item 8); transition bells opt-out
+        // (batch 7 item 9). Both default on = prior behavior.
+        self.autoEndOnIdle = defaults.object(forKey: "settings.autoEndOnIdle") as? Bool ?? true
+        self.workoutSounds = defaults.object(forKey: "settings.workoutSounds") as? Bool ?? true
         self.preWorkoutCountdown = defaults.object(forKey: "settings.preWorkoutCountdown") as? Int ?? 10
         // In UI tests the countdown is off by default (so workout-start flows stay
         // fast); a test can opt in with `-preCountdown N`.
@@ -80,6 +85,10 @@ final class AppSettings {
     var plateRounding: Bool { didSet { defaults.set(plateRounding, forKey: "settings.plateRounding") } }
     /// Write a workout summary to Apple Health automatically when a workout ends.
     var autoSaveHealth: Bool { didSet { defaults.set(autoSaveHealth, forKey: "settings.autoSaveHealth") } }
+    /// Auto-end a strength workout after the idle timeout (batch 7 item 8; opt-out).
+    var autoEndOnIdle: Bool { didSet { defaults.set(autoEndOnIdle, forKey: "settings.autoEndOnIdle") } }
+    /// Play a bell at workout/phase transitions (batch 7 item 9; opt-out).
+    var workoutSounds: Bool { didSet { defaults.set(workoutSounds, forKey: "settings.workoutSounds") } }
     /// Get-ready countdown before a workout starts (seconds; 0 disables).
     var preWorkoutCountdown: Int { didSet { defaults.set(preWorkoutCountdown, forKey: "settings.preWorkoutCountdown") } }
 

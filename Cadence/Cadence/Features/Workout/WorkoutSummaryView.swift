@@ -189,12 +189,12 @@ struct WorkoutSummaryView: View {
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    /// "top 100 kg", or for bodyweight: "BW" / "BW + 10 kg".
+    /// "100 kg" (the heaviest set), or for bodyweight: "BW" / "BW + 10 kg".
     private func topLabel(_ topKg: Double, bodyweight: Bool) -> String {
         if bodyweight {
             return topKg > 0 ? "BW + \(Format.weight(topKg, unit: settings.unit, decimals: 0))" : "BW"
         }
-        return "top \(Format.weight(topKg, unit: settings.unit, decimals: 0))"
+        return Format.weight(topKg, unit: settings.unit, decimals: 0)
     }
 
     // MARK: Strength warm-up / cool-down (feedback batch 6)

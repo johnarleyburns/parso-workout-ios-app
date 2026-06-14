@@ -67,7 +67,7 @@ struct HistoryView: View {
     // MARK: Rows
 
     private func strengthRow(_ session: WorkoutSession) -> some View {
-        Button { path.append(HistorySummaryRoute.strength(session)) } label: {
+        Button { Haptics.selection(); path.append(HistorySummaryRoute.strength(session)) } label: {
             HStack {
                 Image(systemName: session.symbol).foregroundStyle(.tint).frame(width: 26)
                 VStack(alignment: .leading, spacing: 2) {
@@ -98,7 +98,7 @@ struct HistoryView: View {
     }
 
     private func cardioRow(_ c: CardioWorkout) -> some View {
-        Button { path.append(HistorySummaryRoute.cardio(c)) } label: {
+        Button { Haptics.selection(); path.append(HistorySummaryRoute.cardio(c)) } label: {
             HStack {
                 Image(systemName: c.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
                 VStack(alignment: .leading, spacing: 2) {

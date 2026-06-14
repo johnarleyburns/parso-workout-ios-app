@@ -77,7 +77,9 @@ struct WeightKeypadSheet: View {
         return "≈ " + Format.weightValue(WorkoutMath.canonical(v, from: unit), unit: oppositeUnit)
             + " " + oppositeUnit.abbreviation
     }
-    private var canSave: Bool { reps > 0 && (usesBodyweight || (parse(entry) ?? 0) > 0) }
+    // 0 kg is a valid load (e.g. an empty bar) — saving needs reps and an explicit
+    // entry, but the entry may be "0" (feedback batch 7 item 5). Empty still blocks.
+    private var canSave: Bool { reps > 0 && (usesBodyweight || (!entry.isEmpty && parse(entry) != nil)) }
     private var wouldBePR: Bool { canSave && prCheck(weightKg, reps) }
     private var partners: [Person] { people.filter { !$0.isMe } }
     private var selectedPerson: Person? { people.first { $0.id == performedByID } }

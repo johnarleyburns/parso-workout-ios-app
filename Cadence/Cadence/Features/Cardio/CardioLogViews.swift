@@ -57,12 +57,14 @@ struct LogWorkoutPicker: View {
                             LogCardioView(type: type) { dismiss(); onSaved() }
                         } label: { tile(type.symbol, type.displayName) }
                             .buttonStyle(.plain)
+                            .tapHaptic()
                             .accessibilityIdentifier("logType.\(type.rawValue)")
                     }
                     NavigationLink {
                         LogCardioView(type: .other, isOther: true) { dismiss(); onSaved() }
                     } label: { tile("figure.mixed.cardio", "Other Cardio") }
                         .buttonStyle(.plain)
+                        .tapHaptic()
                         .accessibilityIdentifier("logType.other")
                 }
                 .padding()
@@ -115,13 +117,20 @@ struct LogCardioView: View {
                 }
             }
             Section("Duration") {
-                Stepper(value: $minutes, in: 1...600, step: 5) {
-                    HStack {
-                        Text("Minutes"); Spacer()
-                        Text("\(minutes)").monospacedDigit().font(.headline)
-                    }
+                HStack {
+                    Text("Minutes"); Spacer()
+                    // Direct entry (feedback batch 7 item 3) — type the value, with
+                    // the stepper kept only for quick ± nudges.
+                    TextField("30", value: $minutes, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .monospacedDigit().font(.headline)
+                        .frame(maxWidth: 70)
+                        .accessibilityIdentifier("log.minutes")
+                    Stepper("Minutes", value: $minutes, in: 1...600, step: 5)
+                        .labelsHidden()
+                        .accessibilityIdentifier("log.minutesStepper")
                 }
-                .accessibilityIdentifier("log.minutes")
             }
             if showsDistance {
                 Section("Distance (optional)") {
@@ -138,10 +147,16 @@ struct LogCardioView: View {
             Section {
                 Button { save() } label: {
                     Label("Log Workout", systemImage: "square.and.pencil")
-                        .frame(maxWidth: .infinity)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
+                // A positive, green action button like "Start Workout" (item 1).
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .controlSize(.large)
                 .accessibilityIdentifier("log.save")
             }
+            .listRowBackground(Color.clear)
         }
         .navigationTitle("Log \(isOther ? "Other Cardio" : type.displayName)")
         .navigationBarTitleDisplayMode(.inline)

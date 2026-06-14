@@ -125,6 +125,7 @@ struct OutdoorCardioView: View {
         r.start(type: type)
         recorder = r
         clock = WorkoutClock(startedAt: Date())
+        WorkoutCues.transition(enabled: settings.workoutSounds)   // workout starts (item 9)
     }
 
     private func togglePause() {
@@ -134,6 +135,7 @@ struct OutdoorCardioView: View {
 
     private func end() async {
         guard let r = recorder else { dismiss(); return }
+        WorkoutCues.transition(enabled: settings.workoutSounds)   // workout ends (item 9)
         clock.end()
         var summary = r.end()
         summary.customTitle = customTitle

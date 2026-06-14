@@ -12,6 +12,7 @@ struct RecordCardioView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var model
+    @Environment(AppSettings.self) private var settings
 
     @State private var recorder: CardioRecorder?
     @State private var started = false
@@ -54,6 +55,7 @@ struct RecordCardioView: View {
         r.start(type: type)
         recorder = r
         started = true
+        WorkoutCues.transition(enabled: settings.workoutSounds)   // workout starts (item 9)
     }
 
     private var activityPicker: some View {
@@ -137,6 +139,7 @@ struct RecordCardioView: View {
     }
 
     private func endWorkout(_ recorder: CardioRecorder) async {
+        WorkoutCues.transition(enabled: settings.workoutSounds)   // workout ends (item 9)
         var summary = recorder.end()
         summary.customTitle = customTitle
         let hkID = await model.health.saveCardioWorkout(summary)

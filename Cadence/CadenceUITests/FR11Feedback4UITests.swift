@@ -88,6 +88,9 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
 
         XCTAssertTrue(app.scrollToAndTapButton("workout.coolDown"), "Cool Down")
+        // Cool Down now confirms first (batch 7 item 6) so an accidental tap can't
+        // end the workout.
+        XCTAssertTrue(app.buttons["workout.coolDownConfirm"].waitTap(), "confirm Cool Down")
         XCTAssertTrue(app.staticTexts["cooldown.remaining"].waitForExistence(timeout: 25),
                       "the cool-down timer should appear")
         XCTAssertTrue(app.buttons["cooldown.skip"].waitTap(), "Skip the cool-down")

@@ -28,6 +28,8 @@ struct SessionView: View {
     // Cool-down (feedback batch 4): a guided timer that, on finish/skip, ends the
     // workout. The workout is paused while it runs so the clock doesn't advance.
     @State private var coolingDown = false
+    // Guard against an accidental Cool Down tap — it ends the workout (batch 7 item 6).
+    @State private var coolDownConfirm = false
     private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
     /// Owner first, then partners alphabetically.
@@ -155,7 +157,7 @@ struct SessionView: View {
                         isPaused: active.isPaused,
                         onPauseToggle: togglePause,
                         onEnd: endWorkout,
-                        onCoolDown: { active.pause(); coolingDown = true },
+                        onCoolDown: { coolDownConfirm = true },
                         confirmMessage: "This finishes and saves your workout."
                     )
                     .padding(.top, 8)
@@ -211,11 +213,19 @@ struct SessionView: View {
                 minutes: settings.cooldownMinutes,
                 tint: .teal,
                 idPrefix: "cooldown",
+                soundsEnabled: settings.workoutSounds,
                 onFinish: { secs in
                     session.cooldownSeconds = Double(secs)
                     coolingDown = false
                     endWorkout()
                 })
+        }
+        .confirmationDialog("Start cool-down?", isPresented: $coolDownConfirm, titleVisibility: .visible) {
+            Button("Start Cool Down") { active.pause(); coolingDown = true }
+                .accessibilityIdentifier("workout.coolDownConfirm")
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This ends your workout and starts the cool-down timer.")
         }
         .task { _ = try? WorkoutRepository.me(in: context) }
         .onReceive(idleTimer) { _ in checkIdle() }
@@ -527,6 +537,8 @@ struct SessionView: View {
     /// prompt is ignored for 30s, auto-save (field-testing §02, decisions #6/#7).
     private func checkIdle() {
         guard active.strengthSession?.id == session.id else { return }
+        // Auto-end on idle is opt-out (batch 7 item 8) — some users never want it.
+        guard settings.autoEndOnIdle else { return }
         // A paused workout never auto-saves — the clock and idle watchdog freeze.
         guard !active.isPaused else { return }
         if idlePromptShown {
@@ -555,6 +567,9 @@ struct SessionView: View {
     /// summary to the app model so it presents *over Home* (P1 #9) — the session pops
     /// behind it, so Done reveals Home without flashing the session screen.
     private func endWorkout() {
+        // Workout ends — bell so the user knows to stop (batch 7 item 9). Covers both
+        // "End now" and the end of a guided cool-down.
+        WorkoutCues.transition(enabled: settings.workoutSounds)
         if settings.autoSaveHealth, session.healthKitWorkoutUUID == nil, !session.orderedSets.isEmpty {
             Task { await saveToHealth() }
         }

@@ -97,6 +97,7 @@ struct SettingsView: View {
                 Section("Strength") {
                     Stepper("Auto-end after \(settings.idleTimeoutMinutes) min idle",
                             value: $settings.idleTimeoutMinutes, in: 2...30)
+                        .disabled(!settings.autoEndOnIdle)
                         .accessibilityIdentifier("settings.idleTimeout")
                     Toggle("Round weights to nearest plate", isOn: $settings.plateRounding)
                         .accessibilityIdentifier("settings.plateRounding")
@@ -146,6 +147,25 @@ struct SettingsView: View {
                     Text("Warm-up & Cool-down")
                 } footer: {
                     Text("Optional guided timers for strength and CrossFit workouts — start with a warm-up, or wind down with a cool-down before finishing.")
+                }
+
+                // Feedback batch 7 items 8 & 9 — appended at the very bottom (per the
+                // §06 convention) so existing rows keep their positions and their
+                // scroll/coordinate-tap tests stay valid.
+                Section {
+                    Toggle("Auto-end when idle", isOn: $settings.autoEndOnIdle)
+                        .accessibilityIdentifier("settings.autoEndOnIdle")
+                } footer: {
+                    Text("When on, a strength workout that's been idle for the time above auto-saves. Turn off to keep it running until you end it yourself.")
+                }
+
+                Section {
+                    Toggle("Workout sounds", isOn: $settings.workoutSounds)
+                        .accessibilityIdentifier("settings.workoutSounds")
+                } header: {
+                    Text("Sounds")
+                } footer: {
+                    Text("Plays a bell at each transition — workout start, warm-up, work, cool-down and end — so you can start and stop without watching your phone. Boxing keeps its own round bell.")
                 }
             }
         .navigationTitle("Settings")

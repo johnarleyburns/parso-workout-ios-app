@@ -39,6 +39,7 @@ struct WorkoutTypePicker: View {
                                 CrossFitPickerView(onStart: { onPlan($0, nil) })
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
+                                .tapHaptic()
                                 .accessibilityIdentifier("startType.\(type.rawValue)")
                                 .accessibilityLabel(type.displayName)
                         case .weights:
@@ -49,6 +50,7 @@ struct WorkoutTypePicker: View {
                                                  onPlan: onPlan)
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
+                                .tapHaptic()
                                 .accessibilityIdentifier("startType.\(type.rawValue)")
                                 .accessibilityLabel(type.displayName)
                         case .other:
@@ -58,11 +60,13 @@ struct WorkoutTypePicker: View {
                                 OtherCardioEntryView(onStart: onOtherCardio)
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
+                                .tapHaptic()
                                 .accessibilityIdentifier("startType.\(type.rawValue)")
                                 .accessibilityLabel(type.displayName)
                         default:
                             Button { onSelect(type) } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
+                                .tapHaptic()
                                 .accessibilityIdentifier("startType.\(type.rawValue)")
                                 .accessibilityLabel(type.displayName)
                         }

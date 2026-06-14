@@ -91,7 +91,10 @@ public enum SettingsDefault {
     public static let stepGoal = 10_000
     public static let weeklyCardioMinutesGoal = 250
     public static let restSeconds = 90
-    public static let warmupMinutes = 10
-    public static let cooldownMinutes = 10
+    // Strength/CrossFit guided warm-up & cool-down (feedback batch 7 item 7 —
+    // 5 min; HIIT/boxing use their protocol's own periods, not these). User-override
+    // in Settings.
+    public static let warmupMinutes = 5
+    public static let cooldownMinutes = 5
     public static let cloudSyncEnabled = false
 }

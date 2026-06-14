@@ -45,6 +45,8 @@ final class FR2CardioUITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["startType.other"].waitTap(), "Other type")
+        // Other Cardio entry (feedback batch 6): GPS off → indoor recorder.
+        XCTAssertTrue(app.buttons["otherCardio.start"].waitTap(), "Other Cardio Start")
 
         XCTAssertTrue(app.staticTexts["record.elapsed"].waitForExistence(timeout: 25), "recording")
         let connect = app.buttons["record.connectStrap"]

@@ -14,9 +14,12 @@ struct HomeView: View {
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
 
     @State private var typePickerPresented = false
+    @State private var logPickerPresented = false
     @State private var path = NavigationPath()
     @State private var cardioType: CardioType?
     @State private var outdoorType: CardioType?
+    /// Free-text label for an in-flight "Other Cardio" recording (feedback batch 6).
+    @State private var otherCardioTitle: String?
     @State private var intervalType: WorkoutType?
     @State private var intervalLaunch: IntervalLaunch?
     @State private var swimPresented = false
@@ -40,6 +43,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     if let s = active.strengthSession { resumeCard(s) }
                     startButton
+                    logButton
                     statRow
                     coverageRow
                     recentWorkoutsSection
@@ -78,7 +82,11 @@ struct HomeView: View {
                                   onPlan: { plan, ladder in launchFromPicker(.plan(plan, ladder)) },
                                   onWeightsQuickStart: { launchFromPicker(.strength) },
                                   onWeightsWarmup: { typePickerPresented = false; warmupActive = true },
-                                  onWeightsReuse: { launchFromPicker(.reuse($0)) })
+                                  onWeightsReuse: { launchFromPicker(.reuse($0)) },
+                                  onOtherCardio: { desc, gps in startOtherCardio(description: desc, gps: gps) })
+            }
+            .sheet(isPresented: $logPickerPresented) {
+                LogWorkoutPicker()
             }
             // P1 #9 — the post-workout summary is presented here, above the whole
             // NavigationStack, so the finished session can pop behind it.
@@ -86,8 +94,8 @@ struct HomeView: View {
                 WorkoutSummaryView(data: finished.data,
                                    onDone: { active.finishedSummary = nil })
             }
-            .sheet(item: $cardioType) { RecordCardioView(initialType: $0) }
-            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0) }
+            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle) }
+            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle) }
             .sheet(item: $intervalType) { wType in
                 IntervalSetupView(type: wType) { plan in
                     intervalType = nil
@@ -227,6 +235,25 @@ struct HomeView: View {
         .accessibilityIdentifier("home.startWorkout").accessibilityLabel("Start a workout")
     }
 
+    /// Log a past workout manually (feedback batch 6 item 3) — it lands in history
+    /// just like a live one, flagged "Logged".
+    private var logButton: some View {
+        Button { logPickerPresented = true } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "square.and.pencil").font(.headline)
+                Text("Log Workout").font(.headline)
+                Spacer()
+                Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
+            }
+            .padding(.vertical, 14).padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.tint)
+            .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.logWorkout").accessibilityLabel("Log a past workout")
+    }
+
     // MARK: Inline sections (surfaced, not hidden)
 
     /// One merged, date-sorted "Recent workouts" list — cardio counts as a workout
@@ -329,6 +356,8 @@ struct HomeView: View {
     /// inside the sheet itself). Strength launches via the push-behind path; cardio
     /// dismisses the sheet first, then presents its own flow.
     private func start(_ type: WorkoutType) {
+        // Only "Other Cardio" carries a custom title; clear any stale one first.
+        otherCardioTitle = nil
         if type.isStrength {
             // Weights/CrossFit are handled inside the sheet (WeightsStartView /
             // CrossFitPickerView), so this branch is normally unreached.
@@ -344,6 +373,15 @@ struct HomeView: View {
             typePickerPresented = false; begin(.timer(c))
         }
     }
+    /// "Other Cardio" chosen (feedback batch 6 item 3): stash its description, then
+    /// route to the GPS recorder or the indoor timer per the user's GPS toggle.
+    private func startOtherCardio(description: String, gps: Bool) {
+        typePickerPresented = false
+        let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        otherCardioTitle = trimmed.isEmpty ? nil : trimmed
+        begin(gps ? .outdoor(.other) : .timer(.other))
+    }
+
     /// Launches a strength/plan workout chosen from the Start sheet without a Home
     /// flash (P1 #1/#5): with no countdown, push the session *under* the still-open
     /// sheet and then dismiss it (revealing the session); with a countdown, dismiss

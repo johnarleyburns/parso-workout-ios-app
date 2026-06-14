@@ -6,6 +6,8 @@ struct RecordCardioView: View {
     /// When set (from the Start Workout picker, field-testing §02), recording
     /// begins immediately for this type, skipping the in-view grid.
     var initialType: CardioType? = nil
+    /// Free-text label for an "Other Cardio" workout (feedback batch 6), else nil.
+    var customTitle: String? = nil
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -135,7 +137,8 @@ struct RecordCardioView: View {
     }
 
     private func endWorkout(_ recorder: CardioRecorder) async {
-        let summary = recorder.end()
+        var summary = recorder.end()
+        summary.customTitle = customTitle
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                               healthKitWorkoutUUID: hkID, in: context)

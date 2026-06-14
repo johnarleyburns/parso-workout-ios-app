@@ -143,6 +143,33 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
     }
 
+    // Feedback batch 6 item 3 — a manually logged cardio workout lands in history
+    // identically to a recorded one, but flagged isLogged with its custom title.
+    func testSaveLoggedCardioFlagsAndTitles() throws {
+        let ctx = try makeContext()
+        let start = Date(timeIntervalSince1970: 1000)
+        let c = try WorkoutRepository.saveLoggedCardio(
+            type: .other, start: start, durationSeconds: 1500,
+            distanceMeters: 2000, customTitle: "  Rowing  ", in: ctx)
+        XCTAssertTrue(c.isLogged)
+        XCTAssertEqual(c.customTitle, "Rowing")          // trimmed
+        XCTAssertEqual(c.displayTitle, "Rowing")
+        XCTAssertEqual(c.duration, 1500)
+        XCTAssertEqual(c.distance, 2000)
+        XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
+    }
+
+    // A blank custom title falls back to the type's display name.
+    func testSaveLoggedCardioBlankTitleFallsBack() throws {
+        let ctx = try makeContext()
+        let c = try WorkoutRepository.saveLoggedCardio(
+            type: .run, start: Date(timeIntervalSince1970: 0),
+            durationSeconds: 600, customTitle: "   ", in: ctx)
+        XCTAssertNil(c.customTitle)
+        XCTAssertEqual(c.displayTitle, "Run")
+        XCTAssertTrue(c.isLogged)
+    }
+
     func testRecentPRs() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)

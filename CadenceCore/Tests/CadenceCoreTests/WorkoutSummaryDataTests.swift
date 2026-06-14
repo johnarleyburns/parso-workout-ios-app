@@ -202,4 +202,62 @@ final class WorkoutSummaryDataTests: XCTestCase {
         XCTAssertNil(s.distanceM)
         XCTAssertNil(s.paceSecPerKm)
     }
+
+    // MARK: Feedback batch 6 — Other Cardio title, logged flag, warm/cool
+
+    func testOtherCardioUsesCustomTitle() throws {
+        let start = Date(timeIntervalSince1970: 40_000)
+        let c = CardioWorkout(type: .other, start: start, end: start.addingTimeInterval(1800),
+                              customTitle: "Rowing")
+        let s = WorkoutSummaryData.from(cardio: c)
+        XCTAssertEqual(s.title, "Rowing", "free-text Other Cardio label wins over the type name")
+    }
+
+    func testOtherCardioBlankCustomTitleFallsBackToTypeName() throws {
+        let start = Date(timeIntervalSince1970: 41_000)
+        let c = CardioWorkout(type: .other, start: start, end: start.addingTimeInterval(60),
+                              customTitle: "   ")
+        XCTAssertEqual(c.displayTitle, "Other", "whitespace-only label is ignored")
+        XCTAssertEqual(WorkoutSummaryData.from(cardio: c).title, "Other")
+    }
+
+    func testLoggedFlagFlowsThrough() throws {
+        let start = Date(timeIntervalSince1970: 42_000)
+        let logged = CardioWorkout(type: .run, start: start, end: start.addingTimeInterval(600), isLogged: true)
+        XCTAssertTrue(WorkoutSummaryData.from(cardio: logged).isLogged)
+
+        let live = CardioWorkout(type: .run, start: start, end: start.addingTimeInterval(600))
+        XCTAssertFalse(WorkoutSummaryData.from(cardio: live).isLogged)
+    }
+
+    func testStrengthSummaryCarriesLoggedAndWarmCool() throws {
+        let ctx = try makeContext()
+        let start = Date(timeIntervalSince1970: 43_000)
+        let session = try WorkoutRepository.createSession(title: "Logged Push", date: start, in: ctx)
+        session.isLogged = true
+        session.warmupSeconds = 180
+        session.cooldownSeconds = 90
+        let s = WorkoutSummaryData.from(session: session)
+        XCTAssertTrue(s.isLogged)
+        XCTAssertEqual(s.warmupSec, 180, accuracy: 0.001)
+        XCTAssertEqual(s.cooldownSec, 90, accuracy: 0.001)
+    }
+
+    // The pure history glyph (feedback batch 6): CrossFit / bodyweight / weighted.
+    func testSessionSymbolReflectsKind() throws {
+        let ctx = try makeContext()
+        let crossfit = try WorkoutRepository.createSession(title: "CrossFit – Fran", date: Date(), in: ctx)
+        XCTAssertEqual(crossfit.symbol, "figure.strengthtraining.functional")
+
+        let calisthenics = try WorkoutRepository.createSession(title: "Calisthenics", date: Date(), in: ctx)
+        let pullup = try WorkoutRepository.findOrCreateExercise(named: "Pull-Up", in: ctx)
+        _ = try WorkoutRepository.addSet(to: calisthenics, exercise: pullup, weightKg: 0, reps: 10,
+                                         usesBodyweight: true, in: ctx)
+        XCTAssertEqual(calisthenics.symbol, "figure.strengthtraining.traditional")
+
+        let weights = try WorkoutRepository.createSession(title: "Push Day", date: Date(), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: weights, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        XCTAssertEqual(weights.symbol, "dumbbell")
+    }
 }

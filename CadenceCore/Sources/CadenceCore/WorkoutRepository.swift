@@ -480,7 +480,8 @@ public enum WorkoutRepository {
                               end: summary.end, distance: summary.distanceMeters,
                               activeEnergy: summary.activeEnergyKcal, avgHeartRate: avg,
                               maxHeartRate: maxHR, source: source,
-                              healthKitWorkoutUUID: healthKitWorkoutUUID)
+                              healthKitWorkoutUUID: healthKitWorkoutUUID,
+                              isLogged: summary.isLogged, customTitle: summary.customTitle)
         c.intervalSummary = summary.intervalSummary
         context.insert(c)
         for p in summary.hrSamples { context.insert(HRSample(t: p.t, bpm: p.bpm, cardio: c)) }

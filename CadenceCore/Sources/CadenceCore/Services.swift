@@ -80,14 +80,21 @@ public struct CardioWorkoutSummary: Equatable, Sendable {
     public var route: [LocationFix]
     /// Interval (HIIT/boxing) structure, when this is a recorded interval workout.
     public var intervalSummary: IntervalSummary?
+    /// Free-text label for an "Other Cardio" workout (e.g. "Rowing"); nil ⇒ type
+    /// name (feedback batch 6).
+    public var customTitle: String?
+    /// Manually logged vs live-recorded (feedback batch 6).
+    public var isLogged: Bool
     public init(id: UUID, type: CardioType, start: Date, end: Date,
                 distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
                 hrSamples: [HRSamplePoint] = [], route: [LocationFix] = [],
-                intervalSummary: IntervalSummary? = nil) {
+                intervalSummary: IntervalSummary? = nil,
+                customTitle: String? = nil, isLogged: Bool = false) {
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.hrSamples = hrSamples; self.route = route
         self.intervalSummary = intervalSummary
+        self.customTitle = customTitle; self.isLogged = isLogged
     }
 }
 

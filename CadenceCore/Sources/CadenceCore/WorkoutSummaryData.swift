@@ -69,6 +69,11 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     public let hr: [(t: TimeInterval, bpm: Double)]   // cardio chart
     public let route: [(lat: Double, lon: Double)]    // cardio map
     public let interval: IntervalSummary?             // HIIT/boxing structure
+    /// Manually logged vs live-recorded — the view shows a "Logged" tag (batch 6).
+    public let isLogged: Bool
+    /// Strength only: actual warm-up / cool-down time consumed, in seconds (batch 6).
+    public let warmupSec: TimeInterval
+    public let cooldownSec: TimeInterval
 
     public init(kind: Kind,
                 title: String,
@@ -88,7 +93,10 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                 partners: [PartnerSummary] = [],
                 hr: [(t: TimeInterval, bpm: Double)] = [],
                 route: [(lat: Double, lon: Double)] = [],
-                interval: IntervalSummary? = nil) {
+                interval: IntervalSummary? = nil,
+                isLogged: Bool = false,
+                warmupSec: TimeInterval = 0,
+                cooldownSec: TimeInterval = 0) {
         self.kind = kind
         self.title = title
         self.date = date
@@ -108,6 +116,9 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         self.hr = hr
         self.route = route
         self.interval = interval
+        self.isLogged = isLogged
+        self.warmupSec = warmupSec
+        self.cooldownSec = cooldownSec
     }
 
     // Tuple-typed arrays block Equatable synthesis, so compare element-wise.
@@ -133,6 +144,9 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             && lhs.route.count == rhs.route.count
             && zip(lhs.route, rhs.route).allSatisfy { $0 == $1 }
             && lhs.interval == rhs.interval
+            && lhs.isLogged == rhs.isLogged
+            && lhs.warmupSec == rhs.warmupSec
+            && lhs.cooldownSec == rhs.cooldownSec
     }
 
     // MARK: Builders
@@ -171,7 +185,10 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             setCount: setCount,
             totalReps: totalReps,
             exercises: exercises,
-            partners: partners
+            partners: partners,
+            isLogged: session.isLogged,
+            warmupSec: session.warmupSeconds,
+            cooldownSec: session.cooldownSeconds
         )
     }
 
@@ -200,7 +217,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         }
         return WorkoutSummaryData(
             kind: .cardio,
-            title: cardio.typeValue.displayName,
+            title: cardio.displayTitle,
             date: cardio.start,
             durationSec: cardio.duration,
             distanceM: cardio.distance,
@@ -215,7 +232,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             exercises: [],
             hr: cardio.orderedHRSamples.map { (t: $0.t, bpm: $0.bpm) },
             route: cardio.orderedRouteSamples.map { (lat: $0.lat, lon: $0.lon) },
-            interval: cardio.intervalSummary
+            interval: cardio.intervalSummary,
+            isLogged: cardio.isLogged
         )
     }
 }

@@ -179,15 +179,19 @@ struct IntervalView: View {
         runner.isPaused ? runner.resume() : runner.pause()
     }
 
-    /// Skips the active phase and re-arms the cue trackers for the new phase.
+    /// Skips the active phase and re-arms the cue trackers for the new phase. When
+    /// the skip ends the workout (skipping the final phase), finish with the
+    /// *pre-skip* elapsed so the cut-short phase records its actual time, not the
+    /// skipped-to-end length (feedback batch 6).
     private func skipPhase() {
+        let preSkipElapsed = runner.elapsed
         runner.skipPhase()
         lastWarnedPhase = nil
         lastTickSecond = -1
-        if runner.isComplete && !finished { Task { await finish() } }
+        if runner.isComplete && !finished { Task { await finish(elapsedOverride: preSkipElapsed) } }
     }
 
-    private func finish() async {
+    private func finish(elapsedOverride: TimeInterval? = nil) async {
         guard !finished else { return }
         finished = true
         runner.end()
@@ -196,8 +200,9 @@ struct IntervalView: View {
         let end = Date()
         // Capture the protocol structure (rounds, work/rest, warm-up/cool-down, and
         // how many work rounds were actually finished) so history shows the detail
-        // (feedback batch 4 / roadmap P5).
-        let interval = IntervalSummary.from(plan: plan, elapsed: runner.elapsed)
+        // (feedback batch 4 / roadmap P5). Warm-up/cool-down reflect *actual* time
+        // consumed (feedback batch 6).
+        let interval = IntervalSummary.from(plan: plan, elapsed: elapsedOverride ?? runner.elapsed)
         // Real HR captured from the strap during the workout (feedback batch 5).
         let hr = HRSampling.downsample(hrSamples)
         let bpms = hr.map(\.bpm).filter { $0 > 0 }

@@ -170,6 +170,37 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertTrue(c.isLogged)
     }
 
+    // Manual strength/CrossFit logging (feedback batch 7 follow-up) — a logged
+    // strength session flags isLogged, keeps its back-dated date, and surfaces in
+    // unified history identically to a live one; logging a CrossFit benchmark
+    // pre-loads its movements and flags isLogged too.
+    func testCreateLoggedStrengthSessionFlagsAndSurfaces() throws {
+        let ctx = try makeContext()
+        let date = Date(timeIntervalSince1970: 5000)
+        let s = try WorkoutRepository.createSession(title: "Workout", date: date,
+                                                    isLogged: true, in: ctx)
+        XCTAssertTrue(s.isLogged)
+        XCTAssertEqual(s.date, date)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: s, exercise: bench, weightKg: 100, reps: 5,
+                                         completedAt: date, in: ctx)
+        let history = try WorkoutRepository.unifiedHistory(ctx)
+        let logged = history.compactMap { if case let .strength(ws) = $0 { return ws } else { return nil } }
+        XCTAssertTrue(logged.contains { $0.id == s.id && $0.isLogged })
+    }
+
+    func testStartLoggedCrossFitSessionPreloadsMovements() throws {
+        let ctx = try makeContext()
+        let fran = BenchmarkWorkouts.girls.first { $0.id == "fran" }!
+        let s = try WorkoutRepository.startSession(from: fran,
+                                                   date: Date(timeIntervalSince1970: 100),
+                                                   isLogged: true, in: ctx)
+        XCTAssertTrue(s.isLogged)
+        XCTAssertEqual(s.planKey, "fran")
+        XCTAssertTrue(s.plannedExerciseNames.contains("Thruster"))
+        XCTAssertTrue(s.title.localizedCaseInsensitiveContains("fran"))
+    }
+
     func testRecentPRs() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)

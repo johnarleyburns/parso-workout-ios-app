@@ -7,6 +7,14 @@ import CadenceCore
 /// timer that auto-starts on set completion.
 struct SessionView: View {
     @Bindable var session: WorkoutSession
+    /// Manual after-the-fact logging (feedback batch 7 follow-up): the session is
+    /// `isLogged` + back-dated and is NOT the live `active` session, so the elapsed
+    /// clock, control bar, and idle watchdog all stay hidden (they gate on
+    /// `active.strengthSession`). Instead we show a "Done" button and stamp sets to
+    /// the workout's date. Defaults keep the live/edit-from-history callers unchanged.
+    var isManualLog: Bool = false
+    /// Dismisses the whole logging flow back to Home once the user is finished.
+    var onDone: (() -> Void)? = nil
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
@@ -110,6 +118,7 @@ struct SessionView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                if isManualLog { loggedDateBanner }
                 if rest.isRunning {
                     RestTimerBar(model: rest) { Haptics.restComplete() }
                 }
@@ -161,6 +170,18 @@ struct SessionView: View {
                         confirmMessage: "This finishes and saves your workout."
                     )
                     .padding(.top, 8)
+                } else if isManualLog {
+                    // A logged session saves incrementally as sets are added; Done just
+                    // returns to Home (the "Logged" workout is already in history).
+                    Button {
+                        finishManualLog()
+                    } label: {
+                        Label("Done", systemImage: "checkmark")
+                            .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent).tint(.green).controlSize(.large)
+                    .padding(.top, 8)
+                    .accessibilityIdentifier("log.done")
                 }
             }
             .padding()
@@ -228,6 +249,9 @@ struct SessionView: View {
             Text("This ends your workout and starts the cool-down timer.")
         }
         .task { _ = try? WorkoutRepository.me(in: context) }
+        // Backing out of a freshly-started log with nothing entered shouldn't litter
+        // history with an empty "Logged" row.
+        .onDisappear { if isManualLog { cleanupEmptyLog() } }
         .onReceive(idleTimer) { _ in checkIdle() }
         .alert("Still training?", isPresented: $idlePromptShown) {
             Button("Keep going") { poke() }
@@ -247,6 +271,22 @@ struct SessionView: View {
         } message: {
             Text("Their sets are recorded separately and kept out of your PRs and Apple Health.")
         }
+    }
+
+    /// Reminds the user which past date a manually-logged workout is being filed
+    /// under (feedback batch 7 follow-up).
+    private var loggedDateBanner: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "square.and.pencil")
+            Text("Logging \(session.date.formatted(date: .abbreviated, time: .shortened))")
+                .font(.subheadline.weight(.medium))
+            Spacer()
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityIdentifier("log.dateBanner")
     }
 
     // MARK: Partner bar (field-testing §04)
@@ -579,6 +619,22 @@ struct SessionView: View {
         dismiss()
     }
 
+    /// Finishes a manual-log session: discards it if nothing was entered, then hands
+    /// control back to Home (the logged workout already persisted as sets were added).
+    private func finishManualLog() {
+        cleanupEmptyLog()
+        Haptics.selection()
+        onDone?()
+    }
+
+    /// Deletes a just-started logged session that has no sets, so an abandoned log
+    /// doesn't appear in history. Idempotent — only acts while the session is empty.
+    private func cleanupEmptyLog() {
+        guard isManualLog, session.orderedSets.isEmpty else { return }
+        context.delete(session)
+        try? context.save()
+    }
+
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,
                         rpe: Double?, isWarmup: Bool, usesBodyweight: Bool = false,
                         note: String?, performedBy: Person? = nil) {
@@ -587,12 +643,16 @@ struct SessionView: View {
         // PR is only the owner's concern; a partner's set never fires a PR.
         let isPR = person == nil && WorkoutRepository.wouldBePR(exercise: exercise, weightKg: weightKg, reps: reps,
                                                isWarmup: isWarmup, rule: settings.prRule, formula: settings.formula)
+        // A logged set is stamped to the workout's date, not data-entry time, so a
+        // back-dated log reads correctly (also right when editing a logged session).
+        let when = session.isLogged ? session.date : Date()
         _ = try? WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: weightKg,
                                           reps: reps, rpe: rpe, isWarmup: isWarmup,
                                           usesBodyweight: usesBodyweight, note: note,
-                                          performedBy: person, in: context)
+                                          completedAt: when, performedBy: person, in: context)
         if isPR { Haptics.prAchieved() } else { Haptics.setLogged() }
-        if settings.autoStartRest && !isWarmup {
+        // No rest timer when filing a past workout — there's nothing to rest from.
+        if settings.autoStartRest && !isWarmup && !isManualLog {
             rest.start(seconds: settings.restSeconds)
         }
     }

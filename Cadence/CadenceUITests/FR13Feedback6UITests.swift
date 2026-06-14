@@ -34,6 +34,49 @@ final class FR13Feedback6UITests: CadenceUITestCase {
                       "the custom description should show as the workout title")
     }
 
+    // Batch 7 follow-up — manually logging a STRENGTH workout: Log Workout →
+    // Strength → Add Exercises → log a set → Done lands it in history "Logged".
+    func testLogStrengthAppearsAsLogged() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.buttons["home.logWorkout"].waitTap(), "Log Workout")
+        XCTAssertTrue(app.buttons["logType.strength"].waitTap(), "Strength log tile")
+        XCTAssertTrue(app.buttons["log.addExercises"].waitTap(), "Add Exercises")
+
+        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
+                      "manual-log session screen")
+        app.buttons["session.addExercise"].tap()
+        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "Bench Press row")
+        app.recordKeypadSet("100")
+
+        XCTAssertTrue(app.buttons["log.done"].waitTap(), "Done")
+        XCTAssertTrue(app.buttons["home.sessionRow"].waitForExistence(timeout: 25),
+                      "the logged strength workout should appear in history")
+        XCTAssertTrue(app.staticTexts["workout.loggedTag"].waitForExistence(timeout: 10)
+                      || app.images["workout.loggedTag"].waitForExistence(timeout: 2),
+                      "a logged workout should carry the Logged tag")
+    }
+
+    // Batch 7 follow-up — logging an ad-hoc CrossFit WOD via the Custom escape hatch
+    // off the benchmark picker, landing as a "Logged" session.
+    func testLogCustomCrossFitAppearsAsLogged() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.buttons["home.logWorkout"].waitTap(), "Log Workout")
+        XCTAssertTrue(app.buttons["logType.crossfit"].waitTap(), "CrossFit log tile")
+        XCTAssertTrue(app.buttons["crossfit.custom"].waitTap(), "Custom CrossFit")
+        XCTAssertTrue(app.buttons["log.addExercises"].waitTap(), "Add Exercises")
+
+        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
+                      "manual-log session screen")
+        app.buttons["session.addExercise"].tap()
+        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "a movement row")
+        app.recordKeypadSet("60")
+
+        XCTAssertTrue(app.buttons["log.done"].waitTap(), "Done")
+        XCTAssertTrue(app.staticTexts["workout.loggedTag"].waitForExistence(timeout: 25)
+                      || app.images["workout.loggedTag"].waitForExistence(timeout: 2),
+                      "a logged CrossFit workout should carry the Logged tag")
+    }
+
     // Choosing Other Cardio from Start opens a description + GPS entry first.
     func testOtherCardioLiveEntryHasDescriptionAndGPS() {
         let app = XCUIApplication.launched()

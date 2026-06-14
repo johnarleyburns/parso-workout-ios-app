@@ -103,11 +103,15 @@ public enum WorkoutRepository {
 
     // MARK: Sessions & sets (FR-1.1, FR-1.2)
 
+    /// `isLogged` flags a workout entered manually after the fact (feedback batch 6/7):
+    /// it lands in history identically to a live one but carries the "Logged" tag and
+    /// no live HR/clock. Additive default keeps live callers unchanged.
     @discardableResult
     public static func createSession(title: String = "Workout",
                                      date: Date = Date(),
+                                     isLogged: Bool = false,
                                      in context: ModelContext) throws -> WorkoutSession {
-        let s = WorkoutSession(title: title, date: date)
+        let s = WorkoutSession(title: title, date: date, isLogged: isLogged)
         context.insert(s)
         try context.save()
         return s
@@ -421,8 +425,9 @@ public enum WorkoutRepository {
     public static func startSession(from plan: WorkoutPlan,
                                     repLadder: [Int]? = nil,
                                     date: Date = Date(),
+                                    isLogged: Bool = false,
                                     in context: ModelContext) throws -> WorkoutSession {
-        let session = WorkoutSession(title: plan.displayTitle, date: date)
+        let session = WorkoutSession(title: plan.displayTitle, date: date, isLogged: isLogged)
         session.planKey = plan.id
         session.plannedExerciseNames = plan.movementNames
         // A flexible template launched with a chosen rep scheme stamps the ladder

@@ -68,12 +68,18 @@ struct HistoryView: View {
 
     private func strengthRow(_ session: WorkoutSession) -> some View {
         Button { path.append(HistorySummaryRoute.strength(session)) } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(session.title.isEmpty ? "Workout" : session.title)
-                Text(session.date.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption).foregroundStyle(.secondary)
-                Text("\(session.orderedSets.count) sets · \(Format.weightValue(session.totalVolume, unit: .kilograms)) kg volume")
-                    .font(.caption2).foregroundStyle(.tertiary)
+            HStack {
+                Image(systemName: session.symbol).foregroundStyle(.tint).frame(width: 26)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 8) {
+                        Text(session.title.isEmpty ? "Workout" : session.title)
+                        if session.isLogged { LoggedTag() }
+                    }
+                    Text(session.date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text("\(session.orderedSets.count) sets · \(Format.weightValue(session.totalVolume, unit: .kilograms)) kg volume")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
@@ -96,7 +102,10 @@ struct HistoryView: View {
             HStack {
                 Image(systemName: c.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(c.typeValue.displayName)
+                    HStack(spacing: 8) {
+                        Text(c.displayTitle)
+                        if c.isLogged { LoggedTag() }
+                    }
                     Text(c.start.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption).foregroundStyle(.secondary)
                     Text("\(Format.duration(c.duration))\(c.distance.map { " · " + Format.distance($0) } ?? "")")

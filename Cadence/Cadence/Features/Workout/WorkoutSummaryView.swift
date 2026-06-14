@@ -38,6 +38,7 @@ struct WorkoutSummaryView: View {
                 metricsGrid
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, !data.partners.isEmpty { partnersSection }
+                if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
                 if let interval = data.interval { intervalSection(interval) }
                 if !data.hr.isEmpty { hrChart }
                 if data.route.count > 1 { routeMap }
@@ -88,9 +89,12 @@ struct WorkoutSummaryView: View {
             Text(data.title)
                 .font(.title.weight(.bold))
                 .accessibilityIdentifier("summary.title")
-            Text(data.date.formatted(date: .abbreviated, time: .shortened))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Text(data.date.formatted(date: .abbreviated, time: .shortened))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if data.isLogged { LoggedTag() }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -193,6 +197,27 @@ struct WorkoutSummaryView: View {
         return "top \(Format.weight(topKg, unit: settings.unit, decimals: 0))"
     }
 
+    // MARK: Strength warm-up / cool-down (feedback batch 6)
+
+    /// Actual warm-up / cool-down time consumed for a strength session — e.g.
+    /// skipping a 10:00 cool-down at 3:00 shows 3:00.
+    private var warmCoolSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Warm-up & Cool-down").font(.headline)
+            VStack(alignment: .leading, spacing: 6) {
+                if data.warmupSec > 0 {
+                    intervalRow("Warm-up", Format.duration(data.warmupSec), id: "summary.strength.warmup")
+                }
+                if data.cooldownSec > 0 {
+                    intervalRow("Cool-down", Format.duration(data.cooldownSec), id: "summary.strength.cooldown")
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
     // MARK: Interval (HIIT/boxing) detail
 
     /// Protocol structure for an interval workout (feedback batch 4 / roadmap P5):
@@ -274,5 +299,18 @@ struct WorkoutSummaryView: View {
         let span = MKCoordinateSpan(latitudeDelta: max(0.005, (maxLat - minLat) * 1.4),
                                     longitudeDelta: max(0.005, (maxLon - minLon) * 1.4))
         return MKCoordinateRegion(center: center, span: span)
+    }
+}
+
+/// A small "Logged" chip distinguishing a manually-logged workout from a
+/// live-recorded one (feedback batch 6). Live workouts show no tag.
+struct LoggedTag: View {
+    var body: some View {
+        Label("Logged", systemImage: "square.and.pencil")
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(.tint.opacity(0.15), in: Capsule())
+            .foregroundStyle(.tint)
+            .accessibilityIdentifier("workout.loggedTag")
     }
 }

@@ -129,9 +129,16 @@ struct HomeView: View {
                 minutes: settings.warmupMinutes,
                 tint: .orange,
                 idPrefix: "warmup",
-                onFinish: {
+                onFinish: { secs in
                     var t = Transaction(); t.disablesAnimations = true
-                    withTransaction(t) { launch(.strength); warmupActive = false }
+                    withTransaction(t) {
+                        launch(.strength)
+                        // Record the actual warm-up time on the session just created
+                        // (feedback batch 6).
+                        active.strengthSession?.warmupSeconds = Double(secs)
+                        try? context.save()
+                        warmupActive = false
+                    }
                 })
                 .transition(.identity)
                 .zIndex(1)
@@ -247,9 +254,12 @@ struct HomeView: View {
     private func strengthRow(_ s: WorkoutSession) -> some View {
         Button { path.append(HistorySummaryRoute.strength(s)) } label: {
             HStack {
-                Image(systemName: "dumbbell").foregroundStyle(.tint).frame(width: 26)
+                Image(systemName: s.symbol).foregroundStyle(.tint).frame(width: 26)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(s.title.isEmpty ? "Workout" : s.title)
+                    HStack(spacing: 6) {
+                        Text(s.title.isEmpty ? "Workout" : s.title)
+                        if s.isLogged { LoggedTag() }
+                    }
                     Text("\(s.orderedSets.count) sets").font(.caption2).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -267,7 +277,8 @@ struct HomeView: View {
         Button { path.append(HistorySummaryRoute.cardio(w)) } label: {
             HStack {
                 Image(systemName: w.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
-                Text(w.typeValue.displayName)
+                Text(w.displayTitle)
+                if w.isLogged { LoggedTag() }
                 Spacer()
                 Text(w.start.formatted(date: .abbreviated, time: .omitted))
                     .font(.caption).foregroundStyle(.secondary)

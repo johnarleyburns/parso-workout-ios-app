@@ -8,25 +8,32 @@ import SwiftUI
 /// `idPrefix` namespaces the accessibility ids ("warmup"/"cooldown") so the two
 /// surfaces are individually addressable in UI tests:
 /// `<prefix>.remaining`, `<prefix>.pause`, `<prefix>.skip`.
+///
+/// `onFinish` reports the **actual seconds consumed** (configured length minus what
+/// was left when it ended) so history can show the real warm-up/cool-down time —
+/// e.g. skipping a 10:00 cool-down at 3:00 reports 180 (feedback batch 6).
 struct GuidedPhaseOverlay: View {
     let title: String
     let minutes: Int
     var tint: Color = .green
     var idPrefix: String
-    let onFinish: () -> Void
+    let onFinish: (_ elapsedSeconds: Int) -> Void
 
+    private let total: Int
     @State private var remaining: Int
     @State private var paused = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(title: String, minutes: Int, tint: Color = .green,
-         idPrefix: String, onFinish: @escaping () -> Void) {
+         idPrefix: String, onFinish: @escaping (_ elapsedSeconds: Int) -> Void) {
         self.title = title
         self.minutes = minutes
         self.tint = tint
         self.idPrefix = idPrefix
         self.onFinish = onFinish
-        _remaining = State(initialValue: max(1, minutes) * 60)
+        let seconds = max(1, minutes) * 60
+        self.total = seconds
+        _remaining = State(initialValue: seconds)
     }
 
     private var clock: String {
@@ -57,7 +64,7 @@ struct GuidedPhaseOverlay: View {
                     .accessibilityIdentifier("\(idPrefix).pause")
 
                     Button {
-                        onFinish()
+                        onFinish(total - remaining)
                     } label: {
                         Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity)
                     }
@@ -71,7 +78,7 @@ struct GuidedPhaseOverlay: View {
         .onReceive(tick) { _ in
             guard !paused, remaining > 0 else { return }
             remaining -= 1
-            if remaining <= 0 { onFinish() }
+            if remaining <= 0 { onFinish(total) }
         }
     }
 }

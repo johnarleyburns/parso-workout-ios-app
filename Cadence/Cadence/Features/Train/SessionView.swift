@@ -180,7 +180,11 @@ struct SessionView: View {
                 minutes: settings.cooldownMinutes,
                 tint: .teal,
                 idPrefix: "cooldown",
-                onFinish: { coolingDown = false; endWorkout() })
+                onFinish: { secs in
+                    session.cooldownSeconds = Double(secs)
+                    coolingDown = false
+                    endWorkout()
+                })
         }
         .task { _ = try? WorkoutRepository.me(in: context) }
         .onReceive(idleTimer) { _ in checkIdle() }

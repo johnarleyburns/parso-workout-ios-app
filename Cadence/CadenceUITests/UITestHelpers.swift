@@ -81,6 +81,24 @@ extension XCUIApplication {
         return buttons["session.addExercise"].waitForExistence(timeout: 25)
     }
 
+    /// Enters a weight on the custom numeric keypad popup (feedback batch 6 item 2,
+    /// which replaced the Form-style set editor). Waits for the big `set.weight`
+    /// display, optionally clears the pre-filled entry, then taps each digit/dot.
+    func keypadEnter(_ value: String, clear: Bool = false) {
+        XCTAssertTrue(staticTexts["set.weight"].waitForExistence(timeout: 25), "weight keypad")
+        if clear { buttons["keypad.clear"].tap() }
+        for ch in value {
+            let id = ch == "." ? "keypad.dot" : "keypad.k.\(ch)"
+            buttons[id].tap()
+        }
+    }
+
+    /// Enters a weight on the keypad and taps Record (the common log-a-set flow).
+    func recordKeypadSet(_ value: String, clear: Bool = false) {
+        keypadEnter(value, clear: clear)
+        buttons["set.save"].tap()
+    }
+
     /// Taps Back until the Home launchpad (its Start Workout button) is shown.
     func popToHome() {
         let homeMarker = buttons["home.startWorkout"]

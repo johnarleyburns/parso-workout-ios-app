@@ -14,11 +14,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
     private func logBenchSet(_ app: XCUIApplication, weight: String = "100") {
         app.buttons["session.addExercise"].tap()
         XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "picker row Bench Press")
-        let weightField = app.textFields["set.weight"]
-        XCTAssertTrue(weightField.waitForExistence(timeout: 25), "set editor")
-        weightField.tap()
-        weightField.typeText(weight)
-        app.buttons["set.save"].tap()
+        app.recordKeypadSet(weight)
         // A rest timer may auto-start; skip it so the 1 Hz animation doesn't stall
         // the accessibility tree on a slow simulator.
         if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }

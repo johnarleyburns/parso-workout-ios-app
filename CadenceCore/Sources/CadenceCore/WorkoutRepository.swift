@@ -492,6 +492,29 @@ public enum WorkoutRepository {
         return c
     }
 
+    /// Persists a **manually logged** cardio/interval workout (feedback batch 6
+    /// item 3): the same shape as a recorded one — so it appears identically in
+    /// history — but flagged `isLogged`, with no live HR or GPS route. `customTitle`
+    /// carries an "Other Cardio" free-text label (e.g. "Rowing").
+    @discardableResult
+    public static func saveLoggedCardio(type: CardioType, start: Date,
+                                        durationSeconds: TimeInterval,
+                                        distanceMeters: Double? = nil,
+                                        customTitle: String? = nil,
+                                        intervalSummary: IntervalSummary? = nil,
+                                        in context: ModelContext) throws -> CardioWorkout {
+        let trimmed = customTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let summary = CardioWorkoutSummary(
+            id: UUID(), type: type, start: start,
+            end: start.addingTimeInterval(max(0, durationSeconds)),
+            distanceMeters: distanceMeters,
+            intervalSummary: intervalSummary,
+            customTitle: (trimmed?.isEmpty == false) ? trimmed : nil,
+            isLogged: true)
+        return try saveRecordedCardio(summary, source: .iphone,
+                                      healthKitWorkoutUUID: nil, in: context)
+    }
+
     /// Persists a pool swim (round4b feedback #3): time + lap count only, no
     /// distance/calorie estimate. `targetLaps` is the goal the user set, `laps`
     /// what they completed.

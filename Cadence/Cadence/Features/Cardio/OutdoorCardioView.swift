@@ -8,6 +8,8 @@ import CadenceCore
 /// pocket). Reuses `CardioRecorder` + the shared `LocationTracker`.
 struct OutdoorCardioView: View {
     let type: CardioType
+    /// Free-text label for an "Other Cardio" workout (feedback batch 6), else nil.
+    var customTitle: String? = nil
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -133,7 +135,8 @@ struct OutdoorCardioView: View {
     private func end() async {
         guard let r = recorder else { dismiss(); return }
         clock.end()
-        let summary = r.end()
+        var summary = r.end()
+        summary.customTitle = customTitle
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                               healthKitWorkoutUUID: hkID, in: context)

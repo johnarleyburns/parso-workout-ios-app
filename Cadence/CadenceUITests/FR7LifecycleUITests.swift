@@ -61,8 +61,13 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         Thread.sleep(forTimeInterval: 2.5)
         XCTAssertNotEqual(elapsed.label, running, "timer should advance while training")
 
-        // Pause freezes the display (the clock excludes paused time).
+        // Pause freezes the display (the clock excludes paused time). Wait for the
+        // paused indicator and let the in-flight 1 Hz tick settle before capturing
+        // the frozen value, so we don't race a redraw that lands just after the tap.
         XCTAssertTrue(app.buttons["workout.pause"].waitTap(), "Pause")
+        XCTAssertTrue(app.staticTexts["session.elapsed.paused"].waitForExistence(timeout: 5),
+                      "paused indicator should appear")
+        Thread.sleep(forTimeInterval: 1.2)
         let frozen = elapsed.label
         Thread.sleep(forTimeInterval: 2.5)
         XCTAssertEqual(elapsed.label, frozen, "timer should freeze while paused")
@@ -132,6 +137,8 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["startType.other"].waitTap(), "Other")
+        // Other Cardio entry (feedback batch 6): GPS off → indoor recorder.
+        XCTAssertTrue(app.buttons["otherCardio.start"].waitTap(), "Other Cardio Start")
 
         XCTAssertTrue(app.staticTexts["record.elapsed"].waitForExistence(timeout: 25), "recording")
         XCTAssertTrue(app.buttons["record.end"].waitTap(), "End")

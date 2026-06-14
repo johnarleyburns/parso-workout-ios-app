@@ -17,6 +17,9 @@ struct WorkoutTypePicker: View {
     let onWeightsWarmup: () -> Void
     /// Weights → Start from Previous (reuse a past session as a template).
     let onWeightsReuse: (WorkoutSession) -> Void
+    /// "Other Cardio" chosen: free-text description + whether to GPS-track it
+    /// (feedback batch 6 item 3).
+    let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     @Environment(\.dismiss) private var dismiss
 
     private let columns = [GridItem(.flexible(), spacing: 16),
@@ -44,6 +47,15 @@ struct WorkoutTypePicker: View {
                                                  onWarmupStart: onWeightsWarmup,
                                                  onReuse: onWeightsReuse,
                                                  onPlan: onPlan)
+                            } label: { WorkoutHero(type: type) }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("startType.\(type.rawValue)")
+                                .accessibilityLabel(type.displayName)
+                        case .other:
+                            // "Other Cardio" (feedback batch 6): a description +
+                            // GPS-or-not entry, then the matching recorder.
+                            NavigationLink {
+                                OtherCardioEntryView(onStart: onOtherCardio)
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
                                 .accessibilityIdentifier("startType.\(type.rawValue)")

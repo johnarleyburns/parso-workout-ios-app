@@ -58,11 +58,7 @@ final class FR8CrossFitUITests: CadenceUITestCase {
 
         // Log one Thruster set from its planned card.
         XCTAssertTrue(app.buttons["set.add.Thruster"].waitTap(), "Add Set on Thruster")
-        let weight = app.textFields["set.weight"]
-        XCTAssertTrue(weight.waitForExistence(timeout: 25), "set editor")
-        weight.tap()
-        weight.typeText("95")
-        app.buttons["set.save"].tap()
+        app.recordKeypadSet("95")
         if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
 
         // End → confirm → summary lists the logged movement.

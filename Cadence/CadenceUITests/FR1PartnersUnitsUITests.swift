@@ -10,24 +10,25 @@ final class FR1PartnersUnitsUITests: CadenceUITestCase {
     private func openSetEditor(_ app: XCUIApplication) {
         app.buttons["session.addExercise"].tap()
         XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "pick Bench Press")
-        XCTAssertTrue(app.textFields["set.weight"].waitForExistence(timeout: 25), "set editor")
+        XCTAssertTrue(app.staticTexts["set.weight"].waitForExistence(timeout: 25), "weight keypad")
     }
 
-    // Decision #4 — type one unit, the other auto-fills with the exact value.
+    // Decision #4 — type one unit, the other auto-converts on the keypad read-out.
     func testDualUnitAutoFill() {
         let app = XCUIApplication.launched() // default unit kg
         startWorkout(app)
         openSetEditor(app)
 
-        let primary = app.textFields["set.weight"]      // kg
-        let alt = app.textFields["set.weight.alt"]       // lb
-        XCTAssertTrue(alt.exists, "second (lb) field should be present")
-        primary.tap(); primary.typeText("100")
+        let alt = app.staticTexts["set.weight.alt"]      // lb read-out
+        XCTAssertTrue(alt.waitForExistence(timeout: 5), "alt-unit read-out should be present")
+        XCTAssertEqual(alt.label, "—", "alt should be blank before any weight is entered")
+        app.keypadEnter("100")
 
-        // 100 kg ≈ 220.5 lb — the alt field should auto-fill non-empty.
-        let filled = NSPredicate(format: "value != %@ AND value != %@", "", "0")
+        // 100 kg ≈ 220.5 lb — the alt read-out should auto-fill (no longer "—").
+        let filled = NSPredicate(format: "label != %@", "—")
         expectation(for: filled, evaluatedWith: alt)
         waitForExpectations(timeout: 10)
+        XCTAssertTrue(alt.label.contains("lb"), "alt read-out should show the lb conversion")
     }
 
     // Decision #13 — a set logged for a partner is tagged and kept distinct.
@@ -46,8 +47,7 @@ final class FR1PartnersUnitsUITests: CadenceUITestCase {
 
         // Log a set attributed to Sam via the menu picker.
         openSetEditor(app)
-        app.textFields["set.weight"].tap()
-        app.textFields["set.weight"].typeText("90")
+        app.keypadEnter("90")
         let picker = app.buttons["set.performedBy"]
         XCTAssertTrue(picker.waitForExistence(timeout: 10))
         picker.tap()

@@ -84,10 +84,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         // Log a Bench set so the summary has content.
         app.buttons["session.addExercise"].tap()
         XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "pick Bench Press")
-        let weight = app.textFields["set.weight"]
-        XCTAssertTrue(weight.waitForExistence(timeout: 25), "set editor")
-        weight.tap(); weight.typeText("100")
-        app.buttons["set.save"].tap()
+        app.recordKeypadSet("100")
         if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
 
         XCTAssertTrue(app.scrollToAndTapButton("workout.coolDown"), "Cool Down")

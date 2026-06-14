@@ -23,12 +23,8 @@ final class FR1StrengthUITests: CadenceUITestCase {
         } else {
             XCTAssertTrue(row.waitTap(), "picker row \(name)")
         }
-        // Set editor appears; fill weight and save.
-        let weightField = app.textFields["set.weight"]
-        XCTAssertTrue(weightField.waitForExistence(timeout: 25), "set editor")
-        weightField.tap()
-        weightField.typeText(weight)
-        app.buttons["set.save"].tap()
+        // Weight keypad appears; enter the weight and Record.
+        app.recordKeypadSet(weight)
     }
 
     // FR-1.1 — add a library exercise and a custom one.
@@ -51,13 +47,9 @@ final class FR1StrengthUITests: CadenceUITestCase {
         startWorkout(app)
         addExercise(app, named: "Bench Press", weight: "100")
 
-        // Second set, different weight. Use clearAndType: the editor pre-fills
-        // the previous set's weight, so a bare typeText would concatenate.
+        // Second set, different weight. A new set starts with an empty keypad entry.
         app.buttons["set.add.Bench Press"].tap()
-        let weightField = app.textFields["set.weight"]
-        XCTAssertTrue(weightField.waitForExistence(timeout: 25))
-        weightField.clearAndType("105")
-        app.buttons["set.save"].tap()
+        app.recordKeypadSet("105")
 
         XCTAssertTrue(app.buttons["set.row.Bench Press.0"].waitForExistence(timeout: 25))
         XCTAssertTrue(app.buttons["set.row.Bench Press.1"].waitForExistence(timeout: 25))
@@ -131,19 +123,18 @@ final class FR1StrengthUITests: CadenceUITestCase {
         startWorkout(app)
         addExercise(app, named: "Bench Press", weight: "100")
 
-        // Edit: tap the set row, change the weight, save.
+        // Edit: tap the set row, clear the pre-filled weight, change it, save.
         app.buttons["set.row.Bench Press.0"].waitTap()
-        let weightField = app.textFields["set.weight"]
-        XCTAssertTrue(weightField.waitForExistence(timeout: 25))
-        weightField.clearAndType("110")
-        app.buttons["set.save"].tap()
+        app.recordKeypadSet("110", clear: true)
 
-        // Verify the edit persisted by reopening the editor.
+        // Verify the edit persisted by reopening the keypad — its big display
+        // carries the entry as its accessibility value.
         app.buttons["set.row.Bench Press.0"].waitTap()
-        XCTAssertTrue(weightField.waitForExistence(timeout: 25))
-        XCTAssertEqual((weightField.value as? String) ?? "", "110", "edited weight should persist")
+        let weightDisplay = app.staticTexts["set.weight"]
+        XCTAssertTrue(weightDisplay.waitForExistence(timeout: 25))
+        XCTAssertEqual((weightDisplay.value as? String) ?? "", "110", "edited weight should persist")
 
-        // Delete from the editor.
+        // Delete from the keypad.
         app.buttons["set.delete"].waitTap()
         XCTAssertFalse(app.buttons["set.row.Bench Press.0"].waitForExistence(timeout: 3),
                        "set should be removed after delete")

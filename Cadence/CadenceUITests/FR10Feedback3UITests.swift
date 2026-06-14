@@ -122,9 +122,7 @@ final class FR10Feedback3UITests: CadenceUITestCase {
         // Log one set for me (Bench Press).
         app.buttons["session.addExercise"].tap()
         XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "pick Bench Press")
-        XCTAssertTrue(app.textFields["set.weight"].waitForExistence(timeout: 25), "set editor")
-        app.textFields["set.weight"].tap(); app.textFields["set.weight"].typeText("100")
-        app.buttons["set.save"].tap()
+        app.recordKeypadSet("100")
         if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
 
         // The owner's set is tagged "Me" once a partner is present.
@@ -133,8 +131,7 @@ final class FR10Feedback3UITests: CadenceUITestCase {
 
         // Log one set for Sam (same exercise card, via the performer picker).
         app.buttons["set.add.Bench Press"].firstMatch.tap()
-        XCTAssertTrue(app.textFields["set.weight"].waitForExistence(timeout: 25), "set editor")
-        app.textFields["set.weight"].tap(); app.textFields["set.weight"].typeText("80")
+        app.keypadEnter("80")
         let picker = app.buttons["set.performedBy"]
         XCTAssertTrue(picker.waitForExistence(timeout: 10))
         picker.tap()

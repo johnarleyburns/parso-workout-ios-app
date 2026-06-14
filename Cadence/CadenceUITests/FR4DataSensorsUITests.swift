@@ -51,10 +51,7 @@ final class FR4DataSensorsUITests: CadenceUITestCase {
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
         app.buttons["session.addExercise"].waitTap()
         app.buttons["picker.row.Bench Press"].waitTap()
-        let weight = app.textFields["set.weight"]
-        XCTAssertTrue(weight.waitForExistence(timeout: 25))
-        weight.tap(); weight.typeText("100")
-        app.buttons["set.save"].tap()
+        app.recordKeypadSet("100")
 
         app.buttons["session.saveHealth"].waitTap()
         XCTAssertTrue(app.staticTexts["session.healthSaved"].waitForExistence(timeout: 25),

@@ -15,7 +15,7 @@ struct SessionView: View {
 
     @State private var rest = RestTimerModel()
     @State private var pickerPresented = false
-    @State private var setEditor: SetEditorContext?
+    @State private var keypad: KeypadContext?
     @State private var healthSaved = false
     @Query(sort: \Person.name) private var allPeople: [Person]
     @State private var addPartnerPresented = false
@@ -72,6 +72,37 @@ struct SessionView: View {
         // No catalog item (e.g. a reused session) but a chosen scheme is present.
         guard !chosen.isEmpty else { return nil }
         return chosen.map(String.init).joined(separator: "-") + " reps"
+    }
+
+    /// The effective rep-ladder for an exercise: the chosen scheme if the session
+    /// carries one, else the plan's `forTime` ladder. Drives the pre-seeded planned
+    /// set rows and the default reps for each new set (feedback batch 6, items 1/2).
+    private func effectiveLadder(for name: String) -> [Int]? {
+        let chosen = session.plannedRepLadder
+        if !chosen.isEmpty { return chosen }
+        return planLadder
+    }
+    /// How many planned set rows an exercise should pre-seed (ladder length).
+    private func plannedSetCount(for name: String) -> Int {
+        effectiveLadder(for: name)?.count ?? 0
+    }
+    /// Default reps for the set at `setIndex`: the ladder value at that rung if any,
+    /// else the last logged set of this exercise, else 5 (feedback batch 6 item 1).
+    private func plannedReps(for exercise: Exercise, setIndex: Int) -> Int {
+        if let ladder = effectiveLadder(for: exercise.name),
+           setIndex < ladder.count, ladder[setIndex] > 0 {
+            return ladder[setIndex]
+        }
+        if let last = session.orderedSets.last(where: { $0.exercise?.id == exercise.id }) {
+            return last.reps
+        }
+        return 5
+    }
+
+    /// Opens the weight keypad for a new or existing set of `exercise`. `repsOverride`
+    /// seeds the reps for a tapped planned row.
+    private func openKeypad(for exercise: Exercise, editing: SetEntry? = nil, repsOverride: Int? = nil) {
+        keypad = KeypadContext(exercise: exercise, editing: editing, repsOverride: repsOverride)
     }
 
     var body: some View {
@@ -161,12 +192,12 @@ struct SessionView: View {
         }
         .sheet(isPresented: $pickerPresented) {
             ExercisePickerView { exercise in
-                // Open the set editor immediately for the chosen exercise.
-                setEditor = SetEditorContext(exercise: exercise, editing: nil)
+                // Open the keypad immediately for the chosen exercise.
+                keypad = KeypadContext(exercise: exercise, editing: nil)
             }
         }
-        .sheet(item: $setEditor) { ctx in
-            setEditorSheet(ctx)
+        .sheet(item: $keypad) { ctx in
+            keypadSheet(ctx)
         }
         .sheet(isPresented: $usePreviousPresented) {
             PreviousWorkoutPicker(excluding: session) { past in
@@ -260,9 +291,9 @@ struct SessionView: View {
             }
             Button {
                 if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
-                    setEditor = SetEditorContext(exercise: ex, editing: nil)
+                    openKeypad(for: ex)
                 }
-            } label: { Label("Record Set", systemImage: "plus") }
+            } label: { Label("Add Set", systemImage: "plus") }
                 .buttonStyle(.bordered).controlSize(.small)
                 .accessibilityIdentifier("set.add.\(name)")
         }
@@ -276,6 +307,9 @@ struct SessionView: View {
     @ViewBuilder
     private func exerciseCard(_ exercise: Exercise) -> some View {
         let sets = session.orderedSets.filter { $0.exercise?.id == exercise.id }
+        // Pre-seed one row per planned set still to do (feedback batch 6 item 2):
+        // tap a pending row to log it with its prescribed reps already filled in.
+        let pending = max(0, plannedSetCount(for: exercise.name) - sets.count)
         VStack(alignment: .leading, spacing: 8) {
             Text(exercise.name)
                 .font(.headline)
@@ -285,7 +319,7 @@ struct SessionView: View {
 
             ForEach(Array(sets.enumerated()), id: \.element.id) { idx, set in
                 Button {
-                    setEditor = SetEditorContext(exercise: exercise, editing: set)
+                    openKeypad(for: exercise, editing: set)
                 } label: {
                     setRow(set, index: idx, exercise: exercise)
                 }
@@ -293,10 +327,21 @@ struct SessionView: View {
                 .accessibilityIdentifier("set.row.\(exercise.name).\(idx)")
             }
 
+            ForEach(0..<pending, id: \.self) { offset in
+                let rowIndex = sets.count + offset
+                Button {
+                    openKeypad(for: exercise, repsOverride: plannedReps(for: exercise, setIndex: rowIndex))
+                } label: {
+                    pendingRow(index: rowIndex, reps: plannedReps(for: exercise, setIndex: rowIndex))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("set.pending.\(exercise.name).\(offset)")
+            }
+
             HStack {
                 Button {
-                    setEditor = SetEditorContext(exercise: exercise, editing: nil)
-                } label: { Label("Record Set", systemImage: "plus") }
+                    openKeypad(for: exercise)
+                } label: { Label("Add Set", systemImage: "plus") }
                     .accessibilityIdentifier("set.add.\(exercise.name)")
                 if let last = sets.last {
                     Spacer()
@@ -315,6 +360,28 @@ struct SessionView: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// A not-yet-logged planned set: its rung number, target reps, and a tap-to-log
+    /// affordance (feedback batch 6 item 2).
+    @ViewBuilder
+    private func pendingRow(index: Int, reps: Int) -> some View {
+        HStack {
+            Text("\(index + 1)")
+                .font(.caption).foregroundStyle(.secondary)
+                .frame(width: 18, alignment: .leading)
+            Text("\(reps) reps")
+                .foregroundStyle(.secondary)
+            Spacer()
+            Image(systemName: "plus.circle")
+                .foregroundStyle(.tint)
+        }
+        .font(.subheadline)
+        .contentShape(Rectangle())
+        .padding(.vertical, 4)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(.quaternary).frame(height: 1)
+        }
     }
 
     @ViewBuilder
@@ -392,16 +459,23 @@ struct SessionView: View {
                                     rule: settings.prRule, formula: settings.formula)
     }
 
-    // MARK: Set editor sheet
+    // MARK: Weight keypad sheet (feedback batch 6 item 2)
 
     @ViewBuilder
-    private func setEditorSheet(_ ctx: SetEditorContext) -> some View {
+    private func keypadSheet(_ ctx: KeypadContext) -> some View {
         let exercise = ctx.exercise
         let last = WorkoutRepository.lastTimeSets(for: exercise, excluding: session).first
         let pr = WorkoutRepository.currentPR(for: exercise, rule: settings.prRule, formula: settings.formula)
         let inSessionLast = session.orderedSets.last { $0.exercise?.id == exercise.id }
+        let loggedCount = session.orderedSets.filter { $0.exercise?.id == exercise.id }.count
+        // Reps default (item 1): edit keeps its own reps; a tapped planned row uses
+        // its rung; otherwise the prescribed reps for the next rung (falling back to
+        // the last in-session set / 5).
+        let initialReps = ctx.editing?.reps
+            ?? ctx.repsOverride
+            ?? plannedReps(for: exercise, setIndex: loggedCount)
 
-        SetEditorView(
+        WeightKeypadSheet(
             exerciseName: exercise.name,
             unit: settings.unit,
             lastTimeText: last.map { Format.setLine($0, unit: settings.unit) },
@@ -409,27 +483,24 @@ struct SessionView: View {
             people: roster,
             plateRounding: settings.plateRounding,
             isBodyweightExercise: isBodyweight(exercise),
-            initialWeightKg: ctx.editing?.weight ?? inSessionLast?.weight ?? 0,
-            initialReps: ctx.editing?.reps ?? inSessionLast?.reps ?? 5,
-            initialRPE: ctx.editing?.rpe,
-            initialWarmup: ctx.editing?.isWarmup ?? false,
-            initialBodyweight: ctx.editing?.usesBodyweight ?? inSessionLast?.usesBodyweight ?? isBodyweight(exercise),
-            initialNote: ctx.editing?.note,
+            initialWeightKg: ctx.editing?.weight ?? 0,
+            initialReps: initialReps,
+            initialBodyweight: ctx.editing?.usesBodyweight ?? isBodyweight(exercise),
             initialPerformedBy: ctx.editing?.performedBy ?? inSessionLast?.performedBy,
-            isPRPredicate: { kg, reps, warmup in
-                WorkoutRepository.wouldBePR(exercise: exercise, weightKg: kg, reps: reps, isWarmup: warmup,
+            isPRPredicate: { kg, reps in
+                WorkoutRepository.wouldBePR(exercise: exercise, weightKg: kg, reps: reps, isWarmup: false,
                                             rule: settings.prRule, formula: settings.formula)
             },
-            onSave: { kg, reps, rpe, warmup, bodyweight, note, performedBy in
+            onSave: { kg, reps, bodyweight, performedBy in
                 if let editing = ctx.editing {
                     try? WorkoutRepository.updateSet(editing, weightKg: kg, reps: reps,
-                                                     rpe: .some(rpe), isWarmup: warmup,
-                                                     usesBodyweight: bodyweight, note: .some(note), in: context)
+                                                     rpe: .some(nil), isWarmup: false,
+                                                     usesBodyweight: bodyweight, note: .some(nil), in: context)
                     editing.performedBy = (performedBy?.isMe ?? true) ? nil : performedBy
                     try? context.save()
                 } else {
-                    addSet(to: exercise, weightKg: kg, reps: reps, rpe: rpe, isWarmup: warmup,
-                           usesBodyweight: bodyweight, note: note, performedBy: performedBy)
+                    addSet(to: exercise, weightKg: kg, reps: reps, rpe: nil, isWarmup: false,
+                           usesBodyweight: bodyweight, note: nil, performedBy: performedBy)
                 }
             },
             onDelete: ctx.editing.map { set in { try? WorkoutRepository.deleteSet(set, in: context) } }
@@ -512,11 +583,13 @@ struct SessionView: View {
     }
 }
 
-/// Identifies what the set editor sheet is editing.
-struct SetEditorContext: Identifiable {
+/// Identifies what the weight keypad sheet is logging or editing. `repsOverride`
+/// seeds the reps for a tapped planned set row (feedback batch 6 item 2).
+struct KeypadContext: Identifiable {
     let id = UUID()
     let exercise: Exercise
     let editing: SetEntry?
+    var repsOverride: Int? = nil
 }
 
 /// Identifiable wrapper so the post-workout `WorkoutSummaryData` (a pure value

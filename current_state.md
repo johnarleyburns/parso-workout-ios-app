@@ -3,7 +3,11 @@
 Live handoff/progress tracker. Read this first, then
 `plans/field-testing/2026-06-11/round4-plan.md`.
 
-_Last updated: 2026-06-12 — Round 4 Part A COMPLETE: 4A-1 (#14), 4A-2 (#15), 4A-3 (#16), 4A-4 (#17) all MERGED to `main`. CadenceCore 104/104; UI 33/33. Next: A6 watch-HR or Part B (both deferred)._
+_Last updated: 2026-06-14 — Manual strength + CrossFit logging shipped as PR #28
+(stacked on feedback-batch-7 #27): completes the deferred half of "Log Workout"
+(cardio-only → now strength/CrossFit too). Reuses `SessionView` in `isManualLog`
+mode; CadenceCore 151/151; UI FR1/FR8/FR13 16/16 (incl. strength/custom-CF/Fran-
+benchmark log tests). Prior: Round 4 Part A COMPLETE — 4A-1 (#14)…4A-4 (#17) MERGED._
 
 ## Repo / branch
 - Repo: `/Users/arley/github/parso-workout-ios-app` (this is the user's working copy).

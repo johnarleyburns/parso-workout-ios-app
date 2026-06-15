@@ -44,10 +44,11 @@ public enum ExerciseLibrary {
 
     /// Built-in catalog seeded on first launch and version-upgraded thereafter.
     /// Bump `seedVersion` when entries are added so existing stores backfill.
-    public static let seedVersion = 4
+    public static let seedVersion = 5
 
     public static let starter: [ExerciseTemplate] = chest + back + shoulders
         + arms + legs + glutes + core + olympicAndCarry + crossfit + bodyweight
+        + plyometrics + accessories
 
     // MARK: Chest
     private static let chest: [ExerciseTemplate] = [
@@ -205,7 +206,6 @@ public enum ExerciseLibrary {
         .init("Air Squat", .legs, .bodyweight, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"]),
         .init("Overhead Squat", .legs, .barbell, .push, .compound, primary: ["quads", "glutes"], secondary: ["delts", "abs"]),
         .init("Pistol Squat", .legs, .bodyweight, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"], lateral: true),
-        .init("Box Jump", .legs, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["calves"]),
         .init("Clean", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "traps"], secondary: ["hamstrings", "delts"]),
         .init("Wall Ball", .legs, .bodyweight, .push, .compound, primary: ["quads", "delts"], secondary: ["glutes", "triceps"]),
         .init("Handstand Push-Up", .push, .bodyweight, .push, .compound, primary: ["delts", "triceps"], secondary: ["traps"]),
@@ -240,6 +240,44 @@ public enum ExerciseLibrary {
         .init("Superman", .core, .bodyweight, .pull, .isolation, primary: ["lower-back"], secondary: ["glutes"]),
         .init("Bird Dog", .core, .bodyweight, .static, .isolation, primary: ["abs", "lower-back"], secondary: ["glutes"]),
         .init("Flutter Kick", .core, .bodyweight, .pull, .isolation, primary: ["abs", "hip-flexors"]),
+    ]
+
+    // MARK: Plyometrics (feedback batch 8)
+    // Explosive/jump training as its own category. Box Jump / Jump Squat /
+    // Plyometric Push-Up / Double-Under already exist above (kept in their movement
+    // categories); these are dedicated plyo movements.
+    private static let plyometrics: [ExerciseTemplate] = [
+        .init("Broad Jump", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings", "calves"]),
+        .init("Depth Jump", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["calves"]),
+        .init("Tuck Jump", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["calves", "hip-flexors"]),
+        .init("Jumping Lunge", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"], lateral: true),
+        .init("Lateral Bound", .plyometrics, .plyometric, .push, .compound, primary: ["glutes", "quads"], secondary: ["abductors", "calves"], lateral: true),
+        .init("Skater Jump", .plyometrics, .plyometric, .push, .compound, primary: ["glutes", "quads"], secondary: ["abductors"], lateral: true),
+        .init("Single-Leg Box Jump", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["calves"], lateral: true),
+        .init("Clap Push-Up", .plyometrics, .plyometric, .push, .compound, primary: ["chest"], secondary: ["triceps", "front-delts"]),
+        .init("Medicine Ball Slam", .plyometrics, .plyometric, .pull, .compound, primary: ["abs", "lats"], secondary: ["delts"]),
+        .init("Medicine Ball Chest Pass", .plyometrics, .plyometric, .push, .compound, primary: ["chest"], secondary: ["triceps", "front-delts"]),
+        .init("Medicine Ball Rotational Throw", .plyometrics, .plyometric, .push, .compound, primary: ["obliques", "abs"], secondary: ["delts"], lateral: true),
+        .init("Bounding", .plyometrics, .plyometric, .push, .compound, primary: ["glutes", "hamstrings"], secondary: ["calves", "quads"]),
+    ]
+
+    // MARK: Accessories (feedback batch 8) — broadens coverage per body part.
+    private static let accessories: [ExerciseTemplate] = [
+        .init("Good Morning", .legs, .barbell, .pull, .compound, primary: ["hamstrings", "lower-back"], secondary: ["glutes"]),
+        .init("Cable Pull-Through", .legs, .cable, .pull, .compound, primary: ["glutes", "hamstrings"], secondary: ["lower-back"]),
+        .init("Dumbbell Romanian Deadlift", .legs, .dumbbell, .pull, .compound, primary: ["hamstrings", "glutes"], secondary: ["lower-back"]),
+        .init("Reverse Lunge", .legs, .dumbbell, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"], lateral: true),
+        .init("Calf Press on Leg Press", .legs, .machine, .push, .isolation, primary: ["calves"]),
+        .init("Landmine Press", .push, .barbell, .push, .compound, primary: ["delts", "upper-chest"], secondary: ["triceps"], lateral: true),
+        .init("Incline Cable Fly", .push, .cable, .push, .isolation, primary: ["upper-chest", "chest"]),
+        .init("Cable Woodchopper", .core, .cable, .pull, .compound, primary: ["obliques", "abs"], secondary: ["delts"], lateral: true),
+        .init("Dead Bug", .core, .bodyweight, .static, .isolation, primary: ["abs"], secondary: ["hip-flexors"]),
+        .init("Hyperextension", .pull, .bodyweight, .pull, .isolation, primary: ["lower-back"], secondary: ["glutes", "hamstrings"]),
+        .init("Zottman Curl", .pull, .dumbbell, .pull, .isolation, primary: ["biceps", "forearms"]),
+        .init("Cable Hammer Curl", .pull, .cable, .pull, .isolation, primary: ["biceps", "forearms"]),
+        .init("JM Press", .push, .barbell, .push, .compound, primary: ["triceps"], secondary: ["chest"]),
+        .init("Cable Rear Delt Fly", .pull, .cable, .pull, .isolation, primary: ["rear-delts"], lateral: true),
+        .init("Dumbbell Pullover", .push, .dumbbell, .push, .compound, primary: ["chest", "lats"], secondary: ["triceps"]),
     ]
 
     /// Ranked, keyword-aware search (field-testing §03).

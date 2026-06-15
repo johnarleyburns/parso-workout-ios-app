@@ -201,6 +201,49 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertTrue(s.title.localizedCaseInsensitiveContains("fran"))
     }
 
+    // Batch 8 — rank past workouts by how many missing body parts they cover.
+    func testWorkoutsByMissingCoverageRanksByCoveredCount() throws {
+        let ctx = try makeContext()
+        let pulldown = try WorkoutRepository.findOrCreateExercise(named: "Lat Pulldown", in: ctx) // back
+        let calf = try WorkoutRepository.findOrCreateExercise(named: "Standing Calf Raise", in: ctx) // calves
+        let curl = try WorkoutRepository.findOrCreateExercise(named: "Dumbbell Curl", in: ctx) // biceps
+
+        // Session A covers back + calves; Session B covers only biceps (not missing).
+        let a = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 2000), in: ctx)
+        _ = try WorkoutRepository.addSet(to: a, exercise: pulldown, weightKg: 50, reps: 10, in: ctx)
+        _ = try WorkoutRepository.addSet(to: a, exercise: calf, weightKg: 60, reps: 12, in: ctx)
+        let b = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 1000), in: ctx)
+        _ = try WorkoutRepository.addSet(to: b, exercise: curl, weightKg: 15, reps: 10, in: ctx)
+
+        let ranked = WorkoutRepository.workoutsByMissingCoverage(
+            try WorkoutRepository.allSessions(ctx), missing: [.back, .calves, .chest])
+        XCTAssertEqual(ranked.first?.session.id, a.id, "the session covering the most missing parts ranks first")
+        XCTAssertEqual(Set(ranked.first?.covered ?? []), Set([.back, .calves]))
+        XCTAssertFalse(ranked.contains { $0.session.id == b.id }, "a session covering no missing part is excluded")
+    }
+
+    // Batch 8 — a distance goal persists through saveRecordedCardio.
+    func testRecordedCardioCarriesDistanceGoal() throws {
+        let ctx = try makeContext()
+        let summary = CardioWorkoutSummary(
+            id: UUID(), type: .run, start: Date(timeIntervalSince1970: 0),
+            end: Date(timeIntervalSince1970: 1800), distanceMeters: 5200,
+            targetDistanceMeters: 5000)
+        let c = try WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
+                                                         healthKitWorkoutUUID: nil, in: ctx)
+        XCTAssertEqual(c.targetDistance, 5000)
+        let progress = CardioMath.goalProgress(distanceMeters: c.distance ?? 0, goalMeters: c.targetDistance)
+        XCTAssertEqual(progress?.fraction, 1, "5.2 km of a 5 km goal is complete (clamped)")
+        XCTAssertEqual(progress?.remainingMeters, 0)
+    }
+
+    func testGoalProgressNilWhenNoGoal() {
+        XCTAssertNil(CardioMath.goalProgress(distanceMeters: 1000, goalMeters: nil))
+        let p = CardioMath.goalProgress(distanceMeters: 2500, goalMeters: 5000)
+        XCTAssertEqual(p?.fraction ?? 0, 0.5, accuracy: 0.001)
+        XCTAssertEqual(p?.remainingMeters ?? 0, 2500, accuracy: 0.001)
+    }
+
     func testRecentPRs() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)

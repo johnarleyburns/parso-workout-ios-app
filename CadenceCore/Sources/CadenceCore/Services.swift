@@ -85,16 +85,20 @@ public struct CardioWorkoutSummary: Equatable, Sendable {
     public var customTitle: String?
     /// Manually logged vs live-recorded (feedback batch 6).
     public var isLogged: Bool
+    /// Optional distance goal in meters (feedback batch 8); nil ⇒ no goal set.
+    public var targetDistanceMeters: Double?
     public init(id: UUID, type: CardioType, start: Date, end: Date,
                 distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
                 hrSamples: [HRSamplePoint] = [], route: [LocationFix] = [],
                 intervalSummary: IntervalSummary? = nil,
-                customTitle: String? = nil, isLogged: Bool = false) {
+                customTitle: String? = nil, isLogged: Bool = false,
+                targetDistanceMeters: Double? = nil) {
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.hrSamples = hrSamples; self.route = route
         self.intervalSummary = intervalSummary
         self.customTitle = customTitle; self.isLogged = isLogged
+        self.targetDistanceMeters = targetDistanceMeters
     }
 }
 

@@ -3,7 +3,14 @@
 Live handoff/progress tracker. Read this first, then
 `plans/field-testing/2026-06-11/round4-plan.md`.
 
-_Last updated: 2026-06-14 — Manual strength + CrossFit logging shipped as PR #28
+_Last updated: 2026-06-14 (later) — Batch 8 quick-starts shipped as PR #29 (stacked
+on #28): tappable Home tiles (steps→Run/Walk, cardio-min→cardio picker, volume→
+strength, body-parts→fill-the-gaps), optional cardio distance goals (5K/10K, live
+progress + saved), plyometrics category, expanded catalog + body-part index +
+gap-filling suggestions, and a redesigned exercise picker (popular-first + body-part
+filter chips + muscle subtitles + external EXRX.NET links). CadenceCore 160/160; UI
+FR1/2/3/8/13/15 all green. Prior:_
+_Manual strength + CrossFit logging shipped as PR #28
 (stacked on feedback-batch-7 #27): completes the deferred half of "Log Workout"
 (cardio-only → now strength/CrossFit too). Reuses `SessionView` in `isManualLog`
 mode; CadenceCore 151/151; UI FR1/FR8/FR13 16/16 (incl. strength/custom-CF/Fran-

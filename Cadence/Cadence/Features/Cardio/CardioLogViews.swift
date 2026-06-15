@@ -36,9 +36,9 @@ struct OtherCardioEntryView: View {
 }
 
 /// "Log Workout" type chooser (feedback batch 6 item 3, extended batch 7): pick a
-/// workout type to record a past session manually — **Strength** or **CrossFit**
-/// (logged as sets on the normal session screen) or a cardio/interval type / Other
-/// Cardio. It lands in history identically to a live recording, just flagged "Logged".
+/// workout type to record a past session manually — **Strength** (logged as sets
+/// on the normal session screen) or a cardio/interval type / Other Cardio. It lands
+/// in history identically to a live recording, just flagged "Logged".
 struct LogWorkoutPicker: View {
     /// Called after a workout is saved so Home can refresh / dismiss.
     var onSaved: () -> Void = {}
@@ -52,7 +52,7 @@ struct LogWorkoutPicker: View {
         NavigationStack {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
-                    // Strength + CrossFit lead the grid — logged as sets on the normal
+                    // Strength leads the grid — logged as sets on the normal
                     // session screen (feedback batch 7 follow-up).
                     NavigationLink {
                         LogStrengthEntryView(onDone: { dismiss(); onSaved() })
@@ -60,12 +60,6 @@ struct LogWorkoutPicker: View {
                         .buttonStyle(.plain)
                         .tapHaptic()
                         .accessibilityIdentifier("logType.strength")
-                    NavigationLink {
-                        LogCrossFitPicker(onDone: { dismiss(); onSaved() })
-                    } label: { tile("figure.strengthtraining.functional", "CrossFit") }
-                        .buttonStyle(.plain)
-                        .tapHaptic()
-                        .accessibilityIdentifier("logType.crossfit")
                     ForEach(types) { type in
                         NavigationLink {
                             LogCardioView(type: type) { dismiss(); onSaved() }

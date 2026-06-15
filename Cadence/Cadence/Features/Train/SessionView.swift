@@ -60,14 +60,9 @@ struct SessionView: View {
     private var isEmptySession: Bool {
         session.exercisesInOrder.isEmpty && plannedOnlyNames.isEmpty
     }
-    /// The CrossFit / preset plan that launched this session, if any (round4b §B-1).
+    /// The strength preset that launched this session, if any (round4b §B-1).
     private var plan: WorkoutPlan? {
         session.planKey.flatMap { PlanCatalog.plan(forKey: $0) }
-    }
-    /// Rep-ladder for the plan's scheme (applies to every item), else nil.
-    private var planLadder: [Int]? {
-        if case let .forTime(rounds, _) = plan?.scheme { return rounds }
-        return nil
     }
     /// Prescription line for a planned movement, resolved from the plan. A
     /// flexible template launched with a chosen rep scheme (feedback batch 3)
@@ -75,7 +70,7 @@ struct SessionView: View {
     private func prescription(for name: String) -> String? {
         let chosen = session.plannedRepLadder
         if let item = plan?.items.first(where: { $0.movement == name }) {
-            let ladder = chosen.isEmpty ? planLadder : chosen
+            let ladder = chosen.isEmpty ? nil : chosen
             let line = Format.prescription(item, ladder: ladder, unit: settings.unit)
             return line.isEmpty ? nil : line
         }
@@ -85,12 +80,11 @@ struct SessionView: View {
     }
 
     /// The effective rep-ladder for an exercise: the chosen scheme if the session
-    /// carries one, else the plan's `forTime` ladder. Drives the pre-seeded planned
-    /// set rows and the default reps for each new set (feedback batch 6, items 1/2).
+    /// carries one, else none. Drives the pre-seeded planned set rows and the
+    /// default reps for each new set (feedback batch 6, items 1/2).
     private func effectiveLadder(for name: String) -> [Int]? {
         let chosen = session.plannedRepLadder
-        if !chosen.isEmpty { return chosen }
-        return planLadder
+        return chosen.isEmpty ? nil : chosen
     }
     /// How many planned set rows an exercise should pre-seed (ladder length).
     private func plannedSetCount(for name: String) -> Int {
@@ -309,7 +303,7 @@ struct SessionView: View {
         }
     }
 
-    // MARK: Plan banner (CrossFit / preset scheme, round4b §B-1)
+    // MARK: Plan banner (preset scheme, round4b §B-1)
 
     @ViewBuilder
     private func planBanner(_ plan: WorkoutPlan) -> some View {

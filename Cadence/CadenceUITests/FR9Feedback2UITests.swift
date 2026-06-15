@@ -25,7 +25,7 @@ final class FR9Feedback2UITests: CadenceUITestCase {
         openWeights(app)
         // 5×5 split into weekly days in feedback batch 3 (preset-5x5-1a…2b).
         XCTAssertTrue(app.buttons["weights.library.preset-5x5-1a"].waitTap(), "5×5 preset")
-        XCTAssertTrue(app.buttons["crossfit.preview.start"].waitTap(), "Start preset")
+        XCTAssertTrue(app.buttons["plan.preview.start"].waitTap(), "Start preset")
         XCTAssertTrue(app.staticTexts["session.rx.Back Squat"].waitForExistence(timeout: 25),
                       "the preset's Back Squat should be pre-loaded as a planned card")
     }

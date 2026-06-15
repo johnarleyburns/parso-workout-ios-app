@@ -29,7 +29,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         // Quick Start is now truly immediate (no countdown), so exercise the
         // get-ready countdown via a library preset, which still honors it.
         XCTAssertTrue(app.buttons["weights.library.preset-5x5-1a"].waitTap(), "5×5 library preset")
-        XCTAssertTrue(app.buttons["crossfit.preview.start"].waitTap(), "Start preset")
+        XCTAssertTrue(app.buttons["plan.preview.start"].waitTap(), "Start preset")
 
         let remaining = app.staticTexts["countdown.remaining"]
         XCTAssertTrue(remaining.waitForExistence(timeout: 25), "countdown should render")
@@ -47,7 +47,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
                       "skipping the countdown should open the session")
     }
 
-    // P2 (#7) — the strength/CrossFit session shows a prominent elapsed clock that
+    // P2 (#7) — the strength session shows a prominent elapsed clock that
     // advances while training and freezes the instant the workout is paused.
     func testSessionElapsedTimerRunsAndFreezesOnPause() {
         let app = XCUIApplication.launched()

@@ -65,7 +65,7 @@ enum Format {
         return "\(Int(bpm.rounded())) bpm"
     }
 
-    /// A CrossFit-style prescription line for a `PlanItem` (round4b §B-1).
+    /// A prescription line for a `PlanItem` (round4b §B-1).
     /// Reps/distance + the Rx load. Per decision #2 the canonical lb is always
     /// shown, with the user's preferred unit appended only when it differs.
     static func prescription(_ item: PlanItem, ladder: [Int]?, unit: MeasurementUnitPreference) -> String {

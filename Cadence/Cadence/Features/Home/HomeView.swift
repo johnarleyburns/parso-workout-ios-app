@@ -420,15 +420,15 @@ struct HomeView: View {
 
     // MARK: Routing (countdown gate)
 
-    /// A non-CrossFit type was chosen in the Start sheet (CrossFit is handled
-    /// inside the sheet itself). Strength launches via the push-behind path; cardio
-    /// dismisses the sheet first, then presents its own flow.
+    /// A type was chosen in the Start sheet. Strength launches via the push-behind
+    /// path (handled inside the sheet); cardio dismisses the sheet first, then
+    /// presents its own flow.
     private func start(_ type: WorkoutType) {
         // Only "Other Cardio" carries a custom title; clear any stale one first.
         otherCardioTitle = nil
         if type.isStrength {
-            // Weights/CrossFit are handled inside the sheet (WeightsStartView /
-            // CrossFitPickerView), so this branch is normally unreached.
+            // Weights is handled inside the sheet (WeightsStartView), so this
+            // branch is normally unreached.
             launchFromPicker(.strength)
         } else if type == .swim {
             // Swimming is a minimal time + laps recorder (feedback #3).

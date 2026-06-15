@@ -5,11 +5,11 @@ import CadenceCore
 /// type-keyed colour gradient with a large glyph, or a bundled photo if one is
 /// dropped into the named asset slot (`hero-<type>`). Large + legible.
 struct WorkoutTypePicker: View {
-    /// A non-CrossFit type was chosen — the parent maps it to a launch.
+    /// A cardio/other type was chosen — the parent maps it to a launch.
     let onSelect: (WorkoutType) -> Void
-    /// A CrossFit benchmark or a strength-library preset was chosen — the parent
-    /// launches the planned session, optionally with a chosen per-set rep ladder
-    /// (flexible Strength templates carry one; everything else passes nil).
+    /// A strength-library preset was chosen — the parent launches the planned
+    /// session, optionally with a chosen per-set rep ladder (flexible Strength
+    /// templates carry one; everything else passes nil).
     let onPlan: (WorkoutPlan, [Int]?) -> Void
     /// Weights → Quick Start (a blank strength session).
     let onWeightsQuickStart: () -> Void
@@ -35,18 +35,9 @@ struct WorkoutTypePicker: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(types) { type in
-                        // CrossFit and Weights push a chooser within this same sheet
-                        // (P1 #1 / feedback #1) — no sheet-swap, so Home doesn't flash
-                        // behind them.
+                        // Weights pushes a chooser within this same sheet (feedback
+                        // #1) — no sheet-swap, so Home doesn't flash behind it.
                         switch type {
-                        case .crossfit:
-                            NavigationLink {
-                                CrossFitPickerView(onStart: { onPlan($0, nil) })
-                            } label: { WorkoutHero(type: type) }
-                                .buttonStyle(.plain)
-                                .tapHaptic()
-                                .accessibilityIdentifier("startType.\(type.rawValue)")
-                                .accessibilityLabel(type.displayName)
                         case .weights:
                             NavigationLink {
                                 WeightsStartView(onQuickStart: onWeightsQuickStart,
@@ -123,7 +114,6 @@ struct WorkoutHero: View {
     static func colors(_ type: WorkoutType) -> [Color] {
         switch type {
         case .weights: return [.indigo, .purple]
-        case .crossfit: return [.red, .black]
         case .run: return [.blue, .teal]
         case .walk: return [.teal, .green]
         case .cycle: return [.orange, .yellow]

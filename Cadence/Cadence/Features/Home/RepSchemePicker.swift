@@ -4,8 +4,8 @@ import CadenceCore
 /// Set & rep scheme chooser for a flexible Strength-library template (feedback
 /// batch 3). The user picks one scheme and it's applied to every movement in the
 /// preset (e.g. all Push exercises become 3 sets of 12-10-8). Pushed inside the
-/// Start-Workout sheet's navigation (like the CrossFit/preset previews) so
-/// launching stays the parent's job and dismisses the whole sheet at once.
+/// Start-Workout sheet's navigation (like the preset previews) so launching stays
+/// the parent's job and dismisses the whole sheet at once.
 struct RepSchemePicker: View {
     let plan: WorkoutPlan
     /// Launches the preset with the chosen rep ladder.
@@ -23,7 +23,7 @@ struct RepSchemePicker: View {
             Section {
                 ForEach(presets, id: \.id) { preset in
                     NavigationLink {
-                        CrossFitPreviewView(plan: plan, repLadder: preset.ladder) {
+                        PlanPreviewView(plan: plan, repLadder: preset.ladder) {
                             onStart(plan, preset.ladder)
                         }
                     } label: {
@@ -86,7 +86,7 @@ struct CustomRepEditor: View {
             }
             Section {
                 NavigationLink {
-                    CrossFitPreviewView(plan: plan, repLadder: reps) {
+                    PlanPreviewView(plan: plan, repLadder: reps) {
                         onStart(plan, reps)
                     }
                 } label: {

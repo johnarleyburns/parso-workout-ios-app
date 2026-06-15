@@ -79,13 +79,6 @@ struct ExercisePickerView: View {
                         }
                     }
                 }
-
-                Section {
-                    Link(destination: URL(string: "https://www.crossfit.com/crossfit-movements")!) {
-                        Label("CrossFit movement guide", systemImage: "arrow.up.right.square")
-                    }
-                    .accessibilityIdentifier("picker.movementGuide")
-                }
             }
             .navigationTitle("Add Exercise")
             .navigationBarTitleDisplayMode(.inline)

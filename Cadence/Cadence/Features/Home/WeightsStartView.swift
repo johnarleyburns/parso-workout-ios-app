@@ -4,10 +4,10 @@ import CadenceCore
 
 /// The Weights entry point (round4b feedback #1). Three ways to begin a strength
 /// session: **Quick Start** (a blank workout), **Start from Previous Workout**
-/// (one of your recent non-CrossFit sessions, reused as a template), or **Start
-/// from Library** (a built-in split — 5×5, Push/Pull/Legs, body-part days,
-/// Olympic). Pushed inside the Start-Workout sheet (like CrossFit), so launching
-/// is the parent's job and dismisses the whole sheet at once with no Home flash.
+/// (one of your recent sessions, reused as a template), or **Start from Library**
+/// (a built-in split — 5×5, Push/Pull/Legs, body-part days, Olympic). Pushed
+/// inside the Start-Workout sheet, so launching is the parent's job and dismisses
+/// the whole sheet at once with no Home flash.
 struct WeightsStartView: View {
     let onQuickStart: () -> Void
     /// Quick Start, but preceded by a guided warm-up timer (feedback batch 4).
@@ -19,13 +19,9 @@ struct WeightsStartView: View {
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
-    /// Recent weight-only sessions (non-CrossFit) that have logged sets, newest
-    /// first, capped at the last 20.
+    /// Recent sessions that have logged sets, newest first, capped at the last 20.
     private var previous: [WorkoutSession] {
-        Array(sessions.filter { s in
-            !s.orderedSets.isEmpty
-                && s.planKey.flatMap { PlanCatalog.plan(forKey: $0)?.source } != .crossfit
-        }.prefix(20))
+        Array(sessions.filter { !$0.orderedSets.isEmpty }.prefix(20))
     }
 
     var body: some View {
@@ -100,7 +96,7 @@ struct WeightsStartView: View {
                         if plan.flexibleScheme {
                             RepSchemePicker(plan: plan, onStart: onPlan)
                         } else {
-                            CrossFitPreviewView(plan: plan) { onPlan(plan, nil) }
+                            PlanPreviewView(plan: plan) { onPlan(plan, nil) }
                         }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
@@ -115,6 +111,64 @@ struct WeightsStartView: View {
             }
         }
         .navigationTitle("Strength")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// A read-only prescription preview for one strength preset, with a big Start
+/// button. A flexible template's chosen per-set rep ladder (feedback batch 3) is
+/// applied to every movement in the preview + the launched session.
+struct PlanPreviewView: View {
+    let plan: WorkoutPlan
+    var repLadder: [Int]? = nil
+    let onStart: () -> Void
+    @Environment(AppSettings.self) private var settings
+
+    private var ladder: [Int]? {
+        guard let repLadder, !repLadder.isEmpty else { return nil }
+        return repLadder
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(plan.schemeSummary)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.tint)
+                    .accessibilityIdentifier("plan.preview.scheme")
+
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(plan.items) { item in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.movement).font(.headline)
+                            let line = Format.prescription(item, ladder: ladder, unit: settings.unit)
+                            if !line.isEmpty {
+                                Text(line).font(.subheadline).foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 4)
+                    }
+                }
+                .padding()
+                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+
+                if let notes = plan.notes {
+                    Text(notes).font(.footnote).foregroundStyle(.secondary)
+                }
+
+                Button(action: onStart) {
+                    Label("Start", systemImage: "play.fill")
+                        .font(.title3.bold())
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .accessibilityIdentifier("plan.preview.start")
+            }
+            .padding()
+        }
+        .navigationTitle(plan.name)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

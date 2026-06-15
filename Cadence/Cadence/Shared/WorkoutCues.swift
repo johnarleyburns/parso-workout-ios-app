@@ -2,7 +2,7 @@ import Foundation
 import AVFoundation
 
 /// A single warning bell played at workout / phase transitions for non-interval
-/// workouts — strength & CrossFit start, guided warm-up, guided cool-down, and end
+/// workouts — strength start, guided warm-up, guided cool-down, and end
 /// (feedback batch 7 item 9). It cues the user to start or stop when they're not
 /// looking at the phone. Intervals (HIIT) have their own richer cues via
 /// `IntervalCues`, and boxing keeps its own round bell — neither goes through here.

@@ -34,5 +34,11 @@ open Cadence.xcodeproj
 ## Status
 Early development. Built supervised with Claude Code — see `CLAUDE.md`.
 
+The app is pivoting to a focused, science-based **strength coach** (see the
+strength-pivot plan docs). As part of that, CrossFit was removed; its full
+pre-removal code is preserved in the annotated git tag **`crossfit-preserved-v1`**
+(recoverable base for a possible future standalone CrossFit app). Boxing remains
+as a cardio/interval workout.
+
 ## License
 MIT — see [LICENSE](LICENSE).

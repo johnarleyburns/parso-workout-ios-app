@@ -19,6 +19,8 @@ final class FR2CardioUITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["startType.run"].waitTap(), "Run type")
+        // Run/Walk/Cycle now offer an optional distance goal first (batch 8); skip it.
+        XCTAssertTrue(app.buttons["goal.none"].waitTap(), "skip distance goal")
 
         let elapsed = app.staticTexts["outdoor.elapsed"]
         XCTAssertTrue(elapsed.waitForExistence(timeout: 25), "outdoor GPS screen")

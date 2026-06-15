@@ -33,4 +33,34 @@ extension WorkoutRepository {
         let cardio = try allCardio(context).map(WorkoutHistoryEntry.cardio)
         return (strength + cardio).sorted { $0.date > $1.date }
     }
+
+    /// Ranks past strength sessions by how many of the `missing` body parts they
+    /// cover (feedback batch 8 — Home "body parts" quick-start). A session's coverage
+    /// is the union of its logged exercises' body parts intersected with `missing`.
+    /// Returns only sessions covering ≥1 missing part, most-covered first, ties
+    /// broken by recency. `sessions` is assumed newest-first (as from `allSessions`).
+    public static func workoutsByMissingCoverage(_ sessions: [WorkoutSession],
+                                                 missing: [BodyPart])
+        -> [(session: WorkoutSession, covered: [BodyPart])] {
+        guard !missing.isEmpty else { return [] }
+        let want = Set(missing)
+        let ranked: [(WorkoutSession, [BodyPart])] = sessions.compactMap { s in
+            var hit = Set<BodyPart>()
+            for ex in s.exercisesInOrder { hit.formUnion(BodyPart.parts(forMuscleIDs: ex.muscleGroups)) }
+            let covered = want.intersection(hit)
+            guard !covered.isEmpty else { return nil }
+            // Stable display order for the covered chips.
+            return (s, BodyPart.allCases.filter { covered.contains($0) })
+        }
+        // `sessions` is already newest-first, so a stable sort by covered-count desc
+        // keeps recency as the tie-breaker.
+        return ranked
+            .enumerated()
+            .sorted { a, b in
+                a.element.1.count != b.element.1.count
+                    ? a.element.1.count > b.element.1.count
+                    : a.offset < b.offset
+            }
+            .map { ($0.element.0, $0.element.1) }
+    }
 }

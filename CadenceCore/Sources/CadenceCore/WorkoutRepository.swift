@@ -484,7 +484,8 @@ public enum WorkoutRepository {
         let c = CardioWorkout(id: summary.id, type: summary.type, start: summary.start,
                               end: summary.end, distance: summary.distanceMeters,
                               activeEnergy: summary.activeEnergyKcal, avgHeartRate: avg,
-                              maxHeartRate: maxHR, source: source,
+                              maxHeartRate: maxHR,
+                              targetDistance: summary.targetDistanceMeters, source: source,
                               healthKitWorkoutUUID: healthKitWorkoutUUID,
                               isLogged: summary.isLogged, customTitle: summary.customTitle)
         c.intervalSummary = summary.intervalSummary

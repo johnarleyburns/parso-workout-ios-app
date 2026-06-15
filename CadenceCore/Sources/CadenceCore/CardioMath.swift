@@ -40,6 +40,15 @@ public enum CardioMath {
         return seconds / (distanceMeters / 1000)
     }
 
+    /// Progress toward a distance goal (feedback batch 8). Returns the completed
+    /// fraction (0...1, clamped) and meters remaining (>= 0). nil goal ⇒ nil.
+    public static func goalProgress(distanceMeters: Double, goalMeters: Double?)
+        -> (fraction: Double, remainingMeters: Double)? {
+        guard let goal = goalMeters, goal > 0 else { return nil }
+        let frac = min(max(distanceMeters / goal, 0), 1)
+        return (frac, max(0, goal - distanceMeters))
+    }
+
     public static func formatPace(secPerKm: Double?) -> String {
         guard let s = secPerKm, s.isFinite, s > 0 else { return "—" }
         let m = Int(s) / 60, sec = Int(s) % 60

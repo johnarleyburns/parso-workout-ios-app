@@ -129,7 +129,7 @@ public final class Exercise {
 
 /// Coarse training split categories (FR-1.1).
 public enum ExerciseCategory: String, CaseIterable, Codable, Sendable, Identifiable {
-    case push, pull, legs, core, cardio, other
+    case push, pull, legs, core, cardio, plyometrics, other
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
@@ -138,6 +138,7 @@ public enum ExerciseCategory: String, CaseIterable, Codable, Sendable, Identifia
         case .legs: return "Legs"
         case .core: return "Core"
         case .cardio: return "Cardio"
+        case .plyometrics: return "Plyometrics"
         case .other: return "Other"
         }
     }
@@ -441,6 +442,10 @@ public final class CardioWorkout {
     /// Optional/additive for CloudKit + back-compat; nil for non-swim workouts.
     public var laps: Int?
     public var targetLaps: Int?
+    /// Optional distance goal in meters for a run/walk/cycle (feedback batch 8): the
+    /// user can target e.g. 5K/10K when starting; the live screen shows progress and
+    /// history shows whether it was met. Additive/optional for CloudKit + back-compat.
+    public var targetDistance: Double?
     /// Raw value of `CardioSource`.
     public var source: String = CardioSource.iphone.rawValue
     public var healthKitWorkoutUUID: UUID?
@@ -474,6 +479,7 @@ public final class CardioWorkout {
                 maxHeartRate: Double? = nil,
                 laps: Int? = nil,
                 targetLaps: Int? = nil,
+                targetDistance: Double? = nil,
                 source: CardioSource = .iphone,
                 healthKitWorkoutUUID: UUID? = nil,
                 notes: String? = nil,
@@ -491,6 +497,7 @@ public final class CardioWorkout {
         self.maxHeartRate = maxHeartRate
         self.laps = laps
         self.targetLaps = targetLaps
+        self.targetDistance = targetDistance
         self.source = source.rawValue
         self.healthKitWorkoutUUID = healthKitWorkoutUUID
         self.notes = notes

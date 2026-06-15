@@ -20,6 +20,11 @@ struct WorkoutTypePicker: View {
     /// "Other Cardio" chosen: free-text description + whether to GPS-track it
     /// (feedback batch 6 item 3).
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
+    /// Which types to offer; defaults to all. The Home "cardio min" tile passes the
+    /// cardio-only subset for a focused quick-start (feedback batch 8).
+    var types: [WorkoutType] = WorkoutType.allCases
+    /// Sheet title — "Start Workout" by default, "Start Cardio" for the filtered tile.
+    var title: String = "Start Workout"
     @Environment(\.dismiss) private var dismiss
 
     private let columns = [GridItem(.flexible(), spacing: 16),
@@ -29,7 +34,7 @@ struct WorkoutTypePicker: View {
         NavigationStack {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
-                    ForEach(WorkoutType.allCases) { type in
+                    ForEach(types) { type in
                         // CrossFit and Weights push a chooser within this same sheet
                         // (P1 #1 / feedback #1) — no sheet-swap, so Home doesn't flash
                         // behind them.
@@ -74,7 +79,7 @@ struct WorkoutTypePicker: View {
                 }
                 .padding()
             }
-            .navigationTitle("Start Workout")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

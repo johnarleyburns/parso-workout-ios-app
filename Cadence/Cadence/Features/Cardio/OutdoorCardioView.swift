@@ -10,6 +10,9 @@ struct OutdoorCardioView: View {
     let type: CardioType
     /// Free-text label for an "Other Cardio" workout (feedback batch 6), else nil.
     var customTitle: String? = nil
+    /// Optional distance goal in meters (feedback batch 8): shows live progress and
+    /// is saved on the workout. nil ⇒ no goal.
+    var goalMeters: Double? = nil
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -58,6 +61,21 @@ struct OutdoorCardioView: View {
                 HStack(spacing: 14) {
                     bigMetric(Format.distance(recorder?.distanceMeters ?? 0), "Distance", id: "outdoor.distance")
                     bigMetric(CardioMath.formatPace(secPerKm: paceSecPerKm), "Pace", id: "outdoor.pace")
+                }
+                if let goalMeters,
+                   let p = CardioMath.goalProgress(distanceMeters: recorder?.distanceMeters ?? 0, goalMeters: goalMeters) {
+                    VStack(spacing: 4) {
+                        HStack {
+                            Text("Goal \(Format.distance(goalMeters))").font(.caption).foregroundStyle(.secondary)
+                            Spacer()
+                            Text(p.fraction >= 1 ? "Goal met ✓" : "\(Format.distance(p.remainingMeters)) to go")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(p.fraction >= 1 ? .green : .secondary)
+                        }
+                        ProgressView(value: p.fraction).tint(.green)
+                    }
+                    .padding(.horizontal, 4)
+                    .accessibilityIdentifier("outdoor.goal")
                 }
                 bigMetric(Format.heartRate(recorder?.currentBPM), "Heart Rate", id: "outdoor.hr")
 
@@ -139,6 +157,7 @@ struct OutdoorCardioView: View {
         clock.end()
         var summary = r.end()
         summary.customTitle = customTitle
+        summary.targetDistanceMeters = goalMeters
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                               healthKitWorkoutUUID: hkID, in: context)

@@ -26,6 +26,13 @@ struct HomeView: View {
     @State private var pending: PendingWorkout?
     @State private var warmupActive = false
     @State private var today: DayActivity?
+    // Quick-start shortcuts from the stat tiles (feedback batch 8).
+    @State private var stepsQuickStart = false        // steps tile → Run/Walk dialog
+    @State private var cardioPickerPresented = false  // cardio-min tile → cardio-only picker
+    @State private var weightsStartPresented = false  // volume tile → strength start
+    @State private var bodyPartsPresented = false     // body-parts tile → fill-the-gaps
+    @State private var cardioGoalFor: CardioType?     // optional distance goal before run/walk/cycle
+    @State private var outdoorGoalMeters: Double?     // goal handed to the outdoor recorder
 
     // Weekly tiles (feedback batch 3) — pure aggregates from CadenceCore.
     private var weekStart: Date { WeeklyStats.weekStart() }
@@ -95,7 +102,48 @@ struct HomeView: View {
                                    onDone: { active.finishedSummary = nil })
             }
             .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle) }
-            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle) }
+            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters) }
+            // Steps tile (batch 8) → start an outdoor Run or Walk fast.
+            .confirmationDialog("Start a workout", isPresented: $stepsQuickStart, titleVisibility: .visible) {
+                Button("Start Run") { startOutdoorWithGoal(.run) }.accessibilityIdentifier("steps.run")
+                Button("Start Walk") { startOutdoorWithGoal(.walk) }.accessibilityIdentifier("steps.walk")
+                Button("Cancel", role: .cancel) { }
+            }
+            // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
+            .sheet(isPresented: $cardioPickerPresented) {
+                WorkoutTypePicker(onSelect: { cardioPickerPresented = false; start($0) },
+                                  onPlan: { _, _ in },
+                                  onWeightsQuickStart: { }, onWeightsWarmup: { },
+                                  onWeightsReuse: { _ in },
+                                  onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
+                                  types: [.run, .walk, .cycle, .swim, .hiit, .boxing, .other],
+                                  title: "Start Cardio")
+            }
+            // Volume tile (batch 8) → strength start (Quick Start / Warm-Up / Reuse / presets).
+            .sheet(isPresented: $weightsStartPresented) {
+                NavigationStack {
+                    WeightsStartView(
+                        onQuickStart: { weightsStartPresented = false; launchFromPicker(.strength, skipCountdown: true) },
+                        onWarmupStart: { weightsStartPresented = false; warmupActive = true },
+                        onReuse: { weightsStartPresented = false; launchFromPicker(.reuse($0)) },
+                        onPlan: { plan, ladder in weightsStartPresented = false; launchFromPicker(.plan(plan, ladder)) })
+                }
+            }
+            // Body-parts tile (batch 8) → fill-the-gaps quick start.
+            .sheet(isPresented: $bodyPartsPresented) {
+                BodyPartQuickStartView(missing: bodyPartsThisWeek.missing) { session in
+                    bodyPartsPresented = false
+                    active.startStrength(session); path.append(session)
+                }
+            }
+            // Optional distance goal before a run/walk/cycle (batch 8).
+            .sheet(item: $cardioGoalFor) { type in
+                CardioGoalSheet(type: type) { goal in
+                    outdoorGoalMeters = goal
+                    cardioGoalFor = nil
+                    begin(.outdoor(type))
+                }
+            }
             .sheet(item: $intervalType) { wType in
                 IntervalSetupView(type: wType) { plan in
                     intervalType = nil
@@ -165,10 +213,12 @@ struct HomeView: View {
         return HStack(spacing: 14) {
             statTile("\(Format.integer(steps)) / \(Format.integer(stepGoal))", "steps today",
                      id: "today.steps",
-                     progress: Double(steps) / Double(stepGoal), progressID: "today.steps.progress")
+                     progress: Double(steps) / Double(stepGoal), progressID: "today.steps.progress",
+                     tileID: "home.stepsTile", onTap: { stepsQuickStart = true })
             statTile("\(cardio) / \(cardioGoal)", "cardio min this week",
                      id: "home.cardioMinutes",
-                     progress: Double(cardio) / Double(cardioGoal), progressID: "home.cardioMinutes.progress")
+                     progress: Double(cardio) / Double(cardioGoal), progressID: "home.cardioMinutes.progress",
+                     tileID: "home.cardioTile", onTap: { cardioPickerPresented = true })
         }
     }
 
@@ -177,20 +227,23 @@ struct HomeView: View {
         let coverage = bodyPartsThisWeek
         return HStack(spacing: 14) {
             statTile(Format.weight(volumeThisWeekKg, unit: settings.unit, decimals: 0),
-                     "volume this week", id: "home.volume")
+                     "volume this week", id: "home.volume",
+                     tileID: "home.volumeTile", onTap: { weightsStartPresented = true })
             statTile("\(coverage.hit.count)/\(BodyPart.allCases.count)", "body parts",
                      id: "home.bodyParts",
                      caption: coverage.missing.isEmpty
                         ? "All parts hit 💪"
                         : "Missing: " + coverage.missing.map(\.displayName).joined(separator: ", "),
-                     captionID: "home.bodyParts.missing")
+                     captionID: "home.bodyParts.missing",
+                     tileID: "home.bodyPartsTile", onTap: { bodyPartsPresented = true })
         }
     }
 
     private func statTile(_ value: String, _ label: String, id: String,
                           caption: String? = nil, captionID: String? = nil,
-                          progress: Double? = nil, progressID: String? = nil) -> some View {
-        VStack(spacing: 4) {
+                          progress: Double? = nil, progressID: String? = nil,
+                          tileID: String? = nil, onTap: (() -> Void)? = nil) -> some View {
+        let content = VStack(spacing: 4) {
             Text(value).font(.title.bold()).monospacedDigit().accessibilityIdentifier(id)
                 .minimumScaleFactor(0.6).lineLimit(1)
             Text(label).font(.caption).foregroundStyle(.secondary)
@@ -208,6 +261,20 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity).padding(.vertical, 16).padding(.horizontal, 6)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .contentShape(Rectangle())
+
+        return Group {
+            if let onTap {
+                // A tappable tile is a fast path to start the workout it summarizes
+                // (feedback batch 8). Plain style keeps the card's look.
+                Button { Haptics.selection(); onTap() } label: { content }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier(tileID ?? "")
+                    .accessibilityAddTraits(.isButton)
+            } else {
+                content
+            }
+        }
     }
 
     /// Pulls any new Watch/Health-recorded cardio into the local store (FR-2.1).
@@ -367,7 +434,8 @@ struct HomeView: View {
             // Swimming is a minimal time + laps recorder (feedback #3).
             typePickerPresented = false; swimPresented = true
         } else if type.usesGPS, let c = type.cardioType {
-            typePickerPresented = false; begin(.outdoor(c))
+            // Run/Walk/Cycle: offer an optional distance goal first (batch 8).
+            typePickerPresented = false; startOutdoorWithGoal(c)
         } else if type == .hiit || type == .boxing {
             typePickerPresented = false; intervalType = type
         } else if let c = type.cardioType {
@@ -378,9 +446,18 @@ struct HomeView: View {
     /// route to the GPS recorder or the indoor timer per the user's GPS toggle.
     private func startOtherCardio(description: String, gps: Bool) {
         typePickerPresented = false
+        outdoorGoalMeters = nil   // Other Cardio carries no distance goal.
         let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
         otherCardioTitle = trimmed.isEmpty ? nil : trimmed
         begin(gps ? .outdoor(.other) : .timer(.other))
+    }
+
+    /// Presents the optional distance-goal chooser before a run/walk/cycle (batch 8).
+    /// A fresh start clears any prior goal; the chooser sets it (or leaves it nil).
+    private func startOutdoorWithGoal(_ type: CardioType) {
+        otherCardioTitle = nil
+        outdoorGoalMeters = nil
+        cardioGoalFor = type
     }
 
     /// Launches a strength/plan workout chosen from the Start sheet without a Home

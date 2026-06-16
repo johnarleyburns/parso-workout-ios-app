@@ -63,6 +63,17 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1080/02640414.2018.1555906"
     )
 
+    /// Validity of e1RM prediction equations — anchors the strength-assessment
+    /// (estimated-1RM / rep-max) insights added in P4.
+    public static let oneRMEstimation = Citation(
+        id: "oneRMEstimation",
+        authors: "LeSuer, McCormick, Mayhew, Wasserman & Arnold",
+        year: 1997,
+        title: "The Accuracy of Prediction Equations for Estimating 1-RM Performance in the Bench Press, Squat, and Deadlift",
+        source: "Journal of Strength and Conditioning Research 11(4)",
+        url: "https://journals.lww.com/nsca-jscr/abstract/1997/11000/the_accuracy_of_prediction_equations_for.1.aspx"
+    )
+
     /// All citations, for the in-app references list and tests.
-    public static let all: [Citation] = [schoenfeld2021, volumeDoseResponse, frequencyMeta]
+    public static let all: [Citation] = [schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation]
 }

@@ -50,6 +50,12 @@ public struct TrainingFacts: Sendable {
     public let daysSinceLastSession: Int?
     /// Total working sets in the trailing week — 0 means cold-start (no history).
     public let totalWorkingSets: Int
+    /// Longitudinal assessment series (P4): one summary per test the user has run,
+    /// most-recent first. Empty until the user logs an assessment.
+    public let assessments: [AssessmentSummary]
+    /// Series whose most recent result is older than the re-test cadence (D5),
+    /// computed against the snapshot's reference time so rules stay deterministic.
+    public let assessmentsDueForRetest: [AssessmentSummary]
     public let goal: TrainingGoal
     public let experience: ExperienceLevel
 
@@ -64,6 +70,8 @@ public struct TrainingFacts: Sendable {
                 avgRPE: Double?,
                 daysSinceLastSession: Int?,
                 totalWorkingSets: Int,
+                assessments: [AssessmentSummary] = [],
+                assessmentsDueForRetest: [AssessmentSummary] = [],
                 goal: TrainingGoal,
                 experience: ExperienceLevel) {
         self.weeklySetsByPart = weeklySetsByPart
@@ -73,6 +81,8 @@ public struct TrainingFacts: Sendable {
         self.avgRPE = avgRPE
         self.daysSinceLastSession = daysSinceLastSession
         self.totalWorkingSets = totalWorkingSets
+        self.assessments = assessments
+        self.assessmentsDueForRetest = assessmentsDueForRetest
         self.goal = goal
         self.experience = experience
     }
@@ -83,6 +93,7 @@ public extension TrainingFacts {
     /// Build the snapshot from a user's strength sessions. Pure; the caller passes
     /// its `@Query` array straight in. `now` and `formula` are injectable for tests.
     static func make(sessions: [WorkoutSession],
+                     assessments: [Assessment] = [],
                      now: Date = Date(),
                      goal: TrainingGoal,
                      experience: ExperienceLevel,
@@ -172,6 +183,10 @@ public extension TrainingFacts {
         let lastDate = sessions.map(\.date).max()
         let daysSince = lastDate.map { max(0, cal.dateComponents([.day], from: cal.startOfDay(for: $0), to: cal.startOfDay(for: now)).day ?? 0) }
 
+        // Assessment series + which are due for a re-test, against the same `now`.
+        let summaries = AssessmentMath.summaries(from: assessments)
+        let dueForRetest = summaries.filter { AssessmentMath.isRetestDue($0, now: now) }
+
         return TrainingFacts(weeklySetsByPart: setsByPart,
                              frequencyByPart: frequencyByPart,
                              e1RMTrendByExercise: trends,
@@ -179,6 +194,8 @@ public extension TrainingFacts {
                              avgRPE: avgRPE,
                              daysSinceLastSession: daysSince,
                              totalWorkingSets: weekSets.count,
+                             assessments: summaries,
+                             assessmentsDueForRetest: dueForRetest,
                              goal: goal,
                              experience: experience)
     }

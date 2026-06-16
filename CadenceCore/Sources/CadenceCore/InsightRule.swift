@@ -27,6 +27,15 @@ public enum KnowledgeBase {
         intensityVsGoal,
     ]
 
+    /// P4 assessment rules — they reason over `TrainingFacts.assessments`.
+    public static let p4Rules: [InsightRule] = [
+        assessmentProgress,
+        assessmentRetest,
+    ]
+
+    /// Every active rule, run by the engine.
+    public static let activeRules: [InsightRule] = p3Rules + p4Rules
+
     // MARK: - Rule 1: weekly volume vs MEV/MAV/MRV landmarks
 
     static let volumeVsLandmarks = InsightRule(id: "volume", priority: 100) { facts in
@@ -178,6 +187,88 @@ public enum KnowledgeBase {
                 detail: "For hypertrophy, growth is similar across a wide load range as long as sets are taken near failure — proximity to failure, not the load itself, is the main driver. Averaging ~\(Format.oneDecimal(rir)) RIR suggests leaving several reps in the tank; pushing closer (0–3 RIR) would likely add stimulus.",
                 citation: CitationRegistry.schoenfeld2021,
                 severity: .info)]
+        }
+    }
+
+    // MARK: - Rule 5: assessment progress (longitudinal test deltas)
+
+    static let assessmentProgress = InsightRule(id: "assessment.progress", priority: 95) { facts in
+        var out: [Insight] = []
+        for s in facts.assessments {
+            // Need at least a baseline + a re-test to talk about change.
+            guard s.count >= 2 else { continue }
+            let label = AssessmentFormat.seriesLabel(s)
+            let change = AssessmentFormat.change(s)
+            let cite = s.kind.category == .strength
+                ? CitationRegistry.oneRMEstimation
+                : CitationRegistry.schoenfeld2021
+            switch s.trend {
+            case .improved:
+                out.append(Insight(
+                    id: "assessment.\(s.id)",
+                    kind: .assessment, exercise: s.exerciseName,
+                    title: "\(label) is improving",
+                    message: "\(label): \(change) since your first test.",
+                    detail: "Re-testing the same standardized protocol is how you separate real progress from day-to-day noise. Your \(label.lowercased()) is up \(change) versus baseline — beyond the margin we'd write off as measurement error — so the training is working. Keep the block going, then re-test.",
+                    citation: cite,
+                    severity: .info))
+            case .declined:
+                out.append(Insight(
+                    id: "assessment.\(s.id)",
+                    kind: .assessment, exercise: s.exerciseName,
+                    title: "\(label) has dropped",
+                    message: "\(label): \(change) since your first test.",
+                    detail: "Your \(label.lowercased()) has fallen \(change) versus baseline — past what measurement noise alone explains. A single dip can be fatigue or a bad test day, but a real decline is a cue to check recovery, then re-test before changing the plan.",
+                    citation: cite,
+                    severity: .attention))
+            case .unchanged, .single:
+                continue
+            }
+        }
+        return out
+    }
+
+    // MARK: - Rule 6: re-test cadence (block-end reminder, D5)
+
+    static let assessmentRetest = InsightRule(id: "assessment.retest", priority: 60) { facts in
+        facts.assessmentsDueForRetest.map { s in
+            let label = AssessmentFormat.seriesLabel(s)
+            return Insight(
+                id: "assessment.retest.\(s.id)",
+                kind: .assessment, exercise: s.exerciseName,
+                title: "Time to re-test \(label.lowercased())",
+                message: "It's been over six weeks since your last \(label.lowercased()) test.",
+                detail: "Assessments are most useful as a pre/post pair: test, train a block, then re-test on the same protocol to measure the change. It's been a full training block (~6–8 weeks) since you last tested \(label.lowercased()) — a good time to re-run it and see where you stand.",
+                citation: CitationRegistry.schoenfeld2021,
+                severity: .info)
+        }
+    }
+}
+
+/// Formatting for assessment insights — unit-aware values and labels.
+enum AssessmentFormat {
+    /// A human label for a series, e.g. "Bench press 1RM" or "Max push-ups".
+    static func seriesLabel(_ s: AssessmentSummary) -> String {
+        if s.kind.concernsLift, let lift = s.exerciseName, !lift.isEmpty {
+            switch s.kind {
+            case .e1RM:  return "\(lift) 1RM"
+            case .repMax: return "\(lift) rep-max"
+            default: return s.kind.displayName
+            }
+        }
+        return s.kind.displayName
+    }
+
+    /// The baseline→latest change, signed and unit-aware ("+12 reps", "−4 kg",
+    /// "+8 s"). Weight renders in kilograms (the engine's canonical unit).
+    static func change(_ s: AssessmentSummary) -> String {
+        let d = s.delta
+        let sign = d >= 0 ? "+" : "−"
+        let mag = abs(d)
+        switch s.kind.unit {
+        case .weightKg: return "\(sign)\(Format.sets((mag * 10).rounded() / 10)) kg"
+        case .reps:     return "\(sign)\(Int(mag.rounded())) reps"
+        case .seconds:  return "\(sign)\(Int(mag.rounded())) s"
         }
     }
 }

@@ -19,7 +19,8 @@ public enum CadenceStore {
         HRSample.self,
         RouteSample.self,
         HRMDevice.self,
-        Person.self
+        Person.self,
+        Assessment.self
     ])
 
     /// - Parameters:

@@ -36,7 +36,7 @@ struct ExportView: View {
             } header: {
                 Text("Export")
             } footer: {
-                Text("Your full history. JSON round-trips back into Cadence; CSV opens in any spreadsheet.")
+                Text("Your full history. JSON round-trips back into Cladiron; CSV opens in any spreadsheet.")
             }
 
             Section {

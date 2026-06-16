@@ -70,7 +70,7 @@ struct SettingsView: View {
                 } header: {
                     Text("iCloud")
                 } footer: {
-                    Text("Off by default — Cadence runs fully on this device. When on, your data syncs through your private iCloud database. Takes effect after the app restarts.")
+                    Text("Off by default — Cladiron runs fully on this device. When on, your data syncs through your private iCloud database. Takes effect after the app restarts.")
                 }
 
                 Section("Data") {
@@ -183,6 +183,17 @@ struct SettingsView: View {
                     Text("Coach")
                 } footer: {
                     Text("Your coach uses these to tailor its insights — goal sets the load/effort it looks for, experience scales the weekly volume targets. Coaching only, not medical advice.")
+                }
+
+                // Appended at the very bottom (per the §06 convention) so earlier
+                // sections' coordinate-tap UI tests keep their offsets.
+                Section {
+                    NavigationLink {
+                        AboutView()
+                    } label: {
+                        Label("About", systemImage: "info.circle")
+                    }
+                    .accessibilityIdentifier("settings.about")
                 }
             }
         .navigationTitle("Settings")

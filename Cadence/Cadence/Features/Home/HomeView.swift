@@ -76,7 +76,7 @@ struct HomeView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Cadence")
+            .navigationTitle("Cladiron")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { Haptics.selection(); path.append(HomeRoute.settings) } label: { Image(systemName: "gearshape") }

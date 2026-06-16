@@ -69,7 +69,7 @@ struct HRMSettingsView: View {
                     if case .scanning = hrm.state { ProgressView() }
                 }
             } footer: {
-                Text("Make sure the strap is awake and the electrodes are damp. Cadence reconnects to your default device automatically.")
+                Text("Make sure the strap is awake and the electrodes are damp. Cladiron reconnects to your default device automatically.")
             }
 
             Section {

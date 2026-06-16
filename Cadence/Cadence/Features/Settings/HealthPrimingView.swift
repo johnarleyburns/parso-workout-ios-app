@@ -23,7 +23,7 @@ struct HealthPrimingView: View {
                     primingRow("square.and.arrow.up", "Save a summary of your strength workouts back to Health.")
                 }
                 .padding(.horizontal)
-                Text("Cadence requests only what it needs, and your health data never leaves your device.")
+                Text("Cladiron requests only what it needs, and your health data never leaves your device.")
                     .font(.footnote).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)

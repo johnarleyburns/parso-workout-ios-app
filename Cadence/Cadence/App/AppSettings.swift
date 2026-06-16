@@ -23,7 +23,8 @@ final class AppSettings {
                         "settings.idleTimeout", "settings.gpsHighAccuracy", "settings.autoPause",
                         "settings.intervalColorBlind", "settings.spokenCues", "settings.plateRounding",
                         "settings.preWorkoutCountdown", "settings.autoSaveHealth",
-                        "settings.autoEndOnIdle", "settings.workoutSounds"] {
+                        "settings.autoEndOnIdle", "settings.workoutSounds",
+                        "settings.trainingGoal", "settings.experienceLevel"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -52,6 +53,10 @@ final class AppSettings {
         self.autoEndOnIdle = defaults.object(forKey: "settings.autoEndOnIdle") as? Bool ?? true
         self.workoutSounds = defaults.object(forKey: "settings.workoutSounds") as? Bool ?? true
         self.preWorkoutCountdown = defaults.object(forKey: "settings.preWorkoutCountdown") as? Int ?? 10
+        // Coach engine inputs (strength-pivot P3, D4): personalize insights. Full
+        // goal/experience onboarding intake comes in P7; sensible defaults until then.
+        self.trainingGoal = Self.read(defaults, "settings.trainingGoal", TrainingGoal.self) ?? .hypertrophy
+        self.experienceLevel = Self.read(defaults, "settings.experienceLevel", ExperienceLevel.self) ?? .intermediate
         // In UI tests the countdown is off by default (so workout-start flows stay
         // fast); a test can opt in with `-preCountdown N`.
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {
@@ -91,6 +96,10 @@ final class AppSettings {
     var workoutSounds: Bool { didSet { defaults.set(workoutSounds, forKey: "settings.workoutSounds") } }
     /// Get-ready countdown before a workout starts (seconds; 0 disables).
     var preWorkoutCountdown: Int { didSet { defaults.set(preWorkoutCountdown, forKey: "settings.preWorkoutCountdown") } }
+    /// Primary training goal driving the Coach engine's insights (P3, D4).
+    var trainingGoal: TrainingGoal { didSet { defaults.set(trainingGoal.rawValue, forKey: "settings.trainingGoal") } }
+    /// Training experience, scaling the engine's volume landmarks (P3).
+    var experienceLevel: ExperienceLevel { didSet { defaults.set(experienceLevel.rawValue, forKey: "settings.experienceLevel") } }
 
     private static func read<T: RawRepresentable>(_ d: UserDefaults, _ key: String, _ type: T.Type) -> T? where T.RawValue == String {
         guard let raw = d.string(forKey: key) else { return nil }

@@ -167,6 +167,23 @@ struct SettingsView: View {
                 } footer: {
                     Text("Plays a bell at each transition — workout start, warm-up, work, cool-down and end — so you can start and stop without watching your phone. Boxing keeps its own round bell.")
                 }
+
+                // Coach engine inputs (strength-pivot P3). Appended at the bottom so
+                // earlier sections' coordinate-tap UI tests keep their offsets.
+                Section {
+                    Picker("Training goal", selection: $settings.trainingGoal) {
+                        ForEach(TrainingGoal.allCases) { Text($0.displayName).tag($0) }
+                    }
+                    .accessibilityIdentifier("settings.coach.goal")
+                    Picker("Experience", selection: $settings.experienceLevel) {
+                        ForEach(ExperienceLevel.allCases) { Text($0.displayName).tag($0) }
+                    }
+                    .accessibilityIdentifier("settings.coach.experience")
+                } header: {
+                    Text("Coach")
+                } footer: {
+                    Text("Your coach uses these to tailor its insights — goal sets the load/effort it looks for, experience scales the weekly volume targets. Coaching only, not medical advice.")
+                }
             }
         .navigationTitle("Settings")
         .sheet(isPresented: $primingPresented) {

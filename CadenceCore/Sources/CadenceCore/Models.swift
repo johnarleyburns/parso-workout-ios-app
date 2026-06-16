@@ -166,9 +166,9 @@ public final class WorkoutSession {
     /// Name of the template this session was started from, if any (FR-1.6).
     public var templateName: String?
     /// Stable key of the `WorkoutPlan` that launched this session (round4b §B-1):
-    /// a CrossFit benchmark ("fran") or strength preset ("preset-5x5").
-    /// Resolved via `PlanCatalog`; nil for ad-hoc / legacy sessions. Additive +
-    /// optional for CloudKit + back-compat.
+    /// a strength preset ("preset-5x5"). Resolved via `PlanCatalog`; nil for
+    /// ad-hoc sessions and legacy keys (e.g. a removed CrossFit benchmark).
+    /// Additive + optional for CloudKit + back-compat.
     public var planKey: String?
     /// Links to the summary HKWorkout written for this session (FR-4.3) or the
     /// Watch-ingested workout this came from (FR-2.1). Used for de-dup.
@@ -249,9 +249,10 @@ public final class WorkoutSession {
         return result
     }
 
-    /// SF Symbol for history rows (feedback batch 6): CrossFit → functional
-    /// training, an all-bodyweight session → the traditional-strength figure,
-    /// otherwise the dumbbell. Gives strength rows the leading glyph they lacked.
+    /// SF Symbol for history rows (feedback batch 6): an all-bodyweight session →
+    /// the traditional-strength figure, otherwise the dumbbell. Gives strength
+    /// rows the leading glyph they lacked. Legacy CrossFit sessions (logged before
+    /// the feature was removed) still map to the functional-training glyph.
     public var symbol: String {
         if title.localizedCaseInsensitiveContains("crossfit") {
             return "figure.strengthtraining.functional"

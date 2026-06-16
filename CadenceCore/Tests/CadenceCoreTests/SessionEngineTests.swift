@@ -76,8 +76,7 @@ final class SessionEngineTests: XCTestCase {
     func testWorkoutTypeRouting() {
         XCTAssertTrue(WorkoutType.weights.isStrength)
         XCTAssertNil(WorkoutType.weights.cardioType)
-        XCTAssertNil(WorkoutType.crossfit.cardioType)
-        XCTAssertTrue(WorkoutType.crossfit.isStrength)
+        XCTAssertFalse(WorkoutType.run.isStrength)
         XCTAssertEqual(WorkoutType.run.cardioType, .run)
         XCTAssertEqual(WorkoutType.boxing.cardioType, .boxing)
         XCTAssertEqual(WorkoutType.swim.cardioType, .swim)
@@ -85,6 +84,7 @@ final class SessionEngineTests: XCTestCase {
         XCTAssertTrue(WorkoutType.cycle.usesGPS)
         XCTAssertFalse(WorkoutType.boxing.usesGPS)
         XCTAssertFalse(WorkoutType.swim.usesGPS)
-        XCTAssertEqual(WorkoutType.allCases.count, 9)
+        // 8 types after the strength-pivot removal of CrossFit (P1).
+        XCTAssertEqual(WorkoutType.allCases.count, 8)
     }
 }

@@ -417,10 +417,10 @@ public enum WorkoutRepository {
         return session
     }
 
-    /// Starts a session from a concrete `WorkoutPlan` (CrossFit benchmark or
-    /// strength preset, round4b §B-1). Pre-loads the prescribed movements as
-    /// planned (ghost) cards and stamps `planKey` so the session view can render
-    /// the scheme banner + per-item prescription.
+    /// Starts a session from a concrete `WorkoutPlan` (a strength preset,
+    /// round4b §B-1). Pre-loads the prescribed movements as planned (ghost) cards
+    /// and stamps `planKey` so the session view can render the scheme banner +
+    /// per-item prescription.
     @discardableResult
     public static func startSession(from plan: WorkoutPlan,
                                     repLadder: [Int]? = nil,

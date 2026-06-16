@@ -35,7 +35,7 @@ final class FR10Feedback3UITests: CadenceUITestCase {
         openStrengthLibrary(app)
         XCTAssertTrue(app.scrollToAndTapButton("weights.library.preset-5x5-1a"),
                       "5×5 Week 1A library row")
-        XCTAssertTrue(app.buttons["crossfit.preview.start"].waitTap(), "Start the preset")
+        XCTAssertTrue(app.buttons["plan.preview.start"].waitTap(), "Start the preset")
         XCTAssertTrue(app.staticTexts["session.rx.Back Squat"].waitForExistence(timeout: 25),
                       "the 5×5 session should be planned with Back Squat + its Rx")
     }
@@ -49,7 +49,7 @@ final class FR10Feedback3UITests: CadenceUITestCase {
                       "Push library row")
         // The rep-scheme chooser appears (flexible template, feedback batch 3).
         XCTAssertTrue(app.buttons["repScheme.3x"].waitTap(), "3 sets · 12-10-8")
-        XCTAssertTrue(app.buttons["crossfit.preview.start"].waitTap(), "Start with the ladder")
+        XCTAssertTrue(app.buttons["plan.preview.start"].waitTap(), "Start with the ladder")
         let rx = app.staticTexts["session.rx.Bench Press"]
         XCTAssertTrue(rx.waitForExistence(timeout: 25),
                       "the planned session should carry the chosen scheme")
@@ -68,7 +68,7 @@ final class FR10Feedback3UITests: CadenceUITestCase {
                       "the per-set editor should appear")
         app.buttons["customRep.add"].tap() // grow to 4 sets
         XCTAssertTrue(app.buttons["customRep.continue"].waitTap(), "Preview the custom sets")
-        XCTAssertTrue(app.buttons["crossfit.preview.start"].waitTap(), "Start the custom scheme")
+        XCTAssertTrue(app.buttons["plan.preview.start"].waitTap(), "Start the custom scheme")
         XCTAssertTrue(app.staticTexts["session.rx.Deadlift"].waitForExistence(timeout: 25),
                       "the custom-scheme session should be planned with Deadlift")
     }

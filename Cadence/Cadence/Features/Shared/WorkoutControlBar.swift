@@ -17,7 +17,7 @@ struct WorkoutControlBar: View {
     let onEnd: () -> Void
     /// When set, a "Cool Down" button appears above Pause/End (feedback batch 4);
     /// it runs a guided cool-down timer that finishes the workout on completion.
-    /// Strength + CrossFit pass this; cardio/interval (which bake in their own
+    /// Strength passes this; cardio/interval (which bake in their own
     /// cool-down) leave it nil.
     var onCoolDown: (() -> Void)? = nil
 

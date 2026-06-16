@@ -1,7 +1,7 @@
 import SwiftUI
 import CadenceCore
 
-/// A prominent, always-visible elapsed-time header for the strength / CrossFit
+/// A prominent, always-visible elapsed-time header for the strength
 /// session screen (field-testing Round 4 P2, feedback #7). Cardio and interval
 /// screens already show a large clock; strength sessions had none, so the
 /// in-workout time wasn't visible while logging sets.

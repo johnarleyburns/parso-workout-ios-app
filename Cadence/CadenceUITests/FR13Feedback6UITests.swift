@@ -56,47 +56,6 @@ final class FR13Feedback6UITests: CadenceUITestCase {
                       "a logged workout should carry the Logged tag")
     }
 
-    // Batch 7 follow-up — logging an ad-hoc CrossFit WOD via the Custom escape hatch
-    // off the benchmark picker, landing as a "Logged" session.
-    func testLogCustomCrossFitAppearsAsLogged() {
-        let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.logWorkout"].waitTap(), "Log Workout")
-        XCTAssertTrue(app.buttons["logType.crossfit"].waitTap(), "CrossFit log tile")
-        XCTAssertTrue(app.buttons["crossfit.custom"].waitTap(), "Custom CrossFit")
-        XCTAssertTrue(app.buttons["log.addExercises"].waitTap(), "Add Exercises")
-
-        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
-                      "manual-log session screen")
-        app.buttons["session.addExercise"].tap()
-        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "a movement row")
-        app.recordKeypadSet("60")
-
-        XCTAssertTrue(app.buttons["log.done"].waitTap(), "Done")
-        XCTAssertTrue(app.staticTexts["workout.loggedTag"].waitForExistence(timeout: 25)
-                      || app.images["workout.loggedTag"].waitForExistence(timeout: 2),
-                      "a logged CrossFit workout should carry the Logged tag")
-    }
-
-    // Batch 7 follow-up — logging a CrossFit BENCHMARK ("Fran") via the picker:
-    // the plan pre-loads its movements, and a logged Thruster set lands it "Logged".
-    func testLogFranBenchmarkAppearsAsLogged() {
-        let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.logWorkout"].waitTap(), "Log Workout")
-        XCTAssertTrue(app.buttons["logType.crossfit"].waitTap(), "CrossFit log tile")
-        XCTAssertTrue(app.buttons["crossfit.row.fran"].waitTap(), "Fran row")
-        XCTAssertTrue(app.buttons["crossfit.preview.start"].waitTap(), "Start Fran")
-        XCTAssertTrue(app.buttons["log.addExercises"].waitTap(), "Add Exercises")
-
-        // Fran's movements come pre-loaded as planned cards; log one Thruster set.
-        XCTAssertTrue(app.buttons["set.add.Thruster"].waitTap(), "Add Set on Thruster")
-        app.recordKeypadSet("95")
-
-        XCTAssertTrue(app.buttons["log.done"].waitTap(), "Done")
-        XCTAssertTrue(app.staticTexts["workout.loggedTag"].waitForExistence(timeout: 25)
-                      || app.images["workout.loggedTag"].waitForExistence(timeout: 2),
-                      "the logged Fran should carry the Logged tag")
-    }
-
     // Choosing Other Cardio from Start opens a description + GPS entry first.
     func testOtherCardioLiveEntryHasDescriptionAndGPS() {
         let app = XCUIApplication.launched()

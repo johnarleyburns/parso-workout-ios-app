@@ -146,7 +146,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Warm-up & Cool-down")
                 } footer: {
-                    Text("Optional guided timers for strength and CrossFit workouts — start with a warm-up, or wind down with a cool-down before finishing.")
+                    Text("Optional guided timers for strength workouts — start with a warm-up, or wind down with a cool-down before finishing.")
                 }
 
                 // Feedback batch 7 items 8 & 9 — appended at the very bottom (per the

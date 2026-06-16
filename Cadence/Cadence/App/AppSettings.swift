@@ -71,7 +71,7 @@ final class AppSettings {
     /// Weekly cardio-minutes goal shown on the Home cardio tile (feedback batch 4).
     var weeklyCardioMinutesGoal: Int { didSet { defaults.set(weeklyCardioMinutesGoal, forKey: SettingsKey.weeklyCardioMinutesGoal) } }
     var restSeconds: Int { didSet { defaults.set(restSeconds, forKey: SettingsKey.restSeconds) } }
-    /// Warm-up / cool-down countdown length for strength & CrossFit (minutes).
+    /// Warm-up / cool-down countdown length for strength workouts (minutes).
     var warmupMinutes: Int { didSet { defaults.set(warmupMinutes, forKey: SettingsKey.warmupMinutes) } }
     var cooldownMinutes: Int { didSet { defaults.set(cooldownMinutes, forKey: SettingsKey.cooldownMinutes) } }
     var autoStartRest: Bool { didSet { defaults.set(autoStartRest, forKey: "settings.autoRest") } }

@@ -170,10 +170,10 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertTrue(c.isLogged)
     }
 
-    // Manual strength/CrossFit logging (feedback batch 7 follow-up) — a logged
-    // strength session flags isLogged, keeps its back-dated date, and surfaces in
-    // unified history identically to a live one; logging a CrossFit benchmark
-    // pre-loads its movements and flags isLogged too.
+    // Manual strength logging (feedback batch 7 follow-up) — a logged strength
+    // session flags isLogged, keeps its back-dated date, and surfaces in unified
+    // history identically to a live one; logging from a preset pre-loads its
+    // movements and flags isLogged too.
     func testCreateLoggedStrengthSessionFlagsAndSurfaces() throws {
         let ctx = try makeContext()
         let date = Date(timeIntervalSince1970: 5000)
@@ -189,16 +189,16 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertTrue(logged.contains { $0.id == s.id && $0.isLogged })
     }
 
-    func testStartLoggedCrossFitSessionPreloadsMovements() throws {
+    func testStartLoggedPlanSessionPreloadsMovements() throws {
         let ctx = try makeContext()
-        let fran = BenchmarkWorkouts.girls.first { $0.id == "fran" }!
-        let s = try WorkoutRepository.startSession(from: fran,
+        let preset = try XCTUnwrap(PlanCatalog.plan(forKey: "preset-5x5-1a"))
+        let s = try WorkoutRepository.startSession(from: preset,
                                                    date: Date(timeIntervalSince1970: 100),
                                                    isLogged: true, in: ctx)
         XCTAssertTrue(s.isLogged)
-        XCTAssertEqual(s.planKey, "fran")
-        XCTAssertTrue(s.plannedExerciseNames.contains("Thruster"))
-        XCTAssertTrue(s.title.localizedCaseInsensitiveContains("fran"))
+        XCTAssertEqual(s.planKey, "preset-5x5-1a")
+        XCTAssertTrue(s.plannedExerciseNames.contains("Back Squat"))
+        XCTAssertTrue(s.title.localizedCaseInsensitiveContains("5×5"))
     }
 
     // Batch 8 — rank past workouts by how many missing body parts they cover.

@@ -11,16 +11,15 @@ final class WorkoutPlanTests: XCTestCase {
 
     // MARK: Catalog integrity
 
-    func testGirlsCatalogHasFifteen() {
-        XCTAssertEqual(BenchmarkWorkouts.girls.count, 15)
-        // Stable, unique keys.
-        let keys = BenchmarkWorkouts.girls.map(\.id)
+    func testStrengthPresetCatalogHasStableUniqueKeys() {
+        XCTAssertFalse(StrengthPresets.all.isEmpty)
+        let keys = StrengthPresets.all.map(\.id)
         XCTAssertEqual(Set(keys).count, keys.count)
     }
 
-    func testEveryBenchmarkMovementExistsInLibrary() {
+    func testEveryPresetMovementExistsInLibrary() {
         let library = Set(ExerciseLibrary.starter.map { $0.name.lowercased() })
-        for plan in BenchmarkWorkouts.girls {
+        for plan in StrengthPresets.all {
             for item in plan.items {
                 XCTAssertTrue(library.contains(item.movement.lowercased()),
                               "\(plan.name): movement '\(item.movement)' missing from ExerciseLibrary")
@@ -28,51 +27,45 @@ final class WorkoutPlanTests: XCTestCase {
         }
     }
 
-    func testSchemeSummaries() {
-        func summary(_ key: String) -> String {
-            BenchmarkWorkouts.girls.first { $0.id == key }!.schemeSummary
-        }
-        XCTAssertEqual(summary("fran"), "21-15-9 for time")
-        XCTAssertEqual(summary("annie"), "50-40-30-20-10 for time")
-        XCTAssertEqual(summary("grace"), "For time")
-        XCTAssertEqual(summary("cindy"), "AMRAP 20 min")
-        XCTAssertEqual(summary("chelsea"), "EMOM 30 min")
-        XCTAssertEqual(summary("barbara"), "5 rounds for time · 3 min rest")
-        XCTAssertEqual(summary("helen"), "3 rounds for time")
+    func testSchemeSummaryIsStrength() {
+        // Strength is the only scheme after the CrossFit removal (strength pivot P1).
+        let push = StrengthPresets.all.first { $0.id == "preset-push" }!
+        XCTAssertEqual(push.schemeSummary, "Strength")
     }
 
     func testMovementNamesDeduplicateInOrder() {
-        let cindy = BenchmarkWorkouts.girls.first { $0.id == "cindy" }!
-        XCTAssertEqual(cindy.movementNames, ["Pull-Up", "Push-Up", "Air Squat"])
-        // Jackie repeats nothing but mixes distance + load items.
-        let jackie = BenchmarkWorkouts.girls.first { $0.id == "jackie" }!
-        XCTAssertEqual(jackie.movementNames, ["Rowing Machine", "Thruster", "Pull-Up"])
-    }
-
-    func testRxLoadsPresentWhereExpected() {
-        let fran = BenchmarkWorkouts.girls.first { $0.id == "fran" }!
-        let thruster = fran.items.first { $0.movement == "Thruster" }!
-        XCTAssertEqual(thruster.loadLb, 95)
-        XCTAssertEqual(thruster.loadLbFemale, 65)
-        let pullup = fran.items.first { $0.movement == "Pull-Up" }!
-        XCTAssertNil(pullup.loadLb)
+        // A movement used twice appears once, in first-appearance order.
+        let plan = WorkoutPlan(id: "t", name: "T", source: .strengthPreset, scheme: .strength,
+                               items: [
+                                   PlanItem(id: 0, movement: "Back Squat", reps: 5, targetSets: 3),
+                                   PlanItem(id: 1, movement: "Bench Press", reps: 5, targetSets: 3),
+                                   PlanItem(id: 2, movement: "Back Squat", reps: 5, targetSets: 2),
+                               ])
+        XCTAssertEqual(plan.movementNames, ["Back Squat", "Bench Press"])
     }
 
     // MARK: Resolution + launch
 
-    func testPlanCatalogResolvesKeys() {
-        XCTAssertEqual(PlanCatalog.plan(forKey: "fran")?.name, "Fran")
+    func testPlanCatalogResolvesStrengthPresets() {
+        XCTAssertEqual(PlanCatalog.plan(forKey: "preset-5x5-1a")?.name, "5×5 Week 1A")
         XCTAssertNil(PlanCatalog.plan(forKey: "nope"))
     }
 
-    // round4b feedback #1 — strength presets ("Start from Library") resolve too,
+    // Strength pivot P1 — a removed CrossFit benchmark key no longer resolves; the
+    // session falls back to rendering read-only from its stored title.
+    func testLegacyCrossFitKeyResolvesToNil() {
+        XCTAssertNil(PlanCatalog.plan(forKey: "fran"))
+        XCTAssertNil(PlanCatalog.plan(forKey: "cindy"))
+    }
+
+    // round4b feedback #1 — strength presets ("Start from Library") resolve,
     // carry the .strength scheme, and keep a plain (un-prefixed) title.
     func testStrengthPresetsResolveAndAreStrength() throws {
         XCTAssertFalse(StrengthPresets.all.isEmpty)
         // 5×5 is now four alternating days (feedback batch 3); 1A is Squat/Bench/Row.
         let fiveByFive = try XCTUnwrap(PlanCatalog.plan(forKey: "preset-5x5-1a"))
         XCTAssertEqual(fiveByFive.name, "5×5 Week 1A")
-        XCTAssertEqual(fiveByFive.displayTitle, "5×5 Week 1A")  // no "CrossFit –" prefix
+        XCTAssertEqual(fiveByFive.displayTitle, "5×5 Week 1A")  // plain name, no prefix
         XCTAssertEqual(fiveByFive.scheme, .strength)
         XCTAssertEqual(fiveByFive.movementNames, ["Back Squat", "Bench Press", "Barbell Row"])
         XCTAssertFalse(fiveByFive.flexibleScheme, "a fixed program needs no rep-scheme chooser")
@@ -114,23 +107,23 @@ final class WorkoutPlanTests: XCTestCase {
 
     func testStartSessionFromPlanPreloadsMovements() throws {
         let ctx = try makeContext()
-        let fran = PlanCatalog.plan(forKey: "fran")!
-        let session = try WorkoutRepository.startSession(from: fran, in: ctx)
-        // CrossFit benchmarks are titled "CrossFit – <name>" (round4b feedback #5).
-        XCTAssertEqual(session.title, "CrossFit – Fran")
-        XCTAssertEqual(session.planKey, "fran")
-        XCTAssertEqual(session.plannedExerciseNames, ["Thruster", "Pull-Up"])
-        // Both movements now exist as exercises.
+        let fiveByFive = try XCTUnwrap(PlanCatalog.plan(forKey: "preset-5x5-1a"))
+        let session = try WorkoutRepository.startSession(from: fiveByFive, in: ctx)
+        // Strength presets keep their plain name (no "CrossFit –" prefix).
+        XCTAssertEqual(session.title, "5×5 Week 1A")
+        XCTAssertEqual(session.planKey, "preset-5x5-1a")
+        XCTAssertEqual(session.plannedExerciseNames, ["Back Squat", "Bench Press", "Barbell Row"])
+        // The movements exist as exercises after launch.
         let names = try WorkoutRepository.allExercises(ctx).map(\.name)
-        XCTAssertTrue(names.contains("Thruster"))
-        XCTAssertTrue(names.contains("Pull-Up"))
+        XCTAssertTrue(names.contains("Back Squat"))
+        XCTAssertTrue(names.contains("Bench Press"))
     }
 
     // MARK: Library seeding upgrade path
 
-    func testSeedAddsCrossFitMovementsToOlderStore() throws {
+    func testSeedAddsFunctionalMovementsToOlderStore() throws {
         let ctx = try makeContext()
-        // Simulate an older store missing the new movements by seeding only a
+        // Simulate an older store missing the newer movements by seeding only a
         // couple of legacy exercises first.
         ctx.insert(Exercise(name: "Bench Press"))
         try ctx.save()

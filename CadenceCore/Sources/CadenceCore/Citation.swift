@@ -74,6 +74,17 @@ public enum CitationRegistry {
         url: "https://journals.lww.com/nsca-jscr/abstract/1997/11000/the_accuracy_of_prediction_equations_for.1.aspx"
     )
 
+    /// RIR-based RPE autoregulation — anchors the prescriptive phase's
+    /// progression (double progression toward a target RIR) and deload rules (P5).
+    public static let rpeAutoregulation = Citation(
+        id: "rpeAutoregulation",
+        authors: "Helms, Cronin, Storey & Zourdos",
+        year: 2016,
+        title: "Application of the Repetitions in Reserve-Based Rating of Perceived Exertion Scale for Resistance Training",
+        source: "Strength and Conditioning Journal 38(4)",
+        url: "https://journals.lww.com/nsca-scj/fulltext/2016/08000/application_of_the_repetitions_in_reserve_based.10.aspx"
+    )
+
     /// All citations, for the in-app references list and tests.
-    public static let all: [Citation] = [schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation]
+    public static let all: [Citation] = [schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation, rpeAutoregulation]
 }

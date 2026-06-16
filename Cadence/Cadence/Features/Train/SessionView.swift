@@ -74,9 +74,20 @@ struct SessionView: View {
             let line = Format.prescription(item, ladder: ladder, unit: settings.unit)
             return line.isEmpty ? nil : line
         }
-        // No catalog item (e.g. a reused session) but a chosen scheme is present.
+        // No catalog item (e.g. a reused or coach-prescribed session) but a chosen
+        // scheme is present. A coach prescription (P5.3) also carries a working load.
         guard !chosen.isEmpty else { return nil }
-        return chosen.map(String.init).joined(separator: "-") + " reps"
+        var line = chosen.map(String.init).joined(separator: "-") + " reps"
+        if isPrescribedMovement(name), session.prescribedLoadKg > 0 {
+            line += " @ \(Format.weight(session.prescribedLoadKg, unit: settings.unit))"
+        }
+        return line
+    }
+
+    /// Whether `name` is a movement the coach prescribed for this session (P5.3) —
+    /// the one the prescribed load pre-fills the keypad for.
+    private func isPrescribedMovement(_ name: String) -> Bool {
+        session.prescribedLoadKg > 0 && session.plannedExerciseNames.contains(name)
     }
 
     /// The effective rep-ladder for an exercise: the chosen scheme if the session
@@ -518,6 +529,11 @@ struct SessionView: View {
         let initialReps = ctx.editing?.reps
             ?? ctx.repsOverride
             ?? plannedReps(for: exercise, setIndex: loggedCount)
+        // Pre-fill the keypad with the coach's prescribed load for a prescribed
+        // movement (P5.3); editing keeps the set's own weight, everything else starts
+        // empty as before.
+        let initialWeight = ctx.editing?.weight
+            ?? (isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0)
 
         WeightKeypadSheet(
             exerciseName: exercise.name,
@@ -527,7 +543,7 @@ struct SessionView: View {
             people: roster,
             plateRounding: settings.plateRounding,
             isBodyweightExercise: isBodyweight(exercise),
-            initialWeightKg: ctx.editing?.weight ?? 0,
+            initialWeightKg: initialWeight,
             initialReps: initialReps,
             initialBodyweight: ctx.editing?.usesBodyweight ?? isBodyweight(exercise),
             initialPerformedBy: ctx.editing?.performedBy ?? inSessionLast?.performedBy,

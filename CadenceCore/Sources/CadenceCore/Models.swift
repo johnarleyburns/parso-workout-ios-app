@@ -198,6 +198,10 @@ public final class WorkoutSession {
     /// none was run (feedback batch 6). Surfaced in the summary alongside duration.
     public var warmupSeconds: Double = 0
     public var cooldownSeconds: Double = 0
+    /// Working load (canonical kg) prescribed by the coach when this session was
+    /// launched via "Do this workout" (strength-pivot P5.3); 0 = none. Pre-fills the
+    /// set keypad for the prescribed movement. Additive/defaulted for CloudKit + back-compat.
+    public var prescribedLoadKg: Double = 0
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
 

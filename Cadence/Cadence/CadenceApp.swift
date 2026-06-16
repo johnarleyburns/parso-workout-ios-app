@@ -50,7 +50,7 @@ struct CadenceApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            RootTabView()
                 .environment(model)
                 .environment(settings)
                 .environment(active)

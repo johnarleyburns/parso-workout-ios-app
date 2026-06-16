@@ -42,6 +42,15 @@ struct HomeView: View {
         WeeklyStats.bodyParts(sessions, since: weekStart)
     }
 
+    // Coach engine (strength-pivot P3): read-only cited insights from logged history.
+    private var coachInsights: [Insight] {
+        let facts = TrainingFacts.make(sessions: sessions,
+                                       goal: settings.trainingGoal,
+                                       experience: settings.experienceLevel,
+                                       formula: settings.formula)
+        return InsightEngine.run(facts)
+    }
+
     var body: some View {
         @Bindable var active = active
         return ZStack {
@@ -49,10 +58,10 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     if let s = active.strengthSession { resumeCard(s) }
+                    CoachCardView(insights: coachInsights) { path.append(HomeRoute.coach) }
                     startButton
                     logButton
-                    statRow
-                    coverageRow
+                    thisWeekSection
                     recentWorkoutsSection
                 }
                 .padding()
@@ -80,6 +89,7 @@ struct HomeView: View {
                 switch route {
                 case .history: HistoryView(path: $path)
                 case .settings: SettingsView()
+                case .coach: CoachInsightsView(insights: coachInsights)
                 }
             }
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
@@ -219,6 +229,18 @@ struct HomeView: View {
                      id: "home.cardioMinutes",
                      progress: Double(cardio) / Double(cardioGoal), progressID: "home.cardioMinutes.progress",
                      tileID: "home.cardioTile", onTap: { cardioPickerPresented = true })
+        }
+    }
+
+    /// "This week" insights — the batch-8 stat tiles, demoted below the Coach card
+    /// and the action spine (strength-pivot P3, §05). Their tap-to-start behavior
+    /// and a11y ids are unchanged.
+    private var thisWeekSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("This week").font(.headline)
+                .accessibilityIdentifier("home.thisWeek")
+            statRow
+            coverageRow
         }
     }
 
@@ -510,7 +532,7 @@ struct PendingWorkout: Identifiable {
 }
 
 /// Pushed destinations reachable from Home.
-enum HomeRoute: Hashable { case history, settings }
+enum HomeRoute: Hashable { case history, settings, coach }
 
 /// A row in Home's merged "Recent workouts" list — strength and cardio together,
 /// sorted by date (P1 #10).

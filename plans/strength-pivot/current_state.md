@@ -8,7 +8,7 @@ Progress tracker for the strength-pivot roadmap
 | P0 | Strategy + decisions locked | ✅ done (`00-overview.md`, `decisions.md`; PR #30) |
 | **P1** | **Remove CrossFit (tag then delete) + Boxing→cardio** | ✅ **done** — branch `p1/remove-crossfit` |
 | **P2** | **CC0 library import (free-exercise-db)** | ✅ **done** — branch `p2/cc0-library` (stacked on P1) |
-| P3 | Engine core (read-only insights) + Coach-Home | ⬜ not started (needs P2) |
+| **P3** | **Engine core (read-only insights) + Coach-Home + tab bar** | ✅ **done** — branches `p3/engine-core` + `p3/coach-home` (stacked) |
 | P4 | Assessments v1 (strength / strength-endurance) | ⬜ not started (needs P3) |
 | P5 | Prescriptive engine + live Coach card | ⬜ not started (needs P3) |
 | P6 | Cardio/anaerobic assessments + HIIT loop | ⬜ not started (needs P4,P5) |
@@ -63,6 +63,50 @@ Progress tracker for the strength-pivot roadmap
   A11y id `picker.exrx.*` → `picker.info.*`; `FR15Batch8UITests` updated.
 - **Tests:** `swift test` green (165, +5 in `ImportedExerciseLibraryTests`; dropped the
   EXRX URL test). App `build` + `build-for-testing` succeed on iPhone 16 (iOS 18.1).
+
+## P3 — what shipped (2026-06-15)
+Two stacked PRs (`p3/engine-core` → `p3/coach-home`). The **read-only** slice of the
+Scientific Expert Engine (§03) + the Coach-driven Home (§05) + an Apple-HIG tab bar.
+
+- **Engine core (CadenceCore, pure):**
+  - `TrainingGoal` (D4: strength/hypertrophy/endurance) + `ExperienceLevel`
+    (beginner/intermediate/advanced; scales volume landmarks).
+  - `Citation` + `CitationRegistry` — `schoenfeld2021`, `volumeDoseResponse`,
+    `frequencyMeta`. **Every insight is cited (D3).** Full `CITATIONS.md` pass still
+    precedes P5 (D9).
+  - `VolumeLandmarks` — MEV/MAV/MRV weekly-set bands per `BodyPart`, experience-scaled,
+    with `VolumeZone` classification.
+  - `TrainingFacts.make(sessions:…)` — pure snapshot: weekly sets/part (primary 1.0,
+    secondary 0.5), frequency/part, e1RM trend (last 7d vs prior 7d, ±2% noise band),
+    intensity distribution (heavy/moderate/light vs each lift's best e1RM), avg RPE +
+    derived RIR, days since last. Reuses `BodyPart`, `WorkoutMath`, mirrors `WeeklyStats`.
+  - `Insight` / `InsightRule` / `KnowledgeBase.p3Rules` (volume · e1RM trend ·
+    frequency · intensity×goal) / `InsightEngine.run` — forward-chains, dedupes by id,
+    ranks by severity then priority; **cold-start fallback so the card is never empty.**
+    Read-only: no prescriptions/actions yet (P5).
+- **App (Coach-Home + tab bar):**
+  - `RootTabView` — bottom tab bar **Workout / Plan / Library**. Workout = the existing
+    `HomeView`; **Plan + Library are intentional placeholders** (`ComingSoonPlaceholder`)
+    wired but empty in P3 (goals/calendar/favorites and library/routines/studies land
+    later). `CadenceApp` now hosts `RootTabView`.
+  - `CoachCardView` is Home's **hero**: top insight + an expandable "Why / the science"
+    (explicit toggle button, not a `DisclosureGroup`, for testable a11y) with a tappable
+    `Citation` link; "See all insights" → `CoachInsightsView`. Non-medical footnote (D6).
+    `Start Workout` demoted to action #2, `Log Workout` #3; the batch-8 stat tiles moved
+    below under a **"This week"** header (ids/tap behavior unchanged).
+  - Settings: a **Coach** section appended at the bottom (per the append convention) —
+    training-goal + experience pickers, persisted in `AppSettings`
+    (`trainingGoal` default hypertrophy, `experienceLevel` default intermediate). Full
+    onboarding goal intake is still P7.
+- **Schema:** additive only — no SwiftData change (`rpe` already existed; settings are
+  UserDefaults-backed; no engine state persisted, insights recompute from facts).
+- **a11y gotcha fixed:** the card's `background`+`overlay`+`accessibilityIdentifier`
+  collapsed it into one element; `.accessibilityElement(children: .contain)` keeps
+  `coach.card.why` / `.citation` addressable.
+- **Tests:** `swift test` green (**183**, +18: `VolumeLandmarks`, `TrainingFacts`,
+  `InsightEngine` incl. D3-citation + cold-start invariants). UI `P3CoachHomeUITests`
+  (tab bar + placeholders, cited Coach card, Coach settings) pass, plus FR15 batch-8
+  tile tests re-verified against the reshuffle. App `build` succeeds (iPhone 16, iOS 18.1).
 
 ## Note on branching
 P1 branched off `main` (which already contained all CrossFit code — the plan's

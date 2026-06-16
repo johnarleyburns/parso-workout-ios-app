@@ -51,6 +51,11 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     }
 
     public let kind: Kind
+    /// SF Symbol for the workout, matching its history-list row glyph: the specific
+    /// `CardioType.symbol` (run/walk/swim/boxing/…) for cardio, or
+    /// `WorkoutSession.symbol` (dumbbell / bodyweight figure) for strength. Built by
+    /// the builders so the summary header never falls back to a generic icon.
+    public let symbol: String
     public let title: String
     public let date: Date
     public let durationSec: TimeInterval
@@ -76,6 +81,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     public let cooldownSec: TimeInterval
 
     public init(kind: Kind,
+                symbol: String = "figure.mixed.cardio",
                 title: String,
                 date: Date,
                 durationSec: TimeInterval,
@@ -98,6 +104,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                 warmupSec: TimeInterval = 0,
                 cooldownSec: TimeInterval = 0) {
         self.kind = kind
+        self.symbol = symbol
         self.title = title
         self.date = date
         self.durationSec = durationSec
@@ -124,6 +131,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     // Tuple-typed arrays block Equatable synthesis, so compare element-wise.
     public static func == (lhs: WorkoutSummaryData, rhs: WorkoutSummaryData) -> Bool {
         lhs.kind == rhs.kind
+            && lhs.symbol == rhs.symbol
             && lhs.title == rhs.title
             && lhs.date == rhs.date
             && lhs.durationSec == rhs.durationSec
@@ -178,6 +186,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         }
         return WorkoutSummaryData(
             kind: .strength,
+            symbol: session.symbol,
             title: session.title,
             date: session.date,
             durationSec: session.duration,
@@ -217,6 +226,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         }
         return WorkoutSummaryData(
             kind: .cardio,
+            symbol: cardio.typeValue.symbol,
             title: cardio.displayTitle,
             date: cardio.start,
             durationSec: cardio.duration,

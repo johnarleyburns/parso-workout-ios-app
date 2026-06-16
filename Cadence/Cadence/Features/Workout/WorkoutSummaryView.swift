@@ -83,9 +83,10 @@ struct WorkoutSummaryView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Image(systemName: data.kind == .strength ? "dumbbell.fill" : "figure.run")
+            Image(systemName: data.symbol)
                 .font(.largeTitle)
                 .foregroundStyle(.tint)
+                .accessibilityIdentifier("summary.icon")
             Text(data.title)
                 .font(.title.weight(.bold))
                 .accessibilityIdentifier("summary.title")

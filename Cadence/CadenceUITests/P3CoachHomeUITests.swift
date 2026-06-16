@@ -4,7 +4,7 @@ import XCTest
 /// Home with its cited "why / the science" expander, and the Coach settings.
 final class P3CoachHomeUITests: CadenceUITestCase {
 
-    func testTabBarHasThreeTabsWithPlaceholders() {
+    func testTabBarHasThreeTabs() {
         let app = XCUIApplication.launched()
 
         // All three tabs are present.
@@ -12,9 +12,9 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         XCTAssertTrue(app.tabBars.buttons["Plan"].exists)
         XCTAssertTrue(app.tabBars.buttons["Library"].exists)
 
-        // Plan + Library are intentional placeholders in P3.
+        // Plan is the assessments hub (P4); Library is still a placeholder.
         app.tabBars.buttons["Plan"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["plan.placeholder"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["plan.assessments.list"].waitForExistence(timeout: 5))
 
         app.tabBars.buttons["Library"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["library.placeholder"].waitForExistence(timeout: 5))

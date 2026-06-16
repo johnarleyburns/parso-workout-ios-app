@@ -10,11 +10,13 @@ public enum InsightEngine {
     /// history gets a single cold-start insight so the Coach card always has
     /// something cited to show.
     public static func run(_ facts: TrainingFacts) -> [Insight] {
-        guard facts.totalWorkingSets > 0 else { return [coldStart] }
+        // Cold-start only when there's nothing at all to reason about — no logged
+        // sets and no assessment history.
+        guard facts.totalWorkingSets > 0 || !facts.assessments.isEmpty else { return [coldStart] }
 
         // Forward-chain every rule, then resolve to a stable ranked order.
         var produced: [(rulePriority: Int, insight: Insight)] = []
-        for rule in KnowledgeBase.p3Rules {
+        for rule in KnowledgeBase.activeRules {
             for insight in rule.produce(facts) {
                 produced.append((rule.priority, insight))
             }

@@ -12,6 +12,7 @@ struct HomeView: View {
     @Environment(ActiveWorkoutModel.self) private var active
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
+    @Query(sort: \Assessment.date, order: .reverse) private var assessments: [Assessment]
 
     @State private var typePickerPresented = false
     @State private var logPickerPresented = false
@@ -45,6 +46,7 @@ struct HomeView: View {
     // Coach engine (strength-pivot P3): read-only cited insights from logged history.
     private var coachInsights: [Insight] {
         let facts = TrainingFacts.make(sessions: sessions,
+                                       assessments: assessments,
                                        goal: settings.trainingGoal,
                                        experience: settings.experienceLevel,
                                        formula: settings.formula)

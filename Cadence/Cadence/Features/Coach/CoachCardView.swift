@@ -142,6 +142,7 @@ extension InsightKind {
         case .trend:     return "chart.line.uptrend.xyaxis"
         case .frequency: return "calendar"
         case .intensity: return "scalemass"
+        case .assessment: return "checklist"
         case .coldStart: return "sparkles"
         }
     }

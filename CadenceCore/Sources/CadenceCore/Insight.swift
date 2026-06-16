@@ -16,6 +16,7 @@ public enum InsightKind: String, Sendable, Equatable {
     case trend
     case frequency
     case intensity
+    case assessment
     case coldStart
 }
 

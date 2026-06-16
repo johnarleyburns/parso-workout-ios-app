@@ -8,8 +8,8 @@ Progress tracker for the strength-pivot roadmap
 | P0 | Strategy + decisions locked | ✅ done (`00-overview.md`, `decisions.md`; PR #30) |
 | **P1** | **Remove CrossFit (tag then delete) + Boxing→cardio** | ✅ **done** — branch `p1/remove-crossfit` |
 | **P2** | **CC0 library import (free-exercise-db)** | ✅ **done** — branch `p2/cc0-library` (stacked on P1) |
-| **P3** | **Engine core (read-only insights) + Coach-Home + tab bar** | ✅ **done** — branches `p3/engine-core` + `p3/coach-home` (stacked) |
-| P4 | Assessments v1 (strength / strength-endurance) | ⬜ not started (needs P3) |
+| **P3** | **Engine core (read-only insights) + Coach-Home + tab bar** | ✅ **done + merged** — PRs #33 + #34 (stacked) on `main` |
+| **P4** | **Assessments v1 (strength / strength-endurance)** | ✅ **done** — branch `p4/assessments` (off merged P3) |
 | P5 | Prescriptive engine + live Coach card | ⬜ not started (needs P3) |
 | P6 | Cardio/anaerobic assessments + HIIT loop | ⬜ not started (needs P4,P5) |
 | P7 | Reposition (onboarding, goals, App Store) | ⬜ not started (needs P5) |
@@ -107,6 +107,55 @@ Scientific Expert Engine (§03) + the Coach-driven Home (§05) + an Apple-HIG ta
   `InsightEngine` incl. D3-citation + cold-start invariants). UI `P3CoachHomeUITests`
   (tab bar + placeholders, cited Coach card, Coach settings) pass, plus FR15 batch-8
   tile tests re-verified against the reshuffle. App `build` succeeds (iPhone 16, iOS 18.1).
+
+## P4 — what shipped (2026-06-16)
+Assessments v1 (§04): the standardized, repeatable **strength + strength-endurance**
+battery the engine tracks longitudinally. Aerobic (VO₂max) + anaerobic (Wingate)
+kinds remain deferred to P6.
+
+- **Data model (CadenceCore, CloudKit-safe):** `Assessment` `@Model` — every property
+  optional/defaulted, stable `id`/`updatedAt`/`originDevice`, no unique constraints.
+  Stores the result `value` in the kind's unit plus raw `inputWeight`/`inputReps` so an
+  estimate can be recomputed if equations improve. Added `Assessment.self` to the store
+  schema (additive).
+  - `AssessmentKind` (7): `e1RM`, `repMax` (strength); `pushupMax`, `pullupMax`,
+    `bodyweightSquatMax`, `plankHold`, `hollowHold` (strength-endurance). Each carries
+    `category` / `unit` (weightKg·reps·seconds) / `concernsLift` / `higherIsBetter` /
+    `displayName` / `symbol` / guided non-medical `protocolText`.
+  - `seriesKey` groups results into longitudinal series — by kind alone for bodyweight
+    tests, by kind + lift for `e1RM`/`repMax`.
+- **Pure math (`AssessmentMath`, `swift test`-verified):**
+  - `summaries(from:)` collapses raw rows into one `AssessmentSummary` per series
+    (baseline/latest/best/count, sorted most-recent first).
+  - **MDC guardrail** (`minimalDetectableChange`) so noise isn't read as progress:
+    ~3% for kg (floor 1), 10% for reps (floor 1), 10% for seconds (floor 3) → drives
+    `AssessmentTrend` (improved/declined/unchanged/single).
+  - Re-test cadence: `isRetestDue` at `defaultRetestDays = 42` (D5 ~6–8 wk).
+  - `e1RM(weight:reps:formula:)` reuses `WorkoutMath.estimated1RM`.
+- **Engine integration (read-only, still cited — D3/D6):**
+  - `TrainingFacts.make` now ingests `assessments:` (defaulted), precomputing
+    `assessments` + `assessmentsDueForRetest` summaries with an injectable `now` so rules
+    stay pure/deterministic. Cold-start is bypassed once any assessment exists.
+  - New `InsightKind.assessment`; `KnowledgeBase.p4Rules` = `assessmentProgress`
+    (info on gain / attention on decline, unit-aware "+12 reps") + `assessmentRetest`
+    (nudge stale series). `activeRules = p3Rules + p4Rules`.
+  - New citation `oneRMEstimation` (LeSuer et al., 1997, JSCR 11(4)) for strength-series
+    insights; strength-endurance cites `schoenfeld2021`.
+- **App (Plan tab is now real):**
+  - `PlanView` = the assessment battery hub — intro + a section per `AssessmentCategory`,
+    each row showing the latest value + a trend pill, → `AssessmentDetailView`.
+  - `AssessmentDetailView` — the protocol, a "Record result" action, and per-series
+    Swift-Charts trend + longitudinal log (kg series chart in the user's unit).
+  - `RecordAssessmentView` — unit-adaptive sheet: e1RM (lift + load×reps, live e1RM),
+    rep-max (lift + load + reps), bodyweight rep count, or a min/sec hold picker. Saves an
+    `Assessment` to the context.
+  - `HomeView` now `@Query`s assessments and feeds them to `TrainingFacts.make`, so the
+    Coach card surfaces assessment progress/retest insights. `CoachCardView` got the
+    `.assessment` symbol case. Library stays a placeholder.
+- **Tests:** `swift test` green (**201**, +18: `AssessmentMathTests`,
+  `AssessmentInsightTests`). UI `P4AssessmentsUITests` (battery list + record→log) and the
+  updated `P3CoachHomeUITests` (Plan tab now the assessments hub) pass. App `build`
+  succeeds (iPhone 16, iOS 18.1).
 
 ## Note on branching
 P1 branched off `main` (which already contained all CrossFit code — the plan's

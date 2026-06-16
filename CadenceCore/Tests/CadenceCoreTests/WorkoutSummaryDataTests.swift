@@ -203,6 +203,33 @@ final class WorkoutSummaryDataTests: XCTestCase {
         XCTAssertNil(s.paceSecPerKm)
     }
 
+    // MARK: Icons — the summary header glyph must match the history-list row
+
+    func testCardioSummaryCarriesPerTypeSymbol() throws {
+        // Every cardio type carries its own glyph (not a generic running icon), so the
+        // summary header matches the history-list row.
+        let start = Date(timeIntervalSince1970: 50_000)
+        for type in CardioType.allCases {
+            let c = CardioWorkout(type: type, start: start, end: start.addingTimeInterval(600))
+            let s = WorkoutSummaryData.from(cardio: c)
+            XCTAssertEqual(s.symbol, type.symbol, "\(type.rawValue) summary should use its own symbol")
+        }
+        // Spot-check the cases from the bug report.
+        XCTAssertEqual(WorkoutSummaryData.from(cardio: CardioWorkout(type: .boxing, start: start, end: start)).symbol, "figure.boxing")
+        XCTAssertEqual(WorkoutSummaryData.from(cardio: CardioWorkout(type: .swim, start: start, end: start)).symbol, "figure.pool.swim")
+        XCTAssertEqual(WorkoutSummaryData.from(cardio: CardioWorkout(type: .walk, start: start, end: start)).symbol, "figure.walk")
+    }
+
+    func testStrengthSummaryCarriesSessionSymbol() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Push Day", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        let s = WorkoutSummaryData.from(session: session)
+        XCTAssertEqual(s.symbol, session.symbol, "strength summary mirrors the session's history glyph")
+        XCTAssertEqual(s.symbol, "dumbbell")
+    }
+
     // MARK: Feedback batch 6 — Other Cardio title, logged flag, warm/cool
 
     func testOtherCardioUsesCustomTitle() throws {

@@ -456,6 +456,27 @@ public enum WorkoutRepository {
         return session
     }
 
+    /// Materializes a coaching `PrescribedSession` ("Do this workout", strength-pivot
+    /// P5.3) into a fresh `WorkoutSession`: the prescribed movement(s) become planned
+    /// (ghost) cards, the rep ladder seeds the pending set rows + default reps, and the
+    /// prescribed load (if any) pre-fills the keypad. The session is otherwise an
+    /// ordinary live strength session — the user logs the sets.
+    @discardableResult
+    public static func startSession(from prescribed: PrescribedSession,
+                                    date: Date = Date(),
+                                    in context: ModelContext) throws -> WorkoutSession {
+        let session = WorkoutSession(title: prescribed.title, date: date)
+        session.plannedExerciseNames = prescribed.exerciseNames
+        if !prescribed.repLadder.isEmpty { session.plannedRepLadder = prescribed.repLadder }
+        if let load = prescribed.loadKg, load > 0 { session.prescribedLoadKg = load }
+        context.insert(session)
+        for name in prescribed.exerciseNames {
+            _ = try findOrCreateExercise(named: name, in: context)
+        }
+        try context.save()
+        return session
+    }
+
     // MARK: Cardio ingest (FR-2.1)
 
     /// Inserts ingested HealthKit workouts that aren't already present, keyed by

@@ -10,6 +10,9 @@ struct CoachCardView: View {
     let recommendation: Recommendation
     var insightCount: Int
     var unit: MeasurementUnitPreference
+    /// "Do this workout" — materialize the prescription into a pre-filled logger
+    /// session (strength-pivot P5.3). The fast, default path.
+    var onDoThis: () -> Void
     var onSeeAll: () -> Void
 
     var body: some View {
@@ -23,6 +26,24 @@ struct CoachCardView: View {
             .foregroundStyle(.secondary)
 
             RecommendationContentView(recommendation: recommendation, unit: unit, headline: true)
+
+            // The primary action — open the logger pre-filled with this prescription's
+            // movement, planned sets, target reps, and (when prescribed) load (P5.3).
+            Button { Haptics.selection(); onDoThis() } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "checklist")
+                    Text("Do this workout").font(.headline)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
+                }
+                .padding(.vertical, 12).padding(.horizontal, 16)
+                .frame(maxWidth: .infinity)
+                .foregroundStyle(.white)
+                .background(.tint, in: RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("coach.card.doThis")
+            .accessibilityLabel("Do this workout — start the prescribed session")
 
             if insightCount > 0 {
                 Button { Haptics.selection(); onSeeAll() } label: {

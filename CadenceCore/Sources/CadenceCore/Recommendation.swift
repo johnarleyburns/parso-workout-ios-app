@@ -75,6 +75,63 @@ public struct SetTarget: Equatable, Sendable {
     }
 }
 
+/// A concrete, loggable session blueprint derived from a coaching `Recommendation`
+/// — the data "Do this workout" (P5.3) materializes into a `WorkoutSession` so the
+/// logger opens pre-filled with the prescribed movement, planned sets, target reps,
+/// and (where the engine prescribes one) the working load. Pure/derived so the
+/// translation is `swift test`-verifiable; the app owns the SwiftData materialization.
+public struct PrescribedSession: Equatable, Sendable {
+    /// Session title (also the history row title), e.g. "Back Squat" or "Full-body session".
+    public let title: String
+    /// Prescribed movements, in order. Empty for goal-level prescriptions (starter /
+    /// add-volume) where the engine names no specific lift — the user picks the
+    /// movements and the rep ladder still applies.
+    public let exerciseNames: [String]
+    /// Target reps per planned set (length == the number of planned sets). Seeds the
+    /// pending set rows and each new set's default reps.
+    public let repLadder: [Int]
+    /// Prescribed working load in canonical kilograms; nil = bodyweight / "any load"
+    /// (the user supplies it).
+    public let loadKg: Double?
+
+    public init(title: String, exerciseNames: [String], repLadder: [Int], loadKg: Double?) {
+        self.title = title
+        self.exerciseNames = exerciseNames
+        self.repLadder = repLadder
+        self.loadKg = loadKg
+    }
+}
+
+public extension Recommendation {
+    /// Translates this recommendation into a concrete `PrescribedSession` for the
+    /// "Do this workout" path (P5.3). Single-lift recs (progression / deload) name the
+    /// movement and carry its prescribed load; goal-level recs (starter / add-volume)
+    /// name no lift but still prescribe sets × reps the user applies to the movements
+    /// they choose. `defaultSets` fills in when the target leaves the set count open
+    /// (e.g. double-progression "keep your current sets").
+    func prescribedSession(defaultSets: Int = 3) -> PrescribedSession {
+        let sets = max(1, target?.sets ?? defaultSets)
+        // Start each planned set at the bottom of the prescribed rep range; double
+        // progression climbs toward the top from there.
+        let seedReps = target?.repsLow ?? 5
+        let ladder = Array(repeating: seedReps, count: sets)
+        let names = exercise.map { [$0] } ?? []
+        return PrescribedSession(title: prescribedTitle,
+                                 exerciseNames: names,
+                                 repLadder: ladder,
+                                 loadKg: target?.loadKg)
+    }
+
+    /// The session/history title for a "Do this workout" launch: the lift for a
+    /// single-lift rec, the body part for an add-volume rec, else a neutral label.
+    var prescribedTitle: String {
+        if let exercise { return exercise }
+        if kind == .starter { return "Full-body session" }
+        if let part { return "\(part.displayName) focus" }
+        return "Coach session"
+    }
+}
+
 /// A single prescriptive coaching action derived from `TrainingFacts` — the P5
 /// evolution of the read-only `Insight`. Like an insight it carries a mandatory
 /// citation (D3) and a "why / the science" detail, but it also prescribes a concrete

@@ -11,8 +11,8 @@ Progress tracker for the strength-pivot roadmap
 | **P3** | **Engine core (read-only insights) + Coach-Home + tab bar** | ✅ **done + merged** — PRs #33 + #34 (stacked) on `main` |
 | **P4** | **Assessments v1 (strength / strength-endurance)** | ✅ **done + merged** — PR #35 on `main` |
 | **P5.1** | **Prescriptive engine core (CadenceCore) + CITATIONS.md** | ✅ **done + merged** — PR #36 on `main` |
-| **P5.2** | **Live Coach card surfacing the prescription** | ✅ **done** — branch `p5/coach-card` (off merged P5.1) |
-| P5.3 | "Do this workout" → logger pre-fill | ⬜ not started (needs P5.2) |
+| **P5.2** | **Live Coach card surfacing the prescription** | ✅ **done + merged** — PR #37 on `main` |
+| **P5.3** | **"Do this workout" → logger pre-fill** | ✅ **done** — branch `p5/do-this-prefill` (off merged P5.2) |
 | P6 | Cardio/anaerobic assessments + HIIT loop | ⬜ not started (needs P4,P5) |
 | P7 | Reposition (onboarding, goals, App Store) | ⬜ not started (needs P5) |
 
@@ -215,6 +215,46 @@ over the P5.1 engine; logger pre-fill ("Do this workout") is still P5.3.
   `testCoachCardShowsPrescriptiveTarget` (asserts `coach.card.target` + `.action` + the
   cited why expander); all 4 `P3CoachHomeUITests` pass on iPhone 17 Pro (iOS 26.5). App
   `build` + `build-for-testing` succeed.
+
+## P5.3 — what shipped (2026-06-16)
+"Do this workout" on the Coach card (§05 three-action spine, item 1) — the top
+prescription now **materializes into a pre-filled logger session**, the fast default
+path. Thin UI over a pure CadenceCore translation; closes the §05 open question on the
+prefill mechanism in favor of **additive persisted fields** (reuses the existing
+planned-set machinery so the prefill survives resume/CloudKit).
+
+- **CadenceCore (pure, tested):**
+  - `PrescribedSession` — a concrete, loggable session blueprint (title · prescribed
+    movement(s) · per-set rep ladder · optional working load kg) + `Recommendation
+    .prescribedSession(defaultSets:)` that derives it from the top recommendation.
+    Single-lift recs (progression/deload) name the movement and carry its load;
+    goal-level recs (starter → "Full-body session" / add-volume → "<Part> focus") name
+    no lift but still prescribe sets×reps the user applies to movements they pick. The
+    ladder seeds at the bottom of the goal rep range; `defaultSets` (3) fills in when the
+    target leaves the set count open (double-progression "keep your sets").
+  - `WorkoutSession.prescribedLoadKg: Double = 0` — additive/defaulted, CloudKit-safe;
+    the prescribed working load the keypad pre-fills.
+  - `WorkoutRepository.startSession(from: PrescribedSession)` — materializes
+    `plannedExerciseNames` + `plannedRepLadder` + `prescribedLoadKg`, resolving the
+    movement into the library (reuses `findOrCreateExercise`).
+- **App (thin):**
+  - `CoachCardView`: a prominent **"Do this workout"** button (`coach.card.doThis`),
+    the card's primary action above "See all insights".
+  - `HomeView.launchPrescription(_:)` — builds the `PrescribedSession`, starts it as the
+    live strength session, and pushes straight into the logger (no get-ready countdown,
+    like Quick Start).
+  - `SessionView`: the keypad's initial weight seeds from `prescribedLoadKg` for the
+    prescribed movement (`isPrescribedMovement`); the planned card's prescription line
+    appends "@ <load>". Non-prescribed sessions are byte-for-byte unchanged
+    (`prescribedLoadKg == 0`).
+- **Schema:** additive only — one defaulted `Double`; no migration.
+- **Tests:** `swift test` green (**221**, +8: `RecommendationPrescriptionTests` —
+  per-kind mapping incl. progression add-rep vs add-load, deload, add-volume part focus,
+  starter, default-sets, + repository materialization). New `P5DoThisUITests` (2):
+  seeded-history prescription pre-fills Back Squat + 140 kg into the logger; cold-start
+  starter opens a session. `P3CoachHomeUITests` regression green; FR1/FR13 keypad
+  regression green (one parallel-clone "Invalid device state" flake passed on isolated
+  re-run). App `build` succeeds (iPhone 16, iOS 18.1).
 
 ## Note on branching
 P1 branched off `main` (which already contained all CrossFit code — the plan's

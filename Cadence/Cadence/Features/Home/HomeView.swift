@@ -66,7 +66,9 @@ struct HomeView: View {
                     if let s = active.strengthSession { resumeCard(s) }
                     CoachCardView(recommendation: coachRecommendation,
                                   insightCount: coachInsights.count,
-                                  unit: settings.unit) { path.append(HomeRoute.coach) }
+                                  unit: settings.unit,
+                                  onDoThis: { launchPrescription(coachRecommendation) },
+                                  onSeeAll: { path.append(HomeRoute.coach) })
                     startButton
                     logButton
                     thisWeekSection
@@ -529,6 +531,18 @@ struct HomeView: View {
         case .interval(let l): intervalLaunch = l
         case .timer(let c): cardioType = c
         }
+    }
+
+    /// "Do this workout" (strength-pivot P5.3): materialize the coach's top
+    /// recommendation into a fresh strength session pre-filled with the prescribed
+    /// movement, planned sets/reps, and load, then push straight into the logger —
+    /// the fast default path (no get-ready countdown, like Quick Start).
+    private func launchPrescription(_ rec: Recommendation) {
+        let prescribed = rec.prescribedSession()
+        guard let s = try? WorkoutRepository.startSession(from: prescribed, in: context) else { return }
+        active.startStrength(s)
+        path.append(s)
+        WorkoutCues.transition(enabled: settings.workoutSounds)
     }
 }
 

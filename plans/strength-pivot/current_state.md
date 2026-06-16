@@ -10,8 +10,8 @@ Progress tracker for the strength-pivot roadmap
 | **P2** | **CC0 library import (free-exercise-db)** | ✅ **done** — branch `p2/cc0-library` (stacked on P1) |
 | **P3** | **Engine core (read-only insights) + Coach-Home + tab bar** | ✅ **done + merged** — PRs #33 + #34 (stacked) on `main` |
 | **P4** | **Assessments v1 (strength / strength-endurance)** | ✅ **done + merged** — PR #35 on `main` |
-| **P5.1** | **Prescriptive engine core (CadenceCore) + CITATIONS.md** | ✅ **done** — branch `p5/prescriptive-engine` (off merged P4) |
-| P5.2 | Live Coach card surfacing the prescription | ⬜ not started (needs P5.1) |
+| **P5.1** | **Prescriptive engine core (CadenceCore) + CITATIONS.md** | ✅ **done + merged** — PR #36 on `main` |
+| **P5.2** | **Live Coach card surfacing the prescription** | ✅ **done** — branch `p5/coach-card` (off merged P5.1) |
 | P5.3 | "Do this workout" → logger pre-fill | ⬜ not started (needs P5.2) |
 | P6 | Cardio/anaerobic assessments + HIIT loop | ⬜ not started (needs P4,P5) |
 | P7 | Reposition (onboarding, goals, App Store) | ⬜ not started (needs P5) |
@@ -193,6 +193,28 @@ Coach card in P5.2; "Do this" logger pre-fill in P5.3.
   boundary, cold-start starter, every-rec-cited, idempotence, load rounding, `make`
   wiring). App `build` succeeds (iPhone 17 Pro sim, iOS 26.5 — iPhone 16/18.1 not in
   this env).
+
+## P5.2 — what shipped (2026-06-16)
+The Coach card on Home now **leads with the prescription** from `RecommendationEngine`,
+not a read-only insight — the first place the user sees a concrete next action. Thin UI
+over the P5.1 engine; logger pre-fill ("Do this workout") is still P5.3.
+
+- **`CoachCardView` reworked:** takes `recommendation: Recommendation`, `insightCount`,
+  and `unit` (was `insights: [Insight]`). The hero is a new `RecommendationContentView` —
+  the P5 sibling of `InsightContentView`: title + imperative `action` + a prominent
+  **target chip** (`SetTarget.summary(unit:)`, e.g. "4×5 @ 102.5 kg · ≤2 RIR") with the
+  confidence label, plus the same `coach.card.why` → `coach.card.citation` expander (D3).
+  New a11y ids: `coach.card.target`, `coach.card.action`. The read-only insights stay one
+  tap away behind `coach.card.seeAll` → `CoachInsightsView` (unchanged).
+- **`HomeView`:** computes one `coachFacts` snapshot; `coachInsights` and the new
+  `coachRecommendation` (`RecommendationEngine.top`) both derive from it. Card is fed
+  `settings.unit` so loads render in the user's unit.
+- **Never empty:** with no history the engine's cold-start `starter` (sets 3 · goal rep
+  range · RIR) fills the card, so the prescription + target always render.
+- **Tests:** `swift test` green (213, unchanged — engine logic was P5.1). New UI test
+  `testCoachCardShowsPrescriptiveTarget` (asserts `coach.card.target` + `.action` + the
+  cited why expander); all 4 `P3CoachHomeUITests` pass on iPhone 17 Pro (iOS 26.5). App
+  `build` + `build-for-testing` succeed.
 
 ## Note on branching
 P1 branched off `main` (which already contained all CrossFit code — the plan's

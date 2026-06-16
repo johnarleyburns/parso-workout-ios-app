@@ -43,15 +43,19 @@ struct HomeView: View {
         WeeklyStats.bodyParts(sessions, since: weekStart)
     }
 
-    // Coach engine (strength-pivot P3): read-only cited insights from logged history.
-    private var coachInsights: [Insight] {
-        let facts = TrainingFacts.make(sessions: sessions,
-                                       assessments: assessments,
-                                       goal: settings.trainingGoal,
-                                       experience: settings.experienceLevel,
-                                       formula: settings.formula)
-        return InsightEngine.run(facts)
+    // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
+    // read-only insights and the prescriptive recommendation surfaced on the card.
+    private var coachFacts: TrainingFacts {
+        TrainingFacts.make(sessions: sessions,
+                           assessments: assessments,
+                           goal: settings.trainingGoal,
+                           experience: settings.experienceLevel,
+                           formula: settings.formula)
     }
+    private var coachInsights: [Insight] { InsightEngine.run(coachFacts) }
+    /// The top prescription the Coach card leads with (P5.2). Never nil — the engine
+    /// falls back to a cited cold-start starter when there's no history yet.
+    private var coachRecommendation: Recommendation { RecommendationEngine.top(coachFacts) }
 
     var body: some View {
         @Bindable var active = active
@@ -60,7 +64,9 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     if let s = active.strengthSession { resumeCard(s) }
-                    CoachCardView(insights: coachInsights) { path.append(HomeRoute.coach) }
+                    CoachCardView(recommendation: coachRecommendation,
+                                  insightCount: coachInsights.count,
+                                  unit: settings.unit) { path.append(HomeRoute.coach) }
                     startButton
                     logButton
                     thisWeekSection

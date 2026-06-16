@@ -5,13 +5,13 @@ import CadenceCore
 /// Searchable exercise library picker (FR-1.1, expanded feedback batch 8). To keep a
 /// large catalog usable it leads with a curated **Popular** shortlist and hides the
 /// long tail behind **Browse all** + search; a row of **body-part filter chips** and
-/// muscle subtitles make movements discoverable ("show me lats"). Each row links out
-/// to **EXRX.NET** in the system browser for full instructions (copyright-respecting —
-/// we link, never embed). An inline "Create '<query>'" row adds a custom exercise.
+/// muscle subtitles make movements discoverable ("show me lats"). Each row's info
+/// button opens an in-app **ExerciseDetailView** with the public-domain image,
+/// muscles, and instructions (P2 — no external links). An inline "Create '<query>'"
+/// row adds a custom exercise.
 struct ExercisePickerView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.openURL) private var openURL
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var query = ""
     @State private var selectedPart: BodyPart?
@@ -153,14 +153,15 @@ struct ExercisePickerView: View {
             .foregroundStyle(.primary)
             .accessibilityIdentifier("picker.row.\(ex.name)")
 
-            if let url = ExerciseLibrary.exrxReferenceURL(forName: ex.name) {
-                Button { openURL(url) } label: {
-                    Image(systemName: "info.circle").foregroundStyle(.tint)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("picker.exrx.\(ex.name)")
-                .accessibilityLabel("Look up \(ex.name) on EXRX")
+            NavigationLink {
+                ExerciseDetailView(exercise: ex) { picked in onPick(picked); dismiss() }
+            } label: {
+                Image(systemName: "info.circle").foregroundStyle(.tint)
             }
+            .buttonStyle(.plain)
+            .fixedSize()
+            .accessibilityIdentifier("picker.info.\(ex.name)")
+            .accessibilityLabel("View \(ex.name) details")
         }
     }
 

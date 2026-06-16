@@ -2,7 +2,7 @@ import XCTest
 
 /// Feedback batch 8 — quick-start shortcuts from the Home stat tiles, optional cardio
 /// distance goals, the body-parts "fill the gaps" quick start, and the redesigned
-/// exercise picker (popular shortlist + body-part filter chips + EXRX links).
+/// exercise picker (popular shortlist + body-part filter chips + in-app detail).
 final class FR15Batch8UITests: CadenceUITestCase {
 
     // Steps tile → Run/Walk dialog → distance-goal chooser → outdoor screen w/ goal.
@@ -42,16 +42,16 @@ final class FR15Batch8UITests: CadenceUITestCase {
                       "with no past workouts it should offer building from suggestions")
     }
 
-    // Exercise picker: popular-first with EXRX links + body-part filter chips.
-    func testExercisePickerPopularFilterAndExrx() {
+    // Exercise picker: popular-first with in-app detail (P2) + body-part filter chips.
+    func testExercisePickerPopularFilterAndDetail() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
         app.buttons["session.addExercise"].tap()
 
-        // Popular shortlist shows Bench Press with an EXRX info button + Browse-all.
+        // Popular shortlist shows Bench Press with an in-app detail info button.
         XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitForExistence(timeout: 25),
                       "popular shortlist shows Bench Press")
-        XCTAssertTrue(app.buttons["picker.exrx.Bench Press"].exists, "EXRX reference link present")
+        XCTAssertTrue(app.buttons["picker.info.Bench Press"].exists, "in-app detail button present")
 
         // Filter to Back → a back movement that isn't in the popular shortlist appears.
         XCTAssertTrue(app.buttons["picker.filter.back"].waitTap(), "Back filter chip")

@@ -50,12 +50,4 @@ final class ExerciseDiscoveryTests: XCTestCase {
     func testSuggestionsEmptyWhenNothingMissing() {
         XCTAssertTrue(ExerciseLibrary.suggestions(forMissing: []).isEmpty)
     }
-
-    // EXRX link is an external site-scoped search (copyright-respecting), encoded.
-    func testExrxReferenceURL() {
-        let url = ExerciseLibrary.exrxReferenceURL(forName: "Bench Press")
-        XCTAssertNotNil(url)
-        XCTAssertTrue(url!.absoluteString.contains("exrx.net"))
-        XCTAssertFalse(url!.absoluteString.contains(" "), "URL must be percent-encoded")
-    }
 }

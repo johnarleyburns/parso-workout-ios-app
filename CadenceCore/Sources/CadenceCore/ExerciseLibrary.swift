@@ -13,6 +13,11 @@ public struct ExerciseTemplate: Equatable, Sendable, Identifiable, ExerciseSearc
     public var isLateral: Bool
     public var primaryMuscles: [String]
     public var secondaryMuscles: [String]
+    // P2 (CC0 library): public-domain facets from free-exercise-db. All optional/
+    // defaulted so the curated literal catalog and CloudKit stay source-compatible.
+    public var instructions: [String]
+    public var imageName: String?
+    public var level: String?
 
     public var id: String { name }
     public var isCustom: Bool { false }
@@ -28,7 +33,8 @@ public struct ExerciseTemplate: Equatable, Sendable, Identifiable, ExerciseSearc
     /// Concise positional initializer for the literal catalog.
     public init(_ name: String, _ category: ExerciseCategory, _ equipment: Equipment?,
                 _ force: Force?, _ mechanics: Mechanics,
-                primary: [String], secondary: [String] = [], lateral: Bool = false) {
+                primary: [String], secondary: [String] = [], lateral: Bool = false,
+                instructions: [String] = [], imageName: String? = nil, level: String? = nil) {
         self.name = name
         self.category = category
         self.equipment = equipment
@@ -37,6 +43,9 @@ public struct ExerciseTemplate: Equatable, Sendable, Identifiable, ExerciseSearc
         self.isLateral = lateral
         self.primaryMuscles = primary
         self.secondaryMuscles = secondary
+        self.instructions = instructions
+        self.imageName = imageName
+        self.level = level
     }
 }
 
@@ -46,9 +55,24 @@ public enum ExerciseLibrary {
     /// Bump `seedVersion` when entries are added so existing stores backfill.
     public static let seedVersion = 5
 
-    public static let starter: [ExerciseTemplate] = chest + back + shoulders
+    /// Our hand-curated catalog — the authoritative facet source (our muscle ids,
+    /// movement-split categories, the "popular" shortlist all reference these).
+    public static let curated: [ExerciseTemplate] = chest + back + shoulders
         + arms + legs + glutes + core + olympicAndCarry + crossfit + bodyweight
         + plyometrics + accessories
+
+    /// The full seeded catalog: curated entries plus every public-domain
+    /// free-exercise-db movement not already covered by name (P2). Curated facets
+    /// win on a name collision — we trust our `MuscleCatalog` mapping over their
+    /// coarser strings.
+    public static let starter: [ExerciseTemplate] = {
+        var seen = Set(curated.map { $0.name.lowercased() })
+        var merged = curated
+        for t in ImportedExerciseLibrary.templates where seen.insert(t.name.lowercased()).inserted {
+            merged.append(t)
+        }
+        return merged
+    }()
 
     // MARK: Chest
     private static let chest: [ExerciseTemplate] = [
@@ -295,6 +319,7 @@ public enum ExerciseLibrary {
                  isCustom: false, equipment: t.equipment, isLateral: t.isLateral,
                  mechanics: t.mechanics, force: t.force,
                  primaryMuscles: t.primaryMuscles, secondaryMuscles: t.secondaryMuscles,
-                 searchKeywords: t.searchKeywords)
+                 searchKeywords: t.searchKeywords,
+                 instructions: t.instructions, imageName: t.imageName, level: t.level)
     }
 }

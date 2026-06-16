@@ -9,8 +9,10 @@ Progress tracker for the strength-pivot roadmap
 | **P1** | **Remove CrossFit (tag then delete) + Boxing→cardio** | ✅ **done** — branch `p1/remove-crossfit` |
 | **P2** | **CC0 library import (free-exercise-db)** | ✅ **done** — branch `p2/cc0-library` (stacked on P1) |
 | **P3** | **Engine core (read-only insights) + Coach-Home + tab bar** | ✅ **done + merged** — PRs #33 + #34 (stacked) on `main` |
-| **P4** | **Assessments v1 (strength / strength-endurance)** | ✅ **done** — branch `p4/assessments` (off merged P3) |
-| P5 | Prescriptive engine + live Coach card | ⬜ not started (needs P3) |
+| **P4** | **Assessments v1 (strength / strength-endurance)** | ✅ **done + merged** — PR #35 on `main` |
+| **P5.1** | **Prescriptive engine core (CadenceCore) + CITATIONS.md** | ✅ **done** — branch `p5/prescriptive-engine` (off merged P4) |
+| P5.2 | Live Coach card surfacing the prescription | ⬜ not started (needs P5.1) |
+| P5.3 | "Do this workout" → logger pre-fill | ⬜ not started (needs P5.2) |
 | P6 | Cardio/anaerobic assessments + HIIT loop | ⬜ not started (needs P4,P5) |
 | P7 | Reposition (onboarding, goals, App Store) | ⬜ not started (needs P5) |
 
@@ -156,6 +158,41 @@ kinds remain deferred to P6.
   `AssessmentInsightTests`). UI `P4AssessmentsUITests` (battery list + record→log) and the
   updated `P3CoachHomeUITests` (Plan tab now the assessments hub) pass. App `build`
   succeeds (iPhone 16, iOS 18.1).
+
+## P5.1 — what shipped (2026-06-16)
+The prescriptive half of the Scientific Expert Engine (§03), pure `CadenceCore` only —
+the engine that turns `TrainingFacts` into concrete, cited *actions*. Surfaced in the
+Coach card in P5.2; "Do this" logger pre-fill in P5.3.
+
+- **D9 citations pass (gate before the prescriptive phase):** new `docs/CITATIONS.md`
+  curates the reference list and documents how each is used + its caveats; the in-app
+  source of truth stays `CitationRegistry`. Added `rpeAutoregulation` (Helms, Cronin,
+  Storey & Zourdos, 2016, *Strength Cond J* 38(4)) for the progression/deload rules.
+- **`TrainingGoal` → prescription params:** `repRange` (strength 3–5, hypertrophy 6–12,
+  endurance 15–20) + `targetRIR` (2/1/2), from the load/rep continuum (`schoenfeld2021`).
+- **`TrainingFacts` (additive):** new `LiftSnapshot` per lift (heaviest loaded working
+  set + reps + best e1RM + trend + primary part) and `liftSnapshots: [String: LiftSnapshot]`,
+  computed in `make` — the basis for next-session targets. Defaulted in the init, so the
+  P3/P4 callers (`HomeView`, tests) are untouched.
+- **Prescriptive engine (pure, deterministic — mirrors `InsightEngine`):**
+  - `Recommendation` (+ `RecommendationKind`, `RecommendationConfidence`, `SetTarget`) —
+    the P5 evolution of `Insight`: a cited (D3) "why" plus a concrete `action` and a
+    structured `SetTarget` (sets × rep range × optional load kg × RIR) the logger can
+    adopt. `SetTarget.summary(unit:)` renders in the user's unit; the engine stays
+    canonical-kg.
+  - `KnowledgeBase.p5Rules` = **progression** (double progression — add reps to the top
+    of the range, then add load + reset; cites `rpeAutoregulation`) · **deload** (a
+    declining e1RM trend → one lighter week ~10% off, fewer sets, +RIR) · **addVolume**
+    (a part below MEV → add N sets; cites `volumeDoseResponse`). Plus a `starter(goal:
+    experience:)` cold-start.
+  - `RecommendationEngine.run` forward-chains, dedupes by id, ranks priority → confidence
+    → id; falls back to `[starter]` so the card is never empty. `top(_:)` for the hero.
+- **No UI / no schema change.** App untouched; CadenceCore API changes are all additive.
+- **Tests:** `swift test` green (**213**, +12: `RecommendationEngineTests` — double
+  progression both branches, deload vs progression routing + ranking, add-volume MEV
+  boundary, cold-start starter, every-rec-cited, idempotence, load rounding, `make`
+  wiring). App `build` succeeds (iPhone 17 Pro sim, iOS 26.5 — iPhone 16/18.1 not in
+  this env).
 
 ## Note on branching
 P1 branched off `main` (which already contained all CrossFit code — the plan's

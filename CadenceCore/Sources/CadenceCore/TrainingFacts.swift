@@ -27,6 +27,29 @@ public struct IntensityDistribution: Equatable, Sendable {
     public static let empty = IntensityDistribution(heavy: 0, moderate: 0, light: 0, sampleCount: 0)
 }
 
+/// A per-lift snapshot of the trailing week the prescriptive engine programs from
+/// (P5): the heaviest loaded working set, its reps, the best estimated 1RM, and the
+/// e1RM trend versus the prior week. Only lifts with a loaded working set this week
+/// get one. Canonical kilograms.
+public struct LiftSnapshot: Equatable, Sendable {
+    public let exercise: String
+    public let part: BodyPart?            // primary body part, for grouping
+    public let topSetWeightKg: Double     // heaviest loaded working set this week
+    public let topSetReps: Int            // reps achieved on that set
+    public let bestE1RM: Double           // best estimated 1RM this week
+    public let trend: TrendDirection?     // vs the prior week (nil if no prior data)
+
+    public init(exercise: String, part: BodyPart?, topSetWeightKg: Double,
+                topSetReps: Int, bestE1RM: Double, trend: TrendDirection?) {
+        self.exercise = exercise
+        self.part = part
+        self.topSetWeightKg = topSetWeightKg
+        self.topSetReps = topSetReps
+        self.bestE1RM = bestE1RM
+        self.trend = trend
+    }
+}
+
 /// A pure, computed snapshot of the user's recent training — the engine's
 /// "working memory" (§03). Built from the same `@Model` rows the views already
 /// `@Query`, so it stays `swift test`-able with an in-memory store (mirrors
@@ -56,6 +79,9 @@ public struct TrainingFacts: Sendable {
     /// Series whose most recent result is older than the re-test cadence (D5),
     /// computed against the snapshot's reference time so rules stay deterministic.
     public let assessmentsDueForRetest: [AssessmentSummary]
+    /// Per-lift snapshot of the trailing week, keyed by exercise name — the basis
+    /// for the prescriptive engine's next-session targets (P5). Empty at cold-start.
+    public let liftSnapshots: [String: LiftSnapshot]
     public let goal: TrainingGoal
     public let experience: ExperienceLevel
 
@@ -72,6 +98,7 @@ public struct TrainingFacts: Sendable {
                 totalWorkingSets: Int,
                 assessments: [AssessmentSummary] = [],
                 assessmentsDueForRetest: [AssessmentSummary] = [],
+                liftSnapshots: [String: LiftSnapshot] = [:],
                 goal: TrainingGoal,
                 experience: ExperienceLevel) {
         self.weeklySetsByPart = weeklySetsByPart
@@ -83,6 +110,7 @@ public struct TrainingFacts: Sendable {
         self.totalWorkingSets = totalWorkingSets
         self.assessments = assessments
         self.assessmentsDueForRetest = assessmentsDueForRetest
+        self.liftSnapshots = liftSnapshots
         self.goal = goal
         self.experience = experience
     }
@@ -175,6 +203,28 @@ public extension TrainingFacts {
                                     light: light / Double(loaded),
                                     sampleCount: loaded)
 
+        // Per-lift snapshot of the trailing week: the heaviest loaded working set
+        // (the basis for the next-session prescription) + this week's best e1RM +
+        // the trend. Primary body part taken from the heaviest set's exercise.
+        var topSet: [String: (weight: Double, reps: Int, exercise: Exercise)] = [:]
+        for ws in weekSets where ws.set.weight > 0 {
+            let name = ws.exercise.name
+            guard !name.isEmpty else { continue }
+            if let cur = topSet[name], cur.weight >= ws.set.weight { continue }
+            topSet[name] = (ws.set.weight, ws.set.reps, ws.exercise)
+        }
+        var liftSnapshots: [String: LiftSnapshot] = [:]
+        for (name, top) in topSet {
+            let part = BodyPart.parts(forMuscleIDs: top.exercise.primaryMuscles).sorted { $0.rawValue < $1.rawValue }.first
+            liftSnapshots[name] = LiftSnapshot(
+                exercise: name,
+                part: part,
+                topSetWeightKg: top.weight,
+                topSetReps: top.reps,
+                bestE1RM: bestRecent[name] ?? WorkoutMath.estimated1RM(weight: top.weight, reps: top.reps, formula: formula),
+                trend: trends[name])
+        }
+
         // Average RPE over the week's working sets that logged it.
         let rpes = weekSets.compactMap { $0.set.rpe }
         let avgRPE = rpes.isEmpty ? nil : rpes.reduce(0, +) / Double(rpes.count)
@@ -196,6 +246,7 @@ public extension TrainingFacts {
                              totalWorkingSets: weekSets.count,
                              assessments: summaries,
                              assessmentsDueForRetest: dueForRetest,
+                             liftSnapshots: liftSnapshots,
                              goal: goal,
                              experience: experience)
     }

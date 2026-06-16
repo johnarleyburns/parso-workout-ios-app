@@ -53,6 +53,14 @@ public final class Exercise {
     private var primaryMusclesData: String = ""
     private var secondaryMusclesData: String = ""
     private var searchKeywordsData: String = ""
+    // P2 (CC0 library) facets — public-domain instructions/image/level from
+    // free-exercise-db. Optional/defaulted for CloudKit + back-compat.
+    /// Step-by-step instructions; delimited-String storage (see `StringArray`).
+    private var instructionsData: String = ""
+    /// Bundled demonstration-image asset id (the source exercise id), if any.
+    public var imageName: String?
+    /// Difficulty: beginner / intermediate / expert.
+    public var level: String?
     public var createdAt: Date = Date()
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
@@ -72,6 +80,9 @@ public final class Exercise {
                 primaryMuscles: [String] = [],
                 secondaryMuscles: [String] = [],
                 searchKeywords: [String] = [],
+                instructions: [String] = [],
+                imageName: String? = nil,
+                level: String? = nil,
                 createdAt: Date = Date(),
                 updatedAt: Date = Date(),
                 originDevice: String = "") {
@@ -87,6 +98,9 @@ public final class Exercise {
         self.primaryMusclesData = StringArray.encode(primaryMuscles)
         self.secondaryMusclesData = StringArray.encode(secondaryMuscles)
         self.searchKeywordsData = StringArray.encode(searchKeywords)
+        self.instructionsData = StringArray.encode(instructions)
+        self.imageName = imageName
+        self.level = level
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.originDevice = originDevice
@@ -107,6 +121,10 @@ public final class Exercise {
     public var searchKeywords: [String] {
         get { StringArray.decode(searchKeywordsData) }
         set { searchKeywordsData = StringArray.encode(newValue) }
+    }
+    public var instructions: [String] {
+        get { StringArray.decode(instructionsData) }
+        set { instructionsData = StringArray.encode(newValue) }
     }
 
     public var categoryValue: ExerciseCategory? {

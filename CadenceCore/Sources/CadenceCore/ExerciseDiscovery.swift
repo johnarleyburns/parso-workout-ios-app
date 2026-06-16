@@ -2,9 +2,9 @@ import Foundation
 
 /// Discovery helpers over the exercise catalog (feedback batch 8): a body-part
 /// index for fast filtering, a curated "popular" shortlist so the picker can hide
-/// the long tail behind a Browse/Search affordance, gap-filling suggestions for the
-/// Home "body parts" quick-start, and an external EXRX.NET reference link (opened in
-/// the system browser to respect EXRX's copyright — we never copy their content).
+/// the long tail behind a Browse/Search affordance, and gap-filling suggestions for
+/// the Home "body parts" quick-start. P2 retired the external EXRX.NET link in favor
+/// of an in-app detail (public-domain instructions + images now ship on-device).
 public extension ExerciseLibrary {
 
     /// Body parts an exercise trains, from its primary+secondary muscle ids.
@@ -67,15 +67,6 @@ public extension ExerciseLibrary {
             remaining.subtract(bodyParts(of: best))
         }
         return chosen
-    }
-
-    /// External EXRX.NET reference for a movement — a site-scoped web search so the
-    /// user lands on EXRX's own page in their browser (copyright-respecting; we link,
-    /// not embed). Name is URL-encoded.
-    static func exrxReferenceURL(forName name: String) -> URL? {
-        let q = "site:exrx.net \(name)"
-        guard let enc = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else { return nil }
-        return URL(string: "https://www.google.com/search?q=\(enc)")
     }
 }
 

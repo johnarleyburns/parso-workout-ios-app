@@ -22,8 +22,9 @@ public enum WorkoutRepository {
 
         for t in ExerciseLibrary.starter {
             if let ex = byName[t.name.lowercased()] {
+                guard !ex.isCustom else { continue }
                 // Backfill facets on a pre-facets built-in (e.g. the legacy 25).
-                if !ex.isCustom && ex.searchKeywords.isEmpty {
+                if ex.searchKeywords.isEmpty {
                     ex.categoryValue = t.category
                     ex.equipmentValue = t.equipment
                     ex.isLateral = t.isLateral
@@ -35,6 +36,20 @@ public enum WorkoutRepository {
                     ex.searchKeywords = t.searchKeywords
                     ex.updatedAt = Date()
                     changed = true
+                }
+                // Backfill P2 (CC0 library) facets on already-faceted built-ins so
+                // existing installs gain public-domain instructions/images/level.
+                if ex.instructions.isEmpty, !t.instructions.isEmpty {
+                    ex.instructions = t.instructions
+                    ex.updatedAt = Date(); changed = true
+                }
+                if ex.imageName == nil, let img = t.imageName {
+                    ex.imageName = img
+                    ex.updatedAt = Date(); changed = true
+                }
+                if ex.level == nil, let lvl = t.level {
+                    ex.level = lvl
+                    ex.updatedAt = Date(); changed = true
                 }
             } else {
                 context.insert(ExerciseLibrary.makeExercise(from: t))

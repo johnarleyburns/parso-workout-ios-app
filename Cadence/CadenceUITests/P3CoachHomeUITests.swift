@@ -38,6 +38,27 @@ final class P3CoachHomeUITests: CadenceUITestCase {
                       "citation should appear after expanding the science")
     }
 
+    func testCoachCardShowsPrescriptiveTarget() {
+        // strength-pivot P5.2 — the card now leads with a prescription: a concrete
+        // action + a loggable set/rep/load/RIR target, still cited (D3). Works even
+        // at cold start (the engine returns a starter), but seed history for realism.
+        let app = XCUIApplication.launched(seeds: ["history"])
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
+
+        // The structured target chip and the imperative action are both present.
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card.target"].firstMatch.waitForExistence(timeout: 5),
+                      "the card should show a concrete loggable target")
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card.action"].firstMatch.exists,
+                      "the card should show the prescribed action")
+
+        // The cited rationale still expands from the prescription (D3).
+        let why = app.descendants(matching: .any)["coach.card.why"].firstMatch
+        XCTAssertTrue(why.waitForExistence(timeout: 5))
+        why.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card.citation"].firstMatch.waitForExistence(timeout: 5),
+                      "citation should appear after expanding the science")
+    }
+
     func testCoachSettingsPickersExist() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.scrollToHittableAndTap("home.settings"), "open Settings")

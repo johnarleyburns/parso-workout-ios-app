@@ -1,15 +1,16 @@
 import SwiftUI
 import CadenceCore
 
-/// The Coach card — Home's hero (strength-pivot P3). Surfaces the top read-only
-/// `Insight` from the engine with an always-available "Why / the science" expander
-/// and its citation (decision D3). When more than one insight is available it offers
-/// a "See all insights" link. Read-only in P3 (no prescribed "Do this" action yet).
+/// The Coach card — Home's hero (strength-pivot P5.2). Surfaces the top prescriptive
+/// `Recommendation` from the engine: a concrete next action plus a loggable
+/// `SetTarget` (sets·reps·load·RIR in the user's unit), with an always-available
+/// "Why / the science" expander and its citation (decision D3). The read-only
+/// `Insight`s remain reachable behind "See all insights".
 struct CoachCardView: View {
-    let insights: [Insight]
+    let recommendation: Recommendation
+    var insightCount: Int
+    var unit: MeasurementUnitPreference
     var onSeeAll: () -> Void
-
-    private var top: Insight? { insights.first }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -17,24 +18,22 @@ struct CoachCardView: View {
                 Image(systemName: "figure.mind.and.body")
                 Text("COACH").font(.caption.bold()).tracking(1.2)
                 Spacer()
-                Text("This week").font(.caption).foregroundStyle(.secondary)
+                Text("Do next").font(.caption).foregroundStyle(.secondary)
             }
             .foregroundStyle(.secondary)
 
-            if let top {
-                InsightContentView(insight: top, headline: true)
+            RecommendationContentView(recommendation: recommendation, unit: unit, headline: true)
 
-                if insights.count > 1 {
-                    Button { Haptics.selection(); onSeeAll() } label: {
-                        HStack(spacing: 4) {
-                            Text("See all insights (\(insights.count))").font(.subheadline.weight(.medium))
-                            Image(systemName: "chevron.right").font(.caption)
-                        }
+            if insightCount > 0 {
+                Button { Haptics.selection(); onSeeAll() } label: {
+                    HStack(spacing: 4) {
+                        Text("See all insights (\(insightCount))").font(.subheadline.weight(.medium))
+                        Image(systemName: "chevron.right").font(.caption)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.tint)
-                    .accessibilityIdentifier("coach.card.seeAll")
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+                .accessibilityIdentifier("coach.card.seeAll")
             }
 
             Text("Coaching, not medical advice.")
@@ -44,10 +43,88 @@ struct CoachCardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(.tint.opacity(0.25), lineWidth: 1))
-        // Keep inner controls (coach.card.why / .citation) individually addressable;
-        // the background+overlay would otherwise collapse the card into one element.
+        // Keep inner controls (coach.card.target / .why / .citation) individually
+        // addressable; the background+overlay would otherwise collapse the card.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("coach.card")
+    }
+}
+
+/// One prescription's body: title, imperative action, a concrete `SetTarget` chip,
+/// and an expandable why + citation. The P5 evolution of `InsightContentView` — it
+/// reuses the same `coach.card.why` / `coach.card.citation` a11y ids so the cited
+/// rationale (D3) stays testable.
+struct RecommendationContentView: View {
+    let recommendation: Recommendation
+    var unit: MeasurementUnitPreference
+    var headline: Bool = false
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: recommendation.kind.symbol)
+                    .foregroundStyle(recommendation.kind.tint)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(recommendation.title)
+                        .font(headline ? .title3.bold() : .headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(recommendation.action)
+                        .font(headline ? .subheadline : .footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("coach.card.action")
+                }
+            }
+
+            // The concrete, loggable target — the heart of a prescription (P5).
+            if let target = recommendation.target {
+                HStack(spacing: 8) {
+                    Image(systemName: "dumbbell.fill").font(.caption)
+                    Text(target.summary(unit: unit))
+                        .font(.subheadline.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
+                    Text(recommendation.confidence.label)
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8).padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("coach.card.target")
+            }
+
+            // Explicit toggle (not a DisclosureGroup) for predictable a11y/testing.
+            Button { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "book.closed")
+                    Text("Why / the science")
+                    Spacer(minLength: 4)
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("coach.card.why")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityLabel(expanded ? "Hide the science" : "Why — show the science")
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(recommendation.detail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    CitationLink(citation: recommendation.citation)
+                }
+                .padding(.top, 2)
+                .transition(.opacity)
+            }
+        }
     }
 }
 
@@ -153,6 +230,26 @@ extension InsightSeverity {
         switch self {
         case .attention: return .orange
         case .info:      return .accentColor
+        }
+    }
+}
+
+extension RecommendationKind {
+    var symbol: String {
+        switch self {
+        case .progression: return "chart.line.uptrend.xyaxis"
+        case .deload:      return "arrow.down.right.circle"
+        case .addVolume:   return "plus.circle"
+        case .starter:     return "sparkles"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .progression: return .green
+        case .deload:      return .orange
+        case .addVolume:   return .accentColor
+        case .starter:     return .accentColor
         }
     }
 }

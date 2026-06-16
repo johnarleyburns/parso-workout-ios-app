@@ -798,7 +798,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Cadence-Watch-App-Watch-App-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Cadence Watch App";
+				INFOPLIST_KEY_CFBundleDisplayName = "Cladiron Watch App";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "guru.parso.ios-workout-app";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -830,7 +830,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Cadence-Watch-App-Watch-App-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Cadence Watch App";
+				INFOPLIST_KEY_CFBundleDisplayName = "Cladiron Watch App";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "guru.parso.ios-workout-app";
 				LD_RUNPATH_SEARCH_PATHS = (

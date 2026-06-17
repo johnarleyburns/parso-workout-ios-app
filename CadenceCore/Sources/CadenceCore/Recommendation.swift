@@ -119,15 +119,37 @@ public extension Recommendation {
                                      loadKg: nil)
         }
         let sets = max(1, target?.sets ?? defaultSets)
-        // Start each planned set at the bottom of the prescribed rep range; double
-        // progression climbs toward the top from there.
         let seedReps = target?.repsLow ?? 5
         let ladder = Array(repeating: seedReps, count: sets)
-        let names = exercise.map { [$0] } ?? []
+        let names = exercise.map { [$0] } ?? defaultExerciseNames
         return PrescribedSession(title: prescribedTitle,
                                  exerciseNames: names,
                                  repLadder: ladder,
                                  loadKg: target?.loadKg)
+    }
+
+    /// When no specific exercise is named (goal-level recs like starter / add-volume),
+    /// provide a sensible default so the logger doesn't open empty.
+    private var defaultExerciseNames: [String] {
+        if let part {
+            return [Self.partDefaultExercise(part)]
+        }
+        // Full-body starter: three compound lifts.
+        return ["Back Squat", "Bench Press", "Deadlift"]
+    }
+
+    /// A representative compound exercise for the given body part.
+    static func partDefaultExercise(_ part: BodyPart) -> String {
+        switch part {
+        case .chest: return "Bench Press"
+        case .back: return "Deadlift"
+        case .shoulders: return "Overhead Press"
+        case .legs: return "Back Squat"
+        case .biceps: return "Barbell Curl"
+        case .triceps: return "Tricep Dip"
+        case .calves: return "Standing Calf Raise"
+        case .abs: return "Plank"
+        }
     }
 
     /// The session/history title for a "Do this workout" launch: the lift for a

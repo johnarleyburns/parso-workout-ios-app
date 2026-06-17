@@ -68,7 +68,7 @@ struct PreWorkoutHRView: View {
                 } label: {
                     Text("Start Workout").frame(maxWidth: .infinity, minHeight: 52)
                 }
-                .buttonStyle(.borderedProminent).controlSize(.large).tint(.pink)
+                .buttonStyle(.borderedProminent).controlSize(.large).tint(.green)
                 .accessibilityIdentifier("prehr.start")
 
                 Button {
@@ -121,6 +121,13 @@ struct PreWorkoutHRView: View {
                     .accessibilityIdentifier("prehr.watchBPM")
             } else if model.watchActive {
                 ProgressView()
+            } else if let error = model.watchError {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                    Button("Try Again") { startWatch() }
+                        .buttonStyle(.bordered).tint(.orange)
+                        .accessibilityIdentifier("prehr.watchRetry")
+                }
             } else {
                 Button("Use Watch") { startWatch() }
                     .buttonStyle(.bordered).tint(.orange)

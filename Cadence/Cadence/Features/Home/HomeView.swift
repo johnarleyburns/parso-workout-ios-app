@@ -74,8 +74,8 @@ struct HomeView: View {
                     CoachCardView(recommendation: coachRecommendation,
                                   insightCount: coachInsights.count,
                                   unit: settings.unit,
-                                  onDoThis: { launchPrescription(coachRecommendation) },
                                   onSeeAll: { path.append(HomeRoute.coach) })
+                    coachStartButton
                     startButton
                     logButton
                     thisWeekSection
@@ -191,10 +191,10 @@ struct HomeView: View {
         // session and drop the overlay in one animation-disabled transaction, so the
         // session is already on screen when the overlay vanishes — no Home flash
         // before the warm-up, and none after it.
-        // Strength HR gate — appears BEFORE the get-ready countdown.  Lets the
+        // HR gate — appears BEFORE the get-ready countdown.  Lets the
         // user connect HR, see live data, then press "Start Workout".
         if let kind = hrGateKind {
-            PreWorkoutHRView(workoutType: nil) { useHR in
+            PreWorkoutHRView(workoutType: kind.cardioType) { useHR in
                 hrGateKind = nil
                 proceedFromHRGate(kind, useHR: useHR)
             }
@@ -333,6 +333,31 @@ struct HomeView: View {
         let new = await model.health.newWorkouts(since: model.lastHealthSync)
         _ = try? WorkoutRepository.ingest(new, in: context)
         model.lastHealthSync = Date()
+    }
+
+    // Coach "Start Coach Workout" button — sits between the Coach card and
+    // "Start Workout".  Launches the prescribed session through the HR gate.
+    private var coachStartButton: some View {
+        Button { Haptics.selection(); launchPrescription(coachRecommendation) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "checklist")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Start Coach Workout").font(.headline)
+                    Text(coachRecommendation.action)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
+            }
+            .padding(.vertical, 14).padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.white)
+            .background(.green, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.coachStart")
+        .accessibilityLabel("Start Coach Workout — \(coachRecommendation.title)")
     }
 
     private var startButton: some View {
@@ -518,23 +543,18 @@ struct HomeView: View {
     private func launchFromPicker(_ kind: PendingWorkout.Kind, skipCountdown: Bool = false) {
         typePickerPresented = false
         if skipCountdown || settings.preWorkoutCountdown <= 0 {
-            if kind.isStrength { hrGateKind = kind } else { launch(kind) }
+            hrGateKind = kind
         } else {
-            if kind.isStrength { hrGateKind = kind } else { pending = PendingWorkout(kind: kind) }
+            hrGateKind = kind
         }
     }
     private func begin(_ kind: PendingWorkout.Kind) {
-        if kind.isStrength { hrGateKind = kind }
-        else if settings.preWorkoutCountdown <= 0 { launch(kind) }
-        else { pending = PendingWorkout(kind: kind) }
+        hrGateKind = kind
     }
 
     /// Called after the HR gate closes.  If the countdown is enabled, show it;
-    /// otherwise launch immediately.  `useHR` is passed through to the session.
+    /// otherwise launch immediately.
     private func proceedFromHRGate(_ kind: PendingWorkout.Kind, useHR: Bool) {
-        if useHR {
-            // Strap or Watch is now connected — the HR pipeline is live.
-        }
         // "Do this workout" path: launch the prescription immediately (fast path).
         if let rec = pendingPrescription {
             pendingPrescription = nil
@@ -551,7 +571,7 @@ struct HomeView: View {
             warmupActive = true
             return
         }
-        if settings.preWorkoutCountdown > 0 {
+        if kind.isStrength || settings.preWorkoutCountdown > 0 {
             pending = PendingWorkout(kind: kind)
         } else {
             launch(kind)
@@ -598,6 +618,12 @@ struct PendingWorkout: Identifiable {
             switch self {
             case .strength, .plan, .reuse: true
             case .outdoor, .interval, .timer: false
+            }
+        }
+        var cardioType: CardioType? {
+            switch self {
+            case .outdoor(let c), .timer(let c): return c
+            case .strength, .plan, .reuse, .interval: return nil
             }
         }
     }

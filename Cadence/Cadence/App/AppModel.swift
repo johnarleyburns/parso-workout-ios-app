@@ -23,6 +23,9 @@ final class AppModel: NSObject {
 
     /// Whether the Apple Watch is actively streaming HR (FR-8).
     private(set) var watchActive: Bool = false
+    /// When set, the watch was told to start but never confirmed.
+    private(set) var watchError: String?
+    private var watchTimeout: Timer?
 
     /// Cached once at launch — avoids hitting `WCSession.default.isWatchAppInstalled`
     /// (a synchronous IPC call) from SwiftUI body evaluation.
@@ -91,17 +94,38 @@ final class AppModel: NSObject {
     /// raw type string and begin streaming live heart rate.
     func startWatchWorkout(rawType: String) {
         guard watchAvailable, let session = wcSession else { return }
+        watchError = nil
+        watchTimeout?.invalidate()
         session.sendMessage(["command": "start_workout", "type": rawType],
-                            replyHandler: nil, errorHandler: nil)
+                            replyHandler: { [weak self] _ in
+            // Watch acknowledged — BPM should arrive soon.
+        }, errorHandler: { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.watchActive = false
+                self?.watchError = "Watch unreachable"
+                self?.watchTimeout?.invalidate()
+            }
+        })
         watchActive = true
+        // Timeout: if no BPM arrives within 15 s, reset and show error.
+        watchTimeout = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async {
+                guard self?.watchActive == true else { return }
+                self?.watchActive = false
+                self?.watchError = "No response from Watch"
+                self?.watchTimeout?.invalidate()
+            }
+        }
     }
 
     /// Tells the Apple Watch to end the `HKWorkoutSession` and stop streaming.
     func stopWatchWorkout() {
+        watchTimeout?.invalidate(); watchTimeout = nil
         guard watchAvailable, let session = wcSession else { return }
         session.sendMessage(["command": "stop_workout"],
                             replyHandler: nil, errorHandler: nil)
         watchActive = false
+        watchError = nil
     }
 
     private var wcSession: WCSession? {
@@ -128,7 +152,10 @@ extension AppModel: WCSessionDelegate {
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         guard let bpm = message["bpm"] as? Double else { return }
         DispatchQueue.main.async { [weak self] in
-            self?.hrm.injectExternalBPM(bpm)
+            guard let self else { return }
+            self.watchTimeout?.invalidate(); self.watchTimeout = nil
+            self.watchError = nil
+            self.hrm.injectExternalBPM(bpm)
         }
     }
 }

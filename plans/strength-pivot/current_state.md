@@ -15,7 +15,7 @@ Progress tracker for the strength-pivot roadmap
 | **P5.3** | **"Do this workout" → logger pre-fill** | ✅ **done** — branch `p5/do-this-prefill` (off merged P5.2) |
 | **P6** | **Cardio/anaerobic assessments + HIIT loop** | ✅ **done** — branch `p6/cardio-assessments` |
 | **FR-2.3/4.4** | **BLE reliability gaps + strength HR** | ✅ **done** — this round |
-| **FR-8** | Watch HR relay (HKWorkoutSession + WCSession) | ⬜ not started (needs hardware) |
+| **FR-8** | Watch HR relay (HKWorkoutSession + WCSession) | 📋 **planned** — see `plans/fr8/PLAN.md` |
 | P7 | Reposition (onboarding, goals, App Store) | ⬜ not started |
 
 ## P1 — what shipped (2026-06-15)

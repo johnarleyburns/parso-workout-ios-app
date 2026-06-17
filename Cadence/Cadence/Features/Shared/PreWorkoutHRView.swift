@@ -2,22 +2,17 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
-/// Pre-workout heart-rate connection screen (feedback batch 5). Shown before a
-/// HIIT/boxing interval so the user can get HR flowing — or knowingly skip it.
+/// Pre-workout heart-rate connection screen (feedback batch 5, FR-8).
+/// Shown before cardio/interval/strength workouts so the user can connect a
+/// strap or start the Apple Watch sensor, see live HR, then press Start when
+/// ready.  Connecting does NOT start the workout — "Start Workout" is a
+/// separate deliberate button so the user can verify their HR data first.
 ///
-/// Sources:
-/// - **Chest strap (BLE)** — real-time `currentBPM` from `HeartRateMonitor`.
-/// - **Apple Watch (FR-8)** — the phone can't stream the Watch's *live* HR
-///   without a watchOS app.  When the watch app is installed and a workout
-///   starts, we offer "Use Watch HR" to start an `HKWorkoutSession` on the
-///   Watch and relay HR via WCSession.
+/// `onContinue(useHR)` proceeds to the workout — `true` if the user is
+/// capturing HR (strap or watch), `false` to record without HR.
 ///
-/// `onContinue(useHR)` proceeds to the workout — `true` if the user wants HR
-/// captured (strap or watch), `false` to record without HR.
-///
-/// When `workoutType` is nil (defensive — e.g. called from a path that doesn't
-/// know the type), the Watch option is hidden and the gate still renders
-/// strap-only so HR isn't blocked.
+/// When `workoutType` is nil (defensive, or for strength), the Watch row uses
+/// `startWatchStrength()` instead of a cardio type.
 struct PreWorkoutHRView: View {
     let workoutType: CardioType?
     let onContinue: (_ useHR: Bool) -> Void
@@ -35,6 +30,13 @@ struct PreWorkoutHRView: View {
     private var strapName: String {
         defaultDevice?.name ?? hrm.discovered.first?.name ?? "Chest strap"
     }
+    private var strapBPM: Double? {
+        strapConnected ? hrm.currentBPM : nil
+    }
+
+    private var watchBPM: Double? {
+        model.watchActive ? hrm.currentBPM : nil
+    }
 
     var body: some View {
         VStack(spacing: 24) {
@@ -45,7 +47,7 @@ struct PreWorkoutHRView: View {
                 Text("Connect Heart Rate")
                     .font(.title.bold())
                     .accessibilityIdentifier("prehr.title")
-                Text("Heart rate makes interval training count. Connect a strap, or continue without.")
+                Text("Connect a strap or your Apple Watch, then start when you see your live heart rate.")
                     .font(.subheadline).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal)
             }
@@ -64,22 +66,10 @@ struct PreWorkoutHRView: View {
                 Button {
                     onContinue(true)
                 } label: {
-                    Text("Use this HR").frame(maxWidth: .infinity, minHeight: 52)
+                    Text("Start Workout").frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.borderedProminent).controlSize(.large).tint(.pink)
-                .disabled(!strapConnected)
-                .accessibilityIdentifier("prehr.useHR")
-
-                if canUseWatch {
-                    Button {
-                        if let type = workoutType { model.startWatchWorkout(type: type) }
-                        onContinue(true)
-                    } label: {
-                        Text("Use Watch HR").frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    .buttonStyle(.borderedProminent).controlSize(.large).tint(.orange)
-                    .accessibilityIdentifier("prehr.useWatch")
-                }
+                .accessibilityIdentifier("prehr.start")
 
                 Button {
                     onContinue(false)
@@ -94,7 +84,6 @@ struct PreWorkoutHRView: View {
         .padding(.vertical)
         .onAppear {
             hrm.startScanning()
-            // Reconnect the remembered default device automatically.
             if let id = defaultDevice?.id { hrm.connect(id) }
         }
         .onDisappear { hrm.stopScanning() }
@@ -108,7 +97,7 @@ struct PreWorkoutHRView: View {
             title: strapName,
             tint: .pink
         ) {
-            if strapConnected, let bpm = hrm.currentBPM {
+            if let bpm = strapBPM {
                 HRValueLabel(bpm: Int(bpm), note: "live", noteColor: .green)
                     .accessibilityIdentifier("prehr.strapBPM")
             } else if strapConnected {
@@ -127,19 +116,17 @@ struct PreWorkoutHRView: View {
             title: "Apple Watch",
             tint: .orange
         ) {
-            if model.watchActive, let bpm = hrm.currentBPM {
+            if let bpm = watchBPM {
                 HRValueLabel(bpm: Int(bpm), note: "live", noteColor: .green)
                     .accessibilityIdentifier("prehr.watchBPM")
+            } else if model.watchActive {
+                ProgressView()
             } else {
-                Text("Available")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
+                Button("Use Watch") { startWatch() }
+                    .buttonStyle(.bordered).tint(.orange)
+                    .accessibilityIdentifier("prehr.useWatch")
             }
         }
-    }
-
-    private var canUseWatch: Bool {
-        model.watchAvailable && workoutType != nil
     }
 
     // MARK: Helpers
@@ -149,6 +136,14 @@ struct PreWorkoutHRView: View {
         if let first = hrm.discovered.first {
             hrm.connect(first.id)
             hrm.rememberDevice(first.id)
+        }
+    }
+
+    private func startWatch() {
+        if let type = workoutType {
+            model.startWatchWorkout(type: type)
+        } else {
+            model.startWatchStrength()
         }
     }
 }

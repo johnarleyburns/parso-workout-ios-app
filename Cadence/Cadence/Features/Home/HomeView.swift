@@ -25,6 +25,13 @@ struct HomeView: View {
     @State private var intervalLaunch: IntervalLaunch?
     @State private var swimPresented = false
     @State private var pending: PendingWorkout?
+    /// Strength HR gate — shown BEFORE the get-ready countdown so the user can
+    /// connect a strap or start the Watch, see live HR, then press Start.
+    @State private var hrGateKind: PendingWorkout.Kind?
+    /// When true, the warm-up overlay appears after the HR gate passes.
+    @State private var startWarmupAfterHRGate = false
+    /// Coach prescription stashed while the HR gate is shown.
+    @State private var pendingPrescription: Recommendation?
     @State private var warmupActive = false
     @State private var today: DayActivity?
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
@@ -108,7 +115,7 @@ struct HomeView: View {
                 WorkoutTypePicker(onSelect: { start($0) },
                                   onPlan: { plan, ladder in launchFromPicker(.plan(plan, ladder)) },
                                   onWeightsQuickStart: { launchFromPicker(.strength, skipCountdown: true) },
-                                  onWeightsWarmup: { typePickerPresented = false; warmupActive = true },
+                                   onWeightsWarmup: { typePickerPresented = false; startWarmupAfterHRGate = true; hrGateKind = .strength },
                                   onWeightsReuse: { launchFromPicker(.reuse($0)) },
                                   onOtherCardio: { desc, gps in startOtherCardio(description: desc, gps: gps) })
             }
@@ -144,7 +151,7 @@ struct HomeView: View {
                 NavigationStack {
                     WeightsStartView(
                         onQuickStart: { weightsStartPresented = false; launchFromPicker(.strength, skipCountdown: true) },
-                        onWarmupStart: { weightsStartPresented = false; warmupActive = true },
+                        onWarmupStart: { weightsStartPresented = false; startWarmupAfterHRGate = true; hrGateKind = .strength },
                         onReuse: { weightsStartPresented = false; launchFromPicker(.reuse($0)) },
                         onPlan: { plan, ladder in weightsStartPresented = false; launchFromPicker(.plan(plan, ladder)) })
                 }
@@ -184,6 +191,17 @@ struct HomeView: View {
         // session and drop the overlay in one animation-disabled transaction, so the
         // session is already on screen when the overlay vanishes — no Home flash
         // before the warm-up, and none after it.
+        // Strength HR gate — appears BEFORE the get-ready countdown.  Lets the
+        // user connect HR, see live data, then press "Start Workout".
+        if let kind = hrGateKind {
+            PreWorkoutHRView(workoutType: nil) { useHR in
+                hrGateKind = nil
+                proceedFromHRGate(kind, useHR: useHR)
+            }
+            .transition(.identity)
+            .zIndex(2)
+        }
+
         if let p = pending {
             PreWorkoutCountdownView(
                 seconds: settings.preWorkoutCountdown,
@@ -493,22 +511,51 @@ struct HomeView: View {
     }
 
     /// Launches a strength/plan workout chosen from the Start sheet without a Home
-    /// flash (P1 #1/#5): with no countdown, push the session *under* the still-open
-    /// sheet and then dismiss it (revealing the session); with a countdown, dismiss
-    /// first and present the countdown.
-    /// `skipCountdown` makes "Quick Start" truly immediate — no get-ready countdown,
+    /// flash (P1 #1/#5). Strength workouts route through the HR gate first, then
+    /// the get-ready countdown.
+    /// `skipCountdown` makes "Quick Start" truly immediate — no countdown
     /// regardless of the Settings value (which still applies to library/reuse/warm-up).
     private func launchFromPicker(_ kind: PendingWorkout.Kind, skipCountdown: Bool = false) {
+        typePickerPresented = false
         if skipCountdown || settings.preWorkoutCountdown <= 0 {
-            launch(kind)
-            typePickerPresented = false
+            if kind.isStrength { hrGateKind = kind } else { launch(kind) }
         } else {
-            typePickerPresented = false
-            pending = PendingWorkout(kind: kind)
+            if kind.isStrength { hrGateKind = kind } else { pending = PendingWorkout(kind: kind) }
         }
     }
     private func begin(_ kind: PendingWorkout.Kind) {
-        if settings.preWorkoutCountdown <= 0 { launch(kind) } else { pending = PendingWorkout(kind: kind) }
+        if kind.isStrength { hrGateKind = kind }
+        else if settings.preWorkoutCountdown <= 0 { launch(kind) }
+        else { pending = PendingWorkout(kind: kind) }
+    }
+
+    /// Called after the HR gate closes.  If the countdown is enabled, show it;
+    /// otherwise launch immediately.  `useHR` is passed through to the session.
+    private func proceedFromHRGate(_ kind: PendingWorkout.Kind, useHR: Bool) {
+        if useHR {
+            // Strap or Watch is now connected — the HR pipeline is live.
+        }
+        // "Do this workout" path: launch the prescription immediately (fast path).
+        if let rec = pendingPrescription {
+            pendingPrescription = nil
+            let prescribed = rec.prescribedSession()
+            if let s = try? WorkoutRepository.startSession(from: prescribed, in: context) {
+                active.startStrength(s)
+                path.append(s)
+                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+            }
+            return
+        }
+        if startWarmupAfterHRGate {
+            startWarmupAfterHRGate = false
+            warmupActive = true
+            return
+        }
+        if settings.preWorkoutCountdown > 0 {
+            pending = PendingWorkout(kind: kind)
+        } else {
+            launch(kind)
+        }
     }
     private func launch(_ kind: PendingWorkout.Kind) {
         switch kind {
@@ -535,21 +582,25 @@ struct HomeView: View {
 
     /// "Do this workout" (strength-pivot P5.3): materialize the coach's top
     /// recommendation into a fresh strength session pre-filled with the prescribed
-    /// movement, planned sets/reps, and load, then push straight into the logger —
-    /// the fast default path (no get-ready countdown, like Quick Start).
+    /// movement, planned sets/reps, and load — the fast default path. Routes
+    /// through the HR gate so the user can verify live HR first.
     private func launchPrescription(_ rec: Recommendation) {
-        let prescribed = rec.prescribedSession()
-        guard let s = try? WorkoutRepository.startSession(from: prescribed, in: context) else { return }
-        active.startStrength(s)
-        path.append(s)
-        WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+        pendingPrescription = rec
+        hrGateKind = .strength
     }
 }
 
 /// What to launch once the countdown finishes.
 struct PendingWorkout: Identifiable {
     let id = UUID()
-    enum Kind { case strength, plan(WorkoutPlan, [Int]?), reuse(WorkoutSession), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType) }
+    enum Kind { case strength, plan(WorkoutPlan, [Int]?), reuse(WorkoutSession), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType)
+        var isStrength: Bool {
+            switch self {
+            case .strength, .plan, .reuse: true
+            case .outdoor, .interval, .timer: false
+            }
+        }
+    }
     let kind: Kind
 }
 

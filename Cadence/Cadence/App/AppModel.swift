@@ -1,17 +1,32 @@
 import Foundation
 import SwiftUI
 import Observation
+import WatchConnectivity
 import CadenceCore
 
 /// Central dependency container injected through the environment. Chooses real
 /// platform services or deterministic fakes based on launch arguments so the
 /// app is fully UI-testable on the simulator (which has no Health/BLE/GPS data).
+///
+/// Also acts as the phone-side WCSession delegate for FR-8: receives live HR
+/// from the Apple Watch and feeds it into the same `HeartRateMonitor` pipeline
+/// as the BLE chest strap.
+///
+/// WCSession activation is deferred to `activateWCSession()`, called from
+/// `CadenceApp.task{}` so it never blocks app launch.
 @Observable
-final class AppModel {
+final class AppModel: NSObject {
     let health: HealthDataProviding
     let hrm: HeartRateMonitor
     let location: LocationTracker
     let isUITestMode: Bool
+
+    /// Whether the Apple Watch is actively streaming HR (FR-8).
+    private(set) var watchActive: Bool = false
+
+    /// Cached once at launch — avoids hitting `WCSession.default.isWatchAppInstalled`
+    /// (a synchronous IPC call) from SwiftUI body evaluation.
+    private(set) var watchAppInstalled: Bool = false
 
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var lastHealthSync: Date? {
@@ -19,7 +34,7 @@ final class AppModel {
         set { UserDefaults.standard.set(newValue?.timeIntervalSince1970, forKey: SettingsKey.lastHealthSync) }
     }
 
-    init() {
+    override init() {
         let args = ProcessInfo.processInfo.arguments
         let uiTest = args.contains("-uiTest")
         self.isUITestMode = uiTest
@@ -37,5 +52,83 @@ final class AppModel {
 
         self.hrm = HeartRateMonitor(simulated: uiTest)
         self.location = LocationTracker(simulated: uiTest)
+
+        super.init()
+    }
+
+    // MARK: Watch HR relay (FR-8)
+
+    /// Is the Apple Watch available to stream HR? Uses cached value to avoid
+    /// synchronous IPC calls from SwiftUI body evaluation.
+    var watchAvailable: Bool {
+        !isUITestMode && watchAppInstalled
+    }
+
+    /// Activates the WCSession and caches `isWatchAppInstalled`. Called once from
+    /// `CadenceApp.task{}` so it doesn't block launch (FR-8 reliability fix).
+    func activateWCSession() {
+        guard !isUITestMode, WCSession.isSupported() else { return }
+        let session = WCSession.default
+        session.delegate = self
+        session.activate()
+        // Cache synchronously after activation — the value is valid once
+        // the session is active.
+        watchAppInstalled = session.isWatchAppInstalled
+    }
+
+    /// Tells the Apple Watch to start an `HKWorkoutSession` for the given
+    /// exercise type and begin streaming live heart rate.
+    func startWatchWorkout(type: CardioType) {
+        startWatchWorkout(rawType: type.rawValue)
+    }
+
+    /// Starts a Watch workout for strength (maps to `.functionalStrengthTraining`).
+    func startWatchStrength() {
+        startWatchWorkout(rawType: "strength")
+    }
+
+    /// Tells the Apple Watch to start an `HKWorkoutSession` for the given
+    /// raw type string and begin streaming live heart rate.
+    func startWatchWorkout(rawType: String) {
+        guard watchAvailable, let session = wcSession else { return }
+        session.sendMessage(["command": "start_workout", "type": rawType],
+                            replyHandler: nil, errorHandler: nil)
+        watchActive = true
+    }
+
+    /// Tells the Apple Watch to end the `HKWorkoutSession` and stop streaming.
+    func stopWatchWorkout() {
+        guard watchAvailable, let session = wcSession else { return }
+        session.sendMessage(["command": "stop_workout"],
+                            replyHandler: nil, errorHandler: nil)
+        watchActive = false
+    }
+
+    private var wcSession: WCSession? {
+        guard WCSession.isSupported() else { return nil }
+        let s = WCSession.default
+        return s.activationState == .activated ? s : nil
+    }
+}
+
+// MARK: - WCSessionDelegate (FR-8)
+
+extension AppModel: WCSessionDelegate {
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        if activationState == .activated {
+            watchAppInstalled = session.isWatchAppInstalled
+        }
+    }
+
+    func sessionDidBecomeInactive(_ session: WCSession) {}
+    func sessionDidDeactivate(_ session: WCSession) {
+        WCSession.default.activate()
+    }
+
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        guard let bpm = message["bpm"] as? Double else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.hrm.injectExternalBPM(bpm)
+        }
     }
 }

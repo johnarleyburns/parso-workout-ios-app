@@ -5,15 +5,21 @@ import CadenceCore
 /// Pre-workout heart-rate connection screen (feedback batch 5). Shown before a
 /// HIIT/boxing interval so the user can get HR flowing — or knowingly skip it.
 ///
-/// Source: the **chest strap (BLE)** — real-time `currentBPM` from
-/// `HeartRateMonitor`, the supported live path (no watch app). The Apple Watch is
-/// intentionally not shown here: the iPhone can't stream the Watch's *live* HR
-/// without a watchOS app, and its last Health sample is too stale to be useful
-/// in a workout, so we don't pretend otherwise.
+/// Sources:
+/// - **Chest strap (BLE)** — real-time `currentBPM` from `HeartRateMonitor`.
+/// - **Apple Watch (FR-8)** — the phone can't stream the Watch's *live* HR
+///   without a watchOS app.  When the watch app is installed and a workout
+///   starts, we offer "Use Watch HR" to start an `HKWorkoutSession` on the
+///   Watch and relay HR via WCSession.
 ///
 /// `onContinue(useHR)` proceeds to the workout — `true` if the user wants HR
-/// captured (strap), `false` to record without HR.
+/// captured (strap or watch), `false` to record without HR.
+///
+/// When `workoutType` is nil (defensive — e.g. called from a path that doesn't
+/// know the type), the Watch option is hidden and the gate still renders
+/// strap-only so HR isn't blocked.
 struct PreWorkoutHRView: View {
+    let workoutType: CardioType?
     let onContinue: (_ useHR: Bool) -> Void
 
     @Environment(AppModel.self) private var model
@@ -44,8 +50,13 @@ struct PreWorkoutHRView: View {
                     .multilineTextAlignment(.center).padding(.horizontal)
             }
 
-            strapRow
-                .padding(.horizontal)
+            VStack(spacing: 12) {
+                strapRow
+                if model.watchAvailable {
+                    watchRow
+                }
+            }
+            .padding(.horizontal)
 
             Spacer()
 
@@ -58,6 +69,17 @@ struct PreWorkoutHRView: View {
                 .buttonStyle(.borderedProminent).controlSize(.large).tint(.pink)
                 .disabled(!strapConnected)
                 .accessibilityIdentifier("prehr.useHR")
+
+                if canUseWatch {
+                    Button {
+                        if let type = workoutType { model.startWatchWorkout(type: type) }
+                        onContinue(true)
+                    } label: {
+                        Text("Use Watch HR").frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.borderedProminent).controlSize(.large).tint(.orange)
+                    .accessibilityIdentifier("prehr.useWatch")
+                }
 
                 Button {
                     onContinue(false)
@@ -97,6 +119,27 @@ struct PreWorkoutHRView: View {
                     .accessibilityIdentifier("prehr.connectStrap")
             }
         }
+    }
+
+    private var watchRow: some View {
+        HRSourceCard(
+            icon: "applewatch",
+            title: "Apple Watch",
+            tint: .orange
+        ) {
+            if model.watchActive, let bpm = hrm.currentBPM {
+                HRValueLabel(bpm: Int(bpm), note: "live", noteColor: .green)
+                    .accessibilityIdentifier("prehr.watchBPM")
+            } else {
+                Text("Available")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var canUseWatch: Bool {
+        model.watchAvailable && workoutType != nil
     }
 
     // MARK: Helpers

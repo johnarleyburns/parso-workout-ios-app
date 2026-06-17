@@ -141,6 +141,23 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring {
         state = .idle
     }
 
+    // MARK: External injection (FR-8 — Watch HR relay)
+
+    /// Feeds a live BPM value from an external source (e.g. the Apple Watch via
+    /// WCSession) into the same pipeline used by the BLE chest strap.  Clears
+    /// any active buffer, sets state to `.external` so consumers can
+    /// distinguish the source, and marks battery as nil (watch battery is
+    /// separate).
+    func injectExternalBPM(_ bpm: Double) {
+        _bpm = bpm
+        lastKnownBPM = nil
+        bufferExpiryTime = nil
+        bufferTimer?.invalidate(); bufferTimer = nil
+        battery = nil
+        if case .connected = state { return }
+        state = .connected(UUID()) // external source placeholder
+    }
+
     // MARK: Internal helpers
 
     private func startSimFeed() {

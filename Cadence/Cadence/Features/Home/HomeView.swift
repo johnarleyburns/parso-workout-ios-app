@@ -515,17 +515,17 @@ struct HomeView: View {
         case .strength:
             if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
                 active.startStrength(s); path.append(s)
-                WorkoutCues.transition(enabled: settings.workoutSounds)   // workout starts (item 9)
+                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
             }
         case .plan(let plan, let ladder):
             if let s = try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) {
                 active.startStrength(s); path.append(s)
-                WorkoutCues.transition(enabled: settings.workoutSounds)
+                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
             }
         case .reuse(let past):
             if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
                 active.startStrength(s); path.append(s)
-                WorkoutCues.transition(enabled: settings.workoutSounds)
+                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
             }
         case .outdoor(let c): outdoorType = c
         case .interval(let l): intervalLaunch = l
@@ -542,7 +542,7 @@ struct HomeView: View {
         guard let s = try? WorkoutRepository.startSession(from: prescribed, in: context) else { return }
         active.startStrength(s)
         path.append(s)
-        WorkoutCues.transition(enabled: settings.workoutSounds)
+        WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
     }
 }
 

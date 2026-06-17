@@ -58,6 +58,7 @@ struct CadenceApp: App {
                 .environment(model)
                 .environment(settings)
                 .environment(active)
+                .task { model.activateWCSession() }
         }
         .modelContainer(container)
     }

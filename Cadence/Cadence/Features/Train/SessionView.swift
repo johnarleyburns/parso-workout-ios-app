@@ -262,6 +262,12 @@ struct SessionView: View {
             Text("This ends your workout and starts the cool-down timer.")
         }
         .task { _ = try? WorkoutRepository.me(in: context) }
+        // Auto-start Watch HR for strength when no BLE strap is connected (FR-8).
+        .onAppear {
+            guard !isManualLog, model.watchAvailable else { return }
+            if case .connected = model.hrm.state { return }
+            model.startWatchStrength()
+        }
         // Backing out of a freshly-started log with nothing entered shouldn't litter
         // history with an empty "Logged" row.
         .onDisappear { if isManualLog { cleanupEmptyLog() } }
@@ -636,9 +642,9 @@ struct SessionView: View {
     /// summary to the app model so it presents *over Home* (P1 #9) — the session pops
     /// behind it, so Done reveals Home without flashing the session screen.
     private func endWorkout() {
-        // Workout ends — bell so the user knows to stop (batch 7 item 9). Covers both
-        // "End now" and the end of a guided cool-down.
-        WorkoutCues.transition(enabled: settings.workoutSounds)
+        // Workout ends — beep sequence so the user knows to stop (batch 7 item 9).
+        WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
+        model.stopWatchWorkout()
         if settings.autoSaveHealth, session.healthKitWorkoutUUID == nil, !session.orderedSets.isEmpty {
             Task { await saveToHealth() }
         }

@@ -6,6 +6,9 @@ import CadenceCore
 /// Live map with a growing route polyline, big distance + pace, HR/zone, and
 /// wall-clock elapsed that survives backgrounding (a call / the phone in a
 /// pocket). Reuses `CardioRecorder` + the shared `LocationTracker`.
+///
+/// FR-8 follow-up: shows a pre-workout HR gate before starting, letting the
+/// user connect a strap or use the Apple Watch.
 struct OutdoorCardioView: View {
     let type: CardioType
     /// Free-text label for an "Other Cardio" workout (feedback batch 6), else nil.
@@ -23,6 +26,8 @@ struct OutdoorCardioView: View {
     @State private var clock = WorkoutClock()
     @State private var now = Date()
     @State private var finishedSummary: WorkoutSummaryData?
+    @State private var showingHRGate = true
+    @State private var captureHR = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var elapsed: TimeInterval { clock.elapsed(now: now) }
@@ -37,8 +42,13 @@ struct OutdoorCardioView: View {
 
     var body: some View {
         if let finishedSummary {
-            // A3 — the outdoor run is saved; show its summary (distance + route).
             WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
+        } else if showingHRGate {
+            PreWorkoutHRView(workoutType: type) { useHR in
+                captureHR = useHR
+                showingHRGate = false
+                startIfNeeded()
+            }
         } else {
             liveView
         }
@@ -107,7 +117,6 @@ struct OutdoorCardioView: View {
             }
         }
         .interactiveDismissDisabled(true)
-        .onAppear(perform: startIfNeeded)
         .onReceive(tick) { _ in
             now = Date()
             recorder?.tick()
@@ -143,7 +152,7 @@ struct OutdoorCardioView: View {
         r.start(type: type)
         recorder = r
         clock = WorkoutClock(startedAt: Date())
-        WorkoutCues.transition(enabled: settings.workoutSounds)   // workout starts (item 9)
+        WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
     }
 
     private func togglePause() {
@@ -153,14 +162,14 @@ struct OutdoorCardioView: View {
 
     private func end() async {
         guard let r = recorder else { dismiss(); return }
-        WorkoutCues.transition(enabled: settings.workoutSounds)   // workout ends (item 9)
+        WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         clock.end()
         var summary = r.end()
         summary.customTitle = customTitle
         summary.targetDistanceMeters = goalMeters
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
-                                                              healthKitWorkoutUUID: hkID, in: context)
+                                                               healthKitWorkoutUUID: hkID, in: context)
         if let saved {
             finishedSummary = WorkoutSummaryData.from(cardio: saved)
         } else {

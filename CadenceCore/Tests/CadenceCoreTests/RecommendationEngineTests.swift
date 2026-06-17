@@ -156,4 +156,84 @@ final class RecommendationEngineTests: XCTestCase {
         let rec = RecommendationEngine.run(f).first { $0.id == "progression.BackSquat" }
         XCTAssertEqual(rec?.target?.loadKg, 62.5)
     }
+
+    // MARK: P6 — cardio HIIT/SIT recommendations
+
+    private let day: TimeInterval = 86_400
+
+    private func cardioA(_ kind: AssessmentKind, _ value: Double, daysAgo: Double,
+                         now: Date) -> Assessment {
+        Assessment(date: now.addingTimeInterval(-daysAgo * day),
+                   kind: kind, value: value)
+    }
+
+    func testVo2maxDeclineTriggersHIITRecommendation() {
+        let now = Date()
+        let assessments = [
+            cardioA(.vo2maxField, 45, daysAgo: 60, now: now),
+            cardioA(.vo2maxField, 38, daysAgo: 2, now: now),  // declined past MDC
+        ]
+        let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
+                                   goal: .hypertrophy, experience: .intermediate)
+        let rec = RecommendationEngine.run(f).first { $0.id == "cardio.hiit.vo2max" }
+        XCTAssertEqual(rec?.kind, .cardioHIIT)
+        XCTAssertEqual(rec?.cardioPrescription, "Norwegian 4×4")
+        XCTAssertEqual(rec?.citation.id, CitationRegistry.hiitVo2max.id)
+    }
+
+    func testWingateDeclineTriggersSITRecommendation() {
+        let now = Date()
+        let assessments = [
+            cardioA(.wingate, 600, daysAgo: 60, now: now),
+            cardioA(.wingate, 500, daysAgo: 2, now: now),  // declined past MDC
+        ]
+        let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
+                                   goal: .hypertrophy, experience: .intermediate)
+        let rec = RecommendationEngine.run(f).first { $0.id == "cardio.sit.wingate" }
+        XCTAssertEqual(rec?.kind, .cardioHIIT)
+        XCTAssertEqual(rec?.cardioPrescription, "SIT (Wingate)")
+        XCTAssertEqual(rec?.citation.id, CitationRegistry.wingateTest.id)
+    }
+
+    func testCardioRecHasNoSetTarget() {
+        let now = Date()
+        let assessments = [
+            cardioA(.vo2maxField, 45, daysAgo: 60, now: now),
+            cardioA(.vo2maxField, 38, daysAgo: 2, now: now),
+        ]
+        let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
+                                   goal: .hypertrophy, experience: .intermediate)
+        let rec = RecommendationEngine.run(f).first { $0.id == "cardio.hiit.vo2max" }
+        XCTAssertNil(rec?.target, "cardioHIIT recs should not have a SetTarget")
+        XCTAssertNotNil(rec?.cardioPrescription)
+    }
+
+    func testVo2maxImprovementDoesNotTriggerHIIT() {
+        let now = Date()
+        let assessments = [
+            cardioA(.vo2maxField, 38, daysAgo: 60, now: now),
+            cardioA(.vo2maxField, 45, daysAgo: 2, now: now),  // improved
+        ]
+        let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
+                                   goal: .hypertrophy, experience: .intermediate)
+        XCTAssertNil(RecommendationEngine.run(f).first { $0.id == "cardio.hiit.vo2max" })
+    }
+
+    func testCardioRecommendationsAreCited() {
+        let now = Date()
+        let assessments = [
+            cardioA(.vo2maxField, 45, daysAgo: 60, now: now),
+            cardioA(.vo2maxField, 38, daysAgo: 2, now: now),
+            cardioA(.wingate, 600, daysAgo: 60, now: now),
+            cardioA(.wingate, 500, daysAgo: 2, now: now),
+        ]
+        let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
+                                   goal: .hypertrophy, experience: .intermediate)
+        let known = Set(CitationRegistry.all.map(\.id))
+        let recs = RecommendationEngine.run(f).filter { $0.kind == .cardioHIIT }
+        XCTAssertFalse(recs.isEmpty)
+        for rec in recs {
+            XCTAssertTrue(known.contains(rec.citation.id), "\(rec.id) cites unknown \(rec.citation.id)")
+        }
+    }
 }

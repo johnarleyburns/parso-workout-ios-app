@@ -31,6 +31,16 @@ public extension KnowledgeBase {
         addVolume,
     ]
 
+    /// P6 cardio rules — prescribe interval protocols when cardio assessments
+    /// show a decline.
+    static let p6RecRules: [RecommendationRule] = [
+        cardioHIIT,
+        cardioSIT,
+    ]
+
+    /// All active prescriptive rules.
+    static let activeRecommendationRules: [RecommendationRule] = p5Rules + p6RecRules
+
     // MARK: - Rule: double-progression for a lift that isn't declining
 
     static let progression = RecommendationRule(id: "progression", priority: 100) { facts in
@@ -139,6 +149,47 @@ public extension KnowledgeBase {
             target: SetTarget(sets: 3, repsLow: range.lowerBound, repsHigh: range.upperBound, loadKg: nil, rir: rir),
             confidence: .moderate,
             priority: 0)
+    }
+
+    // MARK: - P6: cardio HIIT prescriptions
+
+    /// When VO₂max is declining, prescribe high-intensity interval training
+    /// (Norwegian 4×4 as the default, well-studied protocol for VO₂max improvement).
+    static let cardioHIIT = RecommendationRule(id: "cardio.hiit", priority: 85) { facts in
+        var out: [Recommendation] = []
+        for s in facts.assessments where s.kind == .vo2maxField && s.trend == .declined {
+            let label = AssessmentFormat.seriesLabel(s)
+            out.append(Recommendation(
+                id: "cardio.hiit.vo2max",
+                kind: .cardioHIIT,
+                title: "Boost your aerobic fitness",
+                action: "Try a Norwegian 4×4 session: warm up, then 4 rounds of 4 minutes hard / 3 minutes recovery, cool down.",
+                detail: "High-intensity intervals are one of the most effective ways to raise VO₂max. Your \(label.lowercased()) is declining — one or two interval sessions a week, paired with your usual training, can reverse that trend in a 6–8 week block.",
+                citation: CitationRegistry.hiitVo2max,
+                cardioPrescription: "Norwegian 4×4",
+                confidence: .moderate,
+                priority: 85))
+        }
+        return out
+    }
+
+    /// When Wingate peak power is declining, prescribe sprint interval training.
+    static let cardioSIT = RecommendationRule(id: "cardio.sit", priority: 84) { facts in
+        var out: [Recommendation] = []
+        for s in facts.assessments where s.kind == .wingate && s.trend == .declined {
+            let label = AssessmentFormat.seriesLabel(s)
+            out.append(Recommendation(
+                id: "cardio.sit.wingate",
+                kind: .cardioHIIT,
+                title: "Build your anaerobic power",
+                action: "Try a SIT (Wingate) session: warm up, then 4 rounds of 30s all-out sprint / 4 min recovery, cool down.",
+                detail: "Sprint interval training is the most direct way to improve anaerobic peak power — the same energy pathway the Wingate test measures. Your \(label.lowercased()) is declining; one SIT session a week for a few weeks can restore it.",
+                citation: CitationRegistry.wingateTest,
+                cardioPrescription: "SIT (Wingate)",
+                confidence: .moderate,
+                priority: 84))
+        }
+        return out
     }
 }
 

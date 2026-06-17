@@ -33,8 +33,15 @@ public enum KnowledgeBase {
         assessmentRetest,
     ]
 
+    /// P6 cardio assessment rules — mirror p4Rules but for cardio kinds, with
+    /// cardio-specific citations.
+    public static let p6InsightRules: [InsightRule] = [
+        cardioAssessmentProgress,
+        cardioAssessmentRetest,
+    ]
+
     /// Every active rule, run by the engine.
-    public static let activeRules: [InsightRule] = p3Rules + p4Rules
+    public static let activeRules: [InsightRule] = p3Rules + p4Rules + p6InsightRules
 
     // MARK: - Rule 1: weekly volume vs MEV/MAV/MRV landmarks
 
@@ -243,6 +250,61 @@ public enum KnowledgeBase {
                 severity: .info)
         }
     }
+
+    // MARK: - P6 rules: cardio assessment progress + retest
+
+    /// Cardio assessment progress — mirrors `assessmentProgress` but only for
+    /// cardio kinds (VO₂max / Wingate), with cardio-specific citations.
+    static let cardioAssessmentProgress = InsightRule(id: "assessment.cardio.progress", priority: 94) { facts in
+        var out: [Insight] = []
+        for s in facts.assessments where s.kind.category == .cardio {
+            guard s.count >= 2 else { continue }
+            let label = AssessmentFormat.seriesLabel(s)
+            let change = AssessmentFormat.change(s)
+            let cite = s.kind == .wingate
+                ? CitationRegistry.wingateTest
+                : CitationRegistry.cooperVo2max
+            switch s.trend {
+            case .improved:
+                out.append(Insight(
+                    id: "assessment.cardio.\(s.id)",
+                    kind: .assessment,
+                    title: "\(label) is improving",
+                    message: "\(label): \(change) since your baseline.",
+                    detail: "Your \(label.lowercased()) is up \(change) versus baseline — beyond what measurement noise would explain. The current training block is working; keep it going and re-test at the end of the next cycle.",
+                    citation: cite,
+                    severity: .info))
+            case .declined:
+                out.append(Insight(
+                    id: "assessment.cardio.\(s.id)",
+                    kind: .assessment,
+                    title: "\(label) has dropped",
+                    message: "\(label): \(change) since your baseline.",
+                    detail: "Your \(label.lowercased()) has fallen \(change) versus baseline — past what measurement noise alone explains. A single dip can be fatigue or a bad test day, but a decline over two tests is a cue to check your conditioning focus.",
+                    citation: cite,
+                    severity: .attention))
+            case .unchanged, .single: continue
+            }
+        }
+        return out
+    }
+
+    /// Cardio re-test cadence — mirrors `assessmentRetest` for cardio kinds.
+    static let cardioAssessmentRetest = InsightRule(id: "assessment.cardio.retest", priority: 59) { facts in
+        facts.assessmentsDueForRetest
+            .filter { $0.kind.category == .cardio }
+            .map { s in
+                let label = AssessmentFormat.seriesLabel(s)
+                return Insight(
+                    id: "assessment.cardio.retest.\(s.id)",
+                    kind: .assessment,
+                    title: "Time to re-test \(label.lowercased())",
+                    message: "It's been over six weeks since your last \(label.lowercased()) test.",
+                    detail: "Assessments work best as a pre/post pair. It's been a full training block (~6–8 weeks) since your last \(label.lowercased()) — a good time to re-run it and see where you stand.",
+                    citation: CitationRegistry.schoenfeld2021,
+                    severity: .info)
+            }
+    }
 }
 
 /// Formatting for assessment insights — unit-aware values and labels.
@@ -269,6 +331,8 @@ enum AssessmentFormat {
         case .weightKg: return "\(sign)\(Format.sets((mag * 10).rounded() / 10)) kg"
         case .reps:     return "\(sign)\(Int(mag.rounded())) reps"
         case .seconds:  return "\(sign)\(Int(mag.rounded())) s"
+        case .mlKgMin:  return "\(sign)\(String(format: "%.1f", mag)) mL/kg/min"
+        case .watts:    return "\(sign)\(Int(mag.rounded())) W"
         }
     }
 }

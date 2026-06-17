@@ -73,7 +73,7 @@ public final class Assessment {
 // MARK: - Taxonomy
 
 /// What an assessment measures. P4 covers the strength + strength-endurance
-/// battery; `vo2maxField` / `wingate` are reserved for P6 (cardio/anaerobic).
+/// battery; `vo2maxField` / `wingate` land in P6 (cardio/anaerobic).
 public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiable {
     case e1RM                 // estimated 1RM from a top set / AMRAP at load
     case repMax               // max reps at a fixed load (rep-max test)
@@ -82,6 +82,8 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
     case bodyweightSquatMax   // max bodyweight squats
     case plankHold            // max plank hold (seconds)
     case hollowHold           // max hollow-body hold (seconds)
+    case vo2maxField          // estimated VO₂max from a field test (mL/kg/min)
+    case wingate              // Wingate anaerobic peak power (watts)
 
     public var id: String { rawValue }
 
@@ -90,6 +92,7 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         case .e1RM, .repMax: return .strength
         case .pushupMax, .pullupMax, .bodyweightSquatMax, .plankHold, .hollowHold:
             return .strengthEndurance
+        case .vo2maxField, .wingate: return .cardio
         }
     }
 
@@ -99,6 +102,8 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         case .e1RM: return .weightKg
         case .repMax, .pushupMax, .pullupMax, .bodyweightSquatMax: return .reps
         case .plankHold, .hollowHold: return .seconds
+        case .vo2maxField: return .mlKgMin
+        case .wingate: return .watts
         }
     }
 
@@ -110,8 +115,8 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         }
     }
 
-    /// Higher is always better for the P4 battery (more reps / longer hold /
-    /// heavier estimated max). Kept explicit for the trend math + future kinds.
+    /// Higher is always better: heavier lift, more reps, longer hold, higher VO₂max,
+    /// higher peak power. Explicit for the trend math.
     public var higherIsBetter: Bool { true }
 
     public var displayName: String {
@@ -123,6 +128,8 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         case .bodyweightSquatMax: return "Max bodyweight squats"
         case .plankHold: return "Plank hold"
         case .hollowHold: return "Hollow-body hold"
+        case .vo2maxField: return "VO₂max test"
+        case .wingate: return "Wingate test"
         }
     }
 
@@ -133,6 +140,8 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         case .pullupMax: return "figure.play"
         case .bodyweightSquatMax: return "figure.cross.training"
         case .plankHold, .hollowHold: return "timer"
+        case .vo2maxField: return "heart.text.clipboard"
+        case .wingate: return "bolt.fill"
         }
     }
 
@@ -154,19 +163,26 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
             return "Hold a forearm plank with a flat back and braced core for as long as form stays solid. Stop the clock when your hips sag or rise."
         case .hollowHold:
             return "Lie on your back, lower back pressed down, legs and shoulders lifted into a hollow position. Hold as long as the lower back stays flat."
+        case .vo2maxField:
+            return "Run, walk, or cycle as far as you can in 12 minutes (Cooper test). Estimate your VO₂max from the distance covered — many online calculators and wearable devices provide this value in mL/kg/min."
+        case .wingate:
+            return "After a thorough warm-up, sprint all-out for 30 seconds against a fixed resistance (typically 7.5% of body weight on a cycle ergometer). Record the highest average power output (watts) achieved — most ergometers display this directly."
         }
     }
 }
 
-/// Which arm of the battery a kind belongs to (P4 ships both).
+/// Which arm of the battery a kind belongs to (P4 ships strength + strength-endurance;
+/// P6 adds cardio).
 public enum AssessmentCategory: String, CaseIterable, Sendable, Identifiable {
     case strength
     case strengthEndurance
+    case cardio
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
         case .strength: return "Strength"
         case .strengthEndurance: return "Strength-endurance"
+        case .cardio: return "Cardio"
         }
     }
 }
@@ -174,7 +190,9 @@ public enum AssessmentCategory: String, CaseIterable, Sendable, Identifiable {
 /// Unit of an assessment's stored value (drives formatting + which input the
 /// record screen shows).
 public enum AssessmentUnit: String, Sendable {
-    case weightKg   // canonical kg (display-converted like other weights)
+    case weightKg       // canonical kg (display-converted like other weights)
     case reps
     case seconds
+    case mlKgMin        // mL/kg/min (VO₂max)
+    case watts          // absolute watts (Wingate peak power)
 }

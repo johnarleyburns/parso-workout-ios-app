@@ -161,8 +161,10 @@ public struct WorkoutSummaryData: Equatable, Sendable {
 
     /// Builds a strength summary from a finished (or in-progress) session.
     /// Cardio fields are nil; `exercises`/`setCount`/`totalVolumeKg` reflect the
-    /// owner's working sets only.
-    public static func from(session: WorkoutSession) -> WorkoutSummaryData {
+    /// owner's working sets only. HR data comes from the optional `hrSamples`
+    /// collected during the session (FR-2.3 strength HR).
+    public static func from(session: WorkoutSession,
+                            hrSamples: [HRSamplePoint] = []) -> WorkoutSummaryData {
         // List every exercise the owner actually performed, in order. Previously
         // an exercise whose only sets were warmups was silently dropped, so a
         // logged movement could vanish from history (round4b feedback #7). Now we
@@ -184,17 +186,23 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             PartnerSummary(name: name,
                            exercises: lines(in: session) { $0.performedBy?.name == name && !($0.performedBy?.isMe ?? true) })
         }
+        let sortedHR = hrSamples.sorted { $0.t < $1.t }
+        let bpmValues = sortedHR.map(\.bpm)
         return WorkoutSummaryData(
             kind: .strength,
             symbol: session.symbol,
             title: session.title,
             date: session.date,
             durationSec: session.duration,
+            calories: nil,
+            avgHR: bpmValues.isEmpty ? nil : bpmValues.reduce(0, +) / Double(bpmValues.count),
+            maxHR: bpmValues.max(),
             totalVolumeKg: session.totalVolume,
             setCount: setCount,
             totalReps: totalReps,
             exercises: exercises,
             partners: partners,
+            hr: sortedHR.map { (t: $0.t, bpm: $0.bpm) },
             isLogged: session.isLogged,
             warmupSec: session.warmupSeconds,
             cooldownSec: session.cooldownSeconds

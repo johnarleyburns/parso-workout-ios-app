@@ -13,8 +13,10 @@ Progress tracker for the strength-pivot roadmap
 | **P5.1** | **Prescriptive engine core (CadenceCore) + CITATIONS.md** | ✅ **done + merged** — PR #36 on `main` |
 | **P5.2** | **Live Coach card surfacing the prescription** | ✅ **done + merged** — PR #37 on `main` |
 | **P5.3** | **"Do this workout" → logger pre-fill** | ✅ **done** — branch `p5/do-this-prefill` (off merged P5.2) |
-| P6 | Cardio/anaerobic assessments + HIIT loop | ⬜ not started (needs P4,P5) |
-| P7 | Reposition (onboarding, goals, App Store) | ⬜ not started (needs P5) |
+| **P6** | **Cardio/anaerobic assessments + HIIT loop** | ✅ **done** — branch `p6/cardio-assessments` |
+| **FR-2.3/4.4** | **BLE reliability gaps + strength HR** | ✅ **done** — this round |
+| **FR-8** | Watch HR relay (HKWorkoutSession + WCSession) | ⬜ not started (needs hardware) |
+| P7 | Reposition (onboarding, goals, App Store) | ⬜ not started |
 
 ## P1 — what shipped (2026-06-15)
 - **Preservation:** annotated tag `crossfit-preserved-v1` on the pre-removal commit
@@ -255,6 +257,102 @@ planned-set machinery so the prefill survives resume/CloudKit).
   starter opens a session. `P3CoachHomeUITests` regression green; FR1/FR13 keypad
   regression green (one parallel-clone "Invalid device state" flake passed on isolated
   re-run). App `build` succeeds (iPhone 16, iOS 18.1).
+
+## P6 — what shipped (2026-06-16)
+Cardio/anaerobic assessments + the HIIT loop: VO₂max and Wingate join the battery, with
+insight rules, prescriptive interval recommendations, and full UI support.
+
+- **CadenceCore:**
+  - `AssessmentKind.vo2maxField` (mL/kg/min) + `.wingate` (watts) — two new cardio
+    assessment kinds, each with protocol text, symbol (`heart.text.clipboard` /
+    `bolt.fill`), and display name.
+  - `AssessmentCategory.cardio` — third battery arm, alongside strength and
+    strength-endurance.
+  - `AssessmentUnit.mlKgMin` + `.watts` — new units, each with its own MDC guardrail
+    (5% for both, floor 1 mL/kg/min / 10 W).
+  - `CitationRegistry.cooperVo2max` (Cooper 1968, JAMA) + `.wingateTest` (Bar-Or
+    1987, Sports Med) + `.hiitVo2max` (Helgerud et al. 2007, MSSE) — three new
+    citations, bringing the total to 8.
+  - `KnowledgeBase.p6InsightRules` = `cardioAssessmentProgress` +
+    `cardioAssessmentRetest` — mirror p4Rules but for cardio kinds with cardio-
+    specific citations. `activeRules` updated to `p3Rules + p4Rules + p6InsightRules`.
+  - `KnowledgeBase.p6RecRules` = `cardioHIIT` (declining VO₂max → Norwegian 4×4) +
+    `cardioSIT` (declining Wingate → SIT intervals). `activeRecommendationRules`
+    updated to `p5Rules + p6RecRules`.
+  - `RecommendationKind.cardioHIIT` — new kind with symbol
+    `figure.highintensity.intervaltraining` and pink tint.
+  - `Recommendation.cardioPrescription: String?` — holds the interval protocol name
+    ("Norwegian 4×4" / "SIT (Wingate)") for cardioHIIT recs. `prescribedSession()`
+    returns an empty-session stub for cardio — the UI routes to interval setup.
+- **App:**
+  - `RecordAssessmentView` — VO₂max shows a numeric text field (mL/kg/min); Wingate
+    shows a numeric text field (watts). Save flows compute correctly.
+  - `AssessmentDisplay.value()` — handles `.mlKgMin` (one decimal with unit label)
+    and `.watts` (integer "W").
+  - `CoachCardView` — `RecommendationContentView` shows the `cardioPrescription`
+    protocol name as the target chip when present (reuses `coach.card.target` a11y).
+    `RecommendationKind.cardioHIIT` added to the symbol/tint extensions.
+  - `AssessmentFormat.change()` — renders mL/kg/min and watts changes.
+  - `PlanView` — cardio battery rows render in a new "Cardio" section automatically
+    (driven by `AssessmentCategory.allCases`).
+- **Tests:** `swift test` green (**236**, +13: 3 MDC + 5 insight + 5 recommendation).
+  App `build` succeeds (iPhone 17 Pro, iOS 26.5).
+
+## FR-2.5 — what shipped (2026-06-16)
+HealthKit workout writeback gaps closed. The write path was already ~80% there; this
+round fixed the remaining issues so every workout type writes correct, complete data.
+
+- **Distance type mapping** — `saveCardioWorkout` now writes distance to the
+  activity-specific quantity type (cycling → `.distanceCycling`, swimming →
+  `.distanceSwimming`, running/walking → `.distanceWalkingRunning`) instead of always
+  using `.distanceWalkingRunning`. Added `HealthKitProvider.distanceType(for:)`.
+- **Write type authorization** — `writeTypes` now includes `.distanceWalkingRunning`,
+  `.distanceCycling`, `.distanceSwimming`, and `.heartRate` alongside the existing
+  `.activeEnergyBurned` and `.workoutType()`. No more runtime permission prompts
+  mid-save.
+- **Swim HK writeback** — `SwimRecordView.endSwim()` now calls
+  `model.health.saveCardioWorkout(summary)` with a `.swim`-typed summary, then stores
+  the returned HK UUID in the SwiftData row via the new `healthKitWorkoutUUID`
+  parameter on `WorkoutRepository.saveSwim`.
+- **GPS route writing** — `saveCardioWorkout` writes an `HKWorkoutRoute` to the
+  completed `HKWorkout` when `summary.route` is non-empty. Uses
+  `HKWorkoutRouteBuilder` to insert `CLLocation` samples converted from `LocationFix`.
+- **Strength calorie estimate** — replaced `max(50, minutes * 5)` with
+  `CardioMath.strengthCaloriesPerMinute * minutes` (MET 5.0 × 75 kg default; 6.25
+  kcal/min). Floor lowered from 50 → 30 kcal.
+- **Info.plist** — `NSHealthUpdateUsageDescription` updated to mention all workout
+  types (strength, cardio, intervals, swim).
+- **Build:** `swift test` 236 passed, `xcodebuild` BUILD SUCCEEDED.
+
+## FR-2.3/4.4 — what shipped (2026-06-16)
+BLE chest-strap reliability gaps closed + strength HR added. The core engine
+(`HeartRateMonitor`) already handled BLE scan/connect/parse — this round added
+resilience, cold-launch recovery, and strength workout HR capture.
+
+- **Reconnection backoff** — replaced immediate reconnect with exponential backoff
+  (1, 2, 4, 8, 16 s; max 5 retries). On exhaustion, state becomes
+  `.reconnectionFailed(UUID, error:)` with a user-facing error message.
+- **HR buffering** — `currentBPM` holds the last-known value for 10 s during
+  reconnection; the live readout doesn't flicker to nil on brief signal drops.
+- **Cold-launch auto-reconnect** — `CadenceApp` queries SwiftData for the default
+  `HRMDevice` and calls `restoreDefaultDevice(_:)` so the strap reconnects on next
+  BLE power-on without visiting Settings.
+- **Battery lifecycle** — periodic refresh every 60 s during a session;
+  `.criticalBattery` flag when ≤10 %; value persisted to `HRMDevice.lastBattery`
+  in SwiftData; critical warning in both `HRMSettingsView` and the strength
+  live-HR band.
+- **UX polish (HRMSettingsView)** — "No devices found" guidance with electrode
+  dampness/range tips after a 3 s scan timeout; "Reconnecting…" / error / battery
+  status in the My Device card; "Retry Connection" button on failure.
+- **Strength workout HR** — `SessionView` samples `hrm.currentBPM` every 5 s
+  during a live session and passes `hrSamples` to `WorkoutSummaryData.from(session:hrSamples:)`.
+  A compact HR band (bpm + battery + critical warning) sits under the elapsed
+  clock. HR data flows into the strength summary (`avgHR`, `maxHR`, `hr` chart)
+  and the HealthKit writeback `StrengthWorkoutSummary`.
+- **Protocol extensions** — `HRMConnectionState` gained `.reconnectionFailed`;
+  `HeartRateMonitoring` gained `connectionError`, `criticalBattery`, `restoreDefaultDevice`.
+- **Tests:** `swift test` 236/0 (existing regression green; new UI tests deferred to
+  paired device hardware). App `build` succeeds.
 
 ## Note on branching
 P1 branched off `main` (which already contained all CrossFit code — the plan's

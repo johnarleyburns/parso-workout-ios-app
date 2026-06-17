@@ -26,6 +26,7 @@ public enum RecommendationKind: String, Sendable, Equatable {
     case deload         // back off after a declining e1RM trend
     case addVolume      // add weekly sets toward the minimum effective range
     case starter        // cold-start: a sensible first session from goal/experience
+    case cardioHIIT     // prescribed interval protocol from cardio assessment (P6)
 }
 
 /// A concrete, loggable target for the next time a lift (or a starter session) is
@@ -107,9 +108,16 @@ public extension Recommendation {
     /// "Do this workout" path (P5.3). Single-lift recs (progression / deload) name the
     /// movement and carry its prescribed load; goal-level recs (starter / add-volume)
     /// name no lift but still prescribe sets × reps the user applies to the movements
-    /// they choose. `defaultSets` fills in when the target leaves the set count open
-    /// (e.g. double-progression "keep your current sets").
+    /// they choose. CardioHIIT recs (P6) return an empty-session stub — the UI routes
+    /// to the interval picker instead. `defaultSets` fills in when the target leaves
+    /// the set count open (e.g. double-progression "keep your current sets").
     func prescribedSession(defaultSets: Int = 3) -> PrescribedSession {
+        guard kind != .cardioHIIT else {
+            return PrescribedSession(title: cardioPrescription ?? "Interval session",
+                                     exerciseNames: [],
+                                     repLadder: [],
+                                     loadKg: nil)
+        }
         let sets = max(1, target?.sets ?? defaultSets)
         // Start each planned set at the bottom of the prescribed rep range; double
         // progression climbs toward the top from there.
@@ -145,7 +153,8 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
     public let action: String       // the imperative one-liner, e.g. "Add a rep: 5×102.5 kg"
     public let detail: String       // the "why / the science" expansion
     public let citation: Citation   // always present (D3)
-    public let target: SetTarget?   // structured prescription, when applicable
+    public let target: SetTarget?   // structured strength prescription, when applicable
+    public let cardioPrescription: String?  // interval protocol name for cardioHIIT recs (P6)
     public let confidence: RecommendationConfidence
     public let priority: Int        // ranking weight (higher first)
 
@@ -158,6 +167,7 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
                 detail: String,
                 citation: Citation,
                 target: SetTarget? = nil,
+                cardioPrescription: String? = nil,
                 confidence: RecommendationConfidence,
                 priority: Int) {
         self.id = id
@@ -169,6 +179,7 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
         self.detail = detail
         self.citation = citation
         self.target = target
+        self.cardioPrescription = cardioPrescription
         self.confidence = confidence
         self.priority = priority
     }

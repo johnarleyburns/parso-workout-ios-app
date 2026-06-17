@@ -100,7 +100,22 @@ struct RecommendationContentView: View {
             }
 
             // The concrete, loggable target — the heart of a prescription (P5).
-            if let target = recommendation.target {
+            // CardioHIIT recs (P6) show the interval protocol name instead of a SetTarget.
+            if let cardio = recommendation.cardioPrescription {
+                HStack(spacing: 8) {
+                    Image(systemName: "figure.highintensity.intervaltraining").font(.caption)
+                    Text(cardio)
+                        .font(.subheadline.weight(.semibold))
+                    Spacer(minLength: 4)
+                    Text(recommendation.confidence.label)
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 8).padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("coach.card.target")
+            } else if let target = recommendation.target {
                 HStack(spacing: 8) {
                     Image(systemName: "dumbbell.fill").font(.caption)
                     Text(target.summary(unit: unit))
@@ -262,6 +277,7 @@ extension RecommendationKind {
         case .deload:      return "arrow.down.right.circle"
         case .addVolume:   return "plus.circle"
         case .starter:     return "sparkles"
+        case .cardioHIIT:  return "figure.highintensity.intervaltraining"
         }
     }
 
@@ -271,6 +287,7 @@ extension RecommendationKind {
         case .deload:      return .orange
         case .addVolume:   return .accentColor
         case .starter:     return .accentColor
+        case .cardioHIIT:  return .pink
         }
     }
 }

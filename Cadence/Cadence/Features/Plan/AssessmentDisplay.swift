@@ -5,7 +5,8 @@ import CadenceCore
 /// rendering of reps / hold-times / canonical-kg weights out of the views.
 enum AssessmentDisplay {
 
-    /// A result value rendered in its kind's unit: "32 reps", "1:30", "100 kg".
+    /// A result value rendered in its kind's unit: "32 reps", "1:30", "100 kg",
+    /// "42.5 mL/kg/min", "850 W".
     static func value(_ value: Double, kind: AssessmentKind, unit: MeasurementUnitPreference) -> String {
         switch kind.unit {
         case .reps:
@@ -14,6 +15,10 @@ enum AssessmentDisplay {
             return Format.duration(value)
         case .weightKg:
             return Format.weight(value, unit: unit, decimals: 0)
+        case .mlKgMin:
+            return "\(String(format: "%.1f", value)) mL/kg/min"
+        case .watts:
+            return "\(Int(value.rounded())) W"
         }
     }
 

@@ -46,6 +46,10 @@ struct CadenceApp: App {
         let ctx = ModelContext(container)
         _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
         if uiTest { UITestSeed.apply(args: args, context: ctx) }
+        // Restore the default BLE HRM for cold-launch auto-reconnect (FR-4.4).
+        if !uiTest, let device = try? ctx.fetch(FetchDescriptor<HRMDevice>(predicate: #Predicate { $0.isDefault })).first {
+            model.hrm.restoreDefaultDevice(device.id)
+        }
     }
 
     var body: some Scene {

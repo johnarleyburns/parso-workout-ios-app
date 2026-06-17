@@ -1,10 +1,12 @@
 import Foundation
 import CadenceCore
 import HealthKit
+import CoreLocation
 
-/// Real HealthKit-backed provider (FR-3, FR-2.1, FR-4.1/4.3). Reads steps and
-/// Watch-recorded workouts; writes summary strength workouts. Detailed set/rep
-/// data stays in SwiftData — HealthKit has no schema for it.
+/// Real HealthKit-backed provider (FR-3, FR-2.1, FR-4.1/4.3, FR-2.5). Reads
+/// steps and Watch-recorded workouts; writes strength, cardio, and swim workout
+/// summaries with HR, distance (per-type), and GPS routes. Detailed set/rep data
+/// stays in SwiftData — HealthKit has no schema for it.
 final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
     private let store = HKHealthStore()
 
@@ -18,9 +20,15 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
         return types
     }
 
+    /// Write authorizations cover every quantity type the app may write.
     private var writeTypes: Set<HKSampleType> {
         var types: Set<HKSampleType> = [HKObjectType.workoutType()]
-        if let e = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) { types.insert(e) }
+        let ids: [HKQuantityTypeIdentifier] = [
+            .activeEnergyBurned,
+            .distanceWalkingRunning, .distanceCycling, .distanceSwimming,
+            .heartRate
+        ]
+        for id in ids { if let t = HKObjectType.quantityType(forIdentifier: id) { types.insert(t) } }
         return types
     }
 
@@ -176,7 +184,7 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
                     start: summary.start, end: summary.end))
             }
             if let meters = summary.distanceMeters,
-               let distType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) {
+               let distType = HKQuantityType.quantityType(forIdentifier: Self.distanceType(for: summary.type)) {
                 samples.append(HKCumulativeQuantitySample(
                     type: distType, quantity: HKQuantity(unit: .meter(), doubleValue: meters),
                     start: summary.start, end: summary.end))
@@ -192,10 +200,29 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
             if !samples.isEmpty { try await builder.addSamples(samples) }
             try await builder.endCollection(at: summary.end)
             let workout = try await builder.finishWorkout()
+
+            // Phase 2 — attach GPS route (FR-2.5).
+            if let hkWorkout = workout, !summary.route.isEmpty {
+                try? await writeRoute(summary.route, start: summary.start, workout: hkWorkout)
+            }
             return workout?.uuid
         } catch {
             return nil
         }
+    }
+
+    /// Writes a GPS route as an `HKWorkoutRoute` attached to `workout`.
+    private func writeRoute(_ fixes: [LocationFix], start: Date, workout: HKWorkout) async throws {
+        let locations = fixes.map { fix in
+            CLLocation(coordinate: CLLocationCoordinate2D(latitude: fix.lat, longitude: fix.lon),
+                       altitude: fix.elevation,
+                       horizontalAccuracy: max(0, fix.horizontalAccuracy),
+                       verticalAccuracy: -1,
+                       timestamp: start.addingTimeInterval(fix.t))
+        }
+        let routeBuilder = HKWorkoutRouteBuilder(healthStore: store, device: .local())
+        try await routeBuilder.insertRouteData(locations)
+        try await routeBuilder.finishRoute(with: workout, metadata: nil)
     }
 
     static func activityType(for t: CardioType) -> HKWorkoutActivityType {
@@ -208,6 +235,16 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
         case .walk: return .walking
         case .rowing: return .rowing
         case .other: return .mixedCardio
+        }
+    }
+
+    /// Maps a cardio type to the appropriate HealthKit distance quantity type.
+    static func distanceType(for t: CardioType) -> HKQuantityTypeIdentifier {
+        switch t {
+        case .run, .walk: return .distanceWalkingRunning
+        case .cycle: return .distanceCycling
+        case .swim: return .distanceSwimming
+        default: return .distanceWalkingRunning
         }
     }
 

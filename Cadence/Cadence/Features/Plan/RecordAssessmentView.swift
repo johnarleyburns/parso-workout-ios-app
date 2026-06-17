@@ -37,6 +37,8 @@ struct RecordAssessmentView: View {
             if kind.concernsLift { return !exerciseName.isEmpty && weightEntry > 0 && reps > 0 }
             return reps > 0
         case .seconds: return (minutes * 60 + seconds) > 0
+        case .mlKgMin: return weightEntry > 0
+        case .watts: return weightEntry > 0
         }
     }
 
@@ -123,6 +125,30 @@ struct RecordAssessmentView: View {
             }
         case .seconds:
             Section("Hold time") { durationPicker }
+        case .mlKgMin:
+            Section("Result") {
+                HStack {
+                    Text("VO₂max (mL/kg/min)")
+                    Spacer()
+                    TextField("0", text: $weightText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 120)
+                        .accessibilityIdentifier("record.assessment.vo2max")
+                }
+            }
+        case .watts:
+            Section("Result") {
+                HStack {
+                    Text("Peak power (W)")
+                    Spacer()
+                    TextField("0", text: $weightText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 120)
+                        .accessibilityIdentifier("record.assessment.watts")
+                }
+            }
         }
     }
 
@@ -189,6 +215,10 @@ struct RecordAssessmentView: View {
             inputReps = reps
         case .plankHold, .hollowHold:
             value = Double(minutes * 60 + seconds)
+            inputWeight = 0
+            inputReps = 0
+        case .vo2maxField, .wingate:
+            value = weightEntry          // raw numeric entry (mL/kg/min or watts)
             inputWeight = 0
             inputReps = 0
         }

@@ -39,6 +39,9 @@ struct SessionView: View {
     // Guard against an accidental Cool Down tap — it ends the workout (batch 7 item 6).
     @State private var coolDownConfirm = false
     private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+    // HR sampling for strength workouts (FR-2.3). Captures BPM from the BLE strap
+    // every 5 s during the live session, piggybacking on the idle timer.
+    @State private var hrSamples: [HRSamplePoint] = []
 
     /// Owner first, then partners alphabetically.
     private var roster: [Person] {
@@ -198,7 +201,12 @@ struct SessionView: View {
         // a past one from history), driven by the active session's WorkoutClock.
         .safeAreaInset(edge: .top, spacing: 0) {
             if active.strengthSession?.id == session.id {
-                WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused)
+                VStack(spacing: 0) {
+                    WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused)
+                    if model.hrm.currentBPM != nil {
+                        liveHRBand
+                    }
+                }
             }
         }
         .toolbar {
@@ -257,7 +265,10 @@ struct SessionView: View {
         // Backing out of a freshly-started log with nothing entered shouldn't litter
         // history with an empty "Logged" row.
         .onDisappear { if isManualLog { cleanupEmptyLog() } }
-        .onReceive(idleTimer) { _ in checkIdle() }
+        .onReceive(idleTimer) { _ in
+            checkIdle()
+            if active.strengthSession?.id == session.id { sampleHR() }
+        }
         .alert("Still training?", isPresented: $idlePromptShown) {
             Button("Keep going") { poke() }
             Button("Save now", role: .destructive) { endWorkout() }
@@ -568,7 +579,8 @@ struct SessionView: View {
     }
 
     /// Writes a summary HKWorkout for this session (FR-4.3). Detailed sets stay
-    /// local; only duration + estimated energy go to Health.
+    /// local; only duration + estimated energy go to Health. HR samples are
+    /// included when a BLE strap was connected (FR-2.3).
     private func saveToHealth() async {
         let sets = session.orderedSets
         guard let first = sets.first?.completedAt else { return }
@@ -576,8 +588,15 @@ struct SessionView: View {
         // Minimum 1-minute duration so Health accepts it.
         let end = max(last, first.addingTimeInterval(60))
         let minutes = end.timeIntervalSince(first) / 60
-        let summary = StrengthWorkoutSummary(id: session.id, start: first, end: end,
-                                             activeEnergyKcal: max(50, minutes * 5))
+        let kcal = max(30, round(CardioMath.strengthCaloriesPerMinute * minutes))
+        let bpmValues = hrSamples.map(\.bpm)
+        let summary = StrengthWorkoutSummary(
+            id: session.id, start: first, end: end,
+            activeEnergyKcal: kcal,
+            hrSamples: hrSamples,
+            avgHR: bpmValues.isEmpty ? nil : bpmValues.reduce(0, +) / Double(bpmValues.count),
+            maxHR: bpmValues.max()
+        )
         let hkID = await model.health.saveStrengthWorkout(summary)
         if let hkID { session.healthKitWorkoutUUID = hkID; try? context.save() }
         withAnimation { healthSaved = true }
@@ -625,8 +644,46 @@ struct SessionView: View {
         }
         active.endStrength()
         try? context.save()
-        active.finishedSummary = FinishedSummary(data: .from(session: session))
+        active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples))
         dismiss()
+    }
+
+    /// A compact live HR readout band shown under the elapsed clock during a
+    /// strength workout when a BLE strap is connected (FR-2.3).
+    private var liveHRBand: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "heart.fill")
+                .font(.caption)
+                .foregroundStyle(.red)
+            if let bpm = model.hrm.currentBPM {
+                Text("\(Int(bpm)) bpm")
+                    .font(.caption.weight(.medium))
+                    .monospacedDigit()
+            }
+            if let battery = model.hrm.battery {
+                Image(systemName: battery <= 10 ? "battery.0" : "battery.75")
+                    .font(.caption2)
+                    .foregroundStyle(battery <= 10 ? .red : .secondary)
+                Text("\(battery)%")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            if model.hrm.criticalBattery {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12).padding(.vertical, 4)
+        .background(.ultraThinMaterial)
+    }
+
+    /// Samples the live BPM from the connected BLE strap into `hrSamples` (FR-2.3).
+    private func sampleHR() {
+        guard let bpm = model.hrm.currentBPM, bpm > 0 else { return }
+        let now = Date().timeIntervalSince(session.date)
+        hrSamples.append(HRSamplePoint(t: now, bpm: bpm))
     }
 
     /// Finishes a manual-log session: discards it if nothing was entered, then hands

@@ -12,7 +12,7 @@
 	<key>NSHealthShareUsageDescription</key>
 	<string>Cladiron reads your steps, workouts, and heart rate so your activity and Watch-recorded sessions appear here. Your health data never leaves your device.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Cladiron saves a summary of your strength workouts to Apple Health so they appear system-wide and close your Activity rings.</string>
+	<string>Cladiron saves summaries of your workouts (strength, cardio, intervals, and swim) to Apple Health so they appear system-wide and close your Activity rings.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Cladiron connects to a Bluetooth chest strap to record accurate heart rate during workouts.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

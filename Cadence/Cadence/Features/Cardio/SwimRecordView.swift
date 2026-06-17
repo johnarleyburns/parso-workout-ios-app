@@ -9,6 +9,7 @@ import CadenceCore
 struct SwimRecordView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var model
 
     @State private var started = false
     @State private var startDate = Date()
@@ -101,11 +102,19 @@ struct SwimRecordView: View {
     }
 
     private func endSwim() {
-        if let saved = try? WorkoutRepository.saveSwim(start: startDate, end: Date(),
-                                                       laps: laps, targetLaps: targetLaps, in: context) {
-            finishedSummary = WorkoutSummaryData.from(cardio: saved)
-        } else {
-            dismiss()
+        let end = Date()
+        let summary = CardioWorkoutSummary(id: UUID(), type: .swim, start: startDate, end: end,
+                                           hrSamples: [], route: [])
+        Task {
+            let hkID = await model.health.saveCardioWorkout(summary)
+            if let saved = try? WorkoutRepository.saveSwim(
+                start: startDate, end: end,
+                laps: laps, targetLaps: targetLaps,
+                healthKitWorkoutUUID: hkID, in: context) {
+                finishedSummary = WorkoutSummaryData.from(cardio: saved)
+            } else {
+                dismiss()
+            }
         }
     }
 }

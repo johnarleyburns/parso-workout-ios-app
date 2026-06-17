@@ -61,8 +61,32 @@ Rating of Perceived Exertion Scale for Resistance Training.* **Strength Cond J 3
 <https://journals.lww.com/nsca-scj/fulltext/2016/08000/application_of_the_repetitions_in_reserve_based.10.aspx>
 
 - **Used by:** the prescriptive **progression** rule (double progression toward a target
-  RIR — add reps to the top of the range, then add load) and the **deload** rule (a
-  declining estimated-1RM trend → a lighter, lower-volume week, then re-test).
+   RIR — add reps to the top of the range, then add load) and the **deload** rule (a
+   declining estimated-1RM trend → a lighter, lower-volume week, then re-test).
+
+### `cooperVo2max` — field VO₂max test validity
+Cooper (1968). *A means of assessing maximal oxygen intake: Correlation between field
+and treadmill testing.* **JAMA 203(3).**
+<https://doi.org/10.1001/jama.1968.03140030033008>
+
+- **Used by:** the cardio assessment progress insight for VO₂max (P6).
+
+### `wingateTest` — Wingate anaerobic test
+Bar-Or (1987). *The Wingate anaerobic test: An update on methodology, reliability and
+validity.* **Sports Medicine 4(6).**
+<https://doi.org/10.2165/00007256-198704060-00005>
+
+- **Used by:** the cardio assessment progress insight for the Wingate test, and the
+  **SIT prescription** rule (declining Wingate peak power → sprint intervals, P6).
+
+### `hiitVo2max` — HIIT and VO₂max improvement
+Helgerud, Hoydal, Wang, Karlsen, Berg, Bjerkaas, Simonsen, Helgesen, Hjorth, Bach &
+Hoff (2007). *Aerobic high-intensity intervals improve VO₂max more than moderate
+training.* **Medicine & Science in Sports & Exercise 39(4).**
+<https://doi.org/10.1249/mss.0b013e3180304570>
+
+- **Used by:** the **cardioHIIT prescription** rule (declining VO₂max → Norwegian 4×4
+  intervals, P6).
 
 ## Maintenance
 

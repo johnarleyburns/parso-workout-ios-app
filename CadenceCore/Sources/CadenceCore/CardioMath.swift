@@ -55,6 +55,10 @@ public enum CardioMath {
         return String(format: "%d:%02d /km", m, sec)
     }
 
+    /// Calorie-per-minute constant for strength training (MET 5.0 × 75 kg / 60 min).
+    /// Used by the strength HK writeback path (FR-2.5).
+    public static let strengthCaloriesPerMinute: Double = 6.25
+
     /// Rough calorie estimate. Prefers an HR-based model when avg HR is known
     /// (gender-neutral approximation), otherwise a MET-based fallback by type.
     public static func estimateCalories(type: CardioType,

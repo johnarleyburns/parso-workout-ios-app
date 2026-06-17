@@ -63,8 +63,13 @@ public struct StrengthWorkoutSummary: Equatable, Sendable {
     public var start: Date
     public var end: Date
     public var activeEnergyKcal: Double?
-    public init(id: UUID, start: Date, end: Date, activeEnergyKcal: Double? = nil) {
+    public var hrSamples: [HRSamplePoint]
+    public var avgHR: Double?
+    public var maxHR: Double?
+    public init(id: UUID, start: Date, end: Date, activeEnergyKcal: Double? = nil,
+                hrSamples: [HRSamplePoint] = [], avgHR: Double? = nil, maxHR: Double? = nil) {
         self.id = id; self.start = start; self.end = end; self.activeEnergyKcal = activeEnergyKcal
+        self.hrSamples = hrSamples; self.avgHR = avgHR; self.maxHR = maxHR
     }
 }
 
@@ -130,7 +135,8 @@ public enum HRMConnectionState: Equatable, Sendable {
     case scanning
     case connecting(UUID)
     case connected(UUID)
-    case reconnecting(UUID)
+    case reconnecting(UUID, attempts: Int = 0)
+    case reconnectionFailed(UUID, error: String? = nil)
 }
 
 public struct DiscoveredHRM: Equatable, Sendable, Identifiable {
@@ -147,10 +153,13 @@ public protocol HeartRateMonitoring: AnyObject {
     var state: HRMConnectionState { get }
     var currentBPM: Double? { get }
     var battery: Int? { get }
+    var connectionError: String? { get }
+    var criticalBattery: Bool { get }
     func startScanning()
     func stopScanning()
     func connect(_ id: UUID)
     func disconnect()
+    func restoreDefaultDevice(_ id: UUID)
 }
 
 // MARK: - Location tracking (FR-2.2)

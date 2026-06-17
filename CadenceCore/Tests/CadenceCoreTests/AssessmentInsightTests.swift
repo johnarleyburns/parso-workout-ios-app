@@ -88,4 +88,53 @@ final class AssessmentInsightTests: XCTestCase {
                        a(.e1RM, 112, daysAgo: 2, lift: "Bench", now: now)], now: now)
         XCTAssertEqual(InsightEngine.run(f).map(\.id), InsightEngine.run(f).map(\.id))
     }
+
+    // MARK: P6 — cardio assessment insights
+
+    func testVo2maxImprovementProducesInfoInsight() {
+        let now = Date()
+        let f = facts([a(.vo2maxField, 38, daysAgo: 60, now: now),
+                       a(.vo2maxField, 45, daysAgo: 2, now: now)], now: now)
+        let i = InsightEngine.run(f).first { $0.id == "assessment.cardio.vo2maxField" }
+        XCTAssertEqual(i?.kind, .assessment)
+        XCTAssertEqual(i?.severity, .info)
+        XCTAssertTrue(i?.message.contains("+7.0 mL/kg/min") ?? false, "got: \(i?.message ?? "nil")")
+    }
+
+    func testVo2maxDeclineProducesAttentionInsight() {
+        let now = Date()
+        let f = facts([a(.vo2maxField, 45, daysAgo: 60, now: now),
+                       a(.vo2maxField, 38, daysAgo: 2, now: now)], now: now)
+        let i = InsightEngine.run(f).first { $0.id == "assessment.cardio.vo2maxField" }
+        XCTAssertEqual(i?.severity, .attention)
+    }
+
+    func testWingateDeclineProducesAttentionInsight() {
+        let now = Date()
+        let f = facts([a(.wingate, 600, daysAgo: 60, now: now),
+                       a(.wingate, 500, daysAgo: 2, now: now)], now: now)
+        let i = InsightEngine.run(f).first { $0.id == "assessment.cardio.wingate" }
+        XCTAssertEqual(i?.severity, .attention)
+    }
+
+    func testStaleCardioSeriesTriggersRetest() {
+        let now = Date()
+        let f = facts([a(.wingate, 500, daysAgo: 50, now: now)], now: now)
+        let i = InsightEngine.run(f).first { $0.id == "assessment.cardio.retest.wingate" }
+        XCTAssertEqual(i?.kind, .assessment)
+        XCTAssertEqual(i?.severity, .info)
+    }
+
+    func testCardioInsightsUseCardioCitations() {
+        let now = Date()
+        let f = facts([a(.vo2maxField, 38, daysAgo: 60, now: now),
+                       a(.vo2maxField, 45, daysAgo: 2, now: now),
+                       a(.wingate, 600, daysAgo: 60, now: now),
+                       a(.wingate, 500, daysAgo: 2, now: now)], now: now)
+        let insights = InsightEngine.run(f).filter { $0.id.hasPrefix("assessment.cardio") }
+        for i in insights {
+            let ids = Set(CitationRegistry.all.map(\.id))
+            XCTAssertTrue(ids.contains(i.citation.id), "\(i.id) cites unknown \(i.citation.id)")
+        }
+    }
 }

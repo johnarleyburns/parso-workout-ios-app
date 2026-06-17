@@ -12,7 +12,7 @@ public enum RecommendationEngine {
     /// something cited and actionable to show.
     public static func run(_ facts: TrainingFacts) -> [Recommendation] {
         var produced: [(rulePriority: Int, rec: Recommendation)] = []
-        for rule in KnowledgeBase.p5Rules {
+        for rule in KnowledgeBase.activeRecommendationRules {
             for rec in rule.produce(facts) {
                 produced.append((rule.priority, rec))
             }

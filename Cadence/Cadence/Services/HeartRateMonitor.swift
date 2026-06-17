@@ -5,7 +5,8 @@ import CoreBluetooth
 
 /// Observable heart-rate monitor for the iPhone (FR-2.3, FR-4.4). Connects to a
 /// BLE strap exposing the standard Heart Rate Service (0x180D / char 0x2A37),
-/// reconnects automatically, and surfaces battery + signal state.
+/// reconnects with exponential backoff, surfaces battery + signal state, and
+/// buffers the last known BPM during short signal drops.
 ///
 /// Has a `simulated` mode used by previews and UI tests (the simulator has no
 /// Bluetooth), where scanning yields fake devices and connecting emits a
@@ -18,16 +19,45 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring {
     static let batteryService = CBUUID(string: "180F")
     static let batteryLevel = CBUUID(string: "2A19")
 
+    /// Maximum reconnection attempts before giving up (FR-4.4).
+    private var maxReconnectAttempts: Int = 5
+    /// How long to hold the last known BPM after a disconnect (FR-2.3, UC-4 alt 3a).
+    private let bufferWindow: TimeInterval = 10
+    /// Battery refresh interval (FR-4.4, UC-4 alt 4a).
+    private let batteryRefreshInterval: TimeInterval = 60
+    /// Battery threshold for the low-battery warning (FR-4.4, UC-4 alt 4a).
+    private let criticalBatteryThreshold: Int = 10
+
     private(set) var state: HRMConnectionState = .idle
-    private(set) var currentBPM: Double?
+    /// Live BPM, falling back to the last-known value during brief signal drops
+    /// (buffered for up to `bufferWindow` seconds — FR-2.3, UC-4 alt 3a).
+    private(set) var currentBPM: Double? {
+        get { _bpm ?? (bufferExpiryTime != nil ? lastKnownBPM : nil) }
+        set { _bpm = newValue; if newValue != nil { lastKnownBPM = nil; bufferExpiryTime = nil } }
+    }
+    private var _bpm: Double?
     private(set) var battery: Int?
     private(set) var discovered: [DiscoveredHRM] = []
+    private(set) var connectionError: String?
+    private(set) var criticalBattery: Bool = false
 
     private let simulated: Bool
     private var central: CBCentralManager?
     private var peripheral: CBPeripheral?
     private var rememberedID: UUID?
     private var simTimer: Timer?
+
+    // Reconnection backoff (FR-4.4).
+    private var reconnectAttempts: Int = 0
+    private var reconnectTimer: Timer?
+
+    // HR buffering during signal drops (FR-2.3, UC-4 alt 3a).
+    private var lastKnownBPM: Double?
+    private var bufferExpiryTime: Date?
+    private var bufferTimer: Timer?
+
+    // Battery refresh (FR-4.4).
+    private var batteryReadTimer: Timer?
 
     init(simulated: Bool) {
         self.simulated = simulated
@@ -40,6 +70,15 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring {
     }
 
     func rememberDevice(_ id: UUID?) { rememberedID = id }
+
+    /// Restores the default device from persistent storage so connection
+    /// happens automatically at next BLE power-on (FR-4.4 cold-launch).
+    func restoreDefaultDevice(_ id: UUID) {
+        rememberedID = id
+        if let central, central.state == .poweredOn, state != .connected(id) {
+            connect(id)
+        }
+    }
 
     // MARK: Public control
 
@@ -64,6 +103,9 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring {
     }
 
     func connect(_ id: UUID) {
+        cancelAllScheduledWork()
+        reconnectAttempts = 0
+        connectionError = nil
         rememberedID = id
         if simulated {
             state = .connecting(id)
@@ -87,16 +129,19 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring {
     }
 
     func disconnect() {
+        cancelAllScheduledWork()
         if simulated {
             simTimer?.invalidate(); simTimer = nil
-            currentBPM = nil
+            currentBPM = nil; lastKnownBPM = nil; bufferExpiryTime = nil
             state = .idle
             return
         }
         if let peripheral { central?.cancelPeripheralConnection(peripheral) }
-        currentBPM = nil
+        currentBPM = nil; lastKnownBPM = nil; bufferExpiryTime = nil
         state = .idle
     }
+
+    // MARK: Internal helpers
 
     private func startSimFeed() {
         simTimer?.invalidate()
@@ -105,6 +150,66 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring {
         simTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             t += 1
             self?.currentBPM = 130 + 25 * (0.5 + 0.5 * sin(t / 8))
+        }
+    }
+
+    /// Cancel all pending timers (reconnect schedule, buffer expiry, battery refresh).
+    private func cancelAllScheduledWork() {
+        reconnectTimer?.invalidate(); reconnectTimer = nil
+        bufferTimer?.invalidate(); bufferTimer = nil
+        batteryReadTimer?.invalidate(); batteryReadTimer = nil
+    }
+
+    /// Starts the buffer that holds the last known BPM for `bufferWindow` seconds.
+    private func startBuffer() {
+        guard let bpm = currentBPM else { return }
+        lastKnownBPM = bpm
+        bufferExpiryTime = Date().addingTimeInterval(bufferWindow)
+        scheduleBufferExpiry()
+    }
+
+    private func scheduleBufferExpiry() {
+        bufferTimer?.invalidate()
+        bufferTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self, let expiry = self.bufferExpiryTime, Date() >= expiry else { return }
+            self.lastKnownBPM = nil
+            self.bufferExpiryTime = nil
+            self.currentBPM = nil
+            self.bufferTimer?.invalidate(); self.bufferTimer = nil
+        }
+    }
+
+    /// Schedules a reconnection attempt with exponential backoff (1, 2, 4, 8, 16 s).
+    private func scheduleReconnect() {
+        let delay = pow(2.0, Double(reconnectAttempts))
+        reconnectTimer?.invalidate()
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            guard let self, let peripheral = self.peripheral else { return }
+            self.reconnectAttempts += 1
+            if self.reconnectAttempts >= self.maxReconnectAttempts {
+                self.state = .reconnectionFailed(peripheral.identifier, error: "Reconnection failed after \(self.maxReconnectAttempts) attempts")
+                self.connectionError = "Reconnection failed after \(self.maxReconnectAttempts) attempts"
+                self.lastKnownBPM = nil; self.bufferExpiryTime = nil
+                self.currentBPM = nil
+                self.bufferTimer?.invalidate(); self.bufferTimer = nil
+                return
+            }
+            self.state = .reconnecting(peripheral.identifier, attempts: self.reconnectAttempts)
+            self.central?.connect(peripheral)
+        }
+    }
+
+    /// Starts periodic battery level reads (FR-4.4).
+    private func startBatteryRefresh() {
+        batteryReadTimer?.invalidate()
+        batteryReadTimer = Timer.scheduledTimer(withTimeInterval: batteryRefreshInterval, repeats: true) { [weak self] _ in
+            guard let self, let peripheral = self.peripheral else { return }
+            for s in peripheral.services ?? [] where s.uuid == Self.batteryService {
+                for c in s.characteristics ?? [] where c.uuid == Self.batteryLevel {
+                    peripheral.readValue(for: c)
+                    return
+                }
+            }
         }
     }
 }
@@ -117,7 +222,7 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
         case .poweredOff: state = .poweredOff
         case .unauthorized: state = .unauthorized
         case .poweredOn:
-            if let rememberedID { connect(rememberedID) }
+            if let id = rememberedID, state != .connected(id) { connect(id) }
         default: break
         }
     }
@@ -131,14 +236,30 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         state = .connected(peripheral.identifier)
+        reconnectAttempts = 0
         peripheral.delegate = self
         peripheral.discoverServices([Self.heartRateService, Self.batteryService])
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
-        // Auto-reconnect (FR-4.4).
-        state = .reconnecting(peripheral.identifier)
-        central.connect(peripheral)
+        // Buffer the last known BPM for a grace window (FR-2.3, UC-4 alt 3a).
+        startBuffer()
+        _bpm = nil
+
+        // Exponential backoff reconnection (FR-4.4).
+        if reconnectAttempts < maxReconnectAttempts {
+            state = .reconnecting(peripheral.identifier, attempts: reconnectAttempts)
+            scheduleReconnect()
+        } else {
+            state = .reconnectionFailed(peripheral.identifier, error: "Reconnection failed after \(maxReconnectAttempts) attempts")
+            connectionError = "Reconnection failed after \(maxReconnectAttempts) attempts"
+        }
+    }
+
+    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        let msg = error?.localizedDescription ?? "Connection failed"
+        connectionError = msg
+        state = .reconnectionFailed(peripheral.identifier, error: msg)
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
@@ -154,16 +275,21 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
         for c in service.characteristics ?? [] {
             if c.uuid == Self.heartRateMeasurement { peripheral.setNotifyValue(true, for: c) }
-            else if c.uuid == Self.batteryLevel { peripheral.readValue(for: c) }
+            else if c.uuid == Self.batteryLevel {
+                peripheral.readValue(for: c)
+                // Start periodic battery refresh after initial read (FR-4.4).
+                startBatteryRefresh()
+            }
         }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard let data = characteristic.value else { return }
         if characteristic.uuid == Self.heartRateMeasurement {
-            currentBPM = Self.parseHeartRate(data)
+            currentBPM = Self.parseHeartRate(data) // setter clears any active buffer
         } else if characteristic.uuid == Self.batteryLevel, let first = data.first {
             battery = Int(first)
+            criticalBattery = Int(first) <= criticalBatteryThreshold
         }
     }
 

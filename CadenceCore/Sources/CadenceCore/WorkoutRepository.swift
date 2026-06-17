@@ -562,9 +562,11 @@ public enum WorkoutRepository {
     /// what they completed.
     @discardableResult
     public static func saveSwim(start: Date, end: Date, laps: Int, targetLaps: Int?,
+                                healthKitWorkoutUUID: UUID? = nil,
                                 in context: ModelContext) throws -> CardioWorkout {
         let c = CardioWorkout(type: .swim, start: start, end: end,
-                              laps: laps, targetLaps: targetLaps, source: .iphone)
+                               laps: laps, targetLaps: targetLaps, source: .iphone)
+        c.healthKitWorkoutUUID = healthKitWorkoutUUID
         context.insert(c)
         try context.save()
         return c

@@ -97,4 +97,30 @@ final class AssessmentMathTests: XCTestCase {
         XCTAssertEqual(AssessmentMath.e1RM(weight: 100, reps: 5, formula: .epley),
                        WorkoutMath.epley1RM(weight: 100, reps: 5), accuracy: 0.001)
     }
+
+    // MARK: P6 — cardio unit MDC
+
+    func testVo2maxMDCIsFivePercentFloorOne() {
+        // 40 mL/kg/min baseline → 2.0 MDC. +1.5 is noise, +3 is real.
+        XCTAssertEqual(AssessmentMath.minimalDetectableChange(for: .vo2maxField, baseline: 40), 2.0, accuracy: 0.001)
+        let noise = [a(.vo2maxField, 40, daysAgo: 40), a(.vo2maxField, 41.5, daysAgo: 1)]
+        XCTAssertEqual(AssessmentMath.summaries(from: noise)[0].trend, .unchanged)
+        let real = [a(.vo2maxField, 40, daysAgo: 40), a(.vo2maxField, 43, daysAgo: 1)]
+        XCTAssertEqual(AssessmentMath.summaries(from: real)[0].trend, .improved)
+    }
+
+    func testWingateMDCIsFivePercentFloorTen() {
+        // 500 W baseline → 25 W MDC (5%). +15 W is noise, +30 W is real.
+        XCTAssertEqual(AssessmentMath.minimalDetectableChange(for: .wingate, baseline: 500), 25.0, accuracy: 0.001)
+        let noise = [a(.wingate, 500, daysAgo: 40), a(.wingate, 515, daysAgo: 1)]
+        XCTAssertEqual(AssessmentMath.summaries(from: noise)[0].trend, .unchanged)
+        let real = [a(.wingate, 500, daysAgo: 40), a(.wingate, 530, daysAgo: 1)]
+        XCTAssertEqual(AssessmentMath.summaries(from: real)[0].trend, .improved)
+    }
+
+    func testCardioKindsAreHigherIsBetter() {
+        XCTAssertTrue(AssessmentKind.vo2maxField.higherIsBetter)
+        XCTAssertTrue(AssessmentKind.wingate.higherIsBetter)
+        XCTAssertTrue(AssessmentKind.e1RM.higherIsBetter)
+    }
 }

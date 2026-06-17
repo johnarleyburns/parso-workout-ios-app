@@ -89,6 +89,13 @@ public enum AssessmentMath {
         case .seconds:
             // Three seconds, or 10% of baseline for longer holds.
             return max(3.0, abs(baseline) * 0.10)
+        case .mlKgMin:
+            // ~5% of VO₂max, roughly the test-retest reliability of submaximal
+            // and field-based VO₂max estimates (floor 1 mL/kg/min).
+            return max(1.0, abs(baseline) * 0.05)
+        case .watts:
+            // ~5% of peak power (Wingate test-retest reliability), floor 10 W.
+            return max(10.0, abs(baseline) * 0.05)
         }
     }
 

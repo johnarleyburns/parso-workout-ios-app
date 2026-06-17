@@ -85,6 +85,36 @@ public enum CitationRegistry {
         url: "https://journals.lww.com/nsca-scj/fulltext/2016/08000/application_of_the_repetitions_in_reserve_based.10.aspx"
     )
 
+    /// Cooper 12-minute run test validity — anchors the VO₂max assessment insight (P6).
+    public static let cooperVo2max = Citation(
+        id: "cooperVo2max",
+        authors: "Cooper",
+        year: 1968,
+        title: "A means of assessing maximal oxygen intake: Correlation between field and treadmill testing",
+        source: "JAMA 203(3)",
+        url: "https://doi.org/10.1001/jama.1968.03140030033008"
+    )
+
+    /// Wingate anaerobic test reliability — anchors the Wingate assessment insight (P6).
+    public static let wingateTest = Citation(
+        id: "wingateTest",
+        authors: "Bar-Or",
+        year: 1987,
+        title: "The Wingate anaerobic test: An update on methodology, reliability and validity",
+        source: "Sports Medicine 4(6)",
+        url: "https://doi.org/10.2165/00007256-198704060-00005"
+    )
+
+    /// HIIT improves VO₂max — anchors the cardioHIIT prescription rule (P6).
+    public static let hiitVo2max = Citation(
+        id: "hiitVo2max",
+        authors: "Helgerud, Hoydal, Wang, Karlsen, Berg, Bjerkaas, Simonsen, Helgesen, Hjorth, Bach & Hoff",
+        year: 2007,
+        title: "Aerobic high-intensity intervals improve VO₂max more than moderate training",
+        source: "Medicine & Science in Sports & Exercise 39(4)",
+        url: "https://doi.org/10.1249/mss.0b013e3180304570"
+    )
+
     /// All citations, for the in-app references list and tests.
-    public static let all: [Citation] = [schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation, rpeAutoregulation]
+    public static let all: [Citation] = [schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation, rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max]
 }

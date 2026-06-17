@@ -106,7 +106,6 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["startType.boxing"].waitTap(), "Boxing type")
-        XCTAssertTrue(app.buttons["interval.preset.box-3-1"].waitTap(), "boxing preset")
         XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")
         // Pre-workout HR gate (feedback batch 5) — continue without HR.
         XCTAssertTrue(app.buttons["prehr.skip"].waitTap(), "Continue without HR")

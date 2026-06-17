@@ -3,7 +3,8 @@ import CadenceCore
 
 /// Pick an interval protocol, then tap **START** (field-test round 3 — selecting
 /// a preset no longer auto-launches). HIIT offers Tabata, Norwegian 4×4, Gibala,
-/// SIT (Wingate), 10-20-30, REHIT, and Custom; Boxing offers the round presets.
+/// SIT (Wingate), 10-20-30, REHIT, and Custom; Boxing shows Details directly with
+/// round-style steppers (no presets).
 struct IntervalSetupView: View {
     let type: WorkoutType   // .hiit or .boxing
     /// Called with the chosen plan; the presenter runs the countdown then the
@@ -14,21 +15,30 @@ struct IntervalSetupView: View {
     @State private var selectedID: String = ""
 
     // Custom builder params.
-    @State private var rounds = 8
-    @State private var workSec = 30
-    @State private var restSec = 30
+    @State private var rounds: Int
+    @State private var workSec: Int
+    @State private var restSec: Int
     @State private var warmupMin = 5
     @State private var cooldownMin = 5
+
+    init(type: WorkoutType, onSelect: @escaping (IntervalPlan) -> Void) {
+        self.type = type
+        self.onSelect = onSelect
+        if type == .boxing {
+            _rounds = State(initialValue: 8)
+            _workSec = State(initialValue: 180)
+            _restSec = State(initialValue: 60)
+        } else {
+            _rounds = State(initialValue: 8)
+            _workSec = State(initialValue: 30)
+            _restSec = State(initialValue: 30)
+        }
+    }
 
     private struct Preset: Identifiable { let id: String; let title: String; let subtitle: String; let make: () -> IntervalPlan }
 
     private var presets: [Preset] {
-        if type == .boxing {
-            return [
-                Preset(id: "box-3-1", title: "3 min / 1 min", subtitle: "12 rounds") { .boxing(rounds: 12, round: 180, rest: 60) },
-                Preset(id: "box-2-30", title: "2 min / 30 s", subtitle: "12 rounds") { .boxing(rounds: 12, round: 120, rest: 30) },
-            ]
-        }
+        if type == .boxing { return [] }
         return [
             Preset(id: "tabata", title: "Tabata", subtitle: "8 × 20s / 10s") { .tabata() },
             Preset(id: "norwegian", title: "Norwegian 4×4", subtitle: "4 × 4min / 3min") { .norwegian4x4() },
@@ -46,6 +56,7 @@ struct IntervalSetupView: View {
                 cooldown: TimeInterval(cooldownMin * 60))
     }
     private func selectedPlan() -> IntervalPlan {
+        if type == .boxing { return customPlan() }
         if selectedID == "custom" { return customPlan() }
         return (presets.first { $0.id == selectedID } ?? presets[0]).make()
     }
@@ -54,23 +65,26 @@ struct IntervalSetupView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 List {
-                    Section("Presets") {
-                        ForEach(presets) { p in
-                            row(p.id, p.title, p.subtitle)
+                    if type == .hiit {
+                        Section("Presets") {
+                            ForEach(presets) { p in
+                                row(p.id, p.title, p.subtitle)
+                            }
                         }
                     }
-                    Section("Custom") {
+                    Section(sectionTitle) {
+                        Stepper("Warm-up: \(warmupMin) min", value: $warmupMin, in: 0...20)
                         Stepper("Rounds: \(rounds)", value: $rounds, in: 1...30)
                             .accessibilityIdentifier("interval.custom.rounds")
-                        Stepper("Work: \(workSec)s", value: $workSec, in: 5...600, step: 5)
-                        Stepper("Rest: \(restSec)s", value: $restSec, in: 0...600, step: 5)
-                        Stepper("Warm-up: \(warmupMin) min", value: $warmupMin, in: 0...20)
+                        Stepper("Fighting: \(formatMinSec(workSec))", value: $workSec, in: 10...600, step: stepSize)
+                        Stepper("Rest: \(restSec) sec", value: $restSec, in: 0...300, step: stepSize)
                         Stepper("Cool-down: \(cooldownMin) min", value: $cooldownMin, in: 0...20)
-                        rowLabel("custom", "Custom", "your settings")
+                        if type == .hiit {
+                            rowLabel("custom", "Custom", "your settings")
+                        }
                     }
                 }
 
-                // One prominent START (was an auto-launch / "Start Custom").
                 Button {
                     onSelect(selectedPlan())
                     dismiss()
@@ -91,8 +105,15 @@ struct IntervalSetupView: View {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("interval.cancel")
                 }
             }
-            .onAppear { if selectedID.isEmpty { selectedID = presets[0].id } }
+            .onAppear { if selectedID.isEmpty, !presets.isEmpty { selectedID = presets[0].id } }
         }
+    }
+
+    private var sectionTitle: String { type == .boxing ? "Details" : "Custom" }
+    private var stepSize: Int { type == .boxing ? 30 : 5 }
+
+    private func formatMinSec(_ totalSec: Int) -> String {
+        "\(totalSec / 60):\(String(format: "%02d", totalSec % 60))"
     }
 
     private func row(_ id: String, _ title: String, _ subtitle: String) -> some View {

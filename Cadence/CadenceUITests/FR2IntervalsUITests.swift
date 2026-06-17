@@ -9,8 +9,9 @@ final class FR2IntervalsUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["startType.boxing"].waitTap(), "Boxing type")
 
-        // Select the 3 min / 1 min preset, then START (no auto-launch).
-        XCTAssertTrue(app.buttons["interval.preset.box-3-1"].waitTap(), "boxing preset")
+        // Boxing no longer has presets; the Details steppers appear with defaults
+        // (Warm-up 5 min, Rounds 8, Fighting 3:00, Rest 60 s, Cool-down 5 min).
+        // Just tap START.
         XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")
 
         // Pre-workout HR gate (feedback batch 5) — continue without HR.

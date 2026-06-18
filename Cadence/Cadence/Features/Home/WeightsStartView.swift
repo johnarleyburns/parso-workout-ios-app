@@ -16,6 +16,8 @@ struct WeightsStartView: View {
     /// Launches a library preset, optionally with a chosen per-set rep ladder
     /// (flexible templates carry one; fixed programs pass nil).
     let onPlan: (WorkoutPlan, [Int]?) -> Void
+    var recommendation: Recommendation? = nil
+    var onCoachStart: ((Recommendation) -> Void)? = nil
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(AppSettings.self) private var settings
@@ -27,6 +29,35 @@ struct WeightsStartView: View {
 
     var body: some View {
         List {
+            if let rec = recommendation, let action = onCoachStart {
+                Section {
+                    Button { Haptics.selection(); action(rec) } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "checklist").font(.title2)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Coach Workout").font(.title3.bold())
+                                Text(rec.action)
+                                    .font(.caption).foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
+                        }
+                        .padding(.vertical, 14).padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                        .foregroundStyle(.white)
+                        .background(.green, in: RoundedRectangle(cornerRadius: 18))
+                    }
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
+                    .listRowBackground(Color.clear)
+                    .accessibilityIdentifier("weights.coachStart")
+                    .accessibilityLabel("Coach Workout — \(rec.title)")
+                } footer: {
+                    Text(rec.title)
+                }
+            }
+
             Section {
                 // Quick Start is the primary, positive action — green & prominent,
                 // mirroring Home's "Start Workout" (feedback batch 7 item 4).
@@ -170,6 +201,7 @@ struct PlanPreviewView: View {
                         .frame(maxWidth: .infinity, minHeight: 56)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(.green)
                 .controlSize(.large)
                 .accessibilityIdentifier("plan.preview.start")
             }

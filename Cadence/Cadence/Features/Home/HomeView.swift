@@ -76,7 +76,6 @@ struct HomeView: View {
                                   insightCount: coachInsights.count,
                                   unit: settings.unit,
                                   onSeeAll: { path.append(HomeRoute.coach) })
-                    coachStartButton
                     startButton
                     logButton
                     thisWeekSection
@@ -118,7 +117,9 @@ struct HomeView: View {
                                   onWeightsQuickStart: { launchFromPicker(.strength, skipCountdown: true) },
                                     onWeightsWarmup: { typePickerPresented = false; startWarmupAfterHRGate = true; gateOrSkip(.strength) },
                                   onWeightsReuse: { launchFromPicker(.reuse($0)) },
-                                  onOtherCardio: { desc, gps in startOtherCardio(description: desc, gps: gps) })
+                                  onOtherCardio: { desc, gps in startOtherCardio(description: desc, gps: gps) },
+                                  recommendation: coachRecommendation,
+                                  onCoachStart: { rec in typePickerPresented = false; launchPrescription(rec) })
             }
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker()
@@ -154,7 +155,9 @@ struct HomeView: View {
                         onQuickStart: { weightsStartPresented = false; launchFromPicker(.strength, skipCountdown: true) },
                         onWarmupStart: { weightsStartPresented = false; startWarmupAfterHRGate = true; gateOrSkip(.strength) },
                         onReuse: { weightsStartPresented = false; launchFromPicker(.reuse($0)) },
-                        onPlan: { plan, ladder in weightsStartPresented = false; launchFromPicker(.plan(plan, ladder)) })
+                        onPlan: { plan, ladder in weightsStartPresented = false; launchFromPicker(.plan(plan, ladder)) },
+                        recommendation: coachRecommendation,
+                        onCoachStart: { rec in weightsStartPresented = false; launchPrescription(rec) })
                 }
             }
             // Body-parts tile (batch 8) → fill-the-gaps quick start.
@@ -335,36 +338,11 @@ struct HomeView: View {
         model.lastHealthSync = Date()
     }
 
-    // Coach "Start Coach Workout" button — sits between the Coach card and
-    // "Start Workout".  Launches the prescribed session through the HR gate.
-    private var coachStartButton: some View {
-        Button { Haptics.selection(); launchPrescription(coachRecommendation) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "checklist")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Start Coach Workout").font(.headline)
-                    Text(coachRecommendation.action)
-                        .font(.caption).foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
-            }
-            .padding(.vertical, 14).padding(.horizontal, 18)
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(.white)
-            .background(.green, in: RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.coachStart")
-        .accessibilityLabel("Start Coach Workout — \(coachRecommendation.title)")
-    }
-
     private var startButton: some View {
         Button { Haptics.selection(); typePickerPresented = true } label: {
             HStack(spacing: 12) {
                 Image(systemName: "play.circle.fill").font(.largeTitle)
-                Text("Start Workout").font(.title2.bold())
+                Text("Start").font(.title2.bold())
                 Spacer()
                 Image(systemName: "chevron.right").font(.headline).opacity(0.8)
             }

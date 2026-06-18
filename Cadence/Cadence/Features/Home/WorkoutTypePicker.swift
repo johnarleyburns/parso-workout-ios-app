@@ -20,6 +20,8 @@ struct WorkoutTypePicker: View {
     /// "Other Cardio" chosen: free-text description + whether to GPS-track it
     /// (feedback batch 6 item 3).
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
+    var recommendation: Recommendation? = nil
+    var onCoachStart: ((Recommendation) -> Void)? = nil
     /// Which types to offer; defaults to all. The Home "cardio min" tile passes the
     /// cardio-only subset for a focused quick-start (feedback batch 8).
     var types: [WorkoutType] = WorkoutType.allCases
@@ -43,7 +45,9 @@ struct WorkoutTypePicker: View {
                                 WeightsStartView(onQuickStart: onWeightsQuickStart,
                                                  onWarmupStart: onWeightsWarmup,
                                                  onReuse: onWeightsReuse,
-                                                 onPlan: onPlan)
+                                                 onPlan: onPlan,
+                                                 recommendation: recommendation,
+                                                 onCoachStart: onCoachStart)
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
                                 .tapHaptic()

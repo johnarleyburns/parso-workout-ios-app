@@ -283,15 +283,20 @@ struct HomeView: View {
 
     // MARK: Top stats
 
+    private var workoutsThisWeek: Int {
+        let ws = weekStart
+        let strengthCount = sessions.filter { $0.date >= ws }.count
+        let cardioCount = cardio.filter { $0.start >= ws }.count
+        return strengthCount + cardioCount
+    }
+
     private var statRow: some View {
-        let steps = today?.steps ?? 0
-        let stepGoal = max(1, settings.stepGoal)
+        let totalWorkouts = workoutsThisWeek
         let cardio = cardioMinutesThisWeek
         let cardioGoal = max(1, settings.weeklyCardioMinutesGoal)
         return HStack(spacing: 14) {
-            statTile("\(Format.integer(steps)) / \(Format.integer(stepGoal))", "steps today",
+            statTile("\(totalWorkouts)", "workouts this week",
                      id: "today.steps",
-                     progress: Double(steps) / Double(stepGoal), progressID: "today.steps.progress",
                      tileID: "home.stepsTile", onTap: { stepsQuickStart = true })
             statTile("\(cardio) / \(cardioGoal)", "cardio min this week",
                      id: "home.cardioMinutes",
@@ -416,7 +421,7 @@ struct HomeView: View {
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: startMode == .coach ? "checklist" : "play.circle.fill").font(.largeTitle)
-                Text(startMode == .coach ? "Start Coach Workout" : "Start").font(.title2.bold())
+                Text("Start").font(.title2.bold())
                 Spacer()
                 Image(systemName: "chevron.right").font(.headline).opacity(0.8)
             }

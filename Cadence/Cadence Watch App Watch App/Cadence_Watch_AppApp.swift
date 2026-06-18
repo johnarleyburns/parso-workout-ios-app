@@ -15,6 +15,7 @@ struct CadenceWatchApp: App {
         WindowGroup {
             QuickLogView()
                 .environment(watchManager)
+                .task { watchManager.activateWCSession() }
         }
         .modelContainer(container)
     }

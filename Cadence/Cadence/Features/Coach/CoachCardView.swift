@@ -18,7 +18,15 @@ struct CoachCardView: View {
                 Image(systemName: "figure.mind.and.body")
                 Text("COACH").font(.caption.bold()).tracking(1.2)
                 Spacer()
-                Text("Do next").font(.caption).foregroundStyle(.secondary)
+                NavigationLink {
+                    CoachAboutView()
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.subheadline)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("coach.card.about")
+                .accessibilityLabel("About the Coach")
             }
             .foregroundStyle(.secondary)
 

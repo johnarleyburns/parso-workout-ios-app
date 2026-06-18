@@ -1,17 +1,12 @@
 import XCTest
 
-/// strength-pivot P5.3 — Coach Workout is now inside the Strength start flow
-/// (WeightsStartView). Tapping it materializes the prescription into a logger
-/// session pre-filled with the prescribed movement, sets/reps, and working load.
 final class P5DoThisUITests: CadenceUITestCase {
 
     func testDoThisPreFillsPrescribedLiftAndLoad() {
         let app = XCUIApplication.launched(seeds: ["history"])
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
 
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start")
-        XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Strength type")
-        XCTAssertTrue(app.buttons["weights.coachStart"].waitTap(), "Coach Workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "Coach Workout")
         XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
 
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
@@ -34,9 +29,7 @@ final class P5DoThisUITests: CadenceUITestCase {
     func testDoThisColdStartOpensSession() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start")
-        XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Strength type")
-        XCTAssertTrue(app.buttons["weights.coachStart"].waitTap(), "Coach Workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "Coach Workout")
         XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
                       "the starter prescription opens the logger")

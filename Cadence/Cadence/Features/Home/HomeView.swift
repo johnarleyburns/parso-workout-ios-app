@@ -38,6 +38,7 @@ struct HomeView: View {
     @State private var coachDayToken = Date()
     @State private var homeSessionToDelete: WorkoutSession?
     @State private var homeCardioToDelete: CardioWorkout?
+    @State private var coachEditorPresented = false
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
     @State private var stepsQuickStart = false        // steps tile → Run/Walk dialog
     @State private var cardioPickerPresented = false  // cardio-min tile → cardio-only picker
@@ -79,6 +80,7 @@ struct HomeView: View {
                                   insightCount: coachInsights.count,
                                   unit: settings.unit,
                                   onSeeAll: { path.append(HomeRoute.coach) })
+                    coachStartButton
                     startButton
                     logButton
                     thisWeekSection
@@ -128,6 +130,13 @@ struct HomeView: View {
             .fullScreenCover(item: $active.finishedSummary) { finished in
                 WorkoutSummaryView(data: finished.data,
                                    onDone: { active.finishedSummary = nil })
+            }
+            .sheet(isPresented: $coachEditorPresented) {
+                NavigationStack {
+                    WorkoutPlanEditor(
+                        plan: .from(recommendation: coachRecommendation),
+                        onStart: { plan in coachEditorPresented = false; handleEditorStart(plan) })
+                }
             }
             .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR) }
             .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR) }
@@ -361,6 +370,29 @@ struct HomeView: View {
         let new = await model.health.newWorkouts(since: model.lastHealthSync)
         _ = try? WorkoutRepository.ingest(new, in: context)
         model.lastHealthSync = Date()
+    }
+
+    private var coachStartButton: some View {
+        Button { Haptics.selection(); coachEditorPresented = true } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "checklist")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Coach Workout").font(.headline)
+                    Text(coachRecommendation.action)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
+            }
+            .padding(.vertical, 14).padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.white)
+            .background(.green, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.coachStart")
+        .accessibilityLabel("Coach Workout — \(coachRecommendation.title)")
     }
 
     private var startButton: some View {

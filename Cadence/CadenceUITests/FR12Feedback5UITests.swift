@@ -15,7 +15,7 @@ final class FR12Feedback5UITests: CadenceUITestCase {
 
     /// Start a Gibala HIIT interval up to the pre-workout HR gate.
     private func startGibalaToHRGate(_ app: XCUIApplication) {
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.hiit"].waitTap(), "HIIT type")
         XCTAssertTrue(app.buttons["interval.preset.gibala"].waitTap(), "Gibala preset")
         XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")

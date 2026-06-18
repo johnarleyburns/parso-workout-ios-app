@@ -5,21 +5,29 @@ import XCTest
 /// exercise picker (popular shortlist + body-part filter chips + in-app detail).
 final class FR15Batch8UITests: CadenceUITestCase {
 
-    // Steps tile → Run/Walk dialog → distance-goal chooser → outdoor screen w/ goal.
-    func testStepsTileStartsRunWithGoal() {
+    // Hero "Start Workout" → opens the Strength start screen directly.
+    func testHeroOpensStrengthStart() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.scrollToHittableAndTap("home.stepsTile"), "steps tile")
-        XCTAssertTrue(app.buttons["steps.run"].waitTap(), "Start Run")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout hero")
+        XCTAssertTrue(app.buttons["weights.quickStart"].waitForExistence(timeout: 10),
+                      "hero should open the Strength start screen")
+    }
+
+    // "Start Cardio" → Run → distance-goal chooser → outdoor screen w/ goal.
+    func testStartCardioRunWithGoal() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
+        XCTAssertTrue(app.buttons["startType.run"].waitTap(), "Start Run")
         XCTAssertTrue(app.buttons["goal.preset.5K"].waitTap(), "5K goal preset")
         XCTAssertTrue(app.otherElements["outdoor.goal"].waitForExistence(timeout: 25)
                       || app.staticTexts["outdoor.elapsed"].waitForExistence(timeout: 10),
                       "the outdoor recorder should open showing the goal")
     }
 
-    // Cardio-min tile → the Start picker filtered to cardio types (no Strength).
-    func testCardioTileShowsCardioOnlyPicker() {
+    // "Start Cardio" → cardio-only picker (no Strength).
+    func testCardioButtonShowsCardioOnlyPicker() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.scrollToHittableAndTap("home.cardioTile"), "cardio tile")
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.run"].waitForExistence(timeout: 10), "Run offered")
         XCTAssertFalse(app.buttons["startType.weights"].exists, "Strength should be filtered out")
     }

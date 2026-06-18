@@ -3,7 +3,16 @@
 Live handoff/progress tracker. Read this first, then
 `plans/field-testing/2026-06-11/round4-plan.md`.
 
-_Last updated: 2026-06-14 (later) — Batch 8 quick-starts shipped as PR #29 (stacked
+_Last updated: 2026-06-18 — Home strength-first action spine shipped on branch
+`feat/home-strength-first` (off `main`): hero "Start Workout" repointed from
+the all-types WorkoutTypePicker to WeightsStartView (strength is the default);
+new secondary "Start Cardio" button (`home.startCardio`) opens the cardio-only
+picker; stat tiles (steps + cardio-min) no longer quick-start cardio. Orphaned
+all-types picker (`typePickerPresented`) + steps Run/Walk dialog
+(`stepsQuickStart`) removed. 13 UI test call sites updated; 3 new test
+assertions (hero→strength, cardio→picker, picker-no-weights). README.md
+reconciled: Cladiron as user-visible name, iPhone-first v1 framing, strength
+coach as lead. Prior:_
 on #28): tappable Home tiles (steps→Run/Walk, cardio-min→cardio picker, volume→
 strength, body-parts→fill-the-gaps), optional cardio distance goals (5K/10K, live
 progress + saved), plyometrics category, expanded catalog + body-part index +

@@ -23,7 +23,6 @@ final class FR10Feedback3UITests: CadenceUITestCase {
 
     private func openStrengthLibrary(_ app: XCUIApplication) {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
-        XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Strength type")
         XCTAssertTrue(app.buttons["weights.quickStart"].waitForExistence(timeout: 25),
                       "Strength start screen")
     }

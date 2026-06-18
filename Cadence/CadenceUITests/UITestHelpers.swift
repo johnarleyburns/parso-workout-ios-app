@@ -76,7 +76,6 @@ extension XCUIApplication {
     func startEmptyStrengthWorkout() -> Bool {
         popToHome()
         guard scrollToHittableAndTap("home.startWorkout") else { return false }
-        guard buttons["startType.weights"].waitTap() else { return false }
         guard buttons["weights.quickStart"].waitTap() else { return false }
         return buttons["session.addExercise"].waitForExistence(timeout: 25)
     }

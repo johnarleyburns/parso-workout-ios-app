@@ -48,7 +48,6 @@ final class FR11Feedback4UITests: CadenceUITestCase {
     func testStartWithWarmUpThenSession() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
-        XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Strength type")
         XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
 
         XCTAssertTrue(app.staticTexts["warmup.remaining"].waitForExistence(timeout: 25),
@@ -62,7 +61,6 @@ final class FR11Feedback4UITests: CadenceUITestCase {
     func testWarmUpPauses() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
-        XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Strength type")
         XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
 
         let remaining = app.staticTexts["warmup.remaining"]
@@ -104,7 +102,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
     // Ending a boxing interval shows the protocol structure in the summary.
     func testBoxingSummaryShowsIntervalDetail() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.boxing"].waitTap(), "Boxing type")
         XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")
         // Pre-workout HR gate (feedback batch 5) — continue without HR.

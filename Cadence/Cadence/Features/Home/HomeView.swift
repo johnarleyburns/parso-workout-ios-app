@@ -39,6 +39,9 @@ struct HomeView: View {
     @State private var homeSessionToDelete: WorkoutSession?
     @State private var homeCardioToDelete: CardioWorkout?
     @State private var coachEditorPresented = false
+    @State private var startMode: StartMode = .coach
+
+    enum StartMode { case coach, custom }
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
     @State private var stepsQuickStart = false        // steps tile → Run/Walk dialog
     @State private var cardioPickerPresented = false  // cardio-min tile → cardio-only picker
@@ -80,7 +83,7 @@ struct HomeView: View {
                                   insightCount: coachInsights.count,
                                   unit: settings.unit,
                                   onSeeAll: { path.append(HomeRoute.coach) })
-                    coachStartButton
+                    startModePicker
                     startButton
                     logButton
                     thisWeekSection
@@ -372,34 +375,48 @@ struct HomeView: View {
         model.lastHealthSync = Date()
     }
 
-    private var coachStartButton: some View {
-        Button { Haptics.selection(); coachEditorPresented = true } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "checklist")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Coach Workout").font(.headline)
-                    Text(coachRecommendation.action)
-                        .font(.caption).foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
+    private var startModePicker: some View {
+        HStack(spacing: 0) {
+            Button {
+                Haptics.selection(); startMode = .coach
+            } label: {
+                Text("Coach Workout")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
             }
-            .padding(.vertical, 14).padding(.horizontal, 18)
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(.white)
-            .background(.green, in: RoundedRectangle(cornerRadius: 16))
+            .foregroundStyle(startMode == .coach ? .white : .primary)
+            .background(startMode == .coach ? Color.green : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityIdentifier("startMode.coach")
+
+            Button {
+                Haptics.selection(); startMode = .custom
+            } label: {
+                Text("My Own")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .foregroundStyle(startMode == .custom ? .white : .primary)
+            .background(startMode == .custom ? Color.green : Color.clear, in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityIdentifier("startMode.custom")
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.coachStart")
-        .accessibilityLabel("Coach Workout — \(coachRecommendation.title)")
+        .padding(3)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var startButton: some View {
-        Button { Haptics.selection(); typePickerPresented = true } label: {
+        Button {
+            Haptics.selection()
+            if startMode == .coach {
+                coachEditorPresented = true
+            } else {
+                typePickerPresented = true
+            }
+        } label: {
             HStack(spacing: 12) {
-                Image(systemName: "play.circle.fill").font(.largeTitle)
-                Text("Start").font(.title2.bold())
+                Image(systemName: startMode == .coach ? "checklist" : "play.circle.fill").font(.largeTitle)
+                Text(startMode == .coach ? "Start Coach Workout" : "Start").font(.title2.bold())
                 Spacer()
                 Image(systemName: "chevron.right").font(.headline).opacity(0.8)
             }

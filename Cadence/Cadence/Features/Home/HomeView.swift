@@ -32,6 +32,7 @@ struct HomeView: View {
     @State private var startWarmupAfterHRGate = false
     /// Coach prescription stashed while the HR gate is shown.
     @State private var pendingPrescription: Recommendation?
+    @State private var captureHR = false
     @State private var warmupActive = false
     @State private var today: DayActivity?
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
@@ -115,7 +116,7 @@ struct HomeView: View {
                 WorkoutTypePicker(onSelect: { start($0) },
                                   onPlan: { plan, ladder in launchFromPicker(.plan(plan, ladder)) },
                                   onWeightsQuickStart: { launchFromPicker(.strength, skipCountdown: true) },
-                                   onWeightsWarmup: { typePickerPresented = false; startWarmupAfterHRGate = true; hrGateKind = .strength },
+                                    onWeightsWarmup: { typePickerPresented = false; startWarmupAfterHRGate = true; gateOrSkip(.strength) },
                                   onWeightsReuse: { launchFromPicker(.reuse($0)) },
                                   onOtherCardio: { desc, gps in startOtherCardio(description: desc, gps: gps) })
             }
@@ -128,8 +129,8 @@ struct HomeView: View {
                 WorkoutSummaryView(data: finished.data,
                                    onDone: { active.finishedSummary = nil })
             }
-            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle) }
-            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters) }
+            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR) }
+            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR) }
             // Steps tile (batch 8) → start an outdoor Run or Walk fast.
             .confirmationDialog("Start a workout", isPresented: $stepsQuickStart, titleVisibility: .visible) {
                 Button("Start Run") { startOutdoorWithGoal(.run) }.accessibilityIdentifier("steps.run")
@@ -151,7 +152,7 @@ struct HomeView: View {
                 NavigationStack {
                     WeightsStartView(
                         onQuickStart: { weightsStartPresented = false; launchFromPicker(.strength, skipCountdown: true) },
-                        onWarmupStart: { weightsStartPresented = false; startWarmupAfterHRGate = true; hrGateKind = .strength },
+                        onWarmupStart: { weightsStartPresented = false; startWarmupAfterHRGate = true; gateOrSkip(.strength) },
                         onReuse: { weightsStartPresented = false; launchFromPicker(.reuse($0)) },
                         onPlan: { plan, ladder in weightsStartPresented = false; launchFromPicker(.plan(plan, ladder)) })
                 }
@@ -174,13 +175,11 @@ struct HomeView: View {
             .sheet(item: $intervalType) { wType in
                 IntervalSetupView(type: wType) { plan in
                     intervalType = nil
-                    // Intervals skip the numeric get-ready countdown: the pre-workout
-                    // HR gate (inside IntervalView) + the protocol's own warm-up phase
-                    // are the "get ready" (feedback batch 5).
-                    intervalLaunch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)
+                    let launch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)
+                    gateOrSkip(.interval(launch))
                 }
             }
-            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType) }
+            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: captureHR) }
             .fullScreenCover(isPresented: $swimPresented) { SwimRecordView() }
         }
 
@@ -196,6 +195,7 @@ struct HomeView: View {
         if let kind = hrGateKind {
             PreWorkoutHRView(workoutType: kind.cardioType) { useHR in
                 hrGateKind = nil
+                captureHR = useHR
                 proceedFromHRGate(kind, useHR: useHR)
             }
             .transition(.identity)
@@ -542,14 +542,19 @@ struct HomeView: View {
     /// regardless of the Settings value (which still applies to library/reuse/warm-up).
     private func launchFromPicker(_ kind: PendingWorkout.Kind, skipCountdown: Bool = false) {
         typePickerPresented = false
-        if skipCountdown || settings.preWorkoutCountdown <= 0 {
-            hrGateKind = kind
-        } else {
-            hrGateKind = kind
-        }
+        gateOrSkip(kind)
     }
     private func begin(_ kind: PendingWorkout.Kind) {
-        hrGateKind = kind
+        gateOrSkip(kind)
+    }
+
+    private func gateOrSkip(_ kind: PendingWorkout.Kind) {
+        if settings.useHRMonitoring {
+            hrGateKind = kind
+        } else {
+            captureHR = false
+            proceedFromHRGate(kind, useHR: false)
+        }
     }
 
     /// Called after the HR gate closes.  If the countdown is enabled, show it;
@@ -606,7 +611,7 @@ struct HomeView: View {
     /// through the HR gate so the user can verify live HR first.
     private func launchPrescription(_ rec: Recommendation) {
         pendingPrescription = rec
-        hrGateKind = .strength
+        gateOrSkip(.strength)
     }
 }
 

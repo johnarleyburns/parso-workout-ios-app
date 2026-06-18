@@ -24,7 +24,8 @@ final class AppSettings {
                         "settings.intervalColorBlind", "settings.spokenCues", "settings.plateRounding",
                         "settings.preWorkoutCountdown", "settings.autoSaveHealth",
                         "settings.autoEndOnIdle", "settings.workoutSounds",
-                        "settings.trainingGoal", "settings.experienceLevel"] {
+                        "settings.trainingGoal", "settings.experienceLevel",
+                        "settings.useHRMonitoring"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -57,6 +58,7 @@ final class AppSettings {
         // goal/experience onboarding intake comes in P7; sensible defaults until then.
         self.trainingGoal = Self.read(defaults, "settings.trainingGoal", TrainingGoal.self) ?? .hypertrophy
         self.experienceLevel = Self.read(defaults, "settings.experienceLevel", ExperienceLevel.self) ?? .intermediate
+        self.useHRMonitoring = defaults.object(forKey: "settings.useHRMonitoring") as? Bool ?? false
         // In UI tests the countdown is off by default (so workout-start flows stay
         // fast); a test can opt in with `-preCountdown N`.
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {
@@ -65,6 +67,9 @@ final class AppSettings {
                 self.preWorkoutCountdown = n
             } else {
                 self.preWorkoutCountdown = 0
+            }
+            if a.contains("-enableHRMonitoring") {
+                self.useHRMonitoring = true
             }
         }
     }
@@ -100,6 +105,7 @@ final class AppSettings {
     var trainingGoal: TrainingGoal { didSet { defaults.set(trainingGoal.rawValue, forKey: "settings.trainingGoal") } }
     /// Training experience, scaling the engine's volume landmarks (P3).
     var experienceLevel: ExperienceLevel { didSet { defaults.set(experienceLevel.rawValue, forKey: "settings.experienceLevel") } }
+    var useHRMonitoring: Bool { didSet { defaults.set(useHRMonitoring, forKey: "settings.useHRMonitoring") } }
 
     private static func read<T: RawRepresentable>(_ d: UserDefaults, _ key: String, _ type: T.Type) -> T? where T.RawValue == String {
         guard let raw = d.string(forKey: key) else { return nil }

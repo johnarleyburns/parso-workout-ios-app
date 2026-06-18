@@ -12,6 +12,7 @@ struct IntervalSetupView: View {
     let onSelect: (IntervalPlan) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
     @State private var selectedID: String = ""
 
     // Custom builder params.
@@ -79,10 +80,17 @@ struct IntervalSetupView: View {
                         Stepper("Fighting: \(formatMinSec(workSec))", value: $workSec, in: 10...600, step: stepSize)
                         Stepper("Rest: \(restSec) sec", value: $restSec, in: 0...300, step: stepSize)
                         Stepper("Cool-down: \(cooldownMin) min", value: $cooldownMin, in: 0...20)
-                        if type == .hiit {
-                            rowLabel("custom", "Custom", "your settings")
-                        }
+                    if type == .hiit {
+                        rowLabel("custom", "Custom", "your settings")
                     }
+                }
+                Section {
+                    @Bindable var settings = settings
+                    Toggle("Use HR monitoring", isOn: $settings.useHRMonitoring)
+                        .accessibilityIdentifier("interval.hrToggle")
+                } footer: {
+                    Text("Connect a chest strap or Apple Watch before the workout starts.")
+                }
                 }
 
                 Button {

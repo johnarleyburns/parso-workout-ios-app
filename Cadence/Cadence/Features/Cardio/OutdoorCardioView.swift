@@ -16,6 +16,7 @@ struct OutdoorCardioView: View {
     /// Optional distance goal in meters (feedback batch 8): shows live progress and
     /// is saved on the workout. nil ⇒ no goal.
     var goalMeters: Double? = nil
+    var captureHR = false
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -26,8 +27,6 @@ struct OutdoorCardioView: View {
     @State private var clock = WorkoutClock()
     @State private var now = Date()
     @State private var finishedSummary: WorkoutSummaryData?
-    @State private var showingHRGate = true
-    @State private var captureHR = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var elapsed: TimeInterval { clock.elapsed(now: now) }
@@ -43,14 +42,9 @@ struct OutdoorCardioView: View {
     var body: some View {
         if let finishedSummary {
             WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
-        } else if showingHRGate {
-            PreWorkoutHRView(workoutType: type) { useHR in
-                captureHR = useHR
-                showingHRGate = false
-                startIfNeeded()
-            }
         } else {
             liveView
+                .onAppear { startIfNeeded() }
         }
     }
 
@@ -88,14 +82,6 @@ struct OutdoorCardioView: View {
                     .accessibilityIdentifier("outdoor.goal")
                 }
                 bigMetric(Format.heartRate(recorder?.currentBPM), "Heart Rate", id: "outdoor.hr")
-
-                if let r = recorder, !r.strapConnected {
-                    Button { r.connectStrap() } label: {
-                        Label("Connect HR Strap", systemImage: "antenna.radiowaves.left.and.right")
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("outdoor.connectStrap")
-                }
 
                 Spacer()
 

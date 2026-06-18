@@ -18,6 +18,7 @@ struct WeightsStartView: View {
     let onPlan: (WorkoutPlan, [Int]?) -> Void
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+    @Environment(AppSettings.self) private var settings
 
     /// Recent sessions that have logged sets, newest first, capped at the last 20.
     private var previous: [WorkoutSession] {
@@ -91,8 +92,6 @@ struct WeightsStartView: View {
             Section("Start from Library") {
                 ForEach(StrengthPresets.all) { plan in
                     NavigationLink {
-                        // Flexible templates pick a set/rep scheme first; fixed
-                        // programs (5×5, Olympic) go straight to the preview.
                         if plan.flexibleScheme {
                             RepSchemePicker(plan: plan, onStart: onPlan)
                         } else {
@@ -108,6 +107,14 @@ struct WeightsStartView: View {
                     }
                     .accessibilityIdentifier("weights.library.\(plan.id)")
                 }
+            }
+
+            Section {
+                @Bindable var settings = settings
+                Toggle("Use HR monitoring", isOn: $settings.useHRMonitoring)
+                    .accessibilityIdentifier("weights.hrToggle")
+            } footer: {
+                Text("Connect a chest strap or Apple Watch before the workout starts.")
             }
         }
         .navigationTitle("Strength")

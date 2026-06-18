@@ -2,36 +2,24 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
-/// The Weights entry point (round4b feedback #1). Three ways to begin a strength
-/// session: **Quick Start** (a blank workout), **Start from Previous Workout**
-/// (one of your recent sessions, reused as a template), or **Start from Library**
-/// (a built-in split — 5×5, Push/Pull/Legs, body-part days, Olympic). Pushed
-/// inside the Start-Workout sheet, so launching is the parent's job and dismisses
-/// the whole sheet at once with no Home flash.
 struct WeightsStartView: View {
-    let onQuickStart: () -> Void
-    /// Quick Start, but preceded by a guided warm-up timer (feedback batch 4).
-    let onWarmupStart: () -> Void
-    let onReuse: (WorkoutSession) -> Void
-    /// Launches a library preset, optionally with a chosen per-set rep ladder
-    /// (flexible templates carry one; fixed programs pass nil).
-    let onPlan: (WorkoutPlan, [Int]?) -> Void
+    let onEditorStart: (EditablePlan) -> Void
     var recommendation: Recommendation? = nil
-    var onCoachStart: ((Recommendation) -> Void)? = nil
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(AppSettings.self) private var settings
 
-    /// Recent sessions that have logged sets, newest first, capped at the last 20.
     private var previous: [WorkoutSession] {
         Array(sessions.filter { !$0.orderedSets.isEmpty }.prefix(20))
     }
 
     var body: some View {
         List {
-            if let rec = recommendation, let action = onCoachStart {
+            if let rec = recommendation {
                 Section {
-                    Button { Haptics.selection(); action(rec) } label: {
+                    NavigationLink {
+                        WorkoutPlanEditor(plan: .from(recommendation: rec), onStart: onEditorStart)
+                    } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "checklist").font(.title2)
                             VStack(alignment: .leading, spacing: 2) {
@@ -41,7 +29,6 @@ struct WeightsStartView: View {
                                     .lineLimit(2)
                             }
                             Spacer()
-                            Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
                         }
                         .padding(.vertical, 14).padding(.horizontal, 16)
                         .frame(maxWidth: .infinity, minHeight: 60)
@@ -59,9 +46,11 @@ struct WeightsStartView: View {
             }
 
             Section {
-                // Quick Start is the primary, positive action — green & prominent,
-                // mirroring Home's "Start Workout" (feedback batch 7 item 4).
-                Button { Haptics.selection(); onQuickStart() } label: {
+                NavigationLink {
+                    WorkoutPlanEditor(
+                        plan: .empty(warmup: 0, cooldown: settings.cooldownMinutes),
+                        onStart: onEditorStart)
+                } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "bolt.fill").font(.title2)
                         Text("Quick Start").font(.title3.bold())
@@ -79,8 +68,11 @@ struct WeightsStartView: View {
                 .listRowBackground(Color.clear)
                 .accessibilityIdentifier("weights.quickStart")
 
-                // Start with Warm-Up is the quieter secondary, like Home's "Log Workout".
-                Button { Haptics.selection(); onWarmupStart() } label: {
+                NavigationLink {
+                    WorkoutPlanEditor(
+                        plan: .empty(warmup: settings.warmupMinutes, cooldown: settings.cooldownMinutes),
+                        onStart: onEditorStart)
+                } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "figure.cooldown").font(.headline)
                         Text("Start with Warm-Up").font(.headline)
@@ -106,7 +98,9 @@ struct WeightsStartView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 ForEach(previous) { s in
-                    Button { Haptics.selection(); onReuse(s) } label: {
+                    NavigationLink {
+                        WorkoutPlanEditor(plan: .from(session: s), onStart: onEditorStart)
+                    } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(s.title.isEmpty ? "Workout" : s.title).font(.headline)
                             Text("\(s.date.formatted(date: .abbreviated, time: .omitted)) · \(s.exercisesInOrder.count) exercises · \(s.orderedSets.count) sets")
@@ -115,7 +109,6 @@ struct WeightsStartView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
                     .accessibilityIdentifier("weights.previousRow")
                 }
             }
@@ -124,9 +117,11 @@ struct WeightsStartView: View {
                 ForEach(StrengthPresets.all) { plan in
                     NavigationLink {
                         if plan.flexibleScheme {
-                            RepSchemePicker(plan: plan, onStart: onPlan)
+                            RepSchemePicker(plan: plan, onEditorStart: onEditorStart)
                         } else {
-                            PlanPreviewView(plan: plan) { onPlan(plan, nil) }
+                            WorkoutPlanEditor(
+                                plan: .from(plan: plan, ladder: nil, unit: settings.unit),
+                                onStart: onEditorStart)
                         }
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
@@ -153,9 +148,6 @@ struct WeightsStartView: View {
     }
 }
 
-/// A read-only prescription preview for one strength preset, with a big Start
-/// button. A flexible template's chosen per-set rep ladder (feedback batch 3) is
-/// applied to every movement in the preview + the launched session.
 struct PlanPreviewView: View {
     let plan: WorkoutPlan
     var repLadder: [Int]? = nil

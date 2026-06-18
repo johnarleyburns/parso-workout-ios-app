@@ -59,9 +59,7 @@ struct RoutineDetailView: View {
 
                 if plan.flexibleScheme {
                     NavigationLink {
-                        RepSchemePicker(plan: plan) { plan, ladder in
-                            startWorkout(plan: plan, ladder: ladder)
-                        }
+                        RepSchemePicker(plan: plan, onEditorStart: startFromEditedPlan)
                     } label: {
                         Label("Choose Scheme & Start", systemImage: "play.fill")
                             .font(.title3.bold())
@@ -71,7 +69,11 @@ struct RoutineDetailView: View {
                     .controlSize(.large)
                     .accessibilityIdentifier("routine.chooseScheme")
                 } else {
-                    Button { startWorkout(plan: plan, ladder: nil) } label: {
+                    NavigationLink {
+                        WorkoutPlanEditor(
+                            plan: .from(plan: plan, ladder: nil, unit: settings.unit),
+                            onStart: startFromEditedPlan)
+                    } label: {
                         Label("Start", systemImage: "play.fill")
                             .font(.title3.bold())
                             .frame(maxWidth: .infinity, minHeight: 56)
@@ -104,5 +106,25 @@ struct RoutineDetailView: View {
             Haptics.selection()
             switchToWorkout()
         }
+    }
+
+    private func startFromEditedPlan(_ edited: EditablePlan) {
+        guard let session = try? WorkoutRepository.createSession(title: edited.title, in: context) else { return }
+        session.plannedExerciseNames = edited.exercises.map(\.name)
+        if let first = edited.exercises.first, !first.sets.isEmpty {
+            session.plannedRepLadder = first.sets.map(\.targetReps)
+        }
+        let weights = edited.exercises.compactMap(\.sets.first?.targetWeight)
+        if let w = weights.first, w > 0, weights.allSatisfy({ $0 == w }) {
+            session.prescribedLoadKg = w
+        }
+        for name in edited.exercises.map(\.name) {
+            _ = try? WorkoutRepository.findOrCreateExercise(named: name, in: context)
+        }
+        try? context.save()
+        active.startStrength(session)
+        WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+        Haptics.selection()
+        switchToWorkout()
     }
 }

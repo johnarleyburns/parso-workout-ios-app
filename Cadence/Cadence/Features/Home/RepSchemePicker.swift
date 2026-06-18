@@ -1,17 +1,12 @@
 import SwiftUI
 import CadenceCore
 
-/// Set & rep scheme chooser for a flexible Strength-library template (feedback
-/// batch 3). The user picks one scheme and it's applied to every movement in the
-/// preset (e.g. all Push exercises become 3 sets of 12-10-8). Pushed inside the
-/// Start-Workout sheet's navigation (like the preset previews) so launching stays
-/// the parent's job and dismisses the whole sheet at once.
 struct RepSchemePicker: View {
     let plan: WorkoutPlan
-    /// Launches the preset with the chosen rep ladder.
-    let onStart: (WorkoutPlan, [Int]?) -> Void
+    let onEditorStart: (EditablePlan) -> Void
 
-    /// The built-in schemes (sets × descending reps), as the user described them.
+    @Environment(AppSettings.self) private var settings
+
     private let presets: [(title: String, ladder: [Int], id: String)] = [
         ("2 sets · 8-5", [8, 5], "repScheme.2x"),
         ("3 sets · 12-10-8", [12, 10, 8], "repScheme.3x"),
@@ -23,16 +18,16 @@ struct RepSchemePicker: View {
             Section {
                 ForEach(presets, id: \.id) { preset in
                     NavigationLink {
-                        PlanPreviewView(plan: plan, repLadder: preset.ladder) {
-                            onStart(plan, preset.ladder)
-                        }
+                        WorkoutPlanEditor(
+                            plan: .from(plan: plan, ladder: preset.ladder, unit: settings.unit),
+                            onStart: onEditorStart)
                     } label: {
                         Label(preset.title, systemImage: "list.number")
                     }
                     .accessibilityIdentifier(preset.id)
                 }
                 NavigationLink {
-                    CustomRepEditor(plan: plan, onStart: onStart)
+                    CustomRepEditor(plan: plan, onEditorStart: onEditorStart)
                 } label: {
                     Label("Custom…", systemImage: "slider.horizontal.3")
                 }
@@ -48,12 +43,11 @@ struct RepSchemePicker: View {
     }
 }
 
-/// Per-set rep entry for a custom scheme (feedback batch 3): type each set's
-/// reps, then preview + start. The set count grows/shrinks with Add/Remove.
 struct CustomRepEditor: View {
     let plan: WorkoutPlan
-    let onStart: (WorkoutPlan, [Int]?) -> Void
+    let onEditorStart: (EditablePlan) -> Void
 
+    @Environment(AppSettings.self) private var settings
     @State private var reps: [Int] = [12, 10, 8]
 
     var body: some View {
@@ -86,9 +80,9 @@ struct CustomRepEditor: View {
             }
             Section {
                 NavigationLink {
-                    PlanPreviewView(plan: plan, repLadder: reps) {
-                        onStart(plan, reps)
-                    }
+                    WorkoutPlanEditor(
+                        plan: .from(plan: plan, ladder: reps, unit: settings.unit),
+                        onStart: onEditorStart)
                 } label: {
                     Label("Preview \(reps.count) sets", systemImage: "chevron.right")
                 }

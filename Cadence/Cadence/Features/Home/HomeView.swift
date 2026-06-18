@@ -30,8 +30,7 @@ struct HomeView: View {
     @State private var hrGateKind: PendingWorkout.Kind?
     /// When true, the warm-up overlay appears after the HR gate passes.
     @State private var startWarmupAfterHRGate = false
-    /// Coach prescription stashed while the HR gate is shown.
-    @State private var pendingPrescription: Recommendation?
+    @State private var pendingPlan: EditablePlan?
     @State private var captureHR = false
     @State private var warmupActive = false
     @State private var today: DayActivity?
@@ -113,13 +112,9 @@ struct HomeView: View {
             .refreshable { today = await model.health.todayActivity(); await syncCardioFromHealth() }
             .sheet(isPresented: $typePickerPresented) {
                 WorkoutTypePicker(onSelect: { start($0) },
-                                  onPlan: { plan, ladder in launchFromPicker(.plan(plan, ladder)) },
-                                  onWeightsQuickStart: { launchFromPicker(.strength, skipCountdown: true) },
-                                    onWeightsWarmup: { typePickerPresented = false; startWarmupAfterHRGate = true; gateOrSkip(.strength) },
-                                  onWeightsReuse: { launchFromPicker(.reuse($0)) },
+                                  onEditorStart: { plan in typePickerPresented = false; handleEditorStart(plan) },
                                   onOtherCardio: { desc, gps in startOtherCardio(description: desc, gps: gps) },
-                                  recommendation: coachRecommendation,
-                                  onCoachStart: { rec in typePickerPresented = false; launchPrescription(rec) })
+                                  recommendation: coachRecommendation)
             }
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker()
@@ -141,9 +136,7 @@ struct HomeView: View {
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
             .sheet(isPresented: $cardioPickerPresented) {
                 WorkoutTypePicker(onSelect: { cardioPickerPresented = false; start($0) },
-                                  onPlan: { _, _ in },
-                                  onWeightsQuickStart: { }, onWeightsWarmup: { },
-                                  onWeightsReuse: { _ in },
+                                  onEditorStart: { _ in },
                                   onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
                                   types: [.run, .walk, .cycle, .swim, .hiit, .boxing, .other],
                                   title: "Start Cardio")
@@ -152,12 +145,8 @@ struct HomeView: View {
             .sheet(isPresented: $weightsStartPresented) {
                 NavigationStack {
                     WeightsStartView(
-                        onQuickStart: { weightsStartPresented = false; launchFromPicker(.strength, skipCountdown: true) },
-                        onWarmupStart: { weightsStartPresented = false; startWarmupAfterHRGate = true; gateOrSkip(.strength) },
-                        onReuse: { weightsStartPresented = false; launchFromPicker(.reuse($0)) },
-                        onPlan: { plan, ladder in weightsStartPresented = false; launchFromPicker(.plan(plan, ladder)) },
-                        recommendation: coachRecommendation,
-                        onCoachStart: { rec in weightsStartPresented = false; launchPrescription(rec) })
+                        onEditorStart: { plan in weightsStartPresented = false; handleEditorStart(plan) },
+                        recommendation: coachRecommendation)
                 }
             }
             // Body-parts tile (batch 8) → fill-the-gaps quick start.
@@ -223,7 +212,7 @@ struct HomeView: View {
         if warmupActive {
             GuidedPhaseOverlay(
                 title: "Warm Up",
-                minutes: settings.warmupMinutes,
+                minutes: pendingPlan?.warmupMinutes ?? settings.warmupMinutes,
                 tint: .orange,
                 idPrefix: "warmup",
                 soundsEnabled: settings.workoutSounds,
@@ -538,17 +527,6 @@ struct HomeView: View {
     /// Called after the HR gate closes.  If the countdown is enabled, show it;
     /// otherwise launch immediately.
     private func proceedFromHRGate(_ kind: PendingWorkout.Kind, useHR: Bool) {
-        // "Do this workout" path: launch the prescription immediately (fast path).
-        if let rec = pendingPrescription {
-            pendingPrescription = nil
-            let prescribed = rec.prescribedSession()
-            if let s = try? WorkoutRepository.startSession(from: prescribed, in: context) {
-                active.startStrength(s)
-                path.append(s)
-                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
-            }
-            return
-        }
         if startWarmupAfterHRGate {
             startWarmupAfterHRGate = false
             warmupActive = true
@@ -563,7 +541,13 @@ struct HomeView: View {
     private func launch(_ kind: PendingWorkout.Kind) {
         switch kind {
         case .strength:
-            if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
+            if let plan = pendingPlan {
+                pendingPlan = nil
+                if let s = try? materializePlan(plan) {
+                    active.startStrength(s); path.append(s)
+                    WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+                }
+            } else if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
                 active.startStrength(s); path.append(s)
                 WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
             }
@@ -583,13 +567,30 @@ struct HomeView: View {
         }
     }
 
-    /// "Do this workout" (strength-pivot P5.3): materialize the coach's top
-    /// recommendation into a fresh strength session pre-filled with the prescribed
-    /// movement, planned sets/reps, and load — the fast default path. Routes
-    /// through the HR gate so the user can verify live HR first.
-    private func launchPrescription(_ rec: Recommendation) {
-        pendingPrescription = rec
+    private func handleEditorStart(_ plan: EditablePlan) {
+        pendingPlan = plan
+        if plan.warmupMinutes > 0 {
+            startWarmupAfterHRGate = true
+        }
         gateOrSkip(.strength)
+    }
+
+    private func materializePlan(_ plan: EditablePlan) throws -> WorkoutSession {
+        let session = try WorkoutRepository.createSession(title: plan.title, in: context)
+        session.plannedExerciseNames = plan.exercises.map(\.name)
+        if let first = plan.exercises.first, !first.sets.isEmpty {
+            session.plannedRepLadder = first.sets.map(\.targetReps)
+        }
+        let weights = plan.exercises.compactMap(\.sets.first?.targetWeight)
+        if let w = weights.first, w > 0, weights.allSatisfy({ $0 == w }) {
+            session.prescribedLoadKg = w
+        }
+        for name in plan.exercises.map(\.name) {
+            _ = try WorkoutRepository.findOrCreateExercise(named: name, in: context)
+        }
+        session.cooldownSeconds = Double(plan.cooldownMinutes * 60)
+        try context.save()
+        return session
     }
 }
 

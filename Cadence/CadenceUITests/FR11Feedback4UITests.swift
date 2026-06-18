@@ -50,6 +50,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Strength type")
         XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
 
         XCTAssertTrue(app.staticTexts["warmup.remaining"].waitForExistence(timeout: 25),
                       "the warm-up timer should appear")
@@ -64,6 +65,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Strength type")
         XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
 
         let remaining = app.staticTexts["warmup.remaining"]
         XCTAssertTrue(remaining.waitForExistence(timeout: 25), "warm-up timer")

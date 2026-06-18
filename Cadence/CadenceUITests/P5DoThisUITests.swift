@@ -12,6 +12,7 @@ final class P5DoThisUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start")
         XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Strength type")
         XCTAssertTrue(app.buttons["weights.coachStart"].waitTap(), "Coach Workout")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
 
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
                       "the prescription opens the logger")
@@ -36,6 +37,7 @@ final class P5DoThisUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start")
         XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Strength type")
         XCTAssertTrue(app.buttons["weights.coachStart"].waitTap(), "Coach Workout")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
                       "the starter prescription opens the logger")
     }

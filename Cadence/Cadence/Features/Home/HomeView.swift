@@ -10,6 +10,7 @@ struct HomeView: View {
     @Environment(AppModel.self) private var model
     @Environment(AppSettings.self) private var settings
     @Environment(ActiveWorkoutModel.self) private var active
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .reverse) private var assessments: [Assessment]
@@ -34,6 +35,9 @@ struct HomeView: View {
     @State private var captureHR = false
     @State private var warmupActive = false
     @State private var today: DayActivity?
+    @State private var coachDayToken = Date()
+    @State private var homeSessionToDelete: WorkoutSession?
+    @State private var homeCardioToDelete: CardioWorkout?
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
     @State private var stepsQuickStart = false        // steps tile → Run/Walk dialog
     @State private var cardioPickerPresented = false  // cardio-min tile → cardio-only picker
@@ -53,7 +57,7 @@ struct HomeView: View {
     // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
     // read-only insights and the prescriptive recommendation surfaced on the card.
     private var coachFacts: TrainingFacts {
-        TrainingFacts.make(sessions: sessions,
+        TrainingFacts.make(sessions: sessions.filter { $0.deletedAt == nil },
                            assessments: assessments,
                            goal: settings.trainingGoal,
                            experience: settings.experienceLevel,
@@ -173,6 +177,26 @@ struct HomeView: View {
             }
             .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: captureHR) }
             .fullScreenCover(isPresented: $swimPresented) { SwimRecordView() }
+            .confirmationDialog("Delete this workout?",
+                                isPresented: Binding(get: { homeSessionToDelete != nil },
+                                                     set: { if !$0 { homeSessionToDelete = nil } }),
+                                presenting: homeSessionToDelete) { session in
+                Button("Delete", role: .destructive) {
+                    try? WorkoutRepository.softDeleteSession(session, in: context)
+                    homeSessionToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { homeSessionToDelete = nil }
+            } message: { _ in Text("You can restore it from History → View Deleted.") }
+            .confirmationDialog("Delete this cardio workout?",
+                                isPresented: Binding(get: { homeCardioToDelete != nil },
+                                                     set: { if !$0 { homeCardioToDelete = nil } }),
+                                presenting: homeCardioToDelete) { c in
+                Button("Delete", role: .destructive) {
+                    try? WorkoutRepository.softDeleteCardio(c, in: context)
+                    homeCardioToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { homeCardioToDelete = nil }
+            } message: { _ in Text("You can restore it from History → View Deleted.") }
         }
 
         // Get-ready countdown as a plain opaque overlay above the whole
@@ -231,6 +255,18 @@ struct HomeView: View {
                 .zIndex(1)
         }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            let today = Self.dayString()
+            if settings.lastCoachComputeDay != today {
+                settings.lastCoachComputeDay = today
+                coachDayToken = Date()
+            }
+        }
+    }
+
+    private static func dayString(_ date: Date = Date()) -> String {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
     }
 
     // MARK: Top stats
@@ -368,8 +404,10 @@ struct HomeView: View {
 
     /// One merged, date-sorted "Recent workouts" list — cardio counts as a workout
     /// too, so strength sessions and cardio recordings share a single section (P1 #10).
+    /// Deleted workouts are excluded.
     private var recentItems: [RecentWorkoutItem] {
-        let merged = sessions.map { RecentWorkoutItem.strength($0) } + cardio.map { RecentWorkoutItem.cardio($0) }
+        let merged = sessions.filter { $0.deletedAt == nil }.map { RecentWorkoutItem.strength($0) }
+                   + cardio.filter { $0.deletedAt == nil }.map { RecentWorkoutItem.cardio($0) }
         return Array(merged.sorted { $0.date > $1.date }.prefix(5))
     }
 
@@ -408,6 +446,11 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("home.sessionRow")
+        .swipeActions {
+            Button(role: .destructive) { homeSessionToDelete = s } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     private func cardioRow(_ w: CardioWorkout) -> some View {
@@ -425,6 +468,11 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("home.cardioRow.\(w.typeValue.rawValue)")
+        .swipeActions {
+            Button(role: .destructive) { homeCardioToDelete = w } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     private func sectionHeader(_ title: String, route: HomeRoute, id: String) -> some View {

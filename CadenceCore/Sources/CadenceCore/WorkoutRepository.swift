@@ -262,6 +262,16 @@ public enum WorkoutRepository {
         try context.save()
     }
 
+    public static func softDeleteSession(_ session: WorkoutSession, in context: ModelContext) throws {
+        session.deletedAt = Date()
+        try context.save()
+    }
+
+    public static func restoreSession(_ session: WorkoutSession, in context: ModelContext) throws {
+        session.deletedAt = nil
+        try context.save()
+    }
+
     // MARK: Last-time & PRs (FR-1.3, FR-1.4, FR-5.2)
 
     /// All non-warmup sets for an exercise as pure samples, newest first.
@@ -574,6 +584,16 @@ public enum WorkoutRepository {
 
     public static func deleteCardio(_ c: CardioWorkout, in context: ModelContext) throws {
         context.delete(c)
+        try context.save()
+    }
+
+    public static func softDeleteCardio(_ c: CardioWorkout, in context: ModelContext) throws {
+        c.deletedAt = Date()
+        try context.save()
+    }
+
+    public static func restoreCardio(_ c: CardioWorkout, in context: ModelContext) throws {
+        c.deletedAt = nil
         try context.save()
     }
 

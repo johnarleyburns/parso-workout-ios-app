@@ -194,6 +194,7 @@ public final class WorkoutSession {
     /// Manually logged after the fact, rather than recorded live (feedback batch 6).
     /// History shows a "Logged" tag. Additive/defaulted for CloudKit + back-compat.
     public var isLogged: Bool = false
+    public var deletedAt: Date?
     /// Actual warm-up / cool-down time consumed for this session, in seconds; 0 when
     /// none was run (feedback batch 6). Surfaced in the summary alongside duration.
     public var warmupSeconds: Double = 0
@@ -476,6 +477,7 @@ public final class CardioWorkout {
     /// Manually logged after the fact, rather than recorded live (feedback batch 6).
     /// History shows a "Logged" tag. Additive/defaulted for CloudKit + back-compat.
     public var isLogged: Bool = false
+    public var deletedAt: Date?
     /// Free-text label for an "Other Cardio" workout (e.g. "Rowing", "Yardwork");
     /// nil ⇒ use the type's display name (feedback batch 6).
     public var customTitle: String?

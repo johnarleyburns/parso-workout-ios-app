@@ -443,16 +443,20 @@ struct SessionView: View {
     /// Reminds the user which past date a manually-logged workout is being filed
     /// under (feedback batch 7 follow-up).
     private var loggedDateBanner: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "square.and.pencil")
-            Text("Logging \(session.date.formatted(date: .abbreviated, time: .shortened))")
-                .font(.subheadline.weight(.medium))
-            Spacer()
+        Button { datePickerPresented = true } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "square.and.pencil")
+                Text("Logging \(session.date.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.subheadline.weight(.medium))
+                Spacer()
+                Image(systemName: "calendar").font(.caption)
+            }
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
         }
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .frame(maxWidth: .infinity)
-        .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+        .buttonStyle(.plain)
         .accessibilityIdentifier("log.dateBanner")
     }
 

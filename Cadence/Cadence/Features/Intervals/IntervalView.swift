@@ -7,8 +7,8 @@ import CadenceCore
 /// Meaning is always also carried by a large label + icon (never colour alone).
 struct IntervalView: View {
     let plan: IntervalPlan
-    /// `.hiit` or `.boxing` — for the saved HealthKit summary.
     let saveType: CardioType
+    var captureHR = false
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -23,17 +23,14 @@ struct IntervalView: View {
     @State private var lastWarnedPhase: Int?
     @State private var finished = false
     @State private var finishedSummary: WorkoutSummaryData?
-    // HR (feedback batch 5): the pre-workout gate decides whether we capture HR; if
-    // so we sample the strap's BPM once per whole second into `hrSamples`.
-    @State private var showingHRGate = true
-    @State private var captureHR = false
     @State private var hrSamples: [HRSamplePoint] = []
     @State private var lastHRSecond = -1
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
-    init(plan: IntervalPlan, saveType: CardioType) {
+    init(plan: IntervalPlan, saveType: CardioType, captureHR: Bool = false) {
         self.plan = plan
         self.saveType = saveType
+        self.captureHR = captureHR
         _runner = State(initialValue: IntervalRunner(plan: plan))
     }
 
@@ -42,18 +39,10 @@ struct IntervalView: View {
 
     var body: some View {
         if let finishedSummary {
-            // A3 — the interval session is saved; show its summary.
             WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
-        } else if showingHRGate {
-            // Pre-workout HR connect screen (feedback batch 5). The runner's clock
-            // only starts once the gate is passed, so setup time isn't counted.
-            PreWorkoutHRView(workoutType: saveType) { useHR in
-                captureHR = useHR
-                runner.restart()
-                showingHRGate = false
-            }
         } else {
             runnerView
+                .onAppear { runner.restart() }
         }
     }
 

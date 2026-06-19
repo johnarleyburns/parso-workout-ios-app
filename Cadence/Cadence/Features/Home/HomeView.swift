@@ -10,6 +10,7 @@ struct HomeView: View {
     @Environment(AppModel.self) private var model
     @Environment(AppSettings.self) private var settings
     @Environment(ActiveWorkoutModel.self) private var active
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .reverse) private var assessments: [Assessment]
@@ -33,6 +34,11 @@ struct HomeView: View {
     @State private var pendingPrescription: Recommendation?
     @State private var warmupActive = false
     @State private var today: DayActivity?
+    @State private var coachDayToken = Date()
+    @State private var homeSessionToDelete: WorkoutSession?
+    @State private var homeCardioToDelete: CardioWorkout?
+    @State private var pendingPlan: EditablePlan?
+    @State private var captureHR = false
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
     @State private var cardioPickerPresented = false  // cardio-min tile → cardio-only picker
     @State private var weightsStartPresented = false  // volume tile → strength start
@@ -48,10 +54,17 @@ struct HomeView: View {
         WeeklyStats.bodyParts(sessions, since: weekStart)
     }
 
+    private var workoutsThisWeek: Int {
+        let ws = weekStart
+        let strengthCount = sessions.filter { $0.date >= ws && $0.deletedAt == nil }.count
+        let cardioCount = cardio.filter { $0.start >= ws && $0.deletedAt == nil }.count
+        return strengthCount + cardioCount
+    }
+
     // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
     // read-only insights and the prescriptive recommendation surfaced on the card.
     private var coachFacts: TrainingFacts {
-        TrainingFacts.make(sessions: sessions,
+        TrainingFacts.make(sessions: sessions.filter { $0.deletedAt == nil },
                            assessments: assessments,
                            goal: settings.trainingGoal,
                            experience: settings.experienceLevel,
@@ -119,14 +132,12 @@ struct HomeView: View {
                 WorkoutSummaryView(data: finished.data,
                                    onDone: { active.finishedSummary = nil })
             }
-            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle) }
-            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters) }
+            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR) }
+            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR) }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
             .sheet(isPresented: $cardioPickerPresented) {
                 WorkoutTypePicker(onSelect: { cardioPickerPresented = false; start($0) },
-                                  onPlan: { _, _ in },
-                                  onWeightsQuickStart: { }, onWeightsWarmup: { },
-                                  onWeightsReuse: { _ in },
+                                  onEditorStart: { _ in },
                                   onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
                                   types: [.run, .walk, .cycle, .swim, .hiit, .boxing, .other],
                                   title: "Start Cardio")
@@ -135,10 +146,8 @@ struct HomeView: View {
             .sheet(isPresented: $weightsStartPresented) {
                 NavigationStack {
                     WeightsStartView(
-                        onQuickStart: { weightsStartPresented = false; launchFromPicker(.strength, skipCountdown: true) },
-                        onWarmupStart: { weightsStartPresented = false; startWarmupAfterHRGate = true; proceedFromHRGate(.strength, useHR: false) },
-                        onReuse: { weightsStartPresented = false; launchFromPicker(.reuse($0)) },
-                        onPlan: { plan, ladder in weightsStartPresented = false; launchFromPicker(.plan(plan, ladder)) })
+                        onEditorStart: { plan in weightsStartPresented = false; handleEditorStart(plan) },
+                        recommendation: coachRecommendation)
                 }
             }
             // Body-parts tile (batch 8) → fill-the-gaps quick start.
@@ -165,8 +174,28 @@ struct HomeView: View {
                     intervalLaunch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)
                 }
             }
-            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType) }
+            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: captureHR) }
             .fullScreenCover(isPresented: $swimPresented) { SwimRecordView() }
+            .confirmationDialog("Delete this workout?",
+                                isPresented: Binding(get: { homeSessionToDelete != nil },
+                                                     set: { if !$0 { homeSessionToDelete = nil } }),
+                                presenting: homeSessionToDelete) { session in
+                Button("Delete", role: .destructive) {
+                    try? WorkoutRepository.softDeleteSession(session, in: context)
+                    homeSessionToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { homeSessionToDelete = nil }
+            } message: { _ in Text("You can restore it from History → View Deleted.") }
+            .confirmationDialog("Delete this cardio workout?",
+                                isPresented: Binding(get: { homeCardioToDelete != nil },
+                                                     set: { if !$0 { homeCardioToDelete = nil } }),
+                                presenting: homeCardioToDelete) { c in
+                Button("Delete", role: .destructive) {
+                    try? WorkoutRepository.softDeleteCardio(c, in: context)
+                    homeCardioToDelete = nil
+                }
+                Button("Cancel", role: .cancel) { homeCardioToDelete = nil }
+            } message: { _ in Text("You can restore it from History → View Deleted.") }
         }
 
         // Get-ready countdown as a plain opaque overlay above the whole
@@ -181,6 +210,7 @@ struct HomeView: View {
         if let kind = hrGateKind {
             PreWorkoutHRView(workoutType: kind.cardioType) { useHR in
                 hrGateKind = nil
+                captureHR = useHR
                 proceedFromHRGate(kind, useHR: useHR)
             }
             .transition(.identity)
@@ -205,7 +235,7 @@ struct HomeView: View {
         if warmupActive {
             GuidedPhaseOverlay(
                 title: "Warm Up",
-                minutes: settings.warmupMinutes,
+                minutes: pendingPlan?.warmupMinutes ?? settings.warmupMinutes,
                 tint: .orange,
                 idPrefix: "warmup",
                 soundsEnabled: settings.workoutSounds,
@@ -224,19 +254,29 @@ struct HomeView: View {
                 .zIndex(1)
         }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            let today = Self.dayString()
+            if settings.lastCoachComputeDay != today {
+                settings.lastCoachComputeDay = today
+                coachDayToken = Date()
+            }
+        }
+    }
+
+    private static func dayString(_ date: Date = Date()) -> String {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
     }
 
     // MARK: Top stats
 
     private var statRow: some View {
-        let steps = today?.steps ?? 0
-        let stepGoal = max(1, settings.stepGoal)
+        let totalWorkouts = workoutsThisWeek
         let cardio = cardioMinutesThisWeek
         let cardioGoal = max(1, settings.weeklyCardioMinutesGoal)
         return HStack(spacing: 14) {
-            statTile("\(Format.integer(steps)) / \(Format.integer(stepGoal))", "steps today",
-                     id: "today.steps",
-                     progress: Double(steps) / Double(stepGoal), progressID: "today.steps.progress")
+            statTile("\(totalWorkouts)", "workouts this week",
+                     id: "today.steps")
             statTile("\(cardio) / \(cardioGoal)", "cardio min this week",
                      id: "home.cardioMinutes",
                      progress: Double(cardio) / Double(cardioGoal), progressID: "home.cardioMinutes.progress")
@@ -402,7 +442,8 @@ struct HomeView: View {
     /// One merged, date-sorted "Recent workouts" list — cardio counts as a workout
     /// too, so strength sessions and cardio recordings share a single section (P1 #10).
     private var recentItems: [RecentWorkoutItem] {
-        let merged = sessions.map { RecentWorkoutItem.strength($0) } + cardio.map { RecentWorkoutItem.cardio($0) }
+        let merged = sessions.filter { $0.deletedAt == nil }.map { RecentWorkoutItem.strength($0) }
+                   + cardio.filter { $0.deletedAt == nil }.map { RecentWorkoutItem.cardio($0) }
         return Array(merged.sorted { $0.date > $1.date }.prefix(5))
     }
 
@@ -441,6 +482,11 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("home.sessionRow")
+        .swipeActions {
+            Button(role: .destructive) { homeSessionToDelete = s } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     private func cardioRow(_ w: CardioWorkout) -> some View {
@@ -458,6 +504,11 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("home.cardioRow.\(w.typeValue.rawValue)")
+        .swipeActions {
+            Button(role: .destructive) { homeCardioToDelete = w } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
     }
 
     private func sectionHeader(_ title: String, route: HomeRoute, id: String) -> some View {
@@ -576,7 +627,13 @@ struct HomeView: View {
     private func launch(_ kind: PendingWorkout.Kind) {
         switch kind {
         case .strength:
-            if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
+            if let plan = pendingPlan {
+                pendingPlan = nil
+                if let s = try? materializePlan(plan) {
+                    active.startStrength(s); path.append(s)
+                    WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+                }
+            } else if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
                 active.startStrength(s); path.append(s)
                 WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
             }
@@ -603,6 +660,32 @@ struct HomeView: View {
     private func launchPrescription(_ rec: Recommendation) {
         pendingPrescription = rec
         proceedFromHRGate(.strength, useHR: false)
+    }
+
+    private func handleEditorStart(_ plan: EditablePlan) {
+        pendingPlan = plan
+        if plan.warmupMinutes > 0 {
+            startWarmupAfterHRGate = true
+        }
+        proceedFromHRGate(.strength, useHR: false)
+    }
+
+    private func materializePlan(_ plan: EditablePlan) throws -> WorkoutSession {
+        let session = try WorkoutRepository.createSession(title: plan.title, in: context)
+        session.plannedExerciseNames = plan.exercises.map(\.name)
+        if let first = plan.exercises.first, !first.sets.isEmpty {
+            session.plannedRepLadder = first.sets.map(\.targetReps)
+        }
+        let weights = plan.exercises.compactMap(\.sets.first?.targetWeight)
+        if let w = weights.first, w > 0, weights.allSatisfy({ $0 == w }) {
+            session.prescribedLoadKg = w
+        }
+        for name in plan.exercises.map(\.name) {
+            _ = try WorkoutRepository.findOrCreateExercise(named: name, in: context)
+        }
+        session.cooldownSeconds = Double(plan.cooldownMinutes * 60)
+        try context.save()
+        return session
     }
 }
 

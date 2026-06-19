@@ -10,8 +10,8 @@ struct RecordCardioView: View {
     /// When set (from the Start Workout picker, field-testing §02), recording
     /// begins immediately for this type after the HR gate.
     var initialType: CardioType? = nil
-    /// Free-text label for an "Other Cardio" workout (feedback batch 6), else nil.
     var customTitle: String? = nil
+    var captureHR = false
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -21,8 +21,6 @@ struct RecordCardioView: View {
     @State private var recorder: CardioRecorder?
     @State private var started = false
     @State private var finishedSummary: WorkoutSummaryData?
-    @State private var showingHRGate: CardioType? = nil
-    @State private var captureHR = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private let types: [CardioType] = [.run, .cycle, .walk, .boxing, .hiit, .rowing]
@@ -31,12 +29,6 @@ struct RecordCardioView: View {
         Group {
             if let finishedSummary {
                 WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
-            } else if let hrType = showingHRGate {
-                PreWorkoutHRView(workoutType: hrType) { useHR in
-                    captureHR = useHR
-                    showingHRGate = nil
-                    startRecorder(hrType)
-                }
             } else {
                 NavigationStack {
                     Group {
@@ -58,11 +50,7 @@ struct RecordCardioView: View {
         }
         .onReceive(timer) { _ in recorder?.tick() }
         .interactiveDismissDisabled(started)
-        .onAppear { if let t = initialType, !started { promptHRGate(t) } }
-    }
-
-    private func promptHRGate(_ type: CardioType) {
-        showingHRGate = type
+        .onAppear { if let t = initialType, !started { startRecorder(t) } }
     }
 
     private func startRecorder(_ type: CardioType) {
@@ -78,7 +66,7 @@ struct RecordCardioView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 16)], spacing: 16) {
                 ForEach(types) { type in
                     Button {
-                        promptHRGate(type)
+                        startRecorder(type)
                     } label: {
                         VStack(spacing: 8) {
                             Image(systemName: type.symbol).font(.largeTitle)
@@ -118,13 +106,7 @@ struct RecordCardioView: View {
                 metric("Avg HR", Format.heartRate(recorder.avgHR), id: "record.avgHr")
             }
 
-            if !recorder.strapConnected {
-                Button {
-                    recorder.connectStrap()
-                } label: { Label("Connect HR Strap", systemImage: "antenna.radiowaves.left.and.right") }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("record.connectStrap")
-            } else {
+            if recorder.strapConnected {
                 Label("Strap connected", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green).font(.subheadline)
                     .accessibilityIdentifier("record.strapConnected")

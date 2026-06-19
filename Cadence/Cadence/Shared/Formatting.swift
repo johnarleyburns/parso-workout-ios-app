@@ -26,13 +26,22 @@ enum Format {
     }
 
     static func setLine(_ set: SetEntry, unit: MeasurementUnitPreference) -> String {
-        // A bodyweight set reads "BW × r" (or "BW + X kg × r" for a weighted
-        // variant) instead of a bare weight (feedback batch 3).
         if set.usesBodyweight {
             let added = set.weight > 0 ? " + \(weightValue(set.weight, unit: unit)) \(unit.abbreviation)" : ""
             return "BW\(added) × \(set.reps)"
         }
         return "\(weightValue(set.weight, unit: unit)) \(unit.abbreviation) × \(set.reps)"
+    }
+
+    static func setLineDual(_ set: SetEntry, preferredUnit: MeasurementUnitPreference) -> String {
+        let alt: MeasurementUnitPreference = preferredUnit == .kilograms ? .pounds : .kilograms
+        if set.usesBodyweight {
+            if set.weight > 0 {
+                return "BW + \(weightValue(set.weight, unit: preferredUnit)) \(preferredUnit.abbreviation) (\(weightValue(set.weight, unit: alt)) \(alt.abbreviation)) × \(set.reps)"
+            }
+            return "BW × \(set.reps)"
+        }
+        return "\(weightValue(set.weight, unit: preferredUnit)) \(preferredUnit.abbreviation) (\(weightValue(set.weight, unit: alt)) \(alt.abbreviation)) × \(set.reps)"
     }
 
     static func distance(_ meters: Double) -> String {

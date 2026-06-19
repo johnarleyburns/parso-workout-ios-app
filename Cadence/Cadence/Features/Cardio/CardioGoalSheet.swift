@@ -11,6 +11,7 @@ struct CardioGoalSheet: View {
     let onStart: (_ goalMeters: Double?) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
     @State private var customKm = ""
 
     private let presets: [(label: String, meters: Double)] = [
@@ -57,6 +58,13 @@ struct CardioGoalSheet: View {
                         .disabled((Double(customKm.replacingOccurrences(of: ",", with: ".")) ?? 0) <= 0)
                         .accessibilityIdentifier("goal.customStart")
                     }
+                }
+                Section {
+                    @Bindable var settings = settings
+                    Toggle("Use HR monitoring", isOn: $settings.useHRMonitoring)
+                        .accessibilityIdentifier("goal.hrToggle")
+                } footer: {
+                    Text("Connect a chest strap or Apple Watch before the workout starts.")
                 }
             }
             .navigationTitle("\(type.displayName) goal")

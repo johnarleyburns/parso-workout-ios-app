@@ -132,12 +132,17 @@ public enum ImportedExerciseLibrary {
 }
 
 public extension ExerciseLibrary {
-    /// On-device URL of an exercise's bundled public-domain demonstration image,
-    /// resolved from its `imageName` (the source id). Nil for movements without a
-    /// bundled image (e.g. curated-only entries). No network — offline + private.
-    static func imageURL(forImageName name: String?) -> URL? {
+    static let exerciseImageBaseURL = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/"
+    static let exercisePageBaseURL = "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/"
+    static let exerciseRepoURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!
+
+    static func imageURL(forImageName name: String?, position: Int = 0) -> URL? {
         guard let name, !name.isEmpty else { return nil }
-        return Bundle.module.url(forResource: name, withExtension: "jpg",
-                                 subdirectory: "exercise-images")
+        return URL(string: "\(exerciseImageBaseURL)\(name)/images/\(position).jpg")
+    }
+
+    static func exercisePageURL(forImageName name: String?) -> URL? {
+        guard let name, !name.isEmpty else { return nil }
+        return URL(string: "\(exercisePageBaseURL)\(name)")
     }
 }

@@ -8,6 +8,7 @@ struct AboutView: View {
     private let privacyURL = URL(string: "https://parso.guru/cladiron_privacy.html")!
     private let sourceURL = URL(string: "https://github.com/johnarleyburns/parso-workout-ios-app")!
     private let siteURL = URL(string: "https://www.parso.guru")!
+    private let exerciseDBURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!
 
     var body: some View {
         ScrollView {
@@ -22,6 +23,9 @@ struct AboutView: View {
                     .padding(.horizontal, 20).padding(.vertical, 24)
                 Divider()
                 openSource
+                    .padding(.horizontal, 20).padding(.vertical, 24)
+                Divider()
+                exerciseLibrary
                     .padding(.horizontal, 20).padding(.vertical, 24)
                 Divider()
                 privacy
@@ -122,6 +126,25 @@ struct AboutView: View {
             Text("Made by Parso Consulting — an independent software studio.")
                 .font(.body).foregroundStyle(.secondary).padding(.top, 6)
             Link("parso.guru", destination: siteURL).font(.body)
+        }
+    }
+
+    // MARK: Exercise Library
+
+    private var exerciseLibrary: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Exercise Library").font(.title3.bold())
+            Text("Exercise names, instructions, muscle groups, and demonstration images are from the free-exercise-db \u{2014} an open, public-domain dataset of 800+ exercises. Images load from the network and are cached on your device.")
+                .font(.body).foregroundStyle(.secondary)
+            Link(destination: exerciseDBURL) {
+                HStack(spacing: 6) {
+                    Text("View on GitHub")
+                    Image(systemName: "arrow.up.right").font(.caption2)
+                }
+                .font(.body)
+            }
+            Text("License: Unlicense (public domain)")
+                .font(.footnote).foregroundStyle(.secondary)
         }
     }
 

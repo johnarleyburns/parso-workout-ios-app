@@ -1,33 +1,21 @@
 import SwiftUI
 import CadenceCore
 
-/// In-app exercise detail (strength-pivot P2). Replaces the old external EXRX.NET
-/// link: the public-domain demonstration image, muscles, and step-by-step
-/// instructions now ship on-device (free-exercise-db, Unlicense), so the user never
-/// leaves the app and works fully offline. "Add to workout" picks the movement.
 struct ExerciseDetailView: View {
     let exercise: Exercise
     var onPick: ((Exercise) -> Void)?
 
-    private var imageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName) }
+    @Environment(\.modelContext) private var context
+
+    private var startImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 0) }
+    private var endImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 1) }
+    private var libraryPageURL: URL? { ExerciseLibrary.exercisePageURL(forImageName: exercise.imageName) }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let url = imageURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().scaledToFit()
-                        default:
-                            Color(.secondarySystemBackground)
-                                .frame(height: 200)
-                                .overlay(ProgressView())
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .accessibilityLabel("\(exercise.name) demonstration")
+                if startImageURL != nil || endImageURL != nil {
+                    imageRow
                 }
 
                 facets
@@ -39,16 +27,30 @@ struct ExerciseDetailView: View {
                 if !exercise.instructions.isEmpty {
                     instructions
                 }
+
+                libraryLink
+
+                attribution
             }
             .padding()
         }
         .navigationTitle(exercise.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let onPick {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Add") { onPick(exercise) }
-                        .accessibilityIdentifier("detail.add")
+            ToolbarItem(placement: .primaryAction) {
+                HStack(spacing: 12) {
+                    Button {
+                        exercise.isFavorite.toggle()
+                        try? context.save()
+                    } label: {
+                        Image(systemName: exercise.isFavorite ? "heart.fill" : "heart")
+                            .foregroundStyle(exercise.isFavorite ? .pink : .secondary)
+                    }
+                    .accessibilityLabel(exercise.isFavorite ? "Remove from favorites" : "Add to favorites")
+                    if let onPick {
+                        Button("Add") { onPick(exercise) }
+                            .accessibilityIdentifier("detail.add")
+                    }
                 }
             }
         }
@@ -57,10 +59,45 @@ struct ExerciseDetailView: View {
 
     // MARK: Sections
 
-    private var facets: some View {
+    private var imageRow: some View {
         HStack(spacing: 8) {
+            if let url = startImageURL { exerciseImage(url: url) }
+            if let url = endImageURL { exerciseImage(url: url) }
+        }
+        .accessibilityLabel("\(exercise.name) demonstration")
+    }
+
+    private func exerciseImage(url: URL) -> some View {
+        AsyncImage(url: url) { phase in
+            switch phase {
+            case .success(let image):
+                image.resizable().scaledToFit()
+            case .failure:
+                Color(.secondarySystemBackground)
+                    .overlay {
+                        VStack(spacing: 4) {
+                            Image(systemName: "photo.slash")
+                                .font(.title3).foregroundStyle(.secondary)
+                            Text("Image not available")
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                    }
+            default:
+                Color(.secondarySystemBackground)
+                    .overlay(ProgressView())
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: 160)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var facets: some View {
+        FlowLayout(spacing: 8) {
             if let level = exercise.level { tag(level.capitalized) }
             if let eq = exercise.equipmentValue { tag(eq.displayName) }
+            if let mech = exercise.mechanicsValue { tag(mech == .compound ? "Compound" : "Isolation") }
+            if let f = exercise.forceValue { tag(f.rawValue.capitalized) }
             if let cat = exercise.categoryValue { tag(cat.displayName) }
         }
         .accessibilityElement(children: .combine)
@@ -95,12 +132,37 @@ struct ExerciseDetailView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var libraryLink: some View {
+        Group {
+            if let url = libraryPageURL {
+                Link(destination: url) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "book")
+                        Text("View in exercise library")
+                        Image(systemName: "arrow.up.right").font(.caption2)
+                    }
+                    .font(.subheadline)
+                }
+            }
+        }
+    }
+
+    private var attribution: some View {
+        HStack(spacing: 4) {
+            Text("Exercise data:")
+                .font(.caption2).foregroundStyle(.tertiary)
+            Link("free-exercise-db", destination: ExerciseLibrary.exerciseRepoURL)
+                .font(.caption2)
+            Text("(public domain)")
+                .font(.caption2).foregroundStyle(.tertiary)
+        }
+    }
+
     // MARK: Helpers
 
     private var primaryMuscles: [String] { exercise.primaryMuscles.map(Self.display) }
     private var secondaryMuscles: [String] { exercise.secondaryMuscles.map(Self.display) }
 
-    /// "upper-chest" → "Upper Chest".
     static func display(_ id: String) -> String {
         id.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
     }
@@ -111,5 +173,51 @@ struct ExerciseDetailView: View {
             .padding(.horizontal, 10).padding(.vertical, 4)
             .background(.tint.opacity(0.15), in: Capsule())
             .foregroundStyle(.tint)
+    }
+}
+
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = computeRows(proposal: proposal, subviews: subviews)
+        var height: CGFloat = 0
+        for (i, row) in rows.enumerated() {
+            height += row.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
+            if i < rows.count - 1 { height += spacing }
+        }
+        return CGSize(width: proposal.width ?? 0, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let rows = computeRows(proposal: proposal, subviews: subviews)
+        var y = bounds.minY
+        for row in rows {
+            let rowHeight = row.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
+            var x = bounds.minX
+            for idx in row {
+                let size = subviews[idx].sizeThatFits(.unspecified)
+                subviews[idx].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += rowHeight + spacing
+        }
+    }
+
+    private func computeRows(proposal: ProposedViewSize, subviews: Subviews) -> [[Int]] {
+        let maxWidth = proposal.width ?? .infinity
+        var rows: [[Int]] = [[]]
+        var rowWidth: CGFloat = 0
+        for (i, sub) in subviews.enumerated() {
+            let size = sub.sizeThatFits(.unspecified)
+            if !rows[rows.count - 1].isEmpty && rowWidth + spacing + size.width > maxWidth {
+                rows.append([])
+                rowWidth = 0
+            }
+            if rowWidth > 0 { rowWidth += spacing }
+            rowWidth += size.width
+            rows[rows.count - 1].append(i)
+        }
+        return rows
     }
 }

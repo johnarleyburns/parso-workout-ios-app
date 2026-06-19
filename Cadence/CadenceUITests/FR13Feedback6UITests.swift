@@ -59,7 +59,7 @@ final class FR13Feedback6UITests: CadenceUITestCase {
     // Choosing Other Cardio from Start opens a description + GPS entry first.
     func testOtherCardioLiveEntryHasDescriptionAndGPS() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.other"].waitTap(), "Other type")
 
         XCTAssertTrue(app.textFields["otherCardio.desc"].waitForExistence(timeout: 10),

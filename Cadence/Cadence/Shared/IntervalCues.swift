@@ -7,14 +7,19 @@ import CadenceCore
 /// sounds on every transition, a 30-second warning bell, and optional spoken
 /// announcements — so the signal works with the phone in a pocket or for
 /// low-vision use. The audio session ducks other audio.
+///
+/// Boxing keeps its own round bell (`opening-closing-bell.mp3` + `warning-bell.mp3`).
+/// Non-boxing intervals use soft system beeps for a calmer experience.
 @MainActor
 final class IntervalCues {
     var spokenEnabled = false
+    /// When true, use the bundled MP3 bells (boxing). When false, use soft system beeps.
+    var isBoxing = false
     private let synth = AVSpeechSynthesizer()
     private var sessionActive = false
 
     /// Opening/closing bell (round start & end) and the 30-second warning bell,
-    /// from the bundled MP3s. Preloaded so playback is instant.
+    /// from the bundled MP3s. Preloaded so playback is instant. Only used for boxing.
     private let bell = IntervalCues.player(named: "opening-closing-bell")
     private let warningBell = IntervalCues.player(named: "warning-bell")
 
@@ -44,10 +49,14 @@ final class IntervalCues {
         sessionActive = false
     }
 
-    /// Fire on entering a new phase — the opening bell starts work, the closing
-    /// bell ends a round (rest/cooldown). Same bell file for both.
+    /// Fire on entering a new phase — boxing: opening/closing bell; non-boxing: soft tick.
     func phaseChanged(to kind: IntervalPhaseKind, label: String) {
-        play(bell)
+        if isBoxing {
+            play(bell)
+        } else {
+            // Soft tick as a phase-transition cue.
+            AudioServicesPlaySystemSound(1104)
+        }
         switch kind {
         case .work: Haptics.prAchieved()
         case .rest, .cooldown: Haptics.restComplete()
@@ -56,19 +65,27 @@ final class IntervalCues {
         if spokenEnabled { speak(spokenPhrase(for: kind, label: label)) }
     }
 
-    /// 30-second warning during a work phase.
+    /// 30-second warning during a work phase. Boxing: warning bell; non-boxing: soft alert beep.
     func warning() {
-        play(warningBell)
+        if isBoxing {
+            play(warningBell)
+        } else {
+            AudioServicesPlaySystemSound(1057)
+        }
         Haptics.restComplete()
     }
 
-    /// Final-3-seconds tick (haptic only; the bells carry the audio).
+    /// Final-3-seconds tick (haptic only; the bells/beeps carry the audio).
     func countdownTick() {
         Haptics.setLogged()
     }
 
     func completed() {
-        play(bell)
+        if isBoxing {
+            play(bell)
+        } else {
+            AudioServicesPlaySystemSound(1057)
+        }
         Haptics.prAchieved()
         if spokenEnabled { speak("Workout complete") }
     }

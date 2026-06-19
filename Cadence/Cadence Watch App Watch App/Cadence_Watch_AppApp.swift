@@ -9,9 +9,12 @@ struct CadenceWatchApp: App {
         catch { fatalError("Failed to create ModelContainer: \(error)") }
     }()
 
+    @State private var watchManager = WatchWorkoutManager()
+
     var body: some Scene {
         WindowGroup {
             QuickLogView()
+                .environment(watchManager)
         }
         .modelContainer(container)
     }
@@ -21,6 +24,7 @@ struct CadenceWatchApp: App {
 // Deliberately crude: Steppers now, Digital Crown polish later.
 struct QuickLogView: View {
     @Environment(\.modelContext) private var context
+    @Environment(WatchWorkoutManager.self) private var watchManager
     @Query private var sessions: [WorkoutSession]
 
     @State private var exerciseName = "Bench Press"
@@ -31,6 +35,34 @@ struct QuickLogView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 10) {
+                if watchManager.isActive {
+                    HStack {
+                        Image(systemName: "heart.fill")
+                            .foregroundStyle(.red)
+                        if let bpm = watchManager.currentBPM {
+                            Text("\(Int(bpm))")
+                                .font(.title3)
+                                .monospacedDigit()
+                                .fontWeight(.bold)
+                        } else {
+                            Text("--")
+                                .font(.title3)
+                                .monospacedDigit()
+                        }
+                        Text("BPM")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        if let type = watchManager.workoutType {
+                            Text("· \(type.capitalized)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(.red.opacity(0.1), in: Capsule())
+                }
+
                 Text(exerciseName).font(.headline)
 
                 Stepper(value: $weight, in: 0...500, step: 2.5) {

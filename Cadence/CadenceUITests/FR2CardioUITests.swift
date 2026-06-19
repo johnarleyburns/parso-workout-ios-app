@@ -17,7 +17,7 @@ final class FR2CardioUITests: CadenceUITestCase {
     // screen with a live map and advancing metrics, saved to history.
     func testOutdoorRunViaHome() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.run"].waitTap(), "Run type")
         // Run/Walk/Cycle now offer an optional distance goal first (batch 8); skip it.
         XCTAssertTrue(app.buttons["goal.none"].waitTap(), "skip distance goal")
@@ -45,7 +45,7 @@ final class FR2CardioUITests: CadenceUITestCase {
     // Start Workout → Other opens the indoor recorder (RecordCardioView).
     func testConnectStrapLiveHR() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.other"].waitTap(), "Other type")
         // Other Cardio entry (feedback batch 6): GPS off → indoor recorder.
         XCTAssertTrue(app.buttons["otherCardio.start"].waitTap(), "Other Cardio Start")

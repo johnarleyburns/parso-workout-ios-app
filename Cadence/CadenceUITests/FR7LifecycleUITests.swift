@@ -25,7 +25,6 @@ final class FR7LifecycleUITests: CadenceUITestCase {
     func testCountdownPause() {
         let app = XCUIApplication.launched(extraArgs: ["-preCountdown", "30"])
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
-        XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Weights type")
         // Quick Start is now truly immediate (no countdown), so exercise the
         // get-ready countdown via a library preset, which still honors it.
         XCTAssertTrue(app.buttons["weights.library.preset-5x5-1a"].waitTap(), "5×5 library preset")
@@ -136,7 +135,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
     // Cardio screen was removed (feedback batch 3).
     func testCardioEndShowsSummary() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.other"].waitTap(), "Other")
         // Other Cardio entry (feedback batch 6): GPS off → indoor recorder.
         XCTAssertTrue(app.buttons["otherCardio.start"].waitTap(), "Other Cardio Start")

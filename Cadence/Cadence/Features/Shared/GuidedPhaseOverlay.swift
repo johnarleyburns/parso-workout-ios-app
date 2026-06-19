@@ -79,8 +79,8 @@ struct GuidedPhaseOverlay: View {
             .foregroundStyle(.white)
             .padding()
         }
-        // Bell as the phase begins (entering warm-up / cool-down).
-        .onAppear { WorkoutCues.transition(enabled: soundsEnabled) }
+        // Beep sequence as the phase begins (entering warm-up / cool-down).
+        .onAppear { WorkoutCues.startBeepSequence(enabled: soundsEnabled) }
         .onReceive(tick) { _ in
             guard !paused, remaining > 0 else { return }
             remaining -= 1

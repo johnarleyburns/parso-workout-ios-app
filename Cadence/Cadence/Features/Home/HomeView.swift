@@ -14,7 +14,6 @@ struct HomeView: View {
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .reverse) private var assessments: [Assessment]
 
-    @State private var typePickerPresented = false
     @State private var logPickerPresented = false
     @State private var path = NavigationPath()
     @State private var cardioType: CardioType?
@@ -25,10 +24,16 @@ struct HomeView: View {
     @State private var intervalLaunch: IntervalLaunch?
     @State private var swimPresented = false
     @State private var pending: PendingWorkout?
+    /// Strength HR gate — shown BEFORE the get-ready countdown so the user can
+    /// connect a strap or start the Watch, see live HR, then press Start.
+    @State private var hrGateKind: PendingWorkout.Kind?
+    /// When true, the warm-up overlay appears after the HR gate passes.
+    @State private var startWarmupAfterHRGate = false
+    /// Coach prescription stashed while the HR gate is shown.
+    @State private var pendingPrescription: Recommendation?
     @State private var warmupActive = false
     @State private var today: DayActivity?
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
-    @State private var stepsQuickStart = false        // steps tile → Run/Walk dialog
     @State private var cardioPickerPresented = false  // cardio-min tile → cardio-only picker
     @State private var weightsStartPresented = false  // volume tile → strength start
     @State private var bodyPartsPresented = false     // body-parts tile → fill-the-gaps
@@ -67,9 +72,10 @@ struct HomeView: View {
                     CoachCardView(recommendation: coachRecommendation,
                                   insightCount: coachInsights.count,
                                   unit: settings.unit,
-                                  onDoThis: { launchPrescription(coachRecommendation) },
                                   onSeeAll: { path.append(HomeRoute.coach) })
+                    coachStartButton
                     startButton
+                    cardioButton
                     logButton
                     thisWeekSection
                     recentWorkoutsSection
@@ -104,14 +110,6 @@ struct HomeView: View {
             }
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
             .refreshable { today = await model.health.todayActivity(); await syncCardioFromHealth() }
-            .sheet(isPresented: $typePickerPresented) {
-                WorkoutTypePicker(onSelect: { start($0) },
-                                  onPlan: { plan, ladder in launchFromPicker(.plan(plan, ladder)) },
-                                  onWeightsQuickStart: { launchFromPicker(.strength, skipCountdown: true) },
-                                  onWeightsWarmup: { typePickerPresented = false; warmupActive = true },
-                                  onWeightsReuse: { launchFromPicker(.reuse($0)) },
-                                  onOtherCardio: { desc, gps in startOtherCardio(description: desc, gps: gps) })
-            }
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker()
             }
@@ -123,12 +121,6 @@ struct HomeView: View {
             }
             .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle) }
             .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters) }
-            // Steps tile (batch 8) → start an outdoor Run or Walk fast.
-            .confirmationDialog("Start a workout", isPresented: $stepsQuickStart, titleVisibility: .visible) {
-                Button("Start Run") { startOutdoorWithGoal(.run) }.accessibilityIdentifier("steps.run")
-                Button("Start Walk") { startOutdoorWithGoal(.walk) }.accessibilityIdentifier("steps.walk")
-                Button("Cancel", role: .cancel) { }
-            }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
             .sheet(isPresented: $cardioPickerPresented) {
                 WorkoutTypePicker(onSelect: { cardioPickerPresented = false; start($0) },
@@ -144,7 +136,7 @@ struct HomeView: View {
                 NavigationStack {
                     WeightsStartView(
                         onQuickStart: { weightsStartPresented = false; launchFromPicker(.strength, skipCountdown: true) },
-                        onWarmupStart: { weightsStartPresented = false; warmupActive = true },
+                        onWarmupStart: { weightsStartPresented = false; startWarmupAfterHRGate = true; hrGateKind = .strength },
                         onReuse: { weightsStartPresented = false; launchFromPicker(.reuse($0)) },
                         onPlan: { plan, ladder in weightsStartPresented = false; launchFromPicker(.plan(plan, ladder)) })
                 }
@@ -184,6 +176,17 @@ struct HomeView: View {
         // session and drop the overlay in one animation-disabled transaction, so the
         // session is already on screen when the overlay vanishes — no Home flash
         // before the warm-up, and none after it.
+        // HR gate — appears BEFORE the get-ready countdown.  Lets the
+        // user connect HR, see live data, then press "Start Workout".
+        if let kind = hrGateKind {
+            PreWorkoutHRView(workoutType: kind.cardioType) { useHR in
+                hrGateKind = nil
+                proceedFromHRGate(kind, useHR: useHR)
+            }
+            .transition(.identity)
+            .zIndex(2)
+        }
+
         if let p = pending {
             PreWorkoutCountdownView(
                 seconds: settings.preWorkoutCountdown,
@@ -233,12 +236,10 @@ struct HomeView: View {
         return HStack(spacing: 14) {
             statTile("\(Format.integer(steps)) / \(Format.integer(stepGoal))", "steps today",
                      id: "today.steps",
-                     progress: Double(steps) / Double(stepGoal), progressID: "today.steps.progress",
-                     tileID: "home.stepsTile", onTap: { stepsQuickStart = true })
+                     progress: Double(steps) / Double(stepGoal), progressID: "today.steps.progress")
             statTile("\(cardio) / \(cardioGoal)", "cardio min this week",
                      id: "home.cardioMinutes",
-                     progress: Double(cardio) / Double(cardioGoal), progressID: "home.cardioMinutes.progress",
-                     tileID: "home.cardioTile", onTap: { cardioPickerPresented = true })
+                     progress: Double(cardio) / Double(cardioGoal), progressID: "home.cardioMinutes.progress")
         }
     }
 
@@ -317,8 +318,33 @@ struct HomeView: View {
         model.lastHealthSync = Date()
     }
 
+    // Coach "Start Coach Workout" button — sits between the Coach card and
+    // "Start Workout".  Launches the prescribed session through the HR gate.
+    private var coachStartButton: some View {
+        Button { Haptics.selection(); launchPrescription(coachRecommendation) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "checklist")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Start Coach Workout").font(.headline)
+                    Text(coachRecommendation.action)
+                        .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
+            }
+            .padding(.vertical, 14).padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.white)
+            .background(.green, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.coachStart")
+        .accessibilityLabel("Start Coach Workout — \(coachRecommendation.title)")
+    }
+
     private var startButton: some View {
-        Button { Haptics.selection(); typePickerPresented = true } label: {
+        Button { Haptics.selection(); weightsStartPresented = true } label: {
             HStack(spacing: 12) {
                 Image(systemName: "play.circle.fill").font(.largeTitle)
                 Text("Start Workout").font(.title2.bold())
@@ -333,6 +359,24 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("home.startWorkout").accessibilityLabel("Start a workout")
+    }
+
+    private var cardioButton: some View {
+        Button { Haptics.selection(); cardioPickerPresented = true } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "figure.run").font(.headline)
+                Text("Start Cardio").font(.headline)
+                Spacer()
+                Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
+            }
+            .padding(.vertical, 14).padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.tint)
+            .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.startCardio")
+        .accessibilityLabel("Start a cardio workout")
     }
 
     /// Log a past workout manually (feedback batch 6 item 3) — it lands in history
@@ -463,21 +507,18 @@ struct HomeView: View {
             // branch is normally unreached.
             launchFromPicker(.strength)
         } else if type == .swim {
-            // Swimming is a minimal time + laps recorder (feedback #3).
-            typePickerPresented = false; swimPresented = true
+            swimPresented = true
         } else if type.usesGPS, let c = type.cardioType {
-            // Run/Walk/Cycle: offer an optional distance goal first (batch 8).
-            typePickerPresented = false; startOutdoorWithGoal(c)
+            startOutdoorWithGoal(c)
         } else if type == .hiit || type == .boxing {
-            typePickerPresented = false; intervalType = type
+            intervalType = type
         } else if let c = type.cardioType {
-            typePickerPresented = false; begin(.timer(c))
+            begin(.timer(c))
         }
     }
     /// "Other Cardio" chosen (feedback batch 6 item 3): stash its description, then
     /// route to the GPS recorder or the indoor timer per the user's GPS toggle.
     private func startOtherCardio(description: String, gps: Bool) {
-        typePickerPresented = false
         outdoorGoalMeters = nil   // Other Cardio carries no distance goal.
         let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
         otherCardioTitle = trimmed.isEmpty ? nil : trimmed
@@ -493,39 +534,62 @@ struct HomeView: View {
     }
 
     /// Launches a strength/plan workout chosen from the Start sheet without a Home
-    /// flash (P1 #1/#5): with no countdown, push the session *under* the still-open
-    /// sheet and then dismiss it (revealing the session); with a countdown, dismiss
-    /// first and present the countdown.
-    /// `skipCountdown` makes "Quick Start" truly immediate — no get-ready countdown,
+    /// flash (P1 #1/#5). Strength workouts route through the HR gate first, then
+    /// the get-ready countdown.
+    /// `skipCountdown` makes "Quick Start" truly immediate — no countdown
     /// regardless of the Settings value (which still applies to library/reuse/warm-up).
     private func launchFromPicker(_ kind: PendingWorkout.Kind, skipCountdown: Bool = false) {
         if skipCountdown || settings.preWorkoutCountdown <= 0 {
-            launch(kind)
-            typePickerPresented = false
+            hrGateKind = kind
         } else {
-            typePickerPresented = false
-            pending = PendingWorkout(kind: kind)
+            hrGateKind = kind
         }
     }
     private func begin(_ kind: PendingWorkout.Kind) {
-        if settings.preWorkoutCountdown <= 0 { launch(kind) } else { pending = PendingWorkout(kind: kind) }
+        hrGateKind = kind
+    }
+
+    /// Called after the HR gate closes.  If the countdown is enabled, show it;
+    /// otherwise launch immediately.
+    private func proceedFromHRGate(_ kind: PendingWorkout.Kind, useHR: Bool) {
+        // "Do this workout" path: launch the prescription immediately (fast path).
+        if let rec = pendingPrescription {
+            pendingPrescription = nil
+            let prescribed = rec.prescribedSession()
+            if let s = try? WorkoutRepository.startSession(from: prescribed, in: context) {
+                active.startStrength(s)
+                path.append(s)
+                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+            }
+            return
+        }
+        if startWarmupAfterHRGate {
+            startWarmupAfterHRGate = false
+            warmupActive = true
+            return
+        }
+        if kind.isStrength || settings.preWorkoutCountdown > 0 {
+            pending = PendingWorkout(kind: kind)
+        } else {
+            launch(kind)
+        }
     }
     private func launch(_ kind: PendingWorkout.Kind) {
         switch kind {
         case .strength:
             if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
                 active.startStrength(s); path.append(s)
-                WorkoutCues.transition(enabled: settings.workoutSounds)   // workout starts (item 9)
+                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
             }
         case .plan(let plan, let ladder):
             if let s = try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) {
                 active.startStrength(s); path.append(s)
-                WorkoutCues.transition(enabled: settings.workoutSounds)
+                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
             }
         case .reuse(let past):
             if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
                 active.startStrength(s); path.append(s)
-                WorkoutCues.transition(enabled: settings.workoutSounds)
+                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
             }
         case .outdoor(let c): outdoorType = c
         case .interval(let l): intervalLaunch = l
@@ -535,21 +599,31 @@ struct HomeView: View {
 
     /// "Do this workout" (strength-pivot P5.3): materialize the coach's top
     /// recommendation into a fresh strength session pre-filled with the prescribed
-    /// movement, planned sets/reps, and load, then push straight into the logger —
-    /// the fast default path (no get-ready countdown, like Quick Start).
+    /// movement, planned sets/reps, and load — the fast default path. Routes
+    /// through the HR gate so the user can verify live HR first.
     private func launchPrescription(_ rec: Recommendation) {
-        let prescribed = rec.prescribedSession()
-        guard let s = try? WorkoutRepository.startSession(from: prescribed, in: context) else { return }
-        active.startStrength(s)
-        path.append(s)
-        WorkoutCues.transition(enabled: settings.workoutSounds)
+        pendingPrescription = rec
+        hrGateKind = .strength
     }
 }
 
 /// What to launch once the countdown finishes.
 struct PendingWorkout: Identifiable {
     let id = UUID()
-    enum Kind { case strength, plan(WorkoutPlan, [Int]?), reuse(WorkoutSession), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType) }
+    enum Kind { case strength, plan(WorkoutPlan, [Int]?), reuse(WorkoutSession), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType)
+        var isStrength: Bool {
+            switch self {
+            case .strength, .plan, .reuse: true
+            case .outdoor, .interval, .timer: false
+            }
+        }
+        var cardioType: CardioType? {
+            switch self {
+            case .outdoor(let c), .timer(let c): return c
+            case .strength, .plan, .reuse, .interval: return nil
+            }
+        }
+    }
     let kind: Kind
 }
 

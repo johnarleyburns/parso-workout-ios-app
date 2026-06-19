@@ -2,9 +2,13 @@ import SwiftUI
 import CadenceCore
 
 /// Live iPhone workout recording (FR-2.2–2.5).
+///
+/// FR-8 follow-up: shows a pre-workout HR gate before recording starts,
+/// mirroring `IntervalView`'s pattern. All cardio types can connect a strap
+/// or use the Apple Watch.
 struct RecordCardioView: View {
     /// When set (from the Start Workout picker, field-testing §02), recording
-    /// begins immediately for this type, skipping the in-view grid.
+    /// begins immediately for this type after the HR gate.
     var initialType: CardioType? = nil
     /// Free-text label for an "Other Cardio" workout (feedback batch 6), else nil.
     var customTitle: String? = nil
@@ -17,6 +21,8 @@ struct RecordCardioView: View {
     @State private var recorder: CardioRecorder?
     @State private var started = false
     @State private var finishedSummary: WorkoutSummaryData?
+    @State private var showingHRGate: CardioType? = nil
+    @State private var captureHR = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private let types: [CardioType] = [.run, .cycle, .walk, .boxing, .hiit, .rowing]
@@ -24,8 +30,13 @@ struct RecordCardioView: View {
     var body: some View {
         Group {
             if let finishedSummary {
-                // A3 — the recorded workout is already saved; show its summary.
                 WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
+            } else if let hrType = showingHRGate {
+                PreWorkoutHRView(workoutType: hrType) { useHR in
+                    captureHR = useHR
+                    showingHRGate = nil
+                    startRecorder(hrType)
+                }
             } else {
                 NavigationStack {
                     Group {
@@ -47,7 +58,11 @@ struct RecordCardioView: View {
         }
         .onReceive(timer) { _ in recorder?.tick() }
         .interactiveDismissDisabled(started)
-        .onAppear { if let t = initialType, !started { startRecorder(t) } }
+        .onAppear { if let t = initialType, !started { promptHRGate(t) } }
+    }
+
+    private func promptHRGate(_ type: CardioType) {
+        showingHRGate = type
     }
 
     private func startRecorder(_ type: CardioType) {
@@ -55,7 +70,7 @@ struct RecordCardioView: View {
         r.start(type: type)
         recorder = r
         started = true
-        WorkoutCues.transition(enabled: settings.workoutSounds)   // workout starts (item 9)
+        WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
     }
 
     private var activityPicker: some View {
@@ -63,7 +78,7 @@ struct RecordCardioView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 16)], spacing: 16) {
                 ForEach(types) { type in
                     Button {
-                        startRecorder(type)
+                        promptHRGate(type)
                     } label: {
                         VStack(spacing: 8) {
                             Image(systemName: type.symbol).font(.largeTitle)
@@ -139,12 +154,12 @@ struct RecordCardioView: View {
     }
 
     private func endWorkout(_ recorder: CardioRecorder) async {
-        WorkoutCues.transition(enabled: settings.workoutSounds)   // workout ends (item 9)
+        WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         var summary = recorder.end()
         summary.customTitle = customTitle
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
-                                                              healthKitWorkoutUUID: hkID, in: context)
+                                                               healthKitWorkoutUUID: hkID, in: context)
         if let saved {
             finishedSummary = WorkoutSummaryData.from(cardio: saved)
         } else {

@@ -160,6 +160,7 @@ public protocol HeartRateMonitoring: AnyObject {
     func connect(_ id: UUID)
     func disconnect()
     func restoreDefaultDevice(_ id: UUID)
+    func injectExternalBPM(_ bpm: Double)
 }
 
 // MARK: - Location tracking (FR-2.2)

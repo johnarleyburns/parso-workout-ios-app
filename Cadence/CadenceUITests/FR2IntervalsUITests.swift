@@ -6,7 +6,7 @@ final class FR2IntervalsUITests: CadenceUITestCase {
 
     func testBoxingIntervalViaHome() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.boxing"].waitTap(), "Boxing type")
 
         // Boxing no longer has presets; the Details steppers appear with defaults
@@ -34,7 +34,7 @@ final class FR2IntervalsUITests: CadenceUITestCase {
 
     func testHIITPresetsAndStart() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap())
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.hiit"].waitTap(), "HIIT type")
         // All six science-backed presets are offered.
         for id in ["tabata", "norwegian", "gibala", "sit", "ten", "rehit"] {

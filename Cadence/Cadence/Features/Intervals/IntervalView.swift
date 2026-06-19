@@ -47,7 +47,7 @@ struct IntervalView: View {
         } else if showingHRGate {
             // Pre-workout HR connect screen (feedback batch 5). The runner's clock
             // only starts once the gate is passed, so setup time isn't counted.
-            PreWorkoutHRView { useHR in
+            PreWorkoutHRView(workoutType: saveType) { useHR in
                 captureHR = useHR
                 runner.restart()
                 showingHRGate = false
@@ -115,7 +115,7 @@ struct IntervalView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(label), \(Int(runner.phaseRemaining)) seconds left")
         .statusBarHidden()
-        .onAppear { cues.spokenEnabled = settings.spokenCues }
+        .onAppear { cues.spokenEnabled = settings.spokenCues; cues.isBoxing = saveType == .boxing }
         .onReceive(tick) { _ in advance() }
         .onChange(of: runner.currentPhaseID) { _, _ in
             if let kind = runner.phaseKind { cues.phaseChanged(to: kind, label: runner.phaseLabel) }
@@ -196,6 +196,7 @@ struct IntervalView: View {
         finished = true
         runner.end()
         cues.completed()
+        model.stopWatchWorkout()
         let start = runner.clock.startedAt
         let end = Date()
         // Capture the protocol structure (rounds, work/rest, warm-up/cool-down, and

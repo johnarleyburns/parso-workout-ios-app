@@ -7,7 +7,6 @@ final class FR9Feedback2UITests: CadenceUITestCase {
 
     private func openWeights(_ app: XCUIApplication) {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
-        XCTAssertTrue(app.buttons["startType.weights"].waitTap(), "Weights")
     }
 
     // #1 — Quick Start opens a blank session.
@@ -33,7 +32,7 @@ final class FR9Feedback2UITests: CadenceUITestCase {
     // #3 — Swimming records time + laps and shows them in the summary.
     func testSwimmingRecordsLaps() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
+        XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.swim"].waitTap(), "Swim")
         XCTAssertTrue(app.buttons["swim.start"].waitTap(), "Start swim")
         XCTAssertTrue(app.buttons["swim.lapPlus"].waitTap(), "lap +")

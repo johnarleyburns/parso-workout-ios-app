@@ -72,10 +72,10 @@ final class RecommendationPrescriptionTests: XCTestCase {
 
     func testAddVolumePrescribesPartFocusWithoutLift() throws {
         let f = facts(weeklySets: [.biceps: 1], goal: .hypertrophy)
-        let rec = RecommendationEngine.run(f).first { $0.id == "addVolume.biceps" }
+        let rec = try XCTUnwrap(RecommendationEngine.run(f).first { $0.id == "addVolume.biceps" })
         let p = try XCTUnwrap(rec).prescribedSession()
         XCTAssertEqual(p.title, "\(BodyPart.biceps.displayName) focus")
-        XCTAssertTrue(p.exerciseNames.isEmpty, "no specific lift — the user picks movements")
+        XCTAssertEqual(p.exerciseNames, ["Barbell Curl"], "part default exercise provided")
         XCTAssertNil(p.loadKg, "bodyweight/any load")
         XCTAssertFalse(p.repLadder.isEmpty, "still prescribes a rep ladder to apply")
     }
@@ -85,7 +85,7 @@ final class RecommendationPrescriptionTests: XCTestCase {
     func testStarterPrescribesFullBodySession() {
         let p = RecommendationEngine.top(facts()).prescribedSession()
         XCTAssertEqual(p.title, "Full-body session")
-        XCTAssertTrue(p.exerciseNames.isEmpty)
+        XCTAssertEqual(p.exerciseNames, ["Back Squat", "Bench Press", "Deadlift"], "starter fills compounds")
         XCTAssertNil(p.loadKg)
         XCTAssertEqual(p.repLadder.count, 3, "starter is 3 sets")
     }
@@ -119,6 +119,6 @@ final class RecommendationPrescriptionTests: XCTestCase {
         let p = RecommendationEngine.top(facts()).prescribedSession()  // starter, loadKg nil
         let session = try WorkoutRepository.startSession(from: p, in: ctx)
         XCTAssertEqual(session.prescribedLoadKg, 0, "no prescribed load → keypad starts empty")
-        XCTAssertTrue(session.plannedExerciseNames.isEmpty)
+        XCTAssertEqual(session.plannedExerciseNames.count, 3, "starter fills default compounds")
     }
 }

@@ -1,19 +1,24 @@
 import XCTest
 
-/// strength-pivot P5.3 — "Do this workout" on the Coach card materializes the top
+/// strength-pivot P5.3 — "Start Coach Workout" on Home materializes the top
 /// prescription into a logger session pre-filled with the prescribed movement,
-/// planned sets/reps, and working load.
+/// planned sets/reps, and working load.  The HR gate appears first; the test
+/// skips it.
 final class P5DoThisUITests: CadenceUITestCase {
 
-    /// With seeded history the engine prescribes progressing a concrete lift; "Do this
-    /// workout" opens a session pre-loaded with that movement, its prescribed reps, and
-    /// the prescribed load (surfaced on the planned card and pre-filled in the keypad).
+    /// With seeded history the engine prescribes progressing a concrete lift; "Start
+    /// Coach Workout" opens a session pre-loaded with that movement, its prescribed
+    /// reps, and the prescribed load.
     func testDoThisPreFillsPrescribedLiftAndLoad() {
         // Seeded history → Back Squat is the top-ranked progression (140 kg).
         let app = XCUIApplication.launched(seeds: ["history"])
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
 
-        XCTAssertTrue(app.scrollToHittableAndTap("coach.card.doThis"), "Do this workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "Start Coach Workout")
+
+        // Skip the HR gate — "Start Workout" without connecting HR.
+        XCTAssertTrue(app.buttons["prehr.start"].waitForExistence(timeout: 10), "HR gate appeared")
+        app.buttons["prehr.start"].tap()
 
         // We land in the logger on the prescribed session.
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
@@ -36,12 +41,15 @@ final class P5DoThisUITests: CadenceUITestCase {
         XCTAssertNotEqual(entry, "0", "the prescribed load is non-zero")
     }
 
-    /// Cold start (no history) still offers "Do this workout"; the engine's starter
-    /// prescription opens an empty full-body session to log into.
+    /// Cold start (no history) — "Start Coach Workout" opens a full-body session
+    /// with default compound exercises (Back Squat, Bench Press, Deadlift).
     func testDoThisColdStartOpensSession() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.scrollToHittableAndTap("coach.card.doThis"), "Do this workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "Start Coach Workout")
+        // Skip the HR gate.
+        XCTAssertTrue(app.buttons["prehr.start"].waitForExistence(timeout: 10))
+        app.buttons["prehr.start"].tap()
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
                       "the starter prescription opens the logger")
     }

@@ -136,7 +136,7 @@ struct HomeView: View {
                 NavigationStack {
                     WeightsStartView(
                         onQuickStart: { weightsStartPresented = false; launchFromPicker(.strength, skipCountdown: true) },
-                        onWarmupStart: { weightsStartPresented = false; startWarmupAfterHRGate = true; hrGateKind = .strength },
+                        onWarmupStart: { weightsStartPresented = false; startWarmupAfterHRGate = true; proceedFromHRGate(.strength, useHR: false) },
                         onReuse: { weightsStartPresented = false; launchFromPicker(.reuse($0)) },
                         onPlan: { plan, ladder in weightsStartPresented = false; launchFromPicker(.plan(plan, ladder)) })
                 }
@@ -345,20 +345,19 @@ struct HomeView: View {
 
     private var startButton: some View {
         Button { Haptics.selection(); weightsStartPresented = true } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "play.circle.fill").font(.largeTitle)
-                Text("Start Workout").font(.title2.bold())
+            HStack(spacing: 10) {
+                Image(systemName: "dumbbell.fill").font(.headline)
+                Text("Start Strength Workout").font(.headline)
                 Spacer()
-                Image(systemName: "chevron.right").font(.headline).opacity(0.8)
+                Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
             }
-            .padding(.vertical, 22).padding(.horizontal, 20)
-            .frame(maxWidth: .infinity, minHeight: 84)
-            .foregroundStyle(.white)
-            .background(LinearGradient(colors: [.green, .teal], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        in: RoundedRectangle(cornerRadius: 20))
+            .padding(.vertical, 14).padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.tint)
+            .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("home.startWorkout").accessibilityLabel("Start a workout")
+        .accessibilityIdentifier("home.startWorkout").accessibilityLabel("Start a strength workout")
     }
 
     private var cardioButton: some View {
@@ -539,10 +538,10 @@ struct HomeView: View {
     /// `skipCountdown` makes "Quick Start" truly immediate — no countdown
     /// regardless of the Settings value (which still applies to library/reuse/warm-up).
     private func launchFromPicker(_ kind: PendingWorkout.Kind, skipCountdown: Bool = false) {
-        if skipCountdown || settings.preWorkoutCountdown <= 0 {
-            hrGateKind = kind
+        if skipCountdown {
+            launch(kind)
         } else {
-            hrGateKind = kind
+            proceedFromHRGate(kind, useHR: false)
         }
     }
     private func begin(_ kind: PendingWorkout.Kind) {
@@ -603,7 +602,7 @@ struct HomeView: View {
     /// through the HR gate so the user can verify live HR first.
     private func launchPrescription(_ rec: Recommendation) {
         pendingPrescription = rec
-        hrGateKind = .strength
+        proceedFromHRGate(.strength, useHR: false)
     }
 }
 

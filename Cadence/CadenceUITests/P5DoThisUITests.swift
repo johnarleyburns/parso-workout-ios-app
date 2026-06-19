@@ -2,8 +2,7 @@ import XCTest
 
 /// strength-pivot P5.3 — "Start Coach Workout" on Home materializes the top
 /// prescription into a logger session pre-filled with the prescribed movement,
-/// planned sets/reps, and working load.  The HR gate appears first; the test
-/// skips it.
+/// planned sets/reps, and working load.
 final class P5DoThisUITests: CadenceUITestCase {
 
     /// With seeded history the engine prescribes progressing a concrete lift; "Start
@@ -15,10 +14,6 @@ final class P5DoThisUITests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "Start Coach Workout")
-
-        // Skip the HR gate — "Start Workout" without connecting HR.
-        XCTAssertTrue(app.buttons["prehr.start"].waitForExistence(timeout: 10), "HR gate appeared")
-        app.buttons["prehr.start"].tap()
 
         // We land in the logger on the prescribed session.
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
@@ -47,9 +42,6 @@ final class P5DoThisUITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "Start Coach Workout")
-        // Skip the HR gate.
-        XCTAssertTrue(app.buttons["prehr.start"].waitForExistence(timeout: 10))
-        app.buttons["prehr.start"].tap()
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
                       "the starter prescription opens the logger")
     }

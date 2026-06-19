@@ -122,22 +122,6 @@ public enum StrengthPresets {
         return WorkoutPlan(id: id, name: name, source: .strengthPreset, scheme: .strength, items: items)
     }
 
-    private static func fixedPct2(_ id: String, _ name: String,
-                                  t1: (String, Int, Int, Double),
-                                  t2: (String, Int, Int, Double),
-                                  accessories: [(String, Int, Int)]) -> WorkoutPlan {
-        var items: [PlanItem] = [
-            PlanItem(id: 0, movement: t1.0, reps: t1.2,
-                     targetSets: t1.1, loadPercentage: t1.3),
-            PlanItem(id: 1, movement: t2.0, reps: t2.2,
-                     targetSets: t2.1, loadPercentage: t2.3),
-        ]
-        for (i, m) in accessories.enumerated() {
-            items.append(PlanItem(id: i + 2, movement: m.0, reps: m.2, targetSets: m.1))
-        }
-        return WorkoutPlan(id: id, name: name, source: .strengthPreset, scheme: .strength, items: items)
-    }
-
     /// A flexible template: just a movement list. The set/rep scheme is chosen at
     /// launch and applied to every movement (the listed `defaultReps` is only a
     /// sensible fallback for the preview).
@@ -161,11 +145,13 @@ public enum StrengthPresets {
 
     public static let all: [WorkoutPlan] = [
         // 5×5 — four alternating days across two weeks (feedback batch 3).
-        fixed("preset-5x5-1a", "5×5 Week 1A", fiveByFiveA),
-        fixed("preset-5x5-1b", "5×5 Week 1B", fiveByFiveB),
-        fixed("preset-5x5-2a", "5×5 Week 2A", fiveByFiveA),
-        fixed("preset-5x5-2b", "5×5 Week 2B", fiveByFiveB),
+        // Science: Krieger 2010 multi-set meta-analysis.
+        fixed("preset-5x5-1a", "5\u{00d7}5 Week 1A", fiveByFiveA),
+        fixed("preset-5x5-1b", "5\u{00d7}5 Week 1B", fiveByFiveB),
+        fixed("preset-5x5-2a", "5\u{00d7}5 Week 2A", fiveByFiveA),
+        fixed("preset-5x5-2b", "5\u{00d7}5 Week 2B", fiveByFiveB),
         // Flexible split templates — pick a set/rep scheme at launch.
+        // Science: Schoenfeld 2019 frequency meta-analysis.
         template("preset-push", "Push", [
             "Bench Press", "Overhead Press", "Incline Dumbbell Bench Press",
             "Triceps Pushdown", "Dumbbell Lateral Raise",
@@ -192,6 +178,7 @@ public enum StrengthPresets {
             "Deadlift", "Pull-Up", "Seated Cable Row", "Barbell Curl", "Hammer Curl",
         ]),
         // Bodyweight / calisthenics templates (feedback batch 3).
+        // Science: Calatayud 2015 — bodyweight produces comparable activation.
         template("preset-cali-push", "Calisthenics Push", [
             "Push-Up", "Dip", "Pike Push-Up", "Decline Push-Up",
         ]),
@@ -202,15 +189,15 @@ public enum StrengthPresets {
             "Air Squat", "Bulgarian Split Squat", "Glute Bridge", "Plank",
         ]),
         // Olympic — three focused days (feedback batch 3).
+        // Science: Channell & Barfield 2008 — Oly lifts for power.
         fixed("preset-oly-snatch", "Olympic Snatch Day", [("Snatch", 20, 1)]),
         fixed("preset-oly-cj", "Olympic Clean & Jerk Day", [("Clean and Jerk", 20, 1)]),
         fixed("preset-oly-mixed", "Olympic Mixed Day", [
             ("Snatch", 5, 3), ("Clean and Jerk", 5, 2), ("Front Squat", 4, 5),
             ("Overhead Squat", 3, 5), ("Power Clean", 4, 3),
         ]),
-        // 5/3/1 (Wendler) — four main-lift days. Each day: the main lift at
-        // 5/3/1 progression with percentage-based loading, then accessories.
-        // Based on Jim Wendler's 5/3/1 methodology. Percentages are of tested 1RM.
+        // 5/3/1 (Wendler) — four main-lift days. Percentage-based loading.
+        // Science: Rhea & Alderman 2004 — periodization meta-analysis.
         fixedPct("preset-531-squat", "5/3/1 Squat Day",
                  mainLift: ("Back Squat", 3, 5, 0.75),
                  accessories: [("Leg Press", 3, 10), ("Seated Leg Curl", 3, 10), ("Ab Roller", 3, 15)]),
@@ -223,42 +210,57 @@ public enum StrengthPresets {
         fixedPct("preset-531-press", "5/3/1 Press Day",
                  mainLift: ("Overhead Press", 3, 5, 0.75),
                  accessories: [("Chin-Up", 3, 8), ("Dumbbell Lateral Raise", 3, 12), ("Barbell Curl", 3, 10)]),
-        // GZCLP — four sessions: T1 (heavy compound, 5x3), T2 (moderate
-        // compound, 3x10), T3 (light isolation, 3x15). Based on Cody Lefever's
-        // General Gainz / GZCLP linear progression.
-        fixed("preset-gzclp-a1", "GZCLP A1", [
-            ("Back Squat", 5, 3), ("Bench Press", 3, 10), ("Lat Pulldown", 3, 15),
+        // DUP (Daily Undulating Periodization) — three days rotating intensity.
+        // Science: Zourdos 2016 — modified DUP > traditional periodization.
+        fixed("preset-dup-heavy", "DUP Heavy Day", [
+            ("Back Squat", 5, 3), ("Bench Press", 5, 3), ("Barbell Row", 5, 3),
         ]),
-        fixed("preset-gzclp-b1", "GZCLP B1", [
-            ("Overhead Press", 5, 3), ("Deadlift", 3, 10), ("Barbell Row", 3, 15),
+        fixed("preset-dup-hypertrophy", "DUP Hypertrophy Day", [
+            ("Front Squat", 4, 10), ("Incline Dumbbell Bench Press", 4, 10),
+            ("Lat Pulldown", 4, 10), ("Dumbbell Lateral Raise", 3, 12),
         ]),
-        fixed("preset-gzclp-a2", "GZCLP A2", [
-            ("Bench Press", 5, 3), ("Back Squat", 3, 10), ("Lat Pulldown", 3, 15),
+        fixed("preset-dup-power", "DUP Power Day", [
+            ("Deadlift", 6, 2), ("Overhead Press", 6, 2), ("Pull-Up", 6, 3),
         ]),
-        fixed("preset-gzclp-b2", "GZCLP B2", [
-            ("Deadlift", 5, 3), ("Overhead Press", 3, 10), ("Barbell Row", 3, 15),
+        // German Volume Training — 10\u{00d7}10 on compound lifts.
+        // Science: Amirthalingam 2017 — GVT hypertrophy and strength.
+        fixed("preset-gvt-upper", "GVT Upper", [
+            ("Bench Press", 10, 10), ("Barbell Row", 10, 10),
+            ("Incline Dumbbell Bench Press", 3, 12),
         ]),
-        // nSuns 5/3/1 LP — high-volume 5/3/1 variant with 8-9 working sets
-        // per main lift at prescribed percentages. Based on the nSuns community
-        // linear progression variant of 5/3/1. Percentages are of tested 1RM.
-        fixedPct2("preset-nsuns-bench", "nSuns Bench + OHP",
-                  t1: ("Bench Press", 9, 3, 0.80),
-                  t2: ("Overhead Press", 8, 3, 0.65),
-                  accessories: [("Cable Fly", 3, 12), ("Triceps Pushdown", 3, 12), ("Face Pull", 3, 15)]),
-        fixedPct2("preset-nsuns-squat", "nSuns Squat + Sumo DL",
-                  t1: ("Back Squat", 9, 3, 0.80),
-                  t2: ("Sumo Deadlift", 8, 3, 0.65),
-                  accessories: [("Leg Press", 3, 10), ("Seated Leg Curl", 3, 12), ("Ab Roller", 3, 15)]),
-        fixedPct2("preset-nsuns-ohp", "nSuns OHP + Incline",
-                  t1: ("Overhead Press", 9, 3, 0.80),
-                  t2: ("Incline Dumbbell Bench Press", 8, 3, 0.65),
-                  accessories: [("Dumbbell Lateral Raise", 3, 12), ("Barbell Curl", 3, 10), ("Face Pull", 3, 15)]),
-        fixedPct2("preset-nsuns-deadlift", "nSuns Deadlift + Front Squat",
-                  t1: ("Deadlift", 9, 3, 0.80),
-                  t2: ("Front Squat", 8, 3, 0.65),
-                  accessories: [("Barbell Row", 3, 10), ("Hanging Leg Raise", 3, 15), ("Hammer Curl", 3, 12)]),
-        // PPL 6-day — Push/Pull/Legs with A/B variations. A common beginner-to-
-        // intermediate program popularized on r/Fitness. Two rotations per week.
+        fixed("preset-gvt-lower", "GVT Lower", [
+            ("Back Squat", 10, 10), ("Romanian Deadlift", 10, 10),
+            ("Standing Calf Raise", 3, 15),
+        ]),
+        // Linear Periodization — four-week mesocycle, decreasing reps.
+        // Science: Williams 2017 — periodized > non-periodized for strength.
+        fixed("preset-lp-w1", "LP Week 1 (Volume)", [
+            ("Back Squat", 4, 12), ("Bench Press", 4, 12), ("Barbell Row", 4, 12),
+        ]),
+        fixed("preset-lp-w2", "LP Week 2 (Moderate)", [
+            ("Back Squat", 4, 10), ("Bench Press", 4, 10), ("Barbell Row", 4, 10),
+        ]),
+        fixed("preset-lp-w3", "LP Week 3 (Strength)", [
+            ("Back Squat", 4, 8), ("Bench Press", 4, 8), ("Barbell Row", 4, 8),
+        ]),
+        fixed("preset-lp-w4", "LP Week 4 (Peak)", [
+            ("Back Squat", 5, 5), ("Bench Press", 5, 5), ("Barbell Row", 5, 5),
+        ]),
+        // Cluster Set Training — short intra-set rest preserves velocity.
+        // Science: Tufano 2017 — cluster sets maintain power output.
+        WorkoutPlan(id: "preset-cluster", name: "Cluster Sets", source: .strengthPreset,
+                    scheme: .strength,
+                    items: [
+                        PlanItem(id: 0, movement: "Back Squat", reps: 3, targetSets: 5,
+                                 note: "20s rest between singles within each cluster"),
+                        PlanItem(id: 1, movement: "Bench Press", reps: 3, targetSets: 5,
+                                 note: "20s rest between singles within each cluster"),
+                        PlanItem(id: 2, movement: "Deadlift", reps: 3, targetSets: 5,
+                                 note: "20s rest between singles within each cluster"),
+                    ],
+                    notes: "Cluster protocol: perform each rep, rest 20s, repeat for target reps per set. Full rest between sets."),
+        // PPL 6-day — Push/Pull/Legs with A/B variations.
+        // Science: Schoenfeld 2019 — \u{2265}2\u{00d7}/week frequency meta-analysis.
         template("preset-ppl-push-a", "PPL Push A", [
             "Bench Press", "Overhead Press", "Incline Dumbbell Bench Press",
             "Triceps Pushdown", "Dumbbell Lateral Raise", "Standing Dumbbell Triceps Extension",
@@ -294,5 +296,85 @@ public enum StrengthPresets {
 public enum PlanCatalog {
     public static func plan(forKey key: String) -> WorkoutPlan? {
         StrengthPresets.all.first { $0.id == key }
+    }
+}
+
+// MARK: - Routine info (science audit 2026-06-19)
+
+public struct RoutineInfo: Sendable, Identifiable {
+    public var id: String { groupName }
+    public let groupName: String
+    public let summary: String
+    public let citations: [Citation]
+}
+
+public enum RoutineInfoCatalog {
+    public static let fiveByFive = RoutineInfo(
+        groupName: "5\u{00d7}5 Program",
+        summary: "The 5\u{00d7}5 protocol prescribes five sets of five repetitions on compound barbell lifts, adding weight each session. It is one of the oldest and most replicated progressive-overload models in strength training, originating from Reg Park in the 1960s and formalized by Bill Starr.\n\nA meta-analysis by Krieger (2010) found that multiple-set protocols produce approximately 40% greater hypertrophy gains than single-set protocols, supporting the 5\u{00d7}5 volume as an effective dose for both strength and muscle growth in novice-to-intermediate trainees.",
+        citations: [CitationRegistry.krieger2010]
+    )
+
+    public static let fiveThreeOne = RoutineInfo(
+        groupName: "5/3/1",
+        summary: "Wendler\u{2019}s 5/3/1 uses a four-week wave: sets of 5, then 3, then a heavy single followed by a rep-out set, with the fourth week as a deload. Each main lift progresses independently at prescribed percentages of a training max.\n\nRhea & Alderman\u{2019}s (2004) meta-analysis of 18 studies found that periodized programs \u{2014} which systematically vary intensity and volume over time, as 5/3/1 does \u{2014} produce significantly greater strength gains than non-periodized, fixed-scheme training.",
+        citations: [CitationRegistry.rheaPeriodization]
+    )
+
+    public static let splits = RoutineInfo(
+        groupName: "Split Templates",
+        summary: "Body-part split templates (Push/Pull/Legs, Upper/Lower, Chest, Back & Biceps) distribute weekly training volume across focused sessions. This lets each muscle group recover while others are trained, supporting higher per-session volume.\n\nSchoenfeld, Grgic & Krieger\u{2019}s (2019) meta-analysis found that training each muscle group at least twice per week produces significantly greater hypertrophy than once-per-week splits, supporting multi-day split designs that hit each muscle \u{2265}2\u{00d7}/week.",
+        citations: [CitationRegistry.frequencyMeta]
+    )
+
+    public static let ppl = RoutineInfo(
+        groupName: "PPL (6-Day)",
+        summary: "The Push/Pull/Legs 6-day split trains each movement pattern twice per week (Push A, Pull A, Legs A, Push B, Pull B, Legs B). The A/B variation provides exercise variety while maintaining the frequency stimulus.\n\nSchoenfeld, Grgic & Krieger\u{2019}s (2019) systematic review and meta-analysis demonstrated that training muscles at least twice per week leads to significantly greater hypertrophic outcomes compared to once per week, directly supporting the PPL frequency model.",
+        citations: [CitationRegistry.frequencyMeta]
+    )
+
+    public static let calisthenics = RoutineInfo(
+        groupName: "Calisthenics",
+        summary: "Calisthenics programs use bodyweight exercises \u{2014} push-ups, pull-ups, dips, squats \u{2014} as the primary resistance. Progression comes from harder variations (decline push-ups, archer pull-ups, pistol squats) rather than external load.\n\nCalatayud et al. (2015) showed that when push-ups are performed at comparable levels of muscle activation to the bench press, both exercises produce similar strength gains. This supports bodyweight training as a viable alternative to loaded barbell work for upper-body strength development.",
+        citations: [CitationRegistry.calatayudBodyweight]
+    )
+
+    public static let olympic = RoutineInfo(
+        groupName: "Olympic Lifting",
+        summary: "Olympic weightlifting \u{2014} the snatch and the clean & jerk \u{2014} develops explosive power, coordination, and full-body strength. These movements require high rates of force development and recruit large muscle groups through a full range of motion.\n\nChannell & Barfield (2008) compared Olympic-style and traditional resistance training in high school athletes and found that the Olympic group produced significantly greater improvements in vertical jump, a validated proxy for lower-body power output.",
+        citations: [CitationRegistry.channellOlympic]
+    )
+
+    public static let dup = RoutineInfo(
+        groupName: "DUP",
+        summary: "Daily Undulating Periodization rotates intensity and volume within each training week \u{2014} heavy (low rep), hypertrophy (moderate rep), and power (explosive) days \u{2014} rather than changing across multi-week blocks.\n\nZourdos et al. (2016) found that a modified DUP model produced greater improvements in squat and bench press 1RM than a traditional periodization configuration in trained powerlifters, likely because frequent variation in training stimulus prevents accommodation.",
+        citations: [CitationRegistry.zourdosDUP]
+    )
+
+    public static let gvt = RoutineInfo(
+        groupName: "German Volume Training",
+        summary: "German Volume Training (GVT) prescribes 10 sets of 10 repetitions on a compound lift at approximately 60% of 1RM, with 60\u{2013}90 seconds rest between sets. The extreme volume drives a strong hypertrophic stimulus.\n\nAmirthalingam et al. (2017) studied GVT in resistance-trained men and found significant increases in muscle thickness and lean body mass. The study also noted that a modified 5\u{00d7}10 protocol produced comparable results, suggesting the volume threshold for hypertrophy may be lower than GVT\u{2019}s traditional 10\u{00d7}10.",
+        citations: [CitationRegistry.amirthalingamGVT]
+    )
+
+    public static let linearPeriodization = RoutineInfo(
+        groupName: "Linear Periodization",
+        summary: "Linear periodization progressively increases intensity while decreasing volume over a mesocycle \u{2014} for example, 4\u{00d7}12 in week one, 4\u{00d7}10, then 4\u{00d7}8, finishing with 5\u{00d7}5 at peak intensity. This systematic progression is the most widely studied model in resistance training.\n\nWilliams et al.\u{2019}s (2017) meta-analysis concluded that periodized resistance training programs produce significantly greater maximal-strength gains than non-periodized programs of matched volume and intensity, reinforcing the value of structured progression.",
+        citations: [CitationRegistry.williamsLinearPeriodization]
+    )
+
+    public static let clusterSets = RoutineInfo(
+        groupName: "Cluster Set Training",
+        summary: "Cluster set training inserts short intra-set rest intervals (15\u{2013}30 seconds) between individual repetitions or small groups of reps within a set. This maintains bar velocity and power output across the set, reducing the fatigue-driven decline in performance.\n\nTufano, Brown & Haff\u{2019}s (2017) systematic review found that cluster set structures allow lifters to maintain higher movement velocity and power output compared to traditional sets, making them particularly effective for strength and power development.",
+        citations: [CitationRegistry.tufanoCluster]
+    )
+
+    public static let all: [RoutineInfo] = [
+        fiveByFive, fiveThreeOne, splits, ppl, calisthenics, olympic,
+        dup, gvt, linearPeriodization, clusterSets,
+    ]
+
+    public static func info(forGroup group: String) -> RoutineInfo? {
+        all.first { $0.groupName == group }
     }
 }

@@ -14,6 +14,7 @@ struct HomeView: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .reverse) private var assessments: [Assessment]
+    @Query(filter: #Predicate<Exercise> { $0.isFavorite }, sort: \Exercise.name) private var favoriteExercises: [Exercise]
 
     @State private var logPickerPresented = false
     @State private var path = NavigationPath()
@@ -91,6 +92,7 @@ struct HomeView: View {
                     cardioButton
                     logButton
                     planningButton
+                    favoritesSection
                     thisWeekSection
                     recentWorkoutsSection
                 }
@@ -360,18 +362,13 @@ struct HomeView: View {
         model.lastHealthSync = Date()
     }
 
-    // Coach "Start Coach Workout" button — sits between the Coach card and
+    // Coach "Start Coach's Workout" button — sits between the Coach card and
     // "Start Workout".  Launches the prescribed session through the HR gate.
     private var coachStartButton: some View {
         Button { Haptics.selection(); launchPrescription(coachRecommendation) } label: {
             HStack(spacing: 10) {
                 Image(systemName: "checklist")
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Start Coach Workout").font(.headline)
-                    Text(coachRecommendation.action)
-                        .font(.caption).foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                Text("Start Coach's Workout").font(.headline)
                 Spacer()
                 Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
             }
@@ -382,7 +379,7 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("home.coachStart")
-        .accessibilityLabel("Start Coach Workout — \(coachRecommendation.title)")
+        .accessibilityLabel("Start Coach's Workout")
     }
 
     private var startButton: some View {
@@ -454,6 +451,55 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("home.planning").accessibilityLabel("Programs and routines")
+    }
+
+    private var homeFavoriteRoutines: [WorkoutPlan] {
+        settings.favoriteRoutineIDs.compactMap { PlanCatalog.plan(forKey: $0) }
+            .sorted { $0.name < $1.name }
+    }
+
+    @ViewBuilder
+    private var favoritesSection: some View {
+        let routines = homeFavoriteRoutines
+        if !routines.isEmpty || !favoriteExercises.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Favorites", systemImage: "heart.fill")
+                    .font(.headline).foregroundStyle(.pink)
+                if !routines.isEmpty {
+                    Text("Routines").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    ForEach(routines) { plan in
+                        NavigationLink {
+                            RoutineDetailView(plan: plan, switchToWorkout: { path = NavigationPath() })
+                        } label: {
+                            HStack {
+                                Text(plan.name).font(.subheadline)
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                if !favoriteExercises.isEmpty {
+                    Text("Exercises").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        .padding(.top, routines.isEmpty ? 0 : 4)
+                    ForEach(favoriteExercises) { ex in
+                        NavigationLink {
+                            ExerciseDetailView(exercise: ex)
+                        } label: {
+                            HStack {
+                                Text(ex.name).font(.subheadline)
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding()
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        }
     }
 
     // MARK: Inline sections (surfaced, not hidden)

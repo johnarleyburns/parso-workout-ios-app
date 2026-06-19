@@ -142,7 +142,87 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1249/00005768-197200440-00019"
     )
 
-    public static let all: [Citation] = [schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation, rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max, run1_5mile, rockportWalk, queensCollegeStep]
+    // MARK: - Routine program citations (2026-06-19 science audit)
+
+    public static let krieger2010 = Citation(
+        id: "krieger2010",
+        authors: "Krieger",
+        year: 2010,
+        title: "Single vs. Multiple Sets of Resistance Exercise for Muscle Hypertrophy: A Meta-Analysis",
+        source: "Journal of Strength and Conditioning Research 24(4)",
+        url: "https://doi.org/10.1519/JSC.0b013e3181d4d436"
+    )
+
+    public static let rheaPeriodization = Citation(
+        id: "rheaPeriodization",
+        authors: "Rhea & Alderman",
+        year: 2004,
+        title: "A Meta-Analysis of Periodized Versus Nonperiodized Strength and Power Training Programs",
+        source: "Research Quarterly for Exercise and Sport 75(4)",
+        url: "https://doi.org/10.1080/02701367.2004.10609174"
+    )
+
+    public static let calatayudBodyweight = Citation(
+        id: "calatayudBodyweight",
+        authors: "Calatayud, Borreani, Colado, Martin, Tella & Andersen",
+        year: 2015,
+        title: "Bench Press and Push-Up at Comparable Levels of Muscle Activity Results in Similar Strength Gains",
+        source: "Journal of Strength and Conditioning Research 29(1)",
+        url: "https://doi.org/10.1519/JSC.0000000000000589"
+    )
+
+    public static let channellOlympic = Citation(
+        id: "channellOlympic",
+        authors: "Channell & Barfield",
+        year: 2008,
+        title: "Effect of Olympic and Traditional Resistance Training on Vertical Jump Improvement in High School Boys",
+        source: "Journal of Strength and Conditioning Research 22(5)",
+        url: "https://doi.org/10.1519/JSC.0b013e318181a3d0"
+    )
+
+    public static let zourdosDUP = Citation(
+        id: "zourdosDUP",
+        authors: "Zourdos, Jo, Khamoui, Lee, Park, Henning, Weiss & Kim",
+        year: 2016,
+        title: "Modified Daily Undulating Periodization Model Produces Greater Performance Than a Traditional Configuration in Powerlifters",
+        source: "Journal of Strength and Conditioning Research 30(3)",
+        url: "https://doi.org/10.1519/JSC.0000000000001165"
+    )
+
+    public static let amirthalingamGVT = Citation(
+        id: "amirthalingamGVT",
+        authors: "Amirthalingam, Mavros, Wilson, Clarke, Mitchell & Hackett",
+        year: 2017,
+        title: "Effects of a Modified German Volume Training Program on Muscular Hypertrophy and Strength",
+        source: "Journal of Strength and Conditioning Research 31(11)",
+        url: "https://doi.org/10.1519/JSC.0000000000001747"
+    )
+
+    public static let williamsLinearPeriodization = Citation(
+        id: "williamsLinearPeriodization",
+        authors: "Williams, Tolusso, Fedewa & Esco",
+        year: 2017,
+        title: "Comparison of Periodized and Non-Periodized Resistance Training on Maximal Strength: A Meta-Analysis",
+        source: "Sports Medicine 47(10)",
+        url: "https://doi.org/10.1007/s40279-017-0734-y"
+    )
+
+    public static let tufanoCluster = Citation(
+        id: "tufanoCluster",
+        authors: "Tufano, Brown & Haff",
+        year: 2017,
+        title: "Theoretical and Practical Aspects of Different Cluster Set Structures: A Systematic Review",
+        source: "Journal of Strength and Conditioning Research 31(3)",
+        url: "https://doi.org/10.1519/JSC.0000000000001581"
+    )
+
+    public static let all: [Citation] = [
+        schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation,
+        rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max,
+        run1_5mile, rockportWalk, queensCollegeStep,
+        krieger2010, rheaPeriodization, calatayudBodyweight, channellOlympic,
+        zourdosDUP, amirthalingamGVT, williamsLinearPeriodization, tufanoCluster,
+    ]
 
     public static func citation(forId id: String) -> Citation? {
         all.first { $0.id == id }

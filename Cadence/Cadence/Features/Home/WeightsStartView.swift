@@ -22,12 +22,7 @@ struct WeightsStartView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "checklist").font(.title2)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Coach Workout").font(.title3.bold())
-                                Text(rec.action)
-                                    .font(.caption).foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                            }
+                            Text("Coach's Workout").font(.title3.bold())
                             Spacer()
                         }
                         .padding(.vertical, 14).padding(.horizontal, 16)
@@ -39,7 +34,7 @@ struct WeightsStartView: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
                     .listRowBackground(Color.clear)
                     .accessibilityIdentifier("weights.coachStart")
-                    .accessibilityLabel("Coach Workout — \(rec.title)")
+                    .accessibilityLabel("Coach's Workout")
                 } footer: {
                     Text(rec.title)
                 }

@@ -61,6 +61,7 @@ public final class Exercise {
     public var imageName: String?
     /// Difficulty: beginner / intermediate / expert.
     public var level: String?
+    public var isFavorite: Bool = false
     public var createdAt: Date = Date()
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
@@ -83,6 +84,7 @@ public final class Exercise {
                 instructions: [String] = [],
                 imageName: String? = nil,
                 level: String? = nil,
+                isFavorite: Bool = false,
                 createdAt: Date = Date(),
                 updatedAt: Date = Date(),
                 originDevice: String = "") {
@@ -101,6 +103,7 @@ public final class Exercise {
         self.instructionsData = StringArray.encode(instructions)
         self.imageName = imageName
         self.level = level
+        self.isFavorite = isFavorite
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.originDevice = originDevice

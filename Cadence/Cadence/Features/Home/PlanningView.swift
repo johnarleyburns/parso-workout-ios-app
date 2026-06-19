@@ -7,6 +7,7 @@ struct PlanningView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(ActiveWorkoutModel.self) private var active
+    @Environment(AppSettings.self) private var settings
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @Query(sort: \SessionTemplate.name) private var templates: [SessionTemplate]
 
@@ -67,6 +68,11 @@ struct PlanningView: View {
             $0.name.lowercased().contains(q) ||
             $0.orderedExercises.contains { $0.exerciseName.lowercased().contains(q) }
         }
+    }
+
+    private var favoriteRoutines: [WorkoutPlan] {
+        settings.favoriteRoutineIDs.compactMap { PlanCatalog.plan(forKey: $0) }
+            .sorted { $0.name < $1.name }
     }
 
     // MARK: Body
@@ -174,6 +180,13 @@ struct PlanningView: View {
             }
         }
         .accessibilityIdentifier("planning.exercise.\(ex.name)")
+        .swipeActions(edge: .leading) {
+            Button { ex.isFavorite.toggle(); try? context.save() } label: {
+                Label(ex.isFavorite ? "Unfavorite" : "Favorite",
+                      systemImage: ex.isFavorite ? "heart.slash" : "heart")
+            }
+            .tint(.pink)
+        }
     }
 
     private func muscleSubtitle(_ ex: Exercise) -> String? {
@@ -184,15 +197,24 @@ struct PlanningView: View {
         }.joined(separator: ", ")
     }
 
+    @State private var routineInfoSheet: RoutineInfo?
+
     // MARK: - Routines
 
     private var routinesList: some View {
         List {
             if trimmedQuery.isEmpty {
+                if !favoriteRoutines.isEmpty {
+                    Section("Favorites") {
+                        ForEach(favoriteRoutines) { routineRow($0) }
+                    }
+                }
                 routineGroupSection("5\u{00d7}5 Program", plans: RoutineGroup.fiveByFive)
                 routineGroupSection("5/3/1", plans: RoutineGroup.fiveThreeOne)
-                routineGroupSection("GZCLP", plans: RoutineGroup.gzclp)
-                routineGroupSection("nSuns", plans: RoutineGroup.nSuns)
+                routineGroupSection("DUP", plans: RoutineGroup.dup)
+                routineGroupSection("Linear Periodization", plans: RoutineGroup.linearPeriodization)
+                routineGroupSection("German Volume Training", plans: RoutineGroup.gvt)
+                routineGroupSection("Cluster Set Training", plans: RoutineGroup.clusterSets)
                 routineGroupSection("PPL (6-Day)", plans: RoutineGroup.ppl)
                 routineGroupSection("Split Templates", plans: RoutineGroup.splits)
                 routineGroupSection("Calisthenics", plans: RoutineGroup.calisthenics)
@@ -233,11 +255,26 @@ struct PlanningView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .sheet(item: $routineInfoSheet) { info in
+            RoutineInfoSheet(info: info)
+        }
     }
 
     private func routineGroupSection(_ title: String, plans: [WorkoutPlan]) -> some View {
-        Section(title) {
+        Section {
             ForEach(plans) { routineRow($0) }
+        } header: {
+            HStack {
+                Text(title)
+                Spacer()
+                Button { routineInfoSheet = RoutineInfoCatalog.info(forGroup: title) } label: {
+                    Image(systemName: "info.circle")
+                        .font(.subheadline)
+                        .foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(title) info")
+            }
         }
     }
 
@@ -252,6 +289,13 @@ struct PlanningView: View {
             }
             .padding(.vertical, 2)
         }
+        .swipeActions(edge: .leading) {
+            Button { settings.toggleFavoriteRoutine(plan.id) } label: {
+                Label(settings.isRoutineFavorite(plan.id) ? "Unfavorite" : "Favorite",
+                      systemImage: settings.isRoutineFavorite(plan.id) ? "heart.slash" : "heart")
+            }
+            .tint(.pink)
+        }
         .accessibilityIdentifier("planning.routine.\(plan.id)")
     }
 }
@@ -259,8 +303,10 @@ struct PlanningView: View {
 private enum RoutineGroup {
     static let fiveByFive = StrengthPresets.all.filter { $0.id.hasPrefix("preset-5x5") }
     static let fiveThreeOne = StrengthPresets.all.filter { $0.id.hasPrefix("preset-531") }
-    static let gzclp = StrengthPresets.all.filter { $0.id.hasPrefix("preset-gzclp") }
-    static let nSuns = StrengthPresets.all.filter { $0.id.hasPrefix("preset-nsuns") }
+    static let dup = StrengthPresets.all.filter { $0.id.hasPrefix("preset-dup") }
+    static let linearPeriodization = StrengthPresets.all.filter { $0.id.hasPrefix("preset-lp") }
+    static let gvt = StrengthPresets.all.filter { $0.id.hasPrefix("preset-gvt") }
+    static let clusterSets = StrengthPresets.all.filter { $0.id == "preset-cluster" }
     static let ppl = StrengthPresets.all.filter { $0.id.hasPrefix("preset-ppl") }
     static let splits = StrengthPresets.all.filter {
         ["preset-push", "preset-pull", "preset-legs", "preset-upper",

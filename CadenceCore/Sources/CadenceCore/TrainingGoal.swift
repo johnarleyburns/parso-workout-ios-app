@@ -49,4 +49,12 @@ public enum TrainingGoal: String, CaseIterable, Codable, Sendable, Identifiable 
         case .endurance:   return 2
         }
     }
+
+    public var targetLoadPercentage: Double {
+        switch self {
+        case .strength:    return 0.85
+        case .hypertrophy: return 0.725
+        case .endurance:   return 0.575
+        }
+    }
 }

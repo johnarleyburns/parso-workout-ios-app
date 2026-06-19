@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct RootTabView: View {
-    enum Tab: Hashable { case workout, plan, library }
+    enum Tab: Hashable { case workout, tests, progress }
     @State private var selection: Tab = .workout
 
     var body: some View {
@@ -11,15 +11,15 @@ struct RootTabView: View {
                 .tag(Tab.workout)
                 .accessibilityIdentifier("tab.workout")
 
-            PlanView()
-                .tabItem { Label("Plan", systemImage: "calendar") }
-                .tag(Tab.plan)
-                .accessibilityIdentifier("tab.plan")
+            TestsView()
+                .tabItem { Label("Tests", systemImage: "checkmark.seal") }
+                .tag(Tab.tests)
+                .accessibilityIdentifier("tab.tests")
 
-            LibraryView(switchToWorkout: { selection = .workout })
-                .tabItem { Label("Library", systemImage: "books.vertical") }
-                .tag(Tab.library)
-                .accessibilityIdentifier("tab.library")
+            TrainingProgressView()
+                .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
+                .tag(Tab.progress)
+                .accessibilityIdentifier("tab.progress")
         }
     }
 }

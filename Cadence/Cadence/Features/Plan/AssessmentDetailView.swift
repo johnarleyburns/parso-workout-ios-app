@@ -40,6 +40,14 @@ struct AssessmentDetailView: View {
                     .accessibilityIdentifier("assessment.protocol")
             }
 
+            if !kind.citationIds.isEmpty {
+                Section("Evidence") {
+                    ForEach(kind.citationIds.compactMap { CitationRegistry.citation(forId: $0) }, id: \.id) { citation in
+                        CitationLink(citation: citation)
+                    }
+                }
+            }
+
             if summaries.isEmpty {
                 Section {
                     ContentUnavailableView(

@@ -85,6 +85,24 @@ public struct TrainingFacts: Sendable {
     public let goal: TrainingGoal
     public let experience: ExperienceLevel
 
+    public var assessedE1RMs: [String: Double] {
+        var result: [String: Double] = [:]
+        for s in assessments where s.kind == .e1RM {
+            if let name = s.exerciseName, !name.isEmpty {
+                result[name] = max(result[name] ?? 0, s.latest)
+            }
+        }
+        return result
+    }
+
+    private static let vo2maxKinds: Set<AssessmentKind> = [.cooper12min, .run1_5mile, .rockportWalk, .queensCollegeStep, .vo2maxField]
+
+    public var estimatedVO2max: Double? {
+        assessments.filter { Self.vo2maxKinds.contains($0.kind) }.map(\.latest).max()
+    }
+
+    public var hasAnyAssessment: Bool { !assessments.isEmpty }
+
     /// Secondary muscles receive half credit toward weekly volume (a common,
     /// conservative convention for counting indirect work).
     static let secondaryWeight = 0.5

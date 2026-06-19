@@ -2,21 +2,21 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
-struct LibraryView: View {
+struct PlanningView: View {
     let switchToWorkout: () -> Void
-
-    enum Segment: String, CaseIterable { case exercises, routines }
 
     @Environment(\.modelContext) private var context
     @Environment(ActiveWorkoutModel.self) private var active
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @Query(sort: \SessionTemplate.name) private var templates: [SessionTemplate]
 
-    @State private var segment: Segment = .exercises
+    @State private var segment: Segment = .routines
     @State private var query = ""
     @State private var selectedPart: BodyPart?
     @State private var browseAll = false
     @State private var templateEditorPresented = false
+
+    enum Segment: String, CaseIterable { case routines, exercises }
 
     private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -72,33 +72,31 @@ struct LibraryView: View {
     // MARK: Body
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Picker("", selection: $segment) {
-                    Text("Exercises").tag(Segment.exercises)
-                    Text("Routines").tag(Segment.routines)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal).padding(.top, 8).padding(.bottom, 4)
+        VStack(spacing: 0) {
+            Picker("", selection: $segment) {
+                Text("Routines").tag(Segment.routines)
+                Text("Exercises").tag(Segment.exercises)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal).padding(.top, 8).padding(.bottom, 4)
 
-                switch segment {
-                case .exercises: exercisesList
-                case .routines: routinesList
-                }
+            switch segment {
+            case .routines: routinesList
+            case .exercises: exercisesList
             }
-            .navigationTitle("Library")
-            .searchable(text: $query,
-                        prompt: segment == .exercises
-                            ? "Search name, muscle, or equipment"
-                            : "Search routines")
-            .onChange(of: segment) { _, _ in
-                query = ""
-                selectedPart = nil
-                browseAll = false
-            }
-            .sheet(isPresented: $templateEditorPresented) { TemplateEditorView() }
         }
-        .accessibilityIdentifier("library")
+        .navigationTitle("Programs & Routines")
+        .searchable(text: $query,
+                    prompt: segment == .exercises
+                        ? "Search name, muscle, or equipment"
+                        : "Search routines")
+        .onChange(of: segment) { _, _ in
+            query = ""
+            selectedPart = nil
+            browseAll = false
+        }
+        .sheet(isPresented: $templateEditorPresented) { TemplateEditorView() }
+        .accessibilityIdentifier("planning")
     }
 
     // MARK: - Exercises
@@ -122,7 +120,7 @@ struct LibraryView: View {
                         Button { browseAll = true } label: {
                             Label("Browse all exercises", systemImage: "square.grid.2x2")
                         }
-                        .accessibilityIdentifier("library.browseAll")
+                        .accessibilityIdentifier("planning.browseAll")
                     }
                 }
             }
@@ -134,12 +132,12 @@ struct LibraryView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 chip("All", active: selectedPart == nil) { selectedPart = nil }
-                    .accessibilityIdentifier("library.filter.all")
+                    .accessibilityIdentifier("planning.filter.all")
                 ForEach(BodyPart.allCases) { part in
                     chip(part.displayName, active: selectedPart == part) {
                         selectedPart = (selectedPart == part) ? nil : part
                     }
-                    .accessibilityIdentifier("library.filter.\(part.rawValue)")
+                    .accessibilityIdentifier("planning.filter.\(part.rawValue)")
                 }
             }
             .padding(.vertical, 2)
@@ -175,7 +173,7 @@ struct LibraryView: View {
                 }
             }
         }
-        .accessibilityIdentifier("library.exercise.\(ex.name)")
+        .accessibilityIdentifier("planning.exercise.\(ex.name)")
     }
 
     private func muscleSubtitle(_ ex: Exercise) -> String? {
@@ -192,6 +190,10 @@ struct LibraryView: View {
         List {
             if trimmedQuery.isEmpty {
                 routineGroupSection("5\u{00d7}5 Program", plans: RoutineGroup.fiveByFive)
+                routineGroupSection("5/3/1", plans: RoutineGroup.fiveThreeOne)
+                routineGroupSection("GZCLP", plans: RoutineGroup.gzclp)
+                routineGroupSection("nSuns", plans: RoutineGroup.nSuns)
+                routineGroupSection("PPL (6-Day)", plans: RoutineGroup.ppl)
                 routineGroupSection("Split Templates", plans: RoutineGroup.splits)
                 routineGroupSection("Calisthenics", plans: RoutineGroup.calisthenics)
                 routineGroupSection("Olympic Lifting", plans: RoutineGroup.olympic)
@@ -215,7 +217,7 @@ struct LibraryView: View {
                         Text(t.orderedExercises.map(\.exerciseName).joined(separator: ", "))
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
-                    .accessibilityIdentifier("library.template.\(t.name)")
+                    .accessibilityIdentifier("planning.template.\(t.name)")
                     .swipeActions {
                         Button(role: .destructive) {
                             try? WorkoutRepository.deleteTemplate(t, in: context)
@@ -225,7 +227,7 @@ struct LibraryView: View {
                 Button { templateEditorPresented = true } label: {
                     Label("New Template", systemImage: "plus.circle")
                 }
-                .accessibilityIdentifier("library.newTemplate")
+                .accessibilityIdentifier("planning.newTemplate")
             } header: {
                 Text("My Templates")
             }
@@ -250,14 +252,16 @@ struct LibraryView: View {
             }
             .padding(.vertical, 2)
         }
-        .accessibilityIdentifier("library.routine.\(plan.id)")
+        .accessibilityIdentifier("planning.routine.\(plan.id)")
     }
 }
 
-// MARK: - Routine groups
-
 private enum RoutineGroup {
     static let fiveByFive = StrengthPresets.all.filter { $0.id.hasPrefix("preset-5x5") }
+    static let fiveThreeOne = StrengthPresets.all.filter { $0.id.hasPrefix("preset-531") }
+    static let gzclp = StrengthPresets.all.filter { $0.id.hasPrefix("preset-gzclp") }
+    static let nSuns = StrengthPresets.all.filter { $0.id.hasPrefix("preset-nsuns") }
+    static let ppl = StrengthPresets.all.filter { $0.id.hasPrefix("preset-ppl") }
     static let splits = StrengthPresets.all.filter {
         ["preset-push", "preset-pull", "preset-legs", "preset-upper",
          "preset-lower", "preset-chest", "preset-back-bi"].contains($0.id)

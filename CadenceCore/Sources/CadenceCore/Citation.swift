@@ -110,11 +110,41 @@ public enum CitationRegistry {
         id: "hiitVo2max",
         authors: "Helgerud, Hoydal, Wang, Karlsen, Berg, Bjerkaas, Simonsen, Helgesen, Hjorth, Bach & Hoff",
         year: 2007,
-        title: "Aerobic high-intensity intervals improve VO₂max more than moderate training",
+        title: "Aerobic high-intensity intervals improve VO\u{2082}max more than moderate training",
         source: "Medicine & Science in Sports & Exercise 39(4)",
         url: "https://doi.org/10.1249/mss.0b013e3180304570"
     )
 
-    /// All citations, for the in-app references list and tests.
-    public static let all: [Citation] = [schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation, rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max]
+    public static let run1_5mile = Citation(
+        id: "run1_5mile",
+        authors: "American College of Sports Medicine",
+        year: 2021,
+        title: "ACSM\u{2019}s Guidelines for Exercise Testing and Prescription (11th ed.)",
+        source: "Wolters Kluwer",
+        url: "https://www.acsm.org/education-resources/books/guidelines-exercise-testing-prescription"
+    )
+
+    public static let rockportWalk = Citation(
+        id: "rockportWalk",
+        authors: "Kline, Porcari, Hintermeister, Freedson, Ward, McCarron, Ross & Rippe",
+        year: 1987,
+        title: "Estimation of VO\u{2082}max from a one-mile track walk, gender, age, and body weight",
+        source: "Medicine & Science in Sports & Exercise 19(3)",
+        url: "https://doi.org/10.1249/00005768-198706000-00013"
+    )
+
+    public static let queensCollegeStep = Citation(
+        id: "queensCollegeStep",
+        authors: "McArdle, Katch, Pechar, Jacobson & Ruck",
+        year: 1972,
+        title: "Reliability and interrelationships between maximal oxygen intake, physical work capacity and step-test scores in college women",
+        source: "Medicine and Science in Sports 4(4)",
+        url: "https://doi.org/10.1249/00005768-197200440-00019"
+    )
+
+    public static let all: [Citation] = [schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation, rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max, run1_5mile, rockportWalk, queensCollegeStep]
+
+    public static func citation(forId id: String) -> Citation? {
+        all.first { $0.id == id }
+    }
 }

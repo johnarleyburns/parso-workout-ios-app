@@ -90,6 +90,7 @@ struct HomeView: View {
                     startButton
                     cardioButton
                     logButton
+                    planningButton
                     thisWeekSection
                     recentWorkoutsSection
                 }
@@ -119,6 +120,7 @@ struct HomeView: View {
                 case .history: HistoryView(path: $path)
                 case .settings: SettingsView()
                 case .coach: CoachInsightsView(insights: coachInsights)
+                case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
                 }
             }
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
@@ -437,6 +439,23 @@ struct HomeView: View {
         .accessibilityIdentifier("home.logWorkout").accessibilityLabel("Log a past workout")
     }
 
+    private var planningButton: some View {
+        Button { Haptics.selection(); path.append(HomeRoute.planning) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "books.vertical").font(.headline)
+                Text("Programs & Routines").font(.headline)
+                Spacer()
+                Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
+            }
+            .padding(.vertical, 14).padding(.horizontal, 18)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.tint)
+            .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.planning").accessibilityLabel("Programs and routines")
+    }
+
     // MARK: Inline sections (surfaced, not hidden)
 
     /// One merged, date-sorted "Recent workouts" list — cardio counts as a workout
@@ -710,7 +729,7 @@ struct PendingWorkout: Identifiable {
 }
 
 /// Pushed destinations reachable from Home.
-enum HomeRoute: Hashable { case history, settings, coach }
+enum HomeRoute: Hashable { case history, settings, coach, planning }
 
 /// A row in Home's merged "Recent workouts" list — strength and cardio together,
 /// sorted by date (P1 #10).

@@ -9,6 +9,29 @@ struct RoutineDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(ActiveWorkoutModel.self) private var active
     @Environment(AppSettings.self) private var settings
+    @Query(sort: \Assessment.date, order: .reverse) private var assessments: [Assessment]
+
+    private var e1RMs: [String: Double] {
+        let summaries = AssessmentMath.summaries(from: assessments)
+        var result: [String: Double] = [:]
+        for s in summaries where s.kind == .e1RM {
+            if let name = s.exerciseName, !name.isEmpty {
+                result[name] = max(result[name] ?? 0, s.latest)
+            }
+        }
+        return result
+    }
+
+    private var hasPercentageItems: Bool {
+        plan.items.contains { $0.loadPercentage != nil }
+    }
+
+    private var missingE1RMMovements: [String] {
+        plan.items.compactMap { item -> String? in
+            guard item.loadPercentage != nil else { return nil }
+            return e1RMs[item.movement] == nil ? item.movement : nil
+        }
+    }
 
     private var bodyParts: [BodyPart] {
         var parts = Set<BodyPart>()
@@ -41,7 +64,8 @@ struct RoutineDetailView: View {
                     ForEach(plan.items) { item in
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.movement).font(.headline)
-                            let line = Format.prescription(item, ladder: nil, unit: settings.unit)
+                            let line = Format.prescription(item, ladder: nil, unit: settings.unit,
+                                                           assessedE1RM: e1RMs[item.movement])
                             if !line.isEmpty {
                                 Text(line).font(.subheadline).foregroundStyle(.secondary)
                             }
@@ -52,6 +76,23 @@ struct RoutineDetailView: View {
                 }
                 .padding()
                 .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+
+                if !missingE1RMMovements.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle").foregroundStyle(.orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Set your 1RM")
+                                .font(.subheadline.weight(.semibold))
+                            Text("Record a 1RM test for \(missingE1RMMovements.joined(separator: ", ")) to see computed loads.")
+                                .font(.caption).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+                    .accessibilityIdentifier("routine.missing1RM")
+                }
 
                 if let notes = plan.notes {
                     Text(notes).font(.footnote).foregroundStyle(.secondary)

@@ -174,11 +174,22 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
     public let title: String        // short headline, e.g. "Progress your squat"
     public let action: String       // the imperative one-liner, e.g. "Add a rep: 5×102.5 kg"
     public let detail: String       // the "why / the science" expansion
-    public let citation: Citation   // always present (D3)
+    public let citation: Citation   // primary citation — always present (D3)
+    public let citationIds: [String]
     public let target: SetTarget?   // structured strength prescription, when applicable
     public let cardioPrescription: String?  // interval protocol name for cardioHIIT recs (P6)
     public let confidence: RecommendationConfidence
     public let priority: Int        // ranking weight (higher first)
+
+    public var allCitations: [Citation] {
+        var result = [citation]
+        for cid in citationIds {
+            if let c = CitationRegistry.citation(forId: cid), c.id != citation.id {
+                result.append(c)
+            }
+        }
+        return result
+    }
 
     public init(id: String,
                 kind: RecommendationKind,
@@ -188,6 +199,7 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
                 action: String,
                 detail: String,
                 citation: Citation,
+                citationIds: [String] = [],
                 target: SetTarget? = nil,
                 cardioPrescription: String? = nil,
                 confidence: RecommendationConfidence,
@@ -200,6 +212,7 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
         self.action = action
         self.detail = detail
         self.citation = citation
+        self.citationIds = citationIds
         self.target = target
         self.cardioPrescription = cardioPrescription
         self.confidence = confidence

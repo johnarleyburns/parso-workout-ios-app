@@ -1,27 +1,27 @@
 import XCTest
 
-/// strength-pivot P4 — the Plan-tab assessment battery: open a kind, read its
+/// strength-pivot P4 — the Tests-tab assessment battery: open a kind, read its
 /// standardized protocol, record a result, and see it land in the longitudinal log.
 final class P4AssessmentsUITests: CadenceUITestCase {
 
-    func testPlanTabListsAssessmentBattery() {
+    func testTestsTabListsAssessmentBattery() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.tabBars.buttons["Plan"].waitForExistence(timeout: 10))
-        app.tabBars.buttons["Plan"].tap()
+        XCTAssertTrue(app.tabBars.buttons["Tests"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["Tests"].tap()
 
-        XCTAssertTrue(app.descendants(matching: .any)["plan.assessments.list"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["tests.assessments.list"].waitForExistence(timeout: 5))
         // Both arms of the battery surface their rows.
-        XCTAssertTrue(app.descendants(matching: .any)["plan.assessment.pushupMax"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["plan.assessment.e1RM"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["tests.assessment.pushupMax"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["tests.assessment.e1RM"].exists)
     }
 
     func testRecordBodyweightResultAppearsInLog() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.tabBars.buttons["Plan"].waitForExistence(timeout: 10))
-        app.tabBars.buttons["Plan"].tap()
+        XCTAssertTrue(app.tabBars.buttons["Tests"].waitForExistence(timeout: 10))
+        app.tabBars.buttons["Tests"].tap()
 
         // Open the max push-ups assessment → its protocol + (empty) history.
-        app.descendants(matching: .any)["plan.assessment.pushupMax"].firstMatch.tap()
+        app.descendants(matching: .any)["tests.assessment.pushupMax"].firstMatch.tap()
         XCTAssertTrue(app.descendants(matching: .any)["assessment.protocol"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["assessment.empty"].exists,
                       "no results yet before recording")

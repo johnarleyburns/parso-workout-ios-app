@@ -142,7 +142,9 @@ struct RecommendationContentView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    CitationLink(citation: recommendation.citation)
+                    ForEach(recommendation.allCitations) { c in
+                        CitationLink(citation: c)
+                    }
                 }
                 .padding(.top, 2)
                 .transition(.opacity)
@@ -210,15 +212,15 @@ struct InsightContentView: View {
 /// A tappable reference to the study behind an insight.
 struct CitationLink: View {
     let citation: Citation
+    var context: String?
 
     var body: some View {
-        Group {
-            if let url = URL(string: citation.url) {
-                Link(destination: url) { label }
-            } else {
-                label
-            }
+        NavigationLink {
+            CitationDetailView(citation: citation, context: context)
+        } label: {
+            label
         }
+        .buttonStyle(.plain)
         .accessibilityIdentifier("coach.card.citation")
         .accessibilityLabel("Source: \(citation.shortText)")
     }
@@ -229,7 +231,7 @@ struct CitationLink: View {
             Text(citation.shortText)
                 .font(.caption)
                 .fixedSize(horizontal: false, vertical: true)
-            Image(systemName: "arrow.up.right").font(.caption2)
+            Image(systemName: "chevron.right").font(.caption2)
         }
         .foregroundStyle(.tint)
     }

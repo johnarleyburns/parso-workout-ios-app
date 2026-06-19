@@ -85,4 +85,85 @@ public enum CardioMath {
         // kcal = MET · weight(kg) · time(h)
         return met * weightKg * (minutes / 60)
     }
+
+    // MARK: - VO2max estimation (FR-10.2)
+
+    /// Cooper 12-minute run test (Cooper 1968).
+    /// VO2max (mL/kg/min) = (distance_m - 504.9) / 44.73
+    public static func cooperVO2max(distanceMeters: Double) -> Double {
+        (distanceMeters - 504.9) / 44.73
+    }
+
+    /// 1.5-mile (2.4 km) run test.
+    /// VO2max (mL/kg/min) = 483 / time_minutes + 3.5
+    public static func run1_5mileVO2max(timeSeconds: Double) -> Double {
+        guard timeSeconds > 0 else { return 0 }
+        let minutes = timeSeconds / 60
+        return 483 / minutes + 3.5
+    }
+
+    /// Rockport 1-mile walk test (Kline et al. 1987).
+    /// sexCode: 1 = male, 0 = female.
+    public static func rockportVO2max(weightKg: Double, ageYears: Int, sexCode: Int,
+                                      walkTimeSeconds: Double, endingHR: Double) -> Double {
+        let weightLb = weightKg * 2.2046
+        let walkTimeMin = walkTimeSeconds / 60
+        return 132.853
+            - (0.1692 * weightLb)
+            - (0.3877 * Double(ageYears))
+            + (6.315 * Double(sexCode))
+            - (3.2649 * walkTimeMin)
+            - (0.1565 * endingHR)
+    }
+
+    /// Queens College 3-minute step test (McArdle et al. 1972).
+    /// sexCode: 1 = male, 0 = female.
+    public static func queensCollegeVO2max(recoveryHR: Double, sexCode: Int) -> Double {
+        if sexCode == 1 {
+            return 111.33 - (0.42 * recoveryHR)
+        } else {
+            return 65.81 - (0.1847 * recoveryHR)
+        }
+    }
+
+    // MARK: - VO2max fitness categories (ACSM)
+
+    public enum FitnessCategory: String, Sendable {
+        case superior = "Superior"
+        case excellent = "Excellent"
+        case good = "Good"
+        case fair = "Fair"
+        case poor = "Poor"
+        case veryPoor = "Very Poor"
+    }
+
+    /// Classifies a VO2max value into a fitness category based on ACSM normative
+    /// tables. Simplified: uses broad age bands and the commonly published thresholds.
+    /// sexCode: 1 = male, 0 = female.
+    public static func fitnessCategory(vo2max: Double, ageYears: Int, sexCode: Int) -> FitnessCategory {
+        let thresholds: [Double]
+        if sexCode == 1 {
+            switch ageYears {
+            case ..<30:  thresholds = [55.4, 51.1, 45.4, 41.7, 37.1]
+            case ..<40:  thresholds = [54.0, 48.7, 44.0, 40.5, 35.5]
+            case ..<50:  thresholds = [52.5, 46.8, 41.0, 37.4, 33.0]
+            case ..<60:  thresholds = [48.9, 43.3, 37.4, 33.6, 29.4]
+            default:     thresholds = [45.7, 39.5, 33.6, 30.2, 26.1]
+            }
+        } else {
+            switch ageYears {
+            case ..<30:  thresholds = [49.6, 43.9, 39.5, 36.1, 32.3]
+            case ..<40:  thresholds = [47.4, 42.4, 37.8, 34.6, 30.5]
+            case ..<50:  thresholds = [45.3, 39.7, 35.2, 32.3, 28.7]
+            case ..<60:  thresholds = [41.1, 36.7, 32.3, 29.4, 25.5]
+            default:     thresholds = [37.8, 33.0, 28.7, 25.9, 22.8]
+            }
+        }
+        if vo2max >= thresholds[0] { return .superior }
+        if vo2max >= thresholds[1] { return .excellent }
+        if vo2max >= thresholds[2] { return .good }
+        if vo2max >= thresholds[3] { return .fair }
+        if vo2max >= thresholds[4] { return .poor }
+        return .veryPoor
+    }
 }

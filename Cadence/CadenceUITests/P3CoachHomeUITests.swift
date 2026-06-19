@@ -1,6 +1,6 @@
 import XCTest
 
-/// strength-pivot P3 — the bottom tab bar (Workout/Plan/Library), the Coach card on
+/// strength-pivot P3 — the bottom tab bar (Workout/Tests/Progress), the Coach card on
 /// Home with its cited "why / the science" expander, and the Coach settings.
 final class P3CoachHomeUITests: CadenceUITestCase {
 
@@ -9,15 +9,16 @@ final class P3CoachHomeUITests: CadenceUITestCase {
 
         // All three tabs are present.
         XCTAssertTrue(app.tabBars.buttons["Workout"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.tabBars.buttons["Plan"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Library"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Tests"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Progress"].exists)
 
-        // Plan is the assessments hub (P4); Library is still a placeholder.
-        app.tabBars.buttons["Plan"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["plan.assessments.list"].waitForExistence(timeout: 5))
+        // Tests is the assessments hub.
+        app.tabBars.buttons["Tests"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["tests.assessments.list"].waitForExistence(timeout: 5))
 
-        app.tabBars.buttons["Library"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["library.placeholder"].waitForExistence(timeout: 5))
+        // Progress is the training history.
+        app.tabBars.buttons["Progress"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["progress"].waitForExistence(timeout: 5))
 
         // Back to Workout = the Home dashboard with its Coach card.
         app.tabBars.buttons["Workout"].tap()

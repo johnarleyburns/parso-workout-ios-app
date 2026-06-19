@@ -77,7 +77,8 @@ enum Format {
     /// A prescription line for a `PlanItem` (round4b §B-1).
     /// Reps/distance + the Rx load. Per decision #2 the canonical lb is always
     /// shown, with the user's preferred unit appended only when it differs.
-    static func prescription(_ item: PlanItem, ladder: [Int]?, unit: MeasurementUnitPreference) -> String {
+    static func prescription(_ item: PlanItem, ladder: [Int]?, unit: MeasurementUnitPreference,
+                              assessedE1RM: Double? = nil) -> String {
         var parts: [String] = []
         if let ladder, !ladder.isEmpty {
             parts.append(ladder.map(String.init).joined(separator: "-") + " reps")
@@ -86,7 +87,16 @@ enum Format {
         }
         if let d = item.distanceM { parts.append(distance(d)) }
         var line = parts.joined(separator: " · ")
-        if let load = rxLoad(male: item.loadLb, female: item.loadLbFemale, unit: unit) {
+        if let pct = item.loadPercentage {
+            let pctStr = "\(Int(pct * 100))%"
+            if let e1rm = assessedE1RM {
+                let loadKg = (e1rm * pct * 10).rounded() / 10
+                let loadStr = weight(loadKg, unit: unit)
+                line += line.isEmpty ? "\(pctStr) (\(loadStr))" : " @ \(pctStr) (\(loadStr))"
+            } else {
+                line += line.isEmpty ? pctStr : " @ \(pctStr)"
+            }
+        } else if let load = rxLoad(male: item.loadLb, female: item.loadLbFemale, unit: unit) {
             line += line.isEmpty ? load : " @ \(load)"
         }
         if let note = item.note { line += " (\(note))" }

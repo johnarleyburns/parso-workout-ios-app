@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Cadence reads heart rate from your Apple Watch during workouts.</string>
+	<string>Cladiron reads heart rate from your Apple Watch during workouts.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Cadence saves your workout summary to Health.</string>
+	<string>Cladiron saves your workout summary to Health.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

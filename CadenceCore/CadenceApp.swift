@@ -34,7 +34,7 @@ struct SessionListView: View {
                     }
                 }
             }
-            .navigationTitle("Cadence")
+            .navigationTitle("Cladiron")
             .overlay {
                 if sessions.isEmpty {
                     ContentUnavailableView("No workouts yet",

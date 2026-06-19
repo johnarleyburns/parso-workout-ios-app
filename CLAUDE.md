@@ -2,14 +2,26 @@
 
 Project memory for Claude Code. Read `docs/REQUIREMENTS.md` for the full spec; this file is the quick, durable context. Keep it short — prune anything Claude learns on its own.
 
+## Naming
+
+- **Product name (user-visible):** Cladiron — Home title, About, App Store, on-screen copy, README.
+- **Internal codename:** Cadence — repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, type names. Do NOT rename these.
+
 ## What this is
-Cadence: an open-source, privacy-first health tracker (free, no accounts, no server). Long-term it's **watch-first** — the Apple Watch as the primary in-workout surface — but see the release scope below.
+Cladiron: a free, open-source, privacy-first, iPhone-native **strength coach**. Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no server, no telemetry.
+
+## Information Architecture (3 tabs)
+- **Workout** (Home) — strength-first hero, secondary cardio, coach cards/insights, **Programs & Routines** entry (planning surface lives here).
+- **Tests** — no-lab fitness assessment battery, "Your Fitness" baseline card, protocol instructions, cited sources.
+- **Progress** — training history, PR timeline, per-exercise trends, assessment trends, consistency heatmap.
 
 ## Current release (v1) — iPhone-only
 The watch app is **deferred** (hardware-blocked for now) but stays in the repo; do **not** prioritize it. v1 ships on iPhone:
-- Log **strength** workouts on the phone — the core loop, replaces a hand-kept Gmail draft.
-- Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**. This is how watch data appears in v1.
-- Review history, PRs, and trends.
+- Log **strength** workouts on the phone with **coaching** — the core loop.
+- Run a **no-lab fitness test battery** whose baselines feed the coach.
+- Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**.
+- Review history, PRs, trends, and assessment results.
+- Follow **built-in programs** (5/3/1, GZCLP, nSuns, PPL, 5x5, splits, calisthenics, Olympic).
 CloudKit sync stays wired (single-device iCloud backup + future multi-device) but is non-blocking for v1.
 
 ## Stack

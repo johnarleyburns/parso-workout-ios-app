@@ -34,6 +34,12 @@ public final class Assessment {
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
 
+    public var inputDistance: Double?
+    public var inputTime: Double?
+    public var inputEndingHR: Double?
+    public var inputAge: Int?
+    public var inputSex: Int?
+
     public init(id: UUID = UUID(),
                 date: Date = Date(),
                 kind: AssessmentKind = .pushupMax,
@@ -44,7 +50,12 @@ public final class Assessment {
                 protocolName: String? = nil,
                 notes: String? = nil,
                 updatedAt: Date = Date(),
-                originDevice: String = "") {
+                originDevice: String = "",
+                inputDistance: Double? = nil,
+                inputTime: Double? = nil,
+                inputEndingHR: Double? = nil,
+                inputAge: Int? = nil,
+                inputSex: Int? = nil) {
         self.id = id
         self.date = date
         self.kind = kind.rawValue
@@ -56,6 +67,11 @@ public final class Assessment {
         self.notes = notes
         self.updatedAt = updatedAt
         self.originDevice = originDevice
+        self.inputDistance = inputDistance
+        self.inputTime = inputTime
+        self.inputEndingHR = inputEndingHR
+        self.inputAge = inputAge
+        self.inputSex = inputSex
     }
 
     public var kindValue: AssessmentKind {
@@ -75,15 +91,19 @@ public final class Assessment {
 /// What an assessment measures. P4 covers the strength + strength-endurance
 /// battery; `vo2maxField` / `wingate` land in P6 (cardio/anaerobic).
 public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiable {
-    case e1RM                 // estimated 1RM from a top set / AMRAP at load
-    case repMax               // max reps at a fixed load (rep-max test)
-    case pushupMax            // max strict push-ups
-    case pullupMax            // max strict pull-ups
-    case bodyweightSquatMax   // max bodyweight squats
-    case plankHold            // max plank hold (seconds)
-    case hollowHold           // max hollow-body hold (seconds)
-    case vo2maxField          // estimated VO₂max from a field test (mL/kg/min)
-    case wingate              // Wingate anaerobic peak power (watts)
+    case e1RM
+    case repMax
+    case pushupMax
+    case pullupMax
+    case bodyweightSquatMax
+    case plankHold
+    case hollowHold
+    case vo2maxField
+    case cooper12min
+    case run1_5mile
+    case rockportWalk
+    case queensCollegeStep
+    case wingate
 
     public var id: String { rawValue }
 
@@ -92,22 +112,21 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         case .e1RM, .repMax: return .strength
         case .pushupMax, .pullupMax, .bodyweightSquatMax, .plankHold, .hollowHold:
             return .strengthEndurance
-        case .vo2maxField, .wingate: return .cardio
+        case .vo2maxField, .cooper12min, .run1_5mile, .rockportWalk, .queensCollegeStep, .wingate:
+            return .cardio
         }
     }
 
-    /// Unit of the stored `value`.
     public var unit: AssessmentUnit {
         switch self {
         case .e1RM: return .weightKg
         case .repMax, .pushupMax, .pullupMax, .bodyweightSquatMax: return .reps
         case .plankHold, .hollowHold: return .seconds
-        case .vo2maxField: return .mlKgMin
+        case .vo2maxField, .cooper12min, .run1_5mile, .rockportWalk, .queensCollegeStep: return .mlKgMin
         case .wingate: return .watts
         }
     }
 
-    /// True when the result is tied to a specific lift (so series are per-lift).
     public var concernsLift: Bool {
         switch self {
         case .e1RM, .repMax: return true
@@ -115,9 +134,19 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         }
     }
 
-    /// Higher is always better: heavier lift, more reps, longer hold, higher VO₂max,
-    /// higher peak power. Explicit for the trend math.
     public var higherIsBetter: Bool { true }
+
+    public var isAdvanced: Bool {
+        switch self {
+        case .wingate: return true
+        default: return false
+        }
+    }
+
+    /// Kinds shown in the default battery (excludes advanced tests that need lab gear).
+    public static var defaultBattery: [AssessmentKind] {
+        allCases.filter { !$0.isAdvanced }
+    }
 
     public var displayName: String {
         switch self {
@@ -128,7 +157,11 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         case .bodyweightSquatMax: return "Max bodyweight squats"
         case .plankHold: return "Plank hold"
         case .hollowHold: return "Hollow-body hold"
-        case .vo2maxField: return "VO₂max test"
+        case .vo2maxField: return "VO\u{2082}max (manual entry)"
+        case .cooper12min: return "Cooper 12-min run"
+        case .run1_5mile: return "1.5-mile run"
+        case .rockportWalk: return "Rockport 1-mile walk"
+        case .queensCollegeStep: return "Queens College step test"
         case .wingate: return "Wingate test"
         }
     }
@@ -141,22 +174,24 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         case .bodyweightSquatMax: return "figure.cross.training"
         case .plankHold, .hollowHold: return "timer"
         case .vo2maxField: return "heart.text.clipboard"
+        case .cooper12min: return "figure.run"
+        case .run1_5mile: return "figure.run"
+        case .rockportWalk: return "figure.walk"
+        case .queensCollegeStep: return "figure.step.training"
         case .wingate: return "bolt.fill"
         }
     }
 
-    /// Guided, app-presented protocol so the test set is standardized and trends
-    /// aren't polluted (§04). Non-medical, conservative framing.
     public var protocolText: String {
         switch self {
         case .e1RM:
-            return "Warm up thoroughly, then work up to a heavy single (or a hard set of 2–5 reps left in good form). Record the load and reps — your estimated 1RM is computed from them."
+            return "Warm up thoroughly, then work up to a heavy single (or a hard set of 2\u{2013}5 reps left in good form). Record the load and reps \u{2014} your estimated 1RM is computed from them."
         case .repMax:
-            return "Pick a fixed load you'll keep across re-tests. After a warm-up, do one all-out set with good form and record the reps."
+            return "Pick a fixed load you\u{2019}ll keep across re-tests. After a warm-up, do one all-out set with good form and record the reps."
         case .pushupMax:
             return "After a light warm-up, do as many strict push-ups as you can in one unbroken set. Chest to within a fist of the floor, full lockout, no rest at the top."
         case .pullupMax:
-            return "Do as many strict, dead-hang pull-ups as you can in one set — full extension at the bottom, chin over the bar at the top, no kipping."
+            return "Do as many strict, dead-hang pull-ups as you can in one set \u{2014} full extension at the bottom, chin over the bar at the top, no kipping."
         case .bodyweightSquatMax:
             return "Do as many bodyweight squats as you can in one set at a steady cadence, hips below parallel each rep."
         case .plankHold:
@@ -164,9 +199,29 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         case .hollowHold:
             return "Lie on your back, lower back pressed down, legs and shoulders lifted into a hollow position. Hold as long as the lower back stays flat."
         case .vo2maxField:
-            return "Run, walk, or cycle as far as you can in 12 minutes (Cooper test). Estimate your VO₂max from the distance covered — many online calculators and wearable devices provide this value in mL/kg/min."
+            return "Enter your VO\u{2082}max value from a wearable device or lab test (mL/kg/min). For an on-device estimate, use the Cooper 12-min run, 1.5-mile run, or Rockport walk tests instead."
+        case .cooper12min:
+            return "Warm up for 5\u{2013}10 minutes with light jogging. Then run as far as you can in exactly 12 minutes on a flat track or field. Record the total distance in meters. Your VO\u{2082}max is computed as (distance \u{2212} 504.9) \u{00f7} 44.73."
+        case .run1_5mile:
+            return "Warm up for 5\u{2013}10 minutes. Run 1.5 miles (2.4 km) as fast as you can on a flat course. Record your time. Your VO\u{2082}max is computed as 483 \u{00f7} time (minutes) + 3.5."
+        case .rockportWalk:
+            return "Walk 1 mile (1.6 km) as fast as you can on a flat course. Immediately after finishing, record your walk time and your heart rate (use a chest strap or take a 15-second pulse \u{00d7} 4). The app computes your VO\u{2082}max from your age, sex, weight, walk time, and ending heart rate (Kline et al. 1987)."
+        case .queensCollegeStep:
+            return "Step up and down on a 16.25-inch (41.3 cm) bench for 3 minutes at a steady cadence: 24 steps/min for men, 22 steps/min for women. Immediately after, count your pulse for 15 seconds (starting 5 seconds post-exercise) and multiply by 4 to get recovery HR. The app computes your VO\u{2082}max (McArdle et al. 1972)."
         case .wingate:
-            return "After a thorough warm-up, sprint all-out for 30 seconds against a fixed resistance (typically 7.5% of body weight on a cycle ergometer). Record the highest average power output (watts) achieved — most ergometers display this directly."
+            return "Advanced \u{2014} requires a cycle ergometer. After a thorough warm-up, sprint all-out for 30 seconds against a fixed resistance (typically 7.5% of body weight). Record the highest average power output (watts)."
+        }
+    }
+
+    public var citationIds: [String] {
+        switch self {
+        case .e1RM, .repMax: return ["oneRMEstimation"]
+        case .cooper12min: return ["cooperVo2max"]
+        case .run1_5mile: return ["run1_5mile"]
+        case .rockportWalk: return ["rockportWalk"]
+        case .queensCollegeStep: return ["queensCollegeStep"]
+        case .wingate: return ["wingateTest"]
+        default: return []
         }
     }
 }

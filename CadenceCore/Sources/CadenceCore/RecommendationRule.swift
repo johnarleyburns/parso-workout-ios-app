@@ -36,6 +36,7 @@ public extension KnowledgeBase {
     static let p6RecRules: [RecommendationRule] = [
         cardioHIIT,
         cardioSIT,
+        missingBaseline,
     ]
 
     /// All active prescriptive rules.
@@ -48,32 +49,54 @@ public extension KnowledgeBase {
         let rir = facts.goal.targetRIR
         var out: [Recommendation] = []
         for snap in facts.liftSnapshots.values where snap.topSetWeightKg > 0 {
-            // Declining lifts are handled by the deload rule, not progressed.
             if snap.trend == .declining { continue }
             let confidence: RecommendationConfidence = snap.trend == .flat ? .high : .moderate
             let lift = snap.exercise
+            let assessedE1RM = facts.assessedE1RMs[lift]
             let target: SetTarget
             let action: String
             if snap.topSetReps < range.upperBound {
-                // Add a rep at the same load (top of double progression).
-                let nextReps = snap.topSetReps + 1
-                target = SetTarget(sets: nil, repsLow: nextReps, repsHigh: nextReps,
-                                   loadKg: snap.topSetWeightKg, rir: rir)
-                action = "Add a rep on your top set at the same load — keep going until you reach \(range.upperBound)."
+                if let e1rm = assessedE1RM {
+                    let goalLoad = PrescriptionMath.roundLoad(e1rm * facts.goal.targetLoadPercentage)
+                    if snap.topSetWeightKg < goalLoad * 0.90 {
+                        target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
+                                           loadKg: goalLoad, rir: rir)
+                        action = "Your assessed 1RM supports a higher working load — try \(SetTarget.trimmed(goalLoad)) kg (\(Int(facts.goal.targetLoadPercentage * 100))% of your tested 1RM)."
+                    } else {
+                        let nextReps = snap.topSetReps + 1
+                        target = SetTarget(sets: nil, repsLow: nextReps, repsHigh: nextReps,
+                                           loadKg: snap.topSetWeightKg, rir: rir)
+                        action = "Add a rep on your top set at the same load — keep going until you reach \(range.upperBound)."
+                    }
+                } else {
+                    let nextReps = snap.topSetReps + 1
+                    target = SetTarget(sets: nil, repsLow: nextReps, repsHigh: nextReps,
+                                       loadKg: snap.topSetWeightKg, rir: rir)
+                    action = "Add a rep on your top set at the same load — keep going until you reach \(range.upperBound)."
+                }
             } else {
-                // Hit the top of the range: add load and reset to the bottom.
-                let nextLoad = PrescriptionMath.roundLoad(snap.topSetWeightKg + loadIncrementKg)
-                target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
-                                   loadKg: nextLoad, rir: rir)
-                action = "You hit \(range.upperBound) reps — add a little load and drop back to \(range.lowerBound)."
+                if let e1rm = assessedE1RM {
+                    let goalLoad = PrescriptionMath.roundLoad(e1rm * facts.goal.targetLoadPercentage)
+                    let incrementLoad = PrescriptionMath.roundLoad(snap.topSetWeightKg + loadIncrementKg)
+                    let nextLoad = max(goalLoad, incrementLoad)
+                    target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
+                                       loadKg: nextLoad, rir: rir)
+                    action = "You hit \(range.upperBound) reps — move to \(SetTarget.trimmed(nextLoad)) kg (\(Int(facts.goal.targetLoadPercentage * 100))% of your tested 1RM) and reset to \(range.lowerBound)."
+                } else {
+                    let nextLoad = PrescriptionMath.roundLoad(snap.topSetWeightKg + loadIncrementKg)
+                    target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
+                                       loadKg: nextLoad, rir: rir)
+                    action = "You hit \(range.upperBound) reps — add a little load and drop back to \(range.lowerBound)."
+                }
             }
             out.append(Recommendation(
                 id: "progression.\(lift)",
                 kind: .progression, part: snap.part, exercise: lift,
                 title: "Progress your \(lift.lowercased())",
                 action: action,
-                detail: "Progressive overload drives strength and size: within a rep range, add reps to the top of the range first, then add load and reset — autoregulated by reps in reserve (RIR). Your \(facts.goal.displayName.lowercased()) range is \(range.lowerBound)–\(range.upperBound) reps at about \(rir) RIR.",
+                detail: "Progressive overload drives strength and size: within a rep range, add reps to the top of the range first, then add load and reset — autoregulated by reps in reserve (RIR). Your \(facts.goal.displayName.lowercased()) range is \(range.lowerBound)–\(range.upperBound) reps at about \(rir) RIR.\(assessedE1RM != nil ? " Your assessed 1RM anchors the prescribed load." : "")",
                 citation: CitationRegistry.rpeAutoregulation,
+                citationIds: assessedE1RM != nil ? ["oneRMEstimation"] : [],
                 target: target,
                 confidence: confidence,
                 priority: 100))
@@ -155,9 +178,11 @@ public extension KnowledgeBase {
 
     /// When VO₂max is declining, prescribe high-intensity interval training
     /// (Norwegian 4×4 as the default, well-studied protocol for VO₂max improvement).
+    private static let vo2maxKinds: Set<AssessmentKind> = [.vo2maxField, .cooper12min, .run1_5mile, .rockportWalk, .queensCollegeStep]
+
     static let cardioHIIT = RecommendationRule(id: "cardio.hiit", priority: 85) { facts in
         var out: [Recommendation] = []
-        for s in facts.assessments where s.kind == .vo2maxField && s.trend == .declined {
+        for s in facts.assessments where vo2maxKinds.contains(s.kind) && s.trend == .declined {
             let label = AssessmentFormat.seriesLabel(s)
             out.append(Recommendation(
                 id: "cardio.hiit.vo2max",
@@ -190,6 +215,22 @@ public extension KnowledgeBase {
                 priority: 84))
         }
         return out
+    }
+
+    // MARK: - Rule: prompt to run missing assessments (FR-12.3)
+
+    static let missingBaseline = RecommendationRule(id: "missingBaseline", priority: 50) { facts in
+        guard !facts.hasAnyAssessment else { return [] }
+        guard facts.totalWorkingSets >= 3 else { return [] }
+        return [Recommendation(
+            id: "missingBaseline.strength",
+            kind: .starter,
+            title: "Unlock load-based targets",
+            action: "Run an Estimated 1RM test on your main lifts so the coach can prescribe specific loads.",
+            detail: "The coach needs your baseline strength to prescribe percentage-based loads. Without it, recommendations are general. A quick test on your top lifts gives the engine the data to produce specific set/rep/load targets.",
+            citation: CitationRegistry.oneRMEstimation,
+            confidence: .low,
+            priority: 50)]
     }
 }
 

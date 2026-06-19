@@ -2,13 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
-/// Unified workout history (field-testing Round 4 A4/A5): strength sessions and
-/// cardio workouts merged newest-first in one list. New Workout stays at the top;
-/// each row opens the read-only `WorkoutSummaryView` (strength offers Edit). This
-/// replaces the strength-only `TrainView` behind Home's "Recent workouts → See all".
 struct HistoryView: View {
-    /// Home's navigation path — rows push summary routes onto it, and New Workout
-    /// / Reuse push the live `WorkoutSession` (→ `SessionView` editor).
     @Binding var path: NavigationPath
 
     @Environment(\.modelContext) private var context
@@ -18,21 +12,24 @@ struct HistoryView: View {
 
     @State private var sessionToDelete: WorkoutSession?
     @State private var cardioToDelete: CardioWorkout?
+    @State private var showDeleted = false
 
-    /// Strength + cardio merged newest-first (mirrors
-    /// `WorkoutRepository.unifiedHistory`, but over the live `@Query` arrays so the
-    /// list updates reactively on insert/delete).
+    private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
+    private var deletedSessions: [WorkoutSession] { sessions.filter { $0.deletedAt != nil } }
+    private var activeCardio: [CardioWorkout] { cardio.filter { $0.deletedAt == nil } }
+    private var deletedCardio: [CardioWorkout] { cardio.filter { $0.deletedAt != nil } }
+
     private var entries: [WorkoutHistoryEntry] {
-        let s = sessions.map(WorkoutHistoryEntry.strength)
-        let c = cardio.map(WorkoutHistoryEntry.cardio)
+        let s = (showDeleted ? deletedSessions : activeSessions).map(WorkoutHistoryEntry.strength)
+        let c = (showDeleted ? deletedCardio : activeCardio).map(WorkoutHistoryEntry.cardio)
         return (s + c).sorted { $0.date > $1.date }
     }
 
     var body: some View {
         List {
-            Section("History") {
+            Section {
                 if entries.isEmpty {
-                    Text("No workouts yet — start one from Home.")
+                    Text(showDeleted ? "No deleted workouts." : "No workouts yet — start one from Home.")
                         .foregroundStyle(.secondary)
                 }
                 ForEach(entries) { entry in
@@ -40,6 +37,22 @@ struct HistoryView: View {
                     case .strength(let s): strengthRow(s)
                     case .cardio(let c): cardioRow(c)
                     }
+                }
+            } header: {
+                HStack {
+                    Text(showDeleted ? "Deleted" : "History")
+                    Spacer()
+                    if !deletedSessions.isEmpty || !deletedCardio.isEmpty {
+                        Button(showDeleted ? "Back" : "View Deleted") {
+                            withAnimation { showDeleted.toggle() }
+                        }
+                        .font(.caption)
+                        .accessibilityIdentifier("history.toggleDeleted")
+                    }
+                }
+            } footer: {
+                if showDeleted {
+                    Text("Swipe to restore a deleted workout.")
                 }
             }
         }
@@ -49,19 +62,19 @@ struct HistoryView: View {
                                                  set: { if !$0 { sessionToDelete = nil } }),
                             presenting: sessionToDelete) { session in
             Button("Delete", role: .destructive) {
-                try? WorkoutRepository.deleteSession(session, in: context)
+                try? WorkoutRepository.softDeleteSession(session, in: context)
                 sessionToDelete = nil
             }
-        } message: { _ in Text("This removes the session and its sets.") }
+        } message: { _ in Text("This removes the session. You can restore it from View Deleted.") }
         .confirmationDialog("Delete this cardio workout?",
                             isPresented: Binding(get: { cardioToDelete != nil },
                                                  set: { if !$0 { cardioToDelete = nil } }),
                             presenting: cardioToDelete) { c in
             Button("Delete", role: .destructive) {
-                try? WorkoutRepository.deleteCardio(c, in: context)
+                try? WorkoutRepository.softDeleteCardio(c, in: context)
                 cardioToDelete = nil
             }
-        } message: { _ in Text("This removes the recorded workout.") }
+        } message: { _ in Text("This removes the cardio workout. You can restore it from View Deleted.") }
     }
 
     // MARK: Rows
@@ -74,6 +87,7 @@ struct HistoryView: View {
                     HStack(spacing: 8) {
                         Text(session.title.isEmpty ? "Workout" : session.title)
                         if session.isLogged { LoggedTag() }
+                        if session.deletedAt != nil { DeletedTag() }
                     }
                     Text(session.date.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption).foregroundStyle(.secondary)
@@ -87,12 +101,25 @@ struct HistoryView: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("session.row")
         .swipeActions(edge: .leading) {
-            Button { reuse(session) } label: { Label("Reuse", systemImage: "arrow.clockwise") }
-                .tint(.blue)
+            if session.deletedAt != nil {
+                Button { restore(session) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
+                    .tint(.green)
+                    .accessibilityIdentifier("history.restore")
+            } else {
+                Button { reuse(session) } label: { Label("Reuse", systemImage: "arrow.clockwise") }
+                    .tint(.blue)
+            }
         }
         .swipeActions {
-            Button(role: .destructive) { sessionToDelete = session } label: {
-                Label("Delete", systemImage: "trash")
+            if session.deletedAt != nil {
+                Button(role: .destructive) {
+                    try? WorkoutRepository.deleteSession(session, in: context)
+                } label: { Label("Purge", systemImage: "trash.slash") }
+                    .accessibilityIdentifier("history.purge")
+            } else {
+                Button(role: .destructive) { sessionToDelete = session } label: {
+                    Label("Delete", systemImage: "trash")
+                }
             }
         }
     }
@@ -105,6 +132,7 @@ struct HistoryView: View {
                     HStack(spacing: 8) {
                         Text(c.displayTitle)
                         if c.isLogged { LoggedTag() }
+                        if c.deletedAt != nil { DeletedTag() }
                     }
                     Text(c.start.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption).foregroundStyle(.secondary)
@@ -117,20 +145,49 @@ struct HistoryView: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("history.cardioRow.\(c.typeValue.rawValue)")
         .swipeActions {
-            Button(role: .destructive) { cardioToDelete = c } label: {
-                Label("Delete", systemImage: "trash")
+            if c.deletedAt != nil {
+                Button(role: .destructive) {
+                    try? WorkoutRepository.deleteCardio(c, in: context)
+                } label: { Label("Purge", systemImage: "trash.slash") }
+            } else {
+                Button(role: .destructive) { cardioToDelete = c } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
+        .swipeActions(edge: .leading) {
+            if c.deletedAt != nil {
+                Button { restoreCardio(c) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
+                    .tint(.green)
             }
         }
     }
 
     // MARK: Actions
 
-    /// Start a fresh session pre-loaded with a past workout's exercises
-    /// (field-testing §04, decision #16).
     private func reuse(_ past: WorkoutSession) {
         if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
             active.startStrength(s)
             path.append(s)
         }
+    }
+
+    private func restore(_ s: WorkoutSession) {
+        try? WorkoutRepository.restoreSession(s, in: context)
+    }
+
+    private func restoreCardio(_ c: CardioWorkout) {
+        try? WorkoutRepository.restoreCardio(c, in: context)
+    }
+}
+
+struct DeletedTag: View {
+    var body: some View {
+        Text("Deleted")
+            .font(.caption2).fontWeight(.medium)
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(.red.opacity(0.15), in: Capsule())
+            .foregroundStyle(.red)
+            .accessibilityLabel("Deleted")
     }
 }

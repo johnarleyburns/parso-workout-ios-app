@@ -1,18 +1,267 @@
 import SwiftUI
+import SwiftData
+import CadenceCore
 
-/// Placeholder for the **Library** tab (strength-pivot P3 ships the tab; content
-/// lands in a later phase). Future home for the full exercise library (images,
-/// muscles, instructions), prebuilt routines (5×5 etc.), and the published studies
-/// behind the coaching.
 struct LibraryView: View {
-    var body: some View {
-        NavigationStack {
-            ComingSoonPlaceholder(
-                systemImage: "books.vertical",
-                title: "Library",
-                message: "Browse every exercise, prebuilt routines, and the studies behind your coaching here.",
-                identifier: "library.placeholder")
-            .navigationTitle("Library")
+    let switchToWorkout: () -> Void
+
+    enum Segment: String, CaseIterable { case exercises, routines }
+
+    @Environment(\.modelContext) private var context
+    @Environment(ActiveWorkoutModel.self) private var active
+    @Query(sort: \Exercise.name) private var exercises: [Exercise]
+    @Query(sort: \SessionTemplate.name) private var templates: [SessionTemplate]
+
+    @State private var segment: Segment = .exercises
+    @State private var query = ""
+    @State private var selectedPart: BodyPart?
+    @State private var browseAll = false
+    @State private var templateEditorPresented = false
+
+    private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    // MARK: Exercise filtering
+
+    private var popular: [Exercise] {
+        let byName = Dictionary(exercises.map { ($0.name.lowercased(), $0) }, uniquingKeysWith: { a, _ in a })
+        return ExerciseLibrary.popularNames.compactMap { byName[$0.lowercased()] }
+    }
+
+    private var filteredExercises: [Exercise] {
+        if !trimmedQuery.isEmpty { return ExerciseSearch.rank(trimmedQuery, over: exercises) }
+        if let part = selectedPart { return exercises.filter { $0.bodyParts.contains(part) } }
+        return browseAll ? exercises : popular
+    }
+
+    private var grouped: [(ExerciseCategory, [Exercise])] {
+        let dict = Dictionary(grouping: filteredExercises) { $0.categoryValue ?? .other }
+        return ExerciseCategory.allCases.compactMap { cat in
+            guard let items = dict[cat], !items.isEmpty else { return nil }
+            return (cat, items.sorted { $0.name < $1.name })
         }
     }
+
+    private var showsGrouped: Bool { browseAll && trimmedQuery.isEmpty && selectedPart == nil }
+
+    private var exerciseSectionTitle: String {
+        if !trimmedQuery.isEmpty { return "Results" }
+        if let part = selectedPart { return part.displayName }
+        return "Popular"
+    }
+
+    // MARK: Routine filtering
+
+    private var filteredPresets: [WorkoutPlan] {
+        guard !trimmedQuery.isEmpty else { return StrengthPresets.all }
+        let q = trimmedQuery.lowercased()
+        return StrengthPresets.all.filter {
+            $0.name.lowercased().contains(q) ||
+            $0.movementNames.contains { $0.lowercased().contains(q) }
+        }
+    }
+
+    private var filteredTemplates: [SessionTemplate] {
+        guard !trimmedQuery.isEmpty else { return templates }
+        let q = trimmedQuery.lowercased()
+        return templates.filter {
+            $0.name.lowercased().contains(q) ||
+            $0.orderedExercises.contains { $0.exerciseName.lowercased().contains(q) }
+        }
+    }
+
+    // MARK: Body
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Picker("", selection: $segment) {
+                    Text("Exercises").tag(Segment.exercises)
+                    Text("Routines").tag(Segment.routines)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal).padding(.top, 8).padding(.bottom, 4)
+
+                switch segment {
+                case .exercises: exercisesList
+                case .routines: routinesList
+                }
+            }
+            .navigationTitle("Library")
+            .searchable(text: $query,
+                        prompt: segment == .exercises
+                            ? "Search name, muscle, or equipment"
+                            : "Search routines")
+            .onChange(of: segment) { _, _ in
+                query = ""
+                selectedPart = nil
+                browseAll = false
+            }
+            .sheet(isPresented: $templateEditorPresented) { TemplateEditorView() }
+        }
+        .accessibilityIdentifier("library")
+    }
+
+    // MARK: - Exercises
+
+    private var exercisesList: some View {
+        List {
+            filterChips
+
+            if showsGrouped {
+                ForEach(grouped, id: \.0) { cat, items in
+                    Section(cat.displayName) {
+                        ForEach(items) { exerciseRow($0) }
+                    }
+                }
+            } else {
+                Section(exerciseSectionTitle) {
+                    ForEach(filteredExercises) { exerciseRow($0) }
+                }
+                if !browseAll && trimmedQuery.isEmpty && selectedPart == nil {
+                    Section {
+                        Button { browseAll = true } label: {
+                            Label("Browse all exercises", systemImage: "square.grid.2x2")
+                        }
+                        .accessibilityIdentifier("library.browseAll")
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    private var filterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip("All", active: selectedPart == nil) { selectedPart = nil }
+                    .accessibilityIdentifier("library.filter.all")
+                ForEach(BodyPart.allCases) { part in
+                    chip(part.displayName, active: selectedPart == part) {
+                        selectedPart = (selectedPart == part) ? nil : part
+                    }
+                    .accessibilityIdentifier("library.filter.\(part.rawValue)")
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 0))
+    }
+
+    private func chip(_ label: String, active: Bool, _ tap: @escaping () -> Void) -> some View {
+        Button { Haptics.selection(); tap() } label: {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(active ? AnyShapeStyle(.tint) : AnyShapeStyle(.background.secondary),
+                            in: Capsule())
+                .foregroundStyle(active ? .white : .primary)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func exerciseRow(_ ex: Exercise) -> some View {
+        NavigationLink {
+            ExerciseDetailView(exercise: ex)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(ex.name)
+                    if ex.isCustom {
+                        Text("Custom").font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                if let muscles = muscleSubtitle(ex) {
+                    Text(muscles).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .accessibilityIdentifier("library.exercise.\(ex.name)")
+    }
+
+    private func muscleSubtitle(_ ex: Exercise) -> String? {
+        let ids = ex.primaryMuscles.isEmpty ? ex.muscleGroups : ex.primaryMuscles
+        guard !ids.isEmpty else { return nil }
+        return ids.prefix(3).map { id in
+            id.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
+        }.joined(separator: ", ")
+    }
+
+    // MARK: - Routines
+
+    private var routinesList: some View {
+        List {
+            if trimmedQuery.isEmpty {
+                routineGroupSection("5\u{00d7}5 Program", plans: RoutineGroup.fiveByFive)
+                routineGroupSection("Split Templates", plans: RoutineGroup.splits)
+                routineGroupSection("Calisthenics", plans: RoutineGroup.calisthenics)
+                routineGroupSection("Olympic Lifting", plans: RoutineGroup.olympic)
+            } else {
+                if !filteredPresets.isEmpty {
+                    Section("Programs") {
+                        ForEach(filteredPresets) { routineRow($0) }
+                    }
+                }
+            }
+
+            Section {
+                if filteredTemplates.isEmpty && trimmedQuery.isEmpty {
+                    ContentUnavailableView("No templates yet",
+                                           systemImage: "square.stack.3d.up",
+                                           description: Text("Save a reusable day like \u{201c}Push Day\u{201d}."))
+                }
+                ForEach(filteredTemplates) { t in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(t.name).font(.headline)
+                        Text(t.orderedExercises.map(\.exerciseName).joined(separator: ", "))
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    .accessibilityIdentifier("library.template.\(t.name)")
+                    .swipeActions {
+                        Button(role: .destructive) {
+                            try? WorkoutRepository.deleteTemplate(t, in: context)
+                        } label: { Label("Delete", systemImage: "trash") }
+                    }
+                }
+                Button { templateEditorPresented = true } label: {
+                    Label("New Template", systemImage: "plus.circle")
+                }
+                .accessibilityIdentifier("library.newTemplate")
+            } header: {
+                Text("My Templates")
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    private func routineGroupSection(_ title: String, plans: [WorkoutPlan]) -> some View {
+        Section(title) {
+            ForEach(plans) { routineRow($0) }
+        }
+    }
+
+    private func routineRow(_ plan: WorkoutPlan) -> some View {
+        NavigationLink {
+            RoutineDetailView(plan: plan, switchToWorkout: switchToWorkout)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(plan.name).font(.headline)
+                Text(plan.movementNames.joined(separator: " \u{00b7} "))
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            .padding(.vertical, 2)
+        }
+        .accessibilityIdentifier("library.routine.\(plan.id)")
+    }
+}
+
+// MARK: - Routine groups
+
+private enum RoutineGroup {
+    static let fiveByFive = StrengthPresets.all.filter { $0.id.hasPrefix("preset-5x5") }
+    static let splits = StrengthPresets.all.filter {
+        ["preset-push", "preset-pull", "preset-legs", "preset-upper",
+         "preset-lower", "preset-chest", "preset-back-bi"].contains($0.id)
+    }
+    static let calisthenics = StrengthPresets.all.filter { $0.id.hasPrefix("preset-cali") }
+    static let olympic = StrengthPresets.all.filter { $0.id.hasPrefix("preset-oly") }
 }

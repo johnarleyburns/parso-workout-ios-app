@@ -10,6 +10,7 @@ struct SwimRecordView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var model
+    @Environment(AppSettings.self) private var settings
 
     @State private var started = false
     @State private var startDate = Date()
@@ -50,6 +51,13 @@ struct SwimRecordView: View {
                 HStack { Text("Target laps"); Spacer(); Text("\(targetLaps)").monospacedDigit() }
             }
             .accessibilityIdentifier("swim.targetLaps")
+
+            HStack {
+                @Bindable var settings = settings
+                Toggle("Use HR monitoring", isOn: $settings.useHRMonitoring)
+                    .accessibilityIdentifier("swim.hrToggle")
+            }
+
             Button {
                 startDate = Date(); now = Date(); started = true
             } label: {

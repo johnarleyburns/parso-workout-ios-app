@@ -34,7 +34,7 @@ final class FR10Feedback3UITests: CadenceUITestCase {
         openStrengthLibrary(app)
         XCTAssertTrue(app.scrollToAndTapButton("weights.library.preset-5x5-1a"),
                       "5×5 Week 1A library row")
-        XCTAssertTrue(app.buttons["plan.preview.start"].waitTap(), "Start the preset")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start the preset")
         XCTAssertTrue(app.staticTexts["session.rx.Back Squat"].waitForExistence(timeout: 25),
                       "the 5×5 session should be planned with Back Squat + its Rx")
     }
@@ -48,7 +48,7 @@ final class FR10Feedback3UITests: CadenceUITestCase {
                       "Push library row")
         // The rep-scheme chooser appears (flexible template, feedback batch 3).
         XCTAssertTrue(app.buttons["repScheme.3x"].waitTap(), "3 sets · 12-10-8")
-        XCTAssertTrue(app.buttons["plan.preview.start"].waitTap(), "Start with the ladder")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start with the ladder")
         let rx = app.staticTexts["session.rx.Bench Press"]
         XCTAssertTrue(rx.waitForExistence(timeout: 25),
                       "the planned session should carry the chosen scheme")

@@ -74,9 +74,6 @@ final class AppModel: NSObject {
         let session = WCSession.default
         session.delegate = self
         session.activate()
-        // Cache synchronously after activation — the value is valid once
-        // the session is active.
-        watchAppInstalled = session.isWatchAppInstalled
     }
 
     /// Tells the Apple Watch to start an `HKWorkoutSession` for the given
@@ -96,23 +93,27 @@ final class AppModel: NSObject {
         guard watchAvailable, let session = wcSession else { return }
         watchError = nil
         watchTimeout?.invalidate()
+
+        guard session.isReachable else {
+            watchError = "Open Cladiron on your Apple Watch and keep the screen on"
+            return
+        }
+
         session.sendMessage(["command": "start_workout", "type": rawType],
-                            replyHandler: { [weak self] _ in
-            // Watch acknowledged — BPM should arrive soon.
-        }, errorHandler: { [weak self] _ in
+                            replyHandler: nil,
+                            errorHandler: { [weak self] error in
             DispatchQueue.main.async {
                 self?.watchActive = false
-                self?.watchError = "Watch unreachable"
+                self?.watchError = "Watch connection failed — make sure Cladiron is open on your Watch"
                 self?.watchTimeout?.invalidate()
             }
         })
         watchActive = true
-        // Timeout: if no BPM arrives within 15 s, reset and show error.
         watchTimeout = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
                 guard self?.watchActive == true else { return }
                 self?.watchActive = false
-                self?.watchError = "No response from Watch"
+                self?.watchError = "No heart rate received — check that Cladiron is running on your Watch"
                 self?.watchTimeout?.invalidate()
             }
         }
@@ -140,13 +141,21 @@ final class AppModel: NSObject {
 extension AppModel: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if activationState == .activated {
-            watchAppInstalled = session.isWatchAppInstalled
+            DispatchQueue.main.async { [weak self] in
+                self?.watchAppInstalled = session.isWatchAppInstalled
+            }
         }
     }
 
     func sessionDidBecomeInactive(_ session: WCSession) {}
     func sessionDidDeactivate(_ session: WCSession) {
         WCSession.default.activate()
+    }
+
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        DispatchQueue.main.async { [weak self] in
+            self?.watchAppInstalled = session.isWatchAppInstalled
+        }
     }
 
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {

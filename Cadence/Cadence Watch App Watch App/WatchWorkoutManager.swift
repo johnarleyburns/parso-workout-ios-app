@@ -144,6 +144,15 @@ extension WatchWorkoutManager: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
 
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        handleMessage(message)
+    }
+
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+        handleMessage(message)
+        replyHandler(["ack": true])
+    }
+
+    private func handleMessage(_ message: [String: Any]) {
         if message["command"] as? String == "start_workout",
            let type = message["type"] as? String {
             startWorkout(type: type)

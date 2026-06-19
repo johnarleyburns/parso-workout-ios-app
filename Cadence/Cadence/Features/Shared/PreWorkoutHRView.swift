@@ -66,22 +66,16 @@ struct PreWorkoutHRView: View {
                 Button {
                     onContinue(true)
                 } label: {
-                    Text("Start Workout").frame(maxWidth: .infinity, minHeight: 52)
+                    Text("Start").frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.borderedProminent).controlSize(.large).tint(.green)
                 .accessibilityIdentifier("prehr.start")
-
-                Button {
-                    onContinue(false)
-                } label: {
-                    Text("Continue without HR").frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.bordered).controlSize(.large)
-                .accessibilityIdentifier("prehr.skip")
             }
             .padding(.horizontal)
         }
         .padding(.vertical)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
         .onAppear {
             hrm.startScanning()
             if let id = defaultDevice?.id { hrm.connect(id) }

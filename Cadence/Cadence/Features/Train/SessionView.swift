@@ -23,16 +23,30 @@ struct SessionView: View {
 
     @State private var rest = RestTimerModel()
     @State private var pickerPresented = false
-    @State private var keypad: KeypadContext?
+    @State private var inlineExerciseID: UUID?
+    @State private var inlineExercise: Exercise?
+    @State private var inlineEditingSet: SetEntry?
+    @State private var inlineWeight: String = ""
+    @State private var inlineReps: Int = 5
+    @State private var inlineUnit: MeasurementUnitPreference = .kilograms
+    @State private var inlineBodyweight: Bool = false
+    @State private var inlinePerformedByID: UUID?
+    @FocusState private var weightFocused: Bool
     @State private var healthSaved = false
     @Query(sort: \Person.name) private var allPeople: [Person]
     @State private var addPartnerPresented = false
     @State private var newPartnerName = ""
+    @State private var renamePresented = false
+    @State private var editedTitle = ""
+    @State private var datePickerPresented = false
+    @State private var endDatePickerPresented = false
+    @State private var exerciseToRemove: Exercise?
     // Idle auto-terminate (field-testing §02/§04, decisions #6/#7).
     @State private var lastActivity = Date()
     @State private var idlePromptShown = false
     @State private var idlePromptAt: Date?
     @State private var usePreviousPresented = false
+    @State private var swappingPlannedName: String?
     // Cool-down (feedback batch 4): a guided timer that, on finish/skip, ends the
     // workout. The workout is paused while it runs so the clock doesn't advance.
     @State private var coolingDown = false
@@ -119,14 +133,64 @@ struct SessionView: View {
 
     /// Opens the weight keypad for a new or existing set of `exercise`. `repsOverride`
     /// seeds the reps for a tapped planned row.
-    private func openKeypad(for exercise: Exercise, editing: SetEntry? = nil, repsOverride: Int? = nil) {
-        keypad = KeypadContext(exercise: exercise, editing: editing, repsOverride: repsOverride)
+    private func openInlineEditor(for exercise: Exercise, editing: SetEntry? = nil, repsOverride: Int? = nil) {
+        inlineExerciseID = exercise.id
+        inlineExercise = exercise
+        inlineEditingSet = editing
+        inlineUnit = settings.unit
+        if let editing {
+            inlineWeight = Format.weightValue(editing.weight, unit: inlineUnit)
+            inlineReps = editing.reps
+            inlineBodyweight = editing.usesBodyweight
+            inlinePerformedByID = editing.performedBy.flatMap { $0.isMe ? nil : $0.id }
+        } else {
+            let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
+            inlineWeight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: inlineUnit) : ""
+            let loggedCount = session.orderedSets.filter { $0.exercise?.id == exercise.id }.count
+            inlineReps = repsOverride ?? plannedReps(for: exercise, setIndex: loggedCount)
+            inlineBodyweight = isBodyweight(exercise)
+            inlinePerformedByID = nextPerson().flatMap { $0.isMe ? nil : $0.id }
+        }
+        weightFocused = true
+    }
+
+    private func closeInlineEditor() {
+        weightFocused = false
+        inlineExerciseID = nil
+        inlineExercise = nil
+        inlineEditingSet = nil
+    }
+
+    private func recordInlineSet(for exercise: Exercise) {
+        let parsed = Double(inlineWeight) ?? 0
+        var kg = WorkoutMath.canonical(parsed, from: inlineUnit)
+        if settings.plateRounding { kg = UnitEntry.plateRounded(kg: kg, unit: inlineUnit) }
+        if let editing = inlineEditingSet {
+            try? WorkoutRepository.updateSet(editing, weightKg: kg, reps: inlineReps,
+                                             rpe: .some(nil), isWarmup: false,
+                                             usesBodyweight: inlineBodyweight, note: .some(nil), in: context)
+            let person = people(for: inlinePerformedByID)
+            editing.performedBy = (person?.isMe ?? true) ? nil : person
+            try? context.save()
+        } else {
+            addSet(to: exercise, weightKg: kg, reps: inlineReps, rpe: nil, isWarmup: false,
+                   usesBodyweight: inlineBodyweight, note: nil, performedBy: people(for: inlinePerformedByID))
+        }
+        closeInlineEditor()
+    }
+
+    private func people(for id: UUID?) -> Person? {
+        guard let id else { return nil }
+        return allPeople.first { $0.id == id }
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 if isManualLog { loggedDateBanner }
+                if active.strengthSession?.id != session.id && !isManualLog {
+                    editableMetadataRow
+                }
                 if rest.isRunning {
                     RestTimerBar(model: rest) { Haptics.restComplete() }
                 }
@@ -211,11 +275,20 @@ struct SessionView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    Task { await saveToHealth() }
-                } label: { Image(systemName: healthSaved ? "checkmark.circle.fill" : "heart.text.square") }
-                    .disabled(session.orderedSets.isEmpty)
-                    .accessibilityIdentifier("session.saveHealth")
+                HStack(spacing: 12) {
+                    Button {
+                        editedTitle = session.title
+                        renamePresented = true
+                    } label: { Image(systemName: "pencil") }
+                        .accessibilityIdentifier("session.rename")
+                        .accessibilityLabel("Rename workout")
+
+                    Button {
+                        Task { await saveToHealth() }
+                    } label: { Image(systemName: healthSaved ? "checkmark.circle.fill" : "heart.text.square") }
+                        .disabled(session.orderedSets.isEmpty)
+                        .accessibilityIdentifier("session.saveHealth")
+                }
             }
         }
         .overlay(alignment: .top) {
@@ -228,12 +301,24 @@ struct SessionView: View {
         }
         .sheet(isPresented: $pickerPresented) {
             ExercisePickerView { exercise in
-                // Open the keypad immediately for the chosen exercise.
-                keypad = KeypadContext(exercise: exercise, editing: nil)
+                if !session.exercisesInOrder.contains(where: { $0.id == exercise.id }) &&
+                   !session.plannedExerciseNames.contains(exercise.name) {
+                    session.plannedExerciseNames.append(exercise.name)
+                    try? context.save()
+                }
+                openInlineEditor(for: exercise)
             }
         }
-        .sheet(item: $keypad) { ctx in
-            keypadSheet(ctx)
+        .sheet(isPresented: Binding(
+            get: { swappingPlannedName != nil },
+            set: { if !$0 { swappingPlannedName = nil } }
+        )) {
+            ExercisePickerView { exercise in
+                if let oldName = swappingPlannedName {
+                    swapPlannedExercise(oldName: oldName, newName: exercise.name)
+                    swappingPlannedName = nil
+                }
+            }
         }
         .sheet(isPresented: $usePreviousPresented) {
             PreviousWorkoutPicker(excluding: session) { past in
@@ -293,6 +378,66 @@ struct SessionView: View {
         } message: {
             Text("Their sets are recorded separately and kept out of your PRs and Apple Health.")
         }
+        .alert("Rename workout", isPresented: $renamePresented) {
+            TextField("Title", text: $editedTitle)
+                .accessibilityIdentifier("rename.field")
+            Button("Save") {
+                session.title = editedTitle.trimmingCharacters(in: .whitespaces)
+                try? context.save()
+            }
+            Button("Cancel", role: .cancel) { }
+        }
+        .sheet(isPresented: $datePickerPresented) {
+            NavigationStack {
+                DatePicker("Workout date", selection: Binding(
+                    get: { session.date },
+                    set: { session.date = $0; try? context.save() }
+                ))
+                .datePickerStyle(.graphical)
+                .padding()
+                .navigationTitle("Edit Date")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { datePickerPresented = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $endDatePickerPresented) {
+            NavigationStack {
+                DatePicker("End time", selection: Binding(
+                    get: { session.endedAt ?? session.date },
+                    set: { session.endedAt = $0; try? context.save() }
+                ))
+                .datePickerStyle(.graphical)
+                .padding()
+                .navigationTitle("Edit End Time")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { endDatePickerPresented = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+        .confirmationDialog("Remove this exercise?", isPresented: Binding(
+            get: { exerciseToRemove != nil },
+            set: { if !$0 { exerciseToRemove = nil } }
+        ), titleVisibility: .visible) {
+            Button("Remove exercise and all its sets", role: .destructive) {
+                if let ex = exerciseToRemove {
+                    let sets = session.orderedSets.filter { $0.exercise?.id == ex.id }
+                    for s in sets { try? WorkoutRepository.deleteSet(s, in: context) }
+                    session.plannedExerciseNames.removeAll { $0 == ex.name }
+                    try? context.save()
+                }
+                exerciseToRemove = nil
+            }
+            Button("Cancel", role: .cancel) { exerciseToRemove = nil }
+        }
     }
 
     /// Reminds the user which past date a manually-logged workout is being filed
@@ -309,6 +454,38 @@ struct SessionView: View {
         .frame(maxWidth: .infinity)
         .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
         .accessibilityIdentifier("log.dateBanner")
+    }
+
+    private var editableMetadataRow: some View {
+        HStack(spacing: 16) {
+            Button { datePickerPresented = true } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "calendar").font(.caption)
+                    Text(session.date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.subheadline)
+                }
+                .foregroundStyle(.tint)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("session.editDate")
+
+            if session.endedAt != nil {
+                Button { endDatePickerPresented = true } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock").font(.caption)
+                        if let end = session.endedAt {
+                            Text(Format.duration(end.timeIntervalSince(session.date)))
+                                .font(.subheadline)
+                        }
+                    }
+                    .foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("session.editEndTime")
+            }
+
+            Spacer()
+        }
     }
 
     // MARK: Partner bar (field-testing §04)
@@ -353,21 +530,36 @@ struct SessionView: View {
     @ViewBuilder
     private func plannedCard(_ name: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(name).font(.headline)
-                .accessibilityIdentifier("exerciseCard.\(name)")
+            HStack {
+                Text(name).font(.headline)
+                    .accessibilityIdentifier("exerciseCard.\(name)")
+                Spacer()
+                Button {
+                    swappingPlannedName = name
+                } label: {
+                    Label("Swap", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered).controlSize(.mini)
+                .accessibilityIdentifier("planned.swap.\(name)")
+            }
             if let rx = prescription(for: name) {
                 Text(rx).font(.subheadline).foregroundStyle(.secondary)
                     .accessibilityIdentifier("session.rx.\(name)")
             } else {
                 Text("Planned — tap to log").font(.caption).foregroundStyle(.secondary)
             }
-            Button {
-                if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
-                    openKeypad(for: ex)
-                }
-            } label: { Label("Add Set", systemImage: "plus") }
-                .buttonStyle(.bordered).controlSize(.small)
-                .accessibilityIdentifier("set.add.\(name)")
+            if let ex = inlineExercise, ex.name == name {
+                inlineEditor(for: ex)
+            } else {
+                Button {
+                    if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
+                        openInlineEditor(for: ex)
+                    }
+                } label: { Label("Add Set", systemImage: "plus") }
+                    .buttonStyle(.bordered).controlSize(.small)
+                    .accessibilityIdentifier("set.add.\(name)")
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -386,12 +578,19 @@ struct SessionView: View {
             Text(exercise.name)
                 .font(.headline)
                 .accessibilityIdentifier("exerciseCard.\(exercise.name)")
+                .contextMenu {
+                    Button(role: .destructive) {
+                        exerciseToRemove = exercise
+                    } label: {
+                        Label("Remove Exercise", systemImage: "trash")
+                    }
+                }
 
             contextLine(for: exercise)
 
             ForEach(Array(sets.enumerated()), id: \.element.id) { idx, set in
                 Button {
-                    openKeypad(for: exercise, editing: set)
+                    openInlineEditor(for: exercise, editing: set)
                 } label: {
                     setRow(set, index: idx, exercise: exercise)
                 }
@@ -402,7 +601,7 @@ struct SessionView: View {
             ForEach(0..<pending, id: \.self) { offset in
                 let rowIndex = sets.count + offset
                 Button {
-                    openKeypad(for: exercise, repsOverride: plannedReps(for: exercise, setIndex: rowIndex))
+                    openInlineEditor(for: exercise, repsOverride: plannedReps(for: exercise, setIndex: rowIndex))
                 } label: {
                     pendingRow(index: rowIndex, reps: plannedReps(for: exercise, setIndex: rowIndex))
                 }
@@ -410,24 +609,28 @@ struct SessionView: View {
                 .accessibilityIdentifier("set.pending.\(exercise.name).\(offset)")
             }
 
-            HStack {
-                Button {
-                    openKeypad(for: exercise)
-                } label: { Label("Add Set", systemImage: "plus") }
-                    .accessibilityIdentifier("set.add.\(exercise.name)")
-                if let last = sets.last {
-                    Spacer()
+            if inlineExerciseID == exercise.id {
+                inlineEditor(for: exercise)
+            } else {
+                HStack {
                     Button {
-                        addSet(to: exercise, weightKg: last.weight, reps: last.reps,
-                               rpe: last.rpe, isWarmup: last.isWarmup,
-                               usesBodyweight: last.usesBodyweight, note: nil)
-                    } label: { Label("Repeat last", systemImage: "arrow.clockwise") }
-                        .accessibilityIdentifier("set.repeat.\(exercise.name)")
+                        openInlineEditor(for: exercise)
+                    } label: { Label("Add Set", systemImage: "plus") }
+                        .accessibilityIdentifier("set.add.\(exercise.name)")
+                    if let last = sets.last {
+                        Spacer()
+                        Button {
+                            addSet(to: exercise, weightKg: last.weight, reps: last.reps,
+                                   rpe: last.rpe, isWarmup: last.isWarmup,
+                                   usesBodyweight: last.usesBodyweight, note: nil)
+                        } label: { Label("Repeat last", systemImage: "arrow.clockwise") }
+                            .accessibilityIdentifier("set.repeat.\(exercise.name)")
+                    }
                 }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .font(.subheadline)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-            .font(.subheadline)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -481,7 +684,7 @@ struct SessionView: View {
             Text("\(index + 1)")
                 .font(.caption).foregroundStyle(.secondary)
                 .frame(width: 18, alignment: .leading)
-            Text(Format.setLine(set, unit: settings.unit))
+            Text(Format.setLineDual(set, preferredUnit: settings.unit))
                 .monospacedDigit()
             if set.isWarmup {
                 Text("warmup").font(.caption2).foregroundStyle(.secondary)
@@ -531,57 +734,123 @@ struct SessionView: View {
                                     rule: settings.prRule, formula: settings.formula)
     }
 
-    // MARK: Weight keypad sheet (feedback batch 6 item 2)
+    // MARK: Inline set editor (replaces WeightKeypadSheet)
 
     @ViewBuilder
-    private func keypadSheet(_ ctx: KeypadContext) -> some View {
-        let exercise = ctx.exercise
-        let last = WorkoutRepository.lastTimeSets(for: exercise, excluding: session).first
-        let pr = WorkoutRepository.currentPR(for: exercise, rule: settings.prRule, formula: settings.formula)
-        let inSessionLast = session.orderedSets.last { $0.exercise?.id == exercise.id }
-        let loggedCount = session.orderedSets.filter { $0.exercise?.id == exercise.id }.count
-        // Reps default (item 1): edit keeps its own reps; a tapped planned row uses
-        // its rung; otherwise the prescribed reps for the next rung (falling back to
-        // the last in-session set / 5).
-        let initialReps = ctx.editing?.reps
-            ?? ctx.repsOverride
-            ?? plannedReps(for: exercise, setIndex: loggedCount)
-        // Pre-fill the keypad with the coach's prescribed load for a prescribed
-        // movement (P5.3); editing keeps the set's own weight, everything else starts
-        // empty as before.
-        let initialWeight = ctx.editing?.weight
-            ?? (isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0)
+    private func inlineEditor(for exercise: Exercise) -> some View {
+        let altUnit: MeasurementUnitPreference = inlineUnit == .kilograms ? .pounds : .kilograms
+        let parsed = Double(inlineWeight) ?? 0
+        let kg = WorkoutMath.canonical(parsed, from: inlineUnit)
+        let altValue = parsed > 0 ? Format.weightValue(kg, unit: altUnit) + " " + altUnit.abbreviation : ""
+        let canSave = inlineReps > 0 && (inlineBodyweight || (!inlineWeight.isEmpty && parsed >= 0))
+        let wouldBePR = canSave && WorkoutRepository.wouldBePR(
+            exercise: exercise, weightKg: kg, reps: inlineReps, isWarmup: false,
+            rule: settings.prRule, formula: settings.formula)
 
-        WeightKeypadSheet(
-            exerciseName: exercise.name,
-            unit: settings.unit,
-            lastTimeText: last.map { Format.setLine($0, unit: settings.unit) },
-            prText: pr.map { Format.weight($0, unit: settings.unit) },
-            people: roster,
-            plateRounding: settings.plateRounding,
-            isBodyweightExercise: isBodyweight(exercise),
-            initialWeightKg: initialWeight,
-            initialReps: initialReps,
-            initialBodyweight: ctx.editing?.usesBodyweight ?? isBodyweight(exercise),
-            initialPerformedBy: ctx.editing?.performedBy ?? inSessionLast?.performedBy,
-            isPRPredicate: { kg, reps in
-                WorkoutRepository.wouldBePR(exercise: exercise, weightKg: kg, reps: reps, isWarmup: false,
-                                            rule: settings.prRule, formula: settings.formula)
-            },
-            onSave: { kg, reps, bodyweight, performedBy in
-                if let editing = ctx.editing {
-                    try? WorkoutRepository.updateSet(editing, weightKg: kg, reps: reps,
-                                                     rpe: .some(nil), isWarmup: false,
-                                                     usesBodyweight: bodyweight, note: .some(nil), in: context)
-                    editing.performedBy = (performedBy?.isMe ?? true) ? nil : performedBy
-                    try? context.save()
-                } else {
-                    addSet(to: exercise, weightKg: kg, reps: reps, rpe: nil, isWarmup: false,
-                           usesBodyweight: bodyweight, note: nil, performedBy: performedBy)
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                TextField("0", text: $inlineWeight)
+                    .keyboardType(.decimalPad)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 80)
+                    .monospacedDigit()
+                    .focused($weightFocused)
+                    .accessibilityIdentifier("inline.weight")
+
+                Picker("", selection: $inlineUnit) {
+                    Text("kg").tag(MeasurementUnitPreference.kilograms)
+                    Text("lb").tag(MeasurementUnitPreference.pounds)
                 }
-            },
-            onDelete: ctx.editing.map { set in { try? WorkoutRepository.deleteSet(set, in: context) } }
-        )
+                .pickerStyle(.segmented)
+                .frame(width: 90)
+                .accessibilityIdentifier("inline.unit")
+
+                Text("\u{00d7}")
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 4) {
+                    Button { if inlineReps > 1 { inlineReps -= 1 } } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title3).foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("inline.repsMinus")
+
+                    Text("\(inlineReps)")
+                        .font(.headline).monospacedDigit()
+                        .frame(minWidth: 24)
+                        .accessibilityIdentifier("inline.reps")
+
+                    Button { if inlineReps < 100 { inlineReps += 1 } } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title3).foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("inline.repsPlus")
+                }
+            }
+
+            HStack {
+                if !altValue.isEmpty {
+                    Text("\u{2248} \(altValue)")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("inline.alt")
+                }
+
+                if isBodyweight(exercise) {
+                    Toggle("BW", isOn: $inlineBodyweight)
+                        .toggleStyle(.button).controlSize(.mini)
+                        .accessibilityIdentifier("inline.bodyweight")
+                }
+
+                if hasPartners {
+                    Picker("", selection: $inlinePerformedByID) {
+                        Text("Me").tag(UUID?.none)
+                        ForEach(roster.filter { !$0.isMe }) { p in
+                            Text(p.name).tag(UUID?.some(p.id))
+                        }
+                    }
+                    .pickerStyle(.menu).controlSize(.mini)
+                    .accessibilityIdentifier("inline.partner")
+                }
+
+                Spacer()
+
+                if wouldBePR {
+                    Label("PR", systemImage: "trophy.fill")
+                        .font(.caption2.bold()).foregroundStyle(.orange)
+                }
+
+                if inlineEditingSet != nil {
+                    Button(role: .destructive) {
+                        if let set = inlineEditingSet {
+                            try? WorkoutRepository.deleteSet(set, in: context)
+                        }
+                        closeInlineEditor()
+                    } label: {
+                        Image(systemName: "trash").font(.subheadline)
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.red)
+                    .accessibilityIdentifier("inline.delete")
+                }
+
+                Button("Cancel") { closeInlineEditor() }
+                    .font(.subheadline)
+                    .accessibilityIdentifier("inline.cancel")
+
+                Button {
+                    recordInlineSet(for: exercise)
+                } label: {
+                    Text(inlineEditingSet != nil ? "Save" : "Record")
+                        .font(.subheadline.bold())
+                }
+                .buttonStyle(.borderedProminent).controlSize(.small)
+                .disabled(!canSave)
+                .accessibilityIdentifier("inline.save")
+            }
+        }
+        .padding(10)
+        .background(.tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
     }
 
     /// Writes a summary HKWorkout for this session (FR-4.3). Detailed sets stay
@@ -642,15 +911,24 @@ struct SessionView: View {
     /// summary to the app model so it presents *over Home* (P1 #9) — the session pops
     /// behind it, so Done reveals Home without flashing the session screen.
     private func endWorkout() {
-        // Workout ends — beep sequence so the user knows to stop (batch 7 item 9).
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         model.stopWatchWorkout()
         if settings.autoSaveHealth, session.healthKitWorkoutUUID == nil, !session.orderedSets.isEmpty {
             Task { await saveToHealth() }
         }
         active.endStrength()
-        try? context.save()
-        active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples))
+        do {
+            try context.save()
+        } catch {
+            print("[Cadence] failed to save session on end: \(error.localizedDescription)")
+        }
+        // Yield to next MainActor cycle so SwiftData propagates to @Query
+        // subscribers before we set finishedSummary (coach recomputes from stale
+        // sessions otherwise).
+        Task { @MainActor in
+            await Task.yield()
+            active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples))
+        }
         dismiss()
     }
 
@@ -708,6 +986,38 @@ struct SessionView: View {
         try? context.save()
     }
 
+    private func swapPlannedExercise(oldName: String, newName: String) {
+        guard oldName != newName else { return }
+        var names = session.plannedExerciseNames
+        if let idx = names.firstIndex(of: oldName) {
+            names[idx] = newName
+        }
+        session.plannedExerciseNames = names
+        _ = try? WorkoutRepository.findOrCreateExercise(named: newName, in: context)
+        try? context.save()
+        poke()
+    }
+
+    private func nextPerson() -> Person? {
+        guard hasPartners else { return nil }
+        let allSets = session.orderedSets
+        return roster.min { a, b in
+            let aLast = allSets.filter { setPerformedBy($0, person: a) }.map(\.completedAt).max()
+            let bLast = allSets.filter { setPerformedBy($0, person: b) }.map(\.completedAt).max()
+            switch (aLast, bLast) {
+            case (nil, nil): return false
+            case (nil, _): return true
+            case (_, nil): return false
+            case (let a?, let b?): return a < b
+            }
+        }
+    }
+
+    private func setPerformedBy(_ set: SetEntry, person: Person) -> Bool {
+        if person.isMe { return set.isOwnerSet }
+        return set.performedBy?.id == person.id
+    }
+
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,
                         rpe: Double?, isWarmup: Bool, usesBodyweight: Bool = false,
                         note: String?, performedBy: Person? = nil) {
@@ -729,15 +1039,6 @@ struct SessionView: View {
             rest.start(seconds: settings.restSeconds)
         }
     }
-}
-
-/// Identifies what the weight keypad sheet is logging or editing. `repsOverride`
-/// seeds the reps for a tapped planned set row (feedback batch 6 item 2).
-struct KeypadContext: Identifiable {
-    let id = UUID()
-    let exercise: Exercise
-    let editing: SetEntry?
-    var repsOverride: Int? = nil
 }
 
 /// Identifiable wrapper so the post-workout `WorkoutSummaryData` (a pure value

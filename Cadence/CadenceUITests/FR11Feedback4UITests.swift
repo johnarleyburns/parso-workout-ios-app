@@ -49,6 +49,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
 
         XCTAssertTrue(app.staticTexts["warmup.remaining"].waitForExistence(timeout: 25),
                       "the warm-up timer should appear")
@@ -62,6 +63,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
 
         let remaining = app.staticTexts["warmup.remaining"]
         XCTAssertTrue(remaining.waitForExistence(timeout: 25), "warm-up timer")
@@ -105,8 +107,6 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["home.startCardio"].waitTap(), "Start Cardio")
         XCTAssertTrue(app.buttons["startType.boxing"].waitTap(), "Boxing type")
         XCTAssertTrue(app.buttons["interval.start"].waitTap(), "START")
-        // Pre-workout HR gate (feedback batch 5) — continue without HR.
-        XCTAssertTrue(app.buttons["prehr.skip"].waitTap(), "Continue without HR")
         XCTAssertTrue(app.staticTexts["interval.countdown"].waitForExistence(timeout: 25),
                       "interval runner")
         app.buttons["interval.end"].tap()

@@ -29,7 +29,7 @@ public enum CardioMath {
     }
 
     /// Default age-based HRmax (Tanaka): 208 − 0.7·age. Falls back to 190.
-    public static func defaultMaxHR(age: Int?) -> Double {
+    static func defaultMaxHR(age: Int?) -> Double {
         guard let age, age > 0 else { return 190 }
         return 208 - 0.7 * Double(age)
     }

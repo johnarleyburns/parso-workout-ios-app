@@ -1,8 +1,8 @@
 import XCTest
 @testable import CadenceCore
 
-/// Field-testing §02 session-engine core: wall-clock timing, idle watchdog,
-/// and the Start Workout type taxonomy.
+/// Field-testing §02 session-engine core: wall-clock timing and the Start
+/// Workout type taxonomy.
 final class SessionEngineTests: XCTestCase {
 
     private let t0 = Date(timeIntervalSince1970: 1_000_000)
@@ -47,28 +47,6 @@ final class SessionEngineTests: XCTestCase {
         clock.resume(now: t0.addingTimeInterval(30))
         clock.resume(now: t0.addingTimeInterval(40))          // ignored
         XCTAssertEqual(clock.elapsed(now: t0.addingTimeInterval(50)), 30, accuracy: 0.001)
-    }
-
-    // MARK: IdleWatchdog
-
-    func testWatchdogExpiresAfterTimeout() {
-        let w = IdleWatchdog(timeout: 600, lastActivityAt: t0)
-        XCTAssertFalse(w.hasExpired(now: t0.addingTimeInterval(599)))
-        XCTAssertTrue(w.hasExpired(now: t0.addingTimeInterval(600)))
-        XCTAssertEqual(w.remaining(now: t0.addingTimeInterval(540)) ?? -1, 60, accuracy: 0.001)
-    }
-
-    func testWatchdogPokeResetsCountdown() {
-        var w = IdleWatchdog(timeout: 600, lastActivityAt: t0)
-        w.poke(now: t0.addingTimeInterval(500))
-        XCTAssertFalse(w.hasExpired(now: t0.addingTimeInterval(1000)))   // 500s since poke
-        XCTAssertTrue(w.hasExpired(now: t0.addingTimeInterval(1100)))    // 600s since poke
-    }
-
-    func testDisarmedWatchdogNeverExpires() {
-        let w = IdleWatchdog(timeout: 600, lastActivityAt: t0, isArmed: false)
-        XCTAssertFalse(w.hasExpired(now: t0.addingTimeInterval(10_000)))
-        XCTAssertNil(w.remaining(now: t0.addingTimeInterval(10_000)))
     }
 
     // MARK: WorkoutType

@@ -42,6 +42,7 @@ final class AppModel: NSObject {
         let uiTest = args.contains("-uiTest")
         self.isUITestMode = uiTest
 
+        #if DEBUG
         if uiTest {
             let fake = FakeHealthProvider()
             fake.authStatus = .authorized
@@ -52,6 +53,9 @@ final class AppModel: NSObject {
         } else {
             self.health = HealthKitProvider()
         }
+        #else
+        self.health = HealthKitProvider()
+        #endif
 
         self.hrm = HeartRateMonitor(simulated: uiTest)
         self.location = LocationTracker(simulated: uiTest)

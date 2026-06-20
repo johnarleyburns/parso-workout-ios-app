@@ -924,7 +924,9 @@ struct SessionView: View {
         do {
             try context.save()
         } catch {
+            #if DEBUG
             print("[Cadence] failed to save session on end: \(error.localizedDescription)")
+            #endif
         }
         // Yield to next MainActor cycle so SwiftData propagates to @Query
         // subscribers before we set finishedSummary (coach recomputes from stale

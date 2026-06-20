@@ -7,7 +7,7 @@ public enum WorkoutMath {
 
     /// Epley estimated one-rep max. Returns the weight unchanged at 1 rep,
     /// and 0 for non-positive reps.
-    public static func epley1RM(weight: Double, reps: Int) -> Double {
+    static func epley1RM(weight: Double, reps: Int) -> Double {
         guard reps > 0 else { return 0 }
         if reps == 1 { return weight }
         return weight * (1.0 + Double(reps) / 30.0)
@@ -15,7 +15,7 @@ public enum WorkoutMath {
 
     /// Brzycki estimated one-rep max. Undefined at 37+ reps (formula breaks
     /// down); clamps to a safe value there.
-    public static func brzycki1RM(weight: Double, reps: Int) -> Double {
+    static func brzycki1RM(weight: Double, reps: Int) -> Double {
         guard reps > 0 else { return 0 }
         if reps == 1 { return weight }
         let denom = 1.0278 - 0.0278 * Double(reps)
@@ -42,7 +42,7 @@ public enum WorkoutMath {
 
     private static let lbPerKg = 2.2046226218487757
 
-    public static func kgToLb(_ kg: Double) -> Double { kg * lbPerKg }
+    static func kgToLb(_ kg: Double) -> Double { kg * lbPerKg }
     public static func lbToKg(_ lb: Double) -> Double { lb / lbPerKg }
 
     /// Convert a canonical-kg weight into the user's display unit.

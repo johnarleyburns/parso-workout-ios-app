@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import CadenceCore
 
@@ -59,3 +60,4 @@ final class FakeHealthProvider: HealthDataProviding, @unchecked Sendable {
         return summary.id
     }
 }
+#endif

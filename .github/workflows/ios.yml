@@ -1,0 +1,143 @@
+name: iOS Build & TestFlight
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  testflight-build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: |
+          XCODE=$(ls /Applications/ | grep "^Xcode_" | sort -V | tail -1)
+          sudo xcode-select -s /Applications/$XCODE
+          xcodebuild -version
+
+      - name: Accept Xcode License
+        run: sudo xcodebuild -license accept
+
+      - name: Import Certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -eo pipefail
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          echo -n "$APPLE_CERTIFICATE" | base64 --decode -o certificate.p12
+          security import certificate.p12 \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k build.keychain
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s -k "$KEYCHAIN_PASSWORD" build.keychain
+
+      - name: Import Provisioning Profile
+        env:
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -eo pipefail
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode \
+            -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_App_Store.mobileprovision"
+
+      - name: Cache SPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/*/SourcePackages
+          key: spm-${{ hashFiles('CadenceCore/Package.resolved') }}
+          restore-keys: spm-
+
+      - name: Set Build Number
+        run: xcrun agvtool new-version -all ${{ github.run_number }}
+
+      - name: Compute Marketing Version
+        run: |
+          set -eo pipefail
+          PATCH=${{ github.run_number }}
+          echo "MKT_VERSION=1.0.$PATCH" >> "$GITHUB_ENV"
+          echo "Marketing version: 1.0.$PATCH (build ${{ github.run_number }})"
+
+      - name: Archive
+        env:
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          set -eo pipefail
+          xcodebuild archive \
+            -project Cadence/Cadence.xcodeproj \
+            -scheme Cadence \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath ./build/Cadence.xcarchive \
+            ARCHS=arm64 \
+            MARKETING_VERSION="$MKT_VERSION" \
+            IPHONEOS_DEPLOYMENT_TARGET=17.0 \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            PROVISIONING_PROFILE_SPECIFIER="Parso Workout App Store" \
+            2>&1 | tee build.log
+          if [ ! -d "./build/Cadence.xcarchive" ]; then
+            echo "Archive not found — build failed"
+            grep -E 'error:' build.log | head -20
+            exit 1
+          fi
+
+      - name: Export IPA
+        run: |
+          set -eo pipefail
+          xcodebuild -exportArchive \
+            -archivePath ./build/Cadence.xcarchive \
+            -exportPath ./output \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Write App Store Connect API Key
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+        run: |
+          set -eo pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APPSTORE_API_PRIVATE_KEY" \
+            > ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
+
+      - name: Upload to TestFlight
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+        run: |
+          set -eo pipefail
+          xcrun altool --upload-app \
+            --type ios \
+            --file output/Cadence.ipa \
+            --apiKey "$APPSTORE_API_KEY_ID" \
+            --apiIssuer "$APPSTORE_API_ISSUER_ID"
+
+      - name: Upload Build Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: |
+          security delete-keychain build.keychain
+          rm -f ~/.appstoreconnect/private_keys/AuthKey_*.p8

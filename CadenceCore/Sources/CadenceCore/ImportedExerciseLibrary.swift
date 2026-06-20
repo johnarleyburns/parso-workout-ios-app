@@ -138,7 +138,7 @@ public extension ExerciseLibrary {
 
     static func imageURL(forImageName name: String?, position: Int = 0) -> URL? {
         guard let name, !name.isEmpty else { return nil }
-        return URL(string: "\(exerciseImageBaseURL)\(name)/images/\(position).jpg")
+        return URL(string: "\(exerciseImageBaseURL)\(name)/\(position).jpg")
     }
 
     static func exercisePageURL(forImageName name: String?) -> URL? {

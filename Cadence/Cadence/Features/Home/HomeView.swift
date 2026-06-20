@@ -31,8 +31,6 @@ struct HomeView: View {
     @State private var hrGateKind: PendingWorkout.Kind?
     /// When true, the warm-up overlay appears after the HR gate passes.
     @State private var startWarmupAfterHRGate = false
-    /// Coach prescription stashed while the HR gate is shown.
-    @State private var pendingPrescription: Recommendation?
     @State private var warmupActive = false
     @State private var today: DayActivity?
     @State private var coachDayToken = Date()
@@ -123,6 +121,8 @@ struct HomeView: View {
                 case .settings: SettingsView()
                 case .coach: CoachInsightsView(insights: coachInsights)
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
+                case .coachWorkout(let plan):
+                    RoutineDetailView(plan: plan, switchToWorkout: { path = NavigationPath() })
                 }
             }
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
@@ -667,17 +667,6 @@ struct HomeView: View {
     /// Called after the HR gate closes.  If the countdown is enabled, show it;
     /// otherwise launch immediately.
     private func proceedFromHRGate(_ kind: PendingWorkout.Kind, useHR: Bool) {
-        // "Do this workout" path: launch the prescription immediately (fast path).
-        if let rec = pendingPrescription {
-            pendingPrescription = nil
-            let prescribed = rec.prescribedSession()
-            if let s = try? WorkoutRepository.startSession(from: prescribed, in: context) {
-                active.startStrength(s)
-                path.append(s)
-                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
-            }
-            return
-        }
         if startWarmupAfterHRGate {
             startWarmupAfterHRGate = false
             warmupActive = true
@@ -723,8 +712,12 @@ struct HomeView: View {
     /// movement, planned sets/reps, and load — the fast default path. Routes
     /// through the HR gate so the user can verify live HR first.
     private func launchPrescription(_ rec: Recommendation) {
-        pendingPrescription = rec
-        proceedFromHRGate(.strength, useHR: false)
+        let twoWeeksAgo = Date().addingTimeInterval(-14 * 86400)
+        let recentKeys = sessions
+            .filter { $0.deletedAt == nil && $0.date > twoWeeksAgo }
+            .compactMap(\.planKey)
+        let plan = RecommendationEngine.pickRoutine(coachFacts, recentPlanKeys: recentKeys)
+        path.append(HomeRoute.coachWorkout(plan))
     }
 
     private func handleEditorStart(_ plan: EditablePlan) {
@@ -775,7 +768,7 @@ struct PendingWorkout: Identifiable {
 }
 
 /// Pushed destinations reachable from Home.
-enum HomeRoute: Hashable { case history, settings, coach, planning }
+enum HomeRoute: Hashable { case history, settings, coach, planning, coachWorkout(WorkoutPlan) }
 
 /// A row in Home's merged "Recent workouts" list — strength and cardio together,
 /// sorted by date (P1 #10).

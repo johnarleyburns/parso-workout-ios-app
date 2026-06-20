@@ -36,4 +36,71 @@ public enum RecommendationEngine {
     public static func top(_ facts: TrainingFacts) -> Recommendation {
         run(facts).first ?? KnowledgeBase.starter(goal: facts.goal, experience: facts.experience)
     }
+
+    /// Picks the best-matching built-in routine for the current recommendations.
+    /// Prefers routines the user has been doing recently, then routines in the same
+    /// program group, then routines that cover the most recommended body parts /
+    /// exercises. Never creates a custom ad-hoc plan.
+    public static func pickRoutine(_ facts: TrainingFacts,
+                                   recentPlanKeys: [String]) -> WorkoutPlan {
+        let recs = run(facts)
+        let presets = StrengthPresets.all
+        guard !presets.isEmpty else {
+            return StrengthPresets.all[0]
+        }
+
+        let recentKeySet = Set(recentPlanKeys)
+        let recentPrefixes: Set<String> = Set(recentPlanKeys.compactMap { key in
+            guard key.hasPrefix("preset-") else { return nil }
+            let parts = key.split(separator: "-")
+            return parts.count >= 2 ? "\(parts[0])-\(parts[1])" : nil
+        })
+
+        var bestPlan = presets[0]
+        var bestScore = Int.min
+
+        for plan in presets {
+            var score = 0
+
+            let moveSet = Set(plan.movementNames.map { $0.lowercased() })
+            let planParts = routineBodyParts(plan)
+
+            for rec in recs {
+                if let ex = rec.exercise, moveSet.contains(ex.lowercased()) {
+                    score += 10
+                } else if let part = rec.part, planParts.contains(part) {
+                    score += 5
+                }
+            }
+
+            if recentKeySet.contains(plan.id) {
+                score += 20
+            }
+
+            if plan.id.hasPrefix("preset-") {
+                let parts = plan.id.split(separator: "-")
+                if parts.count >= 2 {
+                    let prefix = "\(parts[0])-\(parts[1])"
+                    if recentPrefixes.contains(prefix) { score += 10 }
+                }
+            }
+
+            if score > bestScore {
+                bestScore = score
+                bestPlan = plan
+            }
+        }
+
+        return bestPlan
+    }
+
+    private static func routineBodyParts(_ plan: WorkoutPlan) -> Set<BodyPart> {
+        var parts = Set<BodyPart>()
+        for name in plan.movementNames {
+            if let t = ExerciseLibrary.byName[name.lowercased()] {
+                parts.formUnion(ExerciseLibrary.bodyParts(of: t))
+            }
+        }
+        return parts
+    }
 }

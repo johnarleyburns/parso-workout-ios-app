@@ -14,12 +14,12 @@ public enum PlanSource: String, Codable, Sendable {
 
 /// The prescribed scheme — how the work is structured + timed. Strength is the
 /// only scheme (presets + custom builder, B-2): items carry target sets/reps.
-public enum WorkoutScheme: Equatable, Sendable, Codable {
+public enum WorkoutScheme: Equatable, Hashable, Sendable, Codable {
     case strength
 }
 
 /// One prescribed movement within a plan.
-public struct PlanItem: Equatable, Sendable, Codable, Identifiable {
+public struct PlanItem: Equatable, Hashable, Sendable, Codable, Identifiable {
     public let id: Int
     public let movement: String
     public let reps: Int?
@@ -47,7 +47,7 @@ public struct PlanItem: Equatable, Sendable, Codable, Identifiable {
 }
 
 /// A concrete, prescribed workout (a strength preset or a user's custom build).
-public struct WorkoutPlan: Equatable, Sendable, Identifiable {
+public struct WorkoutPlan: Equatable, Hashable, Sendable, Identifiable {
     public let id: String         // stable key: "fran", "preset-5x5"
     public let name: String
     public let source: PlanSource

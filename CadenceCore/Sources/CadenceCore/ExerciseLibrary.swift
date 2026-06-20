@@ -53,7 +53,7 @@ public enum ExerciseLibrary {
 
     /// Built-in catalog seeded on first launch and version-upgraded thereafter.
     /// Bump `seedVersion` when entries are added so existing stores backfill.
-    public static let seedVersion = 5
+    public static let seedVersion = 6
 
     /// Our hand-curated catalog — the authoritative facet source (our muscle ids,
     /// movement-split categories, the "popular" shortlist all reference these).
@@ -66,13 +66,72 @@ public enum ExerciseLibrary {
     /// win on a name collision — we trust our `MuscleCatalog` mapping over their
     /// coarser strings.
     public static let starter: [ExerciseTemplate] = {
+        let importedByName = Dictionary(
+            ImportedExerciseLibrary.templates.map { ($0.name.lowercased(), $0) },
+            uniquingKeysWith: { a, _ in a }
+        )
+        let importedByID = Dictionary(
+            ImportedExerciseLibrary.templates.compactMap { t -> (String, ExerciseTemplate)? in
+                guard let id = t.imageName else { return nil }
+                return (id, t)
+            },
+            uniquingKeysWith: { a, _ in a }
+        )
+        var merged = curated.map { t -> ExerciseTemplate in
+            var imp = importedByName[t.name.lowercased()]
+            if imp == nil, let aliasID = curatedAlias[t.name.lowercased()] {
+                imp = importedByID[aliasID]
+            }
+            guard let imp else { return t }
+            var enriched = t
+            if enriched.instructions.isEmpty { enriched.instructions = imp.instructions }
+            if enriched.imageName == nil { enriched.imageName = imp.imageName }
+            if enriched.level == nil { enriched.level = imp.level }
+            return enriched
+        }
         var seen = Set(curated.map { $0.name.lowercased() })
-        var merged = curated
         for t in ImportedExerciseLibrary.templates where seen.insert(t.name.lowercased()).inserted {
             merged.append(t)
         }
         return merged
     }()
+
+    static let curatedAlias: [String: String] = [
+        "bench press": "Barbell_Bench_Press_-_Medium_Grip",
+        "incline bench press": "Barbell_Incline_Bench_Press_-_Medium_Grip",
+        "back squat": "Barbell_Squat",
+        "deadlift": "Barbell_Deadlift",
+        "overhead press": "Standing_Military_Press",
+        "barbell row": "Bent_Over_Barbell_Row",
+        "pull-up": "Pullups",
+        "dip": "Dips_-_Chest_Version",
+        "push-up": "Pushups",
+        "lat pulldown": "Wide-Grip_Lat_Pulldown",
+        "cable fly": "Flat_Bench_Cable_Flyes",
+        "front squat": "Front_Squat_Clean_Grip",
+        "standing calf raise": "Standing_Calf_Raises",
+        "dumbbell lateral raise": "Side_Lateral_Raise",
+        "seated cable row": "Seated_Cable_Rows",
+        "seated dumbbell shoulder press": "Seated_Dumbbell_Press",
+        "arnold press": "Arnold_Dumbbell_Press",
+        "cable lateral raise": "Cable_Seated_Lateral_Raise",
+        "back extension": "Hyperextensions_Back_Extensions",
+        "pike push-up": "Push-Ups_With_Feet_Elevated",
+        "close-grip lat pulldown": "Close-Grip_Front_Lat_Pulldown",
+        "dumbbell fly": "Dumbbell_Flyes",
+        "incline dumbbell fly": "Incline_Dumbbell_Flyes",
+        "t-bar row": "T-Bar_Row_with_Handle",
+        "hammer curl": "Hammer_Curls",
+        "lying leg curl": "Lying_Leg_Curls",
+        "leg extension": "Leg_Extensions",
+        "incline dumbbell bench press": "Incline_Dumbbell_Press",
+        "rack pull": "Rack_Pulls",
+        "machine chest press": "Leverage_Chest_Press",
+        "smith machine bench press": "Smith_Machine_Bench_Press",
+        "air squat": "Bodyweight_Squat",
+        "bulgarian split squat": "Split_Squats",
+        "glute bridge": "Pelvic_Tilt_Into_Bridge",
+    ]
 
     // MARK: Chest
     private static let chest: [ExerciseTemplate] = [

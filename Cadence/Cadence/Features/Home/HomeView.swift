@@ -112,7 +112,7 @@ struct HomeView: View {
                 case .strength(let s):
                     WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
                 case .cardio(let c):
-                    WorkoutSummaryView(data: .from(cardio: c))
+                    CardioDetailView(workout: c)
                 }
             }
             .navigationDestination(for: HomeRoute.self) { route in

@@ -109,25 +109,16 @@ struct WeightsStartView: View {
             }
 
             Section("Start from Library") {
-                ForEach(StrengthPresets.all) { plan in
-                    NavigationLink {
-                        if plan.flexibleScheme {
-                            RepSchemePicker(plan: plan, onEditorStart: onEditorStart)
-                        } else {
-                            WorkoutPlanEditor(
-                                plan: .from(plan: plan, ladder: nil, unit: settings.unit),
-                                onStart: onEditorStart)
-                        }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(plan.name).font(.headline)
-                            Text(plan.movementNames.joined(separator: " · "))
-                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                        .padding(.vertical, 2)
-                    }
-                    .accessibilityIdentifier("weights.library.\(plan.id)")
-                }
+                libraryGroupSection("5\u{00d7}5 Program", plans: RoutineGroup.fiveByFive)
+                libraryGroupSection("5/3/1", plans: RoutineGroup.fiveThreeOne)
+                libraryGroupSection("DUP", plans: RoutineGroup.dup)
+                libraryGroupSection("Linear Periodization", plans: RoutineGroup.linearPeriodization)
+                libraryGroupSection("German Volume Training", plans: RoutineGroup.gvt)
+                libraryGroupSection("Cluster Set Training", plans: RoutineGroup.clusterSets)
+                libraryGroupSection("PPL (6-Day)", plans: RoutineGroup.ppl)
+                libraryGroupSection("Split Templates", plans: RoutineGroup.splits)
+                libraryGroupSection("Calisthenics", plans: RoutineGroup.calisthenics)
+                libraryGroupSection("Olympic Lifting", plans: RoutineGroup.olympic)
             }
 
             Section {
@@ -141,6 +132,48 @@ struct WeightsStartView: View {
         .navigationTitle("Strength")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private func libraryRow(_ plan: WorkoutPlan) -> some View {
+        NavigationLink {
+            if plan.flexibleScheme {
+                RepSchemePicker(plan: plan, onEditorStart: onEditorStart)
+            } else {
+                WorkoutPlanEditor(
+                    plan: .from(plan: plan, ladder: nil, unit: settings.unit),
+                    onStart: onEditorStart)
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(plan.name).font(.headline)
+                Text(plan.movementNames.joined(separator: " · "))
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            .padding(.vertical, 2)
+        }
+        .accessibilityIdentifier("weights.library.\(plan.id)")
+    }
+
+    private func libraryGroupSection(_ title: String, plans: [WorkoutPlan]) -> some View {
+        Section(title) {
+            ForEach(plans) { libraryRow($0) }
+        }
+    }
+}
+
+private enum RoutineGroup {
+    static let fiveByFive = StrengthPresets.all.filter { $0.id.hasPrefix("preset-5x5") }
+    static let fiveThreeOne = StrengthPresets.all.filter { $0.id.hasPrefix("preset-531") }
+    static let dup = StrengthPresets.all.filter { $0.id.hasPrefix("preset-dup") }
+    static let linearPeriodization = StrengthPresets.all.filter { $0.id.hasPrefix("preset-lp") }
+    static let gvt = StrengthPresets.all.filter { $0.id.hasPrefix("preset-gvt") }
+    static let clusterSets = StrengthPresets.all.filter { $0.id == "preset-cluster" }
+    static let ppl = StrengthPresets.all.filter { $0.id.hasPrefix("preset-ppl") }
+    static let splits = StrengthPresets.all.filter {
+        ["preset-push", "preset-pull", "preset-legs", "preset-upper",
+         "preset-lower", "preset-chest", "preset-back-bi"].contains($0.id)
+    }
+    static let calisthenics = StrengthPresets.all.filter { $0.id.hasPrefix("preset-cali") }
+    static let olympic = StrengthPresets.all.filter { $0.id.hasPrefix("preset-oly") }
 }
 
 struct PlanPreviewView: View {

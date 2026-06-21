@@ -2,14 +2,20 @@ import SwiftUI
 import Charts
 import MapKit
 import CadenceCore
+import SwiftData
 
 /// Cardio workout detail (FR-5.3): summary, HR overlay, and route map.
 struct CardioDetailView: View {
-    let workout: CardioWorkout
+    @Bindable var workout: CardioWorkout
+    @Environment(\.modelContext) private var context
+    @State private var datePickerPresented = false
+    @State private var titleEditorPresented = false
+    @State private var editedTitle = ""
 
     var body: some View {
         List {
             Section {
+                LabeledContent("Date", value: workout.start.formatted(date: .abbreviated, time: .shortened))
                 LabeledContent("Duration", value: Format.duration(workout.duration))
                 if let laps = workout.laps {
                     LabeledContent("Laps", value: workout.targetLaps.map { "\(laps)/\($0)" } ?? "\(laps)")
@@ -62,6 +68,33 @@ struct CardioDetailView: View {
         }
         .navigationTitle(workout.typeValue.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { datePickerPresented = true } label: {
+                    Image(systemName: "calendar")
+                }
+                .accessibilityLabel("Edit workout date")
+                .accessibilityIdentifier("cardioDetail.editDate")
+            }
+        }
+        .sheet(isPresented: $datePickerPresented) {
+            NavigationStack {
+                DatePicker("Workout date", selection: Binding(
+                    get: { workout.start },
+                    set: { workout.start = $0; try? context.save() }
+                ))
+                .datePickerStyle(.graphical)
+                .padding()
+                .navigationTitle("Edit Date")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { datePickerPresented = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
     }
 
     /// Seconds-per-km for each completed kilometer, from the route samples.

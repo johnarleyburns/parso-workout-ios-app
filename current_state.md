@@ -1,120 +1,33 @@
 # Current State — Cadence field-testing redesign
 
-Live handoff/progress tracker. Read this first, then
-`plans/field-testing/2026-06-11/round4-plan.md`.
+Live handoff/progress tracker.
 
-_Last updated: 2026-06-18 — Home strength-first action spine shipped on branch
-`feat/home-strength-first` (off `main`): hero "Start Workout" repointed from
-the all-types WorkoutTypePicker to WeightsStartView (strength is the default);
-new secondary "Start Cardio" button (`home.startCardio`) opens the cardio-only
-picker; stat tiles (steps + cardio-min) no longer quick-start cardio. Orphaned
-all-types picker (`typePickerPresented`) + steps Run/Walk dialog
-(`stepsQuickStart`) removed. 13 UI test call sites updated; 3 new test
-assertions (hero→strength, cardio→picker, picker-no-weights). README.md
-reconciled: Cladiron as user-visible name, iPhone-first v1 framing, strength
-coach as lead. Prior:_
-on #28): tappable Home tiles (steps→Run/Walk, cardio-min→cardio picker, volume→
-strength, body-parts→fill-the-gaps), optional cardio distance goals (5K/10K, live
-progress + saved), plyometrics category, expanded catalog + body-part index +
-gap-filling suggestions, and a redesigned exercise picker (popular-first + body-part
-filter chips + muscle subtitles + external EXRX.NET links). CadenceCore 160/160; UI
-FR1/2/3/8/13/15 all green. Prior:_
-_Manual strength + CrossFit logging shipped as PR #28
-(stacked on feedback-batch-7 #27): completes the deferred half of "Log Workout"
-(cardio-only → now strength/CrossFit too). Reuses `SessionView` in `isManualLog`
-mode; CadenceCore 151/151; UI FR1/FR8/FR13 16/16 (incl. strength/custom-CF/Fran-
-benchmark log tests). Prior: Round 4 Part A COMPLETE — 4A-1 (#14)…4A-4 (#17) MERGED._
+_Last updated: 2026-06-21 — Home redesign + onboarding implemented on branch
+`feat/home-redesign-onboarding` (off `main`): Coach card gains its own green Start
+button; 5 full-width pill buttons collapsed into a compact quick-actions row; the
+4 stat tiles replaced by a calm "This week" card; dead `bodyPartsPresented` sheet
+and `BodyPartQuickStartView` trigger removed. Plus a 4-screen onboarding flow
+(privacy → goal → experience → units+Health) that captures what the Coach engine
+needs in ~20 s. No engine/data-model changes.
 
 ## Repo / branch
 - Repo: `/Users/arley/github/parso-workout-ios-app` (this is the user's working copy).
-- **`main`** = Phases 1–6 + round 2/3 Home-dashboard rebuild + intervals + round-4
-  A7 sounds, all merged. The app on `main` builds + runs clean.
-- **UI suite: 27/27 green; CadenceCore: 95/95 green** (verified 2026-06-11 on a
-  freshly-restarted iPhone 16 sim, non-parallel).
-- **Next branch to cut: `feat/ft4a-pause-summary`** off `main` for Round 4 Part A.
+- **`main`** = All phases + round 2/3/4 + feedback batches + home-strength-first + home-redesign-onboarding, all merged. The app on `main` builds + runs clean.
+- **CadenceCore: 243/243 green; iOS build: green** (verified 2026-06-21).
+- **Next branch:** none currently active (just shipped `feat/home-redesign-onboarding`).
 
-## What's DONE on this branch (uncommitted, builds green)
-- **Pre-workout countdown** (`PreWorkoutCountdownView`, default 30s, Skip/Cancel;
-  setting `settings.preWorkoutCountdown`; uiTest defaults to 0 unless `-preCountdown N`).
-- **Session screen**: "Use Previous Workout" (copies a full past workout —
-  `WorkoutRepository.copyWorkout`); Add Exercise moved to the bottom.
-- **Home dashboard rebuild** (`HomeView`): simple step count + workouts-this-week,
-  Start Workout hero (gradient), inline 7-day trend, inline Recent cardio + Recent
-  workouts with "See all" links (`home.stats`/`home.train`/`home.cardio`,
-  `home.cardioRow.*`, `home.sessionRow`). Step RING removed; 7-day chart also added
-  to Stats (`TrendsView`) which gained a `stats.cardio` link.
-- **Intervals**: 4 new science-backed protocols in core (`gibala`, `sit`, `rehit`,
-  `tenTwentyThirty`) + factories tested; `IntervalSetupView` now SELECT-then-START
-  (`interval.start`, no auto-launch); `IntervalView` shows the protocol name
-  persistently (`interval.planName`).
-- **Boxing/interval sounds** (round-4 A7): bundled `Cadence/Cadence/Sounds/
-  opening-closing-bell.mp3` (round start/end) + `warning-bell.mp3` (fires once at
-  30s left of a work phase); `IntervalCues` plays them via `AVAudioPlayer` + haptics.
-- **WorkoutTypePicker**: visual `WorkoutHero` cards (type-keyed gradients + glyph,
-  optional `hero-<type>` image asset slot).
-- `CadenceCore`: **95 tests green** (incl. new interval + copyWorkout tests).
-- iOS **build: green**.
-
-## DONE — round-2/3 UI suite is green and merged
-**Two root causes fixed (was 18/27 red → 0 red):**
-1. **Plain-button + `Spacer()` activation point (14 of the failures).** The Home
-   "See all" headers/rows were `.buttonStyle(.plain)` wrapping `HStack { …; Spacer();
-   … }`. XCUITest puts a button's activation point at the frame CENTRE → it landed
-   on the empty `Spacer()` (non-interactive) → tap rejected ("Failed to compute hit
-   point … Activation point invalid") → no navigation. **Fix:**
-   `.contentShape(Rectangle())` on `sectionHeader`, `home.cardioRow`,
-   `home.sessionRow`, `home.resume`. (Also converted HomeView to a single
-   `NavigationPath` — fixed a latent mixed-`navigationDestination` bug too.)
-2. **TrendsView lazy-List below the fold (1 failure).** The new 7-day activity chart
-   was added at the TOP of TrendsView, pushing the "Exercises" section below the
-   fold. `FR5TrendsUITests.testExerciseTrendAndPRs` waited for `trends.exercise.Bench
-   Press` to *exist* without scrolling — off-screen lazy-List rows aren't in the AX
-   tree. **Fix:** test now uses `scrollToAndTapButton(...)` to bring the row in.
-- The other 3 originally-red tests (FR4 `testSaveStrengthToHealth` keyboard focus,
-  FR6 `testImportGmailDraft`, FR6 `testPolishSettingsPresentAndPersist` toggle tap)
-  were **degraded-sim flakiness** — they pass on a freshly-restarted sim. Watch for
-  Mach error -308 "server died"; restart CoreSimulator and re-run.
-
-Merged to `main` via fast-forward (established pattern). Next: Round 4 Part A.
-
-## NEXT — Round 4 Part A (minus watch), build-ready plan in `round4a-plan.md`
-**THE PLAN TO EXECUTE:** `plans/field-testing/2026-06-11/round4a-plan.md` — it has
-the data-model deltas, cross-cutting decisions, and a 4-phase rollout with unit +
-integration + UI tests per phase. Scope confirmed by the user 2026-06-11:
-
-**In scope (build these, in order — one branch+PR each, stacked):**
-- **4A-1 ✅ MERGED (PR #14)** CadenceCore `WorkoutSummaryData` +
-  `WorkoutHistoryEntry`/`unifiedHistory` (+ 9 unit tests). `swift test` 104/104.
-- **4A-2 ✅ MERGED (PR #15)** Universal Pause/Resume + End incl. countdown (A1) + End
-  "Are you sure?" (A2) via reusable `WorkoutControlBar`. `swift test` 104/104; UI 29/29.
-  `Features/Shared/WorkoutControlBar.swift` (owns confirm dialog, `idPrefix` per
-  screen, `workout.endConfirm`/`workout.endCancel`);
-  `ActiveWorkoutModel.pause/resume/isPaused`; SessionView End→bar (`workout.*`) +
-  idle watchdog freezes while paused; outdoor/record/interval on the bar (keep
-  `outdoor.*`/`record.*`/`interval.*` ids); countdown `countdown.pause`. FR2 end
-  flows tap `workout.endConfirm`. `FR7LifecycleUITests`.
-- **4A-3 ✅ MERGED (PR #16)** Always-show `WorkoutSummaryView` after End, all types
-  (A3). `swift test` 104/104; UI 31/31. `Features/Workout/WorkoutSummaryView.swift`
-  (`summary.title/duration/metric.*/exercise.*/hrChart/map/done/saveHealth/edit`).
-  Cardio/interval swap their live view for the summary inside the same cover after
-  save; strength presents it as a cover over SessionView, Done pops home.
-- **4A-4 ✅ MERGED (PR #17)** Unified strength+cardio history + row→summary (A4, A5).
-  `swift test` 104/104; UI 33/33. New `Features/History/HistoryView.swift`
-  (`train.newWorkout` + `session.row` + `history.cardioRow.<type>`; rows push
-  `HistorySummaryRoute`); `HomeRoute.history` → HistoryView; Home recent rows +
-  history rows open the summary (`WorkoutSummaryView` gained pushed mode +
-  `summary.edit` → editor). `TrainView` retired. `-seed historyMixed`. New FR7:
-  `testUnifiedHistoryShowsCardioAndStrength`, `testHistoryRowOpensSummary`.
-
-**➡️ Round 4 Part A is COMPLETE.** All in-scope items (A1–A5, A7) shipped. The only
-remaining Round-4 work is the explicitly DEFERRED items below.
-
-**DEFERRED (do NOT build now):**
-- **A6 Apple-Watch HR backfill + ALL watch integration** — later.
-- **Part B CrossFit** (WorkoutPlan model, 15 benchmark "Girls", crossfit type,
-  movements, WOD-of-the-day card) — future. Design stays in `round4-plan.md`.
-
-A7 sounds = already done & merged.
+## What shipped on `feat/home-redesign-onboarding` (this branch → main)
+- **Home redesign:** Coach card gains green "Start workout" button (folded from standalone pill).
+  5 full-width pills collapsed into a compact `quickActionsRow` (Strength/Cardio/Log/Programs).
+  Stat tiles replaced by a calm `thisWeekCard` with 4 metrics + missing body parts.
+  Dead `bodyPartsPresented` @State + `.sheet` removed.
+- **Onboarding:** 4-screen flow (Welcome/Privacy → Goal → Experience → Units+Health) presented
+  via `fullScreenCover` in `RootTabView`. `AppSettings.hasCompletedOnboarding` persists
+  completion. `-showOnboarding` launch arg overrides `-uiTest` skip.
+- **Tests:** 10 new `OnboardingUITests`, 6 new home-redesign tests in `P3CoachHomeUITests`,
+  2 removed tile-tap tests in `FR15Batch8UITests` replaced with `thisWeekCard` test.
+- **CadenceCore: 243/243 green; iOS build + test-build: green.**
+- No engine/data-model changes.
 
 ## How to work here (methodology — also in CLAUDE.md)
 - Plan to disk first for big asks (`plans/field-testing/<date>/`); implement

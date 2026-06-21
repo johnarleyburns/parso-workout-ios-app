@@ -10,6 +10,7 @@ struct CoachCardView: View {
     let recommendation: Recommendation
     var insightCount: Int
     var unit: MeasurementUnitPreference
+    var onStart: () -> Void
     var onSeeAll: () -> Void
 
     var body: some View {
@@ -31,6 +32,18 @@ struct CoachCardView: View {
             .foregroundStyle(.secondary)
 
             RecommendationContentView(recommendation: recommendation, unit: unit, headline: true)
+
+            Button { Haptics.selection(); onStart() } label: {
+                Label("Start workout", systemImage: "play.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 13)
+                    .foregroundStyle(.white)
+                    .background(.green, in: RoundedRectangle(cornerRadius: 13))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.coachStart")
+            .accessibilityLabel("Start the coach's workout")
 
             if insightCount > 0 {
                 Button { Haptics.selection(); onSeeAll() } label: {

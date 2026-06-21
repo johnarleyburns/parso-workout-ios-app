@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootTabView: View {
     enum Tab: Hashable { case workout, tests, progress }
+    @Environment(AppSettings.self) private var settings
     @State private var selection: Tab = .workout
 
     var body: some View {
@@ -20,6 +21,12 @@ struct RootTabView: View {
                 .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
                 .tag(Tab.progress)
                 .accessibilityIdentifier("tab.progress")
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { !settings.hasCompletedOnboarding },
+            set: { presented in if !presented { settings.hasCompletedOnboarding = true } }
+        )) {
+            OnboardingView()
         }
     }
 }

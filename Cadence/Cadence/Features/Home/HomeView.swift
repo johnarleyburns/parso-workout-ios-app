@@ -41,7 +41,6 @@ struct HomeView: View {
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
     @State private var cardioPickerPresented = false  // cardio-min tile → cardio-only picker
     @State private var weightsStartPresented = false  // volume tile → strength start
-    @State private var bodyPartsPresented = false     // body-parts tile → fill-the-gaps
     @State private var cardioGoalFor: CardioType?     // optional distance goal before run/walk/cycle
     @State private var outdoorGoalMeters: Double?     // goal handed to the outdoor recorder
 
@@ -79,19 +78,16 @@ struct HomeView: View {
         return ZStack {
         NavigationStack(path: $path) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 20) {
                     if let s = active.strengthSession { resumeCard(s) }
                     CoachCardView(recommendation: coachRecommendation,
                                   insightCount: coachInsights.count,
                                   unit: settings.unit,
+                                  onStart: { launchPrescription(coachRecommendation) },
                                   onSeeAll: { path.append(HomeRoute.coach) })
-                    coachStartButton
-                    startButton
-                    cardioButton
-                    logButton
-                    planningButton
+                    quickActionsRow
+                    thisWeekCard
                     favoritesSection
-                    thisWeekSection
                     recentWorkoutsSection
                 }
                 .padding()
@@ -152,13 +148,6 @@ struct HomeView: View {
                     WeightsStartView(
                         onEditorStart: { plan in weightsStartPresented = false; handleEditorStart(plan) },
                         recommendation: coachRecommendation)
-                }
-            }
-            // Body-parts tile (batch 8) → fill-the-gaps quick start.
-            .sheet(isPresented: $bodyPartsPresented) {
-                BodyPartQuickStartView(missing: bodyPartsThisWeek.missing) { session in
-                    bodyPartsPresented = false
-                    active.startStrength(session); path.append(session)
                 }
             }
             // Optional distance goal before a run/walk/cycle (batch 8).
@@ -272,88 +261,6 @@ struct HomeView: View {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
     }
 
-    // MARK: Top stats
-
-    private var statRow: some View {
-        let totalWorkouts = workoutsThisWeek
-        let cardio = cardioMinutesThisWeek
-        let cardioGoal = max(1, settings.weeklyCardioMinutesGoal)
-        return HStack(spacing: 14) {
-            statTile("\(totalWorkouts)", "workouts this week",
-                     id: "today.steps")
-            statTile("\(cardio) / \(cardioGoal)", "cardio min this week",
-                     id: "home.cardioMinutes",
-                     progress: Double(cardio) / Double(cardioGoal), progressID: "home.cardioMinutes.progress")
-        }
-    }
-
-    /// "This week" insights — the batch-8 stat tiles, demoted below the Coach card
-    /// and the action spine (strength-pivot P3, §05). Their tap-to-start behavior
-    /// and a11y ids are unchanged.
-    private var thisWeekSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("This week").font(.headline)
-                .accessibilityIdentifier("home.thisWeek")
-            statRow
-            coverageRow
-        }
-    }
-
-    /// Volume + body-part coverage for the trailing week (feedback batch 3).
-    private var coverageRow: some View {
-        let coverage = bodyPartsThisWeek
-        return HStack(spacing: 14) {
-            statTile(Format.weight(volumeThisWeekKg, unit: settings.unit, decimals: 0),
-                     "volume this week", id: "home.volume",
-                     tileID: "home.volumeTile", onTap: { weightsStartPresented = true })
-            statTile("\(coverage.hit.count)/\(BodyPart.allCases.count)", "body parts",
-                     id: "home.bodyParts",
-                     caption: coverage.missing.isEmpty
-                        ? "All parts hit 💪"
-                        : "Missing: " + coverage.missing.map(\.displayName).joined(separator: ", "),
-                     captionID: "home.bodyParts.missing",
-                     tileID: "home.bodyPartsTile", onTap: { bodyPartsPresented = true })
-        }
-    }
-
-    private func statTile(_ value: String, _ label: String, id: String,
-                          caption: String? = nil, captionID: String? = nil,
-                          progress: Double? = nil, progressID: String? = nil,
-                          tileID: String? = nil, onTap: (() -> Void)? = nil) -> some View {
-        let content = VStack(spacing: 4) {
-            Text(value).font(.title.bold()).monospacedDigit().accessibilityIdentifier(id)
-                .minimumScaleFactor(0.6).lineLimit(1)
-            Text(label).font(.caption).foregroundStyle(.secondary)
-            if let progress {
-                ProgressView(value: min(max(progress, 0), 1))
-                    .tint(.green)
-                    .accessibilityIdentifier(progressID ?? "")
-                    .padding(.top, 2).padding(.horizontal, 4)
-            }
-            if let caption {
-                Text(caption).font(.caption2).foregroundStyle(.tertiary)
-                    .multilineTextAlignment(.center)
-                    .accessibilityIdentifier(captionID ?? "")
-            }
-        }
-        .frame(maxWidth: .infinity).padding(.vertical, 16).padding(.horizontal, 6)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
-        .contentShape(Rectangle())
-
-        return Group {
-            if let onTap {
-                // A tappable tile is a fast path to start the workout it summarizes
-                // (feedback batch 8). Plain style keeps the card's look.
-                Button { Haptics.selection(); onTap() } label: { content }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier(tileID ?? "")
-                    .accessibilityAddTraits(.isButton)
-            } else {
-                content
-            }
-        }
-    }
-
     /// Pulls any new Watch/Health-recorded cardio into the local store (FR-2.1).
     /// Formerly auto-run by the now-removed Cardio screen (feedback batch 3).
     private func syncCardioFromHealth() async {
@@ -362,95 +269,83 @@ struct HomeView: View {
         model.lastHealthSync = Date()
     }
 
-    // Coach "Start Coach's Workout" button — sits between the Coach card and
-    // "Start Workout".  Launches the prescribed session through the HR gate.
-    private var coachStartButton: some View {
-        Button { Haptics.selection(); launchPrescription(coachRecommendation) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "checklist")
-                Text("Start Coach's Workout").font(.headline)
-                Spacer()
-                Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
+    /// The four secondary entry points, demoted from full-width pills to one
+    /// compact row (the primary action now lives inside the Coach card).
+    private var quickActionsRow: some View {
+        HStack(spacing: 10) {
+            quickAction("Strength", "dumbbell.fill", id: "home.startWorkout") {
+                weightsStartPresented = true
             }
-            .padding(.vertical, 14).padding(.horizontal, 18)
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(.white)
-            .background(.green, in: RoundedRectangle(cornerRadius: 16))
+            quickAction("Cardio", "figure.run", id: "home.startCardio") {
+                cardioPickerPresented = true
+            }
+            quickAction("Log", "square.and.pencil", id: "home.logWorkout") {
+                logPickerPresented = true
+            }
+            quickAction("Programs", "books.vertical", id: "home.planning") {
+                path.append(HomeRoute.planning)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.coachStart")
-        .accessibilityLabel("Start Coach's Workout")
     }
 
-    private var startButton: some View {
-        Button { Haptics.selection(); weightsStartPresented = true } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "dumbbell.fill").font(.headline)
-                Text("Start Strength Workout").font(.headline)
-                Spacer()
-                Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
+    private func quickAction(_ title: String, _ symbol: String, id: String,
+                             action: @escaping () -> Void) -> some View {
+        Button { Haptics.selection(); action() } label: {
+            VStack(spacing: 6) {
+                Image(systemName: symbol).font(.title3)
+                Text(title).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
             }
-            .padding(.vertical, 14).padding(.horizontal, 18)
             .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
             .foregroundStyle(.tint)
-            .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("home.startWorkout").accessibilityLabel("Start a strength workout")
+        .accessibilityIdentifier(id)
     }
 
-    private var cardioButton: some View {
-        Button { Haptics.selection(); cardioPickerPresented = true } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "figure.run").font(.headline)
-                Text("Start Cardio").font(.headline)
+    /// "This week" at a glance — one calm card, not four launcher tiles.
+    private var thisWeekCard: some View {
+        let coverage = bodyPartsThisWeek
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("This week").font(.headline)
                 Spacer()
-                Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
+                Button { Haptics.selection(); path.append(HomeRoute.coach) } label: {
+                    HStack(spacing: 3) {
+                        Text("Details").font(.caption)
+                        Image(systemName: "chevron.right").font(.caption2)
+                    }.foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
             }
-            .padding(.vertical, 14).padding(.horizontal, 18)
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(.tint)
-            .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+            HStack(spacing: 0) {
+                weekMetric("\(workoutsThisWeek)", "workouts", id: "home.workoutsCount")
+                weekMetric("\(cardioMinutesThisWeek)", "cardio min", id: "home.cardioMinutes")
+                weekMetric(Format.weight(volumeThisWeekKg, unit: settings.unit, decimals: 0),
+                           "volume", id: "home.volume")
+                weekMetric("\(coverage.hit.count)/\(BodyPart.allCases.count)",
+                           "body parts", id: "home.bodyParts")
+            }
+            if !coverage.missing.isEmpty {
+                Text("Missing: " + coverage.missing.map(\.displayName).joined(separator: ", "))
+                    .font(.caption2).foregroundStyle(.tertiary)
+                    .accessibilityIdentifier("home.bodyParts.missing")
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.startCardio")
-        .accessibilityLabel("Start a cardio workout")
+        .padding()
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityIdentifier("home.thisWeek")
     }
 
-    /// Log a past workout manually (feedback batch 6 item 3) — it lands in history
-    /// just like a live one, flagged "Logged".
-    private var logButton: some View {
-        Button { Haptics.selection(); logPickerPresented = true } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "square.and.pencil").font(.headline)
-                Text("Log Workout").font(.headline)
-                Spacer()
-                Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
-            }
-            .padding(.vertical, 14).padding(.horizontal, 18)
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(.tint)
-            .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+    private func weekMetric(_ value: String, _ label: String, id: String) -> some View {
+        VStack(spacing: 3) {
+            Text(value).font(.title3.bold()).monospacedDigit()
+                .minimumScaleFactor(0.6).lineLimit(1)
+                .accessibilityIdentifier(id)
+            Text(label).font(.caption2).foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.logWorkout").accessibilityLabel("Log a past workout")
-    }
-
-    private var planningButton: some View {
-        Button { Haptics.selection(); path.append(HomeRoute.planning) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "books.vertical").font(.headline)
-                Text("Programs & Routines").font(.headline)
-                Spacer()
-                Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
-            }
-            .padding(.vertical, 14).padding(.horizontal, 18)
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(.tint)
-            .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.planning").accessibilityLabel("Programs and routines")
+        .frame(maxWidth: .infinity)
     }
 
     private var homeFavoriteRoutines: [WorkoutPlan] {

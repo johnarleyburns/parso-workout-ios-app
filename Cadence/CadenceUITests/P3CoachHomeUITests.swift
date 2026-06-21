@@ -1,7 +1,8 @@
 import XCTest
 
 /// strength-pivot P3 — the bottom tab bar (Workout/Tests/Progress), the Coach card on
-/// Home with its cited "why / the science" expander, and the Coach settings.
+/// Home with its cited "why / the science" expander, the Coach settings, and the
+/// redesigned Home layout (quick-actions row, this-week card, Coach start button).
 final class P3CoachHomeUITests: CadenceUITestCase {
 
     func testTabBarHasThreeTabs() {
@@ -73,5 +74,56 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         }
         XCTAssertTrue(found, "Coach training-goal picker")
         XCTAssertTrue(app.buttons["settings.coach.experience"].exists, "Coach experience picker")
+    }
+
+    // MARK: Home redesign — quick-actions row, this-week card, Coach start button
+
+    func testCoachCardHasStartButton() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
+        // The green Start button now lives inside the Coach card.
+        XCTAssertTrue(app.buttons["home.coachStart"].exists,
+                      "Coach card should contain the Start button")
+    }
+
+    func testQuickActionsRowHasAllFourChips() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Strength quick-action chip")
+        XCTAssertTrue(app.buttons["home.startCardio"].exists, "Cardio quick-action chip")
+        XCTAssertTrue(app.buttons["home.logWorkout"].exists, "Log quick-action chip")
+        XCTAssertTrue(app.buttons["home.planning"].exists, "Programs quick-action chip")
+    }
+
+    func testQuickActionStrengthOpensWeightsStart() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"), "Strength chip")
+        XCTAssertTrue(app.buttons["weights.quickStart"].waitForExistence(timeout: 10),
+                      "should open the Strength start screen")
+    }
+
+    func testQuickActionCardioOpensPicker() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.scrollToHittableAndTap("home.startCardio"), "Cardio chip")
+        XCTAssertTrue(app.buttons["startType.run"].waitForExistence(timeout: 10),
+                      "cardio-only picker should open")
+    }
+
+    func testQuickActionLogOpensPicker() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.scrollToHittableAndTap("home.logWorkout"), "Log chip")
+        // The log picker offers both strength and cardio log options.
+        XCTAssertTrue(app.buttons["log.strength"].waitForExistence(timeout: 10)
+                      || app.buttons["log.cardio"].waitForExistence(timeout: 10),
+                      "log picker should open")
+    }
+
+    func testQuickActionProgramsNavigates() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.scrollToHittableAndTap("home.planning"), "Programs chip")
+        // Should navigate to the programs/routines planning surface.
+        XCTAssertTrue(app.staticTexts["planning.title"].waitForExistence(timeout: 10)
+                      || app.descendants(matching: .any)["planning.view"].waitForExistence(timeout: 10),
+                      "should navigate to Programs & Routines")
     }
 }

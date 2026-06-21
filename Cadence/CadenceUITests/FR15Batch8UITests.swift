@@ -1,8 +1,8 @@
 import XCTest
 
-/// Feedback batch 8 — quick-start shortcuts from the Home stat tiles, optional cardio
-/// distance goals, the body-parts "fill the gaps" quick start, and the redesigned
-/// exercise picker (popular shortlist + body-part filter chips + in-app detail).
+/// Feedback batch 8 — quick-start shortcuts from the Home quick-actions row and
+/// stat tiles, optional cardio distance goals, and the redesigned exercise picker
+/// (popular shortlist + body-part filter chips + in-app detail).
 final class FR15Batch8UITests: CadenceUITestCase {
 
     // Hero "Start Workout" → opens the Strength start screen directly.
@@ -32,22 +32,17 @@ final class FR15Batch8UITests: CadenceUITestCase {
         XCTAssertFalse(app.buttons["startType.weights"].exists, "Strength should be filtered out")
     }
 
-    // Volume tile → strength start (Quick Start available).
-    func testVolumeTileShowsStrengthStart() {
+    // "This week" card shows the four key metrics and missing body parts.
+    func testThisWeekCardShowsMetrics() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.scrollToHittableAndTap("home.volumeTile"), "volume tile")
-        XCTAssertTrue(app.buttons["weights.quickStart"].waitForExistence(timeout: 10),
-                      "strength Quick Start should be offered")
-    }
-
-    // Body-parts tile → the fill-the-gaps quick start (build from suggestions).
-    func testBodyPartsTileOpensFillTheGaps() {
-        let app = XCUIApplication.launched()
-        XCTAssertTrue(app.scrollToHittableAndTap("home.bodyPartsTile"), "body-parts tile")
-        XCTAssertTrue(app.staticTexts["bodyQuick.missing"].waitForExistence(timeout: 10),
-                      "the fill-the-gaps sheet should list the missing parts")
-        XCTAssertTrue(app.buttons["bodyQuick.buildStart"].waitForExistence(timeout: 5),
-                      "with no past workouts it should offer building from suggestions")
+        XCTAssertTrue(app.descendants(matching: .any)["home.thisWeek"].waitForExistence(timeout: 10),
+                      "This week card should exist")
+        XCTAssertTrue(app.descendants(matching: .any)["home.workoutsCount"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.cardioMinutes"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.volume"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.bodyParts"].exists)
+        // At cold start all body parts should be missing.
+        XCTAssertTrue(app.descendants(matching: .any)["home.bodyParts.missing"].exists)
     }
 
     // Exercise picker: popular-first with in-app detail (P2) + body-part filter chips.

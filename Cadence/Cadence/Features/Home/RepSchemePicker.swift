@@ -19,7 +19,9 @@ struct RepSchemePicker: View {
                 ForEach(presets, id: \.id) { preset in
                     NavigationLink {
                         WorkoutPlanEditor(
-                            plan: .from(plan: plan, ladder: preset.ladder, unit: settings.unit),
+                            plan: .from(plan: plan, ladder: preset.ladder, unit: settings.unit,
+                                       warmupMinutes: settings.warmupMinutes,
+                                       cooldownMinutes: settings.cooldownMinutes),
                             onStart: onEditorStart)
                     } label: {
                         Label(preset.title, systemImage: "list.number")
@@ -81,7 +83,9 @@ struct CustomRepEditor: View {
             Section {
                 NavigationLink {
                     WorkoutPlanEditor(
-                        plan: .from(plan: plan, ladder: reps, unit: settings.unit),
+                        plan: .from(plan: plan, ladder: reps, unit: settings.unit,
+                                   warmupMinutes: settings.warmupMinutes,
+                                   cooldownMinutes: settings.cooldownMinutes),
                         onStart: onEditorStart)
                 } label: {
                     Label("Preview \(reps.count) sets", systemImage: "chevron.right")

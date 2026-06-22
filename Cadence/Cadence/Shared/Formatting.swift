@@ -25,6 +25,11 @@ enum Format {
         return f.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
+    /// Compact previous-set reference, e.g. "60×8".
+    static func previousShort(_ kg: Double, reps: Int, unit: MeasurementUnitPreference) -> String {
+        "\(weightValue(kg, unit: unit))×\(reps)"
+    }
+
     static func setLine(_ set: SetEntry, unit: MeasurementUnitPreference) -> String {
         if set.usesBodyweight {
             let added = set.weight > 0 ? " + \(weightValue(set.weight, unit: unit)) \(unit.abbreviation)" : ""

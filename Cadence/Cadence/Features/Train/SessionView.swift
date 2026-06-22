@@ -57,13 +57,27 @@ struct SessionView: View {
     // every 5 s during the live session, piggybacking on the idle timer.
     @State private var hrSamples: [HRSamplePoint] = []
 
-    /// Owner first, then partners alphabetically.
-    private var roster: [Person] {
-        allPeople.filter(\.isMe) + allPeople.filter { !$0.isMe }
+    /// Active training partners for this session. When `activePartnerIDs` is
+    /// empty (backward compat), returns all known partners; otherwise scoped
+    /// to the per-session roster.
+    private var activePartnerPeople: [Person] {
+        guard !session.activePartnerIDs.isEmpty else { return allPeople.filter { !$0.isMe } }
+        let ids = Set(session.activePartnerIDs.compactMap(UUID.init(uuidString:)))
+        return allPeople.filter { !$0.isMe && ids.contains($0.id) }
     }
-    /// At least one training partner is in the roster — then owner sets are tagged
-    /// "Me" too, to disambiguate (feedback batch 3).
-    private var hasPartners: Bool { allPeople.contains { !$0.isMe } }
+    /// Owner first, then session-scoped partners alphabetically. When
+    /// `activePartnerIDs` is empty, falls back to all known partners.
+    private var roster: [Person] {
+        guard !session.activePartnerIDs.isEmpty else {
+            return allPeople.filter(\.isMe) + allPeople.filter { !$0.isMe }
+        }
+        return allPeople.filter(\.isMe) + activePartnerPeople.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+    /// At least one training partner is in the session roster.
+    private var hasPartners: Bool {
+        if session.activePartnerIDs.isEmpty { return allPeople.contains { !$0.isMe } }
+        return activePartnerPeople.contains { !$0.isMe }
+    }
     /// Whether the set editor should default to a bodyweight set for an exercise.
     private func isBodyweight(_ exercise: Exercise) -> Bool {
         exercise.equipmentValue == .bodyweight
@@ -182,6 +196,100 @@ struct SessionView: View {
     private func people(for id: UUID?) -> Person? {
         guard let id else { return nil }
         return allPeople.first { $0.id == id }
+    }
+
+    // MARK: Columnar set table (A0-A8)
+
+    private enum SetCol {
+        static let num: CGFloat = 26
+        static let prev: CGFloat = 50
+        static let reps: CGFloat = 46
+        static let check: CGFloat = 34
+        static let gap: CGFloat = 7
+    }
+
+    private var whoColumnWidth: CGFloat {
+        hasPartners ? 32 : SetCol.num
+    }
+
+    private var setColumnHeader: some View {
+        HStack(spacing: SetCol.gap) {
+            Text(hasPartners ? "WHO" : "Set")
+                .frame(width: whoColumnWidth, alignment: .leading)
+            Text("Prev")
+                .frame(width: SetCol.prev, alignment: .leading)
+            Text("Weight (\(settings.unit.abbreviation))")
+                .frame(maxWidth: .infinity, alignment: .center)
+            Text("Reps")
+                .frame(width: SetCol.reps, alignment: .center)
+            Color.clear.frame(width: SetCol.check)
+        }
+        .font(.caption2).textCase(.uppercase).foregroundStyle(.tertiary)
+        .padding(.horizontal, 2)
+    }
+
+    private func setIndexBadge(_ label: String, isWarmup: Bool) -> some View {
+        Group {
+            if isWarmup {
+                Text("W").font(.caption2.weight(.bold)).foregroundStyle(.orange)
+                    .frame(width: 22, height: 22).background(.orange.opacity(0.15), in: Circle())
+            } else {
+                Text(label).font(.subheadline.weight(.medium)).monospacedDigit()
+            }
+        }
+        .frame(width: SetCol.num, alignment: .leading)
+    }
+
+    private func personColor(_ p: Person?) -> Color {
+        guard let p, !p.isMe else { return .accentColor }
+        let palette: [Color] = [.purple, .teal, .pink, .indigo, .orange, .mint]
+        return palette[abs(p.id.hashValue) % palette.count]
+    }
+
+    private func performerChip(_ p: Person?) -> some View {
+        let label = (p?.isMe ?? true) ? "M" : String((p?.name ?? "?").prefix(1)).uppercased()
+        return Text(label)
+            .font(.caption2.weight(.semibold)).foregroundStyle(.white)
+            .frame(width: 24, height: 24)
+            .background(personColor(p), in: Circle())
+            .accessibilityIdentifier("set.performer.\((p?.isMe ?? true) ? "Me" : (p?.name ?? "?"))")
+    }
+
+    private func performerName(_ id: UUID?) -> String {
+        guard let id, let p = allPeople.first(where: { $0.id == id }) else { return "Me" }
+        return p.name.components(separatedBy: " ").first ?? p.name
+    }
+
+    /// Working-set number assignments (warm-ups → "").
+    private func workingNumbers(_ sets: [SetEntry]) -> [UUID: String] {
+        var result: [UUID: String] = [:]
+        var n = 1
+        for s in sets {
+            if s.isWarmup { result[s.id] = ""; continue }
+            result[s.id] = String(n); n += 1
+        }
+        return result
+    }
+
+    /// Next working-set number, with `extra` for pending rows.
+    private func workingNumber(for exercise: Exercise, extra: Int = 0) -> Int {
+        let sets = session.orderedSets.filter { $0.exercise?.id == exercise.id && !$0.isWarmup }
+        return sets.count + 1 + extra
+    }
+
+    /// Compact previous-set reference, e.g. "60×8".
+    private func previousReference(for exercise: Exercise, number: String) -> String {
+        guard let ref = previousValues(for: exercise, number: number) else { return "" }
+        return Format.previousShort(ref.weight, reps: ref.reps, unit: settings.unit)
+    }
+
+    /// Previous-set (weightKg, reps) for tap-to-prefill.
+    private func previousValues(for exercise: Exercise, number: String) -> (weight: Double, reps: Int)? {
+        guard let n = Int(number), n > 0 else { return nil }
+        let lastSets = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
+        guard n <= lastSets.count else { return nil }
+        let s = lastSets[n - 1]
+        return (s.weight, s.reps)
     }
 
     var body: some View {
@@ -329,7 +437,7 @@ struct SessionView: View {
         .fullScreenCover(isPresented: $coolingDown) {
             GuidedPhaseOverlay(
                 title: "Cool Down",
-                minutes: settings.cooldownMinutes,
+                minutes: session.cooldownSeconds > 0 ? Int(session.cooldownSeconds / 60) : settings.cooldownMinutes,
                 tint: .teal,
                 idPrefix: "cooldown",
                 soundsEnabled: settings.workoutSounds,
@@ -371,7 +479,16 @@ struct SessionView: View {
                 .accessibilityIdentifier("partner.nameField")
             Button("Add") {
                 let name = newPartnerName.trimmingCharacters(in: .whitespaces)
-                if !name.isEmpty { _ = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) }
+                if !name.isEmpty {
+                    if let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) {
+                        var ids = session.activePartnerIDs
+                        if !ids.contains(p.id.uuidString) {
+                            ids.append(p.id.uuidString)
+                            session.activePartnerIDs = ids
+                            try? context.save()
+                        }
+                    }
+                }
                 newPartnerName = ""
             }
             Button("Cancel", role: .cancel) { newPartnerName = "" }
@@ -494,15 +611,27 @@ struct SessionView: View {
 
     // MARK: Partner bar (field-testing §04)
 
+    // MARK: Partner bar (field-testing §04, Bug 4 fix)
+
     private var partnerBar: some View {
         HStack(spacing: 8) {
             Text("With:").font(.caption).foregroundStyle(.secondary)
             ForEach(roster) { p in
-                Text(p.isMe ? "Me" : p.name)
-                    .font(.caption.weight(.medium))
-                    .padding(.horizontal, 10).padding(.vertical, 4)
-                    .background(.tint.opacity(p.isMe ? 0.18 : 0.10), in: Capsule())
-                    .accessibilityIdentifier("partner.chip.\(p.isMe ? "Me" : p.name)")
+                performerChip(p)
+                    .contextMenu {
+                        if !p.isMe {
+                            Button(role: .destructive) {
+                                var ids = session.activePartnerIDs
+                                ids.removeAll { $0 == p.id.uuidString }
+                                session.activePartnerIDs = ids
+                                try? context.save()
+                            } label: { Label("Remove from session", systemImage: "person.slash") }
+                        }
+                    }
+                if !p.isMe {
+                    Text(p.name).font(.caption.weight(.medium))
+                        .padding(.horizontal, 6)
+                }
             }
             Button {
                 addPartnerPresented = true
@@ -554,7 +683,7 @@ struct SessionView: View {
                 Text("Planned — tap to log").font(.caption).foregroundStyle(.secondary)
             }
             if let ex = inlineExercise, ex.name == name {
-                inlineEditor(for: ex)
+                activeSetRow(for: ex)
             } else {
                 Button {
                     if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
@@ -572,68 +701,70 @@ struct SessionView: View {
 
     // MARK: Exercise card
 
+    // MARK: Exercise card (columnar A6)
+
     @ViewBuilder
     private func exerciseCard(_ exercise: Exercise) -> some View {
         let sets = session.orderedSets.filter { $0.exercise?.id == exercise.id }
-        // Pre-seed one row per planned set still to do (feedback batch 6 item 2):
-        // tap a pending row to log it with its prescribed reps already filled in.
         let pending = max(0, plannedSetCount(for: exercise.name) - sets.count)
-        VStack(alignment: .leading, spacing: 8) {
-            Text(exercise.name)
-                .font(.headline)
-                .accessibilityIdentifier("exerciseCard.\(exercise.name)")
-                .contextMenu {
-                    Button(role: .destructive) {
-                        exerciseToRemove = exercise
-                    } label: {
-                        Label("Remove Exercise", systemImage: "trash")
-                    }
-                }
+        let isActive = inlineExerciseID == exercise.id
+        let numbers = workingNumbers(sets)
 
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(exercise.name).font(.headline)
+                    .accessibilityIdentifier("exerciseCard.\(exercise.name)")
+                Spacer()
+                Menu {
+                    Button(role: .destructive) { exerciseToRemove = exercise } label: {
+                        Label("Remove exercise", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis").font(.headline)
+                        .foregroundStyle(.secondary).frame(width: 32, height: 32)
+                }
+                .accessibilityIdentifier("exercise.menu.\(exercise.name)")
+            }
             contextLine(for: exercise)
 
+            if !sets.isEmpty || isActive || pending > 0 { setColumnHeader }
+
             ForEach(Array(sets.enumerated()), id: \.element.id) { idx, set in
-                Button {
-                    openInlineEditor(for: exercise, editing: set)
-                } label: {
-                    setRow(set, index: idx, exercise: exercise)
+                completedSetRow(set, number: numbers[set.id] ?? "", exercise: exercise)
+                if idx < sets.count - 1 || isActive || pending > 0 {
+                    Divider()
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("set.row.\(exercise.name).\(idx)")
             }
+
+            if isActive { activeSetRow(for: exercise) }
 
             ForEach(0..<pending, id: \.self) { offset in
-                let rowIndex = sets.count + offset
-                Button {
-                    openInlineEditor(for: exercise, repsOverride: plannedReps(for: exercise, setIndex: rowIndex))
-                } label: {
-                    pendingRow(index: rowIndex, reps: plannedReps(for: exercise, setIndex: rowIndex))
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("set.pending.\(exercise.name).\(offset)")
+                let n = workingNumber(for: exercise, extra: offset)
+                pendingRow(for: exercise, number: String(n),
+                           reps: plannedReps(for: exercise, setIndex: sets.count + offset))
             }
 
-            if inlineExerciseID == exercise.id {
-                inlineEditor(for: exercise)
-            } else {
-                HStack {
-                    Button {
-                        openInlineEditor(for: exercise)
-                    } label: { Label("Add Set", systemImage: "plus") }
-                        .accessibilityIdentifier("set.add.\(exercise.name)")
+            if !isActive {
+                HStack(spacing: 10) {
+                    Button { openInlineEditor(for: exercise) } label: {
+                        Label("Add set", systemImage: "plus").frame(maxWidth: .infinity).lineLimit(1)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("set.add.\(exercise.name)")
+
                     if let last = sets.last {
-                        Spacer()
                         Button {
-                            addSet(to: exercise, weightKg: last.weight, reps: last.reps,
-                                   rpe: last.rpe, isWarmup: last.isWarmup,
-                                   usesBodyweight: last.usesBodyweight, note: nil)
-                        } label: { Label("Repeat last", systemImage: "arrow.clockwise") }
-                            .accessibilityIdentifier("set.repeat.\(exercise.name)")
+                            addSet(to: exercise, weightKg: last.weight, reps: last.reps, rpe: last.rpe,
+                                   isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight, note: nil)
+                        } label: {
+                            Label("Repeat", systemImage: "arrow.clockwise").frame(maxWidth: .infinity).lineLimit(1)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("set.repeat.\(exercise.name)")
                     }
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .font(.subheadline)
+                .controlSize(.regular)
+                .padding(.top, 2)
             }
         }
         .padding()
@@ -644,23 +775,26 @@ struct SessionView: View {
     /// A not-yet-logged planned set: its rung number, target reps, and a tap-to-log
     /// affordance (feedback batch 6 item 2).
     @ViewBuilder
-    private func pendingRow(index: Int, reps: Int) -> some View {
-        HStack {
-            Text("\(index + 1)")
-                .font(.caption).foregroundStyle(.secondary)
-                .frame(width: 18, alignment: .leading)
-            Text("\(reps) reps")
-                .foregroundStyle(.secondary)
-            Spacer()
-            Image(systemName: "plus.circle")
-                .foregroundStyle(.tint)
+    private func pendingRow(for exercise: Exercise, number: String, reps: Int) -> some View {
+        Button { openInlineEditor(for: exercise, repsOverride: reps) } label: {
+            HStack(spacing: SetCol.gap) {
+                if hasPartners {
+                    performerChip(nil)
+                } else {
+                    setIndexBadge(number, isWarmup: false)
+                }
+                Text(previousReference(for: exercise, number: number))
+                    .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                    .frame(width: SetCol.prev, alignment: .leading)
+                Text("\(reps) reps").font(.subheadline).foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity)
+                Color.clear.frame(width: SetCol.reps)
+                Image(systemName: "plus.circle").foregroundStyle(.tint).frame(width: SetCol.check)
+            }
+            .frame(minHeight: 44).contentShape(Rectangle())
         }
-        .font(.subheadline)
-        .contentShape(Rectangle())
-        .padding(.vertical, 4)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(.quaternary).frame(height: 1)
-        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("set.pending.\(exercise.name).\(number)")
     }
 
     @ViewBuilder
@@ -682,47 +816,56 @@ struct SessionView: View {
         }
     }
 
+    // MARK: Completed set row (columnar A2)
+
     @ViewBuilder
-    private func setRow(_ set: SetEntry, index: Int, exercise: Exercise) -> some View {
-        HStack {
-            Text("\(index + 1)")
-                .font(.caption).foregroundStyle(.secondary)
-                .frame(width: 18, alignment: .leading)
-            Text(Format.setLineDual(set, preferredUnit: settings.unit))
-                .monospacedDigit()
-            if set.isWarmup {
-                Text("warmup").font(.caption2).foregroundStyle(.secondary)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(.quaternary, in: Capsule())
+    private func completedSetRow(_ set: SetEntry, number: String, exercise: Exercise) -> some View {
+        HStack(spacing: SetCol.gap) {
+            if hasPartners {
+                performerChip(set.performedBy)
+            } else {
+                setIndexBadge(number, isWarmup: set.isWarmup)
             }
-            if let p = set.performedBy, !p.isMe {
-                Text(p.name).font(.caption2).foregroundStyle(.secondary)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(.quaternary, in: Capsule())
-                    .accessibilityIdentifier("set.performer.\(p.name)")
-            } else if hasPartners {
-                // With a partner in the session, tag the owner's own sets "Me".
-                Text("Me").font(.caption2).foregroundStyle(.secondary)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(.quaternary, in: Capsule())
-                    .accessibilityIdentifier("set.performer.Me")
+
+            Text(set.isWarmup ? "" : previousReference(for: exercise, number: number))
+                .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                .frame(width: SetCol.prev, alignment: .leading)
+
+            Button {
+                openInlineEditor(for: exercise, editing: set)
+            } label: {
+                if set.usesBodyweight && set.weight <= 0 {
+                    Text("BW").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text(Format.weightValue(set.weight, unit: settings.unit))
+                        .monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity)
+                }
             }
-            Spacer()
-            if isAllTimePR(set, exercise: exercise) {
-                Label("PR", systemImage: "trophy.fill")
-                    .labelStyle(.titleAndIcon)
-                    .font(.caption2.bold())
-                    .foregroundStyle(.orange)
-                    .accessibilityIdentifier("set.prBadge")
+            .buttonStyle(.plain)
+
+            Button {
+                openInlineEditor(for: exercise, editing: set)
+            } label: {
+                Text("\(set.reps)").monospacedDigit().frame(width: SetCol.reps)
             }
+            .buttonStyle(.plain)
+
+            Group {
+                if isAllTimePR(set, exercise: exercise) {
+                    Image(systemName: "trophy.fill").foregroundStyle(.orange)
+                        .accessibilityIdentifier("set.prBadge")
+                } else {
+                    Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(.green)
+                }
+            }
+            .frame(width: SetCol.check)
         }
+        .frame(minHeight: 44)
         .contentShape(Rectangle())
-        .padding(.vertical, 2)
-        .swipeActions {
-            Button(role: .destructive) {
-                try? WorkoutRepository.deleteSet(set, in: context)
-            } label: { Label("Delete", systemImage: "trash") }
-        }
+        .contextMenu { rowMenu(for: set, exercise: exercise) }
+        .accessibilityIdentifier("set.row.\(exercise.name).\(number)")
     }
 
     // MARK: PR detection for display
@@ -738,93 +881,116 @@ struct SessionView: View {
                                     rule: settings.prRule, formula: settings.formula)
     }
 
-    // MARK: Inline set editor (replaces WeightKeypadSheet)
+    // MARK: Per-row context menu (A4)
 
     @ViewBuilder
-    private func inlineEditor(for exercise: Exercise) -> some View {
-        let altUnit: MeasurementUnitPreference = inlineUnit == .kilograms ? .pounds : .kilograms
+    private func rowMenu(for set: SetEntry, exercise: Exercise) -> some View {
+        Button {
+            try? WorkoutRepository.updateSet(set, isWarmup: !set.isWarmup, in: context)
+        } label: {
+            Label(set.isWarmup ? "Mark as working set" : "Mark as warm-up",
+                  systemImage: set.isWarmup ? "flame.fill" : "flame")
+        }
+        if isBodyweight(exercise) {
+            Button {
+                try? WorkoutRepository.updateSet(set, usesBodyweight: !set.usesBodyweight, in: context)
+            } label: {
+                Label(set.usesBodyweight ? "Remove bodyweight" : "Mark bodyweight",
+                      systemImage: "figure.stand")
+            }
+        }
+        if hasPartners {
+            Menu {
+                Button("Me") { set.performedBy = nil; try? context.save() }
+                ForEach(roster.filter { !$0.isMe }) { p in
+                    Button(p.name) { set.performedBy = p; try? context.save() }
+                }
+            } label: { Label("Performed by", systemImage: "person") }
+        }
+        Divider()
+        Button(role: .destructive) {
+            try? WorkoutRepository.deleteSet(set, in: context)
+        } label: { Label("Delete set", systemImage: "trash") }
+    }
+
+    // MARK: Inline set editor (replaces WeightKeypadSheet)
+
+    // MARK: Active entry row (columnar A3)
+
+    @ViewBuilder
+    private func activeSetRow(for exercise: Exercise) -> some View {
         let parsed = Double(inlineWeight) ?? 0
-        let kg = WorkoutMath.canonical(parsed, from: inlineUnit)
-        let altValue = parsed > 0 ? Format.weightValue(kg, unit: altUnit) + " " + altUnit.abbreviation : ""
-        let canSave = inlineReps > 0 && (inlineBodyweight || (!inlineWeight.isEmpty && parsed >= 0))
+        let kg = WorkoutMath.canonical(parsed, from: settings.unit)
+        let altUnit: MeasurementUnitPreference = settings.unit == .kilograms ? .pounds : .kilograms
+        let canSave = inlineReps > 0 && (inlineBodyweight || !inlineWeight.isEmpty)
+        let number = String(workingNumber(for: exercise))
         let wouldBePR = canSave && WorkoutRepository.wouldBePR(
             exercise: exercise, weightKg: kg, reps: inlineReps, isWarmup: false,
             rule: settings.prRule, formula: settings.formula)
 
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: SetCol.gap) {
+                if hasPartners {
+                    performerChip(people(for: inlinePerformedByID))
+                } else {
+                    setIndexBadge(number, isWarmup: false)
+                }
+
+                Button {
+                    if let (w, r) = previousValues(for: exercise, number: number) {
+                        inlineWeight = Format.weightValue(w, unit: settings.unit)
+                        inlineReps = r
+                    }
+                } label: {
+                    Text(previousReference(for: exercise, number: number))
+                        .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
+                        .frame(width: SetCol.prev, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+
                 TextField("0", text: $inlineWeight)
-                    .keyboardType(.decimalPad)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 80)
-                    .monospacedDigit()
-                    .focused($weightFocused)
+                    .keyboardType(.decimalPad).focused($weightFocused)
+                    .multilineTextAlignment(.center).monospacedDigit()
+                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8)
+                        .stroke(weightFocused ? Color.accentColor : Color(.separator),
+                                lineWidth: weightFocused ? 1.5 : 0.5))
                     .accessibilityIdentifier("inline.weight")
 
-                Picker("", selection: $inlineUnit) {
-                    Text("kg").tag(MeasurementUnitPreference.kilograms)
-                    Text("lb").tag(MeasurementUnitPreference.pounds)
+                TextField("0", value: $inlineReps, format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center).monospacedDigit()
+                    .frame(width: SetCol.reps, height: 36)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(.separator), lineWidth: 0.5))
+                    .accessibilityIdentifier("inline.reps")
+
+                Button { recordInlineSet(for: exercise) } label: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title).foregroundStyle(canSave ? .green : Color(.tertiaryLabel))
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 90)
-                .accessibilityIdentifier("inline.unit")
-
-                Text("\u{00d7}")
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 4) {
-                    Button { if inlineReps > 1 { inlineReps -= 1 } } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.title3).foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("inline.repsMinus")
-
-                    Text("\(inlineReps)")
-                        .font(.headline).monospacedDigit()
-                        .frame(minWidth: 24)
-                        .accessibilityIdentifier("inline.reps")
-
-                    Button { if inlineReps < 100 { inlineReps += 1 } } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title3).foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("inline.repsPlus")
-                }
+                .buttonStyle(.plain).disabled(!canSave)
+                .frame(width: SetCol.check)
+                .accessibilityIdentifier("inline.save")
             }
 
-            HStack {
-                if !altValue.isEmpty {
-                    Text("\u{2248} \(altValue)")
-                        .font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                if parsed > 0 {
+                    Text("\u{2248} \(Format.weightValue(kg, unit: altUnit)) \(altUnit.abbreviation)")
+                        .font(.caption2).foregroundStyle(.secondary)
                         .accessibilityIdentifier("inline.alt")
                 }
-
                 if isBodyweight(exercise) {
-                    Toggle("BW", isOn: $inlineBodyweight)
+                    Toggle("Bodyweight", isOn: $inlineBodyweight)
                         .toggleStyle(.button).controlSize(.mini)
                         .accessibilityIdentifier("inline.bodyweight")
                 }
-
-                if hasPartners {
-                    Picker("", selection: $inlinePerformedByID) {
-                        Text("Me").tag(UUID?.none)
-                        ForEach(roster.filter { !$0.isMe }) { p in
-                            Text(p.name).tag(UUID?.some(p.id))
-                        }
-                    }
-                    .pickerStyle(.menu).controlSize(.mini)
-                    .accessibilityIdentifier("inline.partner")
-                }
-
-                Spacer()
-
                 if wouldBePR {
                     Label("PR", systemImage: "trophy.fill")
                         .font(.caption2.bold()).foregroundStyle(.orange)
                 }
-
+                Spacer()
                 if inlineEditingSet != nil {
                     Button(role: .destructive) {
                         if let set = inlineEditingSet {
@@ -837,23 +1003,13 @@ struct SessionView: View {
                     .buttonStyle(.plain).foregroundStyle(.red)
                     .accessibilityIdentifier("inline.delete")
                 }
-
                 Button("Cancel") { closeInlineEditor() }
-                    .font(.subheadline)
+                    .font(.caption)
                     .accessibilityIdentifier("inline.cancel")
-
-                Button {
-                    recordInlineSet(for: exercise)
-                } label: {
-                    Text(inlineEditingSet != nil ? "Save" : "Record")
-                        .font(.subheadline.bold())
-                }
-                .buttonStyle(.borderedProminent).controlSize(.small)
-                .disabled(!canSave)
-                .accessibilityIdentifier("inline.save")
             }
+            .padding(.leading, whoColumnWidth + SetCol.gap)
         }
-        .padding(10)
+        .padding(8)
         .background(.tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
     }
 

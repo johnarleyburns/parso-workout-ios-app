@@ -206,6 +206,13 @@ public final class WorkoutSession {
     /// launched via "Do this workout" (strength-pivot P5.3); 0 = none. Pre-fills the
     /// set keypad for the prescribed movement. Additive/defaulted for CloudKit + back-compat.
     public var prescribedLoadKg: Double = 0
+    /// UUID strings of active training partners for this session. When empty,
+    /// all known partners are shown (backward-compat). Delimited-String storage.
+    private var activePartnerIDsData: String = ""
+    public var activePartnerIDs: [String] {
+        get { StringArray.decode(activePartnerIDsData) }
+        set { activePartnerIDsData = StringArray.encode(newValue) }
+    }
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
 
@@ -222,6 +229,7 @@ public final class WorkoutSession {
                 isLogged: Bool = false,
                 warmupSeconds: Double = 0,
                 cooldownSeconds: Double = 0,
+                activePartnerIDsData: String = "",
                 updatedAt: Date = Date(),
                 originDevice: String = "") {
         self.id = id
@@ -234,6 +242,7 @@ public final class WorkoutSession {
         self.isLogged = isLogged
         self.warmupSeconds = warmupSeconds
         self.cooldownSeconds = cooldownSeconds
+        self.activePartnerIDsData = activePartnerIDsData
         self.updatedAt = updatedAt
         self.originDevice = originDevice
     }

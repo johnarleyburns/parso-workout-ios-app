@@ -18,7 +18,9 @@ struct WeightsStartView: View {
             if let rec = recommendation {
                 Section {
                     NavigationLink {
-                        WorkoutPlanEditor(plan: .from(recommendation: rec), onStart: onEditorStart)
+                        WorkoutPlanEditor(plan: .from(recommendation: rec,
+                                                          warmupMinutes: settings.warmupMinutes,
+                                                          cooldownMinutes: settings.cooldownMinutes), onStart: onEditorStart)
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "checklist").font(.title2)
@@ -139,7 +141,9 @@ struct WeightsStartView: View {
                 RepSchemePicker(plan: plan, onEditorStart: onEditorStart)
             } else {
                 WorkoutPlanEditor(
-                    plan: .from(plan: plan, ladder: nil, unit: settings.unit),
+                    plan: .from(plan: plan, ladder: nil, unit: settings.unit,
+                               warmupMinutes: settings.warmupMinutes,
+                               cooldownMinutes: settings.cooldownMinutes),
                     onStart: onEditorStart)
             }
         } label: {

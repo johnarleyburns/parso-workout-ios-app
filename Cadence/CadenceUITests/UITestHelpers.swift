@@ -93,10 +93,22 @@ extension XCUIApplication {
         }
     }
 
-    /// Enters a weight on the keypad and taps Record (the common log-a-set flow).
+    /// Enters a weight into the inline weight text field and logs the set via
+    /// the columnar checkmark button (redesign A3).
     func recordKeypadSet(_ value: String, clear: Bool = false) {
         keypadEnter(value, clear: clear)
-        buttons["set.save"].tap()
+        buttons["inline.save"].tap()
+    }
+
+    /// Types a weight into the inline weight TextField. The columnar redesign
+    /// replaced the dedicated weight keypad sheet with an inline text field.
+    func keypadEnter(_ value: String, clear: Bool = false) {
+        // Inline text field may need focus first — tap it
+        let field = textFields["inline.weight"]
+        if field.exists { field.tap() }
+        XCTAssertTrue(field.waitForExistence(timeout: 25), "inline weight field")
+        if clear { field.tap(); field.typeText(String(repeating: XCUIKeyboardKeyDelete.rawValue, count: 10)) }
+        field.typeText(value)
     }
 
     /// Taps Back until the Home launchpad (its Start Workout button) is shown.

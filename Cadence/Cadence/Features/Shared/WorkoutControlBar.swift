@@ -73,6 +73,10 @@ struct WorkoutControlBar: View {
         }
         }
         .confirmationDialog(confirmTitle, isPresented: $confirming, titleVisibility: .visible) {
+            if let onCoolDown {
+                Button("Cool down, then finish") { onCoolDown() }
+                    .accessibilityIdentifier("workout.endCoolDown")
+            }
             Button(endTitle, role: .destructive) { onEnd() }
                 .accessibilityIdentifier("workout.endConfirm")
             Button("Keep going", role: .cancel) { }

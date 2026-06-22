@@ -4,10 +4,8 @@ import CadenceCore
 
 struct RoutineDetailView: View {
     let plan: WorkoutPlan
-    let switchToWorkout: () -> Void
+    let onEditorStart: (EditablePlan) -> Void
 
-    @Environment(\.modelContext) private var context
-    @Environment(ActiveWorkoutModel.self) private var active
     @Environment(AppSettings.self) private var settings
     @Query(sort: \Assessment.date, order: .reverse) private var assessments: [Assessment]
 
@@ -100,7 +98,7 @@ struct RoutineDetailView: View {
 
                 if plan.flexibleScheme {
                     NavigationLink {
-                        RepSchemePicker(plan: plan, onEditorStart: startFromEditedPlan)
+                        RepSchemePicker(plan: plan, onEditorStart: onEditorStart)
                     } label: {
                         Label("Choose Scheme & Start", systemImage: "play.fill")
                             .font(.title3.bold())
@@ -112,8 +110,9 @@ struct RoutineDetailView: View {
                 } else {
                     NavigationLink {
                         WorkoutPlanEditor(
-                            plan: .from(plan: plan, ladder: nil, unit: settings.unit),
-                            onStart: startFromEditedPlan)
+                            plan: .from(plan: plan, ladder: nil, unit: settings.unit,
+                                       warmupMinutes: settings.warmupMinutes, cooldownMinutes: settings.cooldownMinutes),
+                            onStart: onEditorStart)
                     } label: {
                         Label("Start", systemImage: "play.fill")
                             .font(.title3.bold())
@@ -138,34 +137,5 @@ struct RoutineDetailView: View {
             .padding(.horizontal, 10).padding(.vertical, 4)
             .background(.tint.opacity(0.15), in: Capsule())
             .foregroundStyle(.tint)
-    }
-
-    private func startWorkout(plan: WorkoutPlan, ladder: [Int]?) {
-        if let session = try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) {
-            active.startStrength(session)
-            WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
-            Haptics.selection()
-            switchToWorkout()
-        }
-    }
-
-    private func startFromEditedPlan(_ edited: EditablePlan) {
-        guard let session = try? WorkoutRepository.createSession(title: edited.title, in: context) else { return }
-        session.plannedExerciseNames = edited.exercises.map(\.name)
-        if let first = edited.exercises.first, !first.sets.isEmpty {
-            session.plannedRepLadder = first.sets.map(\.targetReps)
-        }
-        let weights = edited.exercises.compactMap(\.sets.first?.targetWeight)
-        if let w = weights.first, w > 0, weights.allSatisfy({ $0 == w }) {
-            session.prescribedLoadKg = w
-        }
-        for name in edited.exercises.map(\.name) {
-            _ = try? WorkoutRepository.findOrCreateExercise(named: name, in: context)
-        }
-        try? context.save()
-        active.startStrength(session)
-        WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
-        Haptics.selection()
-        switchToWorkout()
     }
 }

@@ -280,7 +280,27 @@ struct PlanningView: View {
 
     private func routineRow(_ plan: WorkoutPlan) -> some View {
         NavigationLink {
-            RoutineDetailView(plan: plan, switchToWorkout: switchToWorkout)
+            RoutineDetailView(plan: plan, onEditorStart: { edited in
+                guard let session = try? WorkoutRepository.createSession(title: edited.title, in: context) else { return }
+                session.plannedExerciseNames = edited.exercises.map(\.name)
+                if let first = edited.exercises.first, !first.sets.isEmpty {
+                    session.plannedRepLadder = first.sets.map(\.targetReps)
+                }
+                let weights = edited.exercises.compactMap(\.sets.first?.targetWeight)
+                if let w = weights.first, w > 0, weights.allSatisfy({ $0 == w }) {
+                    session.prescribedLoadKg = w
+                }
+                for name in edited.exercises.map(\.name) {
+                    _ = try? WorkoutRepository.findOrCreateExercise(named: name, in: context)
+                }
+                session.cooldownSeconds = Double(edited.cooldownMinutes * 60)
+                session.activePartnerIDs = edited.partnerIDs.map(\.uuidString)
+                try? context.save()
+                active.startStrength(session)
+                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+                Haptics.selection()
+                switchToWorkout()
+            })
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(plan.name).font(.headline)

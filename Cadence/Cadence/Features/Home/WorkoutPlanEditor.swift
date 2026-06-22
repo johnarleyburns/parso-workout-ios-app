@@ -7,6 +7,7 @@ struct EditablePlan {
     var warmupMinutes: Int
     var cooldownMinutes: Int
     var exercises: [EditableExercise]
+    var partnerIDs: [UUID] = []
 
     static func empty(warmup: Int, cooldown: Int) -> EditablePlan {
         EditablePlan(warmupMinutes: warmup, cooldownMinutes: cooldown, exercises: [])
@@ -29,7 +30,8 @@ struct EditablePlan {
         )
     }
 
-    static func from(plan: WorkoutPlan, ladder: [Int]?, unit: MeasurementUnitPreference) -> EditablePlan {
+    static func from(plan: WorkoutPlan, ladder: [Int]?, unit: MeasurementUnitPreference,
+                     warmupMinutes: Int = 0, cooldownMinutes: Int = 0) -> EditablePlan {
         let reps = ladder ?? []
         let exercises = plan.items.map { item -> EditableExercise in
             let setsCount = max(item.targetSets ?? reps.count, reps.isEmpty ? 3 : reps.count)
@@ -41,13 +43,14 @@ struct EditablePlan {
         }
         return EditablePlan(
             title: plan.name,
-            warmupMinutes: 0,
-            cooldownMinutes: 0,
+            warmupMinutes: warmupMinutes,
+            cooldownMinutes: cooldownMinutes,
             exercises: exercises
         )
     }
 
-    static func from(recommendation: Recommendation) -> EditablePlan {
+    static func from(recommendation: Recommendation,
+                     warmupMinutes: Int = 0, cooldownMinutes: Int = 0) -> EditablePlan {
         let prescribed = recommendation.prescribedSession()
         let ladder = prescribed.repLadder
         let names = prescribed.exerciseNames
@@ -59,8 +62,8 @@ struct EditablePlan {
         }
         return EditablePlan(
             title: prescribed.title,
-            warmupMinutes: 0,
-            cooldownMinutes: 0,
+            warmupMinutes: warmupMinutes,
+            cooldownMinutes: cooldownMinutes,
             exercises: exercises
         )
     }
@@ -84,7 +87,10 @@ struct WorkoutPlanEditor: View {
     let onStart: (EditablePlan) -> Void
 
     @Environment(AppSettings.self) private var settings
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Person.name) private var allPeople: [Person]
     @State private var showingExercisePicker = false
+    @State private var newPartnerName = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -92,6 +98,41 @@ struct WorkoutPlanEditor: View {
                 Section {
                     Stepper("Warm-up: \(plan.warmupMinutes) min", value: $plan.warmupMinutes, in: 0...30)
                         .accessibilityIdentifier("editor.warmup")
+                }
+
+                Section("Training partners") {
+                    ForEach(allPeople.filter { !$0.isMe }) { person in
+                        HStack {
+                            Text(person.name)
+                            Spacer()
+                            if plan.partnerIDs.contains(person.id) {
+                                Image(systemName: "checkmark").foregroundStyle(.tint)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            if let idx = plan.partnerIDs.firstIndex(of: person.id) {
+                                plan.partnerIDs.remove(at: idx)
+                            } else {
+                                plan.partnerIDs.append(person.id)
+                            }
+                        }
+                        .accessibilityIdentifier("editor.partner.\(person.name)")
+                    }
+                    HStack {
+                        TextField("New partner name", text: $newPartnerName)
+                            .accessibilityIdentifier("editor.newPartnerName")
+                        Button("Add") {
+                            let name = newPartnerName.trimmingCharacters(in: .whitespaces)
+                            if !name.isEmpty {
+                                // Persist the person, then add to plan
+                                _ = try? WorkoutRepository.findOrCreatePerson(named: name, in: modelContext)
+                                newPartnerName = ""
+                            }
+                        }
+                        .disabled(newPartnerName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .accessibilityIdentifier("editor.addPartner")
+                    }
                 }
 
                 ForEach($plan.exercises) { $exercise in

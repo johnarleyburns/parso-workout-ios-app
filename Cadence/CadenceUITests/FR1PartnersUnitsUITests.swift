@@ -45,17 +45,45 @@ final class FR1PartnersUnitsUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["partner.chip.Sam"].waitForExistence(timeout: 10),
                       "Sam should appear in the partner bar")
 
-        // Log a set attributed to Sam via the menu picker.
+        // Log a set — with partners, the active row shows the current performer.
         openSetEditor(app)
-        app.keypadEnter("90")
-        let picker = app.buttons["set.performedBy"]
-        XCTAssertTrue(picker.waitForExistence(timeout: 10))
-        picker.tap()
-        XCTAssertTrue(app.buttons["Sam"].waitTap(), "select Sam in the picker")
-        app.buttons["set.save"].tap()
+        app.recordKeypadSet("90")
 
-        // The set row should carry Sam's tag.
+        // The set row should carry Sam's tag (alternating partner rotation).
         XCTAssertTrue(app.staticTexts["set.performer.Sam"].waitForExistence(timeout: 25),
-                      "partner-attributed set should show the partner's name")
+                      "partner-attributed set should show the partner's chip")
+    }
+
+    // MARK: — unified plan columnar partner tests (2026-06-22)
+
+    func testPerformerChipsAppearInColumnarLayout() {
+        let app = XCUIApplication.launched()
+        startWorkout(app)
+        // Add a partner
+        app.buttons["partner.add"].tap()
+        XCTAssertTrue(app.textFields["partner.nameField"].waitForExistence(timeout: 10))
+        app.textFields["partner.nameField"].typeText("Alex\r")
+        app.buttons["Add"].tap()
+
+        // Log a set
+        openSetEditor(app)
+        app.recordKeypadSet("60")
+
+        // Performer chip should appear on the set row
+        // (either "M" for Me or "A" for Alex depending on rotation)
+        XCTAssertTrue(app.staticTexts["set.performer.Me"].waitForExistence(timeout: 25),
+                      "Set row should show performer chip")
+    }
+
+    func testAddedPartnerAppearsInEditor() {
+        let app = XCUIApplication.launched(seeds: ["person.Sam"])
+        // Navigate to Quick Start → Editor
+        app.popToHome()
+        XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"))
+        XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap())
+
+        // Partner picker should show Sam
+        XCTAssertTrue(app.staticTexts["editor.partner.Sam"].waitForExistence(timeout: 10),
+                      "Partner picker in editor should list Sam")
     }
 }

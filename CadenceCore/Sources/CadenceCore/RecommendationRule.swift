@@ -139,7 +139,7 @@ public extension KnowledgeBase {
             guard let current = facts.weeklySetsByPart[part], current > 0 else { continue }
             let bands = VolumeLandmarks.bands(for: part, experience: facts.experience)
             guard current < bands.mev else { continue }
-            let toAdd = max(1, Int((bands.mev - current).rounded(.up)))
+            let toAdd = min(4, max(1, Int((bands.mev - current).rounded(.up))))
             let name = part.displayName
             out.append(Recommendation(
                 id: "addVolume.\(part.rawValue)",

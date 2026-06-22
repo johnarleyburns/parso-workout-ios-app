@@ -140,4 +140,27 @@ final class PartnersAndUnitsTests: XCTestCase {
         XCTAssertTrue(sets.contains { $0.performedBy == "Sam" }) // partner tagged
         XCTAssertTrue(DataExport.encodeCSV(export).contains("performed_by"))
     }
+
+    func testActivePartnerIDsRoundTrip() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(in: ctx)
+        let id1 = UUID().uuidString
+        let id2 = UUID().uuidString
+        session.activePartnerIDs = [id1, id2]
+        try ctx.save()
+
+        let fetched = try ctx.fetch(FetchDescriptor<WorkoutSession>())
+        XCTAssertEqual(fetched.count, 1)
+        XCTAssertEqual(fetched[0].activePartnerIDs.count, 2)
+        XCTAssertTrue(fetched[0].activePartnerIDs.contains(id1))
+        XCTAssertTrue(fetched[0].activePartnerIDs.contains(id2))
+    }
+
+    func testCreateSessionPropagatesPartnerIDs() throws {
+        let ctx = try makeContext()
+        let ids = [UUID().uuidString, UUID().uuidString]
+        let session = try WorkoutRepository.createSession(partnerIDs: ids, in: ctx)
+        XCTAssertEqual(session.activePartnerIDs.count, 2)
+        XCTAssertEqual(Set(session.activePartnerIDs), Set(ids))
+    }
 }

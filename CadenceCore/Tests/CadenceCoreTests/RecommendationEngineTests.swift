@@ -236,4 +236,17 @@ final class RecommendationEngineTests: XCTestCase {
             XCTAssertTrue(known.contains(rec.citation.id), "\(rec.id) cites unknown \(rec.citation.id)")
         }
     }
+
+    func testAddVolumeCappedAtFourSets() {
+        let f = facts(weeklySets: [.chest: 3], goal: .strength)
+        let recs = RecommendationEngine.run(f)
+        let chestRecs = recs.filter { $0.id.hasPrefix("addVolume.") && $0.part == .chest }
+        XCTAssertFalse(chestRecs.isEmpty, "Should recommend volume for chest below MEV")
+        for rec in chestRecs {
+            if let target = rec.target, let sets = target.sets {
+                XCTAssertLessThanOrEqual(sets, 4, "addVolume should cap at 4 sets max, got \(sets)")
+                XCTAssertGreaterThanOrEqual(sets, 1, "addVolume should recommend at least 1 set")
+            }
+        }
+    }
 }

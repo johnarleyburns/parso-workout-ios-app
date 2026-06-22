@@ -123,10 +123,12 @@ public enum WorkoutRepository {
     /// no live HR/clock. Additive default keeps live callers unchanged.
     @discardableResult
     public static func createSession(title: String = "Workout",
-                                     date: Date = Date(),
-                                     isLogged: Bool = false,
-                                     in context: ModelContext) throws -> WorkoutSession {
+                                      date: Date = Date(),
+                                      isLogged: Bool = false,
+                                      partnerIDs: [String] = [],
+                                      in context: ModelContext) throws -> WorkoutSession {
         let s = WorkoutSession(title: title, date: date, isLogged: isLogged)
+        s.activePartnerIDs = partnerIDs
         context.insert(s)
         try context.save()
         return s

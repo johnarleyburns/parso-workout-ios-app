@@ -131,7 +131,7 @@ struct HomeView: View {
                 case .coach: CoachInsightsView(insights: coachInsights)
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
                 case .coachWorkout(let plan):
-                    RoutineDetailView(plan: plan, switchToWorkout: { path = NavigationPath() })
+                    RoutineDetailView(plan: plan, onEditorStart: { plan in handleEditorStart(plan); path = NavigationPath() })
                 }
             }
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
@@ -378,7 +378,7 @@ struct HomeView: View {
                     Text("Routines").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     ForEach(routines) { plan in
                         NavigationLink {
-                            RoutineDetailView(plan: plan, switchToWorkout: { path = NavigationPath() })
+                            RoutineDetailView(plan: plan, onEditorStart: { plan in handleEditorStart(plan); path = NavigationPath() })
                         } label: {
                             HStack {
                                 Text(plan.name).font(.subheadline)
@@ -651,6 +651,7 @@ struct HomeView: View {
             _ = try WorkoutRepository.findOrCreateExercise(named: name, in: context)
         }
         session.cooldownSeconds = Double(plan.cooldownMinutes * 60)
+        session.activePartnerIDs = plan.partnerIDs.map(\.uuidString)
         try context.save()
         return session
     }

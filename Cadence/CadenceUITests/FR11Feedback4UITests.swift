@@ -118,4 +118,31 @@ final class FR11Feedback4UITests: CadenceUITestCase {
                       "the interval summary should show completed rounds")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "Done")
     }
+
+    // MARK: — unified plan cool-down / end confirmation (2026-06-22)
+
+    func testEndConfirmationHasCoolDownOption() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
+
+        // Log a set so the session has content
+        app.buttons["session.addExercise"].tap()
+        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "pick Bench Press")
+        app.recordKeypadSet("80")
+
+        // End — should confirm with three options
+        if app.buttons["workout.end"].exists {
+            app.buttons["workout.end"].tap()
+        } else {
+            app.buttons["workout.end"].firstMatch.tap()
+        }
+        XCTAssertTrue(app.buttons["workout.endCoolDown"].waitForExistence(timeout: 10),
+                      "End confirmation should show 'Cool down, then finish'")
+        XCTAssertTrue(app.buttons["workout.endConfirm"].exists,
+                      "End confirmation should show 'End'")
+        XCTAssertTrue(app.buttons["workout.endCancel"].exists,
+                      "End confirmation should show 'Keep going'")
+        // Dismiss
+        app.buttons["workout.endCancel"].tap()
+    }
 }

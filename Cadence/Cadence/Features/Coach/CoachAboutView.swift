@@ -52,7 +52,7 @@ struct CoachAboutView: View {
             } header: {
                 Text("Published studies")
             } footer: {
-                Text("Every insight and recommendation cites one of these studies. Tap \"Why / the science\" on any coach card to see which one and why.")
+                Text("Every insight and recommendation cites one of these studies. Tap \"The science\" on any coach card to see which one and why.")
             }
 
             Section {

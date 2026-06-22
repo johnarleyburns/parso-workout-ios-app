@@ -66,7 +66,7 @@ struct CoachCardView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("coach.card.why")
-                .accessibilityLabel(scienceExpanded ? "Hide the science" : "Why — show the science")
+                .accessibilityLabel(scienceExpanded ? "Hide the science" : "Show the science")
 
                 Spacer()
 
@@ -175,7 +175,7 @@ struct RecommendationContentView: View {
                 Button { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "book.closed")
-                        Text("Why / the science")
+                        Text("The science")
                         Spacer(minLength: 4)
                         Image(systemName: expanded ? "chevron.up" : "chevron.down")
                     }
@@ -186,7 +186,7 @@ struct RecommendationContentView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("coach.card.why")
                 .accessibilityAddTraits(.isButton)
-                .accessibilityLabel(expanded ? "Hide the science" : "Why — show the science")
+                .accessibilityLabel(expanded ? "Hide the science" : "Show the science")
 
                 if expanded {
                     VStack(alignment: .leading, spacing: 8) {
@@ -245,7 +245,7 @@ struct InsightContentView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("coach.card.why")
             .accessibilityAddTraits(.isButton)
-            .accessibilityLabel(expanded ? "Hide the science" : "Why — show the science")
+            .accessibilityLabel(expanded ? "Hide the science" : "Show the science")
 
             if expanded {
                 VStack(alignment: .leading, spacing: 8) {
@@ -292,7 +292,7 @@ struct CitationLink: View {
 
     private var compactLabel: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text("the science")
+            Text("The science")
                 .font(.caption2).foregroundStyle(.tint)
             Image(systemName: "chevron.forward")
                 .font(.caption2).foregroundStyle(.tint)

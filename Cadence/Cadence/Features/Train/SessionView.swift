@@ -31,6 +31,8 @@ struct SessionView: View {
     @State private var inlineUnit: MeasurementUnitPreference = .kilograms
     @State private var inlineBodyweight: Bool = false
     @State private var inlinePerformedByID: UUID?
+    @State private var inlineRPE: Int? = nil
+    @State private var showRPEInfo = false
     @FocusState private var weightFocused: Bool
     @State private var healthSaved = false
     @Query(sort: \Person.name) private var allPeople: [Person]
@@ -157,6 +159,7 @@ struct SessionView: View {
             inlineReps = editing.reps
             inlineBodyweight = editing.usesBodyweight
             inlinePerformedByID = editing.performedBy.flatMap { $0.isMe ? nil : $0.id }
+            inlineRPE = editing.rpe.map { Int($0.rounded()) }
         } else {
             let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
             inlineWeight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: inlineUnit) : ""
@@ -164,6 +167,7 @@ struct SessionView: View {
             inlineReps = repsOverride ?? plannedReps(for: exercise, setIndex: loggedCount)
             inlineBodyweight = isBodyweight(exercise)
             inlinePerformedByID = nextPerson().flatMap { $0.isMe ? nil : $0.id }
+            inlineRPE = nil
         }
         weightFocused = true
     }
@@ -179,15 +183,16 @@ struct SessionView: View {
         let parsed = Double(inlineWeight) ?? 0
         var kg = WorkoutMath.canonical(parsed, from: inlineUnit)
         if settings.plateRounding { kg = UnitEntry.plateRounded(kg: kg, unit: inlineUnit) }
+        let rpe = inlineRPE.map(Double.init)
         if let editing = inlineEditingSet {
             try? WorkoutRepository.updateSet(editing, weightKg: kg, reps: inlineReps,
-                                             rpe: .some(nil), isWarmup: false,
+                                             rpe: .some(rpe), isWarmup: false,
                                              usesBodyweight: inlineBodyweight, note: .some(nil), in: context)
             let person = people(for: inlinePerformedByID)
             editing.performedBy = (person?.isMe ?? true) ? nil : person
             try? context.save()
         } else {
-            addSet(to: exercise, weightKg: kg, reps: inlineReps, rpe: nil, isWarmup: false,
+            addSet(to: exercise, weightKg: kg, reps: inlineReps, rpe: rpe, isWarmup: false,
                    usesBodyweight: inlineBodyweight, note: nil, performedBy: people(for: inlinePerformedByID))
         }
         closeInlineEditor()
@@ -442,6 +447,9 @@ struct SessionView: View {
                 _ = try? WorkoutRepository.copyWorkout(from: past, into: session, in: context)
                 poke()
             }
+        }
+        .sheet(isPresented: $showRPEInfo) {
+            RPEInfoView()
         }
         .fullScreenCover(isPresented: $coolingDown) {
             GuidedPhaseOverlay(
@@ -995,6 +1003,25 @@ struct SessionView: View {
                         .toggleStyle(.button).controlSize(.mini)
                         .accessibilityIdentifier("inline.bodyweight")
                 }
+                HStack(spacing: 3) {
+                    Text("RPE").font(.caption2).foregroundStyle(.secondary)
+                    if let rpe = inlineRPE {
+                        Text("\(rpe)").font(.caption.monospacedDigit()).foregroundStyle(.primary)
+                    } else {
+                        Text("—").font(.caption).foregroundStyle(.tertiary)
+                    }
+                    Stepper("RPE", value: Binding(
+                        get: { inlineRPE ?? 5 },
+                        set: { inlineRPE = $0 }
+                    ), in: 1...10)
+                    .labelsHidden()
+                    .scaleEffect(0.8)
+                    Button { showRPEInfo = true } label: {
+                        Image(systemName: "info.circle").font(.caption2).foregroundStyle(.tint)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .accessibilityIdentifier("inline.rpe")
                 if wouldBePR {
                     Label("PR", systemImage: "trophy.fill")
                         .font(.caption2.bold()).foregroundStyle(.orange)

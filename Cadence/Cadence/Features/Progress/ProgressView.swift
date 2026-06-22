@@ -3,267 +3,339 @@ import SwiftData
 import Charts
 import CadenceCore
 
+enum ProgressRoute: Hashable { case history }
+
 struct TrainingProgressView: View {
     @Environment(\.modelContext) private var context
     @Environment(ActiveWorkoutModel.self) private var active
     @Environment(AppSettings.self) private var settings
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
-    @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .forward) private var allAssessments: [Assessment]
 
     @State private var path = NavigationPath()
-    @State private var sessionToDelete: WorkoutSession?
-    @State private var cardioToDelete: CardioWorkout?
-    @State private var showDeleted = false
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
-    private var deletedSessions: [WorkoutSession] { sessions.filter { $0.deletedAt != nil } }
-    private var activeCardio: [CardioWorkout] { cardio.filter { $0.deletedAt == nil } }
-    private var deletedCardio: [CardioWorkout] { cardio.filter { $0.deletedAt != nil } }
-
-    private var entries: [WorkoutHistoryEntry] {
-        let s = (showDeleted ? deletedSessions : activeSessions).map(WorkoutHistoryEntry.strength)
-        let c = (showDeleted ? deletedCardio : activeCardio).map(WorkoutHistoryEntry.cardio)
-        return (s + c).sorted { $0.date > $1.date }
+    private var facts: TrainingFacts {
+        TrainingFacts.make(sessions: activeSessions, assessments: allAssessments,
+                           goal: settings.trainingGoal, experience: settings.experienceLevel,
+                           formula: settings.formula)
     }
-
-    private var assessmentSummaries: [AssessmentSummary] {
-        AssessmentMath.summaries(from: allAssessments)
-    }
-
-    private func sparklineData(for summary: AssessmentSummary) -> [Assessment] {
-        allAssessments.filter { $0.seriesKey == summary.id }
+    private var strengthSeries: [E1RMSeries] {
+        StrengthProgress.series(from: activeSessions, formula: settings.formula)
     }
 
     var body: some View {
         NavigationStack(path: $path) {
-            List {
-                if !assessmentSummaries.isEmpty {
-                    Section("Test Trends") {
-                        ForEach(assessmentSummaries) { summary in
-                            Button {
-                                Haptics.selection()
-                                path.append(summary.kind)
-                            } label: {
-                                assessmentTrendRow(summary)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("progress.trend.\(summary.id)")
-                        }
-                    }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    scienceBanner
+                    strengthCard
+                    volumeCard
+                    intensityCard
+                    HStack(alignment: .top, spacing: 12) { effortCard; frequencyCard }
+                    testResultsCard
+                    historyLink
                 }
-
-                Section {
-                    if entries.isEmpty {
-                        Text(showDeleted ? "No deleted workouts." : "No workouts yet — start one from Workout.")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(entries) { entry in
-                        switch entry {
-                        case .strength(let s): strengthRow(s)
-                        case .cardio(let c): cardioRow(c)
-                        }
-                    }
-                } header: {
-                    HStack {
-                        Text(showDeleted ? "Deleted" : "History")
-                        Spacer()
-                        if !deletedSessions.isEmpty || !deletedCardio.isEmpty {
-                            Button(showDeleted ? "Back" : "View Deleted") {
-                                withAnimation { showDeleted.toggle() }
-                            }
-                            .font(.caption)
-                            .accessibilityIdentifier("progress.toggleDeleted")
-                        }
-                    }
-                } footer: {
-                    if showDeleted {
-                        Text("Swipe to restore a deleted workout.")
-                    }
-                }
+                .padding()
             }
             .navigationTitle("Progress")
+            .navigationDestination(for: AssessmentKind.self) { AssessmentDetailView(kind: $0) }
+            .navigationDestination(for: ProgressRoute.self) { _ in HistoryView(path: $path) }
             .navigationDestination(for: HistorySummaryRoute.self) { route in
                 switch route {
-                case .strength(let s):
-                    WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
-                case .cardio(let c):
-                    CardioDetailView(workout: c)
+                case .strength(let s): WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
+                case .cardio(let c):   CardioDetailView(workout: c)
                 }
             }
             .navigationDestination(for: WorkoutSession.self) { SessionView(session: $0) }
             .navigationDestination(for: CardioWorkout.self) { CardioDetailView(workout: $0) }
-            .navigationDestination(for: AssessmentKind.self) { AssessmentDetailView(kind: $0) }
-            .confirmationDialog("Delete this workout?",
-                                isPresented: Binding(get: { sessionToDelete != nil },
-                                                     set: { if !$0 { sessionToDelete = nil } }),
-                                presenting: sessionToDelete) { session in
-                Button("Delete", role: .destructive) {
-                    try? WorkoutRepository.softDeleteSession(session, in: context)
-                    sessionToDelete = nil
-                }
-            } message: { _ in Text("This removes the session. You can restore it from View Deleted.") }
-            .confirmationDialog("Delete this cardio workout?",
-                                isPresented: Binding(get: { cardioToDelete != nil },
-                                                     set: { if !$0 { cardioToDelete = nil } }),
-                                presenting: cardioToDelete) { c in
-                Button("Delete", role: .destructive) {
-                    try? WorkoutRepository.softDeleteCardio(c, in: context)
-                    cardioToDelete = nil
-                }
-            } message: { _ in Text("This removes the cardio workout. You can restore it from View Deleted.") }
         }
         .accessibilityIdentifier("progress")
     }
 
-    // MARK: Rows
+    // MARK: - Card helper
 
-    private func strengthRow(_ session: WorkoutSession) -> some View {
-        Button { Haptics.selection(); path.append(HistorySummaryRoute.strength(session)) } label: {
-            HStack {
-                Image(systemName: session.symbol).foregroundStyle(.tint).frame(width: 26)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
-                        Text(session.title.isEmpty ? "Workout" : session.title)
-                        if session.isLogged { LoggedTag() }
-                        if session.deletedAt != nil { DeletedTag() }
+    @ViewBuilder
+    private func card<Content: View>(title: String, subtitle: String? = nil,
+                                     citation: Citation? = nil, compact: Bool = false,
+                                     @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title).font(compact ? .subheadline.weight(.semibold) : .headline)
+            if let subtitle {
+                Text(subtitle).font(.caption).foregroundStyle(.secondary).padding(.bottom, 10)
+            } else {
+                Color.clear.frame(height: compact ? 6 : 10)
+            }
+            content()
+            if let citation {
+                Divider().padding(.top, 12).padding(.bottom, 8)
+                CitationLink(citation: citation)
+            }
+        }
+        .padding(compact ? 13 : 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(.quaternary, lineWidth: 0.5))
+    }
+
+    private func emptyNote(_ text: String) -> some View {
+        Text(text).font(.footnote).foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    // MARK: - §1 Science banner
+
+    private var scienceBanner: some View {
+        HStack(alignment: .top, spacing: 9) {
+            Image(systemName: "microscope").foregroundStyle(.tint)
+            Text("Every reading is tied to a study. Changes within measurement noise are shown as \u{201C}no change,\u{201D} not progress.")
+                .font(.caption).foregroundStyle(.tint)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
+        .accessibilityIdentifier("progress.scienceBanner")
+    }
+
+    // MARK: - §2 Strength over time
+
+    @ViewBuilder private var strengthCard: some View {
+        card(title: "Strength over time", subtitle: "estimated 1RM \u{00b7} last 12 weeks",
+             citation: CitationRegistry.oneRMEstimation) {
+            if strengthSeries.allSatisfy({ $0.points.count < 2 }) {
+                emptyNote("Log a few weeks of working sets and your estimated-1RM trend appears here. e1RM is projected from the weight and reps of your heaviest sets.")
+            } else {
+                Chart {
+                    ForEach(strengthSeries) { s in
+                        ForEach(s.points) { p in
+                            LineMark(x: .value("Week", p.weekStart),
+                                     y: .value("e1RM", WorkoutMath.display(p.e1rm, in: settings.unit)))
+                            .foregroundStyle(by: .value("Lift", s.exercise))
+                            .interpolationMethod(.catmullRom)
+                        }
                     }
-                    Text(session.date.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption).foregroundStyle(.secondary)
-                    Text("\(session.orderedSets.count) sets \u{00b7} \(Format.weightValue(session.totalVolume, unit: .kilograms)) kg volume")
-                        .font(.caption2).foregroundStyle(.tertiary)
                 }
+                .chartYScale(domain: .automatic(includesZero: false))
+                .frame(height: 150)
+
+                VStack(spacing: 5) {
+                    ForEach(strengthSeries) { s in
+                        HStack(spacing: 8) {
+                            Text(s.exercise).font(.subheadline).lineLimit(1)
+                            Spacer()
+                            Text(Format.weight(s.current, unit: settings.unit, decimals: 0))
+                                .font(.subheadline.weight(.semibold)).monospacedDigit()
+                            trendTag(s.trend, delta: s.delta)
+                        }
+                    }
+                }
+                .padding(.top, 8)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("progress.sessionRow")
-        .swipeActions(edge: .leading) {
-            if session.deletedAt != nil {
-                Button { restore(session) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
-                    .tint(.green)
-                    .accessibilityIdentifier("progress.restore")
+    }
+
+    @ViewBuilder private func trendTag(_ t: TrendDirection, delta: Double) -> some View {
+        switch t {
+        case .rising:
+            Label("+" + Format.weight(abs(delta), unit: settings.unit, decimals: 0), systemImage: "arrow.up.right")
+                .font(.caption).foregroundStyle(.green)
+        case .declining:
+            Label("\u{2212}" + Format.weight(abs(delta), unit: settings.unit, decimals: 0), systemImage: "arrow.down.right")
+                .font(.caption).foregroundStyle(.orange)
+        case .flat:
+            Label("flat", systemImage: "minus").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: - §3 Weekly volume
+
+    @ViewBuilder private var volumeCard: some View {
+        let parts = BodyPart.allCases.filter { (facts.weeklySetsByPart[$0] ?? 0) > 0 }
+        card(title: "Weekly volume", subtitle: "working sets per muscle vs. MEV \u{00b7} MAV \u{00b7} MRV",
+             citation: CitationRegistry.volumeDoseResponse) {
+            if parts.isEmpty {
+                emptyNote("Once you log resistance sets, each muscle's weekly volume appears against its MEV (the minimum to grow), MAV (the productive range), and MRV (the recovery ceiling).")
             } else {
-                Button { reuse(session) } label: { Label("Reuse", systemImage: "arrow.clockwise") }
-                    .tint(.blue)
+                VStack(spacing: 10) {
+                    ForEach(parts, id: \.self) { part in
+                        VolumeLandmarkBar(
+                            part: part,
+                            sets: facts.weeklySetsByPart[part] ?? 0,
+                            bands: VolumeLandmarks.bands(for: part, experience: settings.experienceLevel),
+                            zone: VolumeLandmarks.zone(sets: facts.weeklySetsByPart[part] ?? 0,
+                                                       for: part, experience: settings.experienceLevel))
+                    }
+                }
+                Text("Bands scale with your experience level.")
+                    .font(.caption2).foregroundStyle(.tertiary).padding(.top, 8)
             }
         }
-        .swipeActions {
-            if session.deletedAt != nil {
-                Button(role: .destructive) {
-                    try? WorkoutRepository.deleteSession(session, in: context)
-                } label: { Label("Purge", systemImage: "trash.slash") }
-                    .accessibilityIdentifier("progress.purge")
+    }
+
+    // MARK: - §4 Load intensity
+
+    @ViewBuilder private var intensityCard: some View {
+        let i = facts.intensity
+        card(title: "Load intensity",
+             subtitle: "vs. your goal \u{2014} \(settings.trainingGoal.displayName.lowercased())",
+             citation: CitationRegistry.schoenfeld2021) {
+            if i.sampleCount == 0 {
+                emptyNote("Log the weight on your sets and we'll show how your work splits across heavy, moderate, and light loads \u{2014} and whether that matches your goal's rep range.")
             } else {
-                Button(role: .destructive) { sessionToDelete = session } label: {
-                    Label("Delete", systemImage: "trash")
+                GeometryReader { geo in
+                    let w = geo.size.width
+                    HStack(spacing: 0) {
+                        Rectangle().fill(Color.blue.opacity(0.25)).frame(width: w * CGFloat(i.heavy))
+                        Rectangle().fill(Color.green.opacity(0.25)).frame(width: w * CGFloat(i.moderate))
+                        Rectangle().fill(Color.gray.opacity(0.20)).frame(width: w * CGFloat(i.light))
+                    }
+                }
+                .frame(height: 22)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+                HStack {
+                    Text("heavy \(pct(i.heavy))").foregroundStyle(.blue)
+                    Spacer(); Text("moderate \(pct(i.moderate))").foregroundStyle(.green)
+                    Spacer(); Text("light \(pct(i.light))").foregroundStyle(.secondary)
+                }
+                .font(.caption2).padding(.top, 5)
+                Text(intensityRead(i, goal: settings.trainingGoal))
+                    .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+            }
+        }
+    }
+
+    private func pct(_ f: Double) -> String { "\(Int((f * 100).rounded()))%" }
+
+    private func intensityRead(_ i: IntensityDistribution, goal: TrainingGoal) -> String {
+        switch goal {
+        case .strength:
+            return i.heavy >= 0.5 ? "Skewed to heavy loads \u{2014} aligned with a strength goal."
+                                  : "Lighter than a strength goal usually calls for."
+        case .hypertrophy:
+            return i.moderate >= 0.5 ? "Mostly moderate-load work \u{2014} matched to the hypertrophy rep range."
+                                     : "Spread across loads \u{2014} hypertrophy favors more moderate-rep work."
+        case .endurance:
+            return i.light >= 0.4 ? "Plenty of higher-rep work \u{2014} aligned with an endurance goal."
+                                  : "Heavier than an endurance goal usually calls for."
+        }
+    }
+
+    // MARK: - §5 Effort + Frequency
+
+    @ViewBuilder private var effortCard: some View {
+        card(title: "Effort", citation: CitationRegistry.rpeAutoregulation, compact: true) {
+            if let rir = facts.avgRIR {
+                Text(String(format: "%.1f", rir)).font(.title2.weight(.semibold))
+                + Text(" RIR").font(.caption).foregroundStyle(.secondary)
+                Text(effortRead(rir, goal: settings.trainingGoal))
+                    .font(.caption2).foregroundStyle(.secondary).padding(.top, 3)
+            } else {
+                emptyNote("Log RPE on your sets to track how close to failure you train.")
+            }
+        }
+    }
+
+    @ViewBuilder private var frequencyCard: some View {
+        let hits = BodyPart.allCases.filter { (facts.frequencyByPart[$0] ?? 0) >= 2 }
+        let lows = BodyPart.allCases.filter { (facts.frequencyByPart[$0] ?? 0) == 1 }
+        card(title: "Frequency", citation: CitationRegistry.frequencyMeta, compact: true) {
+            if facts.frequencyByPart.isEmpty {
+                emptyNote("Train each muscle \u{2265}2\u{00d7}/week to get more from the same weekly sets.")
+            } else {
+                if !hits.isEmpty {
+                    Text(hits.map(\.displayName).joined(separator: " \u{00b7} ") + " 2\u{00d7}/wk")
+                        .font(.caption).foregroundStyle(.green)
+                }
+                if !lows.isEmpty {
+                    Text(lows.map(\.displayName).joined(separator: " \u{00b7} ") + " 1\u{00d7}/wk")
+                        .font(.caption).foregroundStyle(.orange).padding(.top, 2)
                 }
             }
         }
     }
 
-    private func cardioRow(_ c: CardioWorkout) -> some View {
-        Button { Haptics.selection(); path.append(HistorySummaryRoute.cardio(c)) } label: {
-            HStack {
-                Image(systemName: c.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
-                        Text(c.displayTitle)
-                        if c.isLogged { LoggedTag() }
-                        if c.deletedAt != nil { DeletedTag() }
-                    }
-                    Text(c.start.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption).foregroundStyle(.secondary)
-                    Text("\(Format.duration(c.duration))\(c.distance.map { " \u{00b7} " + Format.distance($0) } ?? "")")
-                        .font(.caption2).foregroundStyle(.tertiary)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("progress.cardioRow.\(c.typeValue.rawValue)")
-        .swipeActions {
-            if c.deletedAt != nil {
-                Button(role: .destructive) {
-                    try? WorkoutRepository.deleteCardio(c, in: context)
-                } label: { Label("Purge", systemImage: "trash.slash") }
+    private func effortRead(_ rir: Double, goal: TrainingGoal) -> String {
+        let target = Double(goal.targetRIR)
+        if rir <= target + 0.5 && rir >= target - 0.5 { return "In the effective range for \(goal.displayName.lowercased())." }
+        return rir > target ? "A little further from failure than \(goal.displayName.lowercased()) calls for."
+                            : "Closer to failure than \(goal.displayName.lowercased()) usually needs."
+    }
+
+    // MARK: - §6 Test results
+
+    @ViewBuilder private var testResultsCard: some View {
+        card(title: "Test results", citation: nil) {
+            if facts.assessments.isEmpty {
+                emptyNote("Run a test from the Tests tab \u{2014} strength, push-ups, plank, or a VO\u{2082}max field test \u{2014} and your results trend here, noise-guarded.")
             } else {
-                Button(role: .destructive) { cardioToDelete = c } label: {
-                    Label("Delete", systemImage: "trash")
+                VStack(spacing: 0) {
+                    ForEach(Array(facts.assessments.enumerated()), id: \.element.id) { idx, s in
+                        if idx > 0 { Divider() }
+                        Button { Haptics.selection(); path.append(s.kind) } label: { testRow(s) }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("progress.trend.\(s.id)")
+                    }
                 }
-            }
-        }
-        .swipeActions(edge: .leading) {
-            if c.deletedAt != nil {
-                Button { restoreCardio(c) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
-                    .tint(.green)
+                ForEach(facts.assessmentsDueForRetest) { s in
+                    HStack(spacing: 7) {
+                        Image(systemName: "calendar.badge.clock").foregroundStyle(.orange)
+                        Text("\(AssessmentDisplay.seriesTitle(s)) is due to re-test (\(s.daysSinceLatest() / 7) weeks).")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                    .padding(9).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.top, 8)
+                }
+                Divider().padding(.top, 12).padding(.bottom, 8)
+                CitationLink(citation: CitationRegistry.oneRMEstimation, context: "Test methods & validity")
             }
         }
     }
 
-    // MARK: Assessment trends
-
-    private func assessmentTrendRow(_ summary: AssessmentSummary) -> some View {
+    private func testRow(_ s: AssessmentSummary) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: summary.kind.symbol)
-                .foregroundStyle(.tint)
-                .frame(width: 26)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(AssessmentDisplay.seriesTitle(summary))
-                    .font(.subheadline)
-                Text(AssessmentDisplay.value(summary.latest, kind: summary.kind, unit: settings.unit))
+            Image(systemName: s.kind.symbol).foregroundStyle(.tint).frame(width: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(AssessmentDisplay.seriesTitle(s)).font(.subheadline)
+                Text(AssessmentDisplay.value(s.latest, kind: s.kind, unit: settings.unit))
                     .font(.caption).foregroundStyle(.secondary).monospacedDigit()
             }
-            Spacer(minLength: 4)
-            let data = sparklineData(for: summary)
-            if data.count >= 2 {
-                assessmentSparkline(data, kind: summary.kind)
-                    .frame(width: 60, height: 28)
-                    .accessibilityHidden(true)
+            Spacer()
+            testTrendPill(s.trend)
+            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 6).contentShape(Rectangle())
+    }
+
+    @ViewBuilder private func testTrendPill(_ t: AssessmentTrend) -> some View {
+        switch t {
+        case .improved:
+            pill("improved", .green, bg: .green.opacity(0.15))
+        case .declined:
+            pill("declined", .red, bg: .red.opacity(0.15))
+        case .unchanged:
+            pill("no change \u{00b7} within noise", .secondary, bg: .gray.opacity(0.15))
+        case .single:
+            Text("baseline").font(.caption2).foregroundStyle(.tertiary)
+        }
+    }
+    private func pill(_ t: String, _ fg: Color, bg: Color) -> some View {
+        Text(t).font(.caption2).foregroundStyle(fg)
+            .padding(.horizontal, 8).padding(.vertical, 2)
+            .background(bg, in: Capsule())
+    }
+
+    // MARK: - §7 Full history link
+
+    private var historyLink: some View {
+        Button { Haptics.selection(); path.append(ProgressRoute.history) } label: {
+            HStack {
+                Text("View full history")
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption)
             }
-            if summary.count >= 2 {
-                TrendBadge(trend: summary.trend)
-            }
-            Image(systemName: "chevron.right")
-                .font(.caption2).foregroundStyle(.tertiary)
+            .foregroundStyle(.tint).padding(.vertical, 6).contentShape(Rectangle())
         }
-        .padding(.vertical, 2)
-    }
-
-    private func assessmentSparkline(_ data: [Assessment], kind: AssessmentKind) -> some View {
-        Chart(data) { row in
-            LineMark(
-                x: .value("Date", row.date),
-                y: .value("Value", sparklineValue(row.value, kind: kind))
-            )
-            .foregroundStyle(.tint)
-            .interpolationMethod(.catmullRom)
-        }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-        .chartYScale(domain: .automatic(includesZero: false))
-    }
-
-    private func sparklineValue(_ value: Double, kind: AssessmentKind) -> Double {
-        kind.unit == .weightKg ? WorkoutMath.display(value, in: settings.unit) : value
-    }
-
-    // MARK: Actions
-
-    private func reuse(_ past: WorkoutSession) {
-        if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
-            active.startStrength(s)
-            path.append(s)
-        }
-    }
-
-    private func restore(_ s: WorkoutSession) {
-        try? WorkoutRepository.restoreSession(s, in: context)
-    }
-
-    private func restoreCardio(_ c: CardioWorkout) {
-        try? WorkoutRepository.restoreCardio(c, in: context)
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("progress.fullHistory")
     }
 }

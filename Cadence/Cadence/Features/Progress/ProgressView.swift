@@ -86,7 +86,7 @@ struct TrainingProgressView: View {
 
     private var scienceBanner: some View {
         HStack(alignment: .top, spacing: 9) {
-            Image(systemName: "microscope").foregroundStyle(.tint)
+            Image(systemName: "flask").foregroundStyle(.tint)
             Text("Every reading is tied to a study. Changes within measurement noise are shown as \u{201C}no change,\u{201D} not progress.")
                 .font(.caption).foregroundStyle(.tint)
         }

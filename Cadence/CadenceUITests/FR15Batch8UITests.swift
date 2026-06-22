@@ -41,8 +41,6 @@ final class FR15Batch8UITests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["home.cardioMinutes"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["home.volume"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["home.bodyParts"].exists)
-        // At cold start all body parts should be missing.
-        XCTAssertTrue(app.descendants(matching: .any)["home.bodyParts.missing"].exists)
     }
 
     // Exercise picker: popular-first with in-app detail (P2) + body-part filter chips.

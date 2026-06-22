@@ -13,26 +13,33 @@ struct CoachCardView: View {
     var onStart: () -> Void
     var onSeeAll: () -> Void
 
+    @State private var scienceExpanded = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // 1 — eyebrow: "COACH · TODAY" + About (info) link
             HStack(spacing: 8) {
-                Image(systemName: "figure.mind.and.body")
-                Text("COACH").font(.caption.bold()).tracking(1.2)
+                Image(systemName: "figure.mind.and.body").font(.caption)
+                Text("COACH · TODAY").font(.caption.bold()).tracking(1.2)
                 Spacer()
-                NavigationLink {
-                    CoachAboutView()
-                } label: {
-                    Image(systemName: "info.circle")
-                        .font(.subheadline)
+                NavigationLink { CoachAboutView() } label: {
+                    Image(systemName: "info.circle").font(.subheadline)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("coach.card.about")
                 .accessibilityLabel("About the Coach")
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.tint)
 
-            RecommendationContentView(recommendation: recommendation, unit: unit, headline: true)
+            // 2 — recommendation title, action, and the loggable target chip.
+            //     showScience: false suppresses this component's own toggle so
+            //     "The science" can live in the footer (item 4) instead.
+            RecommendationContentView(recommendation: recommendation,
+                                      unit: unit,
+                                      headline: true,
+                                      showScience: false)
 
+            // 3 — the one primary action
             Button { Haptics.selection(); onStart() } label: {
                 Label("Start workout", systemImage: "play.fill")
                     .font(.headline)
@@ -45,27 +52,61 @@ struct CoachCardView: View {
             .accessibilityIdentifier("home.coachStart")
             .accessibilityLabel("Start the coach's workout")
 
-            if insightCount > 0 {
-                Button { Haptics.selection(); onSeeAll() } label: {
-                    HStack(spacing: 4) {
-                        Text("See all insights (\(insightCount))").font(.subheadline.weight(.medium))
-                        Image(systemName: "chevron.right").font(.caption)
+            // 4 — footer row: "The science" (left) · "All insights (n)" (right)
+            HStack(spacing: 12) {
+                Button { withAnimation(.easeInOut(duration: 0.2)) { scienceExpanded.toggle() } } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "book.closed")
+                        Text("The science")
+                        Image(systemName: scienceExpanded ? "chevron.up" : "chevron.down")
+                            .font(.caption2)
                     }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.tint)
-                .accessibilityIdentifier("coach.card.seeAll")
+                .accessibilityIdentifier("coach.card.why")
+                .accessibilityLabel(scienceExpanded ? "Hide the science" : "Why — show the science")
+
+                Spacer()
+
+                if insightCount > 0 {
+                    Button { Haptics.selection(); onSeeAll() } label: {
+                        HStack(spacing: 4) {
+                            Text("All insights (\(insightCount))")
+                            Image(systemName: "chevron.right").font(.caption2)
+                        }
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.tint)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("coach.card.seeAll")
+                }
             }
 
+            // 5 — expanded science: detail + citations, revealed under the footer
+            if scienceExpanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(recommendation.detail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(recommendation.allCitations) { c in
+                        CitationLink(citation: c)
+                    }
+                }
+                .transition(.opacity)
+            }
+
+            // 6 — disclaimer (last line, tiny)
             Text("Coaching, not medical advice.")
-                .font(.caption2).foregroundStyle(.tertiary)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(.tint.opacity(0.25), lineWidth: 1))
-        // Keep inner controls (coach.card.target / .why / .citation) individually
-        // addressable; the background+overlay would otherwise collapse the card.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("coach.card")
     }
@@ -79,6 +120,7 @@ struct RecommendationContentView: View {
     let recommendation: Recommendation
     var unit: MeasurementUnitPreference
     var headline: Bool = false
+    var showScience: Bool = true
     @State private var expanded = false
 
     var body: some View {
@@ -132,35 +174,37 @@ struct RecommendationContentView: View {
                 .accessibilityIdentifier("coach.card.target")
             }
 
-            // Explicit toggle (not a DisclosureGroup) for predictable a11y/testing.
-            Button { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "book.closed")
-                    Text("Why / the science")
-                    Spacer(minLength: 4)
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                }
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("coach.card.why")
-            .accessibilityAddTraits(.isButton)
-            .accessibilityLabel(expanded ? "Hide the science" : "Why — show the science")
-
-            if expanded {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(recommendation.detail)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    ForEach(recommendation.allCitations) { c in
-                        CitationLink(citation: c)
+            if showScience {
+                // Explicit toggle (not a DisclosureGroup) for predictable a11y/testing.
+                Button { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "book.closed")
+                        Text("Why / the science")
+                        Spacer(minLength: 4)
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down")
                     }
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
                 }
-                .padding(.top, 2)
-                .transition(.opacity)
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("coach.card.why")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel(expanded ? "Hide the science" : "Why — show the science")
+
+                if expanded {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(recommendation.detail)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        ForEach(recommendation.allCitations) { c in
+                            CitationLink(citation: c)
+                        }
+                    }
+                    .padding(.top, 2)
+                    .transition(.opacity)
+                }
             }
         }
     }

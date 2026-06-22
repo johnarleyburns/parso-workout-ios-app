@@ -126,4 +126,27 @@ final class P3CoachHomeUITests: CadenceUITestCase {
                       || app.descendants(matching: .any)["planning.view"].waitForExistence(timeout: 10),
                       "should navigate to Programs & Routines")
     }
+
+    // MARK: - Header date
+
+    func testHomeHeaderShowsDate() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.descendants(matching: .any)["home.headerDate"].waitForExistence(timeout: 10),
+                      "header date should appear beneath the title")
+    }
+
+    // MARK: - Coach card science footer
+
+    func testCoachCardScienceFooterBelowStart() {
+        let app = XCUIApplication.launched(seeds: ["history"])
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
+
+        // The science toggle sits below the Start button in the footer row.
+        let why = app.descendants(matching: .any)["coach.card.why"].firstMatch
+        XCTAssertTrue(why.waitForExistence(timeout: 5),
+                      "science footer toggle should be present")
+        why.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card.citation"].firstMatch.waitForExistence(timeout: 5),
+                      "citation should appear after expanding the science footer")
+    }
 }

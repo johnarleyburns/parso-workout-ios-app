@@ -73,12 +73,25 @@ struct HomeView: View {
     /// falls back to a cited cold-start starter when there's no history yet.
     private var coachRecommendation: Recommendation { RecommendationEngine.top(coachFacts) }
 
+    private static let headerDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.setLocalizedDateFormatFromTemplate("EEEEMMMd")
+        return f
+    }()
+    private var headerDateText: String { Self.headerDateFormatter.string(from: .now) }
+
     var body: some View {
         @Bindable var active = active
         return ZStack {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    Text(headerDateText)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("home.headerDate")
+
                     if let s = active.strengthSession { resumeCard(s) }
                     CoachCardView(recommendation: coachRecommendation,
                                   insightCount: coachInsights.count,
@@ -92,7 +105,7 @@ struct HomeView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Cladiron")
+            .navigationTitle("Today")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { Haptics.selection(); path.append(HomeRoute.settings) } label: { Image(systemName: "gearshape") }
@@ -306,8 +319,7 @@ struct HomeView: View {
 
     /// "This week" at a glance — one calm card, not four launcher tiles.
     private var thisWeekCard: some View {
-        let coverage = bodyPartsThisWeek
-        return VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("This week").font(.headline)
                 Spacer()
@@ -321,16 +333,10 @@ struct HomeView: View {
             }
             HStack(spacing: 0) {
                 weekMetric("\(workoutsThisWeek)", "workouts", id: "home.workoutsCount")
-                weekMetric("\(cardioMinutesThisWeek)", "cardio min", id: "home.cardioMinutes")
-                weekMetric(Format.weight(volumeThisWeekKg, unit: settings.unit, decimals: 0),
-                           "volume", id: "home.volume")
-                weekMetric("\(coverage.hit.count)/\(BodyPart.allCases.count)",
-                           "body parts", id: "home.bodyParts")
-            }
-            if !coverage.missing.isEmpty {
-                Text("Missing: " + coverage.missing.map(\.displayName).joined(separator: ", "))
-                    .font(.caption2).foregroundStyle(.tertiary)
-                    .accessibilityIdentifier("home.bodyParts.missing")
+                weekMetric("\(cardioMinutesThisWeek)m", "cardio", id: "home.cardioMinutes")
+                weekMetric(compactVolume(), "volume", id: "home.volume")
+                weekMetric("\(bodyPartsThisWeek.hit.count)/\(BodyPart.allCases.count)",
+                           "parts", id: "home.bodyParts")
             }
         }
         .padding()
@@ -341,11 +347,19 @@ struct HomeView: View {
     private func weekMetric(_ value: String, _ label: String, id: String) -> some View {
         VStack(spacing: 3) {
             Text(value).font(.title3.bold()).monospacedDigit()
-                .minimumScaleFactor(0.6).lineLimit(1)
+                .minimumScaleFactor(0.5).lineLimit(1)
                 .accessibilityIdentifier(id)
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// Compact weekly volume for the calm 4-across row (e.g. "12.4k"); the unit
+    /// is implied by Settings and shown in full on the Details screen.
+    private func compactVolume() -> String {
+        let value = settings.unit == .pounds ? volumeThisWeekKg * 2.2046226 : volumeThisWeekKg
+        if value >= 1000 { return String(format: "%.1fk", value / 1000) }
+        return String(format: "%.0f", value)
     }
 
     private var homeFavoriteRoutines: [WorkoutPlan] {

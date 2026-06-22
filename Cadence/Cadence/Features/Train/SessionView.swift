@@ -33,6 +33,7 @@ struct SessionView: View {
     @State private var inlinePerformedByID: UUID?
     @State private var inlineRPE: Int? = nil
     @State private var showRPEInfo = false
+    @State private var showDeleteConfirm = false
     @FocusState private var weightFocused: Bool
     @State private var healthSaved = false
     @Query(sort: \Person.name) private var allPeople: [Person]
@@ -297,130 +298,138 @@ struct SessionView: View {
         return (s.weight, s.reps)
     }
 
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if isManualLog { loggedDateBanner }
-                if active.strengthSession?.id != session.id && !isManualLog {
-                    editableMetadataRow
-                }
-                if rest.isRunning {
-                    RestTimerBar(model: rest) { Haptics.restComplete() }
-                }
-                if let plan { planBanner(plan) }
-                partnerBar
+    private var sessionContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if isManualLog { loggedDateBanner }
+            if active.strengthSession?.id != session.id && !isManualLog {
+                editableMetadataRow
+            }
+            if rest.isRunning {
+                RestTimerBar(model: rest) { Haptics.restComplete() }
+            }
+            if let plan { planBanner(plan) }
+            partnerBar
 
-                if isEmptySession {
-                    Button {
-                        usePreviousPresented = true
-                    } label: {
-                        Label("Use Previous Workout", systemImage: "clock.arrow.circlepath")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .accessibilityIdentifier("session.usePrevious")
-
-                    ContentUnavailableView("Empty workout",
-                                           systemImage: "dumbbell",
-                                           description: Text("Use a previous workout, or add exercises below."))
-                        .padding(.top, 16)
-                }
-
-                ForEach(session.exercisesInOrder) { exercise in
-                    exerciseCard(exercise)
-                }
-                ForEach(plannedOnlyNames, id: \.self) { name in
-                    plannedCard(name)
-                }
-
-                // Add Exercise sits at the bottom, just before End Workout.
+            if isEmptySession {
                 Button {
-                    pickerPresented = true
+                    usePreviousPresented = true
                 } label: {
-                    Label("Add Exercise", systemImage: "plus.circle.fill")
+                    Label("Use Previous Workout", systemImage: "clock.arrow.circlepath")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .padding(.top, 4)
-                .accessibilityIdentifier("session.addExercise")
+                .accessibilityIdentifier("session.usePrevious")
 
-                if active.strengthSession?.id == session.id {
-                    WorkoutControlBar(
-                        isPaused: active.isPaused,
-                        onPauseToggle: togglePause,
-                        onEnd: endWorkout,
-                        onCoolDown: { coolDownConfirm = true },
-                        confirmMessage: "This finishes and saves your workout."
-                    )
-                    .padding(.top, 8)
-                } else if isManualLog {
-                    // A logged session saves incrementally as sets are added; Done just
-                    // returns to Home (the "Logged" workout is already in history).
-                    Button {
-                        finishManualLog()
-                    } label: {
-                        Label("Done", systemImage: "checkmark")
-                            .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
-                    }
-                    .buttonStyle(.borderedProminent).tint(.green).controlSize(.large)
-                    .padding(.top, 8)
-                    .accessibilityIdentifier("log.done")
-                }
+                ContentUnavailableView("Empty workout",
+                                       systemImage: "dumbbell",
+                                       description: Text("Use a previous workout, or add exercises below."))
+                    .padding(.top, 16)
             }
-            .padding()
-        }
-        .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
-        .navigationBarTitleDisplayMode(.inline)
-        // P2 (#7) — a prominent elapsed clock, pinned above the scroll so it stays
-        // visible while logging. Only for the live session (not when reviewing/editing
-        // a past one from history), driven by the active session's WorkoutClock.
-        .safeAreaInset(edge: .top, spacing: 0) {
+
+            ForEach(session.exercisesInOrder) { exercise in
+                exerciseCard(exercise)
+            }
+            ForEach(plannedOnlyNames, id: \.self) { name in
+                plannedCard(name)
+            }
+
+            Button {
+                pickerPresented = true
+            } label: {
+                Label("Add Exercise", systemImage: "plus.circle.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .padding(.top, 4)
+            .accessibilityIdentifier("session.addExercise")
+
             if active.strengthSession?.id == session.id {
-                VStack(spacing: 0) {
-                    WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused)
-                    if model.hrm.currentBPM != nil {
-                        liveHRBand
-                    }
+                WorkoutControlBar(
+                    isPaused: active.isPaused,
+                    onPauseToggle: togglePause,
+                    onEnd: endWorkout,
+                    onCoolDown: { coolDownConfirm = true },
+                    confirmMessage: "This finishes and saves your workout."
+                )
+                .padding(.top, 8)
+            } else if isManualLog {
+                Button {
+                    finishManualLog()
+                } label: {
+                    Label("Done", systemImage: "checkmark")
+                        .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                 }
+                .buttonStyle(.borderedProminent).tint(.green).controlSize(.large)
+                .padding(.top, 8)
+                .accessibilityIdentifier("log.done")
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 12) {
-                    if let plan {
-                        NavigationLink {
-                            RoutineDetailView(plan: plan, onEditorStart: { _ in })
-                        } label: {
-                            Image(systemName: "info.circle")
-                        }
-                        .accessibilityIdentifier("session.info")
-                        .accessibilityLabel("Workout details")
-                    }
-                    Button {
-                        editedTitle = session.title
-                        renamePresented = true
-                    } label: { Image(systemName: "pencil") }
-                        .accessibilityIdentifier("session.rename")
-                        .accessibilityLabel("Rename workout")
+        .padding()
+    }
 
-                    Button {
-                        Task { await saveToHealth() }
-                    } label: { Image(systemName: healthSaved ? "checkmark.circle.fill" : "heart.text.square") }
-                        .disabled(session.orderedSets.isEmpty)
-                        .accessibilityIdentifier("session.saveHealth")
+    private var coreSessionView: AnyView {
+        AnyView(
+            ScrollView { sessionContent }
+                .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
+                .navigationBarTitleDisplayMode(.inline)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if active.strengthSession?.id == session.id {
+                        VStack(spacing: 0) {
+                            WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused)
+                            if model.hrm.currentBPM != nil {
+                                liveHRBand
+                            }
+                        }
+                    }
                 }
-            }
-        }
-        .overlay(alignment: .top) {
-            if healthSaved {
-                Text("Saved to Apple Health")
-                    .font(.caption).padding(8)
-                    .background(.thinMaterial, in: Capsule())
-                    .accessibilityIdentifier("session.healthSaved")
-            }
-        }
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 12) {
+                            if let plan {
+                                NavigationLink {
+                                    RoutineDetailView(plan: plan, onEditorStart: { _ in })
+                                } label: {
+                                    Image(systemName: "info.circle")
+                                }
+                                .accessibilityIdentifier("session.info")
+                                .accessibilityLabel("Workout details")
+                            }
+                            Button {
+                                showDeleteConfirm = true
+                            } label: { Image(systemName: "trash") }
+                                .foregroundStyle(.red)
+                                .accessibilityIdentifier("session.delete")
+                                .accessibilityLabel("Delete workout")
+                            Button {
+                                editedTitle = session.title
+                                renamePresented = true
+                            } label: { Image(systemName: "pencil") }
+                                .accessibilityIdentifier("session.rename")
+                                .accessibilityLabel("Rename workout")
+
+                            Button {
+                                Task { await saveToHealth() }
+                            } label: { Image(systemName: healthSaved ? "checkmark.circle.fill" : "heart.text.square") }
+                                .disabled(session.orderedSets.isEmpty)
+                                .accessibilityIdentifier("session.saveHealth")
+                        }
+                    }
+                }
+                .overlay(alignment: .top) {
+                    if healthSaved {
+                        Text("Saved to Apple Health")
+                            .font(.caption).padding(8)
+                            .background(.thinMaterial, in: Capsule())
+                            .accessibilityIdentifier("session.healthSaved")
+                    }
+                }
+        )
+    }
+
+    var body: some View {
+        coreSessionView
         .sheet(isPresented: $pickerPresented) {
             ExercisePickerView { exercise in
                 if !session.exercisesInOrder.contains(where: { $0.id == exercise.id }) &&
@@ -520,6 +529,19 @@ struct SessionView: View {
                 try? context.save()
             }
             Button("Cancel", role: .cancel) { }
+        }
+        .confirmationDialog("Delete this workout?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if active.strengthSession?.id == session.id {
+                    active.endStrength()
+                }
+                try? WorkoutRepository.softDeleteSession(session, in: context)
+                dismiss()
+            }
+            .accessibilityIdentifier("session.deleteConfirm")
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("All sets and exercises in this session will be removed. You can restore it from History → View Deleted.")
         }
         .sheet(isPresented: $datePickerPresented) {
             NavigationStack {

@@ -69,7 +69,7 @@ struct TrainingProgressView: View {
             content()
             if let citation {
                 Divider().padding(.top, 12).padding(.bottom, 8)
-                CitationLink(citation: citation)
+                CitationLink(citation: citation, compact: true)
             }
         }
         .padding(compact ? 13 : 16)
@@ -286,7 +286,7 @@ struct TrainingProgressView: View {
                     .padding(.top, 8)
                 }
                 Divider().padding(.top, 12).padding(.bottom, 8)
-                CitationLink(citation: CitationRegistry.oneRMEstimation, context: "Test methods & validity")
+                CitationLink(citation: CitationRegistry.oneRMEstimation, context: "Test methods & validity", compact: true)
             }
         }
     }

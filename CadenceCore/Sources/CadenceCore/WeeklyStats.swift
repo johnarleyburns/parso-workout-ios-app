@@ -6,9 +6,16 @@ import Foundation
 /// arrays straight in, and it stays `swift test`-able with an in-memory store.
 public enum WeeklyStats {
 
-    /// One week ago from `now` (default: trailing 7×24 h window).
+    /// The most recent Monday at 00:00 local time (start of the training week).
+    /// Weeks reset every Monday at midnight.
     public static func weekStart(now: Date = Date()) -> Date {
-        now.addingTimeInterval(-7 * 86_400)
+        let cal = Calendar.current
+        var components = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
+        components.weekday = 2  // Monday
+        components.hour = 0
+        components.minute = 0
+        components.second = 0
+        return cal.date(from: components) ?? now.addingTimeInterval(-7 * 86_400)
     }
 
     /// Σ of cardio workout durations (minutes) with `start >= since`.

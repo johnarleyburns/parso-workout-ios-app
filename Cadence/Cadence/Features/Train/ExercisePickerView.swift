@@ -154,7 +154,7 @@ struct ExercisePickerView: View {
             .accessibilityIdentifier("picker.row.\(ex.name)")
 
             NavigationLink {
-                ExerciseDetailView(exercise: ex) { picked in onPick(picked); dismiss() }
+                ExerciseDetailView(exercise: ex) { picked in onPick(picked) }
             } label: {
                 Image(systemName: "info.circle").foregroundStyle(.tint)
             }

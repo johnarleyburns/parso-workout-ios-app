@@ -69,8 +69,11 @@ final class InsightEngineTests: XCTestCase {
     /// primary), all light (40 kg) so the strength intensity rule can fire.
     private func populatedFacts(chestSets: Int, goal: TrainingGoal) throws -> TrainingFacts {
         let ctx = try makeContext()
-        let now = Date()
-        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-86_400), in: ctx)
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        comps.weekday = 5; comps.hour = 12; comps.minute = 0; comps.second = 0
+        let now = cal.date(from: comps) ?? Date()
+        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(
             named: "EngineBench", primaryMuscles: ["chest"], secondaryMuscles: ["triceps"], in: ctx)
         for _ in 0..<chestSets {

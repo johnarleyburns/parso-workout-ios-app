@@ -15,7 +15,7 @@ struct OnboardingView: View {
     @State private var unit: MeasurementUnitPreference = .pounds
     @State private var healthRequested = false
 
-    private let lastStep = 3
+    private let lastStep = 4
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,6 +25,7 @@ struct OnboardingView: View {
                 goalPage.tag(1)
                 experiencePage.tag(2)
                 unitsPage.tag(3)
+                disclaimerPage.tag(4)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut, value: step)
@@ -63,7 +64,7 @@ struct OnboardingView: View {
                 Haptics.selection()
                 if step < lastStep { withAnimation { step += 1 } } else { finish() }
             } label: {
-                Text(step < lastStep ? "Continue" : "Start training")
+                Text(step < lastStep ? "Continue" : "I understand")
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 15)
                     .foregroundStyle(.white)
                     .background(step < lastStep ? AnyShapeStyle(.tint) : AnyShapeStyle(.green),
@@ -161,6 +162,24 @@ struct OnboardingView: View {
             .padding(.top, 8)
             .accessibilityIdentifier("onboarding.health")
         }
+    }
+
+    private var disclaimerPage: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            Image(systemName: "stethoscope")
+                .font(.system(size: 30)).foregroundStyle(.orange)
+                .frame(width: 72, height: 72)
+                .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
+            Text("Coaching, not medical advice")
+                .font(.title2.bold()).padding(.top, 22)
+            Text("Cladiron's assessments and recommendations are general training guidance, not medical advice, diagnosis, or treatment. Consult a qualified professional before starting or changing an exercise program.")
+                .font(.subheadline).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center).padding(.top, 8).padding(.horizontal, 24)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(); Spacer()
+        }
+        .padding(.horizontal, 24)
     }
 
     // MARK: Building blocks

@@ -97,16 +97,12 @@ struct CoachCardView: View {
                 }
                 .transition(.opacity)
             }
-
-            // 6 — disclaimer (last line, tiny)
-            Text("Coaching, not medical advice.")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(.tint.opacity(0.25), lineWidth: 1))
+        .background(.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(.tint.opacity(0.40), lineWidth: 1.5))
+        .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("coach.card")
     }
@@ -270,15 +266,16 @@ struct InsightContentView: View {
 struct CitationLink: View {
     let citation: Citation
     var context: String?
+    var compact: Bool = false
 
     var body: some View {
         NavigationLink {
             CitationDetailView(citation: citation, context: context)
         } label: {
-            label
+            compact ? AnyView(compactLabel) : AnyView(label)
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("coach.card.citation")
+        .accessibilityIdentifier(compact ? "progress.card.citation" : "coach.card.citation")
         .accessibilityLabel("Source: \(citation.shortText)")
     }
 
@@ -291,6 +288,15 @@ struct CitationLink: View {
             Image(systemName: "chevron.right").font(.caption2)
         }
         .foregroundStyle(.tint)
+    }
+
+    private var compactLabel: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text("the science")
+                .font(.caption2).foregroundStyle(.tint)
+            Image(systemName: "chevron.forward")
+                .font(.caption2).foregroundStyle(.tint)
+        }
     }
 }
 

@@ -42,4 +42,35 @@ final class WeeklyStatsTests: XCTestCase {
         XCTAssertTrue(hit.contains(.back))
         XCTAssertTrue(missing.contains(.chest))
     }
+
+    func testWeekStartIsMondayMidnight() {
+        let cal = Calendar.current
+        // Pick a known Friday at 3pm
+        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        comps.weekday = 6  // Friday
+        comps.hour = 15
+        comps.minute = 30
+        guard let friday = cal.date(from: comps) else { XCTFail("Could not build Friday date"); return }
+
+        let start = WeeklyStats.weekStart(now: friday)
+        let dayComp = cal.component(.weekday, from: start)
+        let hourComp = cal.component(.hour, from: start)
+        XCTAssertEqual(dayComp, 2, "weekStart should be Monday (weekday 2), got \(dayComp)")
+        XCTAssertEqual(hourComp, 0, "weekStart should be midnight")
+        XCTAssertLessThanOrEqual(start, friday, "weekStart should be before or equal to now")
+    }
+
+    func testWeekStartOnMondayIsSameDay() {
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        comps.weekday = 2  // Monday
+        comps.hour = 6
+        comps.minute = 0
+        guard let monday = cal.date(from: comps) else { XCTFail("Could not build Monday date"); return }
+
+        let start = WeeklyStats.weekStart(now: monday)
+        let startDay = cal.startOfDay(for: start)
+        let mondayStart = cal.startOfDay(for: monday)
+        XCTAssertEqual(startDay, mondayStart, "On Monday 6am, weekStart should be the same Monday at midnight")
+    }
 }

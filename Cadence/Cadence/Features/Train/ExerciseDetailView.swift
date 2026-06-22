@@ -6,6 +6,7 @@ struct ExerciseDetailView: View {
     var onPick: ((Exercise) -> Void)?
 
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
 
     private var startImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 0) }
     private var endImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 1) }
@@ -48,7 +49,7 @@ struct ExerciseDetailView: View {
                     }
                     .accessibilityLabel(exercise.isFavorite ? "Remove from favorites" : "Add to favorites")
                     if let onPick {
-                        Button("Add") { onPick(exercise) }
+                        Button("Add") { onPick(exercise); dismiss() }
                             .accessibilityIdentifier("detail.add")
                     }
                 }

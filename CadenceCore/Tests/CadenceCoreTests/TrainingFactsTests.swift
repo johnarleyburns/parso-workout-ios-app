@@ -5,6 +5,18 @@ import SwiftData
 /// strength-pivot P3 — the engine's computed snapshot from logged history.
 final class TrainingFactsTests: XCTestCase {
 
+    /// A known Thursday at noon so session dates fall within the Monday-bounded week
+    /// regardless of what real day the test runs.
+    private var testNow: Date {
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        comps.weekday = 5  // Thursday
+        comps.hour = 12
+        comps.minute = 0
+        comps.second = 0
+        return cal.date(from: comps) ?? Date()
+    }
+
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
@@ -13,8 +25,8 @@ final class TrainingFactsTests: XCTestCase {
     /// secondary 0.5 each; warmups and zero-rep sets excluded.
     func testWeeklySetsCountPrimaryFullSecondaryHalf() throws {
         let ctx = try makeContext()
-        let now = Date()
-        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-86_400), in: ctx)
+        let now = testNow
+        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(
             named: "Test Bench", primaryMuscles: ["chest"],
             secondaryMuscles: ["triceps", "front-delts"], in: ctx)
@@ -32,7 +44,7 @@ final class TrainingFactsTests: XCTestCase {
 
     func testStaleSessionsExcludedFromWeeklyWindow() throws {
         let ctx = try makeContext()
-        let now = Date()
+        let now = testNow
         let old = try WorkoutRepository.createSession(date: now.addingTimeInterval(-10 * 86_400), in: ctx)
         let squat = try WorkoutRepository.findOrCreateExercise(named: "Test Squat", primaryMuscles: ["quads"], in: ctx)
         _ = try WorkoutRepository.addSet(to: old, exercise: squat, weightKg: 100, reps: 5, in: ctx)
@@ -44,9 +56,9 @@ final class TrainingFactsTests: XCTestCase {
 
     func testFrequencyCountsDistinctDays() throws {
         let ctx = try makeContext()
-        let now = Date()
+        let now = testNow
         let squat = try WorkoutRepository.findOrCreateExercise(named: "Test Squat 2", primaryMuscles: ["quads"], in: ctx)
-        let day1 = try WorkoutRepository.createSession(date: now.addingTimeInterval(-1 * 86_400), in: ctx)
+        let day1 = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
         let day3 = try WorkoutRepository.createSession(date: now.addingTimeInterval(-3 * 86_400), in: ctx)
         _ = try WorkoutRepository.addSet(to: day1, exercise: squat, weightKg: 100, reps: 5, in: ctx)
         _ = try WorkoutRepository.addSet(to: day3, exercise: squat, weightKg: 100, reps: 5, in: ctx)
@@ -57,9 +69,9 @@ final class TrainingFactsTests: XCTestCase {
 
     func testE1RMTrendRisingAcrossWindows() throws {
         let ctx = try makeContext()
-        let now = Date()
+        let now = testNow
         let dl = try WorkoutRepository.findOrCreateExercise(named: "Test Deadlift", primaryMuscles: ["hamstrings"], in: ctx)
-        let prior = try WorkoutRepository.createSession(date: now.addingTimeInterval(-10 * 86_400), in: ctx)
+        let prior = try WorkoutRepository.createSession(date: now.addingTimeInterval(-8 * 86_400), in: ctx)
         let recent = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
         _ = try WorkoutRepository.addSet(to: prior, exercise: dl, weightKg: 100, reps: 5, in: ctx)
         _ = try WorkoutRepository.addSet(to: recent, exercise: dl, weightKg: 115, reps: 5, in: ctx)
@@ -70,10 +82,10 @@ final class TrainingFactsTests: XCTestCase {
 
     func testE1RMTrendFlatWithinNoiseBand() throws {
         let ctx = try makeContext()
-        let now = Date()
+        let now = testNow
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Test OHP", primaryMuscles: ["delts"], in: ctx)
-        let prior = try WorkoutRepository.createSession(date: now.addingTimeInterval(-9 * 86_400), in: ctx)
-        let recent = try WorkoutRepository.createSession(date: now.addingTimeInterval(-1 * 86_400), in: ctx)
+        let prior = try WorkoutRepository.createSession(date: now.addingTimeInterval(-8 * 86_400), in: ctx)
+        let recent = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
         _ = try WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 60, reps: 5, in: ctx)
         _ = try WorkoutRepository.addSet(to: recent, exercise: ex, weightKg: 60, reps: 5, in: ctx)
 
@@ -83,8 +95,8 @@ final class TrainingFactsTests: XCTestCase {
 
     func testAvgRPEAndDerivedRIR() throws {
         let ctx = try makeContext()
-        let now = Date()
-        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-86_400), in: ctx)
+        let now = testNow
+        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Test Row", primaryMuscles: ["lats"], in: ctx)
         _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: 80, reps: 8, rpe: 7, in: ctx)
         _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: 80, reps: 8, rpe: 9, in: ctx)
@@ -96,8 +108,8 @@ final class TrainingFactsTests: XCTestCase {
 
     func testIntensityDistributionRelativeToBest() throws {
         let ctx = try makeContext()
-        let now = Date()
-        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-86_400), in: ctx)
+        let now = testNow
+        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Test Bench 2", primaryMuscles: ["chest"], in: ctx)
         // Best single set this week defines the reference; the heavy single set is
         // ~100% of its own e1RM, the light one well under 60%.
@@ -112,7 +124,7 @@ final class TrainingFactsTests: XCTestCase {
 
     func testDaysSinceLastSession() throws {
         let ctx = try makeContext()
-        let now = Date()
+        let now = testNow
         let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-3 * 86_400), in: ctx)
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Test Curl", primaryMuscles: ["biceps"], in: ctx)
         _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: 20, reps: 10, in: ctx)

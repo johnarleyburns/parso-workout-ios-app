@@ -144,8 +144,8 @@ public extension TrainingFacts {
                      goal: TrainingGoal,
                      experience: ExperienceLevel,
                      formula: OneRepMaxFormula = .epley) -> TrainingFacts {
-        let weekStart = now.addingTimeInterval(-7 * 86_400)
-        let priorStart = now.addingTimeInterval(-14 * 86_400)
+        let weekStart = WeeklyStats.weekStart(now: now)
+        let priorStart = Calendar.current.date(byAdding: .day, value: -7, to: weekStart) ?? now.addingTimeInterval(-14 * 86_400)
         let cal = Calendar.current
 
         // One flat list of (session, owner working set) for the trailing week.

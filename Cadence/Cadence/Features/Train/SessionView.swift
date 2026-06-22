@@ -384,6 +384,15 @@ struct SessionView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 12) {
+                    if let plan {
+                        NavigationLink {
+                            RoutineDetailView(plan: plan, onEditorStart: { _ in })
+                        } label: {
+                            Image(systemName: "info.circle")
+                        }
+                        .accessibilityIdentifier("session.info")
+                        .accessibilityLabel("Workout details")
+                    }
                     Button {
                         editedTitle = session.title
                         renamePresented = true

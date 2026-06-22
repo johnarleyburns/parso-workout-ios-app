@@ -145,8 +145,11 @@ final class RecommendationEngineTests: XCTestCase {
 
     func testMakeWiresLiftSnapshotIntoProgression() throws {
         let ctx = try makeContext()
-        let now = Date()
-        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-86_400), in: ctx)
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        comps.weekday = 5; comps.hour = 12; comps.minute = 0; comps.second = 0
+        let now = cal.date(from: comps) ?? Date()
+        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
         let squat = try WorkoutRepository.findOrCreateExercise(
             named: "BackSquat", primaryMuscles: ["quadriceps"], secondaryMuscles: ["glutes"], in: ctx)
         // 5 reps at 60 kg, strength goal (range 3–5) → at the top → add load to 62.5.

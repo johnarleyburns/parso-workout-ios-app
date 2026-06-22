@@ -53,15 +53,15 @@ struct CoachCardView: View {
             .accessibilityLabel("Start the coach's workout")
 
             // 4 — footer row: "The science" (left) · "All insights (n)" (right)
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 Button { withAnimation(.easeInOut(duration: 0.2)) { scienceExpanded.toggle() } } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "book.closed")
+                    HStack(spacing: 4) {
+                        Image(systemName: "book.closed").font(.caption2)
                         Text("The science")
                         Image(systemName: scienceExpanded ? "chevron.up" : "chevron.down")
                             .font(.caption2)
                     }
-                    .font(.subheadline)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
@@ -72,11 +72,11 @@ struct CoachCardView: View {
 
                 if insightCount > 0 {
                     Button { Haptics.selection(); onSeeAll() } label: {
-                        HStack(spacing: 4) {
+                        HStack(spacing: 3) {
                             Text("All insights (\(insightCount))")
                             Image(systemName: "chevron.right").font(.caption2)
                         }
-                        .font(.subheadline.weight(.medium))
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(.tint)
                     }
                     .buttonStyle(.plain)

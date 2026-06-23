@@ -87,12 +87,13 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(deload?.citation.id, CitationRegistry.rpeAutoregulation.id)
     }
 
-    func testDeloadRanksBeforeProgression() {
+    func testDeloadDoesNotOutrankProgression() {
         let f = facts(snapshots: [
-            snapshot("Bench", weight: 80, reps: 4, trend: .flat),       // → progression
-            snapshot("Squat", weight: 100, reps: 5, trend: .declining), // → deload
+            snapshot("Bench", weight: 80, reps: 4, trend: .flat),       // → progression (pri 100)
+            snapshot("Squat", weight: 100, reps: 5, trend: .declining), // → deload (pri 95, now below progression)
         ], goal: .strength)
-        XCTAssertEqual(RecommendationEngine.run(f).first?.id, "deload.Squat")
+        // Progression now outranks deload — single-week decline is monitored, not blocked.
+        XCTAssertEqual(RecommendationEngine.run(f).first?.id, "progression.Bench")
     }
 
     // MARK: add volume
@@ -177,25 +178,24 @@ final class RecommendationEngineTests: XCTestCase {
             cardioA(.vo2maxField, 38, daysAgo: 2, now: now),  // declined past MDC
         ]
         let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
-                                   goal: .hypertrophy, experience: .intermediate)
+                                    goal: .hypertrophy, experience: .intermediate)
         let rec = RecommendationEngine.run(f).first { $0.id == "cardio.hiit.vo2max" }
         XCTAssertEqual(rec?.kind, .cardioHIIT)
-        XCTAssertEqual(rec?.cardioPrescription, "Norwegian 4×4")
-        XCTAssertEqual(rec?.citation.id, CitationRegistry.hiitVo2max.id)
+        // New citation: crowleyVO2Intensity2022 (was hiitVo2max)
+        XCTAssertEqual(rec?.citation.id, CitationRegistry.crowleyVO2Intensity2022.id)
     }
 
-    func testWingateDeclineTriggersSITRecommendation() {
+    func testWingateDeclineNoLongerTriggersSIT() {
         let now = Date()
         let assessments = [
             cardioA(.wingate, 600, daysAgo: 60, now: now),
             cardioA(.wingate, 500, daysAgo: 2, now: now),  // declined past MDC
         ]
         let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
-                                   goal: .hypertrophy, experience: .intermediate)
+                                    goal: .hypertrophy, experience: .intermediate)
+        // SIT is now opt-in only — the rule always returns empty.
         let rec = RecommendationEngine.run(f).first { $0.id == "cardio.sit.wingate" }
-        XCTAssertEqual(rec?.kind, .cardioHIIT)
-        XCTAssertEqual(rec?.cardioPrescription, "SIT (Wingate)")
-        XCTAssertEqual(rec?.citation.id, CitationRegistry.wingateTest.id)
+        XCTAssertNil(rec, "SIT should not be auto-prescribed")
     }
 
     func testCardioRecHasNoSetTarget() {

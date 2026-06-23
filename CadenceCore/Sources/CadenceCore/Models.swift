@@ -646,6 +646,42 @@ public enum CardioSource: String, CaseIterable, Codable, Sendable {
     case watch, iphone, strap, machine
 }
 
+// MARK: - Readiness check-in (recovery-aware redesign)
+
+/// Optional once-daily self-assessment. Never required — missing readiness
+/// lowers Coach's confidence and keeps conservative time gates.
+@Model
+public final class ReadinessEntry {
+    public var id: UUID = UUID()
+    public var date: Date = Date()
+    /// 1 (very sore) to 5 (no soreness at all).
+    public var muscleSoreness: Int = 3
+    /// 1 (exhausted) to 5 (full of energy).
+    public var fatigueEnergy: Int = 3
+    /// 1 (terrible) to 5 (great).
+    public var sleepQuality: Int = 3
+    /// 1 (very stressed) to 5 (completely relaxed).
+    public var stressMood: Int = 3
+    /// Safety flag: the user reports pain or illness concern. If true, Coach
+    /// suppresses hard recommendations and shows neutral safety copy.
+    public var hasPainOrIllnessConcern: Bool = false
+    public var updatedAt: Date = Date()
+
+    public init(id: UUID = UUID(), date: Date = Date(),
+                muscleSoreness: Int = 3, fatigueEnergy: Int = 3,
+                sleepQuality: Int = 3, stressMood: Int = 3,
+                hasPainOrIllnessConcern: Bool = false, updatedAt: Date = Date()) {
+        self.id = id
+        self.date = date
+        self.muscleSoreness = muscleSoreness
+        self.fatigueEnergy = fatigueEnergy
+        self.sleepQuality = sleepQuality
+        self.stressMood = stressMood
+        self.hasPainOrIllnessConcern = hasPainOrIllnessConcern
+        self.updatedAt = updatedAt
+    }
+}
+
 @Model
 public final class HRSample {
     public var id: UUID = UUID()

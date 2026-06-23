@@ -61,6 +61,7 @@ final class AppSettings {
         self.trainingGoal = Self.read(defaults, "settings.trainingGoal", TrainingGoal.self) ?? .hypertrophy
         self.experienceLevel = Self.read(defaults, "settings.experienceLevel", ExperienceLevel.self) ?? .intermediate
         self.useHRMonitoring = defaults.object(forKey: "settings.useHRMonitoring") as? Bool ?? false
+        self.recoveryAwareCoachV2 = defaults.object(forKey: "settings.recoveryAwareCoachV2") as? Bool ?? true
         self.lastCoachComputeDay = defaults.string(forKey: "settings.lastCoachComputeDay") ?? ""
         self.favoriteRoutineIDs = Set(defaults.stringArray(forKey: "settings.favoriteRoutineIDs") ?? [])
         // In UI tests the countdown is off by default (so workout-start flows stay
@@ -117,6 +118,9 @@ final class AppSettings {
     /// Training experience, scaling the engine's volume landmarks (P3).
     var experienceLevel: ExperienceLevel { didSet { defaults.set(experienceLevel.rawValue, forKey: "settings.experienceLevel") } }
     var useHRMonitoring: Bool { didSet { defaults.set(useHRMonitoring, forKey: "settings.useHRMonitoring") } }
+    /// Recovery-aware Coach v2: new eligibility-gated decision engine. Enable by default
+    /// in debug builds; can be toggled in Settings for rollback testing.
+    var recoveryAwareCoachV2: Bool { didSet { defaults.set(recoveryAwareCoachV2, forKey: "settings.recoveryAwareCoachV2") } }
     var lastCoachComputeDay: String { didSet { defaults.set(lastCoachComputeDay, forKey: "settings.lastCoachComputeDay") } }
     /// Whether the user has completed the new-user onboarding flow.
     var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }

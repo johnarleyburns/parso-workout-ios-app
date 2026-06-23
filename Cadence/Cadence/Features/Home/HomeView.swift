@@ -108,11 +108,11 @@ struct HomeView: View {
                         .accessibilityIdentifier("home.headerDate")
 
                     if let s = active.strengthSession { resumeCard(s) }
-                    CoachCardView(recommendation: coachRecommendation,
-                                  insightCount: coachInsights.count,
-                                  unit: settings.unit,
-                                  onStart: { launchPrescription(coachRecommendation) },
-                                  onSeeAll: { path.append(HomeRoute.coach) })
+                    CoachDecisionCardView(
+                        decision: coachDecision,
+                        onStart: { launchDecision($0) },
+                        onSeeWeek: { path.append(HomeRoute.yourWeek) },
+                        onSeeWhy: { path.append(HomeRoute.whyToday) })
                     quickActionsRow
                     thisWeekCard
                     favoritesSection
@@ -147,10 +147,12 @@ struct HomeView: View {
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
                 case .coachWorkout(let plan):
                     RoutineDetailView(plan: plan, onEditorStart: { plan in handleEditorStart(plan); path = NavigationPath() })
-                case .yourWeek(let decision, let facts):
-                    YourWeekView(decision: decision, facts: facts)
-                case .whyToday(let decision):
-                    WhyThisTodayView(decision: decision)
+                case .yourWeek:
+                    YourWeekView(decision: coachDecision, facts: CoachFacts.make(
+                        from: buildTrainingEvents(), goal: settings.trainingGoal,
+                        experience: settings.experienceLevel, formula: settings.formula))
+                case .whyToday:
+                    WhyThisTodayView(decision: coachDecision)
                 }
             }
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
@@ -648,6 +650,35 @@ struct HomeView: View {
         path.append(HomeRoute.coachWorkout(plan))
     }
 
+    /// Launch from the new CoachDecision engine.
+    private func launchDecision(_ session: CoachSession) {
+        switch session.launchPayload {
+        case .strengthPlan:
+            let twoWeeksAgo = Date().addingTimeInterval(-14 * 86400)
+            let recentKeys = sessions
+                .filter { $0.deletedAt == nil && $0.date > twoWeeksAgo }
+                .compactMap(\.planKey)
+            let plan = RecommendationEngine.pickRoutine(coachFacts, recentPlanKeys: recentKeys)
+            path.append(HomeRoute.coachWorkout(plan))
+        case .cardio(let cardioTypeStr, _):
+            switch cardioTypeStr {
+            case "walk": cardioType = .walk
+            case "run": cardioType = .run
+            case "cycle": cardioType = .cycle
+            case "swim": cardioType = .swim
+            case "hiit": cardioType = .hiit
+            case "rowing": cardioType = .rowing
+            default: cardioType = .other
+            }
+        case .recovery:
+            break
+        case .rest:
+            break
+        case .assessment:
+            break
+        }
+    }
+
     private func handleEditorStart(_ plan: EditablePlan) {
         pendingPlan = plan
         if plan.warmupMinutes > 0 {
@@ -699,8 +730,8 @@ struct PendingWorkout: Identifiable {
 /// Pushed destinations reachable from Home.
 enum HomeRoute: Hashable {
     case history, settings, coach, planning, coachWorkout(WorkoutPlan)
-    case yourWeek(CoachDecision, CoachFacts)
-    case whyToday(CoachDecision)
+    case yourWeek
+    case whyToday
 }
 
 /// A row in Home's merged "Recent workouts" list — strength and cardio together,

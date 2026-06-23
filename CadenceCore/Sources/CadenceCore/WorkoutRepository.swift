@@ -519,6 +519,17 @@ public enum WorkoutRepository {
         try context.fetch(FetchDescriptor<CardioWorkout>(sortBy: [SortDescriptor(\.start, order: .reverse)]))
     }
 
+    /// One-time migration: backfill `importedWorkoutKind` for existing .other
+    /// CardioWorkout rows that were imported before the recovery-aware redesign.
+    /// Without original HKWorkoutActivityType metadata, cannot backfill with
+    /// certainty — retains nil (unknown).
+    public static func backfillImportedWorkoutKinds(in context: ModelContext) throws {
+        let all = try allCardio(context)
+        for c in all where c.typeValue == .other && c.importedWorkoutKind == nil {
+            _ = c
+        }
+    }
+
     /// Persists a workout recorded on the iPhone (FR-2.2–2.5) into the local
     /// store, computing avg/max HR and attaching HR + route samples. The
     /// `healthKitWorkoutUUID` links to the HK copy so re-ingest won't duplicate.

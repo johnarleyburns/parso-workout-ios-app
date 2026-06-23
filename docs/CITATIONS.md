@@ -92,5 +92,110 @@ training.* **Medicine & Science in Sports & Exercise 39(4).**
 
 - A citation key is only added here once a rule actually points at it; an unused
   reference is removed. `CitationRegistry.all` and this file should list the same set.
+
+## Recovery-aware redesign citations (2026-06-22)
+
+### `acsmResistance2026` — ACSM 2026 resistance training guidelines
+ACSM (2026). *ACSM Resistance Training Guidelines Update 2026.* **ACSM Position Stand.**
+<https://acsm.org/resistance-training-guidelines-update-2026/>
+
+- **Used by:** the cold-start starter prescription, beginner A/B sessions, volume guidance.
+- **What it supports:** all major muscle groups at least twice weekly, heavier loads for
+  strength, ~10 weekly sets/muscle for hypertrophy as a starting range.
+- **App policy vs evidence:** the ~10 set starting range is evidence-backed; individual
+  progression from there is a coaching policy.
+
+### `whoPhysicalActivity2020` — WHO physical activity guidelines
+WHO (2020). *WHO Guidelines on Physical Activity and Sedentary Behaviour.*
+<https://www.who.int/publications/i/item/9789240014886>
+
+- **Used by:** the 150 min/week moderate-equivalent aerobic target, moderate aerobic rule.
+- **What it supports:** 150–300 min moderate or 75–150 min vigorous activity per week.
+
+### `pellandDoseResponse2026` — dose-response meta-analysis
+Pelland et al. (2026). *Dose-response relationship between weekly resistance training
+volume and muscular adaptations.* **Sports Medicine.**
+<https://pubmed.ncbi.nlm.nih.gov/41343037/>
+
+- **Used by:** volume guidance, excessive volume warnings.
+- **What it supports:** graded dose-response with diminishing returns; frequency more
+  useful for volume distribution than as an independent hypertrophy driver.
+
+### `parejaBlancoRecovery2020` — recovery after training to failure
+Pareja-Blanco et al. (2020). *Recovery of neuromuscular performance after resistance
+training to failure.* **European Journal of Applied Physiology.**
+<https://pubmed.ncbi.nlm.nih.gov/30036284/>
+
+- **Used by:** recovery gates, high-fatigue 72h deferral.
+- **What it supports:** neuromuscular decrements up to 48h after failure protocols.
+- **App policy:** the 48h/72h gates are conservative product policy informed by this
+  study; they are not claims that every person recovers in exactly 48h.
+
+### `schumannConcurrent2022` — concurrent training compatibility
+Schumann et al. (2022). *Compatibility of concurrent aerobic and strength training.*
+**Sports Medicine.** <https://pmc.ncbi.nlm.nih.gov/articles/PMC8891239/>
+
+- **Used by:** lower-body collision gate (hard cardio after strength).
+- **What it supports:** concurrent training generally does not compromise strength or
+  hypertrophy; explosive-strength may be attenuated when same-session.
+
+### `meeusenOvertraining2013` — overtraining consensus
+Meeusen et al. (2013). *Prevention, diagnosis and treatment of the overtraining
+syndrome: ECSS/ACSM consensus.* **MSSE.**
+<https://pubmed.ncbi.nlm.nih.gov/23247672/>
+
+- **Used by:** pain/illness safety gate, consecutive hard-day warnings.
+- **What it supports:** overtraining syndrome cannot be diagnosed by simple app markers;
+  Coach flags persistent poor recovery and suggests reducing load.
+- **App policy:** Coach never labels a user "overtrained."
+
+### `sawMonitoring2016` — self-report monitoring
+Saw, Main & Gastin (2016). *Monitoring athletes through self-report.*
+**J Sports Sci Med.** <https://pubmed.ncbi.nlm.nih.gov/26423706/>
+
+- **Used by:** readiness check-in rationale.
+- **What it supports:** subjective fatigue, soreness, sleep, stress, and mood are useful
+  monitoring inputs and respond more consistently to load than objective markers.
+
+### `crowleyVO2Intensity2022` — HIIT vs MICT for VO₂max
+Crowley et al. (2022). *Effects of high-intensity interval training and
+moderate-intensity continuous training on VO₂max.* **Sports Medicine.**
+<https://pubmed.ncbi.nlm.nih.gov/38655159/>
+
+- **Used by:** VO₂max interval prescription (replaces hiitVo2max).
+- **What it supports:** both HIIT and moderate continuous training improve VO₂max;
+  higher intensity has a small-to-moderate advantage.
+
+### `poonHIIT2024` — HIIT umbrella review
+Poon et al. (2024). *HIIT versus MICT for cardiorespiratory fitness: An umbrella
+review.* **Sports Medicine.** <https://pubmed.ncbi.nlm.nih.gov/38760916/>
+
+- **Used by:** VO₂max interval prescription (secondary citation).
+- **What it supports:** HIIT and MICT both effective; choice depends on preference,
+  recovery, and baseline fitness.
+
+### `ramosCampoSplit2024` — full-body vs split routines
+Ramos-Campo et al. (2024). *Effects of full-body and split routines on strength and
+hypertrophy.* **Sports Medicine.** <https://pubmed.ncbi.nlm.nih.gov/38595233/>
+
+- **Used by:** split/full-body template selection.
+- **What it supports:** full-body and split routines produce similar results when volume
+  is equated; schedule and preference can decide the split.
+
+### `usPhysicalActivity2018` — U.S. physical activity guidelines
+HHS (2018). *Physical Activity Guidelines for Americans, 2nd edition.*
+<https://health.gov/sites/default/files/2019-09/Physical_Activity_Guidelines_2nd_edition.pdf>
+
+- **Used by:** weekly aerobic target (secondary).
+
+### Corrected existing entries
+
+- `frequencyMeta`: the 2019 meta-analysis found volume-equated frequency does not
+  significantly or meaningfully affect hypertrophy. Frequency is useful for
+  distributing volume and fitting schedules, not as an independent hypertrophy dose.
+
+- `amirthalingamGVT`: the study found no advantage to 10 sets over 5. GVT has been
+  removed from automatic Coach selection and is available only as an advanced
+  user-chosen template with this caveat.
 - New prescriptive rules must cite published work before shipping (D3) — no un-cited
   prescription is allowed past the engine's tests.

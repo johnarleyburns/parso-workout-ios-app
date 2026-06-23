@@ -222,16 +222,10 @@ public enum StrengthPresets {
         fixed("preset-dup-power", "DUP Power Day", [
             ("Deadlift", 6, 2), ("Overhead Press", 6, 2), ("Pull-Up", 6, 3),
         ]),
-        // German Volume Training — 10\u{00d7}10 on compound lifts.
-        // Science: Amirthalingam 2017 — GVT hypertrophy and strength.
-        fixed("preset-gvt-upper", "GVT Upper", [
-            ("Bench Press", 10, 10), ("Barbell Row", 10, 10),
-            ("Incline Dumbbell Bench Press", 3, 12),
-        ]),
-        fixed("preset-gvt-lower", "GVT Lower", [
-            ("Back Squat", 10, 10), ("Romanian Deadlift", 10, 10),
-            ("Standing Calf Raise", 3, 15),
-        ]),
+        // GVT (10×10) removed from automatic Coach selection as of recovery-aware
+        // redesign — the cited study (Amirthalingam 2017) found no advantage to 10
+        // sets over 5. It remains available as an advanced user-chosen template only.
+
         // Linear Periodization — four-week mesocycle, decreasing reps.
         // Science: Williams 2017 — periodized > non-periodized for strength.
         fixed("preset-lp-w1", "LP Week 1 (Volume)", [
@@ -351,6 +345,8 @@ public enum RoutineInfoCatalog {
         citations: [CitationRegistry.zourdosDUP]
     )
 
+    /// GVT removed from auto-selection: the cited study found no advantage to 10
+    /// sets over 5. Kept as an advanced user-chosen template with this caveat.
     public static let gvt = RoutineInfo(
         groupName: "German Volume Training",
         summary: "German Volume Training (GVT) prescribes 10 sets of 10 repetitions on a compound lift at approximately 60% of 1RM, with 60\u{2013}90 seconds rest between sets. The extreme volume drives a strong hypertrophic stimulus.\n\nAmirthalingam et al. (2017) studied GVT in resistance-trained men and found significant increases in muscle thickness and lean body mass. The study also noted that a modified 5\u{00d7}10 protocol produced comparable results, suggesting the volume threshold for hypertrophy may be lower than GVT\u{2019}s traditional 10\u{00d7}10.",
@@ -371,7 +367,7 @@ public enum RoutineInfoCatalog {
 
     public static let all: [RoutineInfo] = [
         fiveByFive, fiveThreeOne, splits, ppl, calisthenics, olympic,
-        dup, gvt, linearPeriodization, clusterSets,
+        dup, linearPeriodization, clusterSets,
     ]
 
     public static func info(forGroup group: String) -> RoutineInfo? {

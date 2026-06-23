@@ -1,22 +1,18 @@
 import Foundation
 
 /// Weekly per-muscle volume landmarks — the set-count bands the engine compares a
-/// user's training against (strength-pivot §03, rule 1):
+/// user's training against. These are conservative starting points, not validated
+/// physiological thresholds.
 ///
-/// - **MEV** — *minimum effective volume*: below this, too little stimulus to drive
-///   adaptation.
-/// - **MAV** — *maximum adaptive volume*: the productive working range.
-/// - **MRV** — *maximum recoverable volume*: at/above this, fatigue outpaces recovery.
-///
-/// Bands are expressed as **working sets per `BodyPart` per week** and scale with
-/// `ExperienceLevel`. The baseline (intermediate) numbers are conservative,
-/// general-population defaults distilled from the weekly-volume dose-response
-/// literature (`CitationRegistry.volumeDoseResponse`); they live here as named
-/// constants so they're easy to review and revise as evidence updates. They are
-/// coaching guidance, not medical thresholds.
+/// **Deprecated:** Prefer `VolumeGuidance` which uses evidence-informed starting
+/// ranges that personalize from the user's own response rather than pseudo-precise
+/// MEV/MAV/MRV cutoffs.
 public struct VolumeBands: Equatable, Sendable {
+    @available(*, deprecated, message: "Use VolumeGuidance.startingTargetRange instead")
     public let mev: Double
+    @available(*, deprecated, message: "Use VolumeGuidance.startingTargetRange instead")
     public let mav: Double
+    @available(*, deprecated, message: "Use VolumeGuidance.personalBaselineRange instead")
     public let mrv: Double
 
     public init(mev: Double, mav: Double, mrv: Double) {

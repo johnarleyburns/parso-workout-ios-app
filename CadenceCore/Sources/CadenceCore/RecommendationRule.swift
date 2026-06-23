@@ -31,11 +31,11 @@ public extension KnowledgeBase {
         addVolume,
     ]
 
-    /// P6 cardio rules — prescribe interval protocols when cardio assessments
-    /// show a decline.
+    /// P6 cardio rules — prescribe aerobic work. Conservative: beginners get
+    /// moderate, not HIIT; SIT is opt-in only, not auto-prescribed.
     static let p6RecRules: [RecommendationRule] = [
+        cardioModerate,
         cardioHIIT,
-        cardioSIT,
         missingBaseline,
     ]
 
@@ -104,9 +104,14 @@ public extension KnowledgeBase {
         return out
     }
 
-    // MARK: - Rule: deload a lift whose estimated 1RM is declining
+    // MARK: - Rule: flag a declining estimated 1RM for monitoring
 
-    static let deload = RecommendationRule(id: "deload", priority: 110) { facts in
+    /// A single-week e1RM decline may be noise (sleep, technique, order, measurement
+    /// error). This rule flags it at lower confidence for monitoring; it does not
+    /// automatically prescribe a deload unless corroborated by repeated decline or
+    /// concurrent poor readiness. Priority is below progression so a declining lift
+    /// can still progress if the user feels ready.
+    static let deload = RecommendationRule(id: "deload", priority: 95) { facts in
         let range = facts.goal.repRange
         var out: [Recommendation] = []
         for snap in facts.liftSnapshots.values where snap.trend == .declining && snap.topSetWeightKg > 0 {
@@ -118,13 +123,13 @@ public extension KnowledgeBase {
             out.append(Recommendation(
                 id: "deload.\(lift)",
                 kind: .deload, part: snap.part, exercise: lift,
-                title: "Back off your \(lift.lowercased())",
-                action: "Your estimated 1RM is sliding — take one lighter week (about 10% off, fewer sets), then push again.",
-                detail: "A declining estimated 1RM alongside hard training usually means accumulated fatigue is outrunning recovery. A short, lighter week with more reps in reserve lets you recover and dissipate fatigue, so the next block can progress again. This is a coaching cue, not a medical one.",
+                title: "\(lift) trending down — monitor recovery",
+                action: "Your estimated 1RM is slightly lower this week. This could be fatigue, or it could be noise. If it drops again next week, take a lighter session.",
+                detail: "A single-week decline can be normal variation — sleep, exercise order, technique, and measurement noise can all cause it. Coach flags this for monitoring. A deload is suggested only if the decline repeats or readiness is poor. This is a coaching cue, not a medical one.",
                 citation: CitationRegistry.rpeAutoregulation,
                 target: target,
-                confidence: .moderate,
-                priority: 110))
+                confidence: .low,
+                priority: 95))
         }
         return out
     }
@@ -174,13 +179,35 @@ public extension KnowledgeBase {
             priority: 0)
     }
 
-    // MARK: - P6: cardio HIIT prescriptions
+    // MARK: - P6: aerobic prescriptions (recovery-aware redesign)
 
-    /// When VO₂max is declining, prescribe high-intensity interval training
-    /// (Norwegian 4×4 as the default, well-studied protocol for VO₂max improvement).
+    /// Conservative aerobic starter: beginners and inactive users get moderate
+    /// continuous work, not HIIT. Reserved HIIT for users with an established base.
     private static let vo2maxKinds: Set<AssessmentKind> = [.vo2maxField, .cooper12min, .run1_5mile, .rockportWalk, .queensCollegeStep]
 
-    static let cardioHIIT = RecommendationRule(id: "cardio.hiit", priority: 85) { facts in
+    /// General aerobic recommendation: 150 min/week moderate-equivalent floor.
+    /// Low priority so it surfaces only when nothing higher-priority is relevant.
+    static let cardioModerate = RecommendationRule(id: "cardio.moderate", priority: 70) { facts in
+        guard facts.totalWorkingSets >= 3 else { return [] }
+        let action = facts.experience == .beginner
+            ? "Build your aerobic base: try 20–30 min of moderate work (brisk walk, light cycle, or easy swim) 2–3 times a week. Progress duration before intensity."
+            : "Accumulate moderate aerobic work toward the 150 min/week floor: brisk walking, easy cycling, swimming, or any steady-effort activity."
+        return [Recommendation(
+            id: "cardio.moderate",
+            kind: .starter,
+            title: "Build your aerobic fitness",
+            action: action,
+            detail: "Adults should accumulate 150–300 min/week of moderate aerobic activity, per WHO and ACSM guidelines. Coach starts you with tolerable moderate work and progresses from adherence — no aggressive HIIT prescription without an established base.",
+            citation: CitationRegistry.whoPhysicalActivity2020,
+            confidence: .moderate,
+            priority: 70)]
+    }
+
+    /// When VO₂max is declining AND the user has an established training base,
+    /// prescribe interval training as ONE option (not the universal default).
+    /// Beginners and inactive users are excluded — they get moderate work instead.
+    static let cardioHIIT = RecommendationRule(id: "cardio.hiit", priority: 75) { facts in
+        guard facts.experience != .beginner else { return [] }
         var out: [Recommendation] = []
         for s in facts.assessments where vo2maxKinds.contains(s.kind) && s.trend == .declined {
             let label = AssessmentFormat.seriesLabel(s)
@@ -188,34 +215,20 @@ public extension KnowledgeBase {
                 id: "cardio.hiit.vo2max",
                 kind: .cardioHIIT,
                 title: "Boost your aerobic fitness",
-                action: "Try a Norwegian 4×4 session: warm up, then 4 rounds of 4 minutes hard / 3 minutes recovery, cool down.",
-                detail: "High-intensity intervals are one of the most effective ways to raise VO₂max. Your \(label.lowercased()) is declining — one or two interval sessions a week, paired with your usual training, can reverse that trend in a 6–8 week block.",
-                citation: CitationRegistry.hiitVo2max,
-                cardioPrescription: "Norwegian 4×4",
+                action: "Consider interval work: options include a Norwegian 4×4 session (4×4 min hard / 3 min recovery) or shorter long-interval protocols, paired with your usual training.",
+                detail: "High-intensity intervals can improve VO₂max, but they are one option among many. Your \(label.lowercased()) is declining. If recovery and preference support it, 1–2 interval sessions/week can help. Moderate continuous work remains effective and may be more sustainable.",
+                citation: CitationRegistry.crowleyVO2Intensity2022,
+                citationIds: ["poonHIIT2024"],
+                cardioPrescription: "Long intervals (e.g. 4×4)",
                 confidence: .moderate,
-                priority: 85))
+                priority: 75))
         }
         return out
     }
 
-    /// When Wingate peak power is declining, prescribe sprint interval training.
-    static let cardioSIT = RecommendationRule(id: "cardio.sit", priority: 84) { facts in
-        var out: [Recommendation] = []
-        for s in facts.assessments where s.kind == .wingate && s.trend == .declined {
-            let label = AssessmentFormat.seriesLabel(s)
-            out.append(Recommendation(
-                id: "cardio.sit.wingate",
-                kind: .cardioHIIT,
-                title: "Build your anaerobic power",
-                action: "Try a SIT (Wingate) session: warm up, then 4 rounds of 30s all-out sprint / 4 min recovery, cool down.",
-                detail: "Sprint interval training is the most direct way to improve anaerobic peak power — the same energy pathway the Wingate test measures. Your \(label.lowercased()) is declining; one SIT session a week for a few weeks can restore it.",
-                citation: CitationRegistry.wingateTest,
-                cardioPrescription: "SIT (Wingate)",
-                confidence: .moderate,
-                priority: 84))
-        }
-        return out
-    }
+    /// SIT/Wingate is advanced, high-fatigue, and opt-in. It is NOT auto-prescribed;
+    /// the assessment can be recorded but Coach will not push SIT automatically.
+    static let cardioSIT = RecommendationRule(id: "cardio.sit", priority: 0) { _ in [] }
 
     // MARK: - Rule: prompt to run missing assessments (FR-12.3)
 

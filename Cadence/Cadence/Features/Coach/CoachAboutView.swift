@@ -5,28 +5,35 @@ struct CoachAboutView: View {
     var body: some View {
         List {
             Section {
-                Text("Cladiron's coach is a deterministic, on-device rule engine — not a cloud AI. It reads the workouts and assessments you log and reasons over a curated knowledge base of published strength and hypertrophy science.")
+                Text("Cladiron's coach is a recovery-aware, on-device rule engine — not a cloud AI. It reads your workouts, cardio, imported HealthKit data, and optional readiness check-ins, then chooses an eligible session that fits your balanced weekly plan.")
                     .font(.subheadline)
             }
 
             Section("What it analyzes") {
-                row("calendar.badge.clock", "Trailing 7 days",
-                    "Working sets per body part, training frequency, intensity distribution, RPE, and per-lift estimated 1RM trends.")
-                row("clock.arrow.circlepath", "Prior 7 days",
-                    "Compared to the trailing week to detect rising, flat, or declining strength trends (with a 2% noise floor).")
-                row("tray.full", "All history",
-                    "Best-ever estimated 1RM for each lift, assessment baselines, and days since your last session.")
-                row("checklist", "Assessments",
-                    "Full longitudinal series for strength, endurance, and cardio tests — baseline to latest, with minimal-detectable-change filtering.")
+                row("calendar.badge.clock", "Rolling 72 hours",
+                    "Exact recovery windows per exercise, movement pattern, and body part — unlike calendar-week snapshots, these don't shift at midnight Monday.")
+                row("clock.arrow.circlepath", "Rolling 7 days",
+                    "Weekly dose: strength days, pattern coverage, moderate-equivalent aerobic minutes vs the 150 min public-health floor.")
+                row("tray.full", "Rolling 28 days",
+                    "Multi-week trends for volume, per-lift performance, and VO₂max (same protocol only — cross-protocol values are not combined).")
+                row("heart.text.square", "Recovery + readiness",
+                    "Optional daily readiness check-in (soreness, energy, sleep, stress). Missing readiness keeps conservative default time gates.")
+            }
+
+            Section("How it decides") {
+                row("shield.checkered", "Hard eligibility gates",
+                    "Before scoring, Coach checks: same lift in 24h? Same pattern in 48h? High fatigue? Lower-body collision with hard cardio? Pain concern? Ineligible sessions are deferred with a cited reason.")
+                row("scalemass", "Balanced weekly scoring",
+                    "Coach closes the largest fitness gap first: strength below the 2-day floor vs aerobic below the 150-minute floor. Hard/easy rhythm and recovery are preserved.")
+                row("book.pages", "Conservative defaults",
+                    "Recovery times are coach policy (\"Coach's conservative recovery window\"), not claims that every muscle recovers in exactly 48 hours.")
             }
 
             Section("When it updates") {
                 row("bolt", "Live",
                     "The coach recomputes from scratch every time the Home screen renders. There is no cache — it always reflects the current state of your data.")
-                row("square.and.pencil", "Edit a past workout",
-                    "The recommendation updates immediately. Changed sets, reps, or weights are picked up on the next Home render.")
                 row("flag.checkered", "Finish a workout",
-                    "The new session is included right away — the coach may switch from \"add a rep\" to \"add load\" or recommend a deload.")
+                    "The new session is included right away. Coach may switch from strength to easy aerobic if recovery gates apply.")
             }
 
             Section("How your settings affect it") {

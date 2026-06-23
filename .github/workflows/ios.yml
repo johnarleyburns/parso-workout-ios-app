@@ -63,7 +63,7 @@ jobs:
           restore-keys: spm-
 
       - name: Set Build Number
-        run: xcrun agvtool new-version -all ${{ github.run_number }}
+        run: cd Cadence && xcrun agvtool new-version -all ${{ github.run_number }}
 
       - name: Compute Marketing Version
         run: |

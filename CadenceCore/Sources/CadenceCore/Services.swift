@@ -39,15 +39,37 @@ public struct IngestedWorkout: Equatable, Sendable, Identifiable {
     public var maxHeartRate: Double?
     public var source: CardioSource
     public var hrSamples: [HRSamplePoint]
+    public var importedKind: ImportedWorkoutKind?
 
     public init(id: UUID, type: CardioType, start: Date, end: Date,
                 distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
                 avgHeartRate: Double? = nil, maxHeartRate: Double? = nil,
-                source: CardioSource = .watch, hrSamples: [HRSamplePoint] = []) {
+                source: CardioSource = .watch, hrSamples: [HRSamplePoint] = [],
+                importedKind: ImportedWorkoutKind? = nil) {
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.avgHeartRate = avgHeartRate; self.maxHeartRate = maxHeartRate
         self.source = source; self.hrSamples = hrSamples
+        self.importedKind = importedKind
+    }
+}
+
+/// Preserved HealthKit workout activity type so the coach can distinguish
+/// imported strength from unknown cardio rather than mapping all to .other.
+public enum ImportedWorkoutKind: String, Sendable, CaseIterable {
+    case traditionalStrength
+    case functionalStrength
+    case running
+    case walking
+    case cycling
+    case swimming
+    case rowing
+    case hiit
+    case boxing
+    case other
+
+    public var isStrength: Bool {
+        self == .traditionalStrength || self == .functionalStrength
     }
 }
 

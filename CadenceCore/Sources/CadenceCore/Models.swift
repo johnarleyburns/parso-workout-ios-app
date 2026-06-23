@@ -493,6 +493,10 @@ public final class CardioWorkout {
     /// Free-text label for an "Other Cardio" workout (e.g. "Rowing", "Yardwork");
     /// nil ⇒ use the type's display name (feedback batch 6).
     public var customTitle: String?
+    /// Preserved HKWorkoutActivityType for imported workouts so the coach can
+    /// distinguish imported strength from unknown cardio. nil for app-authored
+    /// workouts. Additive/defaulted for CloudKit + back-compat.
+    public var importedWorkoutKindRaw: String?
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
     /// Interval (HIIT/boxing) structure as JSON (`IntervalSummary`), so history can
@@ -520,10 +524,11 @@ public final class CardioWorkout {
                 source: CardioSource = .iphone,
                 healthKitWorkoutUUID: UUID? = nil,
                 notes: String? = nil,
-                isLogged: Bool = false,
-                customTitle: String? = nil,
-                updatedAt: Date = Date(),
-                originDevice: String = "") {
+                 isLogged: Bool = false,
+                 customTitle: String? = nil,
+                 importedWorkoutKind: ImportedWorkoutKind? = nil,
+                 updatedAt: Date = Date(),
+                 originDevice: String = "") {
         self.id = id
         self.type = type.rawValue
         self.start = start
@@ -540,6 +545,7 @@ public final class CardioWorkout {
         self.notes = notes
         self.isLogged = isLogged
         self.customTitle = customTitle
+        self.importedWorkoutKindRaw = importedWorkoutKind?.rawValue
         self.updatedAt = updatedAt
         self.originDevice = originDevice
     }
@@ -561,6 +567,11 @@ public final class CardioWorkout {
     public var sourceValue: CardioSource {
         get { CardioSource(rawValue: source) ?? .iphone }
         set { source = newValue.rawValue }
+    }
+
+    public var importedWorkoutKind: ImportedWorkoutKind? {
+        get { importedWorkoutKindRaw.flatMap(ImportedWorkoutKind.init(rawValue:)) }
+        set { importedWorkoutKindRaw = newValue?.rawValue }
     }
 
     public var duration: TimeInterval {

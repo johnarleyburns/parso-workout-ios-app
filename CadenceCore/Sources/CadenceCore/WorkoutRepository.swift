@@ -501,9 +501,10 @@ public enum WorkoutRepository {
         var inserted = 0
         for w in workouts where !known.contains(w.id) {
             let c = CardioWorkout(type: w.type, start: w.start, end: w.end,
-                                  distance: w.distanceMeters, activeEnergy: w.activeEnergyKcal,
-                                  avgHeartRate: w.avgHeartRate, maxHeartRate: w.maxHeartRate,
-                                  source: w.source, healthKitWorkoutUUID: w.id)
+                                   distance: w.distanceMeters, activeEnergy: w.activeEnergyKcal,
+                                   avgHeartRate: w.avgHeartRate, maxHeartRate: w.maxHeartRate,
+                                   source: w.source, healthKitWorkoutUUID: w.id,
+                                   importedWorkoutKind: w.importedKind)
             context.insert(c)
             for p in w.hrSamples {
                 context.insert(HRSample(t: p.t, bpm: p.bpm, cardio: c))

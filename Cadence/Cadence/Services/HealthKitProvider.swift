@@ -116,7 +116,8 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
                 avgHeartRate: bpms.isEmpty ? nil : bpms.reduce(0, +) / Double(bpms.count),
                 maxHeartRate: bpms.max(),
                 source: w.sourceRevision.source.name.localizedCaseInsensitiveContains("watch") ? .watch : .iphone,
-                hrSamples: hr))
+                hrSamples: hr,
+                importedKind: Self.importedWorkoutKind(from: w.workoutActivityType)))
         }
         return result
     }
@@ -258,6 +259,21 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
         case .boxing, .martialArts: return .boxing
         case .highIntensityIntervalTraining: return .hiit
         case .walking: return .walk
+        case .rowing: return .rowing
+        default: return .other
+        }
+    }
+
+    static func importedWorkoutKind(from t: HKWorkoutActivityType) -> ImportedWorkoutKind {
+        switch t {
+        case .traditionalStrengthTraining: return .traditionalStrength
+        case .functionalStrengthTraining: return .functionalStrength
+        case .running: return .running
+        case .cycling: return .cycling
+        case .swimming: return .swimming
+        case .boxing, .martialArts: return .boxing
+        case .highIntensityIntervalTraining: return .hiit
+        case .walking: return .walking
         case .rowing: return .rowing
         default: return .other
         }

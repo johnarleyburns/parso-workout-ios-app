@@ -280,7 +280,7 @@ extension TrainingEvent {
             id: cardio.id,
             start: cardio.start,
             end: cardioEnd,
-            kind: isInterval ? .intervals(details) : .aerobic(details),
+            kind: cardio.importedWorkoutKind?.isStrength == true ? .unknown : (isInterval ? .intervals(details) : .aerobic(details)),
             source: (cardio.sourceValue == .watch && cardio.healthKitWorkoutUUID != nil) ? .healthKitImported : .appCardio,
             completion: completion
         )

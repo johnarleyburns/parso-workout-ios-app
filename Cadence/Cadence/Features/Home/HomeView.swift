@@ -14,6 +14,7 @@ struct HomeView: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .reverse) private var assessments: [Assessment]
+    @Query(sort: \ReadinessEntry.date, order: .reverse) private var readinessEntries: [ReadinessEntry]
     @Query(filter: #Predicate<Exercise> { $0.isFavorite }, sort: \Exercise.name) private var favoriteExercises: [Exercise]
 
     @State private var logPickerPresented = false
@@ -78,14 +79,18 @@ struct HomeView: View {
         let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
                                      experience: settings.experienceLevel,
                                      formula: settings.formula)
-        return CoachDecisionEngine.run(facts)
+        let today = Calendar.current.startOfDay(for: Date())
+        let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == today }
+        let hasPain = todayReadiness?.hasPainOrIllnessConcern ?? false
+        return CoachDecisionEngine.run(facts, hasPainConcern: hasPain)
     }
 
     private func buildTrainingEvents() -> [TrainingEvent] {
         let activeSessions = sessions.filter { $0.deletedAt == nil }
         let strengthEvents = activeSessions.compactMap { TrainingEvent.from(session: $0, formula: settings.formula) }
         let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { TrainingEvent.from(cardio: $0) }
-        return strengthEvents + cardioEvents
+        let assessmentEvents = assessments.map { TrainingEvent.from(assessment: $0) }
+        return strengthEvents + cardioEvents + assessmentEvents
     }
 
     private static let headerDateFormatter: DateFormatter = {

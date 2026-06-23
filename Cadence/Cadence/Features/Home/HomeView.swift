@@ -363,7 +363,7 @@ struct HomeView: View {
             }
             HStack(spacing: 0) {
                 weekMetric("\(balance.strengthDays)", "strength", id: "home.workoutsCount")
-                weekMetric("\(Int(balance.moderateEquivalentMinutes))", "mod-equiv min", id: "home.cardioMinutes")
+                weekMetric("\(Int(balance.moderateEquivalentMinutes))", "min", id: "home.cardioMinutes")
                 weekMetric(compactVolume(), "volume", id: "home.volume")
                 weekMetric("\(bodyPartsThisWeek.hit.count)/\(BodyPart.allCases.count)",
                            "parts", id: "home.bodyParts")

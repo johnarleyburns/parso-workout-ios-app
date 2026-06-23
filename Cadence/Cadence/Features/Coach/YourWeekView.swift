@@ -26,7 +26,7 @@ struct YourWeekView: View {
 
                     HStack {
                         Image(systemName: "heart.fill").foregroundStyle(.teal)
-                        Text("Mod-equiv aerobic").font(.subheadline)
+                        Text("Aerobic minutes").font(.subheadline)
                         Spacer()
                         Text("\(Int(balance.moderateEquivalentMinutes))")
                             .font(.subheadline.bold()).monospacedDigit()

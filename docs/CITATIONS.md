@@ -94,13 +94,9 @@ training.* **Medicine & Science in Sports & Exercise 39(4).**
   reference is removed. `CitationRegistry.all` and this file should list the same set.
 
 ### `run1_5mile` — 1.5-mile run test
-ACSM (2021). *ACSM's Guidelines for Exercise Testing and Prescription (11th ed.).*
-**Wolters Kluwer.**
-<https://www.acsm.org/education-resources/books/guidelines-exercise-testing-prescription>
-
-- **Used by:** the 1.5-mile run VO₂max assessment.
-- **What it supports:** standardized field-test protocol for estimating cardiorespiratory
-  fitness.
+The 1.5-mile run assessment now cites **`cooperVo2max`** (Cooper 1968), which
+validated the original Cooper 12-minute run / 1.5-mile field test against treadmill
+VO₂max.
 
 ### `rockportWalk` — Rockport 1-mile walk test
 Kline et al. (1987). *Estimation of VO₂max from a one-mile track walk, gender, age,
@@ -194,22 +190,18 @@ Structures: A Systematic Review.* **J Strength Cond Res 31(3).**
 
 ## Recovery-aware redesign citations (2026-06-22)
 
-### `acsmResistance2026` — ACSM 2026 resistance training guidelines
-ACSM (2026). *ACSM Resistance Training Guidelines Update 2026.* **ACSM Position Stand.**
-<https://acsm.org/resistance-training-guidelines-update-2026/>
+### `ekelundActivityMortality2016` — physical activity dose-response meta-analysis
+Ekelund et al. (2016). *Does physical activity attenuate, or even eliminate, the
+detrimental association of sitting time with mortality?* **The Lancet 388(10051).**
+<https://doi.org/10.1016/S0140-6736(16)30370-1>
 
-- **Used by:** the cold-start starter prescription, beginner A/B sessions, volume guidance.
-- **What it supports:** all major muscle groups at least twice weekly, heavier loads for
-  strength, ~10 weekly sets/muscle for hypertrophy as a starting range.
-- **App policy vs evidence:** the ~10 set starting range is evidence-backed; individual
-  progression from there is a coaching policy.
-
-### `whoPhysicalActivity2020` — WHO physical activity guidelines
-WHO (2020). *WHO Guidelines on Physical Activity and Sedentary Behaviour.*
-<https://www.who.int/publications/i/item/9789240014886>
-
-- **Used by:** the 150 min/week moderate-equivalent aerobic target, moderate aerobic rule.
-- **What it supports:** 150–300 min moderate or 75–150 min vigorous activity per week.
+- **Used by:** the 150 min/week moderate-equivalent aerobic target, moderate aerobic
+  rule, aerobic session candidates.
+- **What it supports:** a harmonised meta-analysis of over 1 million adults found a
+  graded dose-response between physical activity volume and reduced all-cause mortality;
+  ~60–75 min/day of moderate activity eliminated the excess risk of prolonged sitting.
+- **Replaces:** `whoPhysicalActivity2020` (WHO guidelines — removed as appeal to
+  authority) and `usPhysicalActivity2018` (HHS guidelines — removed).
 
 ### `pellandDoseResponse2026` — dose-response meta-analysis
 Pelland et al. (2026). *Dose-response relationship between weekly resistance training
@@ -280,12 +272,6 @@ hypertrophy.* **Sports Medicine.** <https://pubmed.ncbi.nlm.nih.gov/38595233/>
 - **Used by:** split/full-body template selection.
 - **What it supports:** full-body and split routines produce similar results when volume
   is equated; schedule and preference can decide the split.
-
-### `usPhysicalActivity2018` — U.S. physical activity guidelines
-HHS (2018). *Physical Activity Guidelines for Americans, 2nd edition.*
-<https://health.gov/sites/default/files/2019-09/Physical_Activity_Guidelines_2nd_edition.pdf>
-
-- **Used by:** weekly aerobic target (secondary).
 
 ### Corrected existing entries
 

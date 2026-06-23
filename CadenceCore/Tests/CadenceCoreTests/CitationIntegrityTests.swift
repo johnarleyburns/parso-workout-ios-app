@@ -7,7 +7,7 @@ final class CitationIntegrityTests: XCTestCase {
         let known = Set(CitationRegistry.all.map(\.id))
 
         let required = [
-            "acsmResistance2026", "whoPhysicalActivity2020", "usPhysicalActivity2018",
+            "ekelundActivityMortality2016",
             "pellandDoseResponse2026", "ramosCampoSplit2024",
             "parejaBlancoRecovery2020", "sawMonitoring2016", "meeusenOvertraining2013",
             "schumannConcurrent2022", "crowleyVO2Intensity2022", "poonHIIT2024",

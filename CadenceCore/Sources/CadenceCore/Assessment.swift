@@ -217,7 +217,7 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         switch self {
         case .e1RM, .repMax: return ["oneRMEstimation"]
         case .cooper12min: return ["cooperVo2max"]
-        case .run1_5mile: return ["run1_5mile"]
+        case .run1_5mile: return ["cooperVo2max"]
         case .rockportWalk: return ["rockportWalk"]
         case .queensCollegeStep: return ["queensCollegeStep"]
         case .wingate: return ["wingateTest"]

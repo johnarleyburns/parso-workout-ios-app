@@ -172,8 +172,8 @@ public extension KnowledgeBase {
             kind: .starter,
             title: "Start with a full-body session",
             action: "New here? Try alternating full-body sessions: Session A (squat, push, pull, carry) and Session B (hinge, press, pull, core). 2–3 sets per movement, \(range.lowerBound)–\(range.upperBound) reps, leaving ~\(rir) in reserve.",
-            detail: "With no history yet, alternating full-body sessions are a well-supported starting point informed by ACSM 2026 guidelines. This approach trains each muscle often, keeps volume manageable, and gives the coach data to work from. Log a few sessions and the recommendations get specific to your lifts.",
-            citation: CitationRegistry.acsmResistance2026,
+            detail: "With no history yet, alternating full-body sessions are a well-supported starting point informed by dose-response meta-analyses. This approach trains each muscle often, keeps volume manageable, and gives the coach data to work from. Log a few sessions and the recommendations get specific to your lifts.",
+            citation: CitationRegistry.schoenfeld2021,
             target: SetTarget(sets: 3, repsLow: range.lowerBound, repsHigh: range.upperBound, loadKg: nil, rir: rir),
             confidence: .moderate,
             priority: 0)
@@ -197,8 +197,8 @@ public extension KnowledgeBase {
             kind: .starter,
             title: "Build your aerobic fitness",
             action: action,
-            detail: "Adults should accumulate 150–300 min/week of moderate aerobic activity, per WHO and ACSM guidelines. Coach starts you with tolerable moderate work and progresses from adherence — no aggressive HIIT prescription without an established base.",
-            citation: CitationRegistry.whoPhysicalActivity2020,
+            detail: "A harmonised meta-analysis of over 1 million adults found a graded dose-response between physical activity volume and reduced mortality. Coach starts you with tolerable moderate work and progresses from adherence — no aggressive HIIT prescription without an established base.",
+            citation: CitationRegistry.ekelundActivityMortality2016,
             confidence: .moderate,
             priority: 70)]
     }

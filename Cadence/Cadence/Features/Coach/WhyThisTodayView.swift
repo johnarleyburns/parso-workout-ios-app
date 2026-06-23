@@ -38,10 +38,10 @@ struct WhyThisTodayView: View {
                 Text("Coach selected \(decision.primary.title.lowercased()) because:").font(.subheadline)
                 if decision.primary.kind == .strength {
                     Text("• \(decision.weeklyBalance.strengthDays) strength days this week (target: 2+)").font(.caption)
-                    CitationLink(citation: CitationRegistry.acsmResistance2026, compact: true)
+                    CitationLink(citation: CitationRegistry.schoenfeld2021, compact: true)
                 }
                 Text("• \(Int(decision.weeklyBalance.moderateEquivalentMinutes)) moderate-equivalent aerobic minutes (target: 150)").font(.caption)
-                CitationLink(citation: CitationRegistry.whoPhysicalActivity2020, compact: true)
+                CitationLink(citation: CitationRegistry.ekelundActivityMortality2016, compact: true)
                 Text("• \(decision.weeklyBalance.consecutiveHardDays) consecutive hard days").font(.caption)
                 CitationLink(citation: CitationRegistry.meeusenOvertraining2013, compact: true)
             }

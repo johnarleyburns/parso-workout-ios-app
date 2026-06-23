@@ -114,9 +114,11 @@ public extension CoachFacts {
         let rolling72h = completed.filter { now.timeIntervalSince($0.end) <= 72 * 3600 }
         let rolling7d = completed.filter { now.timeIntervalSince($0.end) <= 7 * 86400 }
         let rolling28d = completed.filter { now.timeIntervalSince($0.end) <= 28 * 86400 }
+        let thisWeekStart = WeeklyStats.weekStart(now: now)
+        let thisWeek = completed.filter { $0.start >= thisWeekStart }
 
         let recovery = computeRecovery(completed: rolling72h, inProgress: inProgress, now: now)
-        let balance = computeWeeklyBalance(completed: rolling7d, now: now)
+        let balance = computeWeeklyBalance(completed: thisWeek, now: now)
 
         return CoachFacts(
             events: events,

@@ -58,7 +58,7 @@ final class CoachDecisionEngineTests: XCTestCase {
         let runs: [TrainingEvent] = [
             makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-1 * 86400), duration: 3600, avgHR: 140),
             makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-2 * 86400), duration: 3600, avgHR: 140),
-            makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-4 * 86400), duration: 3600, avgHR: 140),
+            makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-3 * 86400), duration: 3600, avgHR: 140),
         ]
         let facts = CoachFacts.make(from: runs, goal: .strength, experience: .intermediate, now: now)
 

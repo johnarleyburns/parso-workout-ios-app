@@ -101,8 +101,6 @@ struct CoachDecisionCardView: View {
             .accessibilityLabel(ctaLabel)
 
             HStack {
-                Text("\(Int(decision.weeklyBalance.moderateEquivalentMinutes)) / 150 mod-equiv min")
-                    .font(.caption2).foregroundStyle(.secondary)
                 Spacer()
                 Button("Why this today") { onSeeWhy() }
                     .font(.caption.weight(.medium))

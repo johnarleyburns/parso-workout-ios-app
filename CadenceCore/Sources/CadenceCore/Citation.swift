@@ -115,15 +115,6 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1249/mss.0b013e3180304570"
     )
 
-    public static let run1_5mile = Citation(
-        id: "run1_5mile",
-        authors: "American College of Sports Medicine",
-        year: 2021,
-        title: "ACSM\u{2019}s Guidelines for Exercise Testing and Prescription (11th ed.)",
-        source: "Wolters Kluwer",
-        url: "https://www.acsm.org/education-resources/books/guidelines-exercise-testing-prescription"
-    )
-
     public static let rockportWalk = Citation(
         id: "rockportWalk",
         authors: "Kline, Porcari, Hintermeister, Freedson, Ward, McCarron, Ross & Rippe",
@@ -218,31 +209,13 @@ public enum CitationRegistry {
 
     // MARK: - New citations for recovery-aware redesign (2026-06-22)
 
-    public static let acsmResistance2026 = Citation(
-        id: "acsmResistance2026",
-        authors: "American College of Sports Medicine",
-        year: 2026,
-        title: "ACSM Resistance Training Guidelines Update 2026",
-        source: "ACSM Position Stand",
-        url: "https://acsm.org/resistance-training-guidelines-update-2026/"
-    )
-
-    public static let whoPhysicalActivity2020 = Citation(
-        id: "whoPhysicalActivity2020",
-        authors: "World Health Organization",
-        year: 2020,
-        title: "WHO Guidelines on Physical Activity and Sedentary Behaviour",
-        source: "WHO",
-        url: "https://www.who.int/publications/i/item/9789240014886"
-    )
-
-    public static let usPhysicalActivity2018 = Citation(
-        id: "usPhysicalActivity2018",
-        authors: "U.S. Department of Health and Human Services",
-        year: 2018,
-        title: "Physical Activity Guidelines for Americans, 2nd edition",
-        source: "HHS",
-        url: "https://health.gov/sites/default/files/2019-09/Physical_Activity_Guidelines_2nd_edition.pdf"
+    public static let ekelundActivityMortality2016 = Citation(
+        id: "ekelundActivityMortality2016",
+        authors: "Ekelund, Steene-Johannessen, Brown, Fagerland, Owen, Powell, Bauman & Lee",
+        year: 2016,
+        title: "Does physical activity attenuate, or even eliminate, the detrimental association of sitting time with mortality?",
+        source: "The Lancet 388(10051)",
+        url: "https://doi.org/10.1016/S0140-6736(16)30370-1"
     )
 
     public static let pellandDoseResponse2026 = Citation(
@@ -320,10 +293,10 @@ public enum CitationRegistry {
     public static let all: [Citation] = [
         schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation,
         rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max,
-        run1_5mile, rockportWalk, queensCollegeStep,
+        rockportWalk, queensCollegeStep,
         krieger2010, rheaPeriodization, calatayudBodyweight, channellOlympic,
         zourdosDUP, amirthalingamGVT, williamsLinearPeriodization, tufanoCluster,
-        acsmResistance2026, whoPhysicalActivity2020, usPhysicalActivity2018,
+        ekelundActivityMortality2016,
         pellandDoseResponse2026, ramosCampoSplit2024, parejaBlancoRecovery2020,
         sawMonitoring2016, meeusenOvertraining2013, schumannConcurrent2022,
         crowleyVO2Intensity2022, poonHIIT2024,

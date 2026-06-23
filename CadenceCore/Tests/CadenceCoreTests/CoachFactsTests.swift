@@ -109,6 +109,26 @@ final class CoachFactsTests: XCTestCase {
         XCTAssertEqual(facts.weeklyBalance.dataCompleteness, .moderate)
     }
 
+    func testModerateEquivalentMinutes_respectsMondayWeekBoundary() throws {
+        let ctx = try makeContext()
+        let cal = Calendar.current
+        var comps = DateComponents(year: 2026, month: 6, day: 23, hour: 12)
+        let now = cal.date(from: comps)!
+        let weekStart = WeeklyStats.weekStart(now: now)
+        let prevDay = cal.date(byAdding: .day, value: -1, to: weekStart)!
+
+        let thisWeekEvent = makeCardioEvent(context: ctx, type: .walk, start: weekStart.addingTimeInterval(3600),
+                                             duration: 1123, avgHR: nil)
+        let prevWeekEvent = makeCardioEvent(context: ctx, type: .run, start: prevDay.addingTimeInterval(3600),
+                                             duration: 7200, avgHR: 160)
+
+        let facts = CoachFacts.make(from: [thisWeekEvent, prevWeekEvent], goal: .strength,
+                                     experience: .intermediate, now: now)
+        let modEquiv = Int(facts.weeklyBalance.moderateEquivalentMinutes)
+        XCTAssertLessThanOrEqual(modEquiv, 25, "Should exclude previous-week event; got \(modEquiv) min")
+        XCTAssertGreaterThan(modEquiv, 0, "Should include this-week event")
+    }
+
     // MARK: - Recovery state
 
     func testRecoveryWindowBlocksExactExercise() throws {

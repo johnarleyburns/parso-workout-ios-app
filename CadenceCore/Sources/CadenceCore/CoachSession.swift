@@ -108,7 +108,7 @@ extension CoachSession {
                 durationMinutes: 45,
                 exercises: exercises,
                 trainingLoadTags: ["strength"],
-                citationIds: ["acsmResistance2026", "whoPhysicalActivity2020"],
+                citationIds: ["schoenfeld2021", "ekelundActivityMortality2016"],
                 launchPayload: .strengthPlan("fullBody")
             ))
         }
@@ -124,7 +124,7 @@ extension CoachSession {
                 durationMinutes: 40,
                 exercises: aExercises,
                 trainingLoadTags: ["strength", "beginner"],
-                citationIds: ["acsmResistance2026"],
+                citationIds: ["schoenfeld2021"],
                 launchPayload: .strengthPlan("beginnerA")
             ))
             let bExercises = generateBeginnerB(facts: facts)
@@ -136,7 +136,7 @@ extension CoachSession {
                 durationMinutes: 40,
                 exercises: bExercises,
                 trainingLoadTags: ["strength", "beginner"],
-                citationIds: ["acsmResistance2026"],
+                citationIds: ["schoenfeld2021"],
                 launchPayload: .strengthPlan("beginnerB")
             ))
         }
@@ -151,7 +151,7 @@ extension CoachSession {
             modality: .walk,
             intensity: .easy,
             trainingLoadTags: ["aerobic", "easy"],
-            citationIds: ["whoPhysicalActivity2020"],
+            citationIds: ["ekelundActivityMortality2016"],
             launchPayload: .cardio(type: "walk", durationMinutes: 25)
         ))
 
@@ -164,7 +164,7 @@ extension CoachSession {
             modality: .cycle,
             intensity: .easy,
             trainingLoadTags: ["aerobic", "easy"],
-            citationIds: ["whoPhysicalActivity2020"],
+            citationIds: ["ekelundActivityMortality2016"],
             launchPayload: .cardio(type: "cycle", durationMinutes: 25)
         ))
 
@@ -179,7 +179,7 @@ extension CoachSession {
                 modality: .walk,
                 intensity: .moderate,
                 trainingLoadTags: ["aerobic", "moderate"],
-                citationIds: ["whoPhysicalActivity2020"],
+                citationIds: ["ekelundActivityMortality2016"],
                 launchPayload: .cardio(type: "walk", durationMinutes: 35)
             ))
             candidates.append(CoachSession(
@@ -191,7 +191,7 @@ extension CoachSession {
                 modality: .run,
                 intensity: .moderate,
                 trainingLoadTags: ["aerobic", "moderate"],
-                citationIds: ["whoPhysicalActivity2020"],
+                citationIds: ["ekelundActivityMortality2016"],
                 launchPayload: .cardio(type: "run", durationMinutes: 25)
             ))
         }

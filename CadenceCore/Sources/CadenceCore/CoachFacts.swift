@@ -143,7 +143,7 @@ public extension CoachFacts {
         for event in completed {
             guard case .strength(let details) = event.kind, let d = details else { continue }
 
-            for ex in d.exercises where ex.hardSetCount > 0 {
+            for ex in d.exercises where ex.isHard {
                 let isHighFatigue = ex.reachedFailure || (ex.maxRPE ?? 0) >= 9 || d.totalHardSets >= 20
                 let hours: TimeInterval = isHighFatigue ? 72 : 48
 

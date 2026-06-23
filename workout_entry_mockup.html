@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cladiron — In-workout strength entry target mockup</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<style>
+  :root{
+    --bg-page:#f2f2f7; --bg-card:#ffffff; --bg-secondary:#ececf1;
+    --bg-info:#e7f0ff; --bg-warning:#fdf0db; --bg-danger:#fde7e6;
+    --t-primary:#000; --t-secondary:#3c3c4399; --t-tertiary:#3c3c4366;
+    --t-info:#0a6cff; --t-warning:#b3700a; --t-danger:#d70015;
+    --border:#3c3c4326; --border-strong:#3c3c4340;
+    --ios-green:#34c759; --teal:#1d9e75; --red:#e24b4a; --focus:#0a84ff;
+    --me:#378ADD; --p1:#7F77DD;
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg-page:#000; --bg-card:#1c1c1e; --bg-secondary:#2c2c2e;
+      --bg-info:#0a2a52; --bg-warning:#3a2a08; --bg-danger:#3a1311;
+      --t-primary:#fff; --t-secondary:#ebebf599; --t-tertiary:#ebebf566;
+      --t-info:#5aa6ff; --t-warning:#eab35a; --t-danger:#ff6961;
+      --border:#54545833; --border-strong:#5454584d; --focus:#5aa6ff; --teal:#5fd2a8;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);background:var(--bg-page);color:var(--t-primary);display:flex;flex-direction:column;align-items:center;padding:28px 16px;min-height:100vh;-webkit-font-smoothing:antialiased}
+  .page-head{max-width:420px;text-align:center;margin-bottom:14px}
+  .page-head h1{font-size:17px;font-weight:600;margin-bottom:4px}
+  .page-head p{font-size:13px;color:var(--t-secondary);line-height:1.5}
+  .legend{max-width:420px;display:flex;flex-direction:column;gap:6px;margin:8px 0 22px;font-size:12px;color:var(--t-secondary)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .legend i{color:var(--t-info);font-size:15px;width:16px;text-align:center}
+  .row2{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;align-items:flex-start}
+  .frame{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .cap{font-size:12px;color:var(--t-secondary)}
+  .phone{width:330px;background:var(--bg-card);border:1px solid var(--border-strong);border-radius:42px;padding:9px;box-shadow:0 20px 60px #0000001f}
+  .screen{border-radius:34px;overflow:hidden;display:flex;flex-direction:column;background:var(--bg-card);position:relative}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:8px 22px 3px;font-size:13px;font-weight:500}
+  .statusbar .ic{display:flex;gap:5px;align-items:center;font-size:14px}
+  .navbar{display:flex;align-items:center;gap:8px;padding:6px 16px}
+  .navbar .t{font-size:17px;font-weight:500;flex:1}
+  .navbar i{color:var(--t-info)}
+  .clock{display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 0;background:var(--bg-secondary)}
+  .clock .lbl{font-size:15px;font-weight:500;letter-spacing:.5px}
+  .dotlive{width:7px;height:7px;border-radius:50%;background:var(--ios-green)}
+  .body{padding:12px 14px 16px}
+  .pbar{display:flex;align-items:center;gap:7px;margin-bottom:12px}
+  .pbar .w{font-size:12px;color:var(--t-secondary)}
+  .pchip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px 3px 4px;border-radius:20px}
+  .pchip .av{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;color:#fff;font-size:10px;font-weight:600}
+  .pchip .nm{font-size:12px;font-weight:500}
+  .ex{background:var(--bg-secondary);border-radius:14px;padding:13px}
+  .ex .nm{font-size:16px;font-weight:500}
+  .ex .sub{font-size:11px;color:var(--t-secondary);margin-bottom:11px}
+  .colhead{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.5px;color:var(--t-tertiary);padding:0 2px 6px}
+  .colhead .c-who{width:30px}.colhead .c-prev{width:44px}.colhead .c-w{flex:1;text-align:center}.colhead .c-r{width:40px;text-align:center}.colhead .c-c{width:30px}
+  .row{display:flex;align-items:center;gap:6px;min-height:40px}
+  .c-who{width:30px;text-align:center}
+  .c-prev{width:44px;font-size:12px;color:var(--t-tertiary)}
+  .c-w{flex:1;text-align:center;font-size:16px}
+  .c-r{width:40px;text-align:center;font-size:16px}
+  .c-c{width:30px;text-align:center}
+  .av{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;color:#fff;font-size:11px;font-weight:600}
+  .sep{height:.5px;background:var(--border);margin:1px 0}
+  .done{display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;border-radius:50%;background:var(--ios-green)}
+  .done i{color:#fff;font-size:14px}
+  .active{background:var(--bg-info);border-radius:10px;padding:7px 6px;margin-top:5px}
+  .turn{display:flex;align-items:center;gap:6px;padding:0 2px 6px}
+  .turnchip{display:inline-flex;align-items:center;gap:5px;background:var(--bg-card);padding:3px 8px 3px 4px;border-radius:20px;border:0.5px solid var(--border-strong)}
+  .turnchip .av{width:17px;height:17px;font-size:10px}
+  .turnchip .nm{font-size:12px;font-weight:500;color:var(--t-info)}
+  .field{display:flex;align-items:center;justify-content:center;height:34px;background:var(--bg-card);border:0.5px solid var(--border-strong);border-radius:8px;font-size:16px}
+  .field.focus{border:1.5px solid var(--focus);font-weight:500}
+  .altline{display:flex;align-items:center;gap:10px;padding-left:36px;margin-top:4px}
+  .altline .alt{font-size:11px;color:var(--t-secondary)}
+  .altline .cancel{font-size:12px;color:var(--t-info)}
+  .actions{display:flex;gap:9px;margin-top:11px}
+  .btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:36px;border:0.5px solid var(--border-strong);border-radius:10px;font-size:14px;font-weight:500;color:var(--t-info)}
+  .cooldown{display:flex;align-items:center;justify-content:center;gap:7px;height:44px;border:0.5px solid var(--teal);border-radius:12px;margin-top:14px;font-size:15px;font-weight:500;color:var(--teal);background:rgba(29,158,117,.1)}
+  .ctrl{display:flex;gap:10px;margin-top:10px}
+  .ctrl .c{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:44px;border:0.5px solid var(--border-strong);border-radius:12px;font-size:15px;font-weight:500}
+  .ctrl .end{background:var(--red);border:none;color:#fff}
+  .scrim{flex:1;background:rgba(0,0,0,.45);min-height:520px}
+  .sheet{position:absolute;left:0;right:0;bottom:0;padding:10px}
+  .sheetcard{background:var(--bg-card);border-radius:16px;overflow:hidden;margin-bottom:8px}
+  .sheettitle{padding:16px 16px 12px;text-align:center;border-bottom:.5px solid var(--border)}
+  .sheettitle .h{font-size:14px;font-weight:600;margin-bottom:3px}
+  .sheettitle .m{font-size:12px;color:var(--t-secondary);line-height:1.4}
+  .opt{padding:15px;text-align:center;font-size:17px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:7px}
+  .opt.cool{color:var(--teal);border-bottom:.5px solid var(--border)}
+  .opt.end{color:var(--red)}
+  .cancelcard{background:var(--bg-card);border-radius:16px;padding:15px;text-align:center;font-size:17px;font-weight:600;color:var(--t-info)}
+</style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>Cladiron — in-workout strength entry (target)</h1>
+    <p>Reference mockup for <code>WORKOUT_ENTRY_REDESIGN_HANDOFF.md</code>. Columnar tap-to-log with training partners; End confirms and offers a cool-down.</p>
+  </div>
+  <div class="legend">
+    <span><i class="ti ti-users"></i> Partners alternate by set — each row is tagged with who lifted it; the active row shows whose turn (tap to switch).</span>
+    <span><i class="ti ti-circle-check"></i> Tap the checkmark to log; partner sets never earn your PR.</span>
+    <span><i class="ti ti-player-stop"></i> End never quits immediately — it confirms and lets you cool down first.</span>
+  </div>
+
+  <div class="row2">
+
+    <div class="frame">
+      <div class="phone"><div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="ic"><i class="ti ti-antenna-bars-4"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+        <div class="navbar"><i class="ti ti-chevron-left" style="font-size:22px"></i><span class="t">Push Day</span><i class="ti ti-pencil" style="font-size:18px"></i><i class="ti ti-heart" style="font-size:18px"></i></div>
+        <div class="clock"><span class="dotlive"></span><span class="lbl">24:12</span><i class="ti ti-player-pause" style="font-size:15px;color:var(--t-secondary);margin-left:6px"></i></div>
+        <div class="body">
+
+          <div class="pbar">
+            <span class="w">With:</span>
+            <span class="pchip" style="background:var(--bg-info)"><span class="av" style="background:var(--me)">M</span><span class="nm" style="color:var(--t-info)">Me</span></span>
+            <span class="pchip" style="background:var(--bg-secondary)"><span class="av" style="background:var(--p1)">A</span><span class="nm">Alex</span></span>
+            <i class="ti ti-circle-plus" style="font-size:19px;color:var(--t-info)"></i>
+          </div>
+
+          <div class="ex">
+            <div class="nm">Bench Press</div>
+            <div class="sub">Last time 60kg &times; 8, 8 &middot; PR 65 kg</div>
+
+            <div class="colhead"><span class="c-who">WHO</span><span class="c-prev">PREV</span><span class="c-w">WEIGHT (KG)</span><span class="c-r">REPS</span><span class="c-c"></span></div>
+
+            <div class="row"><span class="c-who"><span class="av" style="background:var(--me)">M</span></span><span class="c-prev">60&times;8</span><span class="c-w">62.5</span><span class="c-r">8</span><span class="c-c"><i class="ti ti-trophy" style="color:var(--t-warning);font-size:18px"></i></span></div>
+            <div class="sep"></div>
+            <div class="row"><span class="c-who"><span class="av" style="background:var(--p1)">A</span></span><span class="c-prev">55&times;8</span><span class="c-w">55</span><span class="c-r">8</span><span class="c-c"><span class="done"><i class="ti ti-check"></i></span></span></div>
+            <div class="sep"></div>
+            <div class="row"><span class="c-who"><span class="av" style="background:var(--me)">M</span></span><span class="c-prev">60&times;8</span><span class="c-w">62.5</span><span class="c-r">8</span><span class="c-c"><span class="done"><i class="ti ti-check"></i></span></span></div>
+
+            <div class="active">
+              <div class="turn"><span class="turnchip"><span class="av" style="background:var(--p1)">A</span><span class="nm">Alex's set</span><i class="ti ti-chevron-down" style="font-size:12px;color:var(--t-info)"></i></span></div>
+              <div class="row" style="min-height:38px">
+                <span class="c-who"><span class="av" style="background:var(--p1)">A</span></span>
+                <span class="c-prev">55&times;8</span>
+                <span class="c-w" style="padding:0 2px"><span class="field focus">55</span></span>
+                <span class="c-r"><span class="field">8</span></span>
+                <span class="c-c"><i class="ti ti-circle-check" style="color:var(--ios-green);font-size:26px"></i></span>
+              </div>
+              <div class="altline"><span class="alt">&asymp; 121 lb</span><span style="flex:1"></span><span class="cancel">Cancel</span></div>
+            </div>
+
+            <div class="actions">
+              <div class="btn"><i class="ti ti-plus" style="font-size:14px"></i> Add set</div>
+              <div class="btn"><i class="ti ti-rotate-clockwise" style="font-size:14px"></i> Repeat</div>
+            </div>
+          </div>
+
+          <div class="cooldown"><i class="ti ti-wind" style="font-size:17px"></i> Cool Down</div>
+          <div class="ctrl">
+            <div class="c"><i class="ti ti-player-pause" style="font-size:16px"></i> Pause</div>
+            <div class="c end"><i class="ti ti-player-stop" style="font-size:16px"></i> End</div>
+          </div>
+
+        </div>
+      </div></div>
+      <div class="cap">Partners alternate by set</div>
+    </div>
+
+    <div class="frame">
+      <div class="phone"><div class="screen" style="min-height:660px">
+        <div class="statusbar" style="opacity:.4"><span>9:41</span><span class="ic"><i class="ti ti-antenna-bars-4"></i><i class="ti ti-wifi"></i><i class="ti ti-battery-3"></i></span></div>
+        <div class="scrim"></div>
+        <div class="sheet">
+          <div class="sheetcard">
+            <div class="sheettitle"><div class="h">End workout?</div><div class="m">Save your Push Day workout, or cool down first.</div></div>
+            <div class="opt cool"><i class="ti ti-wind" style="font-size:18px"></i> Cool down, then finish</div>
+            <div class="opt end">End now</div>
+          </div>
+          <div class="cancelcard">Keep going</div>
+        </div>
+      </div></div>
+      <div class="cap">End confirms, with a cool-down option</div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -150,8 +150,6 @@ struct HomeView: View {
                 case .settings: SettingsView()
                 case .coach: CoachInsightsView(insights: coachInsights)
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
-                case .coachWorkout(let plan):
-                    RoutineDetailView(plan: plan, onEditorStart: { plan in handleEditorStart(plan); path = NavigationPath() })
                 case .yourWeek:
                     YourWeekView(decision: coachDecision, facts: CoachFacts.make(
                         from: buildTrainingEvents(), goal: settings.trainingGoal,
@@ -648,32 +646,12 @@ struct HomeView: View {
         }
     }
 
-    /// "Do this workout" (strength-pivot P5.3): materialize the coach's top
-    /// recommendation into a fresh strength session pre-filled with the prescribed
-    /// movement, planned sets/reps, and load — the fast default path. Routes
-    /// through the HR gate so the user can verify live HR first.
-    private func launchPrescription(_ rec: Recommendation) {
-        let twoWeeksAgo = Date().addingTimeInterval(-14 * 86400)
-        let recentKeys = sessions
-            .filter { $0.deletedAt == nil && $0.date > twoWeeksAgo }
-            .compactMap(\.planKey)
-        let plan = RecommendationEngine.pickRoutine(coachFacts, recentPlanKeys: recentKeys)
-        path.append(HomeRoute.coachWorkout(plan))
-    }
-
     /// Launch from the new CoachDecision engine.
     private func launchDecision(_ session: CoachSession) {
         switch session.launchPayload {
         case .strengthPlan:
             if let plan = EditablePlan.from(coach: session) {
                 path.append(HomeRoute.workoutEditor(plan))
-            } else {
-                let twoWeeksAgo = Date().addingTimeInterval(-14 * 86400)
-                let recentKeys = sessions
-                    .filter { $0.deletedAt == nil && $0.date > twoWeeksAgo }
-                    .compactMap(\.planKey)
-                let plan = RecommendationEngine.pickRoutine(coachFacts, recentPlanKeys: recentKeys)
-                path.append(HomeRoute.coachWorkout(plan))
             }
         case .cardio(let cardioTypeStr, _):
             switch cardioTypeStr {
@@ -749,7 +727,7 @@ struct PendingWorkout: Identifiable {
 
 /// Pushed destinations reachable from Home.
 enum HomeRoute: Hashable {
-    case history, settings, coach, planning, coachWorkout(WorkoutPlan)
+    case history, settings, coach, planning
     case yourWeek
     case whyToday
     case workoutEditor(EditablePlan)

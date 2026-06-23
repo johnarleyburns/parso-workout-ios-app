@@ -28,6 +28,13 @@ public struct StrengthEventDetails: Sendable, Equatable {
         public let lastWorkingSetAt: Date
 
         public var id: String { exerciseID }
+
+        /// True when the exercise work reached a meaningful stimulus threshold
+        /// (not just light technique/practice sets). Below this, the work does
+        /// not create a recovery gate.
+        public var isHard: Bool {
+            hardSetCount > 0 && ((maxRPE ?? 0) >= 7 || reachedFailure)
+        }
     }
 
     public let exercises: [PerExercise]
@@ -116,7 +123,7 @@ public struct TrainingEvent: Sendable, Equatable, Identifiable {
 
     public var completedHardStrengthExercises: [StrengthEventDetails.PerExercise] {
         guard completion == .completed, case .strength(let details) = kind, let d = details else { return [] }
-        return d.exercises.filter { $0.hardSetCount > 0 }
+            return d.exercises.filter { $0.isHard }
     }
 
     public var lowerBodyPatternsTrained: Set<MovementPattern> {

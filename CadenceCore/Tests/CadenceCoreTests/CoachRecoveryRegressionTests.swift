@@ -2,8 +2,8 @@ import XCTest
 import SwiftData
 @testable import CadenceCore
 
-/// Phase 1 — prove that the current recommendation engine recommends lifts that
-/// should be recovering. These tests FAIL on main and PASS after Phase 3.
+/// Tests for the recovery-aware CoachDecision engine and eligibility policy.
+/// Verifies that recently-trained lifts are properly gated from being recommended again.
 final class CoachRecoveryRegressionTests: XCTestCase {
 
     private func makeContext() throws -> ModelContext {
@@ -22,54 +22,7 @@ final class CoachRecoveryRegressionTests: XCTestCase {
         return cal.date(from: comps) ?? Date()
     }
 
-    // MARK: - Old engine: documents the bug (some PASS, some FAIL)
-
-    /// Log a full-body session 42 min ago. The current engine has no recovery gates,
-    /// so all three lifts appear as progression candidates. After Phase 3, none should.
-    func testFullBody42MinAgoProgressionCandidatesIncludeAllThreeLifts() throws {
-        let ctx = try makeContext()
-        let now = testNow
-        let session = try fullBodySession(context: ctx, date: now.addingTimeInterval(-42 * 60))
-        let f = TrainingFacts.make(sessions: [session], now: now,
-                                    goal: .strength, experience: .intermediate)
-        let recs = RecommendationEngine.run(f)
-        let ids = Set(recs.map(\.id))
-        XCTAssertTrue(ids.contains("progression.BackSquat"),
-                      "Current engine: squat prog present 42 min after training (no recovery gate)")
-        XCTAssertTrue(ids.contains("progression.BenchPress"),
-                      "Current engine: bench prog present 42 min after training (no recovery gate)")
-        XCTAssertTrue(ids.contains("progression.Deadlift"),
-                      "Current engine: deadlift prog present 42 min after training (no recovery gate)")
-        let top = RecommendationEngine.top(f)
-        let topIsRecentlyTrained = ["progression.BackSquat", "progression.BenchPress", "progression.Deadlift"].contains(top.id)
-        XCTAssertTrue(topIsRecentlyTrained,
-                      "Current engine: top reco is a progression for a lift just trained.")
-    }
-
-    func testDeadliftOnly42MinAgoShouldNotTopRecommendDeadlift() throws {
-        let ctx = try makeContext()
-        let now = testNow
-        let session = try deadliftOnlySession(context: ctx, date: now.addingTimeInterval(-42 * 60))
-        let f = TrainingFacts.make(sessions: [session], now: now,
-                                    goal: .strength, experience: .intermediate)
-        let top = RecommendationEngine.top(f)
-        XCTAssertNotEqual(top.id, "progression.Deadlift",
-                          "BUG: deadlift progression is top reco 42 min after deadlifting — no recovery gate exists")
-    }
-
-    func testDeadlift23h59mAgoStillRecommendedAsProgression() throws {
-        let ctx = try makeContext()
-        let now = testNow
-        let session = try deadliftOnlySession(context: ctx, date: now.addingTimeInterval(-23.98 * 3600))
-        let f = TrainingFacts.make(sessions: [session], now: now,
-                                    goal: .strength, experience: .intermediate)
-        let recs = RecommendationEngine.run(f)
-        let deadRec = recs.first { $0.id == "progression.Deadlift" }
-        XCTAssertNotNil(deadRec,
-                        "Current engine: deadlift prog at 23h59m.")
-    }
-
-    // MARK: - New engine: proves the bug is FIXED (all SHOULD pass)
+    // MARK: - Recovery gate tests
 
     func testNewEngineDeadliftOnly42MinAgoBlocksStrength() throws {
         let ctx = try makeContext()

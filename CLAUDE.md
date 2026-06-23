@@ -50,6 +50,19 @@ CloudKit sync stays wired (single-device iCloud backup + future multi-device) bu
 - Follow the phasing in `docs/REQUIREMENTS.md` §8. Build the `CadenceCore` package first.
 - Accessibility is not optional: VoiceOver labels + Dynamic Type on every new view (NFR-2).
 
+## HARD RULE: Every coaching output MUST cite science
+Cladiron never makes a single recommendation, insight, warning, deferred decision, or
+scoring rationale that isn't backed by cited, user-navigable scientific literature.
+Every screen that surfaces coach output MUST display tappable citations:
+
+- Use `CitationRegistry.citation(forId:)` to resolve string IDs to `Citation` objects.
+- Render every citation with `CitationLink` (standard or `compact: true` for "The science >").
+- Never display raw citation IDs (e.g. `"parejaBlancoRecovery2020"`) to the user.
+- If a new coaching output adds a `citationIds` field, it MUST be resolved and rendered in the UI.
+- Citation tests must fail when a user-visible science claim references a missing ID.
+- `CitationRegistry.all` and `docs/CITATIONS.md` must stay in sync — every ID in the registry
+  must have a corresponding entry in CITATIONS.md explaining how it's used.
+
 ## Workflow rules for Claude Code
 - For any non-trivial feature, **propose a plan first** (plan mode), wait for approval, then implement.
 - **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test.

@@ -93,6 +93,105 @@ training.* **Medicine & Science in Sports & Exercise 39(4).**
 - A citation key is only added here once a rule actually points at it; an unused
   reference is removed. `CitationRegistry.all` and this file should list the same set.
 
+### `run1_5mile` — 1.5-mile run test
+ACSM (2021). *ACSM's Guidelines for Exercise Testing and Prescription (11th ed.).*
+**Wolters Kluwer.**
+<https://www.acsm.org/education-resources/books/guidelines-exercise-testing-prescription>
+
+- **Used by:** the 1.5-mile run VO₂max assessment.
+- **What it supports:** standardized field-test protocol for estimating cardiorespiratory
+  fitness.
+
+### `rockportWalk` — Rockport 1-mile walk test
+Kline et al. (1987). *Estimation of VO₂max from a one-mile track walk, gender, age,
+and body weight.* **Med Sci Sports Exerc 19(3).**
+<https://doi.org/10.1249/00005768-198706000-00013>
+
+- **Used by:** the Rockport walk VO₂max assessment.
+- **What it supports:** submaximal field test that estimates VO₂max from walk time, heart
+  rate, age, sex, and body weight.
+
+### `queensCollegeStep` — Queens College step test
+McArdle et al. (1972). *Reliability and interrelationships between maximal oxygen
+intake, physical work capacity and step-test scores in college women.*
+**Med Sci Sports 4(4).** <https://doi.org/10.1249/00005768-197200440-00019>
+
+- **Used by:** the Queens College step-test VO₂max assessment.
+- **What it supports:** submaximal step-test protocol for estimating VO₂max from recovery
+  heart rate.
+
+### `krieger2010` — single vs multiple sets
+Krieger (2010). *Single vs. Multiple Sets of Resistance Exercise for Muscle Hypertrophy:
+A Meta-Analysis.* **J Strength Cond Res 24(4).**
+<https://doi.org/10.1519/JSC.0b013e3181d4d436>
+
+- **Used by:** routine program citations. Informs the multi-set default for built-in
+  programs.
+- **What it supports:** multiple sets produce greater hypertrophy than single-set training.
+
+### `rheaPeriodization` — periodized vs non-periodized
+Rhea & Alderman (2004). *A Meta-Analysis of Periodized Versus Nonperiodized Strength
+and Power Training Programs.* **Res Q Exerc Sport 75(4).**
+<https://doi.org/10.1080/02701367.2004.10609174>
+
+- **Used by:** routine program citations. Informs periodized program templates.
+- **What it supports:** periodized programs produce greater strength and power gains than
+  non-periodized programs.
+
+### `calatayudBodyweight` — bodyweight vs bench press
+Calatayud et al. (2015). *Bench Press and Push-Up at Comparable Levels of Muscle
+Activity Results in Similar Strength Gains.* **J Strength Cond Res 29(1).**
+<https://doi.org/10.1519/JSC.0000000000000589>
+
+- **Used by:** calisthenics routine citations.
+- **What it supports:** push-ups and bench press produce similar strength gains when
+  matched for effort.
+
+### `channellOlympic` — Olympic lifting
+Channell & Barfield (2008). *Effect of Olympic and Traditional Resistance Training on
+Vertical Jump Improvement in High School Boys.* **J Strength Cond Res 22(5).**
+<https://doi.org/10.1519/JSC.0b013e318181a3d0>
+
+- **Used by:** Olympic lifting routine citations.
+- **What it supports:** Olympic-style training improves explosive power (vertical jump).
+
+### `zourdosDUP` — daily undulating periodization
+Zourdos et al. (2016). *Modified Daily Undulating Periodization Model Produces Greater
+Performance Than a Traditional Configuration in Powerlifters.*
+**J Strength Cond Res 30(3).** <https://doi.org/10.1519/JSC.0000000000001165>
+
+- **Used by:** DUP program citations.
+- **What it supports:** daily undulating periodization can outperform traditional
+  periodization for strength.
+
+### `amirthalingamGVT` — German Volume Training
+Amirthalingam et al. (2017). *Effects of a Modified German Volume Training Program on
+Muscular Hypertrophy and Strength.* **J Strength Cond Res 31(11).**
+<https://doi.org/10.1519/JSC.0000000000001747>
+
+- **Used by:** excessive per-session volume warnings.
+- **What it supports:** found no advantage to 10 sets over 5 per exercise per session.
+- **App policy:** GVT is not selected automatically by Coach; it is available only as an
+  advanced user-chosen template with this caveat.
+
+### `williamsLinearPeriodization` — linear periodization
+Williams et al. (2017). *Comparison of Periodized and Non-Periodized Resistance Training
+on Maximal Strength: A Meta-Analysis.* **Sports Med 47(10).**
+<https://doi.org/10.1007/s40279-017-0734-y>
+
+- **Used by:** linear periodization program citations (5/3/1, nSuns).
+- **What it supports:** periodized resistance training is more effective for maximal
+  strength than non-periodized training.
+
+### `tufanoCluster` — cluster sets
+Tufano, Brown & Haff (2017). *Theoretical and Practical Aspects of Different Cluster Set
+Structures: A Systematic Review.* **J Strength Cond Res 31(3).**
+<https://doi.org/10.1519/JSC.0000000000001581>
+
+- **Used by:** cluster-set program citations.
+- **What it supports:** cluster sets allow higher-quality repetitions at heavier loads by
+  introducing intra-set rest.
+
 ## Recovery-aware redesign citations (2026-06-22)
 
 ### `acsmResistance2026` — ACSM 2026 resistance training guidelines
@@ -194,8 +293,5 @@ HHS (2018). *Physical Activity Guidelines for Americans, 2nd edition.*
   significantly or meaningfully affect hypertrophy. Frequency is useful for
   distributing volume and fitting schedules, not as an independent hypertrophy dose.
 
-- `amirthalingamGVT`: the study found no advantage to 10 sets over 5. GVT has been
-  removed from automatic Coach selection and is available only as an advanced
-  user-chosen template with this caveat.
-- New prescriptive rules must cite published work before shipping (D3) — no un-cited
+- New prescriptive rules must cite published work before shipping — no un-cited
   prescription is allowed past the engine's tests.

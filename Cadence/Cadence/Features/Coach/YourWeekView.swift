@@ -6,40 +6,97 @@ struct YourWeekView: View {
     let facts: CoachFacts
 
     var body: some View {
+        let balance = decision.weeklyBalance
         let plan = WeeklyPlan.generate(from: facts)
+        let completed = plan.days.filter(\.isCompleted)
+        let remaining = plan.days.filter { !$0.isCompleted }
         List {
-            Section("Balanced fitness") {
+            Section("This Week So Far") {
                 VStack(spacing: 12) {
                     HStack {
                         Image(systemName: "dumbbell.fill").foregroundStyle(.green)
-                        Text("Strength").font(.subheadline)
+                        Text("Strength days").font(.subheadline)
                         Spacer()
-                        Text("\(decision.weeklyBalance.strengthDays) of 2 days").font(.subheadline.bold())
+                        Text("\(balance.strengthDays)")
+                            .font(.subheadline.bold()).monospacedDigit()
+                            + Text("  (target: 2+)").font(.caption).foregroundStyle(.secondary)
                     }
-                    ProgressView(value: min(1, Double(decision.weeklyBalance.strengthDays) / 2))
+                    ProgressView(value: min(1, Double(balance.strengthDays) / 2))
                         .tint(.green)
 
                     HStack {
                         Image(systemName: "heart.fill").foregroundStyle(.teal)
-                        Text("Aerobic").font(.subheadline)
+                        Text("Mod-equiv aerobic").font(.subheadline)
                         Spacer()
-                        Text("\(Int(decision.weeklyBalance.moderateEquivalentMinutes)) of 150 min").font(.subheadline.bold())
+                        Text("\(Int(balance.moderateEquivalentMinutes))")
+                            .font(.subheadline.bold()).monospacedDigit()
+                            + Text("  (target: 150)").font(.caption).foregroundStyle(.secondary)
                     }
-                    ProgressView(value: min(1, decision.weeklyBalance.moderateEquivalentMinutes / 150))
+                    ProgressView(value: min(1, balance.moderateEquivalentMinutes / 150))
                         .tint(.teal)
+
+                    HStack {
+                        Image(systemName: "flame.fill").foregroundStyle(.orange)
+                        Text("Hard days").font(.subheadline)
+                        Spacer()
+                        Text("\(balance.hardDays)").font(.subheadline.bold()).monospacedDigit()
+                    }
+
+                    HStack {
+                        Image(systemName: "arrow.trianglehead.clockwise").foregroundStyle(.red)
+                        Text("Consecutive hard").font(.subheadline)
+                        Spacer()
+                        Text("\(balance.consecutiveHardDays)").font(.subheadline.bold()).monospacedDigit()
+                    }
                 }
                 .padding(.vertical, 4)
+
+                if completed.count > 0 {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                        Text("\(completed.count) day\(completed.count == 1 ? "" : "s") completed").font(.caption)
+                    }
+                }
             }
 
-            Section("7-day outline") {
+            if remaining.contains(where: { $0.sessionKind != nil }) {
+                Section("Planned (rest of week)") {
+                    let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                    ForEach(remaining) { day in
+                        let idx = Calendar.current.component(.weekday, from: day.date) - 2
+                        let label = idx >= 0 && idx < 7 ? weekdays[idx] : ""
+                        HStack {
+                            Text(label).font(.caption).frame(width: 32, alignment: .leading)
+                            Circle()
+                                .fill(day.isHard ? Color.green : day.sessionKind != nil ? Color.teal : Color.gray.opacity(0.3))
+                                .frame(width: 10, height: 10)
+                            Text(day.sessionKind != nil ? day.label : "—")
+                                .font(.subheadline)
+                            Spacer()
+                            if let kind = day.sessionKind {
+                                Text(kindLabel(kind)).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            } else if remaining.isEmpty {
+                Section("Planned (rest of week)") {
+                    Text("Week complete — nice work.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+
+            Section("7-day history") {
                 let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                 ForEach(Array(plan.days.enumerated()), id: \.offset) { i, day in
+                    let dayLabel = weekdays[i]
                     HStack {
-                        Text(weekdays[i]).font(.caption).frame(width: 32, alignment: .leading)
+                        Text(dayLabel).font(.caption).frame(width: 32, alignment: .leading)
                         Circle()
                             .fill(day.isCompleted ? (day.isHard ? Color.green : Color.teal) : Color.gray.opacity(0.3))
                             .frame(width: 10, height: 10)
-                        Text(day.label).font(.subheadline)
+                        Text(day.isCompleted ? day.label : "—").font(.subheadline)
                         if day.isToday { Text("Today").font(.caption.bold()).foregroundStyle(.tint) }
                         Spacer()
                         if let kind = day.sessionKind {
@@ -50,13 +107,13 @@ struct YourWeekView: View {
                 }
             }
 
-            if let vo2 = decision.weeklyBalance.vo2maxLatest {
+            if let vo2 = balance.vo2maxLatest {
                 Section("VO₂max") {
                     HStack {
                         Text(String(format: "%.1f", vo2)).font(.title.bold()).foregroundStyle(.teal)
                         VStack(alignment: .leading) {
-                            Text(decision.weeklyBalance.vo2maxProtocol ?? "Field test").font(.caption)
-                            if let trend = decision.weeklyBalance.vo2maxTrend {
+                            Text(balance.vo2maxProtocol ?? "Field test").font(.caption)
+                            if let trend = balance.vo2maxTrend {
                                 Text(trend == .rising ? "Improving" : trend == .declining ? "Declining" : "Stable")
                                     .font(.caption2).foregroundStyle(.secondary)
                             }

@@ -158,6 +158,11 @@ struct HomeView: View {
                         experience: settings.experienceLevel, formula: settings.formula))
                 case .whyToday:
                     WhyThisTodayView(decision: coachDecision)
+                case .workoutEditor(let plan):
+                    WorkoutPlanEditor(plan: plan, onStart: { plan in
+                        handleEditorStart(plan)
+                        path = NavigationPath()
+                    })
                 }
             }
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
@@ -345,7 +350,8 @@ struct HomeView: View {
 
     /// "This week" at a glance — one calm card, not four launcher tiles.
     private var thisWeekCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let balance = coachDecision.weeklyBalance
+        return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("This week").font(.headline)
                 Spacer()
@@ -358,8 +364,8 @@ struct HomeView: View {
                 .buttonStyle(.plain)
             }
             HStack(spacing: 0) {
-                weekMetric("\(workoutsThisWeek)", "workouts", id: "home.workoutsCount")
-                weekMetric("\(cardioMinutesThisWeek)m", "cardio", id: "home.cardioMinutes")
+                weekMetric("\(balance.strengthDays)", "strength", id: "home.workoutsCount")
+                weekMetric("\(Int(balance.moderateEquivalentMinutes))", "mod-equiv min", id: "home.cardioMinutes")
                 weekMetric(compactVolume(), "volume", id: "home.volume")
                 weekMetric("\(bodyPartsThisWeek.hit.count)/\(BodyPart.allCases.count)",
                            "parts", id: "home.bodyParts")
@@ -659,12 +665,16 @@ struct HomeView: View {
     private func launchDecision(_ session: CoachSession) {
         switch session.launchPayload {
         case .strengthPlan:
-            let twoWeeksAgo = Date().addingTimeInterval(-14 * 86400)
-            let recentKeys = sessions
-                .filter { $0.deletedAt == nil && $0.date > twoWeeksAgo }
-                .compactMap(\.planKey)
-            let plan = RecommendationEngine.pickRoutine(coachFacts, recentPlanKeys: recentKeys)
-            path.append(HomeRoute.coachWorkout(plan))
+            if let plan = EditablePlan.from(coach: session) {
+                path.append(HomeRoute.workoutEditor(plan))
+            } else {
+                let twoWeeksAgo = Date().addingTimeInterval(-14 * 86400)
+                let recentKeys = sessions
+                    .filter { $0.deletedAt == nil && $0.date > twoWeeksAgo }
+                    .compactMap(\.planKey)
+                let plan = RecommendationEngine.pickRoutine(coachFacts, recentPlanKeys: recentKeys)
+                path.append(HomeRoute.coachWorkout(plan))
+            }
         case .cardio(let cardioTypeStr, _):
             switch cardioTypeStr {
             case "walk": cardioType = .walk
@@ -707,6 +717,11 @@ struct HomeView: View {
         }
         session.cooldownSeconds = Double(plan.cooldownMinutes * 60)
         session.activePartnerIDs = plan.partnerIDs.map(\.uuidString)
+        let rirNotes = plan.exercises.compactMap { ex -> String? in
+            guard !ex.notes.isEmpty, ex.notes.contains("RIR") else { return nil }
+            return ex.notes
+        }
+        if !rirNotes.isEmpty { session.notes = rirNotes.joined(separator: "; ") }
         try context.save()
         return session
     }
@@ -737,6 +752,7 @@ enum HomeRoute: Hashable {
     case history, settings, coach, planning, coachWorkout(WorkoutPlan)
     case yourWeek
     case whyToday
+    case workoutEditor(EditablePlan)
 }
 
 /// A row in Home's merged "Recent workouts" list — strength and cardio together,

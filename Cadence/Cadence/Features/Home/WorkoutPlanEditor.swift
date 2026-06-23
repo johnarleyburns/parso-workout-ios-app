@@ -2,7 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
-struct EditablePlan {
+struct EditablePlan: Hashable {
+    let id = UUID()
     var title: String = "Workout"
     var warmupMinutes: Int
     var cooldownMinutes: Int
@@ -67,16 +68,38 @@ struct EditablePlan {
             exercises: exercises
         )
     }
+
+    static func from(coach session: CoachSession) -> EditablePlan? {
+        guard let exercises = session.exercises, !exercises.isEmpty else { return nil }
+        return EditablePlan(
+            title: session.title,
+            warmupMinutes: 5,
+            cooldownMinutes: 0,
+            exercises: exercises.map { ex in
+                EditableExercise(
+                    name: ex.name,
+                    sets: (0..<(ex.sets ?? 3)).map { _ in
+                        EditableSet(
+                            targetReps: ex.repsLow ?? 8,
+                            targetWeight: ex.loadKg
+                        )
+                    },
+                    notes: ex.rir.map { "Target ≤\($0) RIR" } ?? ""
+                )
+            },
+            partnerIDs: []
+        )
+    }
 }
 
-struct EditableExercise: Identifiable {
+struct EditableExercise: Identifiable, Hashable {
     let id = UUID()
     var name: String
     var sets: [EditableSet]
     var notes: String
 }
 
-struct EditableSet: Identifiable {
+struct EditableSet: Identifiable, Hashable {
     let id = UUID()
     var targetReps: Int
     var targetWeight: Double?

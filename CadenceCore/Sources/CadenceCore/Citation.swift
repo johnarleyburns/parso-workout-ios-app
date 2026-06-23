@@ -216,12 +216,117 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1519/JSC.0000000000001581"
     )
 
+    // MARK: - New citations for recovery-aware redesign (2026-06-22)
+
+    public static let acsmResistance2026 = Citation(
+        id: "acsmResistance2026",
+        authors: "American College of Sports Medicine",
+        year: 2026,
+        title: "ACSM Resistance Training Guidelines Update 2026",
+        source: "ACSM Position Stand",
+        url: "https://acsm.org/resistance-training-guidelines-update-2026/"
+    )
+
+    public static let whoPhysicalActivity2020 = Citation(
+        id: "whoPhysicalActivity2020",
+        authors: "World Health Organization",
+        year: 2020,
+        title: "WHO Guidelines on Physical Activity and Sedentary Behaviour",
+        source: "WHO",
+        url: "https://www.who.int/publications/i/item/9789240014886"
+    )
+
+    public static let usPhysicalActivity2018 = Citation(
+        id: "usPhysicalActivity2018",
+        authors: "U.S. Department of Health and Human Services",
+        year: 2018,
+        title: "Physical Activity Guidelines for Americans, 2nd edition",
+        source: "HHS",
+        url: "https://health.gov/sites/default/files/2019-09/Physical_Activity_Guidelines_2nd_edition.pdf"
+    )
+
+    public static let pellandDoseResponse2026 = Citation(
+        id: "pellandDoseResponse2026",
+        authors: "Pelland, Schoenfeld, Grgic, O'Connor, Campbell & Haun",
+        year: 2026,
+        title: "Dose-response relationship between weekly resistance training volume and muscular adaptations",
+        source: "Sports Medicine",
+        url: "https://pubmed.ncbi.nlm.nih.gov/41343037/"
+    )
+
+    public static let ramosCampoSplit2024 = Citation(
+        id: "ramosCampoSplit2024",
+        authors: "Ramos-Campo, Andreu, Guerrero, Vera-Ibanez, Avila-Gandia & Rubio-Arias",
+        year: 2024,
+        title: "Effects of full-body and split routines on strength and hypertrophy",
+        source: "Sports Medicine",
+        url: "https://pubmed.ncbi.nlm.nih.gov/38595233/"
+    )
+
+    public static let parejaBlancoRecovery2020 = Citation(
+        id: "parejaBlancoRecovery2020",
+        authors: "Pareja-Blanco, Rodriguez-Rosell, Aagaard & Gonzalez-Badillo",
+        year: 2020,
+        title: "Recovery of neuromuscular performance after resistance training to failure",
+        source: "European Journal of Applied Physiology",
+        url: "https://pubmed.ncbi.nlm.nih.gov/30036284/"
+    )
+
+    public static let sawMonitoring2016 = Citation(
+        id: "sawMonitoring2016",
+        authors: "Saw, Main & Gastin",
+        year: 2016,
+        title: "Monitoring athletes through self-report: Factors influencing implementation",
+        source: "Journal of Sports Science and Medicine",
+        url: "https://pubmed.ncbi.nlm.nih.gov/26423706/"
+    )
+
+    public static let meeusenOvertraining2013 = Citation(
+        id: "meeusenOvertraining2013",
+        authors: "Meeusen, Duclos, Foster, Fry, Gleeson, Nieman, Raglin, Rietjens, Steinacker & Urhausen",
+        year: 2013,
+        title: "Prevention, diagnosis and treatment of the overtraining syndrome: ECSS/ACSM consensus",
+        source: "Medicine & Science in Sports & Exercise",
+        url: "https://pubmed.ncbi.nlm.nih.gov/23247672/"
+    )
+
+    public static let schumannConcurrent2022 = Citation(
+        id: "schumannConcurrent2022",
+        authors: "Schumann, Feuerbacher, Sunkeler, Freitag, Ronnestad, Doma & Lundberg",
+        year: 2022,
+        title: "Compatibility of concurrent aerobic and strength training: A systematic review",
+        source: "Sports Medicine",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8891239/"
+    )
+
+    public static let crowleyVO2Intensity2022 = Citation(
+        id: "crowleyVO2Intensity2022",
+        authors: "Crowley, Miller, O'Connor & Harrison",
+        year: 2022,
+        title: "Effects of high-intensity interval training and moderate-intensity continuous training on VO2max",
+        source: "Sports Medicine",
+        url: "https://pubmed.ncbi.nlm.nih.gov/38655159/"
+    )
+
+    public static let poonHIIT2024 = Citation(
+        id: "poonHIIT2024",
+        authors: "Poon, Li, Wong, Chung & Wong",
+        year: 2024,
+        title: "HIIT versus MICT for cardiorespiratory fitness: An umbrella review",
+        source: "Sports Medicine",
+        url: "https://pubmed.ncbi.nlm.nih.gov/38760916/"
+    )
+
     public static let all: [Citation] = [
         schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation,
         rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max,
         run1_5mile, rockportWalk, queensCollegeStep,
         krieger2010, rheaPeriodization, calatayudBodyweight, channellOlympic,
         zourdosDUP, amirthalingamGVT, williamsLinearPeriodization, tufanoCluster,
+        acsmResistance2026, whoPhysicalActivity2020, usPhysicalActivity2018,
+        pellandDoseResponse2026, ramosCampoSplit2024, parejaBlancoRecovery2020,
+        sawMonitoring2016, meeusenOvertraining2013, schumannConcurrent2022,
+        crowleyVO2Intensity2022, poonHIIT2024,
     ]
 
     public static func citation(forId id: String) -> Citation? {

@@ -72,3 +72,28 @@ public enum VolumeLandmarks {
         return .overMRV
     }
 }
+
+/// Replaces the fixed MEV/MAV/MRV bands with evidence-informed starting ranges
+/// that personalize from the user's own response. The old `VolumeBands` and
+/// `VolumeZone` types remain for backward compatibility.
+public struct VolumeGuidance: Sendable, Equatable {
+    public let observedFractionalSets: Double
+    public let startingTargetRange: ClosedRange<Double>?
+    public let personalBaselineRange: ClosedRange<Double>?
+    public let trend: DoseTrend
+    public let confidence: FactConfidence
+
+    public init(observedFractionalSets: Double, startingTargetRange: ClosedRange<Double>? = nil,
+                personalBaselineRange: ClosedRange<Double>? = nil, trend: DoseTrend = .unknown,
+                confidence: FactConfidence = .low) {
+        self.observedFractionalSets = observedFractionalSets
+        self.startingTargetRange = startingTargetRange
+        self.personalBaselineRange = personalBaselineRange
+        self.trend = trend
+        self.confidence = confidence
+    }
+}
+
+public enum DoseTrend: String, Sendable, Equatable {
+    case rising, stable, declining, unknown
+}

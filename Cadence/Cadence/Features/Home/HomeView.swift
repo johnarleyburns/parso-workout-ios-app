@@ -73,6 +73,21 @@ struct HomeView: View {
     /// falls back to a cited cold-start starter when there's no history yet.
     private var coachRecommendation: Recommendation { RecommendationEngine.top(coachFacts) }
 
+    private var coachDecision: CoachDecision {
+        let events = buildTrainingEvents()
+        let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
+                                     experience: settings.experienceLevel,
+                                     formula: settings.formula)
+        return CoachDecisionEngine.run(facts)
+    }
+
+    private func buildTrainingEvents() -> [TrainingEvent] {
+        let activeSessions = sessions.filter { $0.deletedAt == nil }
+        let strengthEvents = activeSessions.compactMap { TrainingEvent.from(session: $0, formula: settings.formula) }
+        let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { TrainingEvent.from(cardio: $0) }
+        return strengthEvents + cardioEvents
+    }
+
     private static let headerDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.setLocalizedDateFormatFromTemplate("EEEEMMMd")
@@ -132,6 +147,10 @@ struct HomeView: View {
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
                 case .coachWorkout(let plan):
                     RoutineDetailView(plan: plan, onEditorStart: { plan in handleEditorStart(plan); path = NavigationPath() })
+                case .yourWeek(let decision, let facts):
+                    YourWeekView(decision: decision, facts: facts)
+                case .whyToday(let decision):
+                    WhyThisTodayView(decision: decision)
                 }
             }
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
@@ -678,7 +697,11 @@ struct PendingWorkout: Identifiable {
 }
 
 /// Pushed destinations reachable from Home.
-enum HomeRoute: Hashable { case history, settings, coach, planning, coachWorkout(WorkoutPlan) }
+enum HomeRoute: Hashable {
+    case history, settings, coach, planning, coachWorkout(WorkoutPlan)
+    case yourWeek(CoachDecision, CoachFacts)
+    case whyToday(CoachDecision)
+}
 
 /// A row in Home's merged "Recent workouts" list — strength and cardio together,
 /// sorted by date (P1 #10).

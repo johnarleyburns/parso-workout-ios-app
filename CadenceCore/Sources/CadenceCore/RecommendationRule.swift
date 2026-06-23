@@ -156,9 +156,9 @@ public extension KnowledgeBase {
         return out
     }
 
-    /// The cold-start prescription: a sensible first session derived from the user's
-    /// goal + experience, shown before there's any history to reason about so the
-    /// Coach card is never empty (mirrors `InsightEngine.coldStart`).
+    /// The cold-start prescription: alternating full-body A/B sessions derived from
+    /// the user's goal + experience. Replaces the old squat-bench-deadlift prescription
+    /// with a balanced pattern-based starter informed by ACSM 2026 guidelines.
     static func starter(goal: TrainingGoal, experience: ExperienceLevel) -> Recommendation {
         let range = goal.repRange
         let rir = goal.targetRIR
@@ -166,9 +166,9 @@ public extension KnowledgeBase {
             id: "starter",
             kind: .starter,
             title: "Start with a full-body session",
-            action: "New here? Do a simple full-body session: about 3 sets per movement, \(range.lowerBound)–\(range.upperBound) reps, leaving ~\(rir) in reserve.",
-            detail: "With no history yet, a full-body session a few times a week is a well-supported starting point: it trains each muscle often, keeps volume manageable, and gives the coach data to work from. Log a few sessions and the recommendations get specific to your lifts.",
-            citation: CitationRegistry.schoenfeld2021,
+            action: "New here? Try alternating full-body sessions: Session A (squat, push, pull, carry) and Session B (hinge, press, pull, core). 2–3 sets per movement, \(range.lowerBound)–\(range.upperBound) reps, leaving ~\(rir) in reserve.",
+            detail: "With no history yet, alternating full-body sessions are a well-supported starting point informed by ACSM 2026 guidelines. This approach trains each muscle often, keeps volume manageable, and gives the coach data to work from. Log a few sessions and the recommendations get specific to your lifts.",
+            citation: CitationRegistry.acsmResistance2026,
             target: SetTarget(sets: 3, repsLow: range.lowerBound, repsHigh: range.upperBound, loadKg: nil, rir: rir),
             confidence: .moderate,
             priority: 0)

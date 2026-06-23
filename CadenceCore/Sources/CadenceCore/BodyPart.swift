@@ -34,7 +34,7 @@ public enum BodyPart: String, CaseIterable, Sendable, Identifiable {
         case "triceps": return .triceps
         case "calves": return .calves
         case "abs", "obliques": return .abs
-        case "quads", "hamstrings", "glutes", "adductors", "abductors", "hip-flexors":
+        case "quads", "quadriceps", "hamstrings", "glutes", "adductors", "abductors", "hip-flexors":
             return .legs
         default: return nil
         }

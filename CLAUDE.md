@@ -107,8 +107,18 @@ This is how large bodies of work (e.g. the field-testing redesign) are run. Mirr
 
 ## Post-task checklist (ALWAYS run after completing a task)
 Once the work is verified (green build + tests), execute these steps in order:
-1. **Update `current_state.md`** with what shipped, new test counts, and any deviations.
-2. **Stage + commit** all changes with a concise, conventional-commit message (e.g. `feat: coach why-this-today + preference learning`). Include changed files and new files. Never commit before verifying.
-3. **Push to the current branch** (`git push`). If on `main`, push to `main`.
-4. **Monitor CI** — check `git log --oneline -1` to confirm the push SHA, then open the repo's Actions tab or use `gh run list --branch main --limit 1` to watch the workflow.
-5. **Report the commit SHA and CI status** to the user.
+1. **Audit plan vs implementation** — re-read the plan (if one exists) and check
+   every acceptance criterion, data-model change, and UI requirement against
+   the shipped code. Fix any discrepancies before committing.
+2. **Update `current_state.md`** with what shipped, new test counts, and any
+   intentional deviations from the plan.
+3. **Update README** if the feature changes user-visible behavior, setup steps,
+   or the high-level description of the app.
+4. **Stage + commit** all changes with a concise, conventional-commit message
+   (e.g. `feat: coach why-this-today + preference learning`). Include changed
+   files and new files. Never commit before verifying.
+5. **Merge to `main`** if not already there (`git checkout main && git merge --ff-only <branch>`).
+6. **Push** (`git push origin main`).
+7. **Monitor CI** — check `git log --oneline -1` to confirm the push SHA, then
+   use `gh run list --branch main --limit 1` to watch the workflow.
+8. **Report the commit SHA and CI status** to the user.

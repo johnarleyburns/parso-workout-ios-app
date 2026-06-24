@@ -63,14 +63,16 @@ jobs:
           restore-keys: spm-
 
       - name: Set Build Number
-        run: cd Cadence && xcrun agvtool new-version -all ${{ github.run_number }}
+        run: |
+          BUILD=$(git rev-list --count HEAD)
+          cd Cadence && xcrun agvtool new-version -all $BUILD
 
       - name: Compute Marketing Version
         run: |
           set -eo pipefail
-          PATCH=${{ github.run_number }}
+          PATCH=$(git rev-list --count HEAD)
           echo "MKT_VERSION=1.1.$PATCH" >> "$GITHUB_ENV"
-          echo "Marketing version: 1.1.$PATCH (build ${{ github.run_number }})"
+          echo "Marketing version: 1.1.$PATCH (build $PATCH)"
 
       - name: Archive
         env:

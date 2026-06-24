@@ -10,19 +10,25 @@ struct RootTabView: View {
         ZStack {
             TabView(selection: $selection) {
                 HomeView()
-                    .tabItem { Label("Workout", systemImage: "figure.strengthtraining.traditional") }
+                    .tabItem {
+                        Label("Workout", systemImage: "figure.strengthtraining.traditional")
+                            .accessibilityIdentifier("tab.workout")
+                    }
                     .tag(Tab.workout)
-                    .accessibilityIdentifier("tab.workout")
 
                 TestsView()
-                    .tabItem { Label("Tests", systemImage: "checkmark.seal") }
+                    .tabItem {
+                        Label("Tests", systemImage: "checkmark.seal")
+                            .accessibilityIdentifier("tab.tests")
+                    }
                     .tag(Tab.tests)
-                    .accessibilityIdentifier("tab.tests")
 
                 TrainingProgressView()
-                    .tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }
+                    .tabItem {
+                        Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
+                            .accessibilityIdentifier("tab.progress")
+                    }
                     .tag(Tab.progress)
-                    .accessibilityIdentifier("tab.progress")
             }
             .fullScreenCover(isPresented: Binding(
                 get: { !settings.hasCompletedOnboarding },

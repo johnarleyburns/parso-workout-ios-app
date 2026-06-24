@@ -15,18 +15,28 @@ routing + screen wakelock, on branch `feat/audio-coach-refresh-routing`
   fresh sim: `CoachStartRoutingUITests` (3/3), `WhyThisTodayUITests/...YesterdayLast...`,
   `HomeRefreshUITests` (1/1), `P5DoThisUITests` (2/2, setup-first).
 
-## What just shipped — D4 cardio-type fidelity + a found pre-existing bug
+## What just shipped — D4 cardio-type fidelity + warm-up-overlay fix
 - **D4 implemented (was deferred).** Boxing now carries its own `CoachSession.AerobicModality.boxing`
   (added to `AerobicModalityStorage` + conversions, Codable-safe), so selecting boxing records a
   **boxing** preference (not `.other`) and Coach recommends it next. Same fidelity holds for run /
   swim / cycle / row. `CoachAlternativesView` icon + impact-pill switches handle `.boxing`.
   3 new core tests (boxing/swim remember→recommend loop + Codable round-trip). 346/346 green.
-- **Found pre-existing bug (NOT shipped/fixed):** the editor → warm-up → logger flow is broken on
-  `main` — `FR11Feedback4UITests/testStartWithWarmUpThenSession` fails on the pre-work commit
-  `23c5e65` too (the `warmupActive` GuidedPhaseOverlay never renders after `editor.start`). This
-  blocked a "Coach plan → short warm-up → logger" test. Routing/setup-first is correct + verified;
-  the warm-up overlay rendering needs a dedicated fix (candidate: present it as a `.fullScreenCover`
-  rather than a ZStack sibling). Left as a follow-up.
+- **Warm-up-overlay bug root-caused & FIXED.** The "broken warm-up" was never a rendering/race bug:
+  the `GuidedPhaseOverlay` *did* render ("Warm Up" / countdown / Pause / Skip), but every element's
+  accessibility id was clobbered to `tab.workout`. `RootTabView` applied
+  `.accessibilityIdentifier("tab.workout")` (and `tab.tests`/`tab.progress`) to the whole tab
+  **content** view; that id leaked onto the ZStack-sibling overlays (warm-up / get-ready countdown /
+  HR gate) that sit outside the NavigationStack, overriding `warmup.*` (and `countdown.*`/HR-gate)
+  ids. Fix: move each tab identifier onto its `tabItem` `Label` so it identifies the tab **button**,
+  not the content subtree. No test references the `tab.*` ids; tab switching is by label and
+  unaffected (`P3/testTabBarHasThreeTabs` green). Now green: `FR11/testStartWithWarmUpThenSession`,
+  `FR11/testWarmUpPauses`, and new `P5/testCoachStrengthStartRunsWarmUpThenLogger` (the full
+  Coach plan → warm-up → logger chain), plus routing/setup-first P5 tests.
+- **Pre-existing stale UI tests found (NOT touched — separate from P5):** `FR7/testCountdownPause`
+  and `FR10:70` tap dead `plan.preview.start` (`PlanPreviewView` is defined but never instantiated);
+  `P3/testQuickActionLogOpensPicker` expects `log.strength`/`log.cardio` (actual: `logType.*`);
+  `P3/testQuickActionProgramsNavigates` expects `planning.title`/`planning.view` (actual: `planning`).
+  All fail on the assertion *after* navigation succeeds — trivial id updates, flagged as follow-up.
 
 ## What just shipped — Audio / Coach freshness / Coach Start routing / wakelock
 - **A. Non-interrupting audio.** New `WorkoutAudioSession.configureForCues()` (`.ambient` +

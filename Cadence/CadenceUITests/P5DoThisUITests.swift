@@ -20,9 +20,28 @@ final class P5DoThisUITests: CadenceUITestCase {
                        "no active session should exist before confirming from setup")
     }
 
+    /// Full chain: Coach strength Start → plan editor → editor Start runs the
+    /// guided warm-up, and finishing (Skip) opens the active logger. This is the
+    /// end-to-end "Coach plan → warm-up → logger" path.
+    func testCoachStrengthStartRunsWarmUpThenLogger() {
+        let app = XCUIApplication.launched(seeds: ["coachStrengthPrimary"])
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
+
+        XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "tap Coach Start")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from the plan editor")
+
+        // The coach plan prescribes a warm-up, so the guided warm-up runs first.
+        XCTAssertTrue(app.staticTexts["warmup.remaining"].waitForExistence(timeout: 25),
+                      "the guided warm-up should appear before the session")
+        XCTAssertTrue(app.buttons["warmup.skip"].waitTap(), "Skip the warm-up")
+
+        // Finishing the warm-up opens the active logging session.
+        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
+                      "finishing the warm-up should open the logger")
+    }
+
     /// The Coach card itself never materializes an active session — the editor is
-    /// the gate. (The editor's own Start → warm-up → logger plumbing is pre-existing
-    /// and covered by the strength-logging suite.)
+    /// the gate.
     func testCoachCardNeverOpensActiveSessionDirectly() {
         let app = XCUIApplication.launched(seeds: ["coachStrengthPrimary"])
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))

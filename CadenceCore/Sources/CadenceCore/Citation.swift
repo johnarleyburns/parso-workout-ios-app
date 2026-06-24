@@ -290,6 +290,75 @@ public enum CitationRegistry {
         url: "https://pubmed.ncbi.nlm.nih.gov/38760916/"
     )
 
+    // MARK: - Aerobic/activity research citations (no public-health guidelines)
+
+    public static let mooreLeisureActivity2012 = Citation(
+        id: "mooreLeisureActivity2012",
+        authors: "Moore, Patel, Matthews, Berrington de Gonzalez, Park, Katki, Linet, Weiderpass, Visvanathan, Helzlsouer, Thun, Gapstur, Hartge & Lee",
+        year: 2012,
+        title: "Leisure time physical activity of moderate to vigorous intensity and mortality: a large pooled cohort analysis",
+        source: "PLOS Medicine 9(11)",
+        url: "https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1001335"
+    )
+
+    public static let aremDoseResponse2015 = Citation(
+        id: "aremDoseResponse2015",
+        authors: "Arem, Moore, Patel, Hartge, Berrington de Gonzalez, Visvanathan, Campbell, Freedman, Weiderpass, Adami, Linet, Lee & Matthews",
+        year: 2015,
+        title: "Leisure time physical activity and mortality: a detailed pooled analysis of the dose-response relationship",
+        source: "JAMA Internal Medicine 175(6)",
+        url: "https://jamanetwork.com/journals/jamainternalmedicine/fullarticle/2212267"
+    )
+
+    public static let saintMauriceSteps2020 = Citation(
+        id: "saintMauriceSteps2020",
+        authors: "Saint-Maurice, Troiano, Bassett, Graubard, Carlson, Shiroma, Fulton & Matthews",
+        year: 2020,
+        title: "Association of daily step count and step intensity with mortality among US adults",
+        source: "JAMA 323(12)",
+        url: "https://doi.org/10.1001/jama.2020.1382"
+    )
+
+    public static let leeAccelerometer2019 = Citation(
+        id: "leeAccelerometer2019",
+        authors: "Lee, Shiroma, Kamada, Bassett, Matthews & Buring",
+        year: 2019,
+        title: "Association of step volume and intensity with all-cause mortality in older women",
+        source: "JAMA Internal Medicine 179(8)",
+        url: "https://doi.org/10.1001/jamainternmed.2019.0899"
+    )
+
+    // MARK: - Recovery/load research citations
+
+    public static let halsonRecovery2014 = Citation(
+        id: "halsonRecovery2014",
+        authors: "Halson",
+        year: 2014,
+        title: "Monitoring training load to understand fatigue in athletes",
+        source: "Sports Medicine 44(Suppl 2)",
+        url: "https://doi.org/10.1007/s40279-014-0253-z"
+    )
+
+    public static let drewFinchInjury2016 = Citation(
+        id: "drewFinchInjury2016",
+        authors: "Drew & Finch",
+        year: 2016,
+        title: "The relationship between training load and injury, illness and soreness: a systematic and literature review",
+        source: "Sports Medicine 46(6)",
+        url: "https://link.springer.com/article/10.1007/s40279-015-0459-8"
+    )
+
+    public static let dupuyFatigue2018 = Citation(
+        id: "dupuyFatigue2018",
+        authors: "Dupuy, Douzi, Theurot, Bosquet & Dugue",
+        year: 2018,
+        title: "An evidence-based approach for choosing post-exercise recovery techniques to reduce markers of muscle damage, soreness, fatigue, and inflammation: a systematic review with meta-analysis",
+        source: "Frontiers in Physiology 9",
+        url: "https://doi.org/10.3389/fphys.2018.00403"
+    )
+
+    // MARK: - All citations registry
+
     public static let all: [Citation] = [
         schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation,
         rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max,
@@ -300,9 +369,31 @@ public enum CitationRegistry {
         pellandDoseResponse2026, ramosCampoSplit2024, parejaBlancoRecovery2020,
         sawMonitoring2016, meeusenOvertraining2013, schumannConcurrent2022,
         crowleyVO2Intensity2022, poonHIIT2024,
+        mooreLeisureActivity2012, aremDoseResponse2015, saintMauriceSteps2020,
+        leeAccelerometer2019,
+        halsonRecovery2014, drewFinchInjury2016, dupuyFatigue2018,
     ]
 
     public static func citation(forId id: String) -> Citation? {
         all.first { $0.id == id }
     }
+
+    // MARK: - Citation pools for deterministic rotation
+
+    public static let aerobicPool = CitationPool(id: "aerobic", citationIds: [
+        "mooreLeisureActivity2012",
+        "aremDoseResponse2015",
+        "saintMauriceSteps2020",
+        "leeAccelerometer2019",
+        "ekelundActivityMortality2016",
+    ])
+
+    public static let recoveryLoadPool = CitationPool(id: "recoveryLoad", citationIds: [
+        "halsonRecovery2014",
+        "drewFinchInjury2016",
+        "sawMonitoring2016",
+        "parejaBlancoRecovery2020",
+        "schumannConcurrent2022",
+        "dupuyFatigue2018",
+    ])
 }

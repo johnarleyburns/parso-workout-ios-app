@@ -273,6 +273,77 @@ hypertrophy.* **Sports Medicine.** <https://pubmed.ncbi.nlm.nih.gov/38595233/>
 - **What it supports:** full-body and split routines produce similar results when volume
   is equated; schedule and preference can decide the split.
 
+## Coach expert-system rewrite — plan adherence & citation pool refs (2026-06-24)
+
+### `mooreLeisureActivity2012` — leisure-time activity pooled cohort
+Moore et al. (2012). *Leisure time physical activity of moderate to vigorous intensity
+and mortality: a large pooled cohort analysis.* **PLOS Medicine 9(11).**
+<https://journals.plos.org/plosmedicine/article?id=10.1371/journal.pmed.1001335>
+
+- **Used by:** aerobic citation pool — one of several interchangeable references for
+  aerobic/moderate-equivalent-minute claims shown in the "Why this today" view.
+- **What it supports:** pooled analysis of 6 prospective cohorts (654,827 individuals)
+  found a dose-response across the activity continuum; ~150 min/week of moderate activity
+  was associated with ~1.8 years of added life expectancy.
+
+### `aremDoseResponse2015` — activity dose-response pooled analysis
+Arem et al. (2015). *Leisure time physical activity and mortality: a detailed pooled
+analysis of the dose-response relationship.* **JAMA Internal Medicine 175(6).**
+<https://jamanetwork.com/journals/jamainternalmedicine/fullarticle/2212267>
+
+- **Used by:** aerobic citation pool — interchangeable with other pool refs.
+- **What it supports:** pooled analysis of 661,137 individuals from 6 cohorts confirmed
+  a curvilinear dose-response; meeting ~150 min/week of moderate activity was associated
+  with 31% lower mortality risk, with diminishing returns beyond ~3× the minimum.
+
+### `saintMauriceSteps2020` — step volume and step intensity
+Saint-Maurice et al. (2020). *Association of daily step count and step intensity with
+mortality among US adults.* **JAMA 323(12).**
+<https://doi.org/10.1001/jama.2020.1382>
+
+- **Used by:** aerobic citation pool — interchangeable with other pool refs.
+- **What it supports:** higher daily step counts (up to ~8,000–10,000 steps) were
+  associated with lower all-cause mortality; step intensity (cadence) added modest
+  independent benefit beyond volume.
+
+### `leeAccelerometer2019` — step volume and intensity in older women
+Lee et al. (2019). *Association of step volume and intensity with all-cause mortality in
+older women.* **JAMA Internal Medicine 179(8).**
+<https://doi.org/10.1001/jamainternmed.2019.0899>
+
+- **Used by:** aerobic citation pool — interchangeable with other pool refs.
+- **What it supports:** ~4,400 steps/day was associated with significantly lower mortality
+  compared to ~2,700 steps/day; benefit plateaued around 7,500 steps/day.
+
+### `halsonRecovery2014` — monitoring training load and fatigue
+Halson (2014). *Monitoring training load to understand fatigue in athletes.*
+**Sports Medicine 44(Suppl 2).** <https://doi.org/10.1007/s40279-014-0253-z>
+
+- **Used by:** recovery/load citation pool — interchangeable with other pool refs shown
+  in recovery-related coach claims.
+- **What it supports:** multiple monitoring tools (RPE, wellness questionnaires, HRV,
+  biochemical markers) can detect accumulated fatigue; subjective measures are often more
+  sensitive to load changes than objective ones.
+
+### `drewFinchInjury2016` — training load and injury/illness
+Drew & Finch (2016). *The relationship between training load and injury, illness and
+soreness: a systematic and literature review.* **Sports Medicine 46(6).**
+<https://link.springer.com/article/10.1007/s40279-015-0459-8>
+
+- **Used by:** recovery/load citation pool — interchangeable with other pool refs.
+- **What it supports:** rapid increases in training load (spikes) are associated with
+  increased injury risk; monitoring load and managing progression reduces risk.
+
+### `dupuyFatigue2018` — evidence-based recovery techniques
+Dupuy et al. (2018). *An evidence-based approach for choosing post-exercise recovery
+techniques to reduce markers of muscle damage, soreness, fatigue, and inflammation.*
+**Frontiers in Physiology 9.** <https://doi.org/10.3389/fphys.2018.00403>
+
+- **Used by:** recovery/load citation pool — interchangeable with other pool refs.
+- **What it supports:** massage was most effective for DOMS and perceived fatigue;
+  active recovery, compression, and cold-water immersion had modest effects.
+  Recovery strategies should be chosen based on context and individual preference.
+
 ### Corrected existing entries
 
 - `frequencyMeta`: the 2019 meta-analysis found volume-equated frequency does not

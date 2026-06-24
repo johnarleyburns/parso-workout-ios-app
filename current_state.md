@@ -2,20 +2,47 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-24 — Audio non-interference + Coach freshness + Coach Start
-routing + screen wakelock, on branch `feat/audio-coach-refresh-routing`
-(`plans/field-testing/2026-06-24/audio-coach-refresh-routing-plan.md`)._
+_Last updated: 2026-06-24 — Coach expert-system fix (plan adherence, same-day repetition
+protection, tomorrow preview, citation rotation)._
 
 ## Repo / branch
 - Repo: `/Users/arley/github/parso-workout-ios-app`
-- **`main`** = All prior phases + coach-why-today-preferences, merged. Builds + runs clean.
-- Audio/coach/refresh/routing/wakelock stream merged to `main` (`0e9044a`, CI green), plus the
-  D4 cardio-type-fidelity follow-up below.
-- **CadenceCore: 346/346 green; iOS build: green.** UI tests verified green non-parallel on a
-  fresh sim: `CoachStartRoutingUITests` (3/3), `WhyThisTodayUITests/...YesterdayLast...`,
-  `HomeRefreshUITests` (1/1), `P5DoThisUITests` (2/2, setup-first).
+- **`main`** = All prior phases merged. Builds + runs clean.
+- Audio/coach/refresh/routing/wakelock stream merged to `main`, plus
+  D4 cardio-type-fidelity, plus coach-expert-system fix (plan adherence).
+- **CadenceCore: 357/357 green; iOS build: green.**
 
-## What just shipped — D4 cardio-type fidelity + warm-up-overlay fix
+## What just shipped — Coach expert-system fix
+- **Plan adherence.** `CoachDecision.planAdherence` distinguishes planAhead / planComplete /
+  offPlan. When today's planned session is complete, the Coach card shows "On plan" with a green
+  checkmark, describes what was logged today, and previews tomorrow's session. The Start button
+  is replaced by an acknowledged "On plan" banner.
+- **Session matching.** `eventSatisfiesCoachSession` matches completed TrainingEvents to
+  CoachSession candidates by kind, modality, and duration (≥75% of planned minimum). A 44-min
+  boxing workout satisfies a planned 20-30 min moderate-aerobic boxing session.
+- **Same-day repetition damping.** `sameDayDamping` penalizes same-modality candidates after
+  completion (40 points for exact modality match, 15 for same-kind aerobic). Boxing preference
+  still works on fresh days but prevents boxing-after-boxing.
+- **WeeklyPlan future days.** Extended from `-6...0` to `-6...+6` days. Added `tomorrow` and
+  `today` computed properties, `isFuture` flag. Tomorrow preview is surfaced in the Coach card's
+  completed state.
+- **Tomorrow preview.** `generateTomorrowPreview` checks strength/aerobic floor, recovery gates,
+  and hard-day streak to suggest "Strength session", "Cardio session", "Rest or light activity",
+  or "Recovery — strength eligible in ~Xh".
+- **WhyThisToday restyle.** Removed all-caps tracked section labels; compact "What you did" rows
+  with smaller icons and less padding; compact 3-column weekly metrics; removed generic "Policy"
+  section. Citations now inline with claims using `EvidenceClaim` rotation.
+- **Citation pools + rotation.** `CitationPool` with deterministic rotation (stable per date+claim,
+  varies across days). `aerobicPool` (5 published research citations, no guideline/authority IDs)
+  and `recoveryLoadPool` (6 citations). 7 new `Citation` entries added to `CitationRegistry` and
+  `CITATIONS.md`.
+- **Tests:** 11 new core tests (Wednesday regression, same-day suppression with/without
+  preference, future WeeklyPlan, tomorrow preview, 4 citation pool tests). 1 new UI test
+  (complete banner on Home). 357/357 green.
+- **UI seed:** `coachWednesdayComplete` — Monday full-body + 18-min run, Tuesday rest, Wednesday
+  44-min boxing → Coach shows completed state.
+
+## Previous phases (historical reference)
 - **D4 implemented (was deferred).** Boxing now carries its own `CoachSession.AerobicModality.boxing`
   (added to `AerobicModalityStorage` + conversions, Codable-safe), so selecting boxing records a
   **boxing** preference (not `.other`) and Coach recommends it next. Same fidelity holds for run /

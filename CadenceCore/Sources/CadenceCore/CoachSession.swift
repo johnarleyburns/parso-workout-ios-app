@@ -398,4 +398,11 @@ extension CoachSession {
         default: return false
         }
     }
+
+    public var isAerobic: Bool {
+        switch kind {
+        case .easyAerobic, .moderateAerobic, .vo2Intervals: return true
+        default: return false
+        }
+    }
 }

@@ -7,13 +7,14 @@ struct WhyThisTodayView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
+                completedTodaySection
                 whatYouDidSection
+                weeklyBalanceSection
                 coachPickSection
                 ruledOutSection
                 whyWonSection
                 warningsSection
-                policySection
             }
             .padding()
         }
@@ -21,68 +22,131 @@ struct WhyThisTodayView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - What you did
+    // MARK: - Completed today banner
+
+    @ViewBuilder
+    private var completedTodaySection: some View {
+        if case .planComplete(let kind, let desc, let tomorrow) = decision.planAdherence {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("On plan")
+                        .font(.headline)
+                }
+                Text(desc)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if let tomorrow = tomorrow {
+                    HStack(spacing: 4) {
+                        Image(systemName: "forward.fill")
+                            .font(.caption2)
+                        Text("Tomorrow: \(tomorrow)")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .foregroundStyle(.green)
+                    .padding(.top, 2)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    // MARK: - What you did (compact)
 
     private var whatYouDidSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sectionLabel("What you did")
-            card {
-                ForEach(decision.observedFacts) { fact in
-                    if fact.id != decision.observedFacts.first?.id {
-                        Divider()
+        VStack(alignment: .leading, spacing: 4) {
+            Text("What you did")
+                .font(.headline)
+                .padding(.bottom, 4)
+
+            let facts = decision.observedFacts
+                .filter { $0.kind == .lastStrength || $0.kind == .lastCardio }
+                .sorted { ($0.occurredAt ?? .distantPast) > ($1.occurredAt ?? .distantPast) }
+
+            if facts.isEmpty {
+                Text("No recent training data.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(facts.enumerated()), id: \.element.id) { i, fact in
+                        if i > 0 { Divider().padding(.leading, 40) }
+                        compactFactRow(fact)
                     }
-                    factRow(fact)
                 }
+                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
             }
         }
     }
 
-    private func factRow(_ fact: ObservedFact) -> some View {
-        HStack(spacing: 10) {
-            glyph(for: fact.kind)
-                .frame(width: 32, height: 32)
-            VStack(alignment: .leading, spacing: 2) {
+    private func compactFactRow(_ fact: ObservedFact) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: fact.kind == .lastStrength ? "dumbbell.fill" : "heart.fill")
+                .font(.caption)
+                .foregroundStyle(fact.kind == .lastStrength ? .green : .teal)
+                .frame(width: 22, height: 22)
+            VStack(alignment: .leading, spacing: 1) {
                 Text(fact.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.weight(.medium))
                 if let detail = fact.detail {
                     Text(detail)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
             Spacer()
             Text(fact.value)
-                .font(.caption.weight(.heavy))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
-                .multilineTextAlignment(.trailing)
         }
-        .padding(.vertical, 9)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("whyToday.fact.\(fact.id)")
     }
 
-    private func glyph(for kind: ObservedFact.Kind) -> some View {
-        let (bg, content, icon): (Color, Color, String) = switch kind {
-        case .lastStrength:   (.green, .white, "figure.strengthtraining.traditional")
-        case .lastCardio:     (.teal, .white, "figure.run")
-        case .weeklyStrengthDays: (.orange, .white, "7")
-        case .weeklyModerateEquivalentMinutes: (.blue, .white, "M")
-        }
-        return ZStack {
-            Circle().fill(bg)
-            if icon.allSatisfy(\.isNumber) {
-                Text(icon).font(.caption2.weight(.heavy)).foregroundStyle(content)
-            } else {
-                Image(systemName: icon).font(.caption2.weight(.bold)).foregroundStyle(content)
+    // MARK: - Weekly balance (compact)
+
+    private var weeklyBalanceSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("This week")
+                .font(.headline)
+                .padding(.bottom, 4)
+
+            HStack(spacing: 0) {
+                compactMetric("\(decision.weeklyBalance.strengthDays)", "strength days")
+                compactMetric("\(Int(decision.weeklyBalance.moderateEquivalentMinutes))", "mod-equivalent min")
+                compactMetric("\(decision.weeklyBalance.consecutiveHardDays)", "hard day streak")
             }
+            .padding(.vertical, 8)
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
         }
+    }
+
+    private func compactMetric(_ value: String, _ label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.subheadline.bold())
+                .monospacedDigit()
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Coach's Pick
 
     private var coachPickSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sectionLabel("Coach's Pick")
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Coach's Pick")
+                .font(.headline)
+                .padding(.bottom, 4)
+
             card(highlight: true) {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .top, spacing: 12) {
@@ -104,7 +168,7 @@ struct WhyThisTodayView: View {
                             onAltTap?()
                         } label: {
                             HStack {
-                                Text("alternatives").font(.subheadline.weight(.bold))
+                                Text("Alternatives").font(.subheadline.weight(.bold))
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.caption2.bold())
                             }
@@ -152,8 +216,7 @@ struct WhyThisTodayView: View {
                     targetChip(mod.rawValue.capitalized, label: "type")
                 }
                 if decision.primary.kind == .moderateAerobic || decision.primary.kind == .easyAerobic {
-                    let modEq = Double(dur)
-                    targetChip("\(Int(modEq))", label: "mod-eq min")
+                    targetChip("\(Int(Double(dur)))", label: "mod-eq min")
                 }
             }
         }
@@ -174,8 +237,10 @@ struct WhyThisTodayView: View {
     @ViewBuilder
     private var ruledOutSection: some View {
         if !decision.deferred.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                sectionLabel("What Coach ruled out")
+            VStack(alignment: .leading, spacing: 4) {
+                Text("What Coach ruled out")
+                    .font(.headline)
+                    .padding(.bottom, 4)
                 card {
                     ForEach(decision.deferred) { d in
                         if d.id != decision.deferred.first?.id {
@@ -201,29 +266,60 @@ struct WhyThisTodayView: View {
     // MARK: - Why this won
 
     private var whyWonSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sectionLabel("Why this won")
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Why this won")
+                .font(.headline)
+                .padding(.bottom, 4)
             card {
-                let isStrength = decision.primary.kind == .strength
-                if isStrength {
-                    inlineClaim("• \(decision.weeklyBalance.strengthDays) strength days this week (target: 2+)",
-                                citation: CitationRegistry.schoenfeld2021)
+                let claims = buildWhyThisWonClaims()
+                ForEach(claims, id: \.id) { claim in
+                    if claim.id != claims.first?.id {
+                        Divider()
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(claim.text)
+                            .font(.caption)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let citation = CitationRegistry.citation(forId: claim.selectedCitationId) {
+                            CitationLink(citation: citation, compact: true)
+                        }
+                    }
+                    .padding(.vertical, 6)
                 }
-                inlineClaim("• \(Int(decision.weeklyBalance.moderateEquivalentMinutes)) moderate-equivalent aerobic minutes (target: 150)",
-                            citation: CitationRegistry.ekelundActivityMortality2016)
-                inlineClaim("• \(decision.weeklyBalance.consecutiveHardDays) consecutive hard days",
-                            citation: CitationRegistry.meeusenOvertraining2013)
             }
         }
     }
 
-    @ViewBuilder
-    private func inlineClaim(_ text: String, citation: Citation) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(text).font(.caption)
-            Spacer()
-        }
-        CitationLink(citation: citation, compact: true)
+    private func buildWhyThisWonClaims() -> [EvidenceClaim] {
+        let bal = decision.weeklyBalance
+        let date = decision.generatedAt
+        var claims: [EvidenceClaim] = []
+
+        let isStrength = decision.primary.kind == .strength
+
+        // Strength days claim
+        let strengthPoolId = "aerobic"
+        let strengthClaimId = "strengthDays"
+        let strengthText = "\(bal.strengthDays) strength days this week (target: 2+)"
+        let strengthCitation = CitationRegistry.aerobicPool.select(for: date, stableId: strengthClaimId) ?? "ekelundActivityMortality2016"
+        claims.append(EvidenceClaim(id: "strengthDays", text: strengthText, poolId: strengthPoolId,
+                                     selectedCitationId: strengthCitation))
+
+        // Aerobic minutes claim
+        let aerobicClaimId = "aerobicMinutes"
+        let aerobicText = "\(Int(bal.moderateEquivalentMinutes)) moderate-equivalent aerobic minutes (target: 150)"
+        let aerobicCitation = CitationRegistry.aerobicPool.select(for: date, stableId: aerobicClaimId) ?? "ekelundActivityMortality2016"
+        claims.append(EvidenceClaim(id: "aerobicMinutes", text: aerobicText, poolId: strengthPoolId,
+                                     selectedCitationId: aerobicCitation))
+
+        // Recovery load claim
+        let loadClaimId = "recoveryLoad"
+        let loadText = "\(bal.consecutiveHardDays) consecutive hard days"
+        let loadCitation = CitationRegistry.recoveryLoadPool.select(for: date, stableId: loadClaimId) ?? "drewFinchInjury2016"
+        claims.append(EvidenceClaim(id: "recoveryLoad", text: loadText, poolId: "recoveryLoad",
+                                     selectedCitationId: loadCitation))
+
+        return claims
     }
 
     // MARK: - Warnings
@@ -231,8 +327,10 @@ struct WhyThisTodayView: View {
     @ViewBuilder
     private var warningsSection: some View {
         if !decision.warnings.isEmpty {
-            VStack(alignment: .leading, spacing: 0) {
-                sectionLabel("Coach Warnings")
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Coach Warnings")
+                    .font(.headline)
+                    .padding(.bottom, 4)
                 card {
                     ForEach(decision.warnings) { w in
                         if w.id != decision.warnings.first?.id {
@@ -254,28 +352,7 @@ struct WhyThisTodayView: View {
         }
     }
 
-    // MARK: - Policy
-
-    private var policySection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            sectionLabel("Policy")
-            card {
-                Text("Coach's recovery windows are conservative defaults. They are not a diagnosis or a universal physiological law. Actual recovery varies by person, sleep, nutrition, and stress.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-        }
-    }
-
     // MARK: - Helpers
-
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.caption.weight(.heavy))
-            .tracking(1)
-            .foregroundStyle(.secondary)
-            .padding(.bottom, 6)
-            .padding(.leading, 3)
-    }
 
     private func card(highlight: Bool = false, @ViewBuilder content: () -> some View) -> some View {
         content()

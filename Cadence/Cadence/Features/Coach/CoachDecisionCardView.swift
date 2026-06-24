@@ -21,12 +21,12 @@ struct CoachDecisionCardView: View {
             .foregroundStyle(stateColor)
 
             HStack(alignment: .top, spacing: 13) {
-                if stateKind == "RECOVERY" || stateKind == "REST" {
+                if isCompleteState || stateKind == "RECOVERY" || stateKind == "REST" {
                     ZStack {
                         Circle()
                             .fill(stateColor)
                             .frame(width: 46, height: 46)
-                        Image(systemName: "checkmark")
+                        Image(systemName: isCompleteState ? "checkmark.circle.fill" : "checkmark")
                             .font(.title2.weight(.bold))
                             .foregroundStyle(.white)
                     }
@@ -39,66 +39,93 @@ struct CoachDecisionCardView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
-                }
-            }
-
-            if !recoveryChips.isEmpty {
-                HStack(spacing: 7) {
-                    ForEach(recoveryChips, id: \.0) { label, _ in
-                        VStack(spacing: 2) {
-                            Text(label).font(.caption).bold()
-                            Text("recovering").font(.caption2).foregroundStyle(.secondary)
+                    if isCompleteState, let tomorrow = tomorrowPreview {
+                        HStack(spacing: 4) {
+                            Image(systemName: "forward.fill")
+                                .font(.caption2)
+                            Text("Tomorrow: \(tomorrow)")
+                                .font(.caption.weight(.medium))
                         }
+                        .foregroundStyle(stateColor)
+                        .padding(.top, 4)
+                    }
+                }
+            }
+
+            if !isCompleteState {
+                if !recoveryChips.isEmpty {
+                    HStack(spacing: 7) {
+                        ForEach(recoveryChips, id: \.0) { label, _ in
+                            VStack(spacing: 2) {
+                                Text(label).font(.caption).bold()
+                                Text("recovering").font(.caption2).foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 9)
+                            .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                }
+
+                if !decision.warnings.isEmpty {
+                    Button { withAnimation { warningsExpanded.toggle() } } label: {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                            Text("Coach notes (\(decision.warnings.count))")
+                        }
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.orange)
+                    }
+                    .buttonStyle(.plain)
+                    if warningsExpanded {
+                        ForEach(decision.warnings) { w in
+                            Text(w.message)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .transition(.opacity)
+                    }
+                }
+
+                if let nextEligible = nextEligibleTime {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Next hard strength").font(.caption).bold()
+                            Text(nextEligible).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    .accessibilityIdentifier("coach.card.nextEligible")
+                }
+            }
+
+            if isCompleteState {
+                // Completed state: no Start button, just acknowledgement
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("On plan")
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .foregroundStyle(.white)
+                .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
+                .accessibilityIdentifier("coach.card.completeBanner")
+                .accessibilityLabel("On plan — today's session complete")
+            } else {
+                Button { onStart(decision.primary) } label: {
+                    Label(ctaLabel, systemImage: ctaSymbol)
+                        .font(.headline)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
-                        .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
-                    }
+                        .padding(.vertical, 13)
                 }
+                .foregroundStyle(.white)
+                .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
+                .accessibilityIdentifier("home.coachStart")
+                .accessibilityLabel(ctaLabel)
             }
-
-            if !decision.warnings.isEmpty {
-                Button { withAnimation { warningsExpanded.toggle() } } label: {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                        Text("Coach notes (\(decision.warnings.count))")
-                    }
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.orange)
-                }
-                .buttonStyle(.plain)
-                if warningsExpanded {
-                    ForEach(decision.warnings) { w in
-                        Text(w.message)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .transition(.opacity)
-                }
-            }
-
-            if let nextEligible = nextEligibleTime {
-                HStack(spacing: 6) {
-                    Image(systemName: "clock")
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Next hard strength").font(.caption).bold()
-                        Text(nextEligible).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.vertical, 4)
-                .accessibilityIdentifier("coach.card.nextEligible")
-            }
-
-            Button { onStart(decision.primary) } label: {
-                Label(ctaLabel, systemImage: ctaSymbol)
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 13)
-            }
-            .foregroundStyle(.white)
-            .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
-            .accessibilityIdentifier("home.coachStart")
-            .accessibilityLabel(ctaLabel)
 
             HStack {
                 Spacer()
@@ -122,7 +149,23 @@ struct CoachDecisionCardView: View {
 
     // MARK: - State-aware hero content
 
+    private var isCompleteState: Bool {
+        if case .planComplete = decision.planAdherence { return true }
+        return false
+    }
+
+    private var tomorrowPreview: String? {
+        if case .planComplete(_, _, let preview) = decision.planAdherence { return preview }
+        return nil
+    }
+
+    private var todayCompleteDescription: String {
+        if case .planComplete(_, let desc, _) = decision.planAdherence { return desc }
+        return ""
+    }
+
     private var stateKind: String {
+        if isCompleteState { return "COMPLETE" }
         switch decision.primary.kind {
         case .rest: return "RECOVERY"
         case .recovery: return "RECOVERY"
@@ -134,6 +177,7 @@ struct CoachDecisionCardView: View {
     }
 
     private var stateIcon: String {
+        if isCompleteState { return "checkmark.seal.fill" }
         switch decision.primary.kind {
         case .rest, .recovery: return "moon.zzz.fill"
         case .easyAerobic, .moderateAerobic: return "heart.fill"
@@ -142,6 +186,7 @@ struct CoachDecisionCardView: View {
     }
 
     private var stateColor: Color {
+        if isCompleteState { return .green }
         switch decision.primary.kind {
         case .rest, .recovery: return .orange
         case .easyAerobic, .moderateAerobic, .vo2Intervals: return .teal
@@ -150,6 +195,18 @@ struct CoachDecisionCardView: View {
     }
 
     private var heroTitle: String {
+        if isCompleteState {
+            let kindName: String = switch decision.primary.kind {
+            case .moderateAerobic: fallthrough
+            case .easyAerobic: "Cardio"
+            case .strength: "Strength"
+            case .recovery: "Recovery"
+            case .rest: "Rest"
+            case .vo2Intervals: "Intervals"
+            case .assessment: "Assessment"
+            }
+            return "\(kindName)\ncomplete"
+        }
         if hasRecentStrength && decision.primary.kind != .strength {
             return "Strength work\nis complete"
         }
@@ -160,6 +217,9 @@ struct CoachDecisionCardView: View {
     }
 
     private var heroSubtitle: String {
+        if isCompleteState {
+            return todayCompleteDescription
+        }
         let recent = decision.observedFacts.first.map { "\($0.title): \($0.value)" } ?? ""
         if hasRecentStrength && decision.primary.kind != .strength {
             let exercises = recentlyTrainedExercises()

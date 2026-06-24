@@ -98,6 +98,18 @@ public struct CoachFacts: Sendable {
     public let rolling72hCompletedEvents: [TrainingEvent]
     public let rolling7dCompletedEvents: [TrainingEvent]
     public let rolling28dCompletedEvents: [TrainingEvent]
+
+    public var todayCompletedEvents: [TrainingEvent] {
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: referenceDate)
+        return rolling7dCompletedEvents.filter {
+            $0.start >= todayStart && $0.end <= referenceDate
+        }
+    }
+
+    public var tomorrow: Date {
+        referenceDate.addingTimeInterval(86400)
+    }
 }
 
 public extension CoachFacts {

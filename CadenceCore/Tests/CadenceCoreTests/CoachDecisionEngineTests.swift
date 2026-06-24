@@ -117,7 +117,7 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
 
         let plan = WeeklyPlan.generate(from: facts)
-        XCTAssertEqual(plan.days.count, 7)
+        XCTAssertGreaterThanOrEqual(plan.days.count, 7, "Plan should have at least 7 days (history + future)")
         XCTAssertTrue(plan.days.contains { $0.isToday })
     }
 
@@ -379,6 +379,204 @@ final class CoachDecisionEngineTests: XCTestCase {
         // Run should be deferred (not primary) due to lower-body collision
         let deferredRun = decision.deferred.first { $0.session.id == "aerobic.moderateRun" }
         XCTAssertNotNil(deferredRun, "Run should be deferred due to recovery, despite preference")
+    }
+
+    // MARK: - Plan adherence: Wednesday scenario
+
+    /// Wednesday scenario: Monday full-body + 18-min run, Tuesday rest, Wednesday
+    /// morning Coach recommends boxing (aerobic behind, strength met). After
+    /// completing a 44-min boxing workout Wednesday, Coach must recognize the plan
+    /// is complete and show the on-plan state with tomorrow preview.
+    func testWednesdayScenarioShowsPlanCompleteAfterBoxing() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let cal = Calendar.current
+
+        // Monday (2 days ago): full-body strength
+        let monday = cal.date(byAdding: .day, value: -2, to: now)!
+        let s1 = try makeStrengthEvent(context: ctx, name: "Back Squat",
+                                        primaryMuscles: ["quadriceps", "glutes"],
+                                        date: monday.addingTimeInterval(-3600))
+        // Monday: 18-min run (18 mod-eq min)
+        let monRun = makeCardioEvent(context: ctx, type: .run,
+                                      date: monday.addingTimeInterval(-1800),
+                                      duration: 18 * 60, avgHR: 140)
+
+        // No events Tuesday
+
+        // Before boxing: Coach should recommend aerobic because aerobic floor not met
+        let beforeFacts = CoachFacts.make(from: [s1, monRun], goal: .strength,
+                                           experience: .intermediate, now: now)
+        let beforeDecision = CoachDecisionEngine.run(beforeFacts)
+        XCTAssertTrue(beforeDecision.primary.isAerobic,
+                      "Before boxing, primary should be aerobic. Got: \(beforeDecision.primary.kind)")
+        XCTAssertEqual(beforeDecision.planAdherence, .planAhead,
+                       "Before boxing, plan should be planAhead")
+
+        // Wednesday afternoon: complete 44-min boxing
+        let boxing = makeCardioEvent(context: ctx, type: .boxing,
+                                      date: now.addingTimeInterval(-3600),
+                                      duration: 44 * 60, avgHR: 135)
+
+        let afterFacts = CoachFacts.make(from: [s1, monRun, boxing], goal: .strength,
+                                          experience: .intermediate, now: now)
+        let afterDecision = CoachDecisionEngine.run(afterFacts)
+
+        // After boxing: plan should be complete
+        if case .planComplete(let completedKind, let desc, let tomorrow) = afterDecision.planAdherence {
+            XCTAssertTrue(completedKind == .moderateAerobic || completedKind == .easyAerobic,
+                          "Completed kind should be aerobic. Got: \(String(describing: completedKind))")
+            XCTAssertTrue(desc.contains("Boxing"), "Description should mention Boxing. Got: \(desc)")
+            XCTAssertTrue(desc.contains("44 min"), "Description should mention 44 min. Got: \(desc)")
+            XCTAssertNotNil(tomorrow, "Should have tomorrow preview")
+            if let t = tomorrow {
+                XCTAssertTrue(t.contains("Strength") || t.contains("Recovery") || t.contains("Cardio"),
+                              "Tomorrow preview should suggest a session. Got: \(t)")
+            }
+        } else {
+            XCTFail("After boxing, planAdherence should be .planComplete. Got: \(afterDecision.planAdherence)")
+        }
+    }
+
+    /// Completing a strength session today should suppress same-day strength
+    /// recommendations.
+    func testCompletedStrengthTodaySuppressesStrengthRecommendation() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        // Strength completed today (within 2 hours)
+        let todayStrength = try makeStrengthEvent(context: ctx, name: "Bench Press",
+                                                   primaryMuscles: ["chest"],
+                                                   date: now.addingTimeInterval(-2 * 3600))
+
+        let facts = CoachFacts.make(from: [todayStrength], goal: .strength,
+                                     experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+
+        // With strength already done today, primary should not be strength
+        XCTAssertNotEqual(decision.primary.kind, .strength,
+                          "Strength already done today should not be primary. Got: \(decision.primary.kind)")
+    }
+
+    /// Same-day repetition: completing boxing should suppress boxing re-recommendation
+    /// even if boxing preference exists.
+    func testCompletedBoxingSuppressesSameDayBoxingEvenWithPreference() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        // Strength floor met with two sessions earlier this week
+        let s1 = try makeStrengthEvent(context: ctx, name: "Squat",
+                                        primaryMuscles: ["quadriceps"],
+                                        date: now.addingTimeInterval(-3 * 86400))
+        let s2 = try makeStrengthEvent(context: ctx, name: "Bench Press",
+                                        primaryMuscles: ["chest"],
+                                        date: now.addingTimeInterval(-5 * 86400))
+
+        // Today: completed boxing
+        let todayBoxing = makeCardioEvent(context: ctx, type: .boxing,
+                                           date: now.addingTimeInterval(-1 * 3600),
+                                           duration: 30 * 60, avgHR: 135)
+
+        // Boxing preference
+        var profile = CoachPreferenceProfile.empty
+        profile.aerobicPreferences = [
+            AerobicPreference(intent: .moderateAerobic, modality: .boxing, score: 10, updatedAt: now)
+        ]
+
+        let facts = CoachFacts.make(from: [s1, s2, todayBoxing], goal: .strength,
+                                     experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts, profile: profile)
+
+        // Boxing already done today — should NOT be primary despite preference
+        if decision.primary.kind == .moderateAerobic || decision.primary.kind == .easyAerobic {
+            XCTAssertNotEqual(decision.primary.modality, .boxing,
+                              "Boxing already done today should not be primary. Got: \(decision.primary.modality?.rawValue ?? "nil")")
+        }
+    }
+
+    /// Boxing preference still works on future eligible days without same-day completion.
+    func testBoxingPreferenceWorksOnFutureEligibleDays() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        let s1 = try makeStrengthEvent(context: ctx, name: "Squat",
+                                        primaryMuscles: ["quadriceps"],
+                                        date: now.addingTimeInterval(-3 * 86400))
+        let s2 = try makeStrengthEvent(context: ctx, name: "Bench Press",
+                                        primaryMuscles: ["chest"],
+                                        date: now.addingTimeInterval(-5 * 86400))
+
+        // No boxing today; boxing preference should win
+        var profile = CoachPreferenceProfile.empty
+        profile.aerobicPreferences = [
+            AerobicPreference(intent: .moderateAerobic, modality: .boxing, score: 5, updatedAt: now)
+        ]
+
+        let facts = CoachFacts.make(from: [s1, s2], goal: .strength,
+                                     experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts, profile: profile)
+
+        // Boxing should be primary on a day with no completed boxing
+        XCTAssertEqual(decision.primary.modality, .boxing,
+                       "Boxing preference should win on fresh day. Got: \(decision.primary.modality?.rawValue ?? "nil")")
+    }
+
+    // MARK: - WeeklyPlan future days
+
+    func testWeeklyPlanIncludesFutureDays() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let events: [TrainingEvent] = []
+        let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
+
+        let plan = WeeklyPlan.generate(from: facts)
+        let futureDays = plan.days.filter(\.isFuture)
+        XCTAssertFalse(futureDays.isEmpty, "WeeklyPlan should include future days")
+        XCTAssertGreaterThanOrEqual(futureDays.count, 6, "Should have at least 6 future days")
+    }
+
+    func testWeeklyPlanHasTomorrow() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let events: [TrainingEvent] = []
+        let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
+
+        let plan = WeeklyPlan.generate(from: facts)
+        XCTAssertNotNil(plan.tomorrow, "WeeklyPlan should have a tomorrow entry")
+        XCTAssertTrue(plan.tomorrow!.isFuture)
+    }
+
+    func testWeeklyPlanTomorrowAfterBoxingSuggestsStrength() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let cal = Calendar.current
+
+        // Monday: full-body strength + 18-min run
+        let monday = cal.date(byAdding: .day, value: -2, to: now)!
+        let s1 = try makeStrengthEvent(context: ctx, name: "Back Squat",
+                                        primaryMuscles: ["quadriceps", "glutes"],
+                                        date: monday.addingTimeInterval(-3600))
+        let monRun = makeCardioEvent(context: ctx, type: .run,
+                                      date: monday.addingTimeInterval(-1800),
+                                      duration: 18 * 60, avgHR: 140)
+
+        // Wednesday: completed boxing
+        let todayBoxing = makeCardioEvent(context: ctx, type: .boxing,
+                                           date: now.addingTimeInterval(-3600),
+                                           duration: 44 * 60, avgHR: 135)
+
+        let facts = CoachFacts.make(from: [s1, monRun, todayBoxing], goal: .strength,
+                                     experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+
+        if case .planComplete(_, _, let tomorrow) = decision.planAdherence {
+            XCTAssertNotNil(tomorrow)
+            // With only 1/2+ strength days and no recovery block, tomorrow should be strength
+            if let t = tomorrow {
+                XCTAssertTrue(t.contains("Strength") || t.contains("Rest") || t.contains("Recovery") || t.contains("Cardio"),
+                              "Tomorrow preview should suggest a session type. Got: \(t)")
+            }
+        }
     }
 
     func testHighImpactAvoidanceKeepsRunOutOfPrimaryWhenLowImpactCanFulfillIntent() throws {

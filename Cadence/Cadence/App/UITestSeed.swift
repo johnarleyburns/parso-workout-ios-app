@@ -23,6 +23,7 @@ enum UITestSeed {
         if seeds.contains("coachBoxingPrimary") { seedCoachAerobicGap(ctx) }
         if seeds.contains("coachRunPrimary") { seedCoachAerobicGap(ctx); UserDefaults.standard.set(runPreferenceJSON(), forKey: "settings.coachPreferenceProfile") }
         if seeds.contains("coachStrengthPrimary") { seedCoachStrengthPrimary(ctx) }
+        if seeds.contains("coachWednesdayComplete") { seedCoachWednesdayComplete(ctx) }
     }
 
     private static func seedNames(in args: [String]) -> Set<String> {
@@ -179,6 +180,53 @@ enum UITestSeed {
         let yCStart = now.addingTimeInterval(-25 * 3600)
         ctx.insert(CardioWorkout(type: .run, start: yCStart, end: yCStart.addingTimeInterval(1800),
                                  avgHeartRate: 135, source: .iphone))
+        try? ctx.save()
+    }
+
+    /// Wednesday scenario: Monday full-body strength + 18-min run, Tuesday rest,
+    /// Wednesday with completed 44-min boxing. Coach should show complete/on-plan state.
+    /// Seeds Monday + Tuesday + Wednesday boxing complete.
+    private static func seedCoachWednesdayComplete(_ ctx: ModelContext) {
+        let now = Date()
+        let cal = Calendar.current
+
+        // Find this Wednesday at noon
+        var weds = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
+        weds.weekday = 4; weds.hour = 14; weds.minute = 0; weds.second = 0  // Wednesday
+        let wednesday = cal.date(from: weds) ?? now
+
+        // Monday: full-body strength + 18-min run
+        let monday = cal.date(byAdding: .day, value: -2, to: wednesday)!
+        let squat = try? WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx)
+        let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        let row = try? WorkoutRepository.findOrCreateExercise(named: "Barbell Row", category: .pull, in: ctx)
+        if let squat, let bench, let row {
+            let s = WorkoutSession(title: "Full-body", date: monday)
+            s.endedAt = monday.addingTimeInterval(3600)
+            ctx.insert(s)
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 100, reps: 5, order: i, rpe: 8,
+                                    completedAt: monday, session: s, exercise: squat))
+            }
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 80, reps: 8, order: 3 + i, rpe: 8,
+                                    completedAt: monday, session: s, exercise: bench))
+            }
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 60, reps: 10, order: 6 + i, rpe: 8,
+                                    completedAt: monday, session: s, exercise: row))
+            }
+        }
+        // Monday 18-min run
+        let mondayRunStart = monday.addingTimeInterval(3600 + 1800)
+        ctx.insert(CardioWorkout(type: .run, start: mondayRunStart, end: mondayRunStart.addingTimeInterval(18 * 60),
+                                 avgHeartRate: 140, source: .iphone))
+
+        // Wednesday: completed 44-min boxing workout (6 hours before "now" on Wednesday)
+        let boxingStart = wednesday.addingTimeInterval(-6 * 3600)
+        ctx.insert(CardioWorkout(type: .boxing, start: boxingStart, end: boxingStart.addingTimeInterval(44 * 60),
+                                 avgHeartRate: 135, source: .iphone))
+
         try? ctx.save()
     }
 

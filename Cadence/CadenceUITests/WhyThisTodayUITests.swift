@@ -17,7 +17,6 @@ final class WhyThisTodayUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["What you did"].exists)
         XCTAssertTrue(app.staticTexts["Coach's Pick"].exists)
         XCTAssertTrue(app.staticTexts["Why this won"].exists)
-        XCTAssertTrue(app.staticTexts["Policy"].exists)
     }
 
     /// Coach fact ordering (audio/coach routing plan §B): with the most recent

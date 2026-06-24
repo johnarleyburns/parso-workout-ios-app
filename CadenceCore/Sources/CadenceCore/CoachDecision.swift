@@ -11,12 +11,16 @@ public struct CoachDecision: Sendable, Identifiable {
     public let weeklyBalance: WeeklyBalance
     public let confidence: FactConfidence
     public let citationIds: [String]
+    public let planAdherence: PlanAdherence
+    public let todayCompletedMatches: [CoachSession]
 
     public init(id: String, generatedAt: Date, primary: CoachSession,
                 alternatives: [CoachSession] = [], deferred: [DeferredCandidate] = [],
                 warnings: [CoachWarning] = [], observedFacts: [ObservedFact] = [],
                 weeklyBalance: WeeklyBalance, confidence: FactConfidence,
-                citationIds: [String] = []) {
+                citationIds: [String] = [],
+                planAdherence: PlanAdherence = .planAhead,
+                todayCompletedMatches: [CoachSession] = []) {
         self.id = id
         self.generatedAt = generatedAt
         self.primary = primary
@@ -27,6 +31,8 @@ public struct CoachDecision: Sendable, Identifiable {
         self.weeklyBalance = weeklyBalance
         self.confidence = confidence
         self.citationIds = citationIds
+        self.planAdherence = planAdherence
+        self.todayCompletedMatches = todayCompletedMatches
     }
 }
 
@@ -76,10 +82,11 @@ public struct ObservedFact: Sendable, Equatable, Identifiable {
 public enum CoachDecisionEngine {
 
     public static func run(_ facts: CoachFacts,
-                          profile: CoachPreferenceProfile = .empty,
-                          hasPainConcern: Bool = false) -> CoachDecision {
+                           profile: CoachPreferenceProfile = .empty,
+                           hasPainConcern: Bool = false) -> CoachDecision {
         let now = facts.referenceDate
         let candidates = CoachSession.candidates(for: facts)
+        let todayCompleted = facts.todayCompletedEvents
 
         // Gate 1: pain/illness block
         if hasPainConcern {
@@ -101,7 +108,8 @@ public enum CoachDecisionEngine {
                 observedFacts: [],
                 weeklyBalance: facts.weeklyBalance,
                 confidence: .high,
-                citationIds: ["meeusenOvertraining2013"]
+                citationIds: ["meeusenOvertraining2013"],
+                planAdherence: .planAhead
             )
         }
 
@@ -125,8 +133,9 @@ public enum CoachDecisionEngine {
             }
         }
 
-        // Gate 3: score eligible candidates (base + preference adjustment)
-        let scored = score(eligible, facts: facts, profile: profile)
+        // Gate 3: score eligible candidates (base + preference + same-day damping)
+        let scored = score(eligible, facts: facts, profile: profile,
+                           todayCompleted: todayCompleted)
 
         let primary: CoachSession
         if let top = scored.first {
@@ -138,6 +147,10 @@ public enum CoachDecisionEngine {
         }
 
         let alternatives = Array(scored.dropFirst().prefix(3))
+
+        // Gate 4: Plan adherence — check if today's planned session is already done
+        let planState = computePlanAdherence(primary: primary, todayCompleted: todayCompleted,
+                                              candidates: candidates, facts: facts)
 
         // Generate warnings
         let warnings = generateWarnings(facts: facts)
@@ -186,11 +199,13 @@ public enum CoachDecisionEngine {
             kind: .weeklyModerateEquivalentMinutes,
             title: "Moderate-equivalent minutes",
             value: "\(Int(facts.weeklyBalance.moderateEquivalentMinutes)) / 150",
-            detail: "Public-health floor"
+            detail: "Research-informed aerobic target"
         ))
 
         var allCitationIds = Set(primary.citationIds)
         for w in warnings { allCitationIds.formUnion(w.citationIds) }
+
+        let todayMatches = findTodayPlanMatches(primary: primary, todayCompleted: todayCompleted, candidates: candidates)
 
         return CoachDecision(
             id: "decision.\(now.timeIntervalSince1970)",
@@ -202,12 +217,186 @@ public enum CoachDecisionEngine {
             observedFacts: factsList,
             weeklyBalance: facts.weeklyBalance,
             confidence: eligible.isEmpty ? .low : .moderate,
-            citationIds: Array(allCitationIds)
+            citationIds: Array(allCitationIds),
+            planAdherence: planState,
+            todayCompletedMatches: todayMatches
         )
     }
 
+    // MARK: - Plan adherence
+
+    private static func computePlanAdherence(primary: CoachSession,
+                                               todayCompleted: [TrainingEvent],
+                                               candidates: [CoachSession],
+                                               facts: CoachFacts) -> PlanAdherence {
+        guard !todayCompleted.isEmpty else { return .planAhead }
+
+        // Check if any completed event today matches the primary recommendation
+        var matchedSessions: [(event: TrainingEvent, session: CoachSession)] = []
+
+        for event in todayCompleted {
+            for candidate in candidates {
+                if eventSatisfiesCoachSession(event, candidate) {
+                    matchedSessions.append((event, candidate))
+                }
+            }
+        }
+
+        if !matchedSessions.isEmpty {
+            // Plan is complete: find the best match and generate tomorrow preview
+            let bestMatch = matchedSessions.first!
+            let completedKind = bestMatch.session.kind
+            let todayDescription = describeCompletedEvent(bestMatch.event)
+            let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates)
+
+            return .planComplete(completedKind: completedKind,
+                                  todayDescription: todayDescription,
+                                  tomorrowPreview: tomorrowPreview)
+        }
+
+        // Something done today but not matching plan
+        return .offPlan(didSomethingToday: true)
+    }
+
+    private static func findTodayPlanMatches(primary: CoachSession,
+                                               todayCompleted: [TrainingEvent],
+                                               candidates: [CoachSession]) -> [CoachSession] {
+        var matches: [CoachSession] = []
+        for event in todayCompleted {
+            for candidate in candidates {
+                if eventSatisfiesCoachSession(event, candidate) {
+                    matches.append(candidate)
+                }
+            }
+        }
+        return matches
+    }
+
+    /// Returns true if a completed TrainingEvent satisfies the intent of a CoachSession.
+    private static func eventSatisfiesCoachSession(_ event: TrainingEvent, _ session: CoachSession) -> Bool {
+        switch (event.kind, session.kind) {
+        case (.strength, .strength):
+            return true
+
+        case (.aerobic(let d), .moderateAerobic),
+             (.aerobic(let d), .easyAerobic),
+             (.intervals(let d), .moderateAerobic),
+             (.intervals(let d), .easyAerobic):
+            // Match by modality if session specifies one
+            if let sessionMod = session.modality {
+                let eventMod = coachModalityFromAerobic(d.modality)
+                guard eventMod == sessionMod else { return false }
+            }
+            // Duration must be at least 75% of planned minimum
+            let minDuration = Double(session.durationMinutes ?? 20) * 60 * 0.75
+            return d.duration >= minDuration
+
+        case (.aerobic(let d), .vo2Intervals),
+             (.intervals(let d), .vo2Intervals):
+            return d.intensity == .vigorous && d.duration >= 20 * 60
+
+        case (.aerobic, .recovery), (.intervals, .recovery):
+            return true
+
+        default:
+            return false
+        }
+    }
+
+    private static func coachModalityFromAerobic(_ m: AerobicEventDetails.Modality) -> CoachSession.AerobicModality {
+        switch m {
+        case .running: return .run
+        case .walking: return .walk
+        case .cycling: return .cycle
+        case .swimming: return .swim
+        case .rowing: return .row
+        case .boxing: return .boxing
+        case .hiit, .other: return .other
+        }
+    }
+
+    private static func describeCompletedEvent(_ event: TrainingEvent) -> String {
+        switch event.kind {
+        case .aerobic(let d), .intervals(let d):
+            let mins = Int(d.duration / 60)
+            return "\(d.modality.displayName) · \(mins) min logged today"
+        case .strength:
+            return "Strength session logged today"
+        case .unknown:
+            return "Workout logged today"
+        }
+    }
+
+    private static func generateTomorrowPreview(facts: CoachFacts,
+                                                  candidates: [CoachSession]) -> String? {
+        let balance = facts.weeklyBalance
+        let strengthFloor = 2
+        let aerobicFloor = 150.0
+
+        let strengthNeeded = balance.strengthDays < strengthFloor
+        let aerobicNeeded = balance.moderateEquivalentMinutes < aerobicFloor
+
+        // Check recovery gates for strength
+        let canStrength: Bool
+        if let wb = facts.recovery.wholeBody, facts.referenceDate.addingTimeInterval(86400) < wb.hardEligibleAt {
+            canStrength = false
+        } else {
+            canStrength = true
+        }
+
+        if strengthNeeded && canStrength {
+            return "Strength session"
+        }
+
+        if strengthNeeded && !canStrength {
+            let hrs = facts.recovery.wholeBody.map { Int($0.hardEligibleAt.timeIntervalSince(facts.referenceDate) / 3600) } ?? 24
+            return "Recovery — strength eligible in ~\(hrs)h"
+        }
+
+        if aerobicNeeded {
+            return "Cardio session"
+        }
+
+        if balance.consecutiveHardDays >= 3 {
+            return "Rest or easy recovery"
+        }
+
+        // Balanced: suggest a rest or easy day
+        return "Rest or light activity"
+    }
+
+    // MARK: - Same-day repetition damping
+
+    private static func sameDayDamping(for session: CoachSession,
+                                         todayCompleted: [TrainingEvent]) -> Int {
+        var penalty = 0
+        for event in todayCompleted {
+            switch event.kind {
+            case .aerobic(let d), .intervals(let d):
+                let eventMod = coachModalityFromAerobic(d.modality)
+                if let sessionMod = session.modality, sessionMod == eventMod {
+                    // Same modality completed today → penalize heavily
+                    penalty += 40
+                }
+                if session.kind == .moderateAerobic || session.kind == .easyAerobic
+                    || session.kind == .vo2Intervals {
+                    // Any aerobic already done today → moderate penalty
+                    penalty += 15
+                }
+            case .strength:
+                if session.kind == .strength {
+                    penalty += 40  // Strength already done today
+                }
+            case .unknown:
+                penalty += 5
+            }
+        }
+        return penalty
+    }
+
     private static func score(_ candidates: [CoachSession], facts: CoachFacts,
-                               profile: CoachPreferenceProfile) -> [CoachSession] {
+                                profile: CoachPreferenceProfile,
+                                todayCompleted: [TrainingEvent] = []) -> [CoachSession] {
         let balance = facts.weeklyBalance
         let strengthFloor = 2
         let aerobicFloor = 150.0
@@ -217,8 +406,10 @@ public enum CoachDecisionEngine {
             let baseB = scoreSessionBase(b, balance: balance, strengthFloor: strengthFloor, aerobicFloor: aerobicFloor)
             let prefA = profile.preferenceScore(for: a)
             let prefB = profile.preferenceScore(for: b)
-            let scoreA = baseA + prefA
-            let scoreB = baseB + prefB
+            let dampenA = sameDayDamping(for: a, todayCompleted: todayCompleted)
+            let dampenB = sameDayDamping(for: b, todayCompleted: todayCompleted)
+            let scoreA = baseA + prefA - dampenA
+            let scoreB = baseB + prefB - dampenB
             if scoreA != scoreB { return scoreA > scoreB }
             if a.isHard != b.isHard { return !a.isHard }
             return a.id < b.id

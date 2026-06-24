@@ -13,9 +13,16 @@ enum UITestSeed {
         // Unified strength + cardio history (field-testing Round 4 A4).
         if seeds.contains("historyMixed") { seedHistory(ctx); seedCardioWalk(ctx) }
         if seeds.contains("coachWhyMixedHistory") { seedCoachWhyMixedHistory(ctx) }
+        if seeds.contains("coachYesterdayMixedHistory") { seedCoachYesterdayMixedHistory(ctx) }
         if seeds.contains("coachAerobicGap") { seedCoachAerobicGap(ctx) }
         if seeds.contains("coachCyclePreference") { seedCoachAerobicGap(ctx); UserDefaults.standard.set(cyclePreferenceJSON(), forKey: "settings.coachPreferenceProfile") }
         if seeds.contains("coachLowerBodyRecovery") { seedCoachLowerBodyRecovery(ctx) }
+        // Coach Start routing seeds (audio/coach routing plan §D5). Boxing wins among
+        // moderate-aerobic candidates by id sort; run wins via a stored preference;
+        // strength wins when aerobic is met but strength days are missing.
+        if seeds.contains("coachBoxingPrimary") { seedCoachAerobicGap(ctx) }
+        if seeds.contains("coachRunPrimary") { seedCoachAerobicGap(ctx); UserDefaults.standard.set(runPreferenceJSON(), forKey: "settings.coachPreferenceProfile") }
+        if seeds.contains("coachStrengthPrimary") { seedCoachStrengthPrimary(ctx) }
     }
 
     private static func seedNames(in args: [String]) -> Set<String> {
@@ -138,6 +145,63 @@ enum UITestSeed {
                                 completedAt: s.date, session: s, exercise: squat))
         }
         try? ctx.save()
+    }
+
+    /// Mixed history with the most recent strength + cardio both *yesterday*, and
+    /// older strength + cardio the previous week. Verifies "Why this today" surfaces
+    /// the yesterday events as last-strength / last-cardio (not last week's).
+    private static func seedCoachYesterdayMixedHistory(_ ctx: ModelContext) {
+        let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        let squat = try? WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx)
+        guard let bench, let squat else { return }
+        let now = Date()
+        // Older strength (previous week).
+        let oldS = WorkoutSession(title: "Leg Day", date: now.addingTimeInterval(-8 * 86400))
+        oldS.endedAt = oldS.date.addingTimeInterval(1800)
+        ctx.insert(oldS)
+        for i in 0..<3 {
+            ctx.insert(SetEntry(weight: 100, reps: 5, order: i, rpe: 8,
+                                completedAt: oldS.date, session: oldS, exercise: squat))
+        }
+        // Older cardio (previous week).
+        let oldCStart = now.addingTimeInterval(-9 * 86400)
+        ctx.insert(CardioWorkout(type: .walk, start: oldCStart, end: oldCStart.addingTimeInterval(1800),
+                                 avgHeartRate: 110, source: .iphone))
+        // Strength yesterday (Bench).
+        let yS = WorkoutSession(title: "Push Day", date: now.addingTimeInterval(-26 * 3600))
+        yS.endedAt = yS.date.addingTimeInterval(1800)
+        ctx.insert(yS)
+        for i in 0..<3 {
+            ctx.insert(SetEntry(weight: 80, reps: 8, order: i, rpe: 8,
+                                completedAt: yS.date, session: yS, exercise: bench))
+        }
+        // Cardio yesterday (Run), 30 min moderate.
+        let yCStart = now.addingTimeInterval(-25 * 3600)
+        ctx.insert(CardioWorkout(type: .run, start: yCStart, end: yCStart.addingTimeInterval(1800),
+                                 avgHeartRate: 135, source: .iphone))
+        try? ctx.save()
+    }
+
+    /// Aerobic floor met (≥150 mod-eq today), no strength this week → Coach picks
+    /// strength. All cardio is dated today so the week boundary can't move it out.
+    private static func seedCoachStrengthPrimary(_ ctx: ModelContext) {
+        let now = Date()
+        for hoursAgo in [2.0, 4.0, 6.0] {
+            let start = now.addingTimeInterval(-hoursAgo * 3600 - 3600)
+            ctx.insert(CardioWorkout(type: .run, start: start, end: start.addingTimeInterval(3600),
+                                     avgHeartRate: 135, source: .iphone))  // 60 min moderate = 60 mod-eq
+        }
+        try? ctx.save()
+    }
+
+    private static func runPreferenceJSON() -> Data {
+        // `updatedAt` is encoded as a Double (JSONDecoder's default `.deferredToDate`
+        // strategy — seconds since 2001), NOT an ISO8601 string, or decoding fails
+        // silently and the preference is dropped.
+        let json = """
+        {"version":1,"aerobicPreferences":[{"intent":"moderateAerobic","modality":"run","score":3,"updatedAt":772600000}],"strengthPreferences":[],"avoidedTags":[],"selectionEvents":[]}
+        """
+        return json.data(using: .utf8)!
     }
 
     private static func cyclePreferenceJSON() -> Data {

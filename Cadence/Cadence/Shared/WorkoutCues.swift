@@ -9,7 +9,8 @@ import AudioToolbox
 /// `IntervalCues`, and boxing keeps its own round bell — neither goes through here.
 ///
 /// Gated by the "Workout sounds" setting at every call site. Reuses the bundled
-/// `warning-bell.mp3` (no new assets) and ducks other audio like `IntervalCues`.
+/// `warning-bell.mp3` (no new assets). All cue audio mixes with the user's
+/// background audio via `WorkoutAudioSession` — it never pauses or ducks it.
 ///
 /// FR-8 follow-up: non-boxing workouts get soft system beeps instead of bells.
 /// Start = 3 countdown ticks (1s apart) → 1 start beep.
@@ -27,8 +28,7 @@ enum WorkoutCues {
     /// Boxing only — non-boxing uses `startBeepSequence` / `endBeepSequence`.
     static func transition(enabled: Bool) {
         guard enabled else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.duckOthers, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
+        WorkoutAudioSession.configureForCues()
         bell?.currentTime = 0
         bell?.play()
         Haptics.restComplete()
@@ -38,6 +38,7 @@ enum WorkoutCues {
     /// Gated by `enabled`. No-op when false.
     static func startBeepSequence(enabled: Bool) {
         guard enabled else { return }
+        WorkoutAudioSession.configureForCues()
         SoundBeep.countdownStart()
     }
 
@@ -45,6 +46,7 @@ enum WorkoutCues {
     /// Gated by `enabled`. No-op when false.
     static func endBeepSequence(enabled: Bool) {
         guard enabled else { return }
+        WorkoutAudioSession.configureForCues()
         SoundBeep.rapidEnd()
     }
 }

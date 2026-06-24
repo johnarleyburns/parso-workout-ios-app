@@ -85,6 +85,38 @@ final class CoachFactsTests: XCTestCase {
         XCTAssertEqual(facts.rolling72hCompletedEvents.count, 1)
     }
 
+    /// Rolling windows must be chronological (ascending by end) regardless of the
+    /// order Home supplies events, so downstream "last X" lookups are deterministic.
+    func testRolling72hCompletedEventsAreSortedAscendingByEnd() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let eA = makeCardioEvent(context: ctx, type: .walk, start: now.addingTimeInterval(-7200),
+                                 duration: 1800, avgHR: 110)   // end = now - 5400
+        let eB = makeCardioEvent(context: ctx, type: .run, start: now.addingTimeInterval(-3600),
+                                 duration: 1800, avgHR: 150)   // end = now - 1800
+        let eC = makeCardioEvent(context: ctx, type: .cycle, start: now.addingTimeInterval(-10800),
+                                 duration: 1800, avgHR: 120)   // end = now - 9000
+        // Scrambled input order.
+        let facts = CoachFacts.make(from: [eB, eC, eA], goal: .strength, experience: .intermediate, now: now)
+        let ends = facts.rolling72hCompletedEvents.map(\.end)
+        XCTAssertEqual(ends, ends.sorted(), "rolling 72h events must be sorted ascending by end")
+        XCTAssertEqual(facts.rolling72hCompletedEvents.last?.end, eB.end, "newest is last")
+    }
+
+    /// This week's balance must exclude future-dated events.
+    func testThisWeekBalanceExcludesFutureEvents() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let pastWalk = makeCardioEvent(context: ctx, type: .walk, start: now.addingTimeInterval(-5400),
+                                       duration: 1800, avgHR: nil)  // moderate ⇒ 30 mod-eq
+        let futureRun = makeCardioEvent(context: ctx, type: .run, start: now.addingTimeInterval(82800),
+                                        duration: 3600, avgHR: 160) // vigorous ⇒ 120 if wrongly counted
+        let facts = CoachFacts.make(from: [futureRun, pastWalk], goal: .strength, experience: .intermediate, now: now)
+        let modEquiv = facts.weeklyBalance.moderateEquivalentMinutes
+        XCTAssertGreaterThan(modEquiv, 0, "past walk should count")
+        XCTAssertLessThanOrEqual(modEquiv, 35, "future run must be excluded; got \(modEquiv) min")
+    }
+
     // MARK: - Moderate-equivalent minutes
 
     func testModerateEquivalentMinutes() throws {

@@ -108,14 +108,21 @@ public extension CoachFacts {
                      formula: OneRepMaxFormula = .epley,
                      now: Date = Date()) -> CoachFacts {
 
-        let completed = events.filter { $0.completion == .completed }
+        // Completed events only, in the past, sorted chronologically (newest last).
+        // Sorting here makes every downstream "last X" lookup and rolling window
+        // deterministic regardless of the order Home supplies events in.
+        let completed = events
+            .filter { $0.completion == .completed && $0.end <= now }
+            .sorted { $0.end < $1.end }
         let inProgress = events.filter { $0.completion == .inProgress }
 
-        let rolling72h = completed.filter { now.timeIntervalSince($0.end) <= 72 * 3600 }
-        let rolling7d = completed.filter { now.timeIntervalSince($0.end) <= 7 * 86400 }
-        let rolling28d = completed.filter { now.timeIntervalSince($0.end) <= 28 * 86400 }
+        // Rolling windows carry explicit lower and upper bounds; the upper bound
+        // (`<= now`) keeps future-dated events out of every window.
+        let rolling72h = completed.filter { $0.end >= now.addingTimeInterval(-72 * 3600) && $0.end <= now }
+        let rolling7d = completed.filter { $0.end >= now.addingTimeInterval(-7 * 86400) && $0.end <= now }
+        let rolling28d = completed.filter { $0.end >= now.addingTimeInterval(-28 * 86400) && $0.end <= now }
         let thisWeekStart = WeeklyStats.weekStart(now: now)
-        let thisWeek = completed.filter { $0.start >= thisWeekStart }
+        let thisWeek = completed.filter { $0.start >= thisWeekStart && $0.start <= now }
 
         let recovery = computeRecovery(completed: rolling72h, inProgress: inProgress, now: now)
         let balance = computeWeeklyBalance(completed: thisWeek, now: now)

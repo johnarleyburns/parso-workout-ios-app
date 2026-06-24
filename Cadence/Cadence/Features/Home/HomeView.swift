@@ -34,7 +34,12 @@ struct HomeView: View {
     @State private var startWarmupAfterHRGate = false
     @State private var warmupActive = false
     @State private var today: DayActivity?
-    @State private var coachDayToken = Date()
+    /// Bumped after any workout-history mutation (save, log, ingest, delete) so the
+    /// computed Coach / This Week / recent surfaces recompute immediately — without
+    /// waiting for `scenePhase == .active` (the old "only fixed after re-entry" bug).
+    @State private var historyRefreshToken = UUID()
+    /// Setup surface for non-GPS timer cardio (rowing/other) launched from Coach.
+    @State private var timerCardioSetup: TimerCardioSetup?
     @State private var homeSessionToDelete: WorkoutSession?
     @State private var homeCardioToDelete: CardioWorkout?
     @State private var pendingPlan: EditablePlan?
@@ -75,6 +80,7 @@ struct HomeView: View {
     private var coachRecommendation: Recommendation { RecommendationEngine.top(coachFacts) }
 
     private var coachDecision: CoachDecision {
+        _ = historyRefreshToken
         let events = buildTrainingEvents()
         let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
                                      experience: settings.experienceLevel,
@@ -88,6 +94,7 @@ struct HomeView: View {
     }
 
     private func buildTrainingEvents() -> [TrainingEvent] {
+        _ = historyRefreshToken
         let activeSessions = sessions.filter { $0.deletedAt == nil }
         let strengthEvents = activeSessions.compactMap { TrainingEvent.from(session: $0, formula: settings.formula) }
         let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { TrainingEvent.from(cardio: $0) }
@@ -177,7 +184,7 @@ struct HomeView: View {
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
             .refreshable { today = await model.health.todayActivity(); await syncCardioFromHealth() }
             .sheet(isPresented: $logPickerPresented) {
-                LogWorkoutPicker()
+                LogWorkoutPicker(onSaved: markWorkoutHistoryChanged)
             }
             // P1 #9 — the post-workout summary is presented here, above the whole
             // NavigationStack, so the finished session can pop behind it.
@@ -185,8 +192,12 @@ struct HomeView: View {
                 WorkoutSummaryView(data: finished.data,
                                    onDone: { active.finishedSummary = nil })
             }
-            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR) }
-            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR) }
+            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR, onSaved: { _ in markWorkoutHistoryChanged() }) }
+            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR, onSaved: { _ in markWorkoutHistoryChanged() }) }
+            .sheet(item: $timerCardioSetup) { setup in
+                TimerCardioSetupView(type: setup.type, suggestedMinutes: setup.suggestedMinutes,
+                                     onSaved: { _ in markWorkoutHistoryChanged() })
+            }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
             .sheet(isPresented: $cardioPickerPresented) {
                 WorkoutTypePicker(onSelect: { cardioPickerPresented = false; start($0) },
@@ -220,8 +231,8 @@ struct HomeView: View {
                     intervalLaunch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)
                 }
             }
-            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: captureHR) }
-            .fullScreenCover(isPresented: $swimPresented) { SwimRecordView() }
+            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: captureHR, onSaved: { _ in markWorkoutHistoryChanged() }) }
+            .fullScreenCover(isPresented: $swimPresented) { SwimRecordView(onSaved: { _ in markWorkoutHistoryChanged() }) }
             .confirmationDialog("Delete this workout?",
                                 isPresented: Binding(get: { homeSessionToDelete != nil },
                                                      set: { if !$0 { homeSessionToDelete = nil } }),
@@ -229,6 +240,7 @@ struct HomeView: View {
                 Button("Delete", role: .destructive) {
                     try? WorkoutRepository.softDeleteSession(session, in: context)
                     homeSessionToDelete = nil
+                    markWorkoutHistoryChanged()
                 }
                 Button("Cancel", role: .cancel) { homeSessionToDelete = nil }
             } message: { _ in Text("You can restore it from History → View Deleted.") }
@@ -239,6 +251,7 @@ struct HomeView: View {
                 Button("Delete", role: .destructive) {
                     try? WorkoutRepository.softDeleteCardio(c, in: context)
                     homeCardioToDelete = nil
+                    markWorkoutHistoryChanged()
                 }
                 Button("Cancel", role: .cancel) { homeCardioToDelete = nil }
             } message: { _ in Text("You can restore it from History → View Deleted.") }
@@ -305,7 +318,7 @@ struct HomeView: View {
             let today = Self.dayString()
             if settings.lastCoachComputeDay != today {
                 settings.lastCoachComputeDay = today
-                coachDayToken = Date()
+                historyRefreshToken = UUID()
             }
         }
     }
@@ -314,12 +327,23 @@ struct HomeView: View {
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f.string(from: date)
     }
 
+    /// Invalidates the history-derived surfaces after a save/log/ingest/delete.
+    /// Yields one main-actor turn first so the SwiftData change has propagated to
+    /// the `@Query` arrays before SwiftUI re-enters the computed Coach/week paths.
+    private func markWorkoutHistoryChanged() {
+        Task { @MainActor in
+            await Task.yield()
+            historyRefreshToken = UUID()
+        }
+    }
+
     /// Pulls any new Watch/Health-recorded cardio into the local store (FR-2.1).
     /// Formerly auto-run by the now-removed Cardio screen (feedback batch 3).
     private func syncCardioFromHealth() async {
         let new = await model.health.newWorkouts(since: model.lastHealthSync)
-        _ = try? WorkoutRepository.ingest(new, in: context)
+        let inserted = (try? WorkoutRepository.ingest(new, in: context)) ?? 0
         model.lastHealthSync = Date()
+        if inserted > 0 { markWorkoutHistoryChanged() }
     }
 
     /// The four secondary entry points, demoted from full-width pills to one
@@ -359,6 +383,7 @@ struct HomeView: View {
 
     /// "This week" at a glance — one calm card, not four launcher tiles.
     private var thisWeekCard: some View {
+        _ = historyRefreshToken
         let balance = coachDecision.weeklyBalance
         return VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -457,6 +482,7 @@ struct HomeView: View {
     /// One merged, date-sorted "Recent workouts" list — cardio counts as a workout
     /// too, so strength sessions and cardio recordings share a single section (P1 #10).
     private var recentItems: [RecentWorkoutItem] {
+        _ = historyRefreshToken
         let merged = sessions.filter { $0.deletedAt == nil }.map { RecentWorkoutItem.strength($0) }
                    + cardio.filter { $0.deletedAt == nil }.map { RecentWorkoutItem.cardio($0) }
         return Array(merged.sorted { $0.date > $1.date }.prefix(5))
@@ -657,28 +683,30 @@ struct HomeView: View {
         }
     }
 
-    /// Launch from the new CoachDecision engine.
+    /// Launch from the CoachDecision engine. Every trainable recommendation lands
+    /// on that workout's setup/settings surface first — never directly into an
+    /// active recorder (audio/coach routing plan §D). The recorder begins only
+    /// after the user confirms from the setup screen.
     private func launchDecision(_ session: CoachSession) {
         switch session.launchPayload {
         case .strengthPlan:
             if let plan = EditablePlan.from(coach: session) {
                 path.append(HomeRoute.workoutEditor(plan))
             }
-        case .cardio(let cardioTypeStr, _):
+        case .cardio(let cardioTypeStr, let durationMinutes):
             switch cardioTypeStr {
-            case "walk": cardioType = .walk
-            case "run": cardioType = .run
-            case "cycle": cardioType = .cycle
-            case "swim": cardioType = .swim
-            case "hiit": cardioType = .hiit
-            case "rowing": cardioType = .rowing
-            default: cardioType = .other
+            case "walk": startOutdoorWithGoal(.walk)     // → CardioGoalSheet → HR gate → recorder
+            case "run": startOutdoorWithGoal(.run)
+            case "cycle": startOutdoorWithGoal(.cycle)
+            case "swim": swimPresented = true            // SwimRecordView opens to its setup screen
+            case "hiit": intervalType = .hiit            // → IntervalSetupView (protocol picker)
+            case "boxing": intervalType = .boxing        // → IntervalSetupView (boxing rounds)
+            case "rowing":
+                timerCardioSetup = TimerCardioSetup(type: .rowing, suggestedMinutes: durationMinutes)
+            default:
+                timerCardioSetup = TimerCardioSetup(type: .other, suggestedMinutes: durationMinutes)
             }
-        case .recovery:
-            break
-        case .rest:
-            break
-        case .assessment:
+        case .recovery, .rest, .assessment:
             break
         }
     }

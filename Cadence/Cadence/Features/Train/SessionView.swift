@@ -430,6 +430,9 @@ struct SessionView: View {
 
     var body: some View {
         coreSessionView
+        // Keep the screen awake during a live workout so it never locks between
+        // sets. Manual logging is data entry, not training, so it's excluded.
+        .keepAwake(!isManualLog)
         .sheet(isPresented: $pickerPresented) {
             ExercisePickerView { exercise in
                 if !session.exercisesInOrder.contains(where: { $0.id == exercise.id }) &&

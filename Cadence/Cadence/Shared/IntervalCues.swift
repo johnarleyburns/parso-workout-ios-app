@@ -6,7 +6,8 @@ import CadenceCore
 /// Non-visual interval cues (field-testing §06/round 4): haptics + bundled bell
 /// sounds on every transition, a 30-second warning bell, and optional spoken
 /// announcements — so the signal works with the phone in a pocket or for
-/// low-vision use. The audio session ducks other audio.
+/// low-vision use. All cue audio mixes with the user's background audio via
+/// `WorkoutAudioSession` — it never pauses or ducks it.
 ///
 /// Boxing keeps its own round bell (`opening-closing-bell.mp3` + `warning-bell.mp3`).
 /// Non-boxing intervals use soft system beeps for a calmer experience.
@@ -38,14 +39,16 @@ final class IntervalCues {
 
     private func activateSession() {
         guard !sessionActive else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.duckOthers, .mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
+        WorkoutAudioSession.configureForCues()
         sessionActive = true
     }
 
+    /// Marks the cue session inactive. We deliberately do NOT call
+    /// `setActive(false, options: .notifyOthersOnDeactivation)`: the ambient,
+    /// mix-with-others session never interrupted background audio, so there is
+    /// nothing to "hand back" — and forcing a deactivation can itself blip the
+    /// user's music.
     func deactivate() {
-        guard sessionActive else { return }
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         sessionActive = false
     }
 
@@ -55,6 +58,7 @@ final class IntervalCues {
             play(bell)
         } else {
             // Soft tick as a phase-transition cue.
+            activateSession()
             AudioServicesPlaySystemSound(1104)
         }
         switch kind {
@@ -70,6 +74,7 @@ final class IntervalCues {
         if isBoxing {
             play(warningBell)
         } else {
+            activateSession()
             AudioServicesPlaySystemSound(1057)
         }
         Haptics.restComplete()
@@ -84,6 +89,7 @@ final class IntervalCues {
         if isBoxing {
             play(bell)
         } else {
+            activateSession()
             AudioServicesPlaySystemSound(1057)
         }
         Haptics.prAchieved()
@@ -91,6 +97,7 @@ final class IntervalCues {
     }
 
     private func speak(_ text: String) {
+        activateSession()
         let u = AVSpeechUtterance(string: text)
         u.rate = AVSpeechUtteranceDefaultSpeechRate
         synth.speak(u)

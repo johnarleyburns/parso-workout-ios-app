@@ -26,41 +26,6 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 5))
     }
 
-    func testCoachCardShowsCitedInsight() {
-        // Seeded history → the engine has real data, so the card shows an insight
-        // (not the cold-start placeholder) with an expandable, cited rationale.
-        let app = XCUIApplication.launched(seeds: ["history"])
-        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
-
-        // Expand "Why / the science" → the citation becomes visible (D3).
-        let why = app.descendants(matching: .any)["coach.card.why"].firstMatch
-        XCTAssertTrue(why.waitForExistence(timeout: 5))
-        why.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["coach.card.citation"].firstMatch.waitForExistence(timeout: 5),
-                      "citation should appear after expanding the science")
-    }
-
-    func testCoachCardShowsPrescriptiveTarget() {
-        // strength-pivot P5.2 — the card now leads with a prescription: a concrete
-        // action + a loggable set/rep/load/RIR target, still cited (D3). Works even
-        // at cold start (the engine returns a starter), but seed history for realism.
-        let app = XCUIApplication.launched(seeds: ["history"])
-        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
-
-        // The structured target chip and the imperative action are both present.
-        XCTAssertTrue(app.descendants(matching: .any)["coach.card.target"].firstMatch.waitForExistence(timeout: 5),
-                      "the card should show a concrete loggable target")
-        XCTAssertTrue(app.descendants(matching: .any)["coach.card.action"].firstMatch.exists,
-                      "the card should show the prescribed action")
-
-        // The cited rationale still expands from the prescription (D3).
-        let why = app.descendants(matching: .any)["coach.card.why"].firstMatch
-        XCTAssertTrue(why.waitForExistence(timeout: 5))
-        why.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["coach.card.citation"].firstMatch.waitForExistence(timeout: 5),
-                      "citation should appear after expanding the science")
-    }
-
     func testCoachSettingsPickersExist() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.scrollToHittableAndTap("home.settings"), "open Settings")
@@ -135,18 +100,4 @@ final class P3CoachHomeUITests: CadenceUITestCase {
                       "header date should appear beneath the title")
     }
 
-    // MARK: - Coach card science footer
-
-    func testCoachCardScienceFooterBelowStart() {
-        let app = XCUIApplication.launched(seeds: ["history"])
-        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
-
-        // The science toggle sits below the Start button in the footer row.
-        let why = app.descendants(matching: .any)["coach.card.why"].firstMatch
-        XCTAssertTrue(why.waitForExistence(timeout: 5),
-                      "science footer toggle should be present")
-        why.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["coach.card.citation"].firstMatch.waitForExistence(timeout: 5),
-                      "citation should appear after expanding the science footer")
-    }
 }

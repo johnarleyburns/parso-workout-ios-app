@@ -1,48 +1,36 @@
 import XCTest
 
-/// strength-pivot P5.3 — "Start Coach's Workout" on Home materializes the top
-/// prescription into a logger session pre-filled with the prescribed movement,
-/// planned sets/reps, and working load.
+/// strength-pivot P5.3, updated for the Coach Start routing contract
+/// (audio/coach routing plan §D): a strength Coach recommendation opens the
+/// workout's PLAN EDITOR first — the user reviews/edits the prescribed movements,
+/// then taps the editor's Start to begin. Coach Start never drops the user
+/// straight into an active session.
 final class P5DoThisUITests: CadenceUITestCase {
 
-    /// With seeded history the engine prescribes progressing a concrete lift; "Start
-    /// Coach's Workout" opens a session pre-loaded with that movement, its prescribed
-    /// reps, and the prescribed load.
-    func testDoThisPreFillsPrescribedLiftAndLoad() {
-        // Seeded history → Back Squat is the top-ranked progression (140 kg).
-        let app = XCUIApplication.launched(seeds: ["history"])
+    /// Coach Start for a strength recommendation lands on the plan editor (setup),
+    /// not an active logging session.
+    func testCoachStrengthStartOpensSetupFirst() {
+        let app = XCUIApplication.launched(seeds: ["coachStrengthPrimary"])
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
 
-        XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "Start Coach's Workout")
-
-        // We land in the logger on the prescribed session.
-        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
-                      "the prescription opens the logger")
-
-        // The prescribed movement is pre-loaded as a planned card with a load-bearing
-        // prescription line ("6-6-6 reps @ 140 kg").
-        let planned = app.descendants(matching: .any)["exerciseCard.Back Squat"]
-        XCTAssertTrue(planned.waitForExistence(timeout: 5), "prescribed movement pre-loaded")
-        let rx = app.descendants(matching: .any)["session.rx.Back Squat"].firstMatch
-        XCTAssertTrue(rx.waitForExistence(timeout: 5), "prescription line shown")
-        XCTAssertTrue((rx.label).contains("@"), "the prescription line carries the working load")
-
-        // Opening the set keypad for the prescribed movement pre-fills the load.
-        app.buttons["set.add.Back Squat"].tap()
-        let weight = app.staticTexts["set.weight"]
-        XCTAssertTrue(weight.waitForExistence(timeout: 10), "weight keypad")
-        let entry = (weight.value as? String) ?? ""
-        XCTAssertFalse(entry.isEmpty, "the keypad weight is pre-filled with the prescribed load")
-        XCTAssertNotEqual(entry, "0", "the prescribed load is non-zero")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "tap Coach Start")
+        XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10),
+                      "the plan editor (setup) should open first")
+        XCTAssertFalse(app.buttons["session.addExercise"].exists,
+                       "no active session should exist before confirming from setup")
     }
 
-    /// Cold start (no history) — "Start Coach's Workout" opens a full-body session
-    /// with default compound exercises (Back Squat, Bench Press, Deadlift).
-    func testDoThisColdStartOpensSession() {
-        let app = XCUIApplication.launched()
+    /// The Coach card itself never materializes an active session — the editor is
+    /// the gate. (The editor's own Start → warm-up → logger plumbing is pre-existing
+    /// and covered by the strength-logging suite.)
+    func testCoachCardNeverOpensActiveSessionDirectly() {
+        let app = XCUIApplication.launched(seeds: ["coachStrengthPrimary"])
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "Start Coach's Workout")
-        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
-                      "the starter prescription opens the logger")
+
+        XCTAssertTrue(app.scrollToHittableAndTap("home.coachStart"), "tap Coach Start")
+        // We are in setup (editor), not an active session.
+        XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10), "plan editor opens")
+        XCTAssertFalse(app.staticTexts["session.elapsed"].exists, "no active session timer")
+        XCTAssertFalse(app.staticTexts["record.elapsed"].exists, "no active recorder")
     }
 }

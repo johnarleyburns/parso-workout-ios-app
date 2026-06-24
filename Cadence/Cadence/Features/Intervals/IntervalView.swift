@@ -9,6 +9,9 @@ struct IntervalView: View {
     let plan: IntervalPlan
     let saveType: CardioType
     var captureHR = false
+    /// Notifies the presenter (Home) the instant a workout is persisted, so its
+    /// history-derived surfaces refresh without waiting for app re-entry.
+    var onSaved: (CardioWorkout) -> Void = { _ in }
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -27,10 +30,12 @@ struct IntervalView: View {
     @State private var lastHRSecond = -1
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
-    init(plan: IntervalPlan, saveType: CardioType, captureHR: Bool = false) {
+    init(plan: IntervalPlan, saveType: CardioType, captureHR: Bool = false,
+         onSaved: @escaping (CardioWorkout) -> Void = { _ in }) {
         self.plan = plan
         self.saveType = saveType
         self.captureHR = captureHR
+        self.onSaved = onSaved
         _runner = State(initialValue: IntervalRunner(plan: plan))
     }
 
@@ -42,6 +47,7 @@ struct IntervalView: View {
             WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
         } else {
             runnerView
+                .keepAwake()
                 .onAppear { runner.restart() }
         }
     }
@@ -207,6 +213,7 @@ struct IntervalView: View {
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                               healthKitWorkoutUUID: hkID, in: context)
         if let saved {
+            onSaved(saved)
             finishedSummary = WorkoutSummaryData.from(cardio: saved)
         } else {
             dismiss()

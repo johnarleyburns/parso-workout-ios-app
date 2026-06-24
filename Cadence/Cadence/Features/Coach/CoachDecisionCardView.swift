@@ -97,7 +97,7 @@ struct CoachDecisionCardView: View {
             }
             .foregroundStyle(.white)
             .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
-            .accessibilityIdentifier("coach.card.state")
+            .accessibilityIdentifier("home.coachStart")
             .accessibilityLabel(ctaLabel)
 
             HStack {
@@ -199,12 +199,12 @@ struct CoachDecisionCardView: View {
     // MARK: - CTA
 
     private var ctaLabel: String {
+        // Every trainable recommendation reads "Start" and routes to that
+        // workout's setup surface first (never an active recorder). Only rest /
+        // recovery keep bespoke copy because they aren't a workout launch.
         switch decision.primary.kind {
         case .rest: return "Take a rest day"
         case .recovery: return "Start recovery"
-        case .easyAerobic: return "Start easy cardio"
-        case .moderateAerobic: return "Start cardio"
-        case .strength: return "Start workout"
         default: return "Start"
         }
     }

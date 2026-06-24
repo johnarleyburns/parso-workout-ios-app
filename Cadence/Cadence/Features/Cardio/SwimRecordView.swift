@@ -7,6 +7,10 @@ import CadenceCore
 /// laps, then End to save. Deliberately minimal, per "just time and number of
 /// target laps, nothing complex."
 struct SwimRecordView: View {
+    /// Notifies the presenter (Home) the instant a workout is persisted, so its
+    /// history-derived surfaces refresh without waiting for app re-entry.
+    var onSaved: (CardioWorkout) -> Void = { _ in }
+
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var model
@@ -41,6 +45,7 @@ struct SwimRecordView: View {
             }
         }
         .interactiveDismissDisabled(started)
+        .keepAwake(started && finishedSummary == nil)
         .onReceive(tick) { now = $0 }
     }
 
@@ -119,6 +124,7 @@ struct SwimRecordView: View {
                 start: startDate, end: end,
                 laps: laps, targetLaps: targetLaps,
                 healthKitWorkoutUUID: hkID, in: context) {
+                onSaved(saved)
                 finishedSummary = WorkoutSummaryData.from(cardio: saved)
             } else {
                 dismiss()

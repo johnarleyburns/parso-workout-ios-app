@@ -12,6 +12,9 @@ struct RecordCardioView: View {
     var initialType: CardioType? = nil
     var customTitle: String? = nil
     var captureHR = false
+    /// Notifies the presenter (Home) the instant a workout is persisted, so its
+    /// history-derived surfaces refresh without waiting for app re-entry.
+    var onSaved: (CardioWorkout) -> Void = { _ in }
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -50,6 +53,7 @@ struct RecordCardioView: View {
         }
         .onReceive(timer) { _ in recorder?.tick() }
         .interactiveDismissDisabled(started)
+        .keepAwake(started && finishedSummary == nil)
         .onAppear { if let t = initialType, !started { startRecorder(t) } }
     }
 
@@ -143,6 +147,7 @@ struct RecordCardioView: View {
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                                healthKitWorkoutUUID: hkID, in: context)
         if let saved {
+            onSaved(saved)
             finishedSummary = WorkoutSummaryData.from(cardio: saved)
         } else {
             dismiss()

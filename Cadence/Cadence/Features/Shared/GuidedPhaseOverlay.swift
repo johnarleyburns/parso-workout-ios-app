@@ -79,6 +79,8 @@ struct GuidedPhaseOverlay: View {
             .foregroundStyle(.white)
             .padding()
         }
+        // Keep the screen awake through the whole warm-up / cool-down timer.
+        .keepAwake()
         // Beep sequence as the phase begins (entering warm-up / cool-down).
         .onAppear { WorkoutCues.startBeepSequence(enabled: soundsEnabled) }
         .onReceive(tick) { _ in

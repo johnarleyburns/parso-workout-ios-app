@@ -174,6 +174,84 @@ final class CoachDecisionEngineTests: XCTestCase {
                       "Should pick the most recent (walk), got: \(cardioFact?.detail ?? "nil")")
     }
 
+    /// Home supplies events newest-first (cardio block descending). The engine must
+    /// pick the most recent cardio by end date, not the first in the array.
+    func testObservedFactsPickNewestCardioWhenEventsAreNewestFirst() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let newWalk = makeCardioEvent(context: ctx, type: .walk, date: now.addingTimeInterval(-3600),
+                                      duration: 2400, avgHR: 110)
+        let oldRun = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-2 * 86400),
+                                     duration: 1800, avgHR: 150)
+        let facts = CoachFacts.make(from: [newWalk, oldRun], goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+        let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
+        XCTAssertNotNil(cardioFact)
+        XCTAssertTrue(cardioFact!.detail?.contains("Walk") ?? false,
+                      "Should pick the most recent cardio (walk), got: \(cardioFact?.detail ?? "nil")")
+    }
+
+    /// Home supplies strength events newest-first. Pick newest strength by end date.
+    func testObservedFactsPickNewestStrengthWhenHomeSuppliesNewestFirst() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let newBench = try makeStrengthEvent(context: ctx, name: "Bench Press", primaryMuscles: ["chest"],
+                                             date: now.addingTimeInterval(-1 * 86400))
+        let oldSquat = try makeStrengthEvent(context: ctx, name: "Back Squat", primaryMuscles: ["quadriceps"],
+                                             date: now.addingTimeInterval(-2 * 86400))
+        let facts = CoachFacts.make(from: [newBench, oldSquat], goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+        let strengthFact = decision.observedFacts.first { $0.kind == .lastStrength }
+        XCTAssertNotNil(strengthFact)
+        XCTAssertTrue(strengthFact!.detail?.contains("Bench") ?? false,
+                      "Should pick the most recent strength (bench), got: \(strengthFact?.detail ?? "nil")")
+    }
+
+    /// Home-like ordering: all strength newest-to-oldest, then all cardio
+    /// newest-to-oldest. The engine must pick the newest of each by end date.
+    func testObservedFactsPickNewestForHomeMixedOrdering() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let newBench = try makeStrengthEvent(context: ctx, name: "Bench Press", primaryMuscles: ["chest"],
+                                             date: now.addingTimeInterval(-1 * 86400))
+        let oldSquat = try makeStrengthEvent(context: ctx, name: "Back Squat", primaryMuscles: ["quadriceps"],
+                                             date: now.addingTimeInterval(-2 * 86400))
+        let newWalk = makeCardioEvent(context: ctx, type: .walk, date: now.addingTimeInterval(-3600),
+                                      duration: 2400, avgHR: 110)
+        let oldRun = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-2 * 86400),
+                                     duration: 1800, avgHR: 150)
+        // Strength block (newest→oldest) then cardio block (newest→oldest).
+        let facts = CoachFacts.make(from: [newBench, oldSquat, newWalk, oldRun],
+                                    goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+        let strengthFact = decision.observedFacts.first { $0.kind == .lastStrength }
+        let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
+        XCTAssertTrue(strengthFact?.detail?.contains("Bench") ?? false,
+                      "newest strength should be bench, got: \(strengthFact?.detail ?? "nil")")
+        XCTAssertTrue(cardioFact?.detail?.contains("Walk") ?? false,
+                      "newest cardio should be walk, got: \(cardioFact?.detail ?? "nil")")
+    }
+
+    /// A future-dated event (e.g. clock skew / scheduled import) must never be
+    /// treated as the last event or counted in the weekly balance.
+    func testFutureEventsDoNotCountAsLastOrWeeklyBalance() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let pastWalk = makeCardioEvent(context: ctx, type: .walk, date: now.addingTimeInterval(-3600),
+                                       duration: 1800, avgHR: nil)   // moderate ⇒ 30 mod-eq min
+        let futureRun = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(86400),
+                                        duration: 3600, avgHR: 160)  // vigorous ⇒ 120 mod-eq if wrongly counted
+        let facts = CoachFacts.make(from: [futureRun, pastWalk], goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+        let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
+        XCTAssertTrue(cardioFact?.detail?.contains("Walk") ?? false,
+                      "last cardio should be the past walk, not the future run; got: \(cardioFact?.detail ?? "nil")")
+        let modEquiv = facts.weeklyBalance.moderateEquivalentMinutes
+        XCTAssertGreaterThan(modEquiv, 0, "past walk should count")
+        XCTAssertLessThanOrEqual(modEquiv, 35,
+                                 "future run must be excluded from weekly balance; got \(modEquiv) min")
+    }
+
     func testNoEvidenceDuplicationDataNeededForInlineSources() throws {
         let ctx = try makeContext()
         let now = testNow

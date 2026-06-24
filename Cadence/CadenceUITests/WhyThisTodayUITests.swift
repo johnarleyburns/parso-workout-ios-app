@@ -20,6 +20,26 @@ final class WhyThisTodayUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["Policy"].exists)
     }
 
+    /// Coach fact ordering (audio/coach routing plan §B): with the most recent
+    /// strength and cardio both *yesterday* (and older ones last week), "Why this
+    /// today" must surface the yesterday events as last-strength / last-cardio.
+    func testWhyTodaySurfacesYesterdayLastStrengthAndCardio() {
+        let app = XCUIApplication.launched(seeds: ["coachYesterdayMixedHistory"])
+        XCTAssertTrue(app.buttons["coach.card.whyToday"].waitForExistence(timeout: 10))
+        app.buttons["coach.card.whyToday"].tap()
+        _ = app.navigationBars["Why this today"].waitForExistence(timeout: 5)
+
+        let lastStrength = app.descendants(matching: .any)["whyToday.fact.lastStrength"].firstMatch
+        XCTAssertTrue(lastStrength.waitForExistence(timeout: 5), "last strength fact should exist")
+        XCTAssertTrue(lastStrength.label.contains("Bench"),
+                      "last strength should be yesterday's bench, got: \(lastStrength.label)")
+
+        let lastCardio = app.descendants(matching: .any)["whyToday.fact.lastCardio"].firstMatch
+        XCTAssertTrue(lastCardio.waitForExistence(timeout: 5), "last cardio fact should exist")
+        XCTAssertTrue(lastCardio.label.contains("Run"),
+                      "last cardio should be yesterday's run, got: \(lastCardio.label)")
+    }
+
     /// Verify no generic Evidence section when citations are inline.
     func testNoDuplicateEvidenceSection() {
         let app = XCUIApplication.launched(seeds: ["coachAerobicGap"])

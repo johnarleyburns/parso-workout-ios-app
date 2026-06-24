@@ -145,7 +145,7 @@ public enum CoachDecisionEngine {
         // Generate observed facts
         var factsList: [ObservedFact] = []
 
-        if let lastStrength = facts.rolling72hCompletedEvents.last(where: { $0.isStrength }) {
+        if let lastStrength = facts.rolling72hCompletedEvents.filter(\.isStrength).max(by: { $0.end < $1.end }) {
             var exerciseDetails: [String] = []
             if case .strength(let d) = lastStrength.kind, let details = d {
                 exerciseDetails = details.exercises.map(\.exerciseName)
@@ -159,7 +159,7 @@ public enum CoachDecisionEngine {
             ))
         }
 
-        if let lastCardio = facts.rolling72hCompletedEvents.last(where: { $0.isAerobic }) {
+        if let lastCardio = facts.rolling72hCompletedEvents.filter(\.isAerobic).max(by: { $0.end < $1.end }) {
             var cardioDetail = ""
             if case .aerobic(let d) = lastCardio.kind {
                 cardioDetail = "\(d.modality.displayName) · \(Int(d.duration / 60)) min"

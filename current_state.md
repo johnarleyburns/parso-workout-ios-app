@@ -2,13 +2,54 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-23 — Coach Why This Today + Preferences implemented directly on
-`main` (single-phase feature from `plans/field-testing/2026-06-23/`)._
+_Last updated: 2026-06-24 — Audio non-interference + Coach freshness + Coach Start
+routing + screen wakelock, on branch `feat/audio-coach-refresh-routing`
+(`plans/field-testing/2026-06-24/audio-coach-refresh-routing-plan.md`)._
 
 ## Repo / branch
 - Repo: `/Users/arley/github/parso-workout-ios-app`
 - **`main`** = All prior phases + coach-why-today-preferences, merged. Builds + runs clean.
-- **CadenceCore: 337/337 green; iOS build: green; WhyThisTodayUITests: 4/4 green** (verified 2026-06-23).
+- **`feat/audio-coach-refresh-routing`** = this stream (A audio, B coach freshness, C post-save
+  refresh, D Coach Start routing) + screen wakelock. **Not yet committed/merged.**
+- **CadenceCore: 343/343 green; iOS build: green.** New UI tests verified green run
+  non-parallel on a fresh sim: `CoachStartRoutingUITests` (3/3),
+  `WhyThisTodayUITests/testWhyTodaySurfacesYesterdayLastStrengthAndCardio`,
+  `HomeRefreshUITests` (1/1), `P5DoThisUITests` (2/2, rewritten to setup-first).
+
+## What just shipped — Audio / Coach freshness / Coach Start routing / wakelock
+- **A. Non-interrupting audio.** New `WorkoutAudioSession.configureForCues()` (`.ambient` +
+  `.mixWithOthers`, never `.duckOthers`). `WorkoutCues` + `IntervalCues` route all beeps/bells/
+  speech through it; ducking + `notifyOthersOnDeactivation` removed. Background music/podcasts
+  no longer pause or dip during warm-up/exercise/intervals. Grep gate clean (only a doc comment).
+- **B. Coach freshness.** `CoachFacts.make` now builds `completed` as past-only (`end <= now`),
+  sorted ascending; all rolling windows + thisWeek are explicitly lower/upper bounded (future-safe).
+  `CoachDecision` last-strength/last-cardio use `max(by: end)` (newest by end date) instead of
+  `.last(where:)`. Fixes wrong "Why this today" recency when Home supplies events newest-first.
+- **C. Post-save Home refresh.** `HomeView` replaced the unused `coachDayToken` with a read
+  `historyRefreshToken`; `markWorkoutHistoryChanged()` (yields a main-actor turn, then bumps the
+  token) is called from every cardio `onSaved` (Record/Outdoor/Interval/Swim), `LogWorkoutPicker`,
+  HealthKit ingest (when >0), and delete paths. The four cardio views gained an `onSaved` callback.
+  This Week / Coach card / Why-this-today update immediately, no app re-entry.
+- **D. Coach Start routing = setup-first.** CTA copy now "Start" for all trainable picks (rest/
+  recovery keep bespoke copy); CTA id is `home.coachStart`. `launchDecision` routes run/walk/cycle →
+  `CardioGoalSheet`, swim → `SwimRecordView` setup, hiit/**boxing** → `IntervalSetupView`, rowing/
+  other → new `TimerCardioSetupView`, strength → `WorkoutPlanEditor`. Boxing no longer falls back to
+  generic Other cardio.
+- **Wakelock (user request).** New `.keepAwake()` modifier disables auto-lock during live
+  workouts, warm-up, and cool-down (`SessionView`, `RecordCardioView`, `OutdoorCardioView`,
+  `IntervalView`, `SwimRecordView`, `GuidedPhaseOverlay`); restored on disappear.
+- **New files:** `WorkoutAudioSession.swift`, `KeepAwake.swift`, `TimerCardioSetupView.swift`
+  (+`TimerCardioSetup`), `CoachStartRoutingUITests.swift`, `HomeRefreshUITests.swift`.
+- **New seeds:** `coachYesterdayMixedHistory`, `coachBoxingPrimary`, `coachRunPrimary`,
+  `coachStrengthPrimary`. (Note: seed preference JSON `updatedAt` must be a numeric Double, not
+  ISO8601 — the decoder uses the default `.deferredToDate` strategy.)
+- **Tests:** 6 new core tests (CoachFacts ordering/future-safe + CoachDecision newest-by-end).
+- **D4 (optional) skipped:** kept boxing as `AerobicModality.other`; routing works via the
+  `"boxing"` launch payload, so extending the enum/Codable wasn't needed for the fix.
+- **Pre-existing, out of scope:** some older `P3CoachHomeUITests` assert removed card ids
+  (`coach.card.why/target/action/citation`) from a prior card design — those fail independently of
+  this work. The Coach-strength editor→warm-up→logger downstream plumbing is unchanged and not
+  re-tested here.
 
 ## What just shipped — Coach Why This Today + Preferences
 - **`ObservedFact` replaced** with rich model (`Kind`, `title`, `value`, `detail`, `occurredAt`). Last Cardio added. Summary facts use static values, never `Text(date, style: .relative)`.

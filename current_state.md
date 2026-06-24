@@ -32,11 +32,21 @@ routing + screen wakelock, on branch `feat/audio-coach-refresh-routing`
   unaffected (`P3/testTabBarHasThreeTabs` green). Now green: `FR11/testStartWithWarmUpThenSession`,
   `FR11/testWarmUpPauses`, and new `P5/testCoachStrengthStartRunsWarmUpThenLogger` (the full
   Coach plan → warm-up → logger chain), plus routing/setup-first P5 tests.
-- **Pre-existing stale UI tests found (NOT touched — separate from P5):** `FR7/testCountdownPause`
-  and `FR10:70` tap dead `plan.preview.start` (`PlanPreviewView` is defined but never instantiated);
-  `P3/testQuickActionLogOpensPicker` expects `log.strength`/`log.cardio` (actual: `logType.*`);
-  `P3/testQuickActionProgramsNavigates` expects `planning.title`/`planning.view` (actual: `planning`).
-  All fail on the assertion *after* navigation succeeds — trivial id updates, flagged as follow-up.
+- **Pre-existing stale UI tests CLEANED UP.** Found while fixing P5; all now green:
+  - The deeper cause of the FR10/FR7 failures: the guided **warm-up default (5 min) leaked into
+    UI-test mode** (only `preWorkoutCountdown` was zeroed in `-uiTest`, not `warmupMinutes`), so any
+    `editor.start` from a library preset ran a 5-min warm-up and the session never appeared in 25s.
+    Fix: zero `warmupMinutes` in `-uiTest` with a `-warmupMinutes N` opt-in (mirrors `-preCountdown`).
+  - `FR11/testStartWithWarmUpThenSession` + `testWarmUpPauses` now opt in via `-warmupMinutes 1`.
+  - `FR10/testStrengthLibraryCustomRepScheme`: dead `plan.preview.start` → `editor.start`
+    (`customRep.continue` already routes to the plan editor).
+  - `FR7/testCountdownPause`: rerouted off dead `plan.preview.start` to Quick Start → editor → the
+    get-ready countdown (with `-preCountdown 30`). Also confirms the RootTabView fix un-clobbered
+    `countdown.*` ids, not just `warmup.*`.
+  - `P3/testQuickActionLogOpensPicker`: `log.strength`/`log.cardio` → `logType.strength`/`logType.other`.
+  - `P3/testQuickActionProgramsNavigates`: `planning.title`/`planning.view` → `planning`.
+  - Deleted dead `PlanPreviewView` (defined but never instantiated; was the only thing referencing
+    `plan.preview.*`).
 
 ## What just shipped — Audio / Coach freshness / Coach Start routing / wakelock
 - **A. Non-interrupting audio.** New `WorkoutAudioSession.configureForCues()` (`.ambient` +

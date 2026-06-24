@@ -46,7 +46,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
     // Choosing "Start with Warm-Up" shows a guided warm-up timer; Skip opens the
     // blank session.
     func testStartWithWarmUpThenSession() {
-        let app = XCUIApplication.launched()
+        let app = XCUIApplication.launched(extraArgs: ["-warmupMinutes", "1"])
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
         XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
@@ -60,7 +60,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
 
     // The warm-up is pausable (the count freezes while paused).
     func testWarmUpPauses() {
-        let app = XCUIApplication.launched()
+        let app = XCUIApplication.launched(extraArgs: ["-warmupMinutes", "1"])
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
         XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")

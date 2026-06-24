@@ -25,10 +25,9 @@ final class FR7LifecycleUITests: CadenceUITestCase {
     func testCountdownPause() {
         let app = XCUIApplication.launched(extraArgs: ["-preCountdown", "30"])
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
-        // Quick Start is now truly immediate (no countdown), so exercise the
-        // get-ready countdown via a library preset, which still honors it.
-        XCTAssertTrue(app.buttons["weights.library.preset-5x5-1a"].waitTap(), "5×5 library preset")
-        XCTAssertTrue(app.buttons["plan.preview.start"].waitTap(), "Start preset")
+        // A strength start runs the get-ready countdown before opening the session.
+        XCTAssertTrue(app.buttons["weights.quickStart"].waitTap(), "Quick Start")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
 
         let remaining = app.staticTexts["countdown.remaining"]
         XCTAssertTrue(remaining.waitForExistence(timeout: 25), "countdown should render")

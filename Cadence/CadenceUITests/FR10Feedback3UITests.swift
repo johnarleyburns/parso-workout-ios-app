@@ -67,7 +67,7 @@ final class FR10Feedback3UITests: CadenceUITestCase {
                       "the per-set editor should appear")
         app.buttons["customRep.add"].tap() // grow to 4 sets
         XCTAssertTrue(app.buttons["customRep.continue"].waitTap(), "Preview the custom sets")
-        XCTAssertTrue(app.buttons["plan.preview.start"].waitTap(), "Start the custom scheme")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start the custom scheme")
         XCTAssertTrue(app.staticTexts["session.rx.Deadlift"].waitForExistence(timeout: 25),
                       "the custom-scheme session should be planned with Deadlift")
     }

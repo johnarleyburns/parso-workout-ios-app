@@ -78,8 +78,8 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.scrollToHittableAndTap("home.logWorkout"), "Log chip")
         // The log picker offers both strength and cardio log options.
-        XCTAssertTrue(app.buttons["log.strength"].waitForExistence(timeout: 10)
-                      || app.buttons["log.cardio"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["logType.strength"].waitForExistence(timeout: 10)
+                      || app.buttons["logType.other"].waitForExistence(timeout: 10),
                       "log picker should open")
     }
 
@@ -87,8 +87,7 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.scrollToHittableAndTap("home.planning"), "Programs chip")
         // Should navigate to the programs/routines planning surface.
-        XCTAssertTrue(app.staticTexts["planning.title"].waitForExistence(timeout: 10)
-                      || app.descendants(matching: .any)["planning.view"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["planning"].waitForExistence(timeout: 10),
                       "should navigate to Programs & Routines")
     }
 

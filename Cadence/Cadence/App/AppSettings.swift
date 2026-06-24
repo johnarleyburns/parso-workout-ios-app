@@ -81,6 +81,13 @@ final class AppSettings {
             } else {
                 self.preWorkoutCountdown = 0
             }
+            // The guided warm-up is also off by default in UI tests so editor-start
+            // flows land on the session fast; opt in with `-warmupMinutes N`.
+            if let i = a.firstIndex(of: "-warmupMinutes"), i + 1 < a.count, let n = Int(a[i + 1]) {
+                self.warmupMinutes = n
+            } else {
+                self.warmupMinutes = 0
+            }
             if a.contains("-enableHRMonitoring") {
                 self.useHRMonitoring = true
             }

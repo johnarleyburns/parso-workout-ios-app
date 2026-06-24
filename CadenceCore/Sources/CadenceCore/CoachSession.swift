@@ -41,7 +41,7 @@ public struct CoachSession: Sendable, Equatable, Identifiable {
     }
 
     public enum AerobicModality: String, Sendable, Equatable {
-        case walk, run, cycle, swim, row, other
+        case walk, run, cycle, swim, row, boxing, other
     }
 
     public enum AerobicIntensity: String, Sendable, Equatable {
@@ -261,7 +261,7 @@ extension CoachSession {
             title: "Boxing conditioning",
             subtitle: "20–30 min · moderate rounds",
             durationMinutes: 25,
-            modality: .other,
+            modality: .boxing,
             intensity: .moderate,
             trainingLoadTags: ["aerobic", "moderate", "highImpact"],
             citationIds: ["ekelundActivityMortality2016"],

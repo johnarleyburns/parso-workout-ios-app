@@ -9,12 +9,24 @@ routing + screen wakelock, on branch `feat/audio-coach-refresh-routing`
 ## Repo / branch
 - Repo: `/Users/arley/github/parso-workout-ios-app`
 - **`main`** = All prior phases + coach-why-today-preferences, merged. Builds + runs clean.
-- **`feat/audio-coach-refresh-routing`** = this stream (A audio, B coach freshness, C post-save
-  refresh, D Coach Start routing) + screen wakelock. **Not yet committed/merged.**
-- **CadenceCore: 343/343 green; iOS build: green.** New UI tests verified green run
-  non-parallel on a fresh sim: `CoachStartRoutingUITests` (3/3),
-  `WhyThisTodayUITests/testWhyTodaySurfacesYesterdayLastStrengthAndCardio`,
-  `HomeRefreshUITests` (1/1), `P5DoThisUITests` (2/2, rewritten to setup-first).
+- Audio/coach/refresh/routing/wakelock stream merged to `main` (`0e9044a`, CI green), plus the
+  D4 cardio-type-fidelity follow-up below.
+- **CadenceCore: 346/346 green; iOS build: green.** UI tests verified green non-parallel on a
+  fresh sim: `CoachStartRoutingUITests` (3/3), `WhyThisTodayUITests/...YesterdayLast...`,
+  `HomeRefreshUITests` (1/1), `P5DoThisUITests` (2/2, setup-first).
+
+## What just shipped — D4 cardio-type fidelity + a found pre-existing bug
+- **D4 implemented (was deferred).** Boxing now carries its own `CoachSession.AerobicModality.boxing`
+  (added to `AerobicModalityStorage` + conversions, Codable-safe), so selecting boxing records a
+  **boxing** preference (not `.other`) and Coach recommends it next. Same fidelity holds for run /
+  swim / cycle / row. `CoachAlternativesView` icon + impact-pill switches handle `.boxing`.
+  3 new core tests (boxing/swim remember→recommend loop + Codable round-trip). 346/346 green.
+- **Found pre-existing bug (NOT shipped/fixed):** the editor → warm-up → logger flow is broken on
+  `main` — `FR11Feedback4UITests/testStartWithWarmUpThenSession` fails on the pre-work commit
+  `23c5e65` too (the `warmupActive` GuidedPhaseOverlay never renders after `editor.start`). This
+  blocked a "Coach plan → short warm-up → logger" test. Routing/setup-first is correct + verified;
+  the warm-up overlay rendering needs a dedicated fix (candidate: present it as a `.fullScreenCover`
+  rather than a ZStack sibling). Left as a follow-up.
 
 ## What just shipped — Audio / Coach freshness / Coach Start routing / wakelock
 - **A. Non-interrupting audio.** New `WorkoutAudioSession.configureForCues()` (`.ambient` +
@@ -44,8 +56,8 @@ routing + screen wakelock, on branch `feat/audio-coach-refresh-routing`
   `coachStrengthPrimary`. (Note: seed preference JSON `updatedAt` must be a numeric Double, not
   ISO8601 — the decoder uses the default `.deferredToDate` strategy.)
 - **Tests:** 6 new core tests (CoachFacts ordering/future-safe + CoachDecision newest-by-end).
-- **D4 (optional) skipped:** kept boxing as `AerobicModality.other`; routing works via the
-  `"boxing"` launch payload, so extending the enum/Codable wasn't needed for the fix.
+- **D4:** initially deferred (boxing as `.other`), then implemented as a follow-up — boxing now
+  has its own `.boxing` modality for full preference fidelity (see the D4 section above).
 - **Pre-existing, out of scope:** some older `P3CoachHomeUITests` assert removed card ids
   (`coach.card.why/target/action/citation`) from a prior card design — those fail independently of
   this work. The Coach-strength editor→warm-up→logger downstream plumbing is unchanged and not

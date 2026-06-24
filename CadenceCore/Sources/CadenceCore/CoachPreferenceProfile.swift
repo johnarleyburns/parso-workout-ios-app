@@ -138,7 +138,7 @@ public struct AerobicPreference: Codable, Equatable, Sendable {
 }
 
 public enum AerobicModalityStorage: String, Codable, Sendable, Equatable {
-    case walk, run, cycle, swim, row, other
+    case walk, run, cycle, swim, row, boxing, other
 
     public init(from sessionModality: CoachSession.AerobicModality) {
         switch sessionModality {
@@ -147,6 +147,7 @@ public enum AerobicModalityStorage: String, Codable, Sendable, Equatable {
         case .cycle: self = .cycle
         case .swim: self = .swim
         case .row: self = .row
+        case .boxing: self = .boxing
         case .other: self = .other
         }
     }
@@ -158,6 +159,7 @@ public enum AerobicModalityStorage: String, Codable, Sendable, Equatable {
         case .cycle: return .cycle
         case .swim: return .swim
         case .row: return .row
+        case .boxing: return .boxing
         case .other: return .other
         }
     }

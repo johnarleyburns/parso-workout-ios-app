@@ -296,6 +296,70 @@ final class CoachDecisionEngineTests: XCTestCase {
                        "With cycle preference, primary should be cycle. Got: \(decision.primary.modality?.rawValue ?? "nil")")
     }
 
+    // MARK: - Cardio-type fidelity (preferences remember the actual modality)
+
+    /// Aerobic floor behind, strength floor met, no lower-body collision — so any
+    /// moderate-aerobic modality is eligible and can win on preference.
+    private func aerobicGapFacts(_ ctx: ModelContext, _ now: Date) throws -> CoachFacts {
+        let s1 = try makeStrengthEvent(context: ctx, name: "Bench Press", primaryMuscles: ["chest"],
+                                       date: now.addingTimeInterval(-2 * 86400))
+        let s2 = try makeStrengthEvent(context: ctx, name: "Barbell Row", primaryMuscles: ["back"],
+                                       date: now.addingTimeInterval(-3 * 86400))
+        return CoachFacts.make(from: [s1, s2], goal: .strength, experience: .intermediate, now: now)
+    }
+
+    /// Boxing must carry its OWN modality (not `.other`), so selecting it records a
+    /// boxing preference and Coach recommends boxing next.
+    func testSelectingBoxingRemembersBoxingModalityNotOther() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let facts = try aerobicGapFacts(ctx, now)
+        let candidates = CoachSession.candidates(for: facts)
+        let boxing = candidates.first { $0.id == "aerobic.moderateBoxing" }
+        XCTAssertEqual(boxing?.modality, .boxing, "boxing candidate must carry its true modality")
+
+        var profile = CoachPreferenceProfile.empty
+        profile.recordSelection(boxing!, from: candidates)
+        XCTAssertEqual(profile.aerobicPreferences.first?.modality, .boxing,
+                       "selecting boxing must store a boxing preference, never .other")
+
+        let decision = CoachDecisionEngine.run(facts, profile: profile)
+        XCTAssertEqual(decision.primary.modality, .boxing,
+                       "with a remembered boxing preference, Coach should recommend boxing")
+    }
+
+    /// Picking a modality that isn't the default winner (swim) must be remembered
+    /// and recommended next — proving cardio-type fidelity for any modality.
+    func testSelectingSwimRemembersAndRecommendsSwim() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let facts = try aerobicGapFacts(ctx, now)
+        let candidates = CoachSession.candidates(for: facts)
+        let swim = candidates.first { $0.id == "aerobic.moderateSwim" }!
+
+        // Default (no preference) Coach does not pick swim.
+        XCTAssertNotEqual(CoachDecisionEngine.run(facts).primary.modality, .swim)
+
+        var profile = CoachPreferenceProfile.empty
+        profile.recordSelection(swim, from: candidates)
+        XCTAssertEqual(profile.aerobicPreferences.first?.modality, .swim)
+
+        XCTAssertEqual(CoachDecisionEngine.run(facts, profile: profile).primary.modality, .swim,
+                       "Coach must remember the swim preference and recommend it next")
+    }
+
+    /// The stored preference survives a Codable round-trip (UserDefaults storage),
+    /// so boxing fidelity isn't lost on relaunch.
+    func testBoxingPreferenceSurvivesCodableRoundTrip() throws {
+        var profile = CoachPreferenceProfile.empty
+        profile.aerobicPreferences = [
+            AerobicPreference(intent: .moderateAerobic, modality: .boxing, score: 2, updatedAt: Date())
+        ]
+        let data = try JSONEncoder().encode(profile)
+        let decoded = try JSONDecoder().decode(CoachPreferenceProfile.self, from: data)
+        XCTAssertEqual(decoded.aerobicPreferences.first?.modality, .boxing)
+    }
+
     func testPreferenceDoesNotOverrideRecoveryEligibility() throws {
         let ctx = try makeContext()
         let now = testNow

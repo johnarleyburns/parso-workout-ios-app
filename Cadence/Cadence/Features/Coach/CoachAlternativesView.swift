@@ -100,6 +100,7 @@ struct CoachAlternativesView: View {
         case .cycle: "figure.outdoor.cycle"
         case .swim: "figure.pool.swim"
         case .row: "figure.rower"
+        case .boxing: "figure.boxing"
         case .other, nil:
             switch session.kind {
             case .strength: "dumbbell.fill"
@@ -158,6 +159,7 @@ struct CoachAlternativesView: View {
         case .walk, .swim: ("low impact", .green)
         case .cycle, .row: ("low impact", .green)
         case .run: ("moderate impact", .orange)
+        case .boxing: ("high impact", .orange)
         case .other: ("varied", .secondary)
         }
         return Text(label)

@@ -47,6 +47,11 @@ routing + screen wakelock, on branch `feat/audio-coach-refresh-routing`
   - `P3/testQuickActionProgramsNavigates`: `planning.title`/`planning.view` → `planning`.
   - Deleted dead `PlanPreviewView` (defined but never instantiated; was the only thing referencing
     `plan.preview.*`).
+  - **Anti-flake hardening:** the FR11/FR7 sheet-open taps used a single `waitTap()` that drops
+    silently on a degraded simulator (element tapped, sheet never opens). Added a `tapToReveal(src,
+    dst)` helper (re-taps the source until the destination appears, only while the source is still
+    hittable so it never taps through an opened surface) and routed every FR11/FR7
+    navigation/transition tap through it. Green ×2 back-to-back on a fresh sim.
 
 ## What just shipped — Audio / Coach freshness / Coach Start routing / wakelock
 - **A. Non-interrupting audio.** New `WorkoutAudioSession.configureForCues()` (`.ambient` +

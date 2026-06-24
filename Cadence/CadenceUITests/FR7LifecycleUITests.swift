@@ -24,13 +24,12 @@ final class FR7LifecycleUITests: CadenceUITestCase {
     // and Skip still starts the workout.
     func testCountdownPause() {
         let app = XCUIApplication.launched(extraArgs: ["-preCountdown", "30"])
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
         // A strength start runs the get-ready countdown before opening the session.
-        XCTAssertTrue(app.buttons["weights.quickStart"].waitTap(), "Quick Start")
-        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
+        XCTAssertTrue(app.tapToReveal("home.startWorkout", "weights.quickStart"), "Start Workout")
+        XCTAssertTrue(app.tapToReveal("weights.quickStart", "editor.start"), "Quick Start")
+        XCTAssertTrue(app.tapToReveal("editor.start", "countdown.remaining"), "countdown should render")
 
         let remaining = app.staticTexts["countdown.remaining"]
-        XCTAssertTrue(remaining.waitForExistence(timeout: 25), "countdown should render")
 
         // Pause freezes the count.
         XCTAssertTrue(app.buttons["countdown.pause"].waitTap(), "Pause")
@@ -40,8 +39,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
 
         // Resume, then Skip → the session opens.
         XCTAssertTrue(app.buttons["countdown.pause"].waitTap(), "Resume")
-        XCTAssertTrue(app.buttons["countdown.skip"].waitTap(), "Skip")
-        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.tapToReveal("countdown.skip", "session.addExercise"),
                       "skipping the countdown should open the session")
     }
 

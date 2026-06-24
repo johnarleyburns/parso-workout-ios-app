@@ -47,26 +47,22 @@ final class FR11Feedback4UITests: CadenceUITestCase {
     // blank session.
     func testStartWithWarmUpThenSession() {
         let app = XCUIApplication.launched(extraArgs: ["-warmupMinutes", "1"])
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
-        XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
-        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
-
-        XCTAssertTrue(app.staticTexts["warmup.remaining"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.tapToReveal("home.startWorkout", "weights.warmupStart"), "Start Workout")
+        XCTAssertTrue(app.tapToReveal("weights.warmupStart", "editor.start"), "Start with Warm-Up")
+        XCTAssertTrue(app.tapToReveal("editor.start", "warmup.remaining"),
                       "the warm-up timer should appear")
-        XCTAssertTrue(app.buttons["warmup.skip"].waitTap(), "Skip the warm-up")
-        XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.tapToReveal("warmup.skip", "session.addExercise"),
                       "finishing the warm-up should open the session")
     }
 
     // The warm-up is pausable (the count freezes while paused).
     func testWarmUpPauses() {
         let app = XCUIApplication.launched(extraArgs: ["-warmupMinutes", "1"])
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(), "Start Workout")
-        XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap(), "Start with Warm-Up")
-        XCTAssertTrue(app.buttons["editor.start"].waitTap(), "Start from editor")
+        XCTAssertTrue(app.tapToReveal("home.startWorkout", "weights.warmupStart"), "Start Workout")
+        XCTAssertTrue(app.tapToReveal("weights.warmupStart", "editor.start"), "Start with Warm-Up")
+        XCTAssertTrue(app.tapToReveal("editor.start", "warmup.remaining"), "warm-up timer")
 
         let remaining = app.staticTexts["warmup.remaining"]
-        XCTAssertTrue(remaining.waitForExistence(timeout: 25), "warm-up timer")
         XCTAssertTrue(app.buttons["warmup.pause"].waitTap(), "Pause")
         let frozen = remaining.label
         Thread.sleep(forTimeInterval: 2.5)

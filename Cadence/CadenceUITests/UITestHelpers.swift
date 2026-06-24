@@ -51,6 +51,26 @@ extension XCUIApplication {
         return true
     }
 
+    /// Taps `sourceID` and waits until it reveals `destID`, re-tapping if the tap
+    /// is dropped on a slow/degraded simulator (the element is tapped but the
+    /// resulting sheet/overlay never opens). Re-taps only while the source is
+    /// still hittable, so it never taps *through* the surface it just opened —
+    /// once the destination is presenting, the source is covered and we simply
+    /// wait. Returns whether `destID` appeared.
+    @discardableResult
+    func tapToReveal(_ sourceID: String, _ destID: String,
+                     attempts: Int = 5, perAttempt: TimeInterval = 5) -> Bool {
+        let source = buttons[sourceID]
+        let dest = descendants(matching: .any)[destID]
+        guard source.waitForExistence(timeout: 15) else { return false }
+        for _ in 0..<attempts {
+            if dest.exists { return true }
+            if source.isHittable { source.tap() }
+            if dest.waitForExistence(timeout: perAttempt) { return true }
+        }
+        return dest.exists
+    }
+
     /// Navigates from anywhere back to the Home launchpad, then into the
     /// destination that used to be a tab (field-testing §01).
     func goToTab(_ label: String) {

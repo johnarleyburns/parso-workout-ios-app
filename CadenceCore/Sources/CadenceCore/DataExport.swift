@@ -10,18 +10,21 @@ public struct CadenceExport: Codable, Equatable, Sendable {
     public var exportedAt: Date
     public var sessions: [ExportSession]
     public var cardio: [ExportCardio]
+    public var coachPreferences: ExportCoachPreferences?
 
     public init(version: Int = CadenceExport.currentVersion,
                 exportedAt: Date = Date(),
                 sessions: [ExportSession],
-                cardio: [ExportCardio] = []) {
+                cardio: [ExportCardio] = [],
+                coachPreferences: ExportCoachPreferences? = nil) {
         self.version = version
         self.exportedAt = exportedAt
         self.sessions = sessions
         self.cardio = cardio
+        self.coachPreferences = coachPreferences
     }
 
-    public static let currentVersion = 1
+    public static let currentVersion = 2
 }
 
 public struct ExportSession: Codable, Equatable, Sendable {
@@ -73,6 +76,109 @@ public struct ExportCardio: Codable, Equatable, Sendable {
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.avgHeartRate = avgHeartRate; self.source = source
+    }
+}
+
+// MARK: - Coach preference export DTOs (v2)
+
+public struct ExportCoachPreferences: Codable, Equatable, Sendable {
+    public var profileVersion: Int
+    public var aerobicPreferences: [ExportAerobicPreference]
+    public var strengthPreferences: [ExportStrengthPreference]
+    public var avoidedTags: [String]
+    public var selectionEvents: [ExportCoachPreferenceEvent]
+
+    public init(profileVersion: Int,
+                aerobicPreferences: [ExportAerobicPreference],
+                strengthPreferences: [ExportStrengthPreference],
+                avoidedTags: [String],
+                selectionEvents: [ExportCoachPreferenceEvent]) {
+        self.profileVersion = profileVersion
+        self.aerobicPreferences = aerobicPreferences
+        self.strengthPreferences = strengthPreferences
+        self.avoidedTags = avoidedTags
+        self.selectionEvents = selectionEvents
+    }
+}
+
+public struct ExportAerobicPreference: Codable, Equatable, Sendable {
+    public var intent: String
+    public var modality: String
+    public var score: Int
+    public var updatedAt: Date
+
+    public init(intent: String, modality: String, score: Int, updatedAt: Date) {
+        self.intent = intent; self.modality = modality; self.score = score; self.updatedAt = updatedAt
+    }
+}
+
+public struct ExportStrengthPreference: Codable, Equatable, Sendable {
+    public var pattern: String
+    public var exerciseName: String
+    public var score: Int
+    public var updatedAt: Date
+
+    public init(pattern: String, exerciseName: String, score: Int, updatedAt: Date) {
+        self.pattern = pattern; self.exerciseName = exerciseName; self.score = score; self.updatedAt = updatedAt
+    }
+}
+
+public struct ExportCoachPreferenceEvent: Codable, Equatable, Sendable {
+    public var selectedSessionId: String
+    public var selectedTitle: String
+    public var selectedKind: String
+    public var selectedModality: String?
+    public var intent: String
+    public var alternativeIdsShown: [String]
+    public var createdAt: Date
+
+    public init(selectedSessionId: String, selectedTitle: String,
+                selectedKind: String, selectedModality: String?,
+                intent: String, alternativeIdsShown: [String],
+                createdAt: Date) {
+        self.selectedSessionId = selectedSessionId
+        self.selectedTitle = selectedTitle
+        self.selectedKind = selectedKind
+        self.selectedModality = selectedModality
+        self.intent = intent
+        self.alternativeIdsShown = alternativeIdsShown
+        self.createdAt = createdAt
+    }
+}
+
+public extension CoachPreferenceProfile {
+    var exportDTO: ExportCoachPreferences {
+        ExportCoachPreferences(
+            profileVersion: version,
+            aerobicPreferences: aerobicPreferences.map { pref in
+                ExportAerobicPreference(
+                    intent: pref.intent.rawValue,
+                    modality: pref.modality.rawValue,
+                    score: pref.score,
+                    updatedAt: pref.updatedAt
+                )
+            },
+            strengthPreferences: strengthPreferences.map { pref in
+                ExportStrengthPreference(
+                    pattern: pref.pattern.rawValue,
+                    exerciseName: pref.exerciseName,
+                    score: pref.score,
+                    updatedAt: pref.updatedAt
+                )
+            },
+            avoidedTags: avoidedTags,
+            selectionEvents: selectionEvents.map { event in
+                ExportCoachPreferenceEvent(
+                    selectedSessionId: event.selectedSessionId,
+                    selectedTitle: event.selectedTitle,
+                    selectedKind: event.selectedKind.rawValue,
+                    selectedModality: event.selectedModality?.rawValue,
+                    intent: event.intent.rawValue,
+                    alternativeIdsShown: event.alternativeIdsShown,
+                    createdAt: event.createdAt
+                )
+            }
+        )
     }
 }
 

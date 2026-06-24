@@ -82,17 +82,6 @@ extension XCUIApplication {
     }
 
     /// Enters a weight on the custom numeric keypad popup (feedback batch 6 item 2,
-    /// which replaced the Form-style set editor). Waits for the big `set.weight`
-    /// display, optionally clears the pre-filled entry, then taps each digit/dot.
-    func keypadEnter(_ value: String, clear: Bool = false) {
-        XCTAssertTrue(staticTexts["set.weight"].waitForExistence(timeout: 25), "weight keypad")
-        if clear { buttons["keypad.clear"].tap() }
-        for ch in value {
-            let id = ch == "." ? "keypad.dot" : "keypad.k.\(ch)"
-            buttons[id].tap()
-        }
-    }
-
     /// Enters a weight into the inline weight text field and logs the set via
     /// the columnar checkmark button (redesign A3).
     func recordKeypadSet(_ value: String, clear: Bool = false) {
@@ -107,7 +96,7 @@ extension XCUIApplication {
         let field = textFields["inline.weight"]
         if field.exists { field.tap() }
         XCTAssertTrue(field.waitForExistence(timeout: 25), "inline weight field")
-        if clear { field.tap(); field.typeText(String(repeating: XCUIKeyboardKeyDelete.rawValue, count: 10)) }
+        if clear { field.tap(); field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10)) }
         field.typeText(value)
     }
 

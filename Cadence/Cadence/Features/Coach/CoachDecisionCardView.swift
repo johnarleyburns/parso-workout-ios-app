@@ -160,7 +160,7 @@ struct CoachDecisionCardView: View {
     }
 
     private var heroSubtitle: String {
-        let recent = decision.observedFacts.first?.label ?? ""
+        let recent = decision.observedFacts.first.map { "\($0.title): \($0.value)" } ?? ""
         if hasRecentStrength && decision.primary.kind != .strength {
             let exercises = recentlyTrainedExercises()
             if exercises.isEmpty { return recent }

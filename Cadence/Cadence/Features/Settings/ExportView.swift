@@ -2,9 +2,10 @@ import SwiftUI
 import CadenceCore
 import UniformTypeIdentifiers
 
-/// Full data export + JSON restore (FR-6.2).
+/// Full data export + JSON restore (FR-6.2). Includes Coach preferences.
 struct ExportView: View {
     @Environment(\.modelContext) private var context
+    @Environment(AppSettings.self) private var settings
 
     enum Fmt: String, CaseIterable, Identifiable { case json = "JSON", csv = "CSV"; var id: String { rawValue } }
     @State private var format: Fmt = .json
@@ -36,7 +37,7 @@ struct ExportView: View {
             } header: {
                 Text("Export")
             } footer: {
-                Text("Your full history. JSON round-trips back into Cladiron; CSV opens in any spreadsheet.")
+                Text("Includes workout history, cardio history, and Coach preferences learned from alternatives you selected. JSON round-trips back into Cladiron; CSV opens in any spreadsheet.")
             }
 
             Section {
@@ -63,7 +64,9 @@ struct ExportView: View {
     }
 
     private func rebuild() {
-        guard let export = try? WorkoutRepository.buildExport(context) else { preview = ""; return }
+        guard let export = try? WorkoutRepository.buildExport(context,
+                    coachPreferences: settings.coachPreferenceProfile.exportDTO)
+        else { preview = ""; return }
         switch format {
         case .json:
             preview = (try? DataExport.encodeJSON(export)).flatMap { String(data: $0, encoding: .utf8) } ?? ""

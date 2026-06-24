@@ -42,8 +42,6 @@
 		};
 /* End PBXContainerItemProxy section */
 
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
 		8D78A4F52FD282B500AE7C2F /* Cadence.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cadence.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D78A5052FD282B700AE7C2F /* CadenceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CadenceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -504,7 +502,6 @@
 			target = 8D78A5252FD286E200AE7C2F /* Cadence Watch App Watch App */;
 			targetProxy = 8D78A5402FD286E300AE7C2F /* PBXContainerItemProxy */;
 		};
-
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -798,8 +795,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "Cadence Watch App Watch App/Cadence Watch App Watch App.entitlements";
 				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_ENTITLEMENTS = "Cadence Watch App Watch App/Cadence Watch App Watch App.entitlements";
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;

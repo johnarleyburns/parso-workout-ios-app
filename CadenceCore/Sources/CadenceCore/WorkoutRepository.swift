@@ -613,7 +613,8 @@ public enum WorkoutRepository {
 
     // MARK: Export / Import (FR-6)
 
-    public static func buildExport(_ context: ModelContext) throws -> CadenceExport {
+    public static func buildExport(_ context: ModelContext,
+                                     coachPreferences: ExportCoachPreferences? = nil) throws -> CadenceExport {
         let sessions = try allSessions(context).map { session -> ExportSession in
             let sets = session.orderedSets.map { set in
                 ExportSet(id: set.id,
@@ -632,7 +633,7 @@ public enum WorkoutRepository {
                          distanceMeters: c.distance, activeEnergyKcal: c.activeEnergy,
                          avgHeartRate: c.avgHeartRate, source: c.source)
         }
-        return CadenceExport(sessions: sessions, cardio: cardio)
+        return CadenceExport(sessions: sessions, cardio: cardio, coachPreferences: coachPreferences)
     }
 
     /// Applies parsed sessions (from the Gmail importer) into the store,

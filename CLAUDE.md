@@ -104,3 +104,11 @@ This is how large bodies of work (e.g. the field-testing redesign) are run. Mirr
   and re-run; report honestly which tests are real vs environment-flaky.
 - Reference spec IDs (FR-x, field-testing §n) and end commits with the
   Co-Authored-By trailer.
+
+## Post-task checklist (ALWAYS run after completing a task)
+Once the work is verified (green build + tests), execute these steps in order:
+1. **Update `current_state.md`** with what shipped, new test counts, and any deviations.
+2. **Stage + commit** all changes with a concise, conventional-commit message (e.g. `feat: coach why-this-today + preference learning`). Include changed files and new files. Never commit before verifying.
+3. **Push to the current branch** (`git push`). If on `main`, push to `main`.
+4. **Monitor CI** — check `git log --oneline -1` to confirm the push SHA, then open the repo's Actions tab or use `gh run list --branch main --limit 1` to watch the workflow.
+5. **Report the commit SHA and CI status** to the user.

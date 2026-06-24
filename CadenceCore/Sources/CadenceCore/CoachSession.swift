@@ -1,6 +1,6 @@
 import Foundation
 
-public enum CoachSessionKind: String, Sendable, Equatable, CaseIterable {
+public enum CoachSessionKind: String, Sendable, Equatable, CaseIterable, Codable {
     case strength
     case easyAerobic
     case moderateAerobic
@@ -150,7 +150,7 @@ extension CoachSession {
             durationMinutes: 25,
             modality: .walk,
             intensity: .easy,
-            trainingLoadTags: ["aerobic", "easy"],
+            trainingLoadTags: ["aerobic", "easy", "lowImpact"],
             citationIds: ["ekelundActivityMortality2016"],
             launchPayload: .cardio(type: "walk", durationMinutes: 25)
         ))
@@ -163,38 +163,110 @@ extension CoachSession {
             durationMinutes: 25,
             modality: .cycle,
             intensity: .easy,
-            trainingLoadTags: ["aerobic", "easy"],
+            trainingLoadTags: ["aerobic", "easy", "lowImpact"],
             citationIds: ["ekelundActivityMortality2016"],
             launchPayload: .cardio(type: "cycle", durationMinutes: 25)
         ))
 
-        // Moderate aerobic (for when aerobic is behind)
-        if aerobicNeeded {
-            candidates.append(CoachSession(
-                id: "aerobic.moderateWalk",
-                kind: .moderateAerobic,
-                title: "Brisk walk",
-                subtitle: "30–40 min · steady effort",
-                durationMinutes: 35,
-                modality: .walk,
-                intensity: .moderate,
-                trainingLoadTags: ["aerobic", "moderate"],
-                citationIds: ["ekelundActivityMortality2016"],
-                launchPayload: .cardio(type: "walk", durationMinutes: 35)
-            ))
-            candidates.append(CoachSession(
-                id: "aerobic.moderateRun",
-                kind: .moderateAerobic,
-                title: "Steady run",
-                subtitle: "20–30 min · comfortable pace",
-                durationMinutes: 25,
-                modality: .run,
-                intensity: .moderate,
-                trainingLoadTags: ["aerobic", "moderate"],
-                citationIds: ["ekelundActivityMortality2016"],
-                launchPayload: .cardio(type: "run", durationMinutes: 25)
-            ))
-        }
+        candidates.append(CoachSession(
+            id: "aerobic.easySwim",
+            kind: .easyAerobic,
+            title: "Easy swim",
+            subtitle: "20–30 min · steady pace",
+            durationMinutes: 25,
+            modality: .swim,
+            intensity: .easy,
+            trainingLoadTags: ["aerobic", "easy", "lowImpact"],
+            citationIds: ["ekelundActivityMortality2016"],
+            launchPayload: .cardio(type: "swim", durationMinutes: 25)
+        ))
+
+        candidates.append(CoachSession(
+            id: "aerobic.easyRow",
+            kind: .easyAerobic,
+            title: "Easy row",
+            subtitle: "20–30 min · light pull",
+            durationMinutes: 25,
+            modality: .row,
+            intensity: .easy,
+            trainingLoadTags: ["aerobic", "easy", "lowImpact"],
+            citationIds: ["ekelundActivityMortality2016"],
+            launchPayload: .cardio(type: "rowing", durationMinutes: 25)
+        ))
+
+        // Moderate aerobic (always offer as alternatives, not just when behind)
+        candidates.append(CoachSession(
+            id: "aerobic.moderateWalk",
+            kind: .moderateAerobic,
+            title: "Brisk walk",
+            subtitle: "30–40 min · steady effort",
+            durationMinutes: 35,
+            modality: .walk,
+            intensity: .moderate,
+            trainingLoadTags: ["aerobic", "moderate", "lowImpact"],
+            citationIds: ["ekelundActivityMortality2016"],
+            launchPayload: .cardio(type: "walk", durationMinutes: 35)
+        ))
+        candidates.append(CoachSession(
+            id: "aerobic.moderateRun",
+            kind: .moderateAerobic,
+            title: "Steady run",
+            subtitle: "20–30 min · comfortable pace",
+            durationMinutes: 25,
+            modality: .run,
+            intensity: .moderate,
+            trainingLoadTags: ["aerobic", "moderate", "highImpact"],
+            citationIds: ["ekelundActivityMortality2016"],
+            launchPayload: .cardio(type: "run", durationMinutes: 25)
+        ))
+        candidates.append(CoachSession(
+            id: "aerobic.moderateCycle",
+            kind: .moderateAerobic,
+            title: "Steady cycle",
+            subtitle: "30–40 min · steady effort",
+            durationMinutes: 35,
+            modality: .cycle,
+            intensity: .moderate,
+            trainingLoadTags: ["aerobic", "moderate", "lowImpact"],
+            citationIds: ["ekelundActivityMortality2016"],
+            launchPayload: .cardio(type: "cycle", durationMinutes: 35)
+        ))
+        candidates.append(CoachSession(
+            id: "aerobic.moderateSwim",
+            kind: .moderateAerobic,
+            title: "Steady swim",
+            subtitle: "25–35 min · continuous",
+            durationMinutes: 30,
+            modality: .swim,
+            intensity: .moderate,
+            trainingLoadTags: ["aerobic", "moderate", "lowImpact"],
+            citationIds: ["ekelundActivityMortality2016"],
+            launchPayload: .cardio(type: "swim", durationMinutes: 30)
+        ))
+        candidates.append(CoachSession(
+            id: "aerobic.moderateRow",
+            kind: .moderateAerobic,
+            title: "Row",
+            subtitle: "25–35 min · steady pull",
+            durationMinutes: 30,
+            modality: .row,
+            intensity: .moderate,
+            trainingLoadTags: ["aerobic", "moderate", "lowImpact"],
+            citationIds: ["ekelundActivityMortality2016"],
+            launchPayload: .cardio(type: "rowing", durationMinutes: 30)
+        ))
+        candidates.append(CoachSession(
+            id: "aerobic.moderateBoxing",
+            kind: .moderateAerobic,
+            title: "Boxing conditioning",
+            subtitle: "20–30 min · moderate rounds",
+            durationMinutes: 25,
+            modality: .other,
+            intensity: .moderate,
+            trainingLoadTags: ["aerobic", "moderate", "highImpact"],
+            citationIds: ["ekelundActivityMortality2016"],
+            launchPayload: .cardio(type: "boxing", durationMinutes: 25)
+        ))
 
         // VO2 intervals (for users with capacity)
         if balance.strengthDays >= 2 && balance.moderateEquivalentMinutes >= 75 {
@@ -206,7 +278,7 @@ extension CoachSession {
                 durationMinutes: 35,
                 modality: .run,
                 intensity: .vigorous,
-                trainingLoadTags: ["aerobic", "hard"],
+                trainingLoadTags: ["aerobic", "hard", "highImpact"],
                 citationIds: ["crowleyVO2Intensity2022", "poonHIIT2024"],
                 launchPayload: .cardio(type: "hiit", durationMinutes: 35)
             ))

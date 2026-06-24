@@ -25,7 +25,8 @@ final class AppSettings {
                         "settings.preWorkoutCountdown", "settings.autoSaveHealth",
                         "settings.autoEndOnIdle", "settings.workoutSounds",
                         "settings.trainingGoal", "settings.experienceLevel",
-                        "settings.useHRMonitoring"] {
+                        "settings.useHRMonitoring",
+                        "settings.coachPreferenceProfile"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -125,6 +126,31 @@ final class AppSettings {
     /// Whether the user has completed the new-user onboarding flow.
     var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
     var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }
+
+    /// Learned Coach preferences from alternative selections. Stored as JSON in
+    /// UserDefaults because it is compact and gets exported transparently.
+    var coachPreferenceProfile: CoachPreferenceProfile {
+        get {
+            guard let data = defaults.data(forKey: "settings.coachPreferenceProfile"),
+                  let profile = try? JSONDecoder().decode(CoachPreferenceProfile.self, from: data)
+            else { return .empty }
+            return profile
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: "settings.coachPreferenceProfile")
+            }
+        }
+    }
+
+    @discardableResult
+    func recordCoachSelection(_ session: CoachSession, alternatives: [CoachSession],
+                               at date: Date = Date()) -> CoachPreferenceProfile {
+        var profile = coachPreferenceProfile
+        profile.recordSelection(session, from: alternatives, at: date)
+        coachPreferenceProfile = profile
+        return profile
+    }
 
     func isRoutineFavorite(_ id: String) -> Bool { favoriteRoutineIDs.contains(id) }
     func toggleFavoriteRoutine(_ id: String) {

@@ -82,7 +82,9 @@ struct HomeView: View {
         let today = Calendar.current.startOfDay(for: Date())
         let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == today }
         let hasPain = todayReadiness?.hasPainOrIllnessConcern ?? false
-        return CoachDecisionEngine.run(facts, hasPainConcern: hasPain)
+        return CoachDecisionEngine.run(facts,
+                                        profile: settings.coachPreferenceProfile,
+                                        hasPainConcern: hasPain)
     }
 
     private func buildTrainingEvents() -> [TrainingEvent] {
@@ -155,7 +157,16 @@ struct HomeView: View {
                         from: buildTrainingEvents(), goal: settings.trainingGoal,
                         experience: settings.experienceLevel, formula: settings.formula))
                 case .whyToday:
-                    WhyThisTodayView(decision: coachDecision)
+                    WhyThisTodayView(decision: coachDecision,
+                                     onAltTap: { path.append(HomeRoute.coachAlternatives) })
+                case .coachAlternatives:
+                    CoachAlternativesView(decision: coachDecision,
+                                          onSelect: { session in
+                        settings.recordCoachSelection(session,
+                                                      alternatives: coachDecision.alternatives)
+                        launchDecision(session)
+                        path = NavigationPath()
+                    })
                 case .workoutEditor(let plan):
                     WorkoutPlanEditor(plan: plan, onStart: { plan in
                         handleEditorStart(plan)
@@ -730,6 +741,7 @@ enum HomeRoute: Hashable {
     case history, settings, coach, planning
     case yourWeek
     case whyToday
+    case coachAlternatives
     case workoutEditor(EditablePlan)
 }
 

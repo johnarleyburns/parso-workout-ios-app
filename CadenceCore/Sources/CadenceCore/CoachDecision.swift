@@ -48,18 +48,36 @@ public struct CoachWarning: Sendable, Equatable, Identifiable {
     }
 }
 
-public struct ObservedFact: Sendable, Equatable {
-    public let label: String
-    public let timestamp: Date
-    public init(label: String, timestamp: Date) {
-        self.label = label
-        self.timestamp = timestamp
+public struct ObservedFact: Sendable, Equatable, Identifiable {
+    public enum Kind: String, Sendable, Equatable {
+        case lastStrength
+        case lastCardio
+        case weeklyStrengthDays
+        case weeklyModerateEquivalentMinutes
+    }
+
+    public let id: String
+    public let kind: Kind
+    public let title: String
+    public let value: String
+    public let detail: String?
+    public let occurredAt: Date?
+
+    public init(kind: Kind, title: String, value: String, detail: String? = nil, occurredAt: Date? = nil) {
+        self.id = kind.rawValue
+        self.kind = kind
+        self.title = title
+        self.value = value
+        self.detail = detail
+        self.occurredAt = occurredAt
     }
 }
 
 public enum CoachDecisionEngine {
 
-    public static func run(_ facts: CoachFacts, hasPainConcern: Bool = false) -> CoachDecision {
+    public static func run(_ facts: CoachFacts,
+                          profile: CoachPreferenceProfile = .empty,
+                          hasPainConcern: Bool = false) -> CoachDecision {
         let now = facts.referenceDate
         let candidates = CoachSession.candidates(for: facts)
 
@@ -107,8 +125,8 @@ public enum CoachDecisionEngine {
             }
         }
 
-        // Gate 3: score eligible candidates
-        let scored = score(eligible, facts: facts)
+        // Gate 3: score eligible candidates (base + preference adjustment)
+        let scored = score(eligible, facts: facts, profile: profile)
 
         let primary: CoachSession
         if let top = scored.first {
@@ -126,15 +144,50 @@ public enum CoachDecisionEngine {
 
         // Generate observed facts
         var factsList: [ObservedFact] = []
+
         if let lastStrength = facts.rolling72hCompletedEvents.last(where: { $0.isStrength }) {
-            factsList.append(ObservedFact(label: "Last strength: \(formatRelative(lastStrength.end, now))", timestamp: lastStrength.end))
+            var exerciseDetails: [String] = []
+            if case .strength(let d) = lastStrength.kind, let details = d {
+                exerciseDetails = details.exercises.map(\.exerciseName)
+            }
+            factsList.append(ObservedFact(
+                kind: .lastStrength,
+                title: "Last strength",
+                value: formatRelative(lastStrength.end, now),
+                detail: exerciseDetails.isEmpty ? nil : exerciseDetails.joined(separator: ", "),
+                occurredAt: lastStrength.end
+            ))
         }
-        if facts.weeklyBalance.strengthDays > 0 {
-            factsList.append(ObservedFact(label: "\(facts.weeklyBalance.strengthDays) strength day\(facts.weeklyBalance.strengthDays == 1 ? "" : "s") this week", timestamp: now))
+
+        if let lastCardio = facts.rolling72hCompletedEvents.last(where: { $0.isAerobic }) {
+            var cardioDetail = ""
+            if case .aerobic(let d) = lastCardio.kind {
+                cardioDetail = "\(d.modality.displayName) · \(Int(d.duration / 60)) min"
+            } else if case .intervals(let d) = lastCardio.kind {
+                cardioDetail = "\(d.modality.displayName) intervals · \(Int(d.duration / 60)) min"
+            }
+            factsList.append(ObservedFact(
+                kind: .lastCardio,
+                title: "Last cardio",
+                value: formatRelative(lastCardio.end, now),
+                detail: cardioDetail.isEmpty ? nil : cardioDetail,
+                occurredAt: lastCardio.end
+            ))
         }
-        if facts.weeklyBalance.moderateEquivalentMinutes > 0 {
-            factsList.append(ObservedFact(label: "\(Int(facts.weeklyBalance.moderateEquivalentMinutes)) / 150 moderate-equivalent minutes", timestamp: now))
-        }
+
+        factsList.append(ObservedFact(
+            kind: .weeklyStrengthDays,
+            title: "Strength days this week",
+            value: "\(facts.weeklyBalance.strengthDays) / 2+",
+            detail: "Target is 2 or more"
+        ))
+
+        factsList.append(ObservedFact(
+            kind: .weeklyModerateEquivalentMinutes,
+            title: "Moderate-equivalent minutes",
+            value: "\(Int(facts.weeklyBalance.moderateEquivalentMinutes)) / 150",
+            detail: "Public-health floor"
+        ))
 
         var allCitationIds = Set(primary.citationIds)
         for w in warnings { allCitationIds.formUnion(w.citationIds) }
@@ -153,22 +206,27 @@ public enum CoachDecisionEngine {
         )
     }
 
-    private static func score(_ candidates: [CoachSession], facts: CoachFacts) -> [CoachSession] {
+    private static func score(_ candidates: [CoachSession], facts: CoachFacts,
+                               profile: CoachPreferenceProfile) -> [CoachSession] {
         let balance = facts.weeklyBalance
         let strengthFloor = 2
         let aerobicFloor = 150.0
 
         return candidates.sorted { a, b in
-            let scoreA = scoreSession(a, balance: balance, strengthFloor: strengthFloor, aerobicFloor: aerobicFloor)
-            let scoreB = scoreSession(b, balance: balance, strengthFloor: strengthFloor, aerobicFloor: aerobicFloor)
+            let baseA = scoreSessionBase(a, balance: balance, strengthFloor: strengthFloor, aerobicFloor: aerobicFloor)
+            let baseB = scoreSessionBase(b, balance: balance, strengthFloor: strengthFloor, aerobicFloor: aerobicFloor)
+            let prefA = profile.preferenceScore(for: a)
+            let prefB = profile.preferenceScore(for: b)
+            let scoreA = baseA + prefA
+            let scoreB = baseB + prefB
             if scoreA != scoreB { return scoreA > scoreB }
             if a.isHard != b.isHard { return !a.isHard }
             return a.id < b.id
         }
     }
 
-    private static func scoreSession(_ session: CoachSession, balance: WeeklyBalance,
-                                      strengthFloor: Int, aerobicFloor: Double) -> Int {
+    private static func scoreSessionBase(_ session: CoachSession, balance: WeeklyBalance,
+                                          strengthFloor: Int, aerobicFloor: Double) -> Int {
         var score = 0
 
         switch session.kind {

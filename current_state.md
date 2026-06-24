@@ -2,32 +2,26 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-21 — Home redesign + onboarding implemented on branch
-`feat/home-redesign-onboarding` (off `main`): Coach card gains its own green Start
-button; 5 full-width pill buttons collapsed into a compact quick-actions row; the
-4 stat tiles replaced by a calm "This week" card; dead `bodyPartsPresented` sheet
-and `BodyPartQuickStartView` trigger removed. Plus a 4-screen onboarding flow
-(privacy → goal → experience → units+Health) that captures what the Coach engine
-needs in ~20 s. No engine/data-model changes.
+_Last updated: 2026-06-23 — Coach Why This Today + Preferences implemented directly on
+`main` (single-phase feature from `plans/field-testing/2026-06-23/`)._
 
 ## Repo / branch
-- Repo: `/Users/arley/github/parso-workout-ios-app` (this is the user's working copy).
-- **`main`** = All phases + round 2/3/4 + feedback batches + home-strength-first + home-redesign-onboarding, all merged. The app on `main` builds + runs clean.
-- **CadenceCore: 243/243 green; iOS build: green** (verified 2026-06-21).
-- **Next branch:** none currently active (just shipped `feat/home-redesign-onboarding`).
+- Repo: `/Users/arley/github/parso-workout-ios-app`
+- **`main`** = All prior phases + coach-why-today-preferences, merged. Builds + runs clean.
+- **CadenceCore: 337/337 green; iOS build: green; WhyThisTodayUITests: 4/4 green** (verified 2026-06-23).
 
-## What shipped on `feat/home-redesign-onboarding` (this branch → main)
-- **Home redesign:** Coach card gains green "Start workout" button (folded from standalone pill).
-  5 full-width pills collapsed into a compact `quickActionsRow` (Strength/Cardio/Log/Programs).
-  Stat tiles replaced by a calm `thisWeekCard` with 4 metrics + missing body parts.
-  Dead `bodyPartsPresented` @State + `.sheet` removed.
-- **Onboarding:** 4-screen flow (Welcome/Privacy → Goal → Experience → Units+Health) presented
-  via `fullScreenCover` in `RootTabView`. `AppSettings.hasCompletedOnboarding` persists
-  completion. `-showOnboarding` launch arg overrides `-uiTest` skip.
-- **Tests:** 10 new `OnboardingUITests`, 6 new home-redesign tests in `P3CoachHomeUITests`,
-  2 removed tile-tap tests in `FR15Batch8UITests` replaced with `thisWeekCard` test.
-- **CadenceCore: 243/243 green; iOS build + test-build: green.**
-- No engine/data-model changes.
+## What just shipped — Coach Why This Today + Preferences
+- **`ObservedFact` replaced** with rich model (`Kind`, `title`, `value`, `detail`, `occurredAt`). Last Cardio added. Summary facts use static values, never `Text(date, style: .relative)`.
+- **Duplicate Evidence section removed.** Citations are inline-only; no generic Evidence header when claims carry their own science links.
+- **COACH'S PICK section** added directly below What you did, showing the actual prescription (title, duration, modality, intensity, target grid).
+- **Alternatives flow:** `alternatives >` opens `CoachAlternativesView` with eligible full-match / closest-match options. Selecting an alternative launches it and records a `CoachPreferenceEvent`.
+- **`CoachPreferenceProfile`** (new file in CadenceCore) — Codable profile stored in UserDefaults via `AppSettings.coachPreferenceProfile`. `CoachDecisionEngine.run` now accepts profile and adjusts scoring after eligibility gates. Preferences reorder eligible candidates but never override pain, active-workout, recovery, or lower-body-collision gates.
+- **Expanded aerobic candidates:** Easy swim/row, moderate cycle/swim/row/boxing now available alongside walk/run.
+- **Export v2:** `CadenceExport` version 2 includes optional `coachPreferences: ExportCoachPreferences?`. Old v1 exports still decode (preferences nil). `ExportView` passes `settings.coachPreferenceProfile.exportDTO`. Footer copy updated.
+- **UI test seeds:** `coachWhyMixedHistory`, `coachAerobicGap`, `coachCyclePreference`, `coachLowerBodyRecovery`.
+- **Tests:** 15 new core unit tests (CoachDecisionEngine + CoachPreferenceProfile + DataExport). 4 new `WhyThisTodayUITests`. Fixed 2 pre-existing build errors in `UITestHelpers.swift` (duplicate `keypadEnter`, `XCUIKeyboardKeyDelete`).
+- **New files:** `CoachPreferenceProfile.swift` (core), `CoachAlternativesView.swift` (app), `CoachPreferenceProfileTests.swift` (tests), `WhyThisTodayUITests.swift` (tests).
+- **No LLM, no telemetry, no accounts, no server.** Purely deterministic, local, cited.
 
 ## How to work here (methodology — also in CLAUDE.md)
 - Plan to disk first for big asks (`plans/field-testing/<date>/`); implement
@@ -52,3 +46,5 @@ needs in ~20 s. No engine/data-model changes.
   String-backed (`StringArray`) — do NOT reintroduce raw `[String]` `@Model` attrs.
 - `opening-closing-bell.mp3` / `warning-bell.mp3` also sit in the repo root (source
   copies); the bundled copies are under `Cadence/Cadence/Sounds/`.
+- `CoachPreferenceProfile` stored as JSON `Data` in UserDefaults under key
+  `settings.coachPreferenceProfile` (not SwiftData). Cleared in `-uiTest` mode.

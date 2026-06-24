@@ -46,6 +46,19 @@ public struct StrengthEventDetails: Sendable, Equatable {
 public struct AerobicEventDetails: Sendable, Equatable {
     public enum Modality: String, Sendable, Equatable {
         case running, walking, cycling, swimming, rowing, hiit, boxing, other
+        
+        public var displayName: String {
+            switch self {
+            case .running: return "Run"
+            case .walking: return "Walk"
+            case .cycling: return "Cycle"
+            case .swimming: return "Swim"
+            case .rowing: return "Row"
+            case .hiit: return "HIIT"
+            case .boxing: return "Boxing"
+            case .other: return "Other"
+            }
+        }
     }
 
     public enum ImpactLevel: String, Sendable, Equatable {

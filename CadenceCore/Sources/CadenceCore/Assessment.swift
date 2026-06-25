@@ -213,17 +213,37 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         }
     }
 
-    public var citationIds: [String] {
+    /// The evidence backing this test and the honesty caveat the UI must show. Every
+    /// kind resolves to a policy — bodyweight endurance tests with no defensible
+    /// population-validity source are explicit `personalBenchmark`s rather than
+    /// returning no citations (the prior gap for push-up/pull-up/squat/hold tests).
+    public var evidencePolicy: AssessmentEvidencePolicy {
         switch self {
-        case .e1RM, .repMax: return ["oneRMEstimation"]
-        case .cooper12min: return ["cooperVo2max"]
-        case .run1_5mile: return ["cooperVo2max"]
-        case .rockportWalk: return ["rockportWalk"]
-        case .queensCollegeStep: return ["queensCollegeStep"]
-        case .wingate: return ["wingateTest"]
-        default: return []
+        case .e1RM, .repMax:
+            return .validated(citationIds: ["oneRMEstimation"])
+        case .cooper12min, .run1_5mile:
+            // Cooper (1968) validated the 12-min / 1.5-mile field run vs treadmill VO₂max.
+            return .fieldEstimate(citationIds: ["cooperVo2max"], uncertainty: .moderate)
+        case .rockportWalk:
+            return .fieldEstimate(citationIds: ["rockportWalk"], uncertainty: .moderate)
+        case .queensCollegeStep:
+            return .fieldEstimate(citationIds: ["queensCollegeStep"], uncertainty: .moderate)
+        case .vo2maxField:
+            // Manually entered from a wearable/lab — validity depends on its source.
+            return .fieldEstimate(citationIds: ["fieldFitnessReliability2022"], uncertainty: .low)
+        case .wingate:
+            return .validated(citationIds: ["wingateTest"])
+        case .plankHold:
+            // Tong et al. (2014) validated a global core-endurance plank test.
+            return .fieldEstimate(citationIds: ["tongPlank2014"], uncertainty: .moderate)
+        case .pushupMax, .pullupMax, .bodyweightSquatMax, .hollowHold:
+            return .personalBenchmark(
+                citationIds: ["fieldFitnessReliability2022"],
+                caveat: "Tracked as a personal benchmark — no population-validated equation maps this to a lab measure. Compare yourself to yourself over time.")
         }
     }
+
+    public var citationIds: [String] { evidencePolicy.citationIds }
 }
 
 /// Which arm of the battery a kind belongs to (P4 ships strength + strength-endurance;
@@ -250,4 +270,39 @@ public enum AssessmentUnit: String, Sendable {
     case seconds
     case mlKgMin        // mL/kg/min (VO₂max)
     case watts          // absolute watts (Wingate peak power)
+}
+
+/// How much published validity backs a given assessment, and the honesty caveat the
+/// UI must show (2026-06-25 evidence upgrade). Every `AssessmentKind` resolves to one
+/// of these so Coach never presents a bodyweight benchmark as a lab-grade measure.
+public enum AssessmentEvidencePolicy: Sendable, Equatable {
+    /// A protocol/equation validated against a reference standard in published work.
+    case validated(citationIds: [String])
+    /// A field estimate of a physiological quantity, with explicit uncertainty.
+    case fieldEstimate(citationIds: [String], uncertainty: FactConfidence)
+    /// A self-tracked benchmark with no population-validity claim; compare to yourself.
+    case personalBenchmark(citationIds: [String], caveat: String)
+
+    public var citationIds: [String] {
+        switch self {
+        case .validated(let ids): return ids
+        case .fieldEstimate(let ids, _): return ids
+        case .personalBenchmark(let ids, _): return ids
+        }
+    }
+
+    /// Coaching uncertainty implied by the policy: validated = moderate, field = its
+    /// declared level, personal benchmark = low.
+    public var uncertainty: FactConfidence {
+        switch self {
+        case .validated: return .moderate
+        case .fieldEstimate(_, let u): return u
+        case .personalBenchmark: return .low
+        }
+    }
+
+    public var caveat: String? {
+        if case .personalBenchmark(_, let caveat) = self { return caveat }
+        return nil
+    }
 }

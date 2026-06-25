@@ -74,7 +74,7 @@ and treadmill testing.* **JAMA 203(3).**
 ### `wingateTest` — Wingate anaerobic test
 Bar-Or (1987). *The Wingate anaerobic test: An update on methodology, reliability and
 validity.* **Sports Medicine 4(6).**
-<https://doi.org/10.2165/00007256-198704060-00005>
+<https://doi.org/10.2165/00007256-198704060-00001>
 
 - **Used by:** the cardio assessment progress insight for the Wingate test, and the
   **SIT prescription** rule (declining Wingate peak power → sprint intervals, P6).
@@ -203,14 +203,16 @@ detrimental association of sitting time with mortality?* **The Lancet 388(10051)
 - **Replaces:** `whoPhysicalActivity2020` (WHO guidelines — removed as appeal to
   authority) and `usPhysicalActivity2018` (HHS guidelines — removed).
 
-### `pellandDoseResponse2026` — dose-response meta-analysis
-Pelland et al. (2026). *Dose-response relationship between weekly resistance training
-volume and muscular adaptations.* **Sports Medicine.**
-<https://pubmed.ncbi.nlm.nih.gov/41343037/>
+### `pellandDoseResponse2026` — dose-response meta-regression
+Pelland, Remmert, Robinson, Hinson & Zourdos (2026). *The Resistance Training Dose
+Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on
+Muscle Hypertrophy and Strength Gains.* **Sports Medicine.**
+<https://doi.org/10.1007/s40279-025-02344-w>
 
-- **Used by:** volume guidance, excessive volume warnings.
+- **Used by:** `strengthVolumePool` — volume guidance, excessive volume warnings.
 - **What it supports:** graded dose-response with diminishing returns; frequency more
   useful for volume distribution than as an independent hypertrophy driver.
+- **Metadata corrected (2026-06-25):** authors and title updated to match PMID 41343037.
 
 ### `parejaBlancoRecovery2020` — recovery after training to failure
 Pareja-Blanco et al. (2020). *Recovery of neuromuscular performance after resistance
@@ -241,29 +243,37 @@ syndrome: ECSS/ACSM consensus.* **MSSE.**
 - **App policy:** Coach never labels a user "overtrained."
 
 ### `sawMonitoring2016` — self-report monitoring
-Saw, Main & Gastin (2016). *Monitoring athletes through self-report.*
-**J Sports Sci Med.** <https://pubmed.ncbi.nlm.nih.gov/26423706/>
+Saw, Main & Gastin (2016). *Monitoring the athlete training response: subjective
+self-reported measures trump commonly used objective measures: a systematic review.*
+**Br J Sports Med 50(5).** <https://pmc.ncbi.nlm.nih.gov/articles/PMC4789708/>
 
-- **Used by:** readiness check-in rationale.
+- **Used by:** readiness check-in rationale; `recoveryMonitoringPool` (recovery claims).
 - **What it supports:** subjective fatigue, soreness, sleep, stress, and mood are useful
   monitoring inputs and respond more consistently to load than objective markers.
+- **Metadata corrected (2026-06-25):** PMID 26423706 is the BJSM systematic review, not
+  the earlier "factors influencing implementation" paper previously recorded.
 
-### `crowleyVO2Intensity2022` — HIIT vs MICT for VO₂max
-Crowley et al. (2022). *Effects of high-intensity interval training and
-moderate-intensity continuous training on VO₂max.* **Sports Medicine.**
-<https://pubmed.ncbi.nlm.nih.gov/38655159/>
+### `crowleyVO2Intensity2022` — exercise intensity and VO₂max
+Crowley, Powell, Bottoms & Sykes (2022). *The Effect of Exercise Training Intensity on
+VO₂max in Healthy Adults: An Overview of Systematic Reviews and Meta-Analyses.*
+**Translational Sports Medicine.** <https://pmc.ncbi.nlm.nih.gov/articles/PMC11022784/>
 
-- **Used by:** VO₂max interval prescription (replaces hiitVo2max).
-- **What it supports:** both HIIT and moderate continuous training improve VO₂max;
-  higher intensity has a small-to-moderate advantage.
+- **Used by:** `vo2TrainingPool` — VO₂-interval prescription claims.
+- **What it supports:** higher-intensity training has a small-to-moderate advantage for
+  VO₂max improvement vs moderate continuous training.
+- **Metadata corrected (2026-06-25):** journal is *Translational Sports Medicine*; title
+  and authors updated to match PMID 38655159.
 
 ### `poonHIIT2024` — HIIT umbrella review
-Poon et al. (2024). *HIIT versus MICT for cardiorespiratory fitness: An umbrella
-review.* **Sports Medicine.** <https://pubmed.ncbi.nlm.nih.gov/38760916/>
+Poon, Sheridan, Chung, Wong & Sun (2024). *High-intensity interval training and
+cardiorespiratory fitness in adults: An umbrella review of systematic reviews and
+meta-analyses.* **Scand J Med Sci Sports 34(5).** <https://doi.org/10.1111/sms.14652>
 
-- **Used by:** VO₂max interval prescription (secondary citation).
+- **Used by:** `vo2TrainingPool` — VO₂-interval prescription (secondary citation).
 - **What it supports:** HIIT and MICT both effective; choice depends on preference,
   recovery, and baseline fitness.
+- **Metadata corrected (2026-06-25):** journal is *Scand J Med Sci Sports*; title/authors
+  updated to match PMID 38760916.
 
 ### `ramosCampoSplit2024` — full-body vs split routines
 Ramos-Campo et al. (2024). *Effects of full-body and split routines on strength and
@@ -352,3 +362,153 @@ techniques to reduce markers of muscle damage, soreness, fatigue, and inflammati
 
 - New prescriptive rules must cite published work before shipping — no un-cited
   prescription is allowed past the engine's tests.
+
+## Coach evidence upgrade — multi-system citations (2026-06-25)
+
+These references were added to cover the systems Coach now reasons about (strength
+intensity/periodization, VO₂, threshold, anaerobic opt-in, flexibility/ROM, and
+assessment validity) so each claim cites work that actually supports *that* claim.
+
+### `zourdosRIR2016` — RIR-anchored RPE scale validation
+Zourdos et al. (2016). *Novel Resistance Training-Specific Rating of Perceived Exertion
+Scale Measuring Repetitions in Reserve.* **J Strength Cond Res 30(1).**
+<https://doi.org/10.1519/JSC.0000000000001049>
+
+- **Used by:** `strengthIntensityPool` — RIR/RPE autoregulation claims.
+- **What it supports:** lifters can map perceived exertion to repetitions-in-reserve;
+  validates the scale Coach programs to (distinct from `rpeAutoregulation`, the
+  application paper).
+
+### `tanakaMaxHR2001` — age-predicted HRmax
+Tanaka, Monahan & Seals (2001). *Age-predicted maximal heart rate revisited.*
+**J Am Coll Cardiol 37(1).** <https://doi.org/10.1016/s0735-1097(00)01054-8>
+
+- **Used by:** HR-zone uncertainty labelling when max HR is estimated, not tested.
+- **What it supports:** 208 − 0.7·age estimates HRmax at a population level with a large
+  individual SD (~±10 bpm) — so HR-zone prescriptions built on it are low-confidence.
+
+### `kaufmannThreshold2023` — threshold-method agreement
+Kaufmann, Gronwald, Herold & Hoos (2023). *Heart Rate Variability-Derived Thresholds for
+Exercise Intensity Prescription in Endurance Sports.* **Sports Med - Open 9(1).**
+<https://pmc.ncbi.nlm.nih.gov/articles/PMC10354346/>
+
+- **Used by:** `thresholdTrainingPool` — threshold/lactate prescription + uncertainty.
+- **What it supports:** HRV-, ventilatory- and lactate-threshold estimates agree on
+  average but with wide individual limits of agreement — so threshold zones are flagged
+  lower-confidence unless directly tested.
+
+### `milanovicHIIT2015` — HIIT vs continuous training for VO₂max
+Milanović, Sporiš & Weston (2015). *Effectiveness of HIT and Continuous Endurance
+Training for VO₂max Improvements.* **Sports Med 45(10).**
+<https://doi.org/10.1007/s40279-015-0365-0>
+
+- **Used by:** `vo2TrainingPool` — VO₂-interval prescription.
+- **What it supports:** interval training produces meaningful VO₂max gains; supports the
+  4×4-style VO₂ session.
+
+### `slothSIT2013` — sprint interval training
+Sloth, Sloth, Overgaard & Dalgas (2013). *Effects of sprint interval training on VO₂max
+and aerobic exercise performance.* **Scand J Med Sci Sports 23(6).**
+<https://doi.org/10.1111/sms.12092>
+
+- **Used by:** `anaerobicTrainingPool` — anaerobic opt-in claims only.
+- **App policy:** SIT is **never auto-prescribed**; it is an explicit opt-in lane with
+  fatigue/safety caveats.
+
+### `buchheitLaursenHIIT2013` — HIIT programming (Part II)
+Buchheit & Laursen (2013). *High-Intensity Interval Training, Solutions to the
+Programming Puzzle: Part II.* **Sports Med 43(10).**
+<https://doi.org/10.1007/s40279-013-0066-5>
+
+- **Used by:** `anaerobicTrainingPool` — anaerobic energy / neuromuscular load claims.
+- **What it supports:** programming variables for short maximal efforts and their high
+  neuromuscular cost (basis for the conservative opt-in gates).
+
+### `konradStretchROM2024` — chronic stretching and ROM
+Konrad et al. (2024). *Chronic effects of stretching on range of motion.*
+**J Sport Health Sci 13(2).** <https://pmc.ncbi.nlm.nih.gov/articles/PMC10980866/>
+
+- **Used by:** `flexibilityROMPool` — flexibility/mobility ROM claims, `recovery.stretch`.
+- **What it supports:** regular stretching increases range of motion. Claims are limited
+  to ROM/flexibility — **not** broad injury prevention.
+
+### `behmStretching2016` — acute stretching effects
+Behm, Blazevich, Kay & McHugh (2016). *Acute effects of muscle stretching on physical
+performance, range of motion, and injury incidence.* **Appl Physiol Nutr Metab 41(1).**
+<https://doi.org/10.1139/apnm-2015-0235>
+
+- **Used by:** `flexibilityROMPool` — ROM/flexibility and stretch-copy caveats.
+- **What it supports:** stretching improves ROM; evidence for static stretching alone
+  *preventing injury* is weak — copy must not over-claim.
+
+### `lauersenInjuryPrevention2014` — exercise and injury prevention
+Lauersen, Bertelsen & Andersen (2014). *The effectiveness of exercise interventions to
+prevent sports injuries.* **Br J Sports Med 48(11).**
+<https://doi.org/10.1136/bjsports-2013-092538>
+
+- **Used by:** injury-prevention claims for **strength/proprioceptive warm-up programs
+  only** — never to back static stretching alone.
+- **What it supports:** strength training and multi-component programs reduce injury risk;
+  stretching alone shows no significant protective effect.
+
+### `fieldFitnessReliability2022` — field-test reliability
+Cuenca-Garcia et al. (2022). *Reliability of Field-Based Fitness Tests in Adults: A
+Systematic Review.* **Sports Med 52(8).** <https://doi.org/10.1007/s40279-021-01635-2>
+
+- **Used by:** `fieldTestValidityPool`; fallback for bodyweight benchmark tests
+  (`pushupMax`, `pullupMax`, `bodyweightSquatMax`, `hollowHold`, manual `vo2maxField`).
+- **What it supports:** general reliability of field-based adult fitness tests. Used only
+  as a *reliability* fallback — **not** a population-validity claim for any single test.
+
+### `tongPlank2014` — plank / core-endurance test
+Tong, Wu & Nie (2014). *Sport-specific endurance plank test for evaluation of global core
+muscle function.* **Phys Ther Sport 15(1).** <https://doi.org/10.1016/j.ptsp.2013.03.003>
+
+- **Used by:** `fieldTestValidityPool`; the `plankHold` assessment.
+- **What it supports:** a validated, reliable plank protocol for global core endurance.
+
+## Claim classes — which citations may back which claims
+
+Coach claims are typed by `EvidenceClaimCategory`; each category resolves to exactly one
+citation pool via `CitationRegistry.citationPool(for:)`. A pool curated for one class may
+**never** be reused for another (enforced by `CitationIntegrityTests`).
+
+| Claim category | Pool | Citations |
+|---|---|---|
+| `activityMinutesHealth` | activityMinutesHealthPool | ekelundActivityMortality2016, mooreLeisureActivity2012, aremDoseResponse2015 |
+| `stepsHealth` | stepsHealthPool | saintMauriceSteps2020, leeAccelerometer2019 |
+| `aerobicBase` | aerobicBasePool | ekelundActivityMortality2016, mooreLeisureActivity2012, aremDoseResponse2015 |
+| `strengthFrequency` | strengthFrequencyPool | frequencyMeta |
+| `strengthVolume` | strengthVolumePool | volumeDoseResponse, pellandDoseResponse2026 |
+| `strengthIntensity` | strengthIntensityPool | schoenfeld2021, zourdosRIR2016, rpeAutoregulation |
+| `periodization` | periodizationPool | williamsLinearPeriodization, rheaPeriodization |
+| `vo2Training` | vo2TrainingPool | crowleyVO2Intensity2022, poonHIIT2024, milanovicHIIT2015 |
+| `thresholdTraining` | thresholdTrainingPool | kaufmannThreshold2023 |
+| `anaerobicTraining` | anaerobicTrainingPool | wingateTest, slothSIT2013, buchheitLaursenHIIT2013 |
+| `flexibilityROM` | flexibilityROMPool | konradStretchROM2024, behmStretching2016 |
+| `recoveryMonitoring` | recoveryMonitoringPool | halsonRecovery2014, sawMonitoring2016, dupuyFatigue2018, meeusenOvertraining2013 |
+| `concurrentTraining` | concurrentTrainingPool | schumannConcurrent2022 |
+| `fieldTestValidity` | fieldTestValidityPool | oneRMEstimation, cooperVo2max, rockportWalk, queensCollegeStep, wingateTest, tongPlank2014, fieldFitnessReliability2022 |
+
+**Rules:**
+
+- Public-health / mortality studies (Ekelund, Moore, Arem, step studies) back only
+  health-floor and aerobic-base claims — never performance prescriptions (VO₂, threshold,
+  anaerobic, strength).
+- Step-count studies back only `stepsHealth`, never the 150-minute threshold.
+- `lauersenInjuryPrevention2014` backs injury-prevention claims for strength/warm-up
+  programs only; static-stretch copy uses `flexibilityROM` and may not claim broad injury
+  prevention.
+- SIT/anaerobic citations only appear with the opt-in lane; never an auto-prescription.
+
+## Assessment evidence policy
+
+Every `AssessmentKind` carries an `AssessmentEvidencePolicy`:
+
+- **validated** — published protocol/equation vs a reference standard (`e1RM`, `repMax`,
+  `wingate`).
+- **fieldEstimate** — field estimate with explicit uncertainty (`cooper12min`,
+  `run1_5mile`, `rockportWalk`, `queensCollegeStep`, `plankHold`; manual `vo2maxField` is
+  low-confidence).
+- **personalBenchmark** — self-tracked, no population-validity claim, with a caveat string
+  the UI must show (`pushupMax`, `pullupMax`, `bodyweightSquatMax`, `hollowHold`).

@@ -291,8 +291,8 @@ extension CoachSession {
             title: "Recovery: stretch or mobility",
             subtitle: "10–15 min · gentle movement",
             durationMinutes: 12,
-            trainingLoadTags: ["recovery"],
-            citationIds: [],
+            trainingLoadTags: ["recovery", "flexibility"],
+            citationIds: ["konradStretchROM2024", "behmStretching2016"],
             launchPayload: .recovery
         ))
 

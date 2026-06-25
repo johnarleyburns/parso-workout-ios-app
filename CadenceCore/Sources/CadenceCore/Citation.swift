@@ -30,6 +30,27 @@ public struct Citation: Equatable, Hashable, Sendable, Identifiable {
     }
 }
 
+/// The class of claim a coaching output makes. Every claim that surfaces a
+/// citation carries one of these so a citation pool curated for one claim class can
+/// never be reused for an unrelated one (the 2026-06-25 evidence upgrade). Resolve a
+/// category to its pool with `CitationRegistry.citationPool(for:)`.
+public enum EvidenceClaimCategory: String, Sendable, Codable, CaseIterable {
+    case activityMinutesHealth
+    case stepsHealth
+    case strengthFrequency
+    case strengthVolume
+    case strengthIntensity
+    case periodization
+    case aerobicBase
+    case vo2Training
+    case thresholdTraining
+    case anaerobicTraining
+    case flexibilityROM
+    case recoveryMonitoring
+    case concurrentTraining
+    case fieldTestValidity
+}
+
 /// The bundled reference list the P3 rules point at. Open-source + visible in-app.
 public enum CitationRegistry {
 
@@ -102,7 +123,7 @@ public enum CitationRegistry {
         year: 1987,
         title: "The Wingate anaerobic test: An update on methodology, reliability and validity",
         source: "Sports Medicine 4(6)",
-        url: "https://doi.org/10.2165/00007256-198704060-00005"
+        url: "https://doi.org/10.2165/00007256-198704060-00001"
     )
 
     /// HIIT improves VO₂max — anchors the cardioHIIT prescription rule (P6).
@@ -220,11 +241,11 @@ public enum CitationRegistry {
 
     public static let pellandDoseResponse2026 = Citation(
         id: "pellandDoseResponse2026",
-        authors: "Pelland, Schoenfeld, Grgic, O'Connor, Campbell & Haun",
+        authors: "Pelland, Remmert, Robinson, Hinson & Zourdos",
         year: 2026,
-        title: "Dose-response relationship between weekly resistance training volume and muscular adaptations",
+        title: "The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains",
         source: "Sports Medicine",
-        url: "https://pubmed.ncbi.nlm.nih.gov/41343037/"
+        url: "https://doi.org/10.1007/s40279-025-02344-w"
     )
 
     public static let ramosCampoSplit2024 = Citation(
@@ -249,9 +270,9 @@ public enum CitationRegistry {
         id: "sawMonitoring2016",
         authors: "Saw, Main & Gastin",
         year: 2016,
-        title: "Monitoring athletes through self-report: Factors influencing implementation",
-        source: "Journal of Sports Science and Medicine",
-        url: "https://pubmed.ncbi.nlm.nih.gov/26423706/"
+        title: "Monitoring the athlete training response: subjective self-reported measures trump commonly used objective measures: a systematic review",
+        source: "British Journal of Sports Medicine 50(5)",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC4789708/"
     )
 
     public static let meeusenOvertraining2013 = Citation(
@@ -274,20 +295,20 @@ public enum CitationRegistry {
 
     public static let crowleyVO2Intensity2022 = Citation(
         id: "crowleyVO2Intensity2022",
-        authors: "Crowley, Miller, O'Connor & Harrison",
+        authors: "Crowley, Powell, Bottoms & Sykes",
         year: 2022,
-        title: "Effects of high-intensity interval training and moderate-intensity continuous training on VO2max",
-        source: "Sports Medicine",
-        url: "https://pubmed.ncbi.nlm.nih.gov/38655159/"
+        title: "The Effect of Exercise Training Intensity on VO\u{2082}max in Healthy Adults: An Overview of Systematic Reviews and Meta-Analyses",
+        source: "Translational Sports Medicine",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11022784/"
     )
 
     public static let poonHIIT2024 = Citation(
         id: "poonHIIT2024",
-        authors: "Poon, Li, Wong, Chung & Wong",
+        authors: "Poon, Sheridan, Chung, Wong & Sun",
         year: 2024,
-        title: "HIIT versus MICT for cardiorespiratory fitness: An umbrella review",
-        source: "Sports Medicine",
-        url: "https://pubmed.ncbi.nlm.nih.gov/38760916/"
+        title: "High-intensity interval training and cardiorespiratory fitness in adults: An umbrella review of systematic reviews and meta-analyses",
+        source: "Scandinavian Journal of Medicine & Science in Sports 34(5)",
+        url: "https://doi.org/10.1111/sms.14652"
     )
 
     // MARK: - Aerobic/activity research citations (no public-health guidelines)
@@ -357,6 +378,123 @@ public enum CitationRegistry {
         url: "https://doi.org/10.3389/fphys.2018.00403"
     )
 
+    // MARK: - Coach evidence-upgrade citations (2026-06-25)
+
+    /// RIR-anchored RPE scale validation — distinct from the application paper
+    /// (`rpeAutoregulation`); used for strength-intensity / autoregulation claims.
+    public static let zourdosRIR2016 = Citation(
+        id: "zourdosRIR2016",
+        authors: "Zourdos, Klemp, Dolan, Quiles, Schau, Jo, Helms, Esgro, Duncan, Garcia Merino & Blanco",
+        year: 2016,
+        title: "Novel Resistance Training-Specific Rating of Perceived Exertion Scale Measuring Repetitions in Reserve",
+        source: "Journal of Strength and Conditioning Research 30(1)",
+        url: "https://doi.org/10.1519/JSC.0000000000001049"
+    )
+
+    /// Age-predicted HRmax equation — used to label HR-zone uncertainty when max HR
+    /// is estimated rather than tested.
+    public static let tanakaMaxHR2001 = Citation(
+        id: "tanakaMaxHR2001",
+        authors: "Tanaka, Monahan & Seals",
+        year: 2001,
+        title: "Age-predicted maximal heart rate revisited",
+        source: "Journal of the American College of Cardiology 37(1)",
+        url: "https://doi.org/10.1016/s0735-1097(00)01054-8"
+    )
+
+    /// Threshold-method agreement / uncertainty — used for threshold/lactate claims.
+    public static let kaufmannThreshold2023 = Citation(
+        id: "kaufmannThreshold2023",
+        authors: "Kaufmann, Gronwald, Herold & Hoos",
+        year: 2023,
+        title: "Heart Rate Variability-Derived Thresholds for Exercise Intensity Prescription in Endurance Sports: A Systematic Review of Interrelations and Agreement with Different Ventilatory and Blood Lactate Thresholds",
+        source: "Sports Medicine - Open 9(1)",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10354346/"
+    )
+
+    /// HIIT vs continuous training for VO₂max — VO2-training claims.
+    public static let milanovicHIIT2015 = Citation(
+        id: "milanovicHIIT2015",
+        authors: "Milanovic, Sporis & Weston",
+        year: 2015,
+        title: "Effectiveness of High-Intensity Interval Training (HIT) and Continuous Endurance Training for VO\u{2082}max Improvements: A Systematic Review and Meta-Analysis of Controlled Trials",
+        source: "Sports Medicine 45(10)",
+        url: "https://doi.org/10.1007/s40279-015-0365-0"
+    )
+
+    /// Sprint interval training effects — anaerobic opt-in claims only.
+    public static let slothSIT2013 = Citation(
+        id: "slothSIT2013",
+        authors: "Sloth, Sloth, Overgaard & Dalgas",
+        year: 2013,
+        title: "Effects of sprint interval training on VO\u{2082}max and aerobic exercise performance: A systematic review and meta-analysis",
+        source: "Scandinavian Journal of Medicine & Science in Sports 23(6)",
+        url: "https://doi.org/10.1111/sms.12092"
+    )
+
+    /// HIIT programming, anaerobic energy + neuromuscular load (Part II) — anaerobic claims.
+    public static let buchheitLaursenHIIT2013 = Citation(
+        id: "buchheitLaursenHIIT2013",
+        authors: "Buchheit & Laursen",
+        year: 2013,
+        title: "High-Intensity Interval Training, Solutions to the Programming Puzzle: Part II: Anaerobic Energy, Neuromuscular Load and Practical Applications",
+        source: "Sports Medicine 43(10)",
+        url: "https://doi.org/10.1007/s40279-013-0066-5"
+    )
+
+    /// Chronic stretching and ROM gains — flexibility/ROM claims.
+    public static let konradStretchROM2024 = Citation(
+        id: "konradStretchROM2024",
+        authors: "Konrad, Alizadeh, Daneshjoo, Anvar, Graham, Zahiri, Goudini, Edwards, Scharf & Behm",
+        year: 2024,
+        title: "Chronic effects of stretching on range of motion with consideration of potential moderating variables: A systematic review with meta-analysis",
+        source: "Journal of Sport and Health Science 13(2)",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10980866/"
+    )
+
+    /// Acute stretching, ROM, performance and injury — flexibility/ROM claims; not a
+    /// blanket injury-prevention claim.
+    public static let behmStretching2016 = Citation(
+        id: "behmStretching2016",
+        authors: "Behm, Blazevich, Kay & McHugh",
+        year: 2016,
+        title: "Acute effects of muscle stretching on physical performance, range of motion, and injury incidence in healthy active individuals: a systematic review",
+        source: "Applied Physiology, Nutrition, and Metabolism 41(1)",
+        url: "https://doi.org/10.1139/apnm-2015-0235"
+    )
+
+    /// Exercise interventions and sports-injury prevention — strength/proprioceptive
+    /// warm-up programs only, NOT static stretching alone.
+    public static let lauersenInjuryPrevention2014 = Citation(
+        id: "lauersenInjuryPrevention2014",
+        authors: "Lauersen, Bertelsen & Andersen",
+        year: 2014,
+        title: "The effectiveness of exercise interventions to prevent sports injuries: a systematic review and meta-analysis of randomised controlled trials",
+        source: "British Journal of Sports Medicine 48(11)",
+        url: "https://doi.org/10.1136/bjsports-2013-092538"
+    )
+
+    /// General field-based adult fitness test reliability — fallback for bodyweight
+    /// endurance benchmarks; not a population-validity claim for any single test.
+    public static let fieldFitnessReliability2022 = Citation(
+        id: "fieldFitnessReliability2022",
+        authors: "Cuenca-Garcia, Marin-Jimenez, Perez-Bey, Sanchez-Oliva, Camiletti-Moiron, Alvarez-Gallardo, Ortega & Castro-Pinero",
+        year: 2022,
+        title: "Reliability of Field-Based Fitness Tests in Adults: A Systematic Review",
+        source: "Sports Medicine 52(8)",
+        url: "https://doi.org/10.1007/s40279-021-01635-2"
+    )
+
+    /// Plank / global core-endurance test validity + reliability.
+    public static let tongPlank2014 = Citation(
+        id: "tongPlank2014",
+        authors: "Tong, Wu & Nie",
+        year: 2014,
+        title: "Sport-specific endurance plank test for evaluation of global core muscle function",
+        source: "Physical Therapy in Sport 15(1)",
+        url: "https://doi.org/10.1016/j.ptsp.2013.03.003"
+    )
+
     // MARK: - All citations registry
 
     public static let all: [Citation] = [
@@ -372,6 +510,9 @@ public enum CitationRegistry {
         mooreLeisureActivity2012, aremDoseResponse2015, saintMauriceSteps2020,
         leeAccelerometer2019,
         halsonRecovery2014, drewFinchInjury2016, dupuyFatigue2018,
+        zourdosRIR2016, tanakaMaxHR2001, kaufmannThreshold2023, milanovicHIIT2015,
+        slothSIT2013, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
+        lauersenInjuryPrevention2014, fieldFitnessReliability2022, tongPlank2014,
     ]
 
     public static func citation(forId id: String) -> Citation? {
@@ -396,4 +537,115 @@ public enum CitationRegistry {
         "schumannConcurrent2022",
         "dupuyFatigue2018",
     ])
+
+    // MARK: - Claim-specific citation pools (2026-06-25 evidence upgrade)
+    //
+    // Each pool serves exactly one `EvidenceClaimCategory`. Splitting the broad
+    // `aerobicPool` into these prevents a step-count or mortality study from being
+    // cited next to, say, a VO₂-interval prescription. Resolve via
+    // `citationPool(for:)`; the integrity tests assert no cross-category leakage.
+
+    /// Health floor for moderate-equivalent aerobic *minutes* (NOT step count).
+    public static let activityMinutesHealthPool = CitationPool(id: "activityMinutesHealth", citationIds: [
+        "ekelundActivityMortality2016",
+        "mooreLeisureActivity2012",
+        "aremDoseResponse2015",
+    ])
+
+    /// Step-count claims only. Step studies must not back the 150-minute threshold.
+    public static let stepsHealthPool = CitationPool(id: "stepsHealth", citationIds: [
+        "saintMauriceSteps2020",
+        "leeAccelerometer2019",
+    ])
+
+    /// Aerobic *base* training (easy/moderate continuous work). Shares the activity
+    /// health references; never cites step-only or high-intensity studies.
+    public static let aerobicBasePool = CitationPool(id: "aerobicBase", citationIds: [
+        "ekelundActivityMortality2016",
+        "mooreLeisureActivity2012",
+        "aremDoseResponse2015",
+    ])
+
+    public static let vo2TrainingPool = CitationPool(id: "vo2Training", citationIds: [
+        "crowleyVO2Intensity2022",
+        "poonHIIT2024",
+        "milanovicHIIT2015",
+    ])
+
+    public static let thresholdTrainingPool = CitationPool(id: "thresholdTraining", citationIds: [
+        "kaufmannThreshold2023",
+    ])
+
+    public static let anaerobicTrainingPool = CitationPool(id: "anaerobicTraining", citationIds: [
+        "wingateTest",
+        "slothSIT2013",
+        "buchheitLaursenHIIT2013",
+    ])
+
+    public static let strengthFrequencyPool = CitationPool(id: "strengthFrequency", citationIds: [
+        "frequencyMeta",
+    ])
+
+    public static let strengthVolumePool = CitationPool(id: "strengthVolume", citationIds: [
+        "volumeDoseResponse",
+        "pellandDoseResponse2026",
+    ])
+
+    public static let strengthIntensityPool = CitationPool(id: "strengthIntensity", citationIds: [
+        "schoenfeld2021",
+        "zourdosRIR2016",
+        "rpeAutoregulation",
+    ])
+
+    public static let periodizationPool = CitationPool(id: "periodization", citationIds: [
+        "williamsLinearPeriodization",
+        "rheaPeriodization",
+    ])
+
+    public static let flexibilityROMPool = CitationPool(id: "flexibilityROM", citationIds: [
+        "konradStretchROM2024",
+        "behmStretching2016",
+    ])
+
+    public static let recoveryMonitoringPool = CitationPool(id: "recoveryMonitoring", citationIds: [
+        "halsonRecovery2014",
+        "sawMonitoring2016",
+        "dupuyFatigue2018",
+        "meeusenOvertraining2013",
+    ])
+
+    public static let concurrentTrainingPool = CitationPool(id: "concurrentTraining", citationIds: [
+        "schumannConcurrent2022",
+    ])
+
+    public static let fieldTestValidityPool = CitationPool(id: "fieldTestValidity", citationIds: [
+        "oneRMEstimation",
+        "cooperVo2max",
+        "rockportWalk",
+        "queensCollegeStep",
+        "wingateTest",
+        "tongPlank2014",
+        "fieldFitnessReliability2022",
+    ])
+
+    /// The single citation pool that may support a given claim category. Total over
+    /// `EvidenceClaimCategory`, so every typed claim has a resolvable pool.
+    public static func citationPool(for category: EvidenceClaimCategory) -> CitationPool {
+        switch category {
+        case .activityMinutesHealth: return activityMinutesHealthPool
+        case .stepsHealth: return stepsHealthPool
+        case .strengthFrequency: return strengthFrequencyPool
+        case .strengthVolume: return strengthVolumePool
+        case .strengthIntensity: return strengthIntensityPool
+        case .periodization: return periodizationPool
+        case .aerobicBase: return aerobicBasePool
+        case .vo2Training: return vo2TrainingPool
+        case .thresholdTraining: return thresholdTrainingPool
+        case .anaerobicTraining: return anaerobicTrainingPool
+        case .flexibilityROM: return flexibilityROMPool
+        case .recoveryMonitoring: return recoveryMonitoringPool
+        case .concurrentTraining: return concurrentTrainingPool
+        case .fieldTestValidity: return fieldTestValidityPool
+        }
+    }
 }

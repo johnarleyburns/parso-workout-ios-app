@@ -79,10 +79,16 @@ struct CoachDecisionCardView: View {
                     .buttonStyle(.plain)
                     if warningsExpanded {
                         ForEach(decision.warnings) { w in
-                            Text(w.message)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(w.message)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                ForEach(w.citationIds.compactMap { CitationRegistry.citation(forId: $0) }) { citation in
+                                    CitationLink(citation: citation, compact: true)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .transition(.opacity)
                     }

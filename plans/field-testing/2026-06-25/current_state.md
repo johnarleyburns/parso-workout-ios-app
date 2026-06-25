@@ -123,5 +123,33 @@ Verification: `swift test` = 396 pass; iOS `xcodebuild … build` = BUILD SUCCEE
 
 Deferred: surfacing breakdown/system/category/confidence in the Coach UI → Phase 5.
 
-## Phase 5 — UI handoff ⏳
+## Phase 5 — UI handoff ✅ (branch `feat/coach-phase5-ui-handoff`)
+
+App-side only (no CadenceCore change; `swift test` stays at 396):
+
+- **`WhyThisTodayView.buildWhyThisWonClaims`** migrated off the legacy
+  `CitationRegistry.aerobicPool` / `recoveryLoadPool` + raw `poolId` to the typed
+  `EvidenceClaim(id:text:category:date:)` initializer — strength-days →
+  `.strengthFrequency`, aerobic-minutes → `.activityMinutesHealth`, recovery-load →
+  `.recoveryMonitoring`. This removes the **last** legacy-pool usage in the app, so
+  every "why this won" claim is now category-pure. The primary's
+  `scoreBreakdowns[…].reasons` (already typed+cited) are appended so the system-need
+  rationale is shown with its own citation.
+- **`CoachDecisionCardView`** warnings now resolve `citationIds` and render a
+  `CitationLink(compact:)` under each message — previously the warning text was shown
+  with no citation (a cite-everything-rule gap).
+- **`WhyThisTodayView` Coach's Pick** now surfaces `CoachSession.systemsTrained`
+  ("Targets: …") and, when the primary's breakdown carries a `confidencePenalty`
+  (age-estimated HRmax), a cited caveat ("HR zones use an age-estimated max …",
+  Tanaka 2001).
+
+Verification: iOS `xcodebuild … build` = BUILD SUCCEEDED; CadenceCore unchanged
+(`swift test` = 396).
+
+Deferred (low priority, can fold into Phase 6 or later): per-alternative citations in
+`CoachAlternativesView`, weekly-target citations in `YourWeekView`, and making the
+`CoachDecisionCardView` `CoachSessionKind` switches exhaustive. Legacy
+`aerobicPool`/`recoveryLoadPool` remain in CadenceCore (still covered by
+CitationIntegrityTests) but are no longer referenced by any production UI.
+
 ## Phase 6 — Docs & final verification ⏳

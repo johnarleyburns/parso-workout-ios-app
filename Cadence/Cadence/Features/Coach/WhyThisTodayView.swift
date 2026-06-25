@@ -162,6 +162,8 @@ struct WhyThisTodayView: View {
                         }
                     }
                     targetGrid
+                    systemsRow
+                    confidenceCaveat
                     if !decision.alternatives.isEmpty {
                         Divider()
                         Button {
@@ -218,6 +220,32 @@ struct WhyThisTodayView: View {
                 if decision.primary.kind == .moderateAerobic || decision.primary.kind == .easyAerobic {
                     targetChip("\(Int(Double(dur)))", label: "mod-eq min")
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var systemsRow: some View {
+        let systems = decision.primary.systemsTrained
+        if !systems.isEmpty {
+            (Text("Targets: ").font(.caption2).foregroundStyle(.secondary)
+                + Text(systems.map(\.displayName).joined(separator: " · ")).font(.caption2.weight(.semibold)))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("whyToday.coachPick.systems")
+        }
+    }
+
+    @ViewBuilder
+    private var confidenceCaveat: some View {
+        if (decision.scoreBreakdowns[decision.primary.id]?.confidencePenalty ?? 0) > 0,
+           let citation = CitationRegistry.citation(forId: "tanakaMaxHR2001") {
+            VStack(alignment: .leading, spacing: 2) {
+                Label("HR zones use an age-estimated max — log a tested max HR for precision.",
+                      systemImage: "exclamationmark.circle")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                CitationLink(citation: citation, compact: true)
             }
         }
     }
@@ -295,29 +323,28 @@ struct WhyThisTodayView: View {
         let date = decision.generatedAt
         var claims: [EvidenceClaim] = []
 
-        let isStrength = decision.primary.kind == .strength
+        // Each weekly-balance claim is backed by its own typed evidence category, so
+        // the citation can only come from that claim's curated pool (no shared pool).
+        claims.append(EvidenceClaim(
+            id: "strengthDays",
+            text: "\(bal.strengthDays) strength days this week (target: 2+)",
+            category: .strengthFrequency, date: date))
 
-        // Strength days claim
-        let strengthPoolId = "aerobic"
-        let strengthClaimId = "strengthDays"
-        let strengthText = "\(bal.strengthDays) strength days this week (target: 2+)"
-        let strengthCitation = CitationRegistry.aerobicPool.select(for: date, stableId: strengthClaimId) ?? "ekelundActivityMortality2016"
-        claims.append(EvidenceClaim(id: "strengthDays", text: strengthText, poolId: strengthPoolId,
-                                     selectedCitationId: strengthCitation))
+        claims.append(EvidenceClaim(
+            id: "aerobicMinutes",
+            text: "\(Int(bal.moderateEquivalentMinutes)) moderate-equivalent aerobic minutes (target: 150)",
+            category: .activityMinutesHealth, date: date))
 
-        // Aerobic minutes claim
-        let aerobicClaimId = "aerobicMinutes"
-        let aerobicText = "\(Int(bal.moderateEquivalentMinutes)) moderate-equivalent aerobic minutes (target: 150)"
-        let aerobicCitation = CitationRegistry.aerobicPool.select(for: date, stableId: aerobicClaimId) ?? "ekelundActivityMortality2016"
-        claims.append(EvidenceClaim(id: "aerobicMinutes", text: aerobicText, poolId: strengthPoolId,
-                                     selectedCitationId: aerobicCitation))
+        claims.append(EvidenceClaim(
+            id: "recoveryLoad",
+            text: "\(bal.consecutiveHardDays) consecutive hard days",
+            category: .recoveryMonitoring, date: date))
 
-        // Recovery load claim
-        let loadClaimId = "recoveryLoad"
-        let loadText = "\(bal.consecutiveHardDays) consecutive hard days"
-        let loadCitation = CitationRegistry.recoveryLoadPool.select(for: date, stableId: loadClaimId) ?? "drewFinchInjury2016"
-        claims.append(EvidenceClaim(id: "recoveryLoad", text: loadText, poolId: "recoveryLoad",
-                                     selectedCitationId: loadCitation))
+        // Surface the system-need rationale that helped this session win, if any —
+        // these reasons already carry their own typed category + citation.
+        if let breakdown = decision.scoreBreakdowns[decision.primary.id] {
+            claims.append(contentsOf: breakdown.reasons)
+        }
 
         return claims
     }

@@ -65,7 +65,30 @@ Verification: `swift test` = 376 pass; iOS `xcodebuild … build` = BUILD SUCCEE
 
 Deferred: wiring the app's readiness/assessment data into `CoachFacts.make` happens when
 it's consumed (Phase 4/5); for now those fields default empty in production.
-## Phase 3 — Recommendation rules ⏳
+## Phase 3 — Recommendation rules ✅ (branch `feat/coach-multisystem-recommendations`)
+
+Shipped (additive — rules produced but not yet consumed by the decision engine):
+
+- `RecommendationKind` +10 cases (strengthBlock, volumeAdjust, periodizedVariation,
+  aerobicBase, vo2Intervals, thresholdTempo, anaerobicOptIn, flexibility,
+  recoveryReadiness, assessmentPrompt).
+- `Recommendation` gains optional `system`, `evidenceCategory`, `whyNowFacts`,
+  `riskNotes`, `uncertainty`, `minimumEligibility`.
+- New `CoachRuleSupport.swift` → `CoachRecommendationEngine.run(_:anaerobicOptIn:)`
+  implementing C1–C9 over `CoachFacts`: strength block (periodization), volume
+  personalization (add below MEV / hold-reduce over MRV + poor readiness), aerobic
+  base, VO₂ intervals (beginners excluded; base + no collision required), threshold
+  (low-confidence when HRmax age-estimated; never mortality cites), anaerobic opt-in
+  (advanced/explicit only, never auto-primary, risk notes), flexibility (ROM only),
+  recovery/readiness (no overtraining diagnosis), assessment prompts. Each rule cites
+  only its claim category's pool.
+- 11 new RecommendationEngineTests covering goal-specific block, volume+frequency
+  citation split, aerobic-base copy, VO₂ eligibility/citations, threshold confidence,
+  anaerobic opt-in gating, flexibility copy, recovery copy, assessment prompts.
+
+Verification: `swift test` = 387 pass; iOS `xcodebuild … build` = BUILD SUCCEEDED.
+
+Deferred: wiring these into candidates/scoring + UI → Phases 4–5.
 ## Phase 4 — Decision scoring & candidates ⏳
 ## Phase 5 — UI handoff ⏳
 ## Phase 6 — Docs & final verification ⏳

@@ -252,4 +252,200 @@ final class RecommendationEngineTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - Phase 3: multi-system CoachRecommendationEngine rules
+
+    private var coachNow: Date {
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        comps.weekday = 5; comps.hour = 12; comps.minute = 0; comps.second = 0
+        return cal.date(from: comps) ?? Date()
+    }
+
+    private func strengthEvent(_ c: ModelContext, name: String, muscles: [String], reps: Int,
+                               sets: Int, daysAgo: Double, now: Date, rpe: Double = 8,
+                               weight: Double = 100) throws -> TrainingEvent {
+        let date = now.addingTimeInterval(-daysAgo * 86_400)
+        let s = try WorkoutRepository.createSession(date: date.addingTimeInterval(-600), in: c)
+        let ex = try WorkoutRepository.findOrCreateExercise(named: name, primaryMuscles: muscles, in: c)
+        for _ in 0..<sets {
+            _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: weight, reps: reps, rpe: rpe, in: c)
+        }
+        s.endedAt = date
+        return TrainingEvent.from(session: s)!
+    }
+
+    private func cardioEvent(_ c: ModelContext, type: CardioType, daysAgo: Double,
+                             now: Date, duration: TimeInterval = 1800, avgHR: Double?) -> TrainingEvent {
+        let start = now.addingTimeInterval(-daysAgo * 86_400)
+        let cardio = CardioWorkout(type: type, start: start, end: start.addingTimeInterval(duration),
+                                   avgHeartRate: avgHR, source: .iphone)
+        c.insert(cardio)
+        return TrainingEvent.from(cardio: cardio)
+    }
+
+    private func vo2Summary(latest: Double, baseline: Double, now: Date) -> AssessmentSummary {
+        AssessmentSummary(kind: .vo2maxField, exerciseName: nil, latest: latest,
+                          latestDate: now.addingTimeInterval(-5 * 86_400), baseline: baseline,
+                          baselineDate: now.addingTimeInterval(-40 * 86_400),
+                          best: max(latest, baseline), count: 2)
+    }
+
+    func testStrengthBlockUsesGoalSpecificRepTargetsAndCitesPeriodization() throws {
+        let c = try makeContext()
+        let now = coachNow
+        let e1 = try strengthEvent(c, name: "Squat", muscles: ["quadriceps"], reps: 4, sets: 3, daysAgo: 1, now: now)
+        let e2 = try strengthEvent(c, name: "Bench", muscles: ["chest"], reps: 4, sets: 3, daysAgo: 8, now: now)
+        let facts = CoachFacts.make(from: [e1, e2], goal: .strength, experience: .intermediate, now: now)
+        let recs = CoachRecommendationEngine.run(facts)
+        let block = recs.first { $0.id == "strengthBlock" }
+        XCTAssertNotNil(block)
+        XCTAssertEqual(block?.target?.repsLow, TrainingGoal.strength.repRange.lowerBound)
+        XCTAssertEqual(block?.target?.repsHigh, TrainingGoal.strength.repRange.upperBound)
+        XCTAssertEqual(block?.citation.id, "williamsLinearPeriodization")
+        XCTAssertTrue(block?.citationIds.contains("schoenfeld2021") ?? false)
+        XCTAssertEqual(block?.evidenceCategory, .periodization)
+    }
+
+    func testVolumeIncreaseFiresBelowMEVAndUsesFrequencyCitationForFrequencyClaim() throws {
+        let c = try makeContext()
+        let now = coachNow
+        // 2 chest sets this week → below intermediate MEV (8).
+        let e = try strengthEvent(c, name: "Bench", muscles: ["chest"], reps: 8, sets: 2, daysAgo: 1, now: now)
+        let facts = CoachFacts.make(from: [e], goal: .hypertrophy, experience: .intermediate, now: now)
+        let rec = CoachRecommendationEngine.run(facts).first { $0.id == "volumeAdjust.add.chest" }
+        XCTAssertNotNil(rec)
+        XCTAssertEqual(rec?.citation.id, "volumeDoseResponse")           // volume claim → volume citation
+        XCTAssertTrue(rec?.citationIds.contains("frequencyMeta") ?? false) // frequency sub-claim → frequency citation
+        XCTAssertNotEqual(rec?.citation.id, "frequencyMeta")
+    }
+
+    func testHighVolumePlusPoorReadinessSuggestsHoldOrReduce() throws {
+        let c = try makeContext()
+        let now = coachNow
+        // 24 chest sets → over intermediate MRV (22).
+        let e = try strengthEvent(c, name: "Bench", muscles: ["chest"], reps: 10, sets: 24, daysAgo: 1, now: now)
+        let readiness = ReadinessEntry(date: now, muscleSoreness: 2, fatigueEnergy: 2,
+                                       sleepQuality: 2, stressMood: 3)
+        let facts = CoachFacts.make(from: [e], goal: .hypertrophy, experience: .intermediate,
+                                    readinessEntry: readiness, now: now)
+        XCTAssertNotNil(CoachRecommendationEngine.run(facts).first { $0.id == "volumeAdjust.reduce.chest" })
+    }
+
+    func testAerobicBaseUsesActivityCitationsAndNeverCalls150Optimal() throws {
+        let c = try makeContext()
+        let now = coachNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+        let rec = CoachRecommendationEngine.run(facts).first { $0.id == "aerobicBase" }
+        XCTAssertNotNil(rec)
+        XCTAssertEqual(rec?.evidenceCategory, .aerobicBase)
+        XCTAssertTrue(CitationRegistry.aerobicBasePool.citationIds.contains(rec!.citation.id))
+        XCTAssertFalse(rec!.detail.localizedCaseInsensitiveContains("optimal"))
+        XCTAssertFalse(rec!.action.localizedCaseInsensitiveContains("optimal"))
+    }
+
+    func testBeginnerAerobicBaseSaysDurationBeforeIntensity() throws {
+        let now = coachNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .beginner, now: now)
+        let rec = CoachRecommendationEngine.run(facts).first { $0.id == "aerobicBase" }
+        XCTAssertTrue(rec?.action.localizedCaseInsensitiveContains("duration before intensity") ?? false)
+    }
+
+    func testVO2RuleExcludesBeginnersAndCitesVO2Pool() throws {
+        let c = try makeContext()
+        let now = coachNow
+        let base = cardioEvent(c, type: .run, daysAgo: 2, now: now, avgHR: 130)  // moderate base
+        let vo2 = vo2Summary(latest: 40, baseline: 45, now: now)                 // declined
+
+        let beginner = CoachFacts.make(from: [base], goal: .strength, experience: .beginner,
+                                       assessments: [vo2], now: now)
+        XCTAssertNil(CoachRecommendationEngine.run(beginner).first { $0.id == "vo2Intervals" })
+
+        let inter = CoachFacts.make(from: [base], goal: .strength, experience: .intermediate,
+                                    assessments: [vo2], now: now)
+        let rec = CoachRecommendationEngine.run(inter).first { $0.id == "vo2Intervals" }
+        XCTAssertNotNil(rec)
+        XCTAssertEqual(rec?.citation.id, "crowleyVO2Intensity2022")
+        let vo2Pool = Set(CitationRegistry.vo2TrainingPool.citationIds)
+        XCTAssertTrue(([rec!.citation.id] + rec!.citationIds).allSatisfy { vo2Pool.contains($0) })
+    }
+
+    func testThresholdRuleLowConfidenceWithEstimatedHRAndNoMortalityCitation() throws {
+        let c = try makeContext()
+        let now = coachNow
+        // Moderate base with HR → aerobic base not stale, zoneSource = ageEstimated.
+        let base = cardioEvent(c, type: .cycle, daysAgo: 2, now: now, avgHR: 130)
+        let facts = CoachFacts.make(from: [base], goal: .endurance, experience: .intermediate, now: now)
+        let rec = CoachRecommendationEngine.run(facts).first { $0.id == "thresholdTempo" }
+        XCTAssertNotNil(rec)
+        XCTAssertEqual(rec?.citation.id, "kaufmannThreshold2023")
+        XCTAssertEqual(rec?.confidence, .low)
+        XCTAssertTrue(rec?.citationIds.contains("tanakaMaxHR2001") ?? false)
+        let mortality: Set<String> = ["ekelundActivityMortality2016", "mooreLeisureActivity2012",
+                                      "aremDoseResponse2015", "saintMauriceSteps2020", "leeAccelerometer2019"]
+        XCTAssertTrue(Set([rec!.citation.id] + rec!.citationIds).isDisjoint(with: mortality))
+    }
+
+    func testAnaerobicIsOptInOnlyAndNeverAutoPrimary() throws {
+        let c = try makeContext()
+        let now = coachNow
+        let base = cardioEvent(c, type: .run, daysAgo: 3, now: now, avgHR: 130)
+
+        let inter = CoachFacts.make(from: [base], goal: .strength, experience: .intermediate, now: now)
+        let interRecs = CoachRecommendationEngine.run(inter)
+        XCTAssertNil(interRecs.first { $0.id == "anaerobicOptIn" })
+        XCTAssertNotEqual(interRecs.first?.kind, .anaerobicOptIn)   // never primary
+
+        let interOptIn = CoachRecommendationEngine.run(inter, anaerobicOptIn: true)
+        let rec = interOptIn.first { $0.id == "anaerobicOptIn" }
+        XCTAssertNotNil(rec)
+        XCTAssertNotEqual(interOptIn.first?.kind, .anaerobicOptIn)  // still not primary (low priority)
+        XCTAssertFalse(rec!.riskNotes.isEmpty)
+        let pool = Set(CitationRegistry.anaerobicTrainingPool.citationIds)
+        XCTAssertTrue(Set([rec!.citation.id] + rec!.citationIds).allSatisfy { pool.contains($0) })
+
+        let advanced = CoachFacts.make(from: [base], goal: .strength, experience: .advanced, now: now)
+        XCTAssertNotNil(CoachRecommendationEngine.run(advanced).first { $0.id == "anaerobicOptIn" })
+    }
+
+    func testFlexibilityRuleUsesROMCitationAndNoInjuryPreventionOverclaim() throws {
+        let now = coachNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+        let rec = CoachRecommendationEngine.run(facts).first { $0.id == "flexibility" }
+        XCTAssertNotNil(rec)
+        XCTAssertEqual(rec?.citation.id, "konradStretchROM2024")
+        XCTAssertEqual(rec?.evidenceCategory, .flexibilityROM)
+        XCTAssertFalse(rec!.citationIds.contains("lauersenInjuryPrevention2014"))
+        XCTAssertFalse(rec!.detail.localizedCaseInsensitiveContains("prevents all injuries"))
+    }
+
+    func testPoorReadinessEmitsRecoveryAndDoesNotDiagnoseOvertraining() throws {
+        let now = coachNow
+        let readiness = ReadinessEntry(date: now, muscleSoreness: 1, fatigueEnergy: 2,
+                                       sleepQuality: 2, stressMood: 2)
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    readinessEntry: readiness, now: now)
+        let recs = CoachRecommendationEngine.run(facts)
+        let rec = recs.first { $0.id == "recoveryReadiness" }
+        XCTAssertNotNil(rec)
+        XCTAssertEqual(recs.first?.kind, .recoveryReadiness)   // highest priority when readiness poor
+        XCTAssertEqual(rec?.citation.id, "sawMonitoring2016")
+        let monitoring = Set(CitationRegistry.recoveryMonitoringPool.citationIds)
+        XCTAssertTrue(Set([rec!.citation.id] + rec!.citationIds).allSatisfy { monitoring.contains($0) })
+        for s in [rec!.title, rec!.action, rec!.detail] {
+            XCTAssertFalse(s.localizedCaseInsensitiveContains("overtrain"))
+        }
+    }
+
+    func testMissingVO2BaselinePromptsCardioAssessmentWithSource() throws {
+        let c = try makeContext()
+        let now = coachNow
+        let base = cardioEvent(c, type: .run, daysAgo: 2, now: now, avgHR: 130)  // base, no vo2 baseline
+        let facts = CoachFacts.make(from: [base], goal: .strength, experience: .intermediate, now: now)
+        let rec = CoachRecommendationEngine.run(facts).first { $0.id == "assessmentPrompt.vo2max" }
+        XCTAssertNotNil(rec)
+        XCTAssertEqual(rec?.citation.id, "cooperVo2max")
+        XCTAssertEqual(rec?.evidenceCategory, .fieldTestValidity)
+        XCTAssertTrue(CitationRegistry.fieldTestValidityPool.citationIds.contains(rec!.citation.id))
+    }
 }

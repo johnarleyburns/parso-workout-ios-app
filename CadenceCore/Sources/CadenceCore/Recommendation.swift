@@ -27,6 +27,17 @@ public enum RecommendationKind: String, Sendable, Equatable {
     case addVolume      // add weekly sets toward the minimum effective range
     case starter        // cold-start: a sensible first session from goal/experience
     case cardioHIIT     // prescribed interval protocol from cardio assessment (P6)
+    // Phase 3 multi-system rules (2026-06-25 evidence upgrade).
+    case strengthBlock      // goal-specific 4–8 week block target
+    case volumeAdjust       // add/hold/reduce sets from personal response
+    case periodizedVariation
+    case aerobicBase        // easy/moderate base building
+    case vo2Intervals       // long VO₂ intervals (4×4, etc.)
+    case thresholdTempo      // tempo/threshold work
+    case anaerobicOptIn     // SIT/short sprints — offered, never auto-primary
+    case flexibility        // mobility/stretching
+    case recoveryReadiness  // rest / easy / reduced-load from readiness or load
+    case assessmentPrompt   // run/refresh a baseline for a system
 }
 
 /// A concrete, loggable target for the next time a lift (or a starter session) is
@@ -179,7 +190,21 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
     public let target: SetTarget?   // structured strength prescription, when applicable
     public let cardioPrescription: String?  // interval protocol name for cardioHIIT recs (P6)
     public let confidence: RecommendationConfidence
-    public let priority: Int        // ranking weight (higher first)
+    public let priority: Int
+
+    // MARK: Phase 3 multi-system metadata (optional; legacy rules leave them nil/empty).
+    /// The physiological system this recommendation targets.
+    public let system: TrainingSystem?
+    /// The claim class — the citation(s) shown must come from this category's pool.
+    public let evidenceCategory: EvidenceClaimCategory?
+    /// Short "why now" facts (e.g. "VO₂ system hasn't been trained in 12 days").
+    public let whyNowFacts: [String]
+    /// Safety/risk notes the UI surfaces (e.g. opt-in, stop for pain/dizziness).
+    public let riskNotes: [String]
+    /// Coaching uncertainty distinct from `confidence` (e.g. low when HRmax estimated).
+    public let uncertainty: FactConfidence?
+    /// Plain-language eligibility prerequisites (e.g. "aerobic base", "intermediate+").
+    public let minimumEligibility: [String]
 
     public var allCitations: [Citation] {
         var result = [citation]
@@ -203,7 +228,13 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
                 target: SetTarget? = nil,
                 cardioPrescription: String? = nil,
                 confidence: RecommendationConfidence,
-                priority: Int) {
+                priority: Int,
+                system: TrainingSystem? = nil,
+                evidenceCategory: EvidenceClaimCategory? = nil,
+                whyNowFacts: [String] = [],
+                riskNotes: [String] = [],
+                uncertainty: FactConfidence? = nil,
+                minimumEligibility: [String] = []) {
         self.id = id
         self.kind = kind
         self.part = part
@@ -217,5 +248,11 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
         self.cardioPrescription = cardioPrescription
         self.confidence = confidence
         self.priority = priority
+        self.system = system
+        self.evidenceCategory = evidenceCategory
+        self.whyNowFacts = whyNowFacts
+        self.riskNotes = riskNotes
+        self.uncertainty = uncertainty
+        self.minimumEligibility = minimumEligibility
     }
 }

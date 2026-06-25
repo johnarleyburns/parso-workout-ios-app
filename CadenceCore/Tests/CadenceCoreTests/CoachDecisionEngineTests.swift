@@ -594,4 +594,185 @@ final class CoachDecisionEngineTests: XCTestCase {
                               "Run should not be primary when highImpact is avoided")
         }
     }
+
+    // MARK: - P4: system-aware candidates, scoring & gates
+
+    private func poorReadiness(_ now: Date) -> ReadinessEntry {
+        let entry = ReadinessEntry()
+        entry.date = now
+        entry.sleepQuality = 1
+        return entry
+    }
+
+    /// Every non-rest candidate is tagged with the systems it loads and an evidence
+    /// category whose curated pool exactly backs its citations.
+    func testEveryCandidateCarriesSystemsAndCategoryBackedCitations() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                      date: now.addingTimeInterval(-2 * 86400))
+        let facts = CoachFacts.make(from: [s], goal: .strength, experience: .intermediate, now: now)
+
+        for c in CoachSession.candidates(for: facts, anaerobicOptIn: true) {
+            XCTAssertFalse(c.systemsTrained.isEmpty, "\(c.id) has no systemsTrained")
+            if c.kind == .rest {
+                XCTAssertNil(c.evidenceCategory)
+                continue
+            }
+            guard let category = c.evidenceCategory else {
+                return XCTFail("\(c.id) has no evidenceCategory")
+            }
+            let pool = CitationRegistry.citationPool(for: category).citationIds
+            XCTAssertEqual(c.citationIds, pool, "\(c.id) must cite exactly its category pool")
+            XCTAssertFalse(c.citationIds.isEmpty)
+        }
+    }
+
+    /// The strength candidate no longer cites a mortality/public-health study (P1/P4
+    /// no-mortality-for-prescriptions rule).
+    func testStrengthCandidateDoesNotCiteMortalityStudy() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+        let strength = CoachSession.candidates(for: facts).first { $0.id == "strength.general" }
+        let mortality: Set<String> = ["ekelundActivityMortality2016", "mooreLeisureActivity2012",
+                                      "aremDoseResponse2015"]
+        XCTAssertNotNil(strength)
+        XCTAssertTrue(Set(strength!.citationIds).isDisjoint(with: mortality))
+        XCTAssertEqual(strength?.evidenceCategory, .strengthIntensity)
+    }
+
+    /// Threshold tempo only appears once an aerobic base is established and cites the
+    /// threshold pool — never the VO₂ or aerobic-base pool.
+    func testThresholdTempoGatedByAerobicBase() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let tiny = CoachFacts.make(
+            from: [makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-86400),
+                                   duration: 20 * 60, avgHR: 140)],
+            goal: .strength, experience: .intermediate, now: now)
+        XCTAssertNil(CoachSession.candidates(for: tiny).first { $0.id == "aerobic.thresholdTempo" },
+                     "No threshold work before a base is built")
+
+        let based = CoachFacts.make(from: [
+            makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-86400), duration: 60 * 60, avgHR: 140),
+            makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-2 * 86400), duration: 60 * 60, avgHR: 140),
+        ], goal: .strength, experience: .intermediate, now: now)
+        let threshold = CoachSession.candidates(for: based).first { $0.id == "aerobic.thresholdTempo" }
+        XCTAssertNotNil(threshold)
+        XCTAssertEqual(threshold?.systemsTrained, [.threshold])
+        XCTAssertEqual(threshold?.citationIds, CitationRegistry.citationPool(for: .thresholdTraining).citationIds)
+    }
+
+    /// Anaerobic intervals are opt-in only and are never auto-prescribed.
+    func testAnaerobicIntervalsAreOptInOnly() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                      date: now.addingTimeInterval(-3 * 86400))
+        let facts = CoachFacts.make(from: [s], goal: .strength, experience: .intermediate, now: now)
+
+        XCTAssertNil(CoachSession.candidates(for: facts).first { $0.id == "aerobic.anaerobicIntervals" })
+        XCTAssertNil(CoachDecisionEngine.run(facts).scoreBreakdowns["aerobic.anaerobicIntervals"],
+                     "Engine must never surface anaerobic work without opt-in")
+
+        let optIn = CoachSession.candidates(for: facts, anaerobicOptIn: true)
+            .first { $0.id == "aerobic.anaerobicIntervals" }
+        XCTAssertNotNil(optIn)
+        XCTAssertEqual(optIn?.systemsTrained, [.anaerobicPower])
+        XCTAssertEqual(optIn?.evidenceCategory, .anaerobicTraining)
+        XCTAssertFalse(optIn!.citationIds.isEmpty)
+    }
+
+    /// A lighter strength option surfaces when readiness is poor.
+    func testReducedLoadStrengthSurfacesOnPoorReadiness() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                      date: now.addingTimeInterval(-2 * 86400))
+        let facts = CoachFacts.make(from: [s], goal: .strength, experience: .intermediate,
+                                    readinessEntry: poorReadiness(now), now: now)
+        let reduced = CoachSession.candidates(for: facts).first { $0.id == "strength.reducedLoad" }
+        XCTAssertNotNil(reduced)
+        XCTAssertTrue(reduced!.trainingLoadTags.contains("reducedLoad"))
+        XCTAssertEqual(reduced?.evidenceCategory, .recoveryMonitoring)
+    }
+
+    /// Poor readiness defers all hard work for a day; the primary is never hard and a
+    /// hard candidate is deferred with a recovery-monitoring–cited reason.
+    func testPoorReadinessDefersHardWork() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                      date: now.addingTimeInterval(-4 * 86400))
+        let facts = CoachFacts.make(from: [s], goal: .strength, experience: .intermediate,
+                                    readinessEntry: poorReadiness(now), now: now)
+        let decision = CoachDecisionEngine.run(facts)
+
+        XCTAssertFalse(decision.primary.isHard,
+                       "Poor readiness must not yield a hard primary. Got: \(decision.primary.id)")
+        let lowReadiness = decision.deferred.first { $0.reason.id == "lowReadiness" }
+        XCTAssertNotNil(lowReadiness, "A hard session should be deferred for low readiness")
+        XCTAssertFalse(lowReadiness!.reason.citationIds.isEmpty)
+    }
+
+    /// An assessment prompt surfaces for an actively-trained system with no baseline.
+    func testAssessmentBaselineSurfacesForUncoveredTrainedSystem() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                      date: now.addingTimeInterval(-2 * 86400))
+        let facts = CoachFacts.make(from: [s], goal: .strength, experience: .intermediate, now: now)
+        let assess = CoachSession.candidates(for: facts).first { $0.id == "assessment.baseline" }
+        XCTAssertNotNil(assess)
+        XCTAssertEqual(assess?.evidenceCategory, .fieldTestValidity)
+        XCTAssertFalse(assess!.systemsTrained.isEmpty)
+        XCTAssertFalse(assess!.citationIds.isEmpty)
+    }
+
+    /// The system-need nudge is capped (≤12) and cannot override a hard floor: with
+    /// zero strength days the primary is still strength even though aerobic/VO₂
+    /// systems are stale.
+    func testSystemNeedIsCappedAndCannotOverrideStrengthFloor() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let runs = (1...3).map {
+            makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-Double($0) * 86400),
+                            duration: 60 * 60, avgHR: 140)
+        }
+        let facts = CoachFacts.make(from: runs, goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+
+        XCTAssertEqual(decision.primary.kind, .strength,
+                       "System need must not override the strength floor. Got: \(decision.primary.id)")
+        for (_, b) in decision.scoreBreakdowns {
+            XCTAssertLessThanOrEqual(b.systemNeed, 12, "systemNeed must be capped at 12")
+            XCTAssertGreaterThanOrEqual(b.systemNeed, 0)
+        }
+    }
+
+    /// Eligible candidates expose a transparent score breakdown whose total matches its
+    /// components, and HR-dependent work is penalized when max-HR is only age-estimated.
+    func testScoreBreakdownsAndConfidencePenalty() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let based = CoachFacts.make(from: [
+            makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-86400), duration: 60 * 60, avgHR: 140),
+            makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-2 * 86400), duration: 60 * 60, avgHR: 140),
+        ], goal: .strength, experience: .intermediate, now: now)
+        XCTAssertEqual(based.zoneSource, .ageEstimated, "HR present → age-estimated max-HR")
+
+        let decision = CoachDecisionEngine.run(based)
+        XCTAssertFalse(decision.scoreBreakdowns.isEmpty)
+        let primaryBreakdown = decision.scoreBreakdowns[decision.primary.id]
+        XCTAssertNotNil(primaryBreakdown)
+        if let b = primaryBreakdown {
+            XCTAssertEqual(b.total, b.base + b.systemNeed + b.preference - b.sameDayPenalty - b.confidencePenalty)
+        }
+
+        if let threshold = decision.scoreBreakdowns["aerobic.thresholdTempo"] {
+            XCTAssertEqual(threshold.confidencePenalty, 3,
+                           "Threshold work should carry a confidence penalty under age-estimated HRmax")
+        }
+    }
 }

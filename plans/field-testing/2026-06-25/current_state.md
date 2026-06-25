@@ -89,6 +89,39 @@ Shipped (additive — rules produced but not yet consumed by the decision engine
 Verification: `swift test` = 387 pass; iOS `xcodebuild … build` = BUILD SUCCEEDED.
 
 Deferred: wiring these into candidates/scoring + UI → Phases 4–5.
-## Phase 4 — Decision scoring & candidates ⏳
+## Phase 4 — Decision scoring & candidates ✅ (branch `feat/coach-phase4-decision-scoring`)
+
+Shipped (additive — every existing decision test preserved):
+
+- `CoachSession` gains `systemsTrained: [TrainingSystem]` + `evidenceCategory:
+  EvidenceClaimCategory?` (defaulted). Every base candidate is re-tagged with the
+  systems it loads and re-cited to its claim category's pool via a single enrichment
+  map — fixing the strength candidate's stray `ekelundActivityMortality2016` mortality
+  cite (now `.strengthIntensity`). Aerobic→`.aerobicBase`, VO₂→`.vo2Training`,
+  recovery→`.flexibilityROM`, rest→`[.recovery]`/no category.
+- **New gated candidates** (all reuse existing `CoachSessionKind` so no exhaustive
+  switch churn): `aerobic.thresholdTempo` (moderateAerobic/vigorous, only once aerobic
+  base ≥90 mod-eq min, cites threshold pool), `aerobic.anaerobicIntervals`
+  (vo2Intervals, **opt-in only** via `candidates(for:anaerobicOptIn:)`),
+  `strength.reducedLoad` (surfaced on load spike ≥1.3 or poor readiness),
+  `assessment.baseline` (when an actively-trained system has no baseline).
+- **`SessionScoreBreakdown`** (base · systemNeed · preference · sameDayPenalty ·
+  confidencePenalty · reasons) now drives ranking and is exposed on
+  `CoachDecision.scoreBreakdowns`. `systemNeed` is capped at ≤12 and is constant within
+  a `CoachSessionKind`, so it breaks near-ties on stale systems without overriding the
+  strength/aerobic floors or a user's modality preference. `confidencePenalty` (3/5)
+  applies to HR-dependent work (VO₂/threshold/anaerobic) when max-HR is age-estimated.
+- **Readiness gate** in `SessionEligibilityPolicy`: a poor readiness check-in defers
+  all hard work for ~24h (cites recovery-monitoring); easy/recovery/rest stay eligible.
+  SIT/anaerobic stays opt-in-gated at candidate generation.
+- `CoachDecisionEngine.run` gains `anaerobicOptIn: Bool = false`, threads breakdowns.
+- Tests: 9 new (candidate tagging + category-backed cites, no-mortality strength cite,
+  threshold gating, anaerobic opt-in, reduced-load on poor readiness, readiness defers
+  hard work, assessment prompt, system-need cap vs floor, breakdown/confidence penalty).
+
+Verification: `swift test` = 396 pass; iOS `xcodebuild … build` = BUILD SUCCEEDED.
+
+Deferred: surfacing breakdown/system/category/confidence in the Coach UI → Phase 5.
+
 ## Phase 5 — UI handoff ⏳
 ## Phase 6 — Docs & final verification ⏳

@@ -40,6 +40,17 @@ public enum SessionEligibilityPolicy {
             ])
         }
 
+        // Readiness gate: a poor self-reported check-in defers hard work for a day.
+        // Easy aerobic, recovery, and rest stay eligible so there's always a path.
+        if session.isHard, let readiness = facts.readiness, readiness.isPoor {
+            return .deferred(until: now.addingTimeInterval(86400), reasons: [
+                DecisionReason(
+                    id: "lowReadiness",
+                    message: "Your latest check-in flagged poor recovery (soreness, sleep, stress, or energy). Easy movement or recovery is a better fit today.",
+                    citationIds: CitationRegistry.citationPool(for: .recoveryMonitoring).citationIds)
+            ])
+        }
+
         if session.kind == .strength {
             evaluateStrength(session, recovery: recovery, facts: facts, now: now, notes: &notes, reasons: &reasons)
         }

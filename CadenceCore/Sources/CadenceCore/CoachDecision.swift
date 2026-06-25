@@ -13,6 +13,7 @@ public struct CoachDecision: Sendable, Identifiable {
     public let citationIds: [String]
     public let planAdherence: PlanAdherence
     public let todayCompletedMatches: [CoachSession]
+    public let scoreBreakdowns: [String: SessionScoreBreakdown]
 
     public init(id: String, generatedAt: Date, primary: CoachSession,
                 alternatives: [CoachSession] = [], deferred: [DeferredCandidate] = [],
@@ -20,7 +21,8 @@ public struct CoachDecision: Sendable, Identifiable {
                 weeklyBalance: WeeklyBalance, confidence: FactConfidence,
                 citationIds: [String] = [],
                 planAdherence: PlanAdherence = .planAhead,
-                todayCompletedMatches: [CoachSession] = []) {
+                todayCompletedMatches: [CoachSession] = [],
+                scoreBreakdowns: [String: SessionScoreBreakdown] = [:]) {
         self.id = id
         self.generatedAt = generatedAt
         self.primary = primary
@@ -33,6 +35,7 @@ public struct CoachDecision: Sendable, Identifiable {
         self.citationIds = citationIds
         self.planAdherence = planAdherence
         self.todayCompletedMatches = todayCompletedMatches
+        self.scoreBreakdowns = scoreBreakdowns
     }
 }
 
@@ -40,6 +43,33 @@ public struct DeferredCandidate: Sendable, Equatable, Identifiable {
     public let session: CoachSession
     public let reason: DecisionReason
     public var id: String { session.id }
+}
+
+/// Transparent, additive breakdown of how a candidate was ranked (P4). The base
+/// term carries the existing strength/aerobic-floor logic; `systemNeed` is a small,
+/// capped nudge so a stale system can break a near-tie without overriding the floors
+/// or a user's modality preference.
+public struct SessionScoreBreakdown: Sendable, Equatable {
+    public let sessionId: String
+    public let base: Int
+    public let systemNeed: Int
+    public let preference: Int
+    public let sameDayPenalty: Int
+    public let confidencePenalty: Int
+    public let reasons: [EvidenceClaim]
+
+    public init(sessionId: String, base: Int, systemNeed: Int, preference: Int,
+                sameDayPenalty: Int, confidencePenalty: Int, reasons: [EvidenceClaim] = []) {
+        self.sessionId = sessionId
+        self.base = base
+        self.systemNeed = systemNeed
+        self.preference = preference
+        self.sameDayPenalty = sameDayPenalty
+        self.confidencePenalty = confidencePenalty
+        self.reasons = reasons
+    }
+
+    public var total: Int { base + systemNeed + preference - sameDayPenalty - confidencePenalty }
 }
 
 public struct CoachWarning: Sendable, Equatable, Identifiable {
@@ -83,9 +113,10 @@ public enum CoachDecisionEngine {
 
     public static func run(_ facts: CoachFacts,
                            profile: CoachPreferenceProfile = .empty,
-                           hasPainConcern: Bool = false) -> CoachDecision {
+                           hasPainConcern: Bool = false,
+                           anaerobicOptIn: Bool = false) -> CoachDecision {
         let now = facts.referenceDate
-        let candidates = CoachSession.candidates(for: facts)
+        let candidates = CoachSession.candidates(for: facts, anaerobicOptIn: anaerobicOptIn)
         let todayCompleted = facts.todayCompletedEvents
 
         // Gate 1: pain/illness block
@@ -133,20 +164,23 @@ public enum CoachDecisionEngine {
             }
         }
 
-        // Gate 3: score eligible candidates (base + preference + same-day damping)
+        // Gate 3: score eligible candidates (base + system need + preference
+        // − same-day damping − confidence penalty).
         let scored = score(eligible, facts: facts, profile: profile,
                            todayCompleted: todayCompleted)
 
         let primary: CoachSession
         if let top = scored.first {
-            primary = top
+            primary = top.session
         } else {
             primary = candidates.first { $0.kind == .rest } ?? CoachSession(
                 id: "rest.fallback", kind: .rest, title: "Rest day",
                 subtitle: "No eligible training candidates right now.", launchPayload: .rest)
         }
 
-        let alternatives = Array(scored.dropFirst().prefix(3))
+        let alternatives = Array(scored.dropFirst().prefix(3)).map(\.session)
+        let breakdownMap = Dictionary(scored.map { ($0.session.id, $0.breakdown) },
+                                      uniquingKeysWith: { first, _ in first })
 
         // Gate 4: Plan adherence — check if today's planned session is already done
         let planState = computePlanAdherence(primary: primary, todayCompleted: todayCompleted,
@@ -219,7 +253,8 @@ public enum CoachDecisionEngine {
             confidence: eligible.isEmpty ? .low : .moderate,
             citationIds: Array(allCitationIds),
             planAdherence: planState,
-            todayCompletedMatches: todayMatches
+            todayCompletedMatches: todayMatches,
+            scoreBreakdowns: breakdownMap
         )
     }
 
@@ -396,23 +431,69 @@ public enum CoachDecisionEngine {
 
     private static func score(_ candidates: [CoachSession], facts: CoachFacts,
                                 profile: CoachPreferenceProfile,
-                                todayCompleted: [TrainingEvent] = []) -> [CoachSession] {
+                                todayCompleted: [TrainingEvent] = [])
+        -> [(session: CoachSession, breakdown: SessionScoreBreakdown)] {
         let balance = facts.weeklyBalance
         let strengthFloor = 2
         let aerobicFloor = 150.0
 
-        return candidates.sorted { a, b in
-            let baseA = scoreSessionBase(a, balance: balance, strengthFloor: strengthFloor, aerobicFloor: aerobicFloor)
-            let baseB = scoreSessionBase(b, balance: balance, strengthFloor: strengthFloor, aerobicFloor: aerobicFloor)
-            let prefA = profile.preferenceScore(for: a)
-            let prefB = profile.preferenceScore(for: b)
-            let dampenA = sameDayDamping(for: a, todayCompleted: todayCompleted)
-            let dampenB = sameDayDamping(for: b, todayCompleted: todayCompleted)
-            let scoreA = baseA + prefA - dampenA
-            let scoreB = baseB + prefB - dampenB
-            if scoreA != scoreB { return scoreA > scoreB }
-            if a.isHard != b.isHard { return !a.isHard }
-            return a.id < b.id
+        let scored = candidates.map { c -> (session: CoachSession, breakdown: SessionScoreBreakdown) in
+            let base = scoreSessionBase(c, balance: balance, strengthFloor: strengthFloor, aerobicFloor: aerobicFloor)
+            let need = systemNeed(for: c, facts: facts)
+            let pref = profile.preferenceScore(for: c)
+            let dampen = sameDayDamping(for: c, todayCompleted: todayCompleted)
+            let confPenalty = confidencePenalty(for: c, facts: facts)
+            let breakdown = SessionScoreBreakdown(
+                sessionId: c.id, base: base, systemNeed: need, preference: pref,
+                sameDayPenalty: dampen, confidencePenalty: confPenalty,
+                reasons: systemNeedReasons(for: c, facts: facts, systemNeed: need))
+            return (c, breakdown)
+        }
+
+        return scored.sorted { a, b in
+            if a.breakdown.total != b.breakdown.total { return a.breakdown.total > b.breakdown.total }
+            if a.session.isHard != b.session.isHard { return !a.session.isHard }
+            return a.session.id < b.session.id
+        }
+    }
+
+    /// Small, capped nudge (≤12) toward candidates that train a system the user has
+    /// neglected this week or has no baseline for. Bounded well under the strength/
+    /// aerobic floor terms so it breaks near-ties without overriding them, and it is
+    /// constant across modalities of the same kind so it never disturbs a user's
+    /// remembered modality preference.
+    private static func systemNeed(for session: CoachSession, facts: CoachFacts) -> Int {
+        guard !session.systemsTrained.isEmpty else { return 0 }
+        let stale = Set(facts.staleSystems)
+        var score = 0
+        for sys in session.systemsTrained {
+            if stale.contains(sys) { score += 8 }
+            if facts.assessmentCoverage[sys].map({ !$0.hasBaseline }) ?? false { score += 4 }
+        }
+        return min(score, 12)
+    }
+
+    private static func systemNeedReasons(for session: CoachSession, facts: CoachFacts,
+                                           systemNeed: Int) -> [EvidenceClaim] {
+        guard systemNeed > 0, let category = session.evidenceCategory,
+              let sys = session.systemsTrained.first else { return [] }
+        return [EvidenceClaim(
+            id: "systemNeed.\(session.id)",
+            text: "\(sys.displayName) has had little work recently — training it now restores balance.",
+            category: category, date: facts.referenceDate)]
+    }
+
+    /// HR-zone–dependent prescriptions (VO₂, threshold, anaerobic) are less certain
+    /// when max-HR is only age-estimated. A small penalty, never a floor override.
+    private static func confidencePenalty(for session: CoachSession, facts: CoachFacts) -> Int {
+        let hrDependent = session.systemsTrained.contains(.vo2max)
+            || session.systemsTrained.contains(.threshold)
+            || session.systemsTrained.contains(.anaerobicPower)
+        guard hrDependent else { return 0 }
+        switch facts.zoneSource {
+        case .tested: return 0
+        case .ageEstimated: return 3
+        case .unknown: return 5
         }
     }
 

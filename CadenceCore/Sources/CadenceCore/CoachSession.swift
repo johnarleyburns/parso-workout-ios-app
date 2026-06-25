@@ -22,6 +22,8 @@ public struct CoachSession: Sendable, Equatable, Identifiable {
     public let trainingLoadTags: [String]
     public let citationIds: [String]
     public let launchPayload: LaunchPayload
+    public let systemsTrained: [TrainingSystem]
+    public let evidenceCategory: EvidenceClaimCategory?
 
     public struct RecommendedExercise: Sendable, Equatable {
         public let name: String
@@ -65,7 +67,9 @@ public struct CoachSession: Sendable, Equatable, Identifiable {
                 durationMinutes: Int? = nil, exercises: [RecommendedExercise]? = nil,
                 modality: AerobicModality? = nil, intensity: AerobicIntensity? = nil,
                 trainingLoadTags: [String] = [], citationIds: [String] = [],
-                launchPayload: LaunchPayload = .rest) {
+                launchPayload: LaunchPayload = .rest,
+                systemsTrained: [TrainingSystem] = [],
+                evidenceCategory: EvidenceClaimCategory? = nil) {
         self.id = id
         self.kind = kind
         self.title = title
@@ -77,12 +81,15 @@ public struct CoachSession: Sendable, Equatable, Identifiable {
         self.trainingLoadTags = trainingLoadTags
         self.citationIds = citationIds
         self.launchPayload = launchPayload
+        self.systemsTrained = systemsTrained
+        self.evidenceCategory = evidenceCategory
     }
 }
 
 extension CoachSession {
 
-    public static func candidates(for facts: CoachFacts) -> [CoachSession] {
+    public static func candidates(for facts: CoachFacts,
+                                  anaerobicOptIn: Bool = false) -> [CoachSession] {
         let balance = facts.weeklyBalance
         let goal = facts.goal
         let range = goal.repRange
@@ -306,7 +313,131 @@ extension CoachSession {
             launchPayload: .rest
         ))
 
+        // Tag every base candidate with the training systems it loads and the
+        // claim-specific evidence category it is allowed to cite (P4).
+        candidates = candidates.map { c in
+            switch c.kind {
+            case .strength:
+                return c.withEvidence(.strengthIntensity, systems: [.maximalStrength, .hypertrophy],
+                                      citations: evidencePool(.strengthIntensity))
+            case .easyAerobic, .moderateAerobic:
+                return c.withEvidence(.aerobicBase, systems: [.aerobicBase],
+                                      citations: evidencePool(.aerobicBase))
+            case .vo2Intervals:
+                return c.withEvidence(.vo2Training, systems: [.vo2max],
+                                      citations: evidencePool(.vo2Training))
+            case .recovery:
+                return c.withEvidence(.flexibilityROM, systems: [.flexibility],
+                                      citations: evidencePool(.flexibilityROM))
+            case .rest:
+                return c.withEvidence(nil, systems: [.recovery])
+            case .assessment:
+                return c.withEvidence(.fieldTestValidity, systems: [],
+                                      citations: evidencePool(.fieldTestValidity))
+            }
+        }
+
+        // Threshold tempo — only once an aerobic base is established (so it never
+        // pre-empts base-building or appears for brand-new users).
+        if balance.moderateEquivalentMinutes >= 90 {
+            candidates.append(CoachSession(
+                id: "aerobic.thresholdTempo",
+                kind: .moderateAerobic,
+                title: "Threshold tempo",
+                subtitle: "20–30 min · comfortably hard (~85% HRmax)",
+                durationMinutes: 25,
+                modality: .run,
+                intensity: .vigorous,
+                trainingLoadTags: ["aerobic", "hard", "highImpact", "threshold"],
+                citationIds: evidencePool(.thresholdTraining),
+                launchPayload: .cardio(type: "tempo", durationMinutes: 25),
+                systemsTrained: [.threshold],
+                evidenceCategory: .thresholdTraining
+            ))
+        }
+
+        // Anaerobic intervals — opt-in only; never auto-prescribed (P4 safety rule).
+        if anaerobicOptIn {
+            candidates.append(CoachSession(
+                id: "aerobic.anaerobicIntervals",
+                kind: .vo2Intervals,
+                title: "Anaerobic intervals",
+                subtitle: "Short, near-maximal efforts · long recoveries",
+                durationMinutes: 20,
+                modality: .run,
+                intensity: .vigorous,
+                trainingLoadTags: ["aerobic", "hard", "highImpact", "anaerobic"],
+                citationIds: evidencePool(.anaerobicTraining),
+                launchPayload: .cardio(type: "hiit", durationMinutes: 20),
+                systemsTrained: [.anaerobicPower],
+                evidenceCategory: .anaerobicTraining
+            ))
+        }
+
+        // Reduced-load strength — surfaced when an acute load spike is flagged or a
+        // poor readiness check-in is logged, so the user can keep training lighter.
+        let loadSpiked = facts.loadSpikeFlags.contains { $0.ratio >= 1.3 }
+        let readinessPoor = facts.readiness?.isPoor == true
+        if (loadSpiked || readinessPoor) && !facts.events.isEmpty {
+            let exercises = buildStrengthExercises(facts: facts).map {
+                RecommendedExercise(name: $0.name, primaryMuscles: $0.primaryMuscles,
+                                    sets: max(2, ($0.sets ?? 3) - 1),
+                                    repsLow: $0.repsLow, repsHigh: $0.repsHigh,
+                                    loadKg: nil, rir: (($0.rir ?? rir) + 2))
+            }
+            candidates.append(CoachSession(
+                id: "strength.reducedLoad",
+                kind: .strength,
+                title: "Lighter strength session",
+                subtitle: "Same lifts · lower load · 2+ extra RIR",
+                durationMinutes: 35,
+                exercises: exercises,
+                trainingLoadTags: ["strength", "reducedLoad"],
+                citationIds: evidencePool(.recoveryMonitoring),
+                launchPayload: .strengthPlan("fullBody"),
+                systemsTrained: [.maximalStrength, .hypertrophy],
+                evidenceCategory: .recoveryMonitoring
+            ))
+        }
+
+        // Assessment prompt — when an actively-trained system has no fresh baseline,
+        // so prescriptions stay grounded in measured fitness.
+        if !facts.events.isEmpty {
+            let trainedSystems = facts.systemLoads.filter { $0.value.trailing28dExposures > 0 }.keys
+            if let missing = trainedSystems.first(where: { sys in
+                facts.assessmentCoverage[sys].map { !$0.hasBaseline } ?? false
+            }) {
+                candidates.append(CoachSession(
+                    id: "assessment.baseline",
+                    kind: .assessment,
+                    title: "Establish a baseline",
+                    subtitle: "A quick \(missing.displayName) test sharpens every recommendation",
+                    durationMinutes: 15,
+                    citationIds: evidencePool(.fieldTestValidity),
+                    launchPayload: .assessment,
+                    systemsTrained: [missing],
+                    evidenceCategory: .fieldTestValidity
+                ))
+            }
+        }
+
         return candidates
+    }
+
+    private static func evidencePool(_ category: EvidenceClaimCategory) -> [String] {
+        CitationRegistry.citationPool(for: category).citationIds
+    }
+
+    func withEvidence(_ category: EvidenceClaimCategory?, systems: [TrainingSystem],
+                      citations: [String]? = nil) -> CoachSession {
+        CoachSession(
+            id: id, kind: kind, title: title, subtitle: subtitle,
+            durationMinutes: durationMinutes, exercises: exercises,
+            modality: modality, intensity: intensity,
+            trainingLoadTags: trainingLoadTags,
+            citationIds: citations ?? citationIds,
+            launchPayload: launchPayload,
+            systemsTrained: systems, evidenceCategory: category)
     }
 
     private static func buildStrengthExercises(facts: CoachFacts) -> [RecommendedExercise] {

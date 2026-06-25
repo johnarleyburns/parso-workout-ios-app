@@ -512,3 +512,22 @@ Every `AssessmentKind` carries an `AssessmentEvidencePolicy`:
   low-confidence).
 - **personalBenchmark** — self-tracked, no population-validity claim, with a caveat string
   the UI must show (`pushupMax`, `pullupMax`, `bodyweightSquatMax`, `hollowHold`).
+
+## Where these are surfaced (decision engine → UI)
+
+The typed categories above are consumed end-to-end, so every coach output the user sees
+is tappable science:
+
+- **Candidates** (`CoachSession.candidates`) each carry an `evidenceCategory` and cite
+  exactly that category's pool: strength → `strengthIntensity`; easy/moderate aerobic →
+  `aerobicBase`; threshold tempo → `thresholdTraining`; VO₂ / anaerobic intervals →
+  `vo2Training` / `anaerobicTraining` (anaerobic opt-in only); reduced-load strength →
+  `recoveryMonitoring`; recovery/mobility → `flexibilityROM`; assessment prompt →
+  `fieldTestValidity`.
+- **`CoachDecision.scoreBreakdowns[…].reasons`** are typed `EvidenceClaim`s (e.g. a
+  stale-system nudge) carrying their own category + selected citation.
+- **UI** renders all of the above via `CitationLink`: `WhyThisTodayView` ("why this won"
+  weekly-balance claims use `strengthFrequency` / `activityMinutesHealth` /
+  `recoveryMonitoring`; the age-estimated-HRmax caveat cites `tanakaMaxHR2001`),
+  `CoachDecisionCardView` warnings, and each `CoachAlternativesView` option. No production
+  UI references the legacy `aerobicPool` / `recoveryLoadPool` any longer.

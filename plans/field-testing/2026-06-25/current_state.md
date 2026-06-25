@@ -152,4 +152,27 @@ Deferred (low priority, can fold into Phase 6 or later): per-alternative citatio
 `aerobicPool`/`recoveryLoadPool` remain in CadenceCore (still covered by
 CitationIntegrityTests) but are no longer referenced by any production UI.
 
-## Phase 6 — Docs & final verification ⏳
+## Phase 6 — Docs & final verification ✅ (branch `docs/coach-phase6-citations-final`)
+
+- **`CoachAlternativesView`** now renders a compact `CitationLink` ("The science >")
+  on every alternative option — closing the last cite-everything gap (the alternatives
+  screen surfaces recommended sessions, which the HARD RULE requires be cited). Each
+  option's `citationIds` are already category-pool-backed from Phase 4.
+- **`docs/CITATIONS.md`**: audited in sync — every `CitationRegistry.all` ID has an
+  entry (the only non-matching token is the *pool* id `recoveryLoad`, not a citation).
+  Added a "Where these are surfaced (decision engine → UI)" subsection documenting how
+  candidates / scoreBreakdowns / UI consume the typed categories.
+- **Final verification**: `swift test` = 396 pass / 0 failures; iOS
+  `xcodebuild … build` = BUILD SUCCEEDED.
+
+### Evidence-upgrade rollout complete (Phases 1–6)
+
+All six phases shipped to `main` with green CI. Every coach recommendation, warning,
+deferral, why-this-won claim, alternative, and assessment prompt is now backed by a
+claim-specific, typed `EvidenceClaimCategory` pool and rendered with a tappable
+`CitationLink`. No production code path cites a mortality/public-health study for a
+performance prescription, and no production UI uses the legacy shared pools.
+
+Remaining low-priority polish (optional, non-blocking): weekly-target citations in
+`YourWeekView`, and making the `CoachDecisionCardView` `CoachSessionKind` switches
+exhaustive (they currently fall through `default:`).

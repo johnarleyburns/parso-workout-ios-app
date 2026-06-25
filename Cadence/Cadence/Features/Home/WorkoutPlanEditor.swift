@@ -123,7 +123,7 @@ struct WorkoutPlanEditor: View {
                         .accessibilityIdentifier("editor.warmup")
                 }
 
-                Section("Training partners") {
+                Section {
                     ForEach(allPeople.filter { !$0.isMe }) { person in
                         HStack {
                             Text(person.name)
@@ -147,15 +147,21 @@ struct WorkoutPlanEditor: View {
                             .accessibilityIdentifier("editor.newPartnerName")
                         Button("Add") {
                             let name = newPartnerName.trimmingCharacters(in: .whitespaces)
-                            if !name.isEmpty {
-                                // Persist the person, then add to plan
-                                _ = try? WorkoutRepository.findOrCreatePerson(named: name, in: modelContext)
-                                newPartnerName = ""
+                            if !name.isEmpty,
+                               let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: modelContext) {
+                                // A partner you just added is one you intend to train
+                                // with — select them (partners are otherwise opt-in).
+                                if !plan.partnerIDs.contains(p.id) { plan.partnerIDs.append(p.id) }
                             }
+                            newPartnerName = ""
                         }
                         .disabled(newPartnerName.trimmingCharacters(in: .whitespaces).isEmpty)
                         .accessibilityIdentifier("editor.addPartner")
                     }
+                } header: {
+                    Text("Training partners")
+                } footer: {
+                    Text("Partners are optional — leave everyone unchecked to train solo.")
                 }
 
                 ForEach($plan.exercises) { $exercise in

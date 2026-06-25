@@ -234,6 +234,10 @@ public enum WorkoutRepository {
         return p
     }
 
+    /// Edits a logged set. Every parameter is "no change" when omitted, so editing
+    /// weight/reps never clobbers `isWarmup`, the note, or RPE (history-edit bug
+    /// fix). `performedBy` is double-optional: `nil` = leave attribution as-is,
+    /// `.some(nil)` = re-attribute to the owner ("Me"), `.some(person)` = a partner.
     public static func updateSet(_ set: SetEntry,
                                  weightKg: Double? = nil,
                                  reps: Int? = nil,
@@ -241,6 +245,8 @@ public enum WorkoutRepository {
                                  isWarmup: Bool? = nil,
                                  usesBodyweight: Bool? = nil,
                                  note: String?? = nil,
+                                 exercise: Exercise? = nil,
+                                 performedBy: Person?? = nil,
                                  in context: ModelContext) throws {
         if let weightKg { set.weight = weightKg }
         if let reps { set.reps = reps }
@@ -248,9 +254,44 @@ public enum WorkoutRepository {
         if let isWarmup { set.isWarmup = isWarmup }
         if let usesBodyweight { set.usesBodyweight = usesBodyweight }
         if let note { set.note = note }
+        if let exercise { set.exercise = exercise }
+        if let performedBy {
+            // A "Me"/owner Person is normalized to nil so owner stats stay correct.
+            set.performedBy = (performedBy?.isMe ?? true) ? nil : performedBy
+        }
         set.updatedAt = Date()
         set.session?.updatedAt = Date()
         try context.save()
+    }
+
+    /// Reassigns every set of `oldExercise` in `session` to `newExercise` — the
+    /// history-edit "I logged the wrong movement" fix. Owner AND partner sets
+    /// move together, the planned-name list follows so the card header/prescription
+    /// update, and duplicate planned names are de-duped. No-op (returns 0) when the
+    /// exercise is unchanged. Returns the number of sets moved.
+    @discardableResult
+    public static func changeExercise(in session: WorkoutSession,
+                                      from oldExercise: Exercise,
+                                      to newExercise: Exercise,
+                                      in context: ModelContext) throws -> Int {
+        guard oldExercise.id != newExercise.id else { return 0 }
+        let now = Date()
+        let moved = (session.sets ?? []).filter { $0.exercise?.id == oldExercise.id }
+        for s in moved {
+            s.exercise = newExercise
+            s.updatedAt = now
+        }
+        var names = session.plannedExerciseNames
+        if let idx = names.firstIndex(of: oldExercise.name) {
+            names[idx] = newExercise.name
+        }
+        // Collapse any duplicate of the new name so we never render two cards.
+        var seen = Set<String>()
+        names = names.filter { seen.insert($0).inserted }
+        session.plannedExerciseNames = names
+        session.updatedAt = now
+        try context.save()
+        return moved.count
     }
 
     public static func deleteSet(_ set: SetEntry, in context: ModelContext) throws {

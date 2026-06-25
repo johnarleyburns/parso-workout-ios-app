@@ -298,23 +298,69 @@ struct WhyThisTodayView: View {
             Text("Why this won")
                 .font(.headline)
                 .padding(.bottom, 4)
-            card {
-                let claims = buildWhyThisWonClaims()
-                ForEach(claims, id: \.id) { claim in
-                    if claim.id != claims.first?.id {
-                        Divider()
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(claim.text)
-                            .font(.caption)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if let citation = CitationRegistry.citation(forId: claim.selectedCitationId) {
-                            CitationLink(citation: citation, compact: true)
-                        }
-                    }
-                    .padding(.vertical, 6)
+
+            let claims = buildWhyThisWonClaims()
+            VStack(spacing: 0) {
+                ForEach(Array(claims.enumerated()), id: \.element.id) { i, claim in
+                    if i > 0 { Divider().padding(.leading, 40) }
+                    compactClaimRow(claim)
                 }
             }
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    /// A "Why this won" row styled like "What you did": leading category icon,
+    /// the claim as the title, its tappable citation as the subtitle (HARD RULE —
+    /// kept individually tappable, so the row is NOT accessibility-combined), and a
+    /// trailing category tag.
+    private func compactClaimRow(_ claim: EvidenceClaim) -> some View {
+        let style = claimStyle(claim.category)
+        return HStack(spacing: 8) {
+            Image(systemName: style.symbol)
+                .font(.caption)
+                .foregroundStyle(style.color)
+                .frame(width: 22, height: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(claim.text)
+                    .font(.subheadline.weight(.medium))
+                    .fixedSize(horizontal: false, vertical: true)
+                if let citation = CitationRegistry.citation(forId: claim.selectedCitationId) {
+                    CitationLink(citation: citation, compact: true)
+                }
+            }
+            Spacer(minLength: 6)
+            Text(style.label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(style.color)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(style.color.opacity(0.12), in: Capsule())
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .accessibilityIdentifier("whyToday.claim.\(claim.id)")
+    }
+
+    /// Maps a claim's typed evidence category to its row icon, accent, and tag.
+    private func claimStyle(_ category: EvidenceClaimCategory?) -> (symbol: String, color: Color, label: String) {
+        switch category {
+        case .strengthFrequency, .strengthVolume, .strengthIntensity, .periodization:
+            return ("dumbbell.fill", .green, "Strength")
+        case .activityMinutesHealth, .stepsHealth, .aerobicBase:
+            return ("heart.fill", .teal, "Aerobic")
+        case .vo2Training, .thresholdTraining, .anaerobicTraining:
+            return ("bolt.heart.fill", .orange, "Intensity")
+        case .flexibilityROM:
+            return ("figure.flexibility", .purple, "Mobility")
+        case .recoveryMonitoring:
+            return ("bed.double.fill", .indigo, "Recovery")
+        case .concurrentTraining:
+            return ("arrow.triangle.2.circlepath", .blue, "Concurrent")
+        case .fieldTestValidity:
+            return ("checklist", .gray, "Testing")
+        case nil:
+            return ("sparkles", .secondary, "Coach")
         }
     }
 

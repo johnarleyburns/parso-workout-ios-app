@@ -44,6 +44,8 @@ struct SessionView: View {
     @State private var datePickerPresented = false
     @State private var endDatePickerPresented = false
     @State private var exerciseToRemove: Exercise?
+    @State private var changingExerciseFor: Exercise?
+    @State private var managePartnersPresented = false
     // Idle auto-terminate (field-testing §02/§04, decisions #6/#7).
     @State private var lastActivity = Date()
     @State private var idlePromptShown = false
@@ -60,26 +62,36 @@ struct SessionView: View {
     // every 5 s during the live session, piggybacking on the idle timer.
     @State private var hrSamples: [HRSamplePoint] = []
 
-    /// Active training partners for this session. When `activePartnerIDs` is
-    /// empty (backward compat), returns all known partners; otherwise scoped
-    /// to the per-session roster.
-    private var activePartnerPeople: [Person] {
-        guard !session.activePartnerIDs.isEmpty else { return allPeople.filter { !$0.isMe } }
-        let ids = Set(session.activePartnerIDs.compactMap(UUID.init(uuidString:)))
-        return allPeople.filter { !$0.isMe && ids.contains($0.id) }
-    }
-    /// Owner first, then session-scoped partners alphabetically. When
-    /// `activePartnerIDs` is empty, falls back to all known partners.
-    private var roster: [Person] {
-        guard !session.activePartnerIDs.isEmpty else {
-            return allPeople.filter(\.isMe) + allPeople.filter { !$0.isMe }
+    /// Partner ids already attributed to a set in this session, so a set
+    /// mis-attributed to a now-unscoped partner can still be re-picked (and
+    /// corrected back to "Me") when editing.
+    private var attributedPartnerIDs: [UUID] {
+        (session.sets ?? []).compactMap { set in
+            guard let p = set.performedBy, !p.isMe else { return nil }
+            return p.id
         }
-        return allPeople.filter(\.isMe) + activePartnerPeople.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
-    /// At least one training partner is in the session roster.
+    /// Training partners scoped to this session (opt-in: empty ⇒ solo).
+    private var activePartnerPeople: [Person] {
+        SessionRoster.scopedPartners(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
+    }
+    /// Owner first, then session-scoped partners alphabetically. Solo ⇒ just the owner.
+    private var roster: [Person] {
+        SessionRoster.roster(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
+    }
+    /// People that may be attributed a set: scoped partners + anyone already
+    /// attributed to a set here. The performer pickers add "Me" separately.
+    private var attributablePartners: [Person] {
+        SessionRoster.attributablePartners(activePartnerIDs: session.activePartnerIDs,
+                                           allPeople: allPeople,
+                                           includingAttributed: attributedPartnerIDs)
+    }
+    /// Whether sets can be attributed to a partner — drives the WHO column and the
+    /// performer pickers (true when a partner is scoped OR a set is already attributed).
     private var hasPartners: Bool {
-        if session.activePartnerIDs.isEmpty { return allPeople.contains { !$0.isMe } }
-        return activePartnerPeople.contains { !$0.isMe }
+        SessionRoster.canAttribute(activePartnerIDs: session.activePartnerIDs,
+                                   allPeople: allPeople,
+                                   attributedIDs: attributedPartnerIDs)
     }
     /// Whether the set editor should default to a bodyweight set for an exercise.
     private func isBodyweight(_ exercise: Exercise) -> Bool {
@@ -186,12 +198,13 @@ struct SessionView: View {
         if settings.plateRounding { kg = UnitEntry.plateRounded(kg: kg, unit: inlineUnit) }
         let rpe = inlineRPE.map(Double.init)
         if let editing = inlineEditingSet {
+            // Omit isWarmup/note so a weight/reps edit never silently flips a
+            // warm-up to a working set or erases the note (history-edit fix).
             try? WorkoutRepository.updateSet(editing, weightKg: kg, reps: inlineReps,
-                                             rpe: .some(rpe), isWarmup: false,
-                                             usesBodyweight: inlineBodyweight, note: .some(nil), in: context)
-            let person = people(for: inlinePerformedByID)
-            editing.performedBy = (person?.isMe ?? true) ? nil : person
-            try? context.save()
+                                             rpe: .some(rpe),
+                                             usesBodyweight: inlineBodyweight,
+                                             performedBy: .some(people(for: inlinePerformedByID)),
+                                             in: context)
         } else {
             addSet(to: exercise, weightKg: kg, reps: inlineReps, rpe: rpe, isWarmup: false,
                    usesBodyweight: inlineBodyweight, note: nil, performedBy: people(for: inlinePerformedByID))
@@ -454,6 +467,21 @@ struct SessionView: View {
                 }
             }
         }
+        // Change which movement a logged exercise card actually is — moves every
+        // set in the card to the picked exercise (history-edit "wrong movement" fix).
+        .sheet(isPresented: Binding(
+            get: { changingExerciseFor != nil },
+            set: { if !$0 { changingExerciseFor = nil } }
+        )) {
+            ExercisePickerView { picked in
+                if let old = changingExerciseFor, old.id != picked.id {
+                    _ = try? WorkoutRepository.changeExercise(in: session, from: old, to: picked, in: context)
+                    poke()
+                }
+                changingExerciseFor = nil
+            }
+        }
+        .sheet(isPresented: $managePartnersPresented) { managePartnersSheet }
         .sheet(isPresented: $usePreviousPresented) {
             PreviousWorkoutPicker(excluding: session) { past in
                 _ = try? WorkoutRepository.copyWorkout(from: past, into: session, in: context)
@@ -679,6 +707,12 @@ struct SessionView: View {
                 addPartnerPresented = true
             } label: { Image(systemName: "plus.circle") }
                 .accessibilityIdentifier("partner.add")
+                .accessibilityLabel("Add training partner")
+            Button {
+                managePartnersPresented = true
+            } label: { Image(systemName: "gearshape") }
+                .accessibilityIdentifier("partner.manage")
+                .accessibilityLabel("Manage training partners")
             Spacer()
         }
     }
@@ -758,6 +792,10 @@ struct SessionView: View {
                     .accessibilityIdentifier("exerciseCard.\(exercise.name)")
                 Spacer()
                 Menu {
+                    Button { changingExerciseFor = exercise } label: {
+                        Label("Change exercise", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .accessibilityIdentifier("exercise.changeExercise.\(exercise.name)")
                     Button(role: .destructive) { exerciseToRemove = exercise } label: {
                         Label("Remove exercise", systemImage: "trash")
                     }
@@ -772,13 +810,20 @@ struct SessionView: View {
             if !sets.isEmpty || isActive || pending > 0 { setColumnHeader }
 
             ForEach(Array(sets.enumerated()), id: \.element.id) { idx, set in
-                completedSetRow(set, number: numbers[set.id] ?? "", exercise: exercise)
-                if idx < sets.count - 1 || isActive || pending > 0 {
+                // Editing a logged set swaps that row for the inline editor in
+                // place, so tapping a weight/reps value visibly enters edit mode
+                // (history-edit discoverability fix). New sets use the trailing row.
+                if inlineEditingSet?.id == set.id {
+                    activeSetRow(for: exercise)
+                } else {
+                    completedSetRow(set, number: numbers[set.id] ?? "", exercise: exercise)
+                }
+                if idx < sets.count - 1 || (isActive && inlineEditingSet == nil) || pending > 0 {
                     Divider()
                 }
             }
 
-            if isActive { activeSetRow(for: exercise) }
+            if isActive && inlineEditingSet == nil { activeSetRow(for: exercise) }
 
             ForEach(0..<pending, id: \.self) { offset in
                 let n = workingNumber(for: exercise, extra: offset)
@@ -886,6 +931,7 @@ struct SessionView: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("set.editWeight.\(exercise.name).\(number)")
 
             Button {
                 openInlineEditor(for: exercise, editing: set)
@@ -893,6 +939,7 @@ struct SessionView: View {
                 Text("\(set.reps)").monospacedDigit().frame(width: SetCol.reps)
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("set.editReps.\(exercise.name).\(number)")
 
             Group {
                 if isAllTimePR(set, exercise: exercise) {
@@ -907,6 +954,10 @@ struct SessionView: View {
         .frame(minHeight: 44)
         .contentShape(Rectangle())
         .contextMenu { rowMenu(for: set, exercise: exercise) }
+        // Keep the inner weight/reps/performer controls individually accessible —
+        // a `.contextMenu` otherwise collapses the row into one a11y element,
+        // hiding their identifiers from UI tests (and VoiceOver).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("set.row.\(exercise.name).\(number)")
     }
 
@@ -943,9 +994,13 @@ struct SessionView: View {
         }
         if hasPartners {
             Menu {
-                Button("Me") { set.performedBy = nil; try? context.save() }
-                ForEach(roster.filter { !$0.isMe }) { p in
-                    Button(p.name) { set.performedBy = p; try? context.save() }
+                Button("Me") {
+                    try? WorkoutRepository.updateSet(set, performedBy: .some(nil), in: context)
+                }
+                ForEach(attributablePartners) { p in
+                    Button(p.name) {
+                        try? WorkoutRepository.updateSet(set, performedBy: .some(p), in: context)
+                    }
                 }
             } label: { Label("Performed by", systemImage: "person") }
         }
@@ -973,7 +1028,24 @@ struct SessionView: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: SetCol.gap) {
                 if hasPartners {
-                    performerChip(people(for: inlinePerformedByID))
+                    Menu {
+                        Button {
+                            inlinePerformedByID = nil
+                        } label: {
+                            HStack { Text("Me"); if inlinePerformedByID == nil { Image(systemName: "checkmark") } }
+                        }
+                        ForEach(attributablePartners) { p in
+                            Button {
+                                inlinePerformedByID = p.id
+                            } label: {
+                                HStack { Text(p.name); if inlinePerformedByID == p.id { Image(systemName: "checkmark") } }
+                            }
+                        }
+                    } label: {
+                        performerChip(people(for: inlinePerformedByID))
+                    }
+                    .accessibilityIdentifier("inline.performer")
+                    .accessibilityLabel("Performed by")
                 } else {
                     setIndexBadge(number, isWarmup: false)
                 }
@@ -1219,6 +1291,78 @@ struct SessionView: View {
         _ = try? WorkoutRepository.findOrCreateExercise(named: newName, in: context)
         try? context.save()
         poke()
+    }
+
+    // MARK: Manage partners (opt-in roster, field-testing §04 bug fix)
+
+    /// Discoverable partner management: check/uncheck who is in the session and
+    /// add new partners. Unchecking the last partner correctly returns to solo
+    /// (partners are opt-in — an empty roster never re-shows everyone).
+    private var managePartnersSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(allPeople.filter { !$0.isMe }) { p in
+                        Button { togglePartnerScope(p) } label: {
+                            HStack {
+                                Text(p.name).foregroundStyle(.primary)
+                                Spacer()
+                                if session.activePartnerIDs.contains(p.id.uuidString) {
+                                    Image(systemName: "checkmark").foregroundStyle(.tint)
+                                }
+                            }
+                        }
+                        .accessibilityIdentifier("partner.manage.row.\(p.name)")
+                    }
+                    HStack {
+                        TextField("New partner name", text: $newPartnerName)
+                            .accessibilityIdentifier("partner.manage.nameField")
+                        Button("Add") { addAndScopePartner() }
+                            .disabled(newPartnerName.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .accessibilityIdentifier("partner.manage.add")
+                    }
+                } header: {
+                    Text("Training partners")
+                } footer: {
+                    Text("Partners are optional. Their sets are recorded separately and kept out of your PRs and Apple Health.")
+                }
+            }
+            .navigationTitle("Partners")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { managePartnersPresented = false }
+                        .accessibilityIdentifier("partner.manage.done")
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    /// Adds or removes a partner from this session's roster.
+    private func togglePartnerScope(_ p: Person) {
+        var ids = session.activePartnerIDs
+        if let idx = ids.firstIndex(of: p.id.uuidString) {
+            ids.remove(at: idx)
+        } else {
+            ids.append(p.id.uuidString)
+        }
+        session.activePartnerIDs = ids
+        try? context.save()
+    }
+
+    /// Creates a partner (if new) and scopes them to this session.
+    private func addAndScopePartner() {
+        let name = newPartnerName.trimmingCharacters(in: .whitespaces)
+        defer { newPartnerName = "" }
+        guard !name.isEmpty,
+              let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) else { return }
+        var ids = session.activePartnerIDs
+        if !ids.contains(p.id.uuidString) {
+            ids.append(p.id.uuidString)
+            session.activePartnerIDs = ids
+            try? context.save()
+        }
     }
 
     private func nextPerson() -> Person? {

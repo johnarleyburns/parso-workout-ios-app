@@ -24,6 +24,27 @@ enum UITestSeed {
         if seeds.contains("coachRunPrimary") { seedCoachAerobicGap(ctx); UserDefaults.standard.set(runPreferenceJSON(), forKey: "settings.coachPreferenceProfile") }
         if seeds.contains("coachStrengthPrimary") { seedCoachStrengthPrimary(ctx) }
         if seeds.contains("coachWednesdayComplete") { seedCoachWednesdayComplete(ctx) }
+        if seeds.contains("historyPartnerSession") { seedHistoryPartnerSession(ctx) }
+        // Generic "-seed person.<Name>" creates a selectable training partner.
+        for seed in seeds where seed.hasPrefix("person.") {
+            let name = String(seed.dropFirst("person.".count))
+            if !name.isEmpty { _ = try? WorkoutRepository.findOrCreatePerson(named: name, in: ctx) }
+        }
+    }
+
+    /// A past Bench Press session (3 days ago) with a scoped partner "Sam" and one
+    /// Sam-attributed set, for history-edit partner tests.
+    private static func seedHistoryPartnerSession(_ ctx: ModelContext) {
+        guard let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx) else { return }
+        let sam = try? WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        let s = WorkoutSession(title: "Push Day", date: Date(timeIntervalSinceNow: -3 * 86_400))
+        s.endedAt = s.date.addingTimeInterval(1800)
+        if let sam { s.activePartnerIDs = [sam.id.uuidString] }
+        ctx.insert(s)
+        ctx.insert(SetEntry(weight: 100, reps: 5, order: 0, completedAt: s.date, session: s, exercise: bench))
+        ctx.insert(SetEntry(weight: 100, reps: 5, order: 1, completedAt: s.date, session: s, exercise: bench))
+        ctx.insert(SetEntry(weight: 90, reps: 5, order: 2, completedAt: s.date, session: s, exercise: bench, performedBy: sam))
+        try? ctx.save()
     }
 
     private static func seedNames(in args: [String]) -> Set<String> {

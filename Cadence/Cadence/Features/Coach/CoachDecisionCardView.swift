@@ -134,11 +134,11 @@ struct CoachDecisionCardView: View {
             }
 
             HStack {
-                Spacer()
                 Button("Why this today") { onSeeWhy() }
                     .font(.caption.weight(.medium))
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("coach.card.whyToday")
+                Spacer()
                 Button("Your week") { onSeeWeek() }
                     .font(.caption.weight(.medium))
                     .buttonStyle(.plain)

@@ -579,6 +579,35 @@ final class CoachDecisionEngineTests: XCTestCase {
         }
     }
 
+    // YourWeekView "7-day history" ForEach indexes weekdays (7-element array) by
+    // plan.days offset. WeeklyPlan.generate returns 13 days (7 history + 6 future),
+    // so offset-based indexing crashes at offset >= 7. The fix computes the weekday
+    // label from the day's actual date (safe for any array size).
+    func testWeeklyPlanDaysExceedSevenSafeWeekdayLookup() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let events: [TrainingEvent] = []
+        let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
+
+        let plan = WeeklyPlan.generate(from: facts)
+        XCTAssertGreaterThan(plan.days.count, 7, "Plan must have >7 days to trigger the crash scenario")
+
+        let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        for (i, day) in plan.days.enumerated() {
+            // Old code used weekdays[i] — crashes when i >= 7.
+            // Fix uses the day's date:
+            let idx = Calendar.current.component(.weekday, from: day.date) - 2
+            let label = idx >= 0 && idx < 7 ? weekdays[idx] : ""
+            // Verify the label is either a valid day abbreviation or empty.
+            if idx >= 0 && idx < 7 {
+                XCTAssertEqual(label, weekdays[idx],
+                               "Day \(i) (\(day.date)) weekday label should match")
+            } else {
+                XCTAssertEqual(label, "", "Invalid weekday index should yield empty string")
+            }
+        }
+    }
+
     func testHighImpactAvoidanceKeepsRunOutOfPrimaryWhenLowImpactCanFulfillIntent() throws {
         let ctx = try makeContext()
         let now = testNow

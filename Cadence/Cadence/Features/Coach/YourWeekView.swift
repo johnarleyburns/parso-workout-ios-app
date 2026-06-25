@@ -90,7 +90,8 @@ struct YourWeekView: View {
             Section("7-day history") {
                 let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                 ForEach(Array(plan.days.enumerated()), id: \.offset) { i, day in
-                    let dayLabel = weekdays[i]
+                    let idx = Calendar.current.component(.weekday, from: day.date) - 2
+                    let dayLabel = idx >= 0 && idx < 7 ? weekdays[idx] : ""
                     HStack {
                         Text(dayLabel).font(.caption).frame(width: 32, alignment: .leading)
                         Circle()

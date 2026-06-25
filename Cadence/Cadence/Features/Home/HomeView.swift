@@ -126,7 +126,8 @@ struct HomeView: View {
                         decision: coachDecision,
                         onStart: { launchDecision($0) },
                         onSeeWeek: { path.append(HomeRoute.yourWeek) },
-                        onSeeWhy: { path.append(HomeRoute.whyToday) })
+                        onSeeWhy: { path.append(HomeRoute.whyToday) },
+                        onSeeTomorrow: { path.append(HomeRoute.yourWeek) })
                     quickActionsRow
                     thisWeekCard
                     favoritesSection

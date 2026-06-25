@@ -43,6 +43,26 @@ final class FR15Batch8UITests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["home.bodyParts"].exists)
     }
 
+    // Tapping "Add" inside ExerciseDetailView should dismiss the picker sheet and
+    // return to the session with the exercise planned (NavigationLink replaced with
+    // programmatic navigation to avoid row-tap conflict with the picker Button).
+    func testDetailViewAddDismissesPickerAndPlansExercise() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
+        app.buttons["session.addExercise"].tap()
+
+        XCTAssertTrue(app.buttons["picker.info.Bench Press"].waitTap(), "info button for Bench Press")
+        XCTAssertTrue(app.buttons["detail.add"].waitTap(), "Add button in detail view")
+
+        // After tapping Add, the picker sheet must be dismissed and the session
+        // must show the planned exercise card for Bench Press.
+        XCTAssertFalse(app.buttons["picker.cancel"].waitForExistence(timeout: 2),
+                       "picker sheet must be dismissed")
+        XCTAssertTrue(app.staticTexts["exerciseCard.Bench Press"].waitForExistence(timeout: 15)
+                      || app.buttons["set.add.Bench Press"].waitForExistence(timeout: 10),
+                      "session must show the planned Bench Press card")
+    }
+
     // Exercise picker: popular-first with in-app detail (P2) + body-part filter chips.
     func testExercisePickerPopularFilterAndDetail() {
         let app = XCUIApplication.launched()

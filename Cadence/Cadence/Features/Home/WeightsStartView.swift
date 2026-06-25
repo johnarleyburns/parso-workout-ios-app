@@ -115,7 +115,6 @@ struct WeightsStartView: View {
                 libraryGroupSection("5/3/1", plans: RoutineGroup.fiveThreeOne)
                 libraryGroupSection("DUP", plans: RoutineGroup.dup)
                 libraryGroupSection("Linear Periodization", plans: RoutineGroup.linearPeriodization)
-                libraryGroupSection("German Volume Training", plans: RoutineGroup.gvt)
                 libraryGroupSection("Cluster Set Training", plans: RoutineGroup.clusterSets)
                 libraryGroupSection("PPL (6-Day)", plans: RoutineGroup.ppl)
                 libraryGroupSection("Split Templates", plans: RoutineGroup.splits)
@@ -169,7 +168,6 @@ private enum RoutineGroup {
     static let fiveThreeOne = StrengthPresets.all.filter { $0.id.hasPrefix("preset-531") }
     static let dup = StrengthPresets.all.filter { $0.id.hasPrefix("preset-dup") }
     static let linearPeriodization = StrengthPresets.all.filter { $0.id.hasPrefix("preset-lp") }
-    static let gvt = StrengthPresets.all.filter { $0.id.hasPrefix("preset-gvt") }
     static let clusterSets = StrengthPresets.all.filter { $0.id == "preset-cluster" }
     static let ppl = StrengthPresets.all.filter { $0.id.hasPrefix("preset-ppl") }
     static let splits = StrengthPresets.all.filter {

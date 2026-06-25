@@ -16,6 +16,7 @@ struct ExercisePickerView: View {
     @State private var query = ""
     @State private var selectedPart: BodyPart?
     @State private var browseAll = false
+    @State private var detailExercise: Exercise?
     let onPick: (Exercise) -> Void
 
     private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -90,6 +91,13 @@ struct ExercisePickerView: View {
             }
         }
         .accessibilityIdentifier("picker.search")
+        .navigationDestination(item: $detailExercise) { exercise in
+            ExerciseDetailView(exercise: exercise) { picked in
+                detailExercise = nil
+                dismiss()
+                onPick(picked)
+            }
+        }
     }
 
     private var sectionTitle: String {
@@ -153,8 +161,8 @@ struct ExercisePickerView: View {
             .foregroundStyle(.primary)
             .accessibilityIdentifier("picker.row.\(ex.name)")
 
-            NavigationLink {
-                ExerciseDetailView(exercise: ex) { picked in onPick(picked) }
+            Button {
+                detailExercise = ex
             } label: {
                 Image(systemName: "info.circle").foregroundStyle(.tint)
             }

@@ -6,6 +6,7 @@ struct CoachDecisionCardView: View {
     var onStart: (CoachSession) -> Void
     var onSeeWeek: () -> Void
     var onSeeWhy: () -> Void
+    var onSeeTomorrow: () -> Void
 
     @State private var warningsExpanded = false
 
@@ -40,14 +41,21 @@ struct CoachDecisionCardView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
                     if isCompleteState, let tomorrow = tomorrowPreview {
-                        HStack(spacing: 4) {
-                            Image(systemName: "forward.fill")
-                                .font(.caption2)
-                            Text("Tomorrow: \(tomorrow)")
-                                .font(.caption.weight(.medium))
+                        Button { onSeeTomorrow() } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "forward.fill")
+                                    .font(.caption2)
+                                Text("Tomorrow: \(tomorrow)")
+                                    .font(.caption.weight(.medium))
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.bold))
+                                    .opacity(0.7)
+                            }
+                            .foregroundStyle(stateColor)
                         }
-                        .foregroundStyle(stateColor)
+                        .buttonStyle(.plain)
                         .padding(.top, 4)
+                        .accessibilityLabel("View tomorrow's recommendation")
                     }
                 }
             }
@@ -134,15 +142,29 @@ struct CoachDecisionCardView: View {
             }
 
             HStack {
-                Button("Why this today") { onSeeWhy() }
-                    .font(.caption.weight(.medium))
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("coach.card.whyToday")
+                Button { onSeeWhy() } label: {
+                    HStack(spacing: 3) {
+                        Text("Why this today")
+                            .font(.caption.weight(.medium))
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.bold))
+                            .opacity(0.7)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("coach.card.whyToday")
                 Spacer()
-                Button("Your week") { onSeeWeek() }
-                    .font(.caption.weight(.medium))
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("coach.card.yourWeek")
+                Button { onSeeWeek() } label: {
+                    HStack(spacing: 3) {
+                        Text("Your week")
+                            .font(.caption.weight(.medium))
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.bold))
+                            .opacity(0.7)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("coach.card.yourWeek")
             }
         }
         .padding(18)

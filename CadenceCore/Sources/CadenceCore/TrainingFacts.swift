@@ -85,6 +85,16 @@ public struct TrainingFacts: Sendable {
     public let goal: TrainingGoal
     public let experience: ExperienceLevel
 
+    // MARK: Phase 2 multi-system strength deltas (additive; engine behavior unchanged).
+    /// Per lift: count of consecutive week-over-week e1RM declines ending this week.
+    /// 0 = not currently declining. Basis for the repeated-decline deload trigger (C8).
+    public let repeatedDeclineByExercise: [String: Int]
+    /// Per lift: number of logged sessions since the last load drop (>10% vs prior
+    /// session's top set). Equals the full session count if never deloaded.
+    public let sessionsSinceDeloadByExercise: [String: Int]
+    /// Per body part: weekly working-set volume trend (this week vs prior week).
+    public let volumeTrendByPart: [BodyPart: TrendDirection]
+
     public var assessedE1RMs: [String: Double] {
         var result: [String: Double] = [:]
         for s in assessments where s.kind == .e1RM {
@@ -117,6 +127,9 @@ public struct TrainingFacts: Sendable {
                 assessments: [AssessmentSummary] = [],
                 assessmentsDueForRetest: [AssessmentSummary] = [],
                 liftSnapshots: [String: LiftSnapshot] = [:],
+                repeatedDeclineByExercise: [String: Int] = [:],
+                sessionsSinceDeloadByExercise: [String: Int] = [:],
+                volumeTrendByPart: [BodyPart: TrendDirection] = [:],
                 goal: TrainingGoal,
                 experience: ExperienceLevel) {
         self.weeklySetsByPart = weeklySetsByPart
@@ -129,6 +142,9 @@ public struct TrainingFacts: Sendable {
         self.assessments = assessments
         self.assessmentsDueForRetest = assessmentsDueForRetest
         self.liftSnapshots = liftSnapshots
+        self.repeatedDeclineByExercise = repeatedDeclineByExercise
+        self.sessionsSinceDeloadByExercise = sessionsSinceDeloadByExercise
+        self.volumeTrendByPart = volumeTrendByPart
         self.goal = goal
         self.experience = experience
     }
@@ -255,6 +271,70 @@ public extension TrainingFacts {
         let summaries = AssessmentMath.summaries(from: assessments)
         let dueForRetest = summaries.filter { AssessmentMath.isRetestDue($0, now: now) }
 
+        // Phase 2 strength deltas (additive; not consumed by the engine yet).
+
+        // Prior-week volume per part → weekly volume trend.
+        var priorSetsByPart: [BodyPart: Double] = [:]
+        for session in sessions where session.date >= priorStart && session.date < weekStart {
+            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 {
+                guard let ex = set.exercise else { continue }
+                let primary = BodyPart.parts(forMuscleIDs: ex.primaryMuscles)
+                let secondary = BodyPart.parts(forMuscleIDs: ex.secondaryMuscles).subtracting(primary)
+                for p in primary { priorSetsByPart[p, default: 0] += 1.0 }
+                for p in secondary { priorSetsByPart[p, default: 0] += secondaryWeight }
+            }
+        }
+        var volumeTrendByPart: [BodyPart: TrendDirection] = [:]
+        let volEps = 0.15
+        for p in Set(setsByPart.keys).union(priorSetsByPart.keys) {
+            let cur = setsByPart[p] ?? 0
+            let prior = priorSetsByPart[p] ?? 0
+            if prior <= 0 { volumeTrendByPart[p] = cur > 0 ? .rising : .flat; continue }
+            let ratio = cur / prior
+            if ratio > 1 + volEps { volumeTrendByPart[p] = .rising }
+            else if ratio < 1 - volEps { volumeTrendByPart[p] = .declining }
+            else { volumeTrendByPart[p] = .flat }
+        }
+
+        // Weekly-best e1RM per lift → trailing consecutive-decline count.
+        var weeklyBestE1RM: [String: [Date: Double]] = [:]
+        var topByExerciseSession: [String: [(date: Date, weight: Double)]] = [:]
+        for session in sessions {
+            let wk = WeeklyStats.weekStart(now: session.date)
+            var topForEx: [String: Double] = [:]
+            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.weight > 0 {
+                guard let name = set.exercise?.name, !name.isEmpty else { continue }
+                let e1 = WorkoutMath.estimated1RM(weight: set.weight, reps: set.reps, formula: formula)
+                weeklyBestE1RM[name, default: [:]][wk] = max(weeklyBestE1RM[name]?[wk] ?? 0, e1)
+                topForEx[name] = max(topForEx[name] ?? 0, set.weight)
+            }
+            for (name, w) in topForEx { topByExerciseSession[name, default: []].append((session.date, w)) }
+        }
+        var repeatedDecline: [String: Int] = [:]
+        let declineEps = 0.02
+        for (name, byWeek) in weeklyBestE1RM {
+            let ordered = byWeek.sorted { $0.key < $1.key }.map(\.value)
+            guard ordered.count >= 2 else { continue }
+            var count = 0
+            var i = ordered.count - 1
+            while i >= 1, ordered[i] < ordered[i - 1] * (1 - declineEps) { count += 1; i -= 1 }
+            if count > 0 { repeatedDecline[name] = count }
+        }
+
+        // Sessions since the last load drop (>10%).
+        var sessionsSinceDeload: [String: Int] = [:]
+        for (name, rows) in topByExerciseSession {
+            let ordered = rows.sorted { $0.date < $1.date }
+            guard !ordered.isEmpty else { continue }
+            var lastDeloadIndex: Int?
+            if ordered.count >= 2 {
+                for k in 1..<ordered.count where ordered[k].weight < ordered[k - 1].weight * 0.9 {
+                    lastDeloadIndex = k
+                }
+            }
+            sessionsSinceDeload[name] = lastDeloadIndex.map { ordered.count - 1 - $0 } ?? ordered.count
+        }
+
         return TrainingFacts(weeklySetsByPart: setsByPart,
                              frequencyByPart: frequencyByPart,
                              e1RMTrendByExercise: trends,
@@ -265,6 +345,9 @@ public extension TrainingFacts {
                              assessments: summaries,
                              assessmentsDueForRetest: dueForRetest,
                              liftSnapshots: liftSnapshots,
+                             repeatedDeclineByExercise: repeatedDecline,
+                             sessionsSinceDeloadByExercise: sessionsSinceDeload,
+                             volumeTrendByPart: volumeTrendByPart,
                              goal: goal,
                              experience: experience)
     }

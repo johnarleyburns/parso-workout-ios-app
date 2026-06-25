@@ -99,6 +99,56 @@ public struct CoachFacts: Sendable {
     public let rolling7dCompletedEvents: [TrainingEvent]
     public let rolling28dCompletedEvents: [TrainingEvent]
 
+    // MARK: Multi-system facts (Phase 2). Additive — not yet consumed by the
+    // decision engine, so primary behavior is unchanged.
+    public let systemLoads: [TrainingSystem: SystemLoad]
+    public let readiness: ReadinessSnapshot?
+    public let assessmentCoverage: [TrainingSystem: AssessmentCoverage]
+    public let loadSpikeFlags: [LoadSpikeFlag]
+    public let zoneSource: CardioZoneSource
+    public let aerobicMinutesByBucket: [AerobicIntensityBucket: Double]
+
+    public init(events: [TrainingEvent],
+                recovery: RecoveryState,
+                weeklyBalance: WeeklyBalance,
+                goal: TrainingGoal,
+                experience: ExperienceLevel,
+                referenceDate: Date,
+                rolling72hCompletedEvents: [TrainingEvent],
+                rolling7dCompletedEvents: [TrainingEvent],
+                rolling28dCompletedEvents: [TrainingEvent],
+                systemLoads: [TrainingSystem: SystemLoad] = [:],
+                readiness: ReadinessSnapshot? = nil,
+                assessmentCoverage: [TrainingSystem: AssessmentCoverage] = [:],
+                loadSpikeFlags: [LoadSpikeFlag] = [],
+                zoneSource: CardioZoneSource = .unknown,
+                aerobicMinutesByBucket: [AerobicIntensityBucket: Double] = [:]) {
+        self.events = events
+        self.recovery = recovery
+        self.weeklyBalance = weeklyBalance
+        self.goal = goal
+        self.experience = experience
+        self.referenceDate = referenceDate
+        self.rolling72hCompletedEvents = rolling72hCompletedEvents
+        self.rolling7dCompletedEvents = rolling7dCompletedEvents
+        self.rolling28dCompletedEvents = rolling28dCompletedEvents
+        self.systemLoads = systemLoads
+        self.readiness = readiness
+        self.assessmentCoverage = assessmentCoverage
+        self.loadSpikeFlags = loadSpikeFlags
+        self.zoneSource = zoneSource
+        self.aerobicMinutesByBucket = aerobicMinutesByBucket
+    }
+
+    /// Systems with no exposure this week (or never), most-stale first. The basis for
+    /// "which systems are stale" explanations.
+    public var staleSystems: [TrainingSystem] {
+        systemLoads.values
+            .filter { $0.isStale }
+            .sorted { ($0.daysSinceLastExposure ?? .max) > ($1.daysSinceLastExposure ?? .max) }
+            .map(\.system)
+    }
+
     public var todayCompletedEvents: [TrainingEvent] {
         let cal = Calendar.current
         let todayStart = cal.startOfDay(for: referenceDate)
@@ -117,6 +167,8 @@ public extension CoachFacts {
     static func make(from events: [TrainingEvent],
                      goal: TrainingGoal,
                      experience: ExperienceLevel,
+                     assessments: [AssessmentSummary] = [],
+                     readinessEntry: ReadinessEntry? = nil,
                      formula: OneRepMaxFormula = .epley,
                      now: Date = Date()) -> CoachFacts {
 
@@ -139,6 +191,14 @@ public extension CoachFacts {
         let recovery = computeRecovery(completed: rolling72h, inProgress: inProgress, now: now)
         let balance = computeWeeklyBalance(completed: thisWeek, now: now)
 
+        // Phase 2 multi-system facts (additive — decision engine unchanged).
+        let systemLoads = SystemLoadComputer.loads(rolling7d: rolling7d, rolling28d: rolling28d, now: now)
+        let aerobicBuckets = SystemLoadComputer.aerobicMinutesByBucket(rolling7d: rolling7d)
+        let spikeFlags = SystemLoadComputer.loadSpikeFlags(systemLoads)
+        let zoneSrc = SystemLoadComputer.zoneSource(rolling28d: rolling28d)
+        let coverage = SystemLoadComputer.assessmentCoverage(assessments, now: now)
+        let readiness = readinessEntry.map { ReadinessSnapshot.from($0, now: now) }
+
         return CoachFacts(
             events: events,
             recovery: recovery,
@@ -148,7 +208,13 @@ public extension CoachFacts {
             referenceDate: now,
             rolling72hCompletedEvents: rolling72h,
             rolling7dCompletedEvents: rolling7d,
-            rolling28dCompletedEvents: rolling28d
+            rolling28dCompletedEvents: rolling28d,
+            systemLoads: systemLoads,
+            readiness: readiness,
+            assessmentCoverage: coverage,
+            loadSpikeFlags: spikeFlags,
+            zoneSource: zoneSrc,
+            aerobicMinutesByBucket: aerobicBuckets
         )
     }
 

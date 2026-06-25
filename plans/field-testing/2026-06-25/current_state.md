@@ -42,7 +42,29 @@ Intentionally deferred to later phases:
 - Migrating `WhyThisTodayView` off `aerobicPool`/raw `poolId` to typed categories → Phase 5.
 - New recommendation rules / system-aware scoring → Phases 3–4.
 
-## Phase 2 — Multi-system facts ⏳
+## Phase 2 — Multi-system facts ✅ (branch `feat/coach-system-load-facts`)
+
+Shipped (additive — decision engine behavior unchanged):
+
+- New `SystemLoad.swift`: `TrainingSystem` (9), `AerobicIntensityBucket`, `SystemLoad`,
+  `ReadinessSnapshot` (+ `from(ReadinessEntry)`), `AssessmentCoverage`, `LoadSpikeFlag`,
+  `CardioZoneSource`, plus `TrainingEvent.systemExposures` event→system classification
+  and `SystemLoadComputer` (loads, aerobicMinutesByBucket, loadSpikeFlags, zoneSource,
+  assessmentCoverage).
+- `CoachFacts`: added `systemLoads`, `readiness`, `assessmentCoverage`, `loadSpikeFlags`,
+  `zoneSource`, `aerobicMinutesByBucket`, a `staleSystems` helper, and an explicit
+  initializer (new fields defaulted). `make` gained optional `assessments` +
+  `readinessEntry` params and computes the new facts.
+- `TrainingFacts`: added `repeatedDeclineByExercise`, `sessionsSinceDeloadByExercise`,
+  `volumeTrendByPart` (computed in `make`).
+- Tests: 7 new CoachFactsTests (classification, aggregation/staleness, readiness, coverage,
+  zone source) + 3 new TrainingFactsTests (volume trend, repeated decline, sessions since
+  deload).
+
+Verification: `swift test` = 376 pass; iOS `xcodebuild … build` = BUILD SUCCEEDED.
+
+Deferred: wiring the app's readiness/assessment data into `CoachFacts.make` happens when
+it's consumed (Phase 4/5); for now those fields default empty in production.
 ## Phase 3 — Recommendation rules ⏳
 ## Phase 4 — Decision scoring & candidates ⏳
 ## Phase 5 — UI handoff ⏳

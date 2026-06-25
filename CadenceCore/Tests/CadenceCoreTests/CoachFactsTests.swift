@@ -243,4 +243,97 @@ final class CoachFactsTests: XCTestCase {
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
         XCTAssertGreaterThanOrEqual(facts.weeklyBalance.consecutiveHardDays, 3)
     }
+
+    // MARK: - Phase 2: multi-system facts
+
+    func testSystemExposuresClassifyStrengthByRepBand() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let heavy = try makeStrengthEvent(context: ctx, name: "Heavy Squat", primaryMuscles: ["quadriceps"],
+                                          weight: 140, reps: 3, rpe: 8, date: now.addingTimeInterval(-86400))
+        let hyper = try makeStrengthEvent(context: ctx, name: "Curl", primaryMuscles: ["biceps"],
+                                          weight: 20, reps: 10, rpe: 8, date: now.addingTimeInterval(-86400))
+        let endur = try makeStrengthEvent(context: ctx, name: "Air Squat", primaryMuscles: ["quadriceps"],
+                                          weight: 5, reps: 25, rpe: 8, date: now.addingTimeInterval(-86400))
+        XCTAssertEqual(heavy.systemExposures.first?.system, .maximalStrength)
+        XCTAssertEqual(hyper.systemExposures.first?.system, .hypertrophy)
+        XCTAssertEqual(endur.systemExposures.first?.system, .strengthEndurance)
+    }
+
+    func testAerobicVigorousIsThresholdAndIntervalIsVO2() {
+        let ctx = try! makeContext()
+        let now = testNow
+        let tempo = makeCardioEvent(context: ctx, type: .run, start: now.addingTimeInterval(-86400),
+                                    duration: 1800, avgHR: 165)   // ~0.87 → vigorous continuous
+        let hiit = makeCardioEvent(context: ctx, type: .hiit, start: now.addingTimeInterval(-86400),
+                                   duration: 1800, avgHR: 170)    // vigorous intervals
+        XCTAssertEqual(tempo.systemExposures.first?.system, .threshold)
+        XCTAssertEqual(hiit.systemExposures.first?.system, .vo2max)
+    }
+
+    func testEasyWalkCountsRecoveryAndBaseNotThreshold() {
+        let ctx = try! makeContext()
+        let now = testNow
+        let walk = makeCardioEvent(context: ctx, type: .walk, start: now.addingTimeInterval(-86400),
+                                   duration: 1800, avgHR: 95)     // easy
+        let systems = Set(walk.systemExposures.map(\.system))
+        XCTAssertTrue(systems.contains(.recovery))
+        XCTAssertTrue(systems.contains(.aerobicBase))
+        XCTAssertFalse(systems.contains(.threshold))
+        XCTAssertFalse(systems.contains(.vo2max))
+    }
+
+    func testSystemLoadsAggregateAndStaleness() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let squat = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                          weight: 140, reps: 3, rpe: 8, date: now.addingTimeInterval(-2 * 86400))
+        let facts = CoachFacts.make(from: [squat], goal: .strength, experience: .intermediate, now: now)
+
+        let maxStr = facts.systemLoads[.maximalStrength]
+        XCTAssertNotNil(maxStr)
+        XCTAssertGreaterThan(maxStr?.trailing7dExposures ?? 0, 0)
+        XCTAssertEqual(maxStr?.daysSinceLastExposure, 2)
+        XCTAssertFalse(maxStr?.isStale ?? true)
+
+        // VO2 never trained → stale.
+        XCTAssertTrue(facts.systemLoads[.vo2max]?.isStale ?? false)
+        XCTAssertTrue(facts.staleSystems.contains(.vo2max))
+    }
+
+    func testReadinessSnapshotFromEntryFlagsPoor() {
+        let entry = ReadinessEntry(date: Date(), muscleSoreness: 2, fatigueEnergy: 3,
+                                   sleepQuality: 4, stressMood: 3, hasPainOrIllnessConcern: false)
+        let snap = ReadinessSnapshot.from(entry)
+        XCTAssertEqual(snap.soreness, 2)
+        XCTAssertEqual(snap.motivation, 3)
+        XCTAssertTrue(snap.isPoor)        // soreness ≤ 2
+        XCTAssertEqual(snap.confidence, .moderate)
+    }
+
+    func testAssessmentCoverageMapsKindsToSystems() {
+        let now = testNow
+        let e1 = AssessmentSummary(kind: .e1RM, exerciseName: "Squat", latest: 150,
+                                   latestDate: now.addingTimeInterval(-5 * 86400), baseline: 140,
+                                   baselineDate: now.addingTimeInterval(-40 * 86400), best: 150, count: 2)
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    assessments: [e1], now: now)
+        XCTAssertTrue(facts.assessmentCoverage[.maximalStrength]?.hasBaseline ?? false)
+        XCTAssertTrue(facts.assessmentCoverage[.maximalStrength]?.isFresh ?? false)
+        XCTAssertFalse(facts.assessmentCoverage[.vo2max]?.hasBaseline ?? true)
+    }
+
+    func testZoneSourceAgeEstimatedWhenHRPresentUnknownOtherwise() {
+        let ctx = try! makeContext()
+        let now = testNow
+        let withHR = makeCardioEvent(context: ctx, type: .run, start: now.addingTimeInterval(-86400),
+                                     duration: 1800, avgHR: 150)
+        let factsHR = CoachFacts.make(from: [withHR], goal: .strength, experience: .intermediate, now: now)
+        XCTAssertEqual(factsHR.zoneSource, .ageEstimated)
+
+        let noHR = makeCardioEvent(context: ctx, type: .run, start: now.addingTimeInterval(-86400),
+                                   duration: 1800, avgHR: nil)
+        let factsNoHR = CoachFacts.make(from: [noHR], goal: .strength, experience: .intermediate, now: now)
+        XCTAssertEqual(factsNoHR.zoneSource, .unknown)
+    }
 }

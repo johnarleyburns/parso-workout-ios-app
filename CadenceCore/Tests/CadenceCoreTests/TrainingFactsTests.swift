@@ -132,4 +132,55 @@ final class TrainingFactsTests: XCTestCase {
         let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
         XCTAssertEqual(facts.daysSinceLastSession, 3)
     }
+
+    // MARK: - Phase 2: strength deltas
+
+    private func session(_ ctx: ModelContext, name: String, muscles: [String], weight: Double,
+                         reps: Int, daysAgo: Double, now: Date) throws -> WorkoutSession {
+        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-daysAgo * 86_400), in: ctx)
+        let ex = try WorkoutRepository.findOrCreateExercise(named: name, primaryMuscles: muscles, in: ctx)
+        _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: weight, reps: reps, in: ctx)
+        return s
+    }
+
+    func testVolumeTrendByPartRisesWhenSetsIncrease() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        // Prior week: 1 chest set. This week: 3 chest sets → rising.
+        let prior = try WorkoutRepository.createSession(date: now.addingTimeInterval(-8 * 86_400), in: ctx)
+        let benchP = try WorkoutRepository.findOrCreateExercise(named: "TBench", primaryMuscles: ["chest"], in: ctx)
+        _ = try WorkoutRepository.addSet(to: prior, exercise: benchP, weightKg: 60, reps: 5, in: ctx)
+
+        let cur = try WorkoutRepository.createSession(date: now.addingTimeInterval(-1 * 86_400), in: ctx)
+        let benchC = try WorkoutRepository.findOrCreateExercise(named: "TBench2", primaryMuscles: ["chest"], in: ctx)
+        for _ in 0..<3 { _ = try WorkoutRepository.addSet(to: cur, exercise: benchC, weightKg: 60, reps: 5, in: ctx) }
+
+        let facts = TrainingFacts.make(sessions: [prior, cur], now: now, goal: .hypertrophy, experience: .intermediate)
+        XCTAssertEqual(facts.volumeTrendByPart[.chest], .rising)
+    }
+
+    func testRepeatedDeclineCountsConsecutiveWeeklyDrops() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        // Three distinct weeks of a single lift, e1RM falling each week (reps=1 → e1RM=weight).
+        let w2 = try session(ctx, name: "DLift", muscles: ["hamstrings"], weight: 100, reps: 1, daysAgo: 15, now: now)
+        let w1 = try session(ctx, name: "DLift", muscles: ["hamstrings"], weight: 95, reps: 1, daysAgo: 8, now: now)
+        let w0 = try session(ctx, name: "DLift", muscles: ["hamstrings"], weight: 90, reps: 1, daysAgo: 1, now: now)
+
+        let facts = TrainingFacts.make(sessions: [w2, w1, w0], now: now, goal: .strength, experience: .intermediate)
+        XCTAssertEqual(facts.repeatedDeclineByExercise["DLift"], 2)
+    }
+
+    func testSessionsSinceDeloadCountsAfterLoadDrop() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        // Top weights 100, 100, 80, 85 → deload at the 3rd session; 1 session after it.
+        let a = try session(ctx, name: "SLift", muscles: ["quadriceps"], weight: 100, reps: 5, daysAgo: 30, now: now)
+        let b = try session(ctx, name: "SLift", muscles: ["quadriceps"], weight: 100, reps: 5, daysAgo: 20, now: now)
+        let c = try session(ctx, name: "SLift", muscles: ["quadriceps"], weight: 80, reps: 5, daysAgo: 10, now: now)
+        let d = try session(ctx, name: "SLift", muscles: ["quadriceps"], weight: 85, reps: 5, daysAgo: 2, now: now)
+
+        let facts = TrainingFacts.make(sessions: [a, b, c, d], now: now, goal: .strength, experience: .intermediate)
+        XCTAssertEqual(facts.sessionsSinceDeloadByExercise["SLift"], 1)
+    }
 }

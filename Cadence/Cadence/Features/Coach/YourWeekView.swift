@@ -8,8 +8,8 @@ struct YourWeekView: View {
     var body: some View {
         let balance = decision.weeklyBalance
         let plan = WeeklyPlan.generate(from: facts)
-        let completed = plan.days.filter(\.isCompleted)
-        let remaining = plan.days.filter { !$0.isCompleted }
+        let completed = plan.completedDaysInGeneratedWeek
+        let remaining = plan.remainingCalendarWeekDays.filter { $0.sessionKind != nil }
         List {
             Section("This Week So Far") {
                 VStack(spacing: 12) {
@@ -59,14 +59,11 @@ struct YourWeekView: View {
                 }
             }
 
-            if remaining.contains(where: { $0.sessionKind != nil }) {
+            if !remaining.isEmpty {
                 Section("Planned (rest of week)") {
-                    let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
                     ForEach(remaining) { day in
-                        let idx = Calendar.current.component(.weekday, from: day.date) - 2
-                        let label = idx >= 0 && idx < 7 ? weekdays[idx] : ""
                         HStack {
-                            Text(label).font(.caption).frame(width: 32, alignment: .leading)
+                            Text(weekdayLabel(for: day.date)).font(.caption).frame(width: 32, alignment: .leading)
                             Circle()
                                 .fill(day.isHard ? Color.green : day.sessionKind != nil ? Color.teal : Color.gray.opacity(0.3))
                                 .frame(width: 10, height: 10)
@@ -80,20 +77,17 @@ struct YourWeekView: View {
                         .padding(.vertical, 2)
                     }
                 }
-            } else if remaining.isEmpty {
+            } else {
                 Section("Planned (rest of week)") {
-                    Text("Week complete — nice work.")
+                    Text("No more planned sessions this week.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
 
             Section("7-day history") {
-                let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-                ForEach(Array(plan.days.enumerated()), id: \.offset) { i, day in
-                    let idx = Calendar.current.component(.weekday, from: day.date) - 2
-                    let dayLabel = idx >= 0 && idx < 7 ? weekdays[idx] : ""
+                ForEach(plan.historyDays) { day in
                     HStack {
-                        Text(dayLabel).font(.caption).frame(width: 32, alignment: .leading)
+                        Text(weekdayLabel(for: day.date)).font(.caption).frame(width: 32, alignment: .leading)
                         Circle()
                             .fill(day.isCompleted ? (day.isHard ? Color.green : Color.teal) : Color.gray.opacity(0.3))
                             .frame(width: 10, height: 10)
@@ -137,5 +131,11 @@ struct YourWeekView: View {
         case .rest: return "Rest"
         case .assessment: return "Test"
         }
+    }
+
+    private func weekdayLabel(for date: Date) -> String {
+        let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        let idx = Calendar.current.component(.weekday, from: date) - 2
+        return idx >= 0 && idx < 7 ? weekdays[idx] : ""
     }
 }

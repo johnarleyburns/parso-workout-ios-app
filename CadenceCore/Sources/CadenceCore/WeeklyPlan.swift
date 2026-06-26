@@ -38,7 +38,32 @@ public struct WeeklyPlan: Sendable, Equatable {
         days.first(where: \.isToday)
     }
 
-    public static func generate(from facts: CoachFacts, trainingDaysTarget: Int = 3) -> WeeklyPlan {
+    public var historyDays: [DayOutline] {
+        days.filter { !$0.isFuture }.sorted { $0.date < $1.date }
+    }
+
+    public var futureDays: [DayOutline] {
+        days.filter(\.isFuture).sorted { $0.date < $1.date }
+    }
+
+    public var currentWeekDays: [DayOutline] {
+        let cal = Calendar.current
+        let start = WeeklyStats.weekStart(now: generatedAt)
+        let end = cal.date(byAdding: .day, value: 7, to: start) ?? start
+        return days
+            .filter { $0.date >= start && $0.date < end }
+            .sorted { $0.date < $1.date }
+    }
+
+    public var completedDaysInGeneratedWeek: [DayOutline] {
+        currentWeekDays.filter(\.isCompleted)
+    }
+
+    public var remainingCalendarWeekDays: [DayOutline] {
+        currentWeekDays.filter(\.isFuture)
+    }
+
+    public static func generate(from facts: CoachFacts, trainingDaysTarget: Int = 2) -> WeeklyPlan {
         let cal = Calendar.current
         let today = cal.startOfDay(for: facts.referenceDate)
         var days: [DayOutline] = []
@@ -46,7 +71,6 @@ public struct WeeklyPlan: Sendable, Equatable {
         let completedDays = Set(facts.rolling7dCompletedEvents.map { cal.startOfDay(for: $0.start) })
         let hardDays = Set(facts.rolling7dCompletedEvents.filter(\.isHard).map { cal.startOfDay(for: $0.start) })
         let strengthDays = Set(facts.rolling7dCompletedEvents.filter(\.isStrength).map { cal.startOfDay(for: $0.start) })
-        let aerobicDays = Set(facts.rolling7dCompletedEvents.filter(\.isAerobic).map { cal.startOfDay(for: $0.start) })
 
         // History: -6...0 (past 7 days including today)
         for offset in -6...0 {
@@ -70,76 +94,124 @@ public struct WeeklyPlan: Sendable, Equatable {
             ))
         }
 
-        let plannedStrength = days.filter { $0.sessionKind == .strength }.count
-        var remainingStrength = max(0, trainingDaysTarget - plannedStrength)
-
-        // Backfill strength into empty past slots
-        for i in 0..<7 {
-            guard remainingStrength > 0 else { break }
-            let idx = 6 - i
-            if days[idx].sessionKind == nil, idx >= 0 {
-                let date = days[idx].date
-                days[idx] = DayOutline(
-                    date: date, label: "Strength", sessionKind: .strength,
-                    isHard: true, isRest: false, isToday: days[idx].isToday,
-                    isCompleted: false, isFuture: false
-                )
-                remainingStrength -= 1
-            }
-        }
-
         // Future: +1...+6 (next 6 days)
-        let todayCompletedAerobic = aerobicDays.contains(today)
-        let todayCompletedStrength = strengthDays.contains(today)
-
-        // If today's aerobic plan is already complete, tomorrow defaults to strength
-        // if strength is still below target and recovery allows.
-        let strengthBelowTarget = strengthDays.count < trainingDaysTarget
-        let totalStrengthCount = strengthDays.count + (todayCompletedStrength ? 0 : 0)
+        var projectedWeekStart = WeeklyStats.weekStart(now: facts.referenceDate)
+        var projectedStrengthDays = strengthDays.filter { $0 >= projectedWeekStart && $0 <= today }.count
+        var projectedAerobicMinutes = facts.weeklyBalance.moderateEquivalentMinutes
+        var projectedHardDays = hardDays
 
         for offset in 1...6 {
             let date = cal.date(byAdding: .day, value: offset, to: today) ?? today
-            let isTomorrow = offset == 1
-
-            // Determine future plan: alternate strength/aerobic with rest days
-            let futureLabel: String
-            let futureKind: CoachSessionKind?
-            let futureHard: Bool
-
-            if remainingStrength > 0 && offset % 2 == 0 {
-                futureLabel = "Strength"
-                futureKind = .strength
-                futureHard = true
-                remainingStrength -= 1
-            } else if strengthBelowTarget && remainingStrength <= 0 && offset <= 2 {
-                // Still need strength but backfill is done; suggest strength on early days
-                if offset % 2 != 0 {
-                    futureLabel = "Strength"
-                    futureKind = .strength
-                    futureHard = true
-                } else {
-                    futureLabel = "Rest"
-                    futureKind = .rest
-                    futureHard = false
-                }
-            } else if offset % 2 != 0 && !isTomorrow {
-                futureLabel = "Cardio"
-                futureKind = .moderateAerobic
-                futureHard = true
-            } else {
-
-                futureLabel = isTomorrow ? "Cardio" : "Rest"
-                futureKind = isTomorrow ? .moderateAerobic : .rest
-                futureHard = isTomorrow
+            let weekStart = WeeklyStats.weekStart(now: date)
+            if weekStart != projectedWeekStart {
+                projectedWeekStart = weekStart
+                projectedStrengthDays = 0
+                projectedAerobicMinutes = 0
             }
 
+            let futureKind = futureSessionKind(
+                on: date,
+                facts: facts,
+                projectedStrengthDays: projectedStrengthDays,
+                projectedAerobicMinutes: projectedAerobicMinutes,
+                projectedHardDays: projectedHardDays,
+                trainingDaysTarget: trainingDaysTarget,
+                calendar: cal
+            )
+            let futureHard = isPlannedHard(futureKind)
+
             days.append(DayOutline(
-                date: date, label: futureLabel, sessionKind: futureKind,
+                date: date, label: label(for: futureKind), sessionKind: futureKind,
                 isHard: futureHard, isRest: futureKind == .rest,
                 isToday: false, isCompleted: false, isFuture: true
             ))
+
+            if futureKind == .strength { projectedStrengthDays += 1 }
+            projectedAerobicMinutes += plannedModerateEquivalentMinutes(for: futureKind)
+            if futureHard { projectedHardDays.insert(date) }
         }
 
         return WeeklyPlan(days: days, generatedAt: facts.referenceDate)
+    }
+
+    private static func futureSessionKind(on date: Date,
+                                          facts: CoachFacts,
+                                          projectedStrengthDays: Int,
+                                          projectedAerobicMinutes: Double,
+                                          projectedHardDays: Set<Date>,
+                                          trainingDaysTarget: Int,
+                                          calendar: Calendar) -> CoachSessionKind {
+        let aerobicMinutesTarget = 150.0
+        let strengthNeeded = projectedStrengthDays < trainingDaysTarget
+        let aerobicNeeded = projectedAerobicMinutes < aerobicMinutesTarget
+        let priorHardStreak = hardStreak(endingBefore: date, hardDays: projectedHardDays, calendar: calendar)
+        let tomorrow = calendar.date(byAdding: .day, value: 1,
+                                     to: calendar.startOfDay(for: facts.referenceDate)) ?? date
+        let poorReadinessApplies = facts.readiness?.isPoor == true
+            && calendar.isDate(date, inSameDayAs: tomorrow)
+        let recoveryNeeded = poorReadinessApplies || priorHardStreak >= 3
+
+        if recoveryNeeded { return .recovery }
+
+        let canPlanStrength = strengthNeeded
+            && priorHardStreak == 0
+            && strengthRecoveryEligible(on: date, facts: facts, calendar: calendar)
+        if canPlanStrength { return .strength }
+
+        if aerobicNeeded {
+            return priorHardStreak >= 2 ? .easyAerobic : .moderateAerobic
+        }
+
+        if strengthNeeded { return .recovery }
+        return .rest
+    }
+
+    private static func strengthRecoveryEligible(on date: Date,
+                                                 facts: CoachFacts,
+                                                 calendar: Calendar) -> Bool {
+        guard let window = facts.recovery.wholeBody else { return true }
+        let plannedMidday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+        return plannedMidday >= window.hardEligibleAt
+    }
+
+    private static func hardStreak(endingBefore date: Date,
+                                   hardDays: Set<Date>,
+                                   calendar: Calendar) -> Int {
+        guard var cursor = calendar.date(byAdding: .day, value: -1, to: date) else { return 0 }
+        var streak = 0
+        while hardDays.contains(cursor) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previous
+        }
+        return streak
+    }
+
+    private static func label(for kind: CoachSessionKind) -> String {
+        switch kind {
+        case .strength: return "Strength"
+        case .easyAerobic: return "Easy aerobic"
+        case .moderateAerobic: return "Cardio"
+        case .vo2Intervals: return "VO₂ intervals"
+        case .recovery: return "Recovery"
+        case .rest: return "Rest"
+        case .assessment: return "Assessment"
+        }
+    }
+
+    private static func isPlannedHard(_ kind: CoachSessionKind) -> Bool {
+        switch kind {
+        case .strength, .vo2Intervals: return true
+        case .easyAerobic, .moderateAerobic, .recovery, .rest, .assessment: return false
+        }
+    }
+
+    private static func plannedModerateEquivalentMinutes(for kind: CoachSessionKind) -> Double {
+        switch kind {
+        case .easyAerobic: return 12.5
+        case .moderateAerobic: return 35
+        case .vo2Intervals: return 70
+        case .strength, .recovery, .rest, .assessment: return 0
+        }
     }
 }

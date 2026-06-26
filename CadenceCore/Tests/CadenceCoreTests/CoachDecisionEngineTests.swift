@@ -133,6 +133,74 @@ final class CoachDecisionEngineTests: XCTestCase {
         XCTAssertFalse(completed.isEmpty)
     }
 
+    func testWeeklyPlanDoesNotBackfillEmptyHistoryAsPlannedSessions() throws {
+        let now = testNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+
+        let plan = WeeklyPlan.generate(from: facts)
+
+        XCTAssertEqual(plan.historyDays.count, 7)
+        XCTAssertTrue(plan.historyDays.allSatisfy { !$0.isFuture })
+        XCTAssertTrue(plan.historyDays.filter { !$0.isCompleted }.allSatisfy { $0.sessionKind == nil },
+                      "Blank history days must not become planned sessions")
+    }
+
+    func testWeeklyPlanRemainingCalendarWeekIsFutureOnlyAndChronological() throws {
+        let now = testNow
+        let cal = Calendar.current
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+
+        let plan = WeeklyPlan.generate(from: facts)
+        let remaining = plan.remainingCalendarWeekDays
+        let weekStart = WeeklyStats.weekStart(now: now)
+        let nextWeekStart = cal.date(byAdding: .day, value: 7, to: weekStart)!
+
+        XCTAssertEqual(remaining.count, 3, "Thursday should have Fri/Sat/Sun remaining in the Monday-bounded week")
+        XCTAssertEqual(remaining.map(\.date), remaining.map(\.date).sorted())
+        XCTAssertTrue(remaining.allSatisfy { $0.isFuture })
+        XCTAssertTrue(remaining.allSatisfy { $0.date >= cal.startOfDay(for: now) && $0.date < nextWeekStart })
+        XCTAssertTrue(remaining.allSatisfy { $0.sessionKind != nil })
+    }
+
+    func testWeeklyPlanRestOfWeekPrioritizesStrengthDeficitWithoutArbitraryRestAlternation() throws {
+        let now = testNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+
+        let plan = WeeklyPlan.generate(from: facts)
+        let remaining = plan.remainingCalendarWeekDays
+
+        XCTAssertEqual(remaining.map(\.sessionKind), [.strength, .moderateAerobic, .strength])
+        XCTAssertEqual(remaining.map(\.isHard), [true, false, true])
+    }
+
+    func testWeeklyPlanModerateCardioIsNotMarkedHard() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let s1 = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                        date: now.addingTimeInterval(-2 * 86400))
+        let s2 = try makeStrengthEvent(context: ctx, name: "Bench", primaryMuscles: ["chest"],
+                                        date: now.addingTimeInterval(-3 * 86400))
+        let facts = CoachFacts.make(from: [s1, s2], goal: .strength, experience: .intermediate, now: now)
+
+        let plan = WeeklyPlan.generate(from: facts)
+        let cardioDays = plan.futureDays.filter { $0.sessionKind == .moderateAerobic }
+
+        XCTAssertFalse(cardioDays.isEmpty)
+        XCTAssertTrue(cardioDays.allSatisfy { !$0.isHard })
+    }
+
+    func testWeeklyPlanPoorReadinessOnlyDefersTomorrow() throws {
+        let now = testNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    readinessEntry: poorReadiness(now), now: now)
+
+        let plan = WeeklyPlan.generate(from: facts)
+
+        XCTAssertEqual(plan.futureDays.first?.sessionKind, .recovery)
+        XCTAssertTrue(plan.futureDays.dropFirst().contains { $0.sessionKind == .strength },
+                      "A one-day readiness deferral should not turn the whole future plan into recovery")
+    }
+
     // MARK: - Observed facts (v2 rich model)
 
     func testObservedFactsIncludeLastCardio() throws {

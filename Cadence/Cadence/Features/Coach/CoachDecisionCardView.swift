@@ -25,7 +25,7 @@ struct CoachDecisionCardView: View {
             .foregroundStyle(stateColor)
 
             HStack(alignment: .top, spacing: 13) {
-                if isCompleteState || stateKind == "RECOVERY" || stateKind == "REST" {
+                if stateKind == "RECOVERY" || stateKind == "REST" {
                     ZStack {
                         Circle()
                             .fill(stateColor)
@@ -260,24 +260,24 @@ struct CoachDecisionCardView: View {
         if isCompleteState {
             switch decision.primary.kind {
             case .strength:
-                return "You put in\nthe work"
+                return "You put in the work"
             case .easyAerobic, .moderateAerobic:
-                return "Cardio banked\nfor today"
+                return "Cardio banked for today"
             case .vo2Intervals:
-                return "Speed work\nin the books"
+                return "Speed work in the books"
             case .recovery:
-                return "Recovery done\nfor today"
+                return "Recovery done for today"
             case .rest:
-                return "Rest earned\nfor today"
+                return "Rest earned for today"
             case .assessment:
-                return "Baseline\nin the books"
+                return "Baseline in the books"
             }
         }
         if hasRecentStrength && decision.primary.kind != .strength {
-            return "Strength is\ndone today"
+            return "Strength is done today"
         }
         if decision.primary.kind == .rest {
-            return "Rest is\ntraining too"
+            return "Rest is training too"
         }
         return decision.primary.title
     }

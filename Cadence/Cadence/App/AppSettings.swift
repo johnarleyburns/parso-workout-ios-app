@@ -150,6 +150,22 @@ final class AppSettings {
         }
     }
 
+    /// User-selected weekly schedule preferences, replacing hard-coded defaults.
+    /// Persisted as JSON in UserDefaults; defaults conservatively.
+    var coachSchedulePreferences: CoachSchedulePreferences {
+        get {
+            guard let data = defaults.data(forKey: "settings.coachSchedulePreferences"),
+                  let prefs = try? JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
+            else { return .default }
+            return prefs
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: "settings.coachSchedulePreferences")
+            }
+        }
+    }
+
     @discardableResult
     func recordCoachSelection(_ session: CoachSession, alternatives: [CoachSession],
                                at date: Date = Date()) -> CoachPreferenceProfile {

@@ -64,6 +64,7 @@ public struct RecoveryState: Sendable, Equatable {
 
 public struct WeeklyBalance: Sendable, Equatable {
     public let strengthDays: Int
+    public let cardioDays: Int
     public let patternsTrained: Set<MovementPattern>
     public let bodyPartsTrained: Set<BodyPart>
     public let fractionalSets: [BodyPart: Double]
@@ -79,7 +80,7 @@ public struct WeeklyBalance: Sendable, Equatable {
     public let dataCompleteness: FactConfidence
 
     public static let empty = WeeklyBalance(
-        strengthDays: 0, patternsTrained: [], bodyPartsTrained: [],
+        strengthDays: 0, cardioDays: 0, patternsTrained: [], bodyPartsTrained: [],
         fractionalSets: [:], moderateMinutes: 0, vigorousMinutes: 0,
         moderateEquivalentMinutes: 0, hardDays: 0, consecutiveHardDays: 0,
         vo2maxLatest: nil, vo2maxProtocol: nil, vo2maxTrend: nil,
@@ -318,6 +319,7 @@ public extension CoachFacts {
         let aerobicEvents = completed.filter { $0.isAerobic }
 
         let strengthDays = Set(strengthEvents.map { Calendar.current.startOfDay(for: $0.start) }).count
+        let cardioDays = Set(aerobicEvents.map { Calendar.current.startOfDay(for: $0.start) }).count
 
         var patternsTrained = Set<MovementPattern>()
         var bodyPartsTrained = Set<BodyPart>()
@@ -374,6 +376,7 @@ public extension CoachFacts {
 
         return WeeklyBalance(
             strengthDays: strengthDays,
+            cardioDays: cardioDays,
             patternsTrained: patternsTrained,
             bodyPartsTrained: bodyPartsTrained,
             fractionalSets: fractionalSets,

@@ -5,7 +5,10 @@ struct WhyThisTodayView: View {
     let decision: CoachDecision
     var onAltTap: (() -> Void)?
 
+    @Environment(AppSettings.self) private var settings
+
     var body: some View {
+        @Bindable var settings = settings
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 completedTodaySection
@@ -15,6 +18,7 @@ struct WhyThisTodayView: View {
                 ruledOutSection
                 whyWonSection
                 warningsSection
+                myPreferencesSection
             }
             .padding()
         }
@@ -112,15 +116,17 @@ struct WhyThisTodayView: View {
     // MARK: - Weekly balance (compact)
 
     private var weeklyBalanceSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        let prefs = settings.coachSchedulePreferences
+        return VStack(alignment: .leading, spacing: 4) {
             Text("This week")
                 .font(.headline)
                 .padding(.bottom, 4)
 
             HStack(spacing: 0) {
-                compactMetric("\(decision.weeklyBalance.strengthDays)", "strength days")
-                compactMetric("\(Int(decision.weeklyBalance.moderateEquivalentMinutes))", "mod-equivalent min")
-                compactMetric("\(decision.weeklyBalance.consecutiveHardDays)", "hard day streak")
+                compactMetric("\(decision.weeklyBalance.strengthDays)/\(prefs.strengthDaysPerWeek)", "strength days")
+                compactMetric("\(decision.weeklyBalance.cardioDays)/\(prefs.cardioDaysPerWeek)", "cardio days")
+                compactMetric("\(Int(decision.weeklyBalance.moderateEquivalentMinutes))", "mod-eq min")
+                compactMetric("\(decision.weeklyBalance.consecutiveHardDays)", "hard streak")
             }
             .padding(.vertical, 8)
             .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
@@ -310,10 +316,6 @@ struct WhyThisTodayView: View {
         }
     }
 
-    /// A "Why this won" row styled like "What you did": leading category icon,
-    /// the claim as the title, its tappable citation as the subtitle (HARD RULE —
-    /// kept individually tappable, so the row is NOT accessibility-combined), and a
-    /// trailing category tag.
     private func compactClaimRow(_ claim: EvidenceClaim) -> some View {
         let style = claimStyle(claim.category)
         return HStack(spacing: 8) {
@@ -342,7 +344,6 @@ struct WhyThisTodayView: View {
         .accessibilityIdentifier("whyToday.claim.\(claim.id)")
     }
 
-    /// Maps a claim's typed evidence category to its row icon, accent, and tag.
     private func claimStyle(_ category: EvidenceClaimCategory?) -> (symbol: String, color: Color, label: String) {
         switch category {
         case .strengthFrequency, .strengthVolume, .strengthIntensity, .periodization:
@@ -359,6 +360,10 @@ struct WhyThisTodayView: View {
             return ("arrow.triangle.2.circlepath", .blue, "Concurrent")
         case .fieldTestValidity:
             return ("checklist", .gray, "Testing")
+        case .schedulePreference:
+            return ("calendar", .blue, "Schedule")
+        case .publicHealthGuideline:
+            return ("heart.text.clinic", .teal, "Health")
         case nil:
             return ("sparkles", .secondary, "Coach")
         }
@@ -367,13 +372,12 @@ struct WhyThisTodayView: View {
     private func buildWhyThisWonClaims() -> [EvidenceClaim] {
         let bal = decision.weeklyBalance
         let date = decision.generatedAt
+        let prefs = settings.coachSchedulePreferences
         var claims: [EvidenceClaim] = []
 
-        // Each weekly-balance claim is backed by its own typed evidence category, so
-        // the citation can only come from that claim's curated pool (no shared pool).
         claims.append(EvidenceClaim(
             id: "strengthDays",
-            text: "\(bal.strengthDays) strength days this week (target: 2+)",
+            text: "\(bal.strengthDays) strength days this week (target: \(prefs.strengthDaysPerWeek)+)",
             category: .strengthFrequency, date: date))
 
         claims.append(EvidenceClaim(
@@ -386,8 +390,11 @@ struct WhyThisTodayView: View {
             text: "\(bal.consecutiveHardDays) consecutive hard days",
             category: .recoveryMonitoring, date: date))
 
-        // Surface the system-need rationale that helped this session win, if any —
-        // these reasons already carry their own typed category + citation.
+        claims.append(EvidenceClaim(
+            id: "cardioDays",
+            text: "\(bal.cardioDays) cardio days this week (target: \(prefs.cardioDaysPerWeek))",
+            category: .schedulePreference, date: date))
+
         if let breakdown = decision.scoreBreakdowns[decision.primary.id] {
             claims.append(contentsOf: breakdown.reasons)
         }
@@ -419,6 +426,162 @@ struct WhyThisTodayView: View {
                             }
                         }
                         .padding(.vertical, 8)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - My Preferences
+
+    private var myPreferencesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("My Preferences")
+                .font(.headline)
+                .padding(.bottom, 4)
+
+            card {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Strength days
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Strength days/week").font(.subheadline.weight(.medium))
+                            Spacer()
+                            Text("\(settings.coachSchedulePreferences.strengthDaysPerWeek)").font(.subheadline.bold())
+                        }
+                        Picker("Strength days", selection: Binding(get: {
+                            settings.coachSchedulePreferences.strengthDaysPerWeek
+                        }, set: { v in
+                            settings.coachSchedulePreferences = settings.coachSchedulePreferences.withStrengthDays(v)
+                        })) {
+                            ForEach(2...5, id: \.self) { n in
+                                Text("\(n)").tag(n)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    if let citation = CitationRegistry.citation(forId: "frequencyMeta") {
+                        CitationLink(citation: citation, compact: true)
+                    }
+
+                    Divider()
+
+                    // Cardio days
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Cardio days/week").font(.subheadline.weight(.medium))
+                            Spacer()
+                            Text("\(settings.coachSchedulePreferences.cardioDaysPerWeek)").font(.subheadline.bold())
+                        }
+                        Picker("Cardio days", selection: Binding(get: {
+                            settings.coachSchedulePreferences.cardioDaysPerWeek
+                        }, set: { v in
+                            settings.coachSchedulePreferences = settings.coachSchedulePreferences.withCardioDays(v)
+                        })) {
+                            ForEach(0...6, id: \.self) { n in
+                                Text("\(n)").tag(n)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    if let citation = CitationRegistry.citation(forId: "cdcActivityGuidelines2018") {
+                        CitationLink(citation: citation, compact: true)
+                    }
+
+                    Divider()
+
+                    // Rest preference
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Rest pattern").font(.subheadline.weight(.medium))
+                        Picker("Rest", selection: Binding(get: {
+                            if case .fixed = settings.coachSchedulePreferences.restPreference { return 0 }
+                            return 1
+                        }, set: { v in
+                            var prefs = settings.coachSchedulePreferences
+                            if v == 0 {
+                                prefs = prefs.withRestPreference(.fixed(days: [.saturday, .sunday]))
+                            } else {
+                                prefs = prefs.withRestPreference(.rolling(everyNDays: 3))
+                            }
+                            settings.coachSchedulePreferences = prefs
+                        })) {
+                            Text("Fixed").tag(0)
+                            Text("Rolling").tag(1)
+                        }
+                        .pickerStyle(.segmented)
+
+                        if case .fixed(let days) = settings.coachSchedulePreferences.restPreference {
+                            HStack(spacing: 6) {
+                                ForEach(Weekday.allCases, id: \.self) { wd in
+                                    Button {
+                                        var newDays = days
+                                        if newDays.contains(wd) { newDays.remove(wd) }
+                                        else { newDays.insert(wd) }
+                                        settings.coachSchedulePreferences = settings.coachSchedulePreferences.withRestPreference(.fixed(days: newDays))
+                                    } label: {
+                                        Text(wd.displayName)
+                                            .font(.caption2.weight(.medium))
+                                            .padding(.horizontal, 8).padding(.vertical, 4)
+                                            .background(days.contains(wd) ? Color.blue : Color(.systemGray5),
+                                                        in: RoundedRectangle(cornerRadius: 8))
+                                            .foregroundStyle(days.contains(wd) ? .white : .primary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+
+                        if case .rolling(let everyN) = settings.coachSchedulePreferences.restPreference {
+                            Stepper("Every \(everyN) days", value: Binding(get: { everyN }, set: { n in
+                                settings.coachSchedulePreferences = settings.coachSchedulePreferences.withRestPreference(.rolling(everyNDays: max(2, n)))
+                            }), in: 2...7)
+                        }
+                    }
+                    if let recoveryCitation = CitationRegistry.citation(forId: "sawMonitoring2016") {
+                        CitationLink(citation: recoveryCitation, compact: true)
+                    }
+
+                    Divider()
+
+                    // Two-a-days toggle
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Two-a-days").font(.subheadline.weight(.medium))
+                            Text("Allow strength + cardio on the same day").font(.caption2).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: Binding(get: {
+                            settings.coachSchedulePreferences.allowsTwoADays
+                        }, set: { v in
+                            settings.coachSchedulePreferences = settings.coachSchedulePreferences.withTwoADays(v)
+                        }))
+                    }
+                    if settings.coachSchedulePreferences.allowsTwoADays,
+                       let concurrentCitation = CitationRegistry.citation(forId: "murlasitsConcurrentSequence2018") {
+                        CitationLink(citation: concurrentCitation, compact: true)
+                    }
+
+                    if settings.coachSchedulePreferences.allowsTwoADays {
+                        Divider()
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Cardio timing (same day)").font(.subheadline.weight(.medium))
+                            Picker("Timing", selection: Binding(get: {
+                                settings.coachSchedulePreferences.sameDayCardioTiming
+                            }, set: { v in
+                                settings.coachSchedulePreferences = settings.coachSchedulePreferences.withSameDayCardioTiming(v)
+                            })) {
+                                ForEach(SameDayCardioTiming.allCases, id: \.self) { t in
+                                    switch t {
+                                    case .afterStrength: Text("After lifting").tag(t)
+                                    case .separateLater: Text("Separate later").tag(t)
+                                    }
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                        if let schumann = CitationRegistry.citation(forId: "schumannConcurrent2022") {
+                            CitationLink(citation: schumann, compact: true)
+                        }
                     }
                 }
             }

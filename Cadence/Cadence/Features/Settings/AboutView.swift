@@ -33,9 +33,6 @@ struct AboutView: View {
                 Divider()
                 disclaimer
                     .padding(.horizontal, 20).padding(.vertical, 24)
-                Divider()
-                imageAttribution
-                    .padding(.horizontal, 20).padding(.vertical, 24)
             }
         }
         .navigationTitle("About")
@@ -178,17 +175,6 @@ struct AboutView: View {
     // MARK: Disclaimer
 
     private var disclaimer: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Coaching, not medical advice").font(.subheadline.weight(.semibold))
-            Text("Cladiron's assessments and recommendations are general training guidance, not medical advice, diagnosis, or treatment. Consult a qualified professional before starting or changing an exercise program.")
-                .font(.footnote).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    // MARK: Image attribution
-
-    private var imageAttribution: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Image Credits").font(.title3.bold())
             Text("Splash image: \"Fitness exercise\" by Robertgombos, licensed under CC BY-SA 4.0.")

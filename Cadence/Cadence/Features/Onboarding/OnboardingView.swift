@@ -14,8 +14,10 @@ struct OnboardingView: View {
     @State private var experience: ExperienceLevel = .intermediate
     @State private var unit: MeasurementUnitPreference = .pounds
     @State private var healthRequested = false
+    @State private var strengthDays: Int = 2
+    @State private var cardioDays: Int = 3
 
-    private let lastStep = 4
+    private let lastStep = 5
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,8 +26,9 @@ struct OnboardingView: View {
                 welcomePage.tag(0)
                 goalPage.tag(1)
                 experiencePage.tag(2)
-                unitsPage.tag(3)
-                disclaimerPage.tag(4)
+                schedulePage.tag(3)
+                unitsPage.tag(4)
+                disclaimerPage.tag(5)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut, value: step)
@@ -125,6 +128,36 @@ struct OnboardingView: View {
             ForEach(ExperienceLevel.allCases) { e in
                 selectCard(title: e.displayName, subtitle: e.summary,
                            systemImage: experienceSymbol(e), selected: experience == e) { experience = e }
+            }
+        }
+    }
+
+    private var schedulePage: some View {
+        pageScaffold(title: "How often do you train?",
+                     subtitle: "You can fine-tune rest days and two-a-days in preferences.") {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Strength days per week").font(.subheadline.weight(.medium))
+                Picker("Strength days", selection: $strengthDays) {
+                    Text("2").tag(2)
+                    Text("3").tag(3)
+                    Text("4").tag(4)
+                    Text("5").tag(5)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("onboarding.strengthDays")
+
+                Text("Cardio days per week").font(.subheadline.weight(.medium))
+                Picker("Cardio days", selection: $cardioDays) {
+                    Text("0").tag(0)
+                    Text("1").tag(1)
+                    Text("2").tag(2)
+                    Text("3").tag(3)
+                    Text("4").tag(4)
+                    Text("5").tag(5)
+                    Text("6").tag(6)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("onboarding.cardioDays")
             }
         }
     }
@@ -240,6 +273,13 @@ struct OnboardingView: View {
         settings.trainingGoal = goal
         settings.experienceLevel = experience
         settings.unit = unit
+        settings.coachSchedulePreferences = CoachSchedulePreferences(
+            strengthDaysPerWeek: strengthDays,
+            cardioDaysPerWeek: cardioDays,
+            restPreference: .defaultRolling,
+            allowsTwoADays: false,
+            sameDayCardioTiming: .afterStrength
+        )
         settings.hasCompletedOnboarding = true
         dismiss()
     }

@@ -113,6 +113,7 @@ public enum CoachDecisionEngine {
 
     public static func run(_ facts: CoachFacts,
                            profile: CoachPreferenceProfile = .empty,
+                           schedulePreferences: CoachSchedulePreferences = .default,
                            hasPainConcern: Bool = false,
                            anaerobicOptIn: Bool = false) -> CoachDecision {
         let now = facts.referenceDate
@@ -167,6 +168,7 @@ public enum CoachDecisionEngine {
         // Gate 3: score eligible candidates (base + system need + preference
         // − same-day damping − confidence penalty).
         let scored = score(eligible, facts: facts, profile: profile,
+                           schedulePreferences: schedulePreferences,
                            todayCompleted: todayCompleted)
 
         let primary: CoachSession
@@ -184,7 +186,8 @@ public enum CoachDecisionEngine {
 
         // Gate 4: Plan adherence — check if today's planned session is already done
         let planState = computePlanAdherence(primary: primary, todayCompleted: todayCompleted,
-                                              candidates: candidates, facts: facts)
+                                               candidates: candidates, facts: facts,
+                                               schedulePreferences: schedulePreferences)
 
         // Generate warnings
         let warnings = generateWarnings(facts: facts)
@@ -225,8 +228,8 @@ public enum CoachDecisionEngine {
         factsList.append(ObservedFact(
             kind: .weeklyStrengthDays,
             title: "Strength days this week",
-            value: "\(facts.weeklyBalance.strengthDays) / 2+",
-            detail: "Target is 2 or more"
+            value: "\(facts.weeklyBalance.strengthDays) / \(schedulePreferences.strengthDaysPerWeek)+",
+            detail: "Target is \(schedulePreferences.strengthDaysPerWeek) or more"
         ))
 
         factsList.append(ObservedFact(
@@ -261,9 +264,10 @@ public enum CoachDecisionEngine {
     // MARK: - Plan adherence
 
     private static func computePlanAdherence(primary: CoachSession,
-                                               todayCompleted: [TrainingEvent],
-                                               candidates: [CoachSession],
-                                               facts: CoachFacts) -> PlanAdherence {
+                                                todayCompleted: [TrainingEvent],
+                                                candidates: [CoachSession],
+                                                facts: CoachFacts,
+                                                schedulePreferences: CoachSchedulePreferences = .default) -> PlanAdherence {
         guard !todayCompleted.isEmpty else { return .planAhead }
 
         // Check if any completed event today matches the primary recommendation
@@ -282,7 +286,8 @@ public enum CoachDecisionEngine {
             let bestMatch = matchedSessions.first!
             let completedKind = bestMatch.session.kind
             let todayDescription = describeCompletedEvent(bestMatch.event)
-            let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates)
+            let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
+                                                          schedulePreferences: schedulePreferences)
 
             return .planComplete(completedKind: completedKind,
                                   todayDescription: todayDescription,
@@ -363,9 +368,10 @@ public enum CoachDecisionEngine {
     }
 
     private static func generateTomorrowPreview(facts: CoachFacts,
-                                                  candidates: [CoachSession]) -> String? {
+                                                  candidates: [CoachSession],
+                                                  schedulePreferences: CoachSchedulePreferences = .default) -> String? {
         let balance = facts.weeklyBalance
-        let strengthFloor = 2
+        let strengthFloor = schedulePreferences.strengthDaysPerWeek
         let aerobicFloor = 150.0
 
         let strengthNeeded = balance.strengthDays < strengthFloor
@@ -431,10 +437,11 @@ public enum CoachDecisionEngine {
 
     private static func score(_ candidates: [CoachSession], facts: CoachFacts,
                                 profile: CoachPreferenceProfile,
+                                schedulePreferences: CoachSchedulePreferences = .default,
                                 todayCompleted: [TrainingEvent] = [])
         -> [(session: CoachSession, breakdown: SessionScoreBreakdown)] {
         let balance = facts.weeklyBalance
-        let strengthFloor = 2
+        let strengthFloor = schedulePreferences.strengthDaysPerWeek
         let aerobicFloor = 150.0
 
         let scored = candidates.map { c -> (session: CoachSession, breakdown: SessionScoreBreakdown) in

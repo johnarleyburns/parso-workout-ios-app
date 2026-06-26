@@ -89,8 +89,9 @@ struct HomeView: View {
         let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == today }
         let hasPain = todayReadiness?.hasPainOrIllnessConcern ?? false
         return CoachDecisionEngine.run(facts,
-                                        profile: settings.coachPreferenceProfile,
-                                        hasPainConcern: hasPain)
+                                         profile: settings.coachPreferenceProfile,
+                                         schedulePreferences: settings.coachSchedulePreferences,
+                                         hasPainConcern: hasPain)
     }
 
     private func buildTrainingEvents() -> [TrainingEvent] {
@@ -161,9 +162,11 @@ struct HomeView: View {
                 case .coach: CoachInsightsView(insights: coachInsights)
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
                 case .yourWeek:
-                    YourWeekView(decision: coachDecision, facts: CoachFacts.make(
+                    let facts = CoachFacts.make(
                         from: buildTrainingEvents(), goal: settings.trainingGoal,
-                        experience: settings.experienceLevel, formula: settings.formula))
+                        experience: settings.experienceLevel, formula: settings.formula)
+                    YourWeekView(decision: coachDecision, facts: facts,
+                                 preferences: settings.coachSchedulePreferences)
                 case .whyToday:
                     WhyThisTodayView(decision: coachDecision,
                                      onAltTap: { path.append(HomeRoute.coachAlternatives) })

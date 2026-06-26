@@ -45,7 +45,7 @@ CloudKit sync stays wired (single-device iCloud backup + future multi-device) bu
 - Real-device runs are required to test HealthKit/CloudKit — the simulator has no real Health data.
 
 ## Conventions
-- Small, focused commits; one feature per branch; never commit to `main`.
+- Small, focused commits; one feature per branch; push to main when verified.
 - Reference spec IDs in commits/PRs (e.g. "FR-1 strength logging", "FR-3 steps").
 - Follow the phasing in `docs/REQUIREMENTS.md` §8. Build the `CadenceCore` package first.
 - Accessibility is not optional: VoiceOver labels + Dynamic Type on every new view (NFR-2).
@@ -105,8 +105,11 @@ This is how large bodies of work (e.g. the field-testing redesign) are run. Mirr
 - Reference spec IDs (FR-x, field-testing §n) and end commits with the
   Co-Authored-By trailer.
 
-## Post-task checklist (ALWAYS run after completing a task)
-Once the work is verified (green build + tests), execute these steps in order:
+## Post-task checklist (MANDATORY — NEVER skip after completing a task)
+Once the work is verified (green build + tests), execute these steps in order.
+**This checklist is NOT optional.** Every task MUST end with a commit, merge,
+and push unless the user explicitly says otherwise.
+
 1. **Audit plan vs implementation** — re-read the plan (if one exists) and check
    every acceptance criterion, data-model change, and UI requirement against
    the shipped code. Fix any discrepancies before committing.
@@ -118,6 +121,7 @@ Once the work is verified (green build + tests), execute these steps in order:
    (e.g. `feat: coach why-this-today + preference learning`). Include changed
    files and new files. Never commit before verifying.
 5. **Merge to `main`** if not already there (`git checkout main && git merge --ff-only <branch>`).
+   If already on `main`, commit directly to `main`.
 6. **Push** (`git push origin main`).
 7. **Monitor CI** — check `git log --oneline -1` to confirm the push SHA, then
    use `gh run list --branch main --limit 1` to watch the workflow.

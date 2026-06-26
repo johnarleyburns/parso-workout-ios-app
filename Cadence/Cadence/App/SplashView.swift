@@ -5,54 +5,18 @@ struct SplashView: View {
     @State private var opacity: Double = 0
     @State private var scale: Double = 0.85
 
-    private var appIcon: UIImage? {
-        if let icons = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
-           let primaryIcon = icons["CFBundlePrimaryIcon"] as? [String: Any],
-           let iconFiles = primaryIcon["CFBundleIconFiles"] as? [String],
-           let lastIcon = iconFiles.last {
-            return UIImage(named: lastIcon)
-        }
-        return nil
-    }
-
     var body: some View {
         ZStack {
-            if let img = UIImage(named: "splash") {
-                Image(uiImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .clipped()
-            } else {
-                Color(.systemBackground)
-            }
-
-            Color.black.opacity(0.55)
+            Color(.systemGray6)
+                .ignoresSafeArea()
 
             VStack(spacing: 14) {
-                if let icon = appIcon {
-                    Image(uiImage: icon)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 80, height: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18)
-                                .stroke(.white.opacity(0.3), lineWidth: 1)
-                        )
-                        .shadow(color: .black.opacity(0.2), radius: 8)
-                } else {
-                    Image(systemName: "dumbbell.fill")
-                        .font(.system(size: 48))
-                        .foregroundStyle(.white)
-                }
-
                 Text("Cladiron")
                     .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(.white)
 
                 Text("Your strength coach")
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }

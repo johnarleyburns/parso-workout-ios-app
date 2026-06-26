@@ -49,6 +49,8 @@ public enum EvidenceClaimCategory: String, Sendable, Codable, CaseIterable {
     case recoveryMonitoring
     case concurrentTraining
     case fieldTestValidity
+    case schedulePreference
+    case publicHealthGuideline
 }
 
 /// The bundled reference list the P3 rules point at. Open-source + visible in-app.
@@ -485,6 +487,31 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1007/s40279-021-01635-2"
     )
 
+    // MARK: - Schedule-preference / guideline citations (2026-06-25)
+
+    /// CDC / HHS adult physical-activity guideline — anchors the public-health
+    /// aerobic floor (150 min moderate-equivalent). Kept OUT of performance-
+    /// prescription pools so it never backs a training recommendation directly.
+    public static let cdcActivityGuidelines2018 = Citation(
+        id: "cdcActivityGuidelines2018",
+        authors: "U.S. Department of Health and Human Services",
+        year: 2018,
+        title: "Physical Activity Guidelines for Americans, 2nd edition",
+        source: "HHS / CDC",
+        url: "https://health.gov/our-work/nutrition-physical-activity/physical-activity-guidelines"
+    )
+
+    /// Concurrent-training sequence meta-analysis — anchors the "cardio after
+    /// strength" default advice when strength is the priority.
+    public static let murlasitsConcurrentSequence2018 = Citation(
+        id: "murlasitsConcurrentSequence2018",
+        authors: "Murlasits, Kneffel & Thalib",
+        year: 2018,
+        title: "The acute effects of concurrent training order on strength and endurance performance: a meta-analysis",
+        source: "Journal of Sports Sciences 36(18)",
+        url: "https://doi.org/10.1080/02640414.2018.1426559"
+    )
+
     /// Plank / global core-endurance test validity + reliability.
     public static let tongPlank2014 = Citation(
         id: "tongPlank2014",
@@ -513,6 +540,7 @@ public enum CitationRegistry {
         zourdosRIR2016, tanakaMaxHR2001, kaufmannThreshold2023, milanovicHIIT2015,
         slothSIT2013, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
         lauersenInjuryPrevention2014, fieldFitnessReliability2022, tongPlank2014,
+        cdcActivityGuidelines2018, murlasitsConcurrentSequence2018,
     ]
 
     public static func citation(forId id: String) -> Citation? {
@@ -628,6 +656,24 @@ public enum CitationRegistry {
         "fieldFitnessReliability2022",
     ])
 
+    /// Schedule-preference citations: strength frequency, concurrent-training
+    /// compatibility, recovery monitoring, and aerobic health floor.
+    public static let schedulePreferencePool = CitationPool(id: "schedulePreference", citationIds: [
+        "frequencyMeta",
+        "pellandDoseResponse2026",
+        "schumannConcurrent2022",
+        "sawMonitoring2016",
+        "halsonRecovery2014",
+        "murlasitsConcurrentSequence2018",
+    ])
+
+    /// Public-health guideline citation pool (kept entirely separate from
+    /// performance-prescription pools so public-health guidance never backs a
+    /// training recommendation directly).
+    public static let publicHealthGuidelinePool = CitationPool(id: "publicHealthGuideline", citationIds: [
+        "cdcActivityGuidelines2018",
+    ])
+
     /// The single citation pool that may support a given claim category. Total over
     /// `EvidenceClaimCategory`, so every typed claim has a resolvable pool.
     public static func citationPool(for category: EvidenceClaimCategory) -> CitationPool {
@@ -646,6 +692,8 @@ public enum CitationRegistry {
         case .recoveryMonitoring: return recoveryMonitoringPool
         case .concurrentTraining: return concurrentTrainingPool
         case .fieldTestValidity: return fieldTestValidityPool
+        case .schedulePreference: return schedulePreferencePool
+        case .publicHealthGuideline: return publicHealthGuidelinePool
         }
     }
 }

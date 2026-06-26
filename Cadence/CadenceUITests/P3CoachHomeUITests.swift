@@ -117,4 +117,28 @@ final class P3CoachHomeUITests: CadenceUITestCase {
                        "Start button must not appear when today's plan is already complete")
     }
 
+    // MARK: - This week card Details removal
+
+    func testThisWeekCardDoesNotShowDetailsLink() {
+        let app = XCUIApplication.launched()
+        XCTAssertTrue(app.descendants(matching: .any)["home.thisWeek"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Details"].exists)
+    }
+
+    // MARK: - Settings schedule preferences link
+
+    func testSettingsLinksToCoachSchedulePreferences() {
+        let app = XCUIApplication.launched()
+        app.buttons["home.settings"].tap()
+
+        // Scroll to the Coach section at the bottom of Settings
+        let link = app.buttons["settings.coach.schedulePreferences"]
+        if !link.exists || !link.isHittable {
+            app.swipeUp()
+            app.swipeUp()
+        }
+        XCTAssertTrue(link.waitForExistence(timeout: 5))
+        link.tap()
+        XCTAssertTrue(app.navigationBars["Coach preferences"].waitForExistence(timeout: 5))
+    }
 }

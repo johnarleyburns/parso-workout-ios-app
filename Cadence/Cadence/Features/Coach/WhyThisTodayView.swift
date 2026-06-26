@@ -3,7 +3,9 @@ import CadenceCore
 
 struct WhyThisTodayView: View {
     let decision: CoachDecision
+    let addOnRecommendation: CoachAddOnRecommendation
     var onAltTap: (() -> Void)?
+    var onAddOnTap: ((CoachSession, CoachAddOnStatus) -> Void)?
 
     @Environment(AppSettings.self) private var settings
 
@@ -14,11 +16,18 @@ struct WhyThisTodayView: View {
                 completedTodaySection
                 whatYouDidSection
                 weeklyBalanceSection
-                coachPickSection
-                ruledOutSection
-                whyWonSection
+
+                if isPlanComplete {
+                    completedPlanExplanationSection
+                    optionalAddOnsSection
+                } else {
+                    coachPickSection
+                    ruledOutSection
+                    whyWonSection
+                }
+
                 warningsSection
-                myPreferencesSection
+                preferencesLinkSection
             }
             .padding()
         }
@@ -432,165 +441,163 @@ struct WhyThisTodayView: View {
         }
     }
 
-    // MARK: - My Preferences
+    // MARK: - Completed Plan State
 
-    private var myPreferencesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("My Preferences")
+    private var isPlanComplete: Bool {
+        if case .planComplete = decision.planAdherence { return true }
+        return false
+    }
+
+    private var completedPlanExplanationSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Today's plan")
                 .font(.headline)
                 .padding(.bottom, 4)
 
-            card {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Strength days
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Strength days/week").font(.subheadline.weight(.medium))
-                            Spacer()
-                            Text("\(settings.coachSchedulePreferences.strengthDaysPerWeek)").font(.subheadline.bold())
-                        }
-                        Picker("Strength days", selection: Binding(get: {
-                            settings.coachSchedulePreferences.strengthDaysPerWeek
-                        }, set: { v in
-                            settings.coachSchedulePreferences = settings.coachSchedulePreferences.withStrengthDays(v)
-                        })) {
-                            ForEach(2...5, id: \.self) { n in
-                                Text("\(n)").tag(n)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                    if let citation = CitationRegistry.citation(forId: "frequencyMeta") {
-                        CitationLink(citation: citation, compact: true)
+            card(highlight: true) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text("Plan followed")
+                            .font(.subheadline.weight(.bold))
                     }
 
-                    Divider()
+                    Text(todayCompleteDescription)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
-                    // Cardio days
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Cardio days/week").font(.subheadline.weight(.medium))
-                            Spacer()
-                            Text("\(settings.coachSchedulePreferences.cardioDaysPerWeek)").font(.subheadline.bold())
-                        }
-                        Picker("Cardio days", selection: Binding(get: {
-                            settings.coachSchedulePreferences.cardioDaysPerWeek
-                        }, set: { v in
-                            settings.coachSchedulePreferences = settings.coachSchedulePreferences.withCardioDays(v)
-                        })) {
-                            ForEach(0...6, id: \.self) { n in
-                                Text("\(n)").tag(n)
-                            }
-                        }
-                        .pickerStyle(.segmented)
+                    if let tomorrow = tomorrowPreview {
+                        Label("Tomorrow: \(tomorrow)", systemImage: "forward.fill")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.green)
                     }
-                    if let citation = CitationRegistry.citation(forId: "cdcActivityGuidelines2018") {
-                        CitationLink(citation: citation, compact: true)
-                    }
+                }
+            }
+        }
+    }
 
-                    Divider()
+    private var todayCompleteDescription: String {
+        if case .planComplete(_, let desc, _) = decision.planAdherence { return desc }
+        return ""
+    }
 
-                    // Rest preference
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Rest pattern").font(.subheadline.weight(.medium))
-                        Picker("Rest", selection: Binding(get: {
-                            if case .fixed = settings.coachSchedulePreferences.restPreference { return 0 }
-                            return 1
-                        }, set: { v in
-                            var prefs = settings.coachSchedulePreferences
-                            if v == 0 {
-                                prefs = prefs.withRestPreference(.fixed(days: [.saturday, .sunday]))
-                            } else {
-                                prefs = prefs.withRestPreference(.rolling(everyNDays: 3))
-                            }
-                            settings.coachSchedulePreferences = prefs
-                        })) {
-                            Text("Fixed").tag(0)
-                            Text("Rolling").tag(1)
-                        }
-                        .pickerStyle(.segmented)
+    private var tomorrowPreview: String? {
+        if case .planComplete(_, _, let preview) = decision.planAdherence { return preview }
+        return nil
+    }
 
-                        if case .fixed(let days) = settings.coachSchedulePreferences.restPreference {
-                            HStack(spacing: 6) {
-                                ForEach(Weekday.allCases, id: \.self) { wd in
-                                    Button {
-                                        var newDays = days
-                                        if newDays.contains(wd) { newDays.remove(wd) }
-                                        else { newDays.insert(wd) }
-                                        settings.coachSchedulePreferences = settings.coachSchedulePreferences.withRestPreference(.fixed(days: newDays))
-                                    } label: {
-                                        Text(wd.displayName)
-                                            .font(.caption2.weight(.medium))
-                                            .padding(.horizontal, 8).padding(.vertical, 4)
-                                            .background(days.contains(wd) ? Color.blue : Color(.systemGray5),
-                                                        in: RoundedRectangle(cornerRadius: 8))
-                                            .foregroundStyle(days.contains(wd) ? .white : .primary)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            if !days.isEmpty {
-                                Text("Coach will not schedule workouts on selected days.")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
+    // MARK: - Optional Add-Ons
 
-                        if case .rolling(let everyN) = settings.coachSchedulePreferences.restPreference {
-                            Stepper("Every \(everyN) days", value: Binding(get: { everyN }, set: { n in
-                                settings.coachSchedulePreferences = settings.coachSchedulePreferences.withRestPreference(.rolling(everyNDays: max(2, n)))
-                            }), in: 2...7)
-                        }
-                    }
-                    if let recoveryCitation = CitationRegistry.citation(forId: "sawMonitoring2016") {
-                        CitationLink(citation: recoveryCitation, compact: true)
-                    }
+    @ViewBuilder
+    private var optionalAddOnsSection: some View {
+        let primary = addOnRecommendation.primaryOption
+        let secondary = addOnRecommendation.secondaryOptions
+        let hasAny = primary != nil || !secondary.isEmpty
 
-                    Divider()
+        if hasAny {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Optional after today")
+                    .font(.headline)
+                    .padding(.bottom, 4)
 
-                    // Two-a-days toggle
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Two-a-days").font(.subheadline.weight(.medium))
-                            Text("Allow strength + cardio on the same day").font(.caption2).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Toggle("", isOn: Binding(get: {
-                            settings.coachSchedulePreferences.allowsTwoADays
-                        }, set: { v in
-                            settings.coachSchedulePreferences = settings.coachSchedulePreferences.withTwoADays(v)
-                        }))
-                    }
-                    if settings.coachSchedulePreferences.allowsTwoADays,
-                       let concurrentCitation = CitationRegistry.citation(forId: "murlasitsConcurrentSequence2018") {
-                        CitationLink(citation: concurrentCitation, compact: true)
-                    }
+                if let primary {
+                    addOnRow(primary)
+                }
 
-                    if settings.coachSchedulePreferences.allowsTwoADays {
-                        Divider()
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Cardio timing (same day)").font(.subheadline.weight(.medium))
-                            Picker("Timing", selection: Binding(get: {
-                                settings.coachSchedulePreferences.sameDayCardioTiming
-                            }, set: { v in
-                                settings.coachSchedulePreferences = settings.coachSchedulePreferences.withSameDayCardioTiming(v)
-                            })) {
-                                ForEach(SameDayCardioTiming.allCases, id: \.self) { t in
-                                    switch t {
-                                    case .afterStrength: Text("After lifting").tag(t)
-                                    case .separateLater: Text("Separate later").tag(t)
-                                    }
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                        if let schumann = CitationRegistry.citation(forId: "schumannConcurrent2022") {
-                            CitationLink(citation: schumann, compact: true)
+                if !secondary.isEmpty {
+                    VStack(spacing: 6) {
+                        ForEach(secondary) { option in
+                            addOnRow(option)
                         }
                     }
                 }
             }
         }
+    }
+
+    private func addOnRow(_ option: CoachAddOnOption) -> some View {
+        Button {
+            if let onAddOnTap {
+                onAddOnTap(option.session, option.status)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: addOnIcon(option.status))
+                    .font(.caption)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(option.session.title)
+                        .font(.subheadline.weight(.medium))
+                    Text(option.message)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.bold))
+                    .opacity(0.6)
+            }
+            .padding(12)
+            .background(addOnStatusColor(option.status).opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        }
+        .foregroundStyle(addOnStatusColor(option.status))
+        .buttonStyle(.plain)
+    }
+
+    private func addOnIcon(_ status: CoachAddOnStatus) -> String {
+        switch status {
+        case .encouraged: return "hand.thumbsup.fill"
+        case .neutral: return "circle"
+        case .warn: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    private func addOnStatusColor(_ status: CoachAddOnStatus) -> Color {
+        switch status {
+        case .encouraged: return .green
+        case .neutral: return .secondary
+        case .warn: return .orange
+        }
+    }
+
+    // MARK: - My Preferences (compact link)
+
+    private var preferencesLinkSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("My preferences")
+                .font(.headline)
+                .padding(.bottom, 4)
+
+            NavigationLink {
+                CoachSchedulePreferencesView()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "slider.horizontal.3")
+                        .foregroundStyle(.blue)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(preferencesSummary)
+                            .font(.subheadline.weight(.medium))
+                        Text("Review my preferences")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("whyToday.preferences.review")
+        }
+    }
+
+    private var preferencesSummary: String {
+        let prefs = settings.coachSchedulePreferences
+        return "\(prefs.strengthDaysPerWeek) strength / \(prefs.cardioDaysPerWeek) cardio days"
     }
 
     // MARK: - Helpers

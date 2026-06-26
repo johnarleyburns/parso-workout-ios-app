@@ -179,6 +179,12 @@ struct SettingsView: View {
                         ForEach(ExperienceLevel.allCases) { Text($0.displayName).tag($0) }
                     }
                     .accessibilityIdentifier("settings.coach.experience")
+                    NavigationLink {
+                        CoachSchedulePreferencesView()
+                    } label: {
+                        Label("Schedule preferences", systemImage: "calendar.badge.clock")
+                    }
+                    .accessibilityIdentifier("settings.coach.schedulePreferences")
                 } header: {
                     Text("Coach")
                 } footer: {

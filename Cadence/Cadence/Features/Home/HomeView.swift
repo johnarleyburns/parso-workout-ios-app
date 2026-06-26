@@ -183,10 +183,13 @@ struct HomeView: View {
                         from: buildTrainingEvents(), goal: settings.trainingGoal,
                         experience: settings.experienceLevel, formula: settings.formula)
                     YourWeekView(decision: coachDecision, facts: facts,
-                                 preferences: settings.coachSchedulePreferences)
+                                 preferences: settings.coachSchedulePreferences,
+                                 insights: coachInsights)
                 case .whyToday:
                     WhyThisTodayView(decision: coachDecision,
-                                     onAltTap: { path.append(HomeRoute.coachAlternatives) })
+                                     addOnRecommendation: addOnRecommendation,
+                                     onAltTap: { path.append(HomeRoute.coachAlternatives) },
+                                     onAddOnTap: { session, status in handleAddOn(session, status) })
                 case .coachAlternatives:
                     CoachAlternativesView(decision: coachDecision,
                                           onSelect: { session in
@@ -429,13 +432,6 @@ struct HomeView: View {
             HStack {
                 Text("This week").font(.headline)
                 Spacer()
-                Button { Haptics.selection(); path.append(HomeRoute.coach) } label: {
-                    HStack(spacing: 3) {
-                        Text("Details").font(.caption)
-                        Image(systemName: "chevron.right").font(.caption2)
-                    }.foregroundStyle(.tint)
-                }
-                .buttonStyle(.plain)
             }
             HStack(spacing: 0) {
                 weekMetric("\(balance.strengthDays)", "strength", id: "home.workoutsCount")

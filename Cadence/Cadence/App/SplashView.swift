@@ -7,16 +7,28 @@ struct SplashView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemGray6)
+            if let image = UIImage(named: "splash") {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .ignoresSafeArea()
+                    .clipped()
+            } else {
+                Color(.systemGray6)
+                    .ignoresSafeArea()
+            }
+
+            Color.black.opacity(0.45)
                 .ignoresSafeArea()
 
             VStack(spacing: 14) {
                 Text("Cladiron")
                     .font(.largeTitle.weight(.bold))
+                    .foregroundStyle(.white)
 
                 Text("Your strength coach")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.85))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }

@@ -86,4 +86,30 @@ final class WhyThisTodayUITests: CadenceUITestCase {
         }
         // If Export row can't be tapped (may be a layout issue in UI test mode), skip gracefully
     }
+
+    // MARK: - Preferences moved out of Why This Today
+
+    func testWhyTodayHidesPreferenceControlsBehindReviewLink() {
+        let app = XCUIApplication.launched(seeds: ["coachWhyMixedHistory"])
+        app.buttons["coach.card.whyToday"].tap()
+        XCTAssertTrue(app.navigationBars["Why this today"].waitForExistence(timeout: 5))
+
+        XCTAssertTrue(app.buttons["whyToday.preferences.review"].exists)
+        XCTAssertFalse(app.buttons["Strength days"].exists)
+
+        app.buttons["whyToday.preferences.review"].tap()
+        XCTAssertTrue(app.navigationBars["Coach preferences"].waitForExistence(timeout: 5))
+    }
+
+    // MARK: - Completed plan state reconciliation
+
+    func testWhyTodayPlanCompleteDoesNotShowCoachPick() {
+        let app = XCUIApplication.launched(seeds: ["coachWednesdayComplete"])
+        XCTAssertTrue(app.buttons["coach.card.whyToday"].waitForExistence(timeout: 10))
+        app.buttons["coach.card.whyToday"].tap()
+        XCTAssertTrue(app.navigationBars["Why this today"].waitForExistence(timeout: 5))
+
+        XCTAssertTrue(app.staticTexts["Plan followed"].exists)
+        XCTAssertFalse(app.staticTexts["Coach's Pick"].exists)
+    }
 }

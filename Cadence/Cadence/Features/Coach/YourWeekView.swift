@@ -5,6 +5,7 @@ struct YourWeekView: View {
     let decision: CoachDecision
     let facts: CoachFacts
     let preferences: CoachSchedulePreferences
+    let insights: [Insight]
 
     var body: some View {
         let balance = decision.weeklyBalance
@@ -101,6 +102,15 @@ struct YourWeekView: View {
                     }
                 }
             }
+
+            if !insights.isEmpty {
+                Section("Coach's Insights") {
+                    ForEach(insights) { insight in
+                        CompactInsightRow(insight: insight)
+                    }
+                }
+                .accessibilityIdentifier("yourWeek.insights")
+            }
         }
         .navigationTitle("Your week")
         .navigationBarTitleDisplayMode(.inline)
@@ -136,5 +146,64 @@ struct YourWeekView: View {
         let f = DateFormatter()
         f.dateFormat = "EEE"
         return f.string(from: date)
+    }
+}
+
+private struct CompactInsightRow: View {
+    let insight: Insight
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    expanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: insight.kind.symbol)
+                        .foregroundStyle(insight.severity.tint)
+                        .frame(width: 22, height: 22)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(insight.title)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(2)
+                        Text(insight.severity.compactLabel)
+                            .font(.caption2)
+                            .foregroundStyle(insight.severity.tint)
+                    }
+                    Spacer()
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("yourWeek.insight.\(insight.id)")
+            .accessibilityLabel(insight.title)
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(insight.message)
+                        .font(.caption)
+                    Text(insight.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    CitationLink(citation: insight.citation, compact: true)
+                }
+                .padding(.leading, 32)
+                .accessibilityIdentifier("yourWeek.insight.\(insight.id).detail")
+            }
+        }
+    }
+}
+
+private extension InsightSeverity {
+    var compactLabel: String {
+        switch self {
+        case .attention: return "Needs attention"
+        case .info: return "Info"
+        }
     }
 }

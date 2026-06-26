@@ -359,11 +359,11 @@ public enum CoachDecisionEngine {
         switch event.kind {
         case .aerobic(let d), .intervals(let d):
             let mins = Int(d.duration / 60)
-            return "\(d.modality.displayName) · \(mins) min logged today"
+            return "\(d.modality.displayName) · \(mins) min in the books"
         case .strength:
-            return "Strength session logged today"
+            return "You put in the work today"
         case .unknown:
-            return "Workout logged today"
+            return "Workout in the books"
         }
     }
 

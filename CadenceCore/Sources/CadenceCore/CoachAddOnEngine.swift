@@ -82,7 +82,7 @@ public enum CoachAddOnEngine {
                 id: "addon.neutralMovement",
                 session: session,
                 status: .neutral,
-                message: "Your plan is complete but light movement is always fine.",
+                message: "All done for today — light movement is still fair game.",
                 citationIds: ["ekelundActivityMortality2016"]
             ))
         }
@@ -100,7 +100,7 @@ public enum CoachAddOnEngine {
                 id: "addon.warnStrength",
                 session: session,
                 status: .warn,
-                message: "You already completed strength today. Recovery may be the limiting factor for additional lifts.",
+                message: "You already lifted today. Another session means recovery, not more strength, will be the limiting factor.",
                 citationIds: ["meeusenOvertraining2013", "schoenfeld2021"]
             ))
         }

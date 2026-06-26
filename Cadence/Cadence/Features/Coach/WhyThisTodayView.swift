@@ -35,7 +35,7 @@ struct WhyThisTodayView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
-                    Text("On plan")
+                    Text("Plan followed")
                         .font(.headline)
                 }
                 Text(desc)

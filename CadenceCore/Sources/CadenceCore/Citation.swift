@@ -507,9 +507,9 @@ public enum CitationRegistry {
         id: "murlasitsConcurrentSequence2018",
         authors: "Murlasits, Kneffel & Thalib",
         year: 2018,
-        title: "The acute effects of concurrent training order on strength and endurance performance: a meta-analysis",
-        source: "Journal of Sports Sciences 36(18)",
-        url: "https://doi.org/10.1080/02640414.2018.1426559"
+        title: "The physiological effects of concurrent strength and endurance training sequence: A systematic review and meta-analysis",
+        source: "Journal of Sports Sciences 36(11)",
+        url: "https://doi.org/10.1080/02640414.2017.1364405"
     )
 
     /// Plank / global core-endurance test validity + reliability.

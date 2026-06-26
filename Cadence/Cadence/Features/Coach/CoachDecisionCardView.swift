@@ -123,7 +123,7 @@ struct CoachDecisionCardView: View {
                 VStack(spacing: 8) {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
-                        Text("On plan")
+                        Text("Plan followed")
                     }
                     .font(.headline)
                     .frame(maxWidth: .infinity)
@@ -131,7 +131,7 @@ struct CoachDecisionCardView: View {
                     .foregroundStyle(.white)
                     .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
                     .accessibilityIdentifier("coach.card.completeBanner")
-                    .accessibilityLabel("On plan — today's session complete")
+                    .accessibilityLabel("Plan followed — today's session done")
 
                     // Encouraged primary add-on
                     if let primary = addOnRecommendation.primaryOption, primary.status == .encouraged {
@@ -227,7 +227,7 @@ struct CoachDecisionCardView: View {
     }
 
     private var stateKind: String {
-        if isCompleteState { return "COMPLETE" }
+        if isCompleteState { return "PLAN DONE" }
         switch decision.primary.kind {
         case .rest: return "RECOVERY"
         case .recovery: return "RECOVERY"
@@ -258,19 +258,23 @@ struct CoachDecisionCardView: View {
 
     private var heroTitle: String {
         if isCompleteState {
-            let kindName: String = switch decision.primary.kind {
-            case .moderateAerobic: fallthrough
-            case .easyAerobic: "Cardio"
-            case .strength: "Strength"
-            case .recovery: "Recovery"
-            case .rest: "Rest"
-            case .vo2Intervals: "Intervals"
-            case .assessment: "Assessment"
+            switch decision.primary.kind {
+            case .strength:
+                return "You put in\nthe work"
+            case .easyAerobic, .moderateAerobic:
+                return "Cardio banked\nfor today"
+            case .vo2Intervals:
+                return "Speed work\nin the books"
+            case .recovery:
+                return "Recovery done\nfor today"
+            case .rest:
+                return "Rest earned\nfor today"
+            case .assessment:
+                return "Baseline\nin the books"
             }
-            return "\(kindName)\ncomplete"
         }
         if hasRecentStrength && decision.primary.kind != .strength {
-            return "Strength work\nis complete"
+            return "Strength is\ndone today"
         }
         if decision.primary.kind == .rest {
             return "Rest is\ntraining too"

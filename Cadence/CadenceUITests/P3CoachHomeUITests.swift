@@ -105,12 +105,12 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         let app = XCUIApplication.launched(seeds: ["coachWednesdayComplete"])
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
 
-        // Coach should show the "On plan" completion banner, not the Start button
+        // Coach should show the "Plan followed" completion banner, not the Start button
         let completeBanner = app.buttons["coach.card.completeBanner"]
         XCTAssertTrue(completeBanner.waitForExistence(timeout: 10),
-                      "Coach should show complete/on-plan banner after Wednesday boxing")
-        XCTAssertTrue(completeBanner.label.contains("On plan"),
-                      "Complete banner should say 'On plan'")
+                      "Coach should show complete banner after Wednesday boxing")
+        XCTAssertTrue(completeBanner.label.contains("Plan followed"),
+                      "Complete banner should say 'Plan followed'")
 
         // Start button should NOT be visible when plan is complete
         XCTAssertFalse(app.buttons["home.coachStart"].exists,

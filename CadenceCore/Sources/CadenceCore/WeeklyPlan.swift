@@ -179,7 +179,7 @@ public struct WeeklyPlan: Sendable, Equatable {
 
         let currentWeekStart = WeeklyStats.weekStart(now: facts.referenceDate)
         let nextWeekStart = cal.date(byAdding: .day, value: 7, to: currentWeekStart) ?? currentWeekStart
-        let planningEnd = cal.date(byAdding: .day, value: 13, to: currentWeekStart) ?? currentWeekStart
+        let planningEnd = cal.date(byAdding: .day, value: 14, to: currentWeekStart) ?? currentWeekStart
 
         // Accumulate projected state: strength days left for current week, etc.
         let strengthFloor = schedulePreferences.strengthDaysPerWeek

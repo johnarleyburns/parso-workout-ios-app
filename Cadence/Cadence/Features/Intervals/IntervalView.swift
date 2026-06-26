@@ -21,9 +21,8 @@ struct IntervalView: View {
 
     @State private var runner: IntervalRunner
     @State private var cues = IntervalCues()
+    @State private var cueScheduler: IntervalCueScheduler?
     @State private var flashOn = false
-    @State private var lastTickSecond = -1
-    @State private var lastWarnedPhase: Int?
     @State private var finished = false
     @State private var finishedSummary: WorkoutSummaryData?
     @State private var hrSamples: [HRSamplePoint] = []
@@ -48,7 +47,12 @@ struct IntervalView: View {
         } else {
             runnerView
                 .keepAwake()
-                .onAppear { runner.restart() }
+                .onAppear {
+                    runner.restart()
+                    let scheduler = IntervalCueScheduler(runner: runner, cues: cues)
+                    cueScheduler = scheduler
+                    scheduler.start()
+                }
         }
     }
 
@@ -114,8 +118,12 @@ struct IntervalView: View {
         .onReceive(tick) { _ in advance() }
         .onChange(of: runner.currentPhaseID) { _, _ in
             if let kind = runner.phaseKind { cues.phaseChanged(to: kind, label: runner.phaseLabel) }
+            cueScheduler?.resetForNewPhase()
         }
-        .onDisappear { cues.deactivate() }
+        .onDisappear {
+            cueScheduler?.stop()
+            cues.deactivate()
+        }
     }
 
     // MARK: Colour palette (label + icon also convey meaning, NFR-2)
@@ -157,15 +165,8 @@ struct IntervalView: View {
         if isImminent && !reduceMotion {
             withAnimation(.easeInOut(duration: 0.25)) { flashOn.toggle() }
         } else { flashOn = false }
-        // 30-second warning bell (once) during a work phase.
-        let secs = Int(runner.phaseRemaining.rounded(.up))
-        if runner.phaseKind == .work, secs == 30, runner.currentPhaseID != lastWarnedPhase {
-            cues.warning(); lastWarnedPhase = runner.currentPhaseID
-        }
-        // Countdown ticks on the final 3 whole seconds of a work phase.
-        if runner.phaseKind == .work, (1...3).contains(secs), secs != lastTickSecond {
-            cues.countdownTick(); lastTickSecond = secs
-        } else if secs > 3 { lastTickSecond = -1 }
+        // Cue scheduling (30 s warning, countdown ticks) is handled by
+        // IntervalCueScheduler so it fires reliably in the background.
 
         if runner.isComplete && !finished { Task { await finish() } }
     }
@@ -181,8 +182,7 @@ struct IntervalView: View {
     private func skipPhase() {
         let preSkipElapsed = runner.elapsed
         runner.skipPhase()
-        lastWarnedPhase = nil
-        lastTickSecond = -1
+        cueScheduler?.resetForNewPhase()
         if runner.isComplete && !finished { Task { await finish(elapsedOverride: preSkipElapsed) } }
     }
 

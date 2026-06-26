@@ -237,6 +237,7 @@ public struct WeeklyPlan: Sendable, Equatable {
                 aerobicMinutesTarget: aerobicMinutesTarget,
                 allowsTwoADays: schedulePreferences.allowsTwoADays,
                 sameDayCardioTiming: schedulePreferences.sameDayCardioTiming,
+                restPreference: schedulePreferences.restPreference,
                 facts: facts,
                 calendar: cal
             )
@@ -282,10 +283,17 @@ public struct WeeklyPlan: Sendable, Equatable {
         aerobicMinutesTarget: Double,
         allowsTwoADays: Bool,
         sameDayCardioTiming: SameDayCardioTiming,
+        restPreference: RestPreference,
         facts: CoachFacts,
         calendar: Calendar
     ) -> [PlannedSession] {
         var sessions: [PlannedSession] = []
+
+        // Fixed rest days take priority — short-circuit before any training check.
+        if isRestDay(date: date, restPreference: restPreference, calendar: calendar) {
+            return [PlannedSession(id: "f-\(date)-rest", kind: .rest, label: "Rest",
+                                    isHard: false, isRest: true)]
+        }
 
         let strengthNeeded = projectedStrengthDays < strengthFloor
         let cardioNeeded = projectedCardioDays < cardioDayTarget
@@ -403,6 +411,23 @@ public struct WeeklyPlan: Sendable, Equatable {
         case .moderateAerobic: return 35
         case .vo2Intervals: return 70
         case .strength, .recovery, .rest, .assessment: return 0
+        }
+    }
+
+    /// Answers whether a date should be a rest day based on the user's configured preference.
+    private static func isRestDay(date: Date, restPreference: RestPreference,
+                                   calendar: Calendar) -> Bool {
+        switch restPreference {
+        case .fixed(let days):
+            guard let weekday = Weekday(from: date, calendar: calendar) else { return false }
+            return days.contains(weekday)
+        case .rolling(let everyNDays):
+            // Rolling rest: always rest on the N-th day after the last rest.
+            // For forward-planning, rest when the number of non-rest days since
+            // the week start modulo N equals N-1 (i.e., every N days).
+            let weekStart = WeeklyStats.weekStart(now: date)
+            let daysSinceWeekStart = calendar.dateComponents([.day], from: weekStart, to: date).day ?? 0
+            return daysSinceWeekStart > 0 && (daysSinceWeekStart % everyNDays) == 0
         }
     }
 }

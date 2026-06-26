@@ -3,12 +3,15 @@ import CadenceCore
 
 struct CoachDecisionCardView: View {
     let decision: CoachDecision
+    let addOnRecommendation: CoachAddOnRecommendation
     var onStart: (CoachSession) -> Void
+    var onAddOn: (CoachSession, CoachAddOnStatus) -> Void = { _, _ in }
     var onSeeWeek: () -> Void
     var onSeeWhy: () -> Void
     var onSeeTomorrow: () -> Void
 
     @State private var warningsExpanded = false
+    @State private var addOnsExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -116,18 +119,49 @@ struct CoachDecisionCardView: View {
             }
 
             if isCompleteState {
-                // Completed state: no Start button, just acknowledgement
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("On plan")
+                // Completed state: acknowledgement + optional add-on CTAs
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("On plan")
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .foregroundStyle(.white)
+                    .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
+                    .accessibilityIdentifier("coach.card.completeBanner")
+                    .accessibilityLabel("On plan — today's session complete")
+
+                    // Encouraged primary add-on
+                    if let primary = addOnRecommendation.primaryOption, primary.status == .encouraged {
+                        addOnButton(primary) { onAddOn(primary.session, primary.status) }
+                    }
+
+                    // Neutral / warn secondary options
+                    if !addOnRecommendation.secondaryOptions.isEmpty {
+                        Button {
+                            withAnimation { addOnsExpanded.toggle() }
+                        } label: {
+                            HStack {
+                                Image(systemName: addOnsExpanded ? "chevron.up" : "plus.circle")
+                                Text("Choose extra workout")
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                        }
+                        .foregroundStyle(stateColor)
+                        .background(stateColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 13))
+                        .buttonStyle(.plain)
+                    }
+
+                    if addOnsExpanded {
+                        ForEach(addOnRecommendation.secondaryOptions) { option in
+                            addOnButton(option) { onAddOn(option.session, option.status) }
+                        }
+                    }
                 }
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 13)
-                .foregroundStyle(.white)
-                .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
-                .accessibilityIdentifier("coach.card.completeBanner")
-                .accessibilityLabel("On plan — today's session complete")
             } else {
                 Button { onStart(decision.primary) } label: {
                     Label(ctaLabel, systemImage: ctaSymbol)
@@ -305,5 +339,49 @@ struct CoachDecisionCardView: View {
         guard hasRecentStrength else { return nil }
         let reason = decision.deferred.first { $0.session.kind == .strength }?.reason.message
         return reason
+    }
+
+    // MARK: - Add-on button
+
+    private func addOnButton(_ option: CoachAddOnOption, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: addOnIcon(option.status))
+                    .font(.caption)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(option.session.title)
+                        .font(.subheadline.weight(.medium))
+                    Text(option.message)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.bold))
+                    .opacity(0.6)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+        }
+        .foregroundStyle(addOnStatusColor(option.status))
+        .background(addOnStatusColor(option.status).opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+        .buttonStyle(.plain)
+    }
+
+    private func addOnIcon(_ status: CoachAddOnStatus) -> String {
+        switch status {
+        case .encouraged: return "hand.thumbsup.fill"
+        case .neutral: return "circle"
+        case .warn: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    private func addOnStatusColor(_ status: CoachAddOnStatus) -> Color {
+        switch status {
+        case .encouraged: return .green
+        case .neutral: return .secondary
+        case .warn: return .orange
+        }
     }
 }

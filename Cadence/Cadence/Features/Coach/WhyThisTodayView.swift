@@ -529,6 +529,11 @@ struct WhyThisTodayView: View {
                                     .buttonStyle(.plain)
                                 }
                             }
+                            if !days.isEmpty {
+                                Text("Coach will not schedule workouts on selected days.")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
 
                         if case .rolling(let everyN) = settings.coachSchedulePreferences.restPreference {

@@ -1,6 +1,5 @@
 import Foundation
 import AVFoundation
-import AudioToolbox
 import CadenceCore
 
 /// Non-visual interval cues (field-testing §06/round 4): haptics + bundled bell
@@ -43,12 +42,11 @@ final class IntervalCues {
         sessionActive = true
     }
 
-    /// Marks the cue session inactive. We deliberately do NOT call
-    /// `setActive(false, options: .notifyOthersOnDeactivation)`: the ambient,
-    /// mix-with-others session never interrupted background audio, so there is
-    /// nothing to "hand back" — and forcing a deactivation can itself blip the
-    /// user's music.
+    /// Marks the cue session inactive. With the `.playback` category we hold the
+    /// audio session while cues are running; deactivating hands it back to any
+    /// concurrent audio app (music, podcast) that was mixing in.
     func deactivate() {
+        WorkoutAudioSession.deactivateSession()
         sessionActive = false
     }
 
@@ -57,9 +55,8 @@ final class IntervalCues {
         if isBoxing {
             play(bell)
         } else {
-            // Soft tick as a phase-transition cue.
             activateSession()
-            AudioServicesPlaySystemSound(1104)
+            TonePlayer.playTick()
         }
         switch kind {
         case .work: Haptics.prAchieved()
@@ -75,7 +72,7 @@ final class IntervalCues {
             play(warningBell)
         } else {
             activateSession()
-            AudioServicesPlaySystemSound(1057)
+            TonePlayer.playAlert()
         }
         Haptics.restComplete()
     }
@@ -90,7 +87,7 @@ final class IntervalCues {
             play(bell)
         } else {
             activateSession()
-            AudioServicesPlaySystemSound(1057)
+            TonePlayer.playAlert()
         }
         Haptics.prAchieved()
         if spokenEnabled { speak("Workout complete") }

@@ -48,6 +48,7 @@ struct HomeView: View {
     @State private var cardioPickerPresented = false  // cardio-min tile → cardio-only picker
     @State private var weightsStartPresented = false  // volume tile → strength start
     @State private var cardioGoalFor: CardioType?     // optional distance goal before run/walk/cycle
+    @State private var warnAddOn: (session: CoachSession, status: CoachAddOnStatus)?
     @State private var outdoorGoalMeters: Double?     // goal handed to the outdoor recorder
 
     // Weekly tiles (feedback batch 3) — pure aggregates from CadenceCore.
@@ -94,6 +95,20 @@ struct HomeView: View {
                                          hasPainConcern: hasPain)
     }
 
+    private var addOnRecommendation: CoachAddOnRecommendation {
+        guard case .planComplete = coachDecision.planAdherence else { return .empty }
+        let events = buildTrainingEvents()
+        let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
+                                     experience: settings.experienceLevel,
+                                     formula: settings.formula)
+        let today = Calendar.current.startOfDay(for: Date())
+        let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == today }
+        let hasPain = todayReadiness?.hasPainOrIllnessConcern ?? false
+        return CoachAddOnEngine.run(facts: facts,
+                                     schedulePreferences: settings.coachSchedulePreferences,
+                                     hasPainConcern: hasPain)
+    }
+
     private func buildTrainingEvents() -> [TrainingEvent] {
         _ = historyRefreshToken
         let activeSessions = sessions.filter { $0.deletedAt == nil }
@@ -125,7 +140,9 @@ struct HomeView: View {
                     if let s = active.strengthSession { resumeCard(s) }
                     CoachDecisionCardView(
                         decision: coachDecision,
+                        addOnRecommendation: addOnRecommendation,
                         onStart: { launchDecision($0) },
+                        onAddOn: { session, status in handleAddOn(session, status) },
                         onSeeWeek: { path.append(HomeRoute.yourWeek) },
                         onSeeWhy: { path.append(HomeRoute.whyToday) },
                         onSeeTomorrow: { path.append(HomeRoute.yourWeek) })
@@ -259,6 +276,25 @@ struct HomeView: View {
                 }
                 Button("Cancel", role: .cancel) { homeCardioToDelete = nil }
             } message: { _ in Text("You can restore it from History → View Deleted.") }
+            .confirmationDialog(
+                "This is more load than planned today.",
+                isPresented: Binding(
+                    get: { warnAddOn != nil },
+                    set: { if !$0 { warnAddOn = nil } }
+                ),
+                presenting: warnAddOn
+            ) { item in
+                Button("Start anyway") {
+                    let session = item.session
+                    warnAddOn = nil
+                    launchDecision(session)
+                }
+                Button("Choose easier option", role: .cancel) {
+                    warnAddOn = nil
+                }
+            } message: { _ in
+                Text("Recovery may be the limiting factor. You can continue, but keep it easy if performance drops.")
+            }
         }
 
         // Get-ready countdown as a plain opaque overlay above the whole
@@ -684,6 +720,17 @@ struct HomeView: View {
         case .outdoor(let c): outdoorType = c
         case .interval(let l): intervalLaunch = l
         case .timer(let c): cardioType = c
+        }
+    }
+
+    /// Handles an add-on selection from the post-completion coach card. Encouraged
+    /// and neutral options launch directly; warn options show a confirmation dialog.
+    private func handleAddOn(_ session: CoachSession, _ status: CoachAddOnStatus) {
+        switch status {
+        case .encouraged, .neutral:
+            launchDecision(session)
+        case .warn:
+            warnAddOn = (session, status)
         }
     }
 

@@ -462,9 +462,9 @@ final class CoachDecisionEngineTests: XCTestCase {
     // MARK: - Plan adherence: Wednesday scenario
 
     /// Wednesday scenario: Monday full-body + 18-min run, Tuesday rest, Wednesday
-    /// morning Coach recommends boxing (aerobic behind, strength met). After
-    /// completing a 44-min boxing workout Wednesday, Coach must recognize the plan
-    /// is complete and show the on-plan state with tomorrow preview.
+    /// morning Coach recommends aerobic (both strength and aerobic floors unmet).
+    /// After a 44-min boxing workout, strength is still needed — the plan stays
+    /// planAhead so the remaining recommendation stays visible.
     func testWednesdayScenarioShowsPlanCompleteAfterBoxing() throws {
         let ctx = try makeContext()
         let now = testNow
@@ -500,20 +500,11 @@ final class CoachDecisionEngineTests: XCTestCase {
                                           experience: .intermediate, now: now)
         let afterDecision = CoachDecisionEngine.run(afterFacts)
 
-        // After boxing: plan should be complete
-        if case .planComplete(let completedKind, let desc, let tomorrow) = afterDecision.planAdherence {
-            XCTAssertTrue(completedKind == .moderateAerobic || completedKind == .easyAerobic,
-                          "Completed kind should be aerobic. Got: \(String(describing: completedKind))")
-            XCTAssertTrue(desc.contains("Boxing"), "Description should mention Boxing. Got: \(desc)")
-            XCTAssertTrue(desc.contains("44 min"), "Description should mention 44 min. Got: \(desc)")
-            XCTAssertNotNil(tomorrow, "Should have tomorrow preview")
-            if let t = tomorrow {
-                XCTAssertTrue(t.contains("Strength") || t.contains("Recovery") || t.contains("Cardio"),
-                              "Tomorrow preview should suggest a session. Got: \(t)")
-            }
-        } else {
-            XCTFail("After boxing, planAdherence should be .planComplete. Got: \(afterDecision.planAdherence)")
-        }
+        // After boxing: both strength (1/2) and cardio (62/150 min) are still
+        // needed weekly, so the plan stays planAhead — completing one type when
+        // both are needed does not mark the day complete.
+        XCTAssertEqual(afterDecision.planAdherence, .planAhead,
+                       "After boxing, with both targets unmet, plan should stay planAhead. Got: \(afterDecision.planAdherence)")
     }
 
     /// Completing a strength session today should suppress same-day strength

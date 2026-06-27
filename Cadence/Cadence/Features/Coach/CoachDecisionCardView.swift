@@ -223,6 +223,11 @@ struct CoachDecisionCardView: View {
         return ""
     }
 
+    private var planAdherenceCompletedKind: CoachSessionKind? {
+        if case .planComplete(let kind, _, _) = decision.planAdherence { return kind }
+        return nil
+    }
+
     private var stateKind: String {
         if isCompleteState { return "PLAN DONE" }
         switch decision.primary.kind {
@@ -255,7 +260,7 @@ struct CoachDecisionCardView: View {
 
     private var heroTitle: String {
         if isCompleteState {
-            switch decision.primary.kind {
+            switch planAdherenceCompletedKind {
             case .strength:
                 return "You put in the work"
             case .easyAerobic, .moderateAerobic:
@@ -268,6 +273,8 @@ struct CoachDecisionCardView: View {
                 return "Rest earned for today"
             case .assessment:
                 return "Baseline in the books"
+            case nil:
+                return "Plan followed"
             }
         }
         if hasRecentStrength && decision.primary.kind != .strength {

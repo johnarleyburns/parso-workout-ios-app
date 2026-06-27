@@ -302,32 +302,31 @@ public enum CoachDecisionEngine {
                                                 schedulePreferences: CoachSchedulePreferences = .default) -> PlanAdherence {
         guard !todayCompleted.isEmpty else { return .planAhead }
 
-        // Two-a-day mode: check both types independently. Only complete when
-        // both are done; if one is done, stay planAhead so the remaining
-        // recommendation stays visible.
-        if schedulePreferences.allowsTwoADays {
-            let strengthDone = todayCompleted.contains { event in
-                candidates.contains { $0.kind == .strength && eventSatisfiesCoachSession(event, $0) }
-            }
-            let cardioDone = todayCompleted.contains { event in
-                candidates.contains { $0.isAerobic && eventSatisfiesCoachSession(event, $0) }
-            }
-            let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
-            let cardioNeeded = facts.weeklyBalance.moderateEquivalentMinutes < 150.0
-
-            if strengthNeeded && cardioNeeded {
-                if strengthDone && cardioDone {
-                    let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
-                                                                   schedulePreferences: schedulePreferences)
-                    return .planComplete(completedKind: .strength,
-                                          todayDescription: "Strength and cardio — both in the books",
-                                          tomorrowPreview: tomorrowPreview)
-                }
-                return .planAhead
-            }
+        let strengthDone = todayCompleted.contains { event in
+            candidates.contains { $0.kind == .strength && eventSatisfiesCoachSession(event, $0) }
+        }
+        let cardioDone = todayCompleted.contains { event in
+            candidates.contains { $0.isAerobic && eventSatisfiesCoachSession(event, $0) }
         }
 
-        // Original single-type plan adherence (preserved for backward compat).
+        let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
+        let cardioNeeded = facts.weeklyBalance.moderateEquivalentMinutes < 150.0
+
+        // When both strength and cardio are weekly-needed, require both to be
+        // completed before the day is done. If only one is done, stay planAhead
+        // so the remaining recommendation stays visible on the Coach card.
+        if strengthNeeded && cardioNeeded {
+            if strengthDone && cardioDone {
+                let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
+                                                               schedulePreferences: schedulePreferences)
+                return .planComplete(completedKind: .strength,
+                                      todayDescription: "Strength and cardio — both in the books",
+                                      tomorrowPreview: tomorrowPreview)
+            }
+            return .planAhead
+        }
+
+        // Single-type needed: match any completed event against any candidate.
         var matchedSessions: [(event: TrainingEvent, session: CoachSession)] = []
         for event in todayCompleted {
             for candidate in candidates {

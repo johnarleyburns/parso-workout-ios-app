@@ -51,6 +51,19 @@ public enum WorkoutRepository {
                     ex.level = lvl
                     ex.updatedAt = Date(); changed = true
                 }
+                // Backfill load accounting defaults on built-in exercises.
+                if ex.loadAccountingMode == nil, !ex.loadAccountingUserOverride {
+                    if let mode = Exercise.defaultLoadAccountingMode(equipment: ex.equipmentValue,
+                                                                      isLateral: ex.isLateral,
+                                                                      name: ex.name) {
+                        ex.loadAccountingModeValue = mode
+                        ex.updatedAt = Date(); changed = true
+                    }
+                    if ex.equipmentValue == .barbell && ex.defaultBarWeightKg == 0 {
+                        ex.defaultBarWeightKg = Exercise.defaultBarWeightKg
+                        ex.updatedAt = Date(); changed = true
+                    }
+                }
             } else {
                 context.insert(ExerciseLibrary.makeExercise(from: t))
                 changed = true
@@ -154,10 +167,18 @@ public enum WorkoutRepository {
                               performedBy: Person? = nil,
                               in context: ModelContext) throws -> SetEntry {
         let nextOrder = (session.sets ?? []).map(\.order).max().map { $0 + 1 } ?? 0
+        // Only snapshot load accounting when the exercise has an explicit mode set
+        // (seeded or user-overridden). Legacy exercises without accounting produce
+        // legacy sets where effectiveLoadKg = weight.
+        let mode = exercise.loadAccountingModeValue
+        let bar = exercise.effectiveDefaultBarWeightKg
         let set = SetEntry(weight: weightKg, reps: reps, order: nextOrder,
                            isWarmup: isWarmup, usesBodyweight: usesBodyweight, rpe: rpe, note: note,
                            completedAt: completedAt, session: session, exercise: exercise,
-                           performedBy: performedBy)
+                           performedBy: performedBy,
+                           barWeightKg: mode != nil ? bar : 0,
+                           loadMultiplier: 1.0,
+                           loadAccountingMode: mode?.rawValue)
         context.insert(set)
         session.updatedAt = Date()
         try context.save()
@@ -319,12 +340,11 @@ public enum WorkoutRepository {
 
     /// All non-warmup sets for an exercise as pure samples, newest first.
     /// Partner sets are excluded so they never affect the owner's stats
-    /// (field-testing §04, decision #13).
+    /// (field-testing §04, decision #13). Uses effective load for calculations.
     public static func sampleHistory(for exercise: Exercise) -> [SetSample] {
         (exercise.sets ?? [])
             .filter { $0.isOwnerSet }
-            .map { SetSample(weight: $0.weight, reps: $0.reps,
-                             date: $0.completedAt, isWarmup: $0.isWarmup) }
+            .map { SetSample.from($0) }
             .sorted { $0.date > $1.date }
     }
 
@@ -343,17 +363,19 @@ public enum WorkoutRepository {
 
     /// Current PR value for an exercise under the rule, optionally excluding a
     /// session (so we can ask "is this set a PR vs everything before it").
+    /// Uses effective load for calculations.
     public static func currentPR(for exercise: Exercise,
                                  rule: PRRule,
                                  formula: OneRepMaxFormula,
                                  excluding session: WorkoutSession? = nil) -> Double? {
         let samples = (exercise.sets ?? [])
             .filter { (session == nil || $0.session?.id != session?.id) && $0.isOwnerSet }
-            .map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: $0.isWarmup) }
+            .map { SetSample.from($0) }
         return PRCalculator.best(samples, rule: rule, formula: formula)
     }
 
     /// Whether a prospective set would be a new PR for the exercise.
+    /// `weightKg` is the effective load (caller must compute before passing).
     public static func wouldBePR(exercise: Exercise,
                                  weightKg: Double,
                                  reps: Int,
@@ -364,7 +386,7 @@ public enum WorkoutRepository {
         let candidate = SetSample(weight: weightKg, reps: reps, isWarmup: isWarmup)
         let previous = (exercise.sets ?? [])
             .filter { (session == nil || $0.session?.id != session?.id) && $0.isOwnerSet }
-            .map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: $0.isWarmup) }
+            .map { SetSample.from($0) }
         return PRCalculator.isNewPR(candidate: candidate, previous: previous, rule: rule, formula: formula)
     }
 
@@ -402,14 +424,15 @@ public enum WorkoutRepository {
 
     /// Best metric per training day for an exercise, ascending by date (FR-5.1).
     /// Each point is the best working-set value that day under the rule.
+    /// Uses effective load for calculations.
     public static func trendSeries(for exercise: Exercise,
                                    rule: PRRule,
                                    formula: OneRepMaxFormula,
                                    calendar: Calendar = .current) -> [TrendPoint] {
-        let sets = (exercise.sets ?? []).filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 && $0.isOwnerSet }
+        let sets = (exercise.sets ?? []).filter { !$0.isWarmup && $0.reps > 0 && $0.effectiveLoadKg > 0 && $0.isOwnerSet }
         let byDay = Dictionary(grouping: sets) { calendar.startOfDay(for: $0.completedAt) }
         return byDay.map { day, daySets in
-            let samples = daySets.map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: false) }
+            let samples = daySets.map { SetSample.from($0) }
             let best = PRCalculator.best(samples, rule: rule, formula: formula) ?? 0
             return TrendPoint(date: day, value: best)
         }
@@ -418,12 +441,13 @@ public enum WorkoutRepository {
 
     /// The progressive PR history for an exercise: each point that set a new
     /// all-time record under the rule, ascending by date (FR-5.2).
+    /// Uses effective load for calculations.
     public static func prTimeline(for exercise: Exercise,
                                   rule: PRRule,
                                   formula: OneRepMaxFormula) -> [TrendPoint] {
         let samples = (exercise.sets ?? [])
             .filter { $0.isOwnerSet }
-            .map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: $0.isWarmup) }
+            .map { SetSample.from($0) }
             .filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 }
             .sorted { $0.date < $1.date }
         var result: [TrendPoint] = []
@@ -664,7 +688,10 @@ public enum WorkoutRepository {
                           weightKg: set.weight, reps: set.reps, order: set.order,
                           isWarmup: set.isWarmup, rpe: set.rpe, note: set.note,
                           completedAt: set.completedAt,
-                          performedBy: set.isOwnerSet ? nil : set.performedBy?.name)
+                          performedBy: set.isOwnerSet ? nil : set.performedBy?.name,
+                          barWeightKg: set.loadAccountingMode != nil ? set.barWeightKg : nil,
+                          loadMultiplier: set.loadAccountingMode != nil ? set.loadMultiplier : nil,
+                          loadAccountingMode: set.loadAccountingMode)
             }
             return ExportSession(id: session.id, title: session.title,
                                  date: session.date, notes: session.notes, sets: sets)
@@ -715,7 +742,10 @@ public enum WorkoutRepository {
                 let s = SetEntry(id: set.id, weight: set.weightKg, reps: set.reps, order: set.order,
                                  isWarmup: set.isWarmup, rpe: set.rpe, note: set.note,
                                  completedAt: set.completedAt, session: session, exercise: ex,
-                                 performedBy: person)
+                                 performedBy: person,
+                                 barWeightKg: set.barWeightKg ?? 0,
+                                 loadMultiplier: set.loadMultiplier ?? 1.0,
+                                 loadAccountingMode: set.loadAccountingMode)
                 context.insert(s)
             }
             added += 1

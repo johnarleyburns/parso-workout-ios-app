@@ -152,6 +152,11 @@ struct CoachDecisionCardView: View {
                         }
                     }
                 }
+            } else if decision.todayPlannedRecommendations.count > 1 {
+                // Two-a-day: show each planned workout as an independent row with
+                // its own Start button. The scored primary's CTA is replaced by
+                // this stack.
+                twoADayStack
             } else {
                 Button { onStart(decision.primary) } label: {
                     Label(ctaLabel, systemImage: ctaSymbol)
@@ -335,6 +340,78 @@ struct CoachDecisionCardView: View {
         guard hasRecentStrength else { return nil }
         let reason = decision.deferred.first { $0.session.kind == .strength }?.reason.message
         return reason
+    }
+
+    // MARK: - Two-a-day stack
+
+    private var twoADayStack: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Image(systemName: "list.bullet.rectangle")
+                    .font(.caption)
+                Text("Today's plan")
+                    .font(.caption.bold())
+                Spacer()
+            }
+            .foregroundStyle(.secondary)
+
+            ForEach(decision.todayPlannedRecommendations) { session in
+                twoADayRow(session)
+            }
+        }
+    }
+
+    private func twoADayRow(_ session: CoachSession) -> some View {
+        Button { onStart(session) } label: {
+            HStack(spacing: 10) {
+                Image(systemName: sessionIcon(session))
+                    .font(.title3)
+                    .foregroundStyle(sessionColor(session))
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(session.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    if !session.subtitle.isEmpty {
+                        Text(session.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer()
+                Label("Start", systemImage: "play.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(sessionColor(session), in: RoundedRectangle(cornerRadius: 9))
+            }
+            .padding(10)
+            .background(sessionColor(session).opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("coach.card.twoADay.\(session.id)")
+    }
+
+    private func sessionIcon(_ session: CoachSession) -> String {
+        switch session.kind {
+        case .strength: return "dumbbell.fill"
+        case .easyAerobic, .moderateAerobic, .vo2Intervals: return "heart.fill"
+        case .recovery: return "moon.zzz.fill"
+        case .rest: return "bed.double.fill"
+        case .assessment: return "checklist"
+        }
+    }
+
+    private func sessionColor(_ session: CoachSession) -> Color {
+        switch session.kind {
+        case .strength: return .green
+        case .easyAerobic, .moderateAerobic, .vo2Intervals: return .teal
+        case .recovery: return .orange
+        case .rest: return .orange
+        case .assessment: return .blue
+        }
     }
 
     // MARK: - Add-on button

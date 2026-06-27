@@ -882,4 +882,97 @@ final class CoachDecisionEngineTests: XCTestCase {
                            "Threshold work should carry a confidence penalty under age-estimated HRmax")
         }
     }
+
+    // MARK: - Two-a-day tests (allowsTwoADays = true)
+
+    func testTwoADayShowsBothRecommendationsWhenBothNeeded() throws {
+        let now = testNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+        let prefs = CoachSchedulePreferences.default.withTwoADays(true)
+        let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
+
+        // Cold start: both strength and cardio are needed.
+        XCTAssertEqual(decision.todayPlannedRecommendations.count, 2,
+                       "Should have two planned recommendations for two-a-day")
+        XCTAssertTrue(decision.todayPlannedRecommendations.contains { $0.kind == .strength },
+                      "Should include a strength recommendation")
+        XCTAssertTrue(decision.todayPlannedRecommendations.contains { $0.isAerobic },
+                      "Should include a cardio recommendation")
+    }
+
+    func testTwoADayAfterCardioCompleteShowsOnlyStrength() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        // Complete a cardio event today
+        let boxing = makeCardioEvent(context: ctx, type: .boxing,
+                                      date: now.addingTimeInterval(-3600),
+                                      duration: 44 * 60, avgHR: 135)
+        let facts = CoachFacts.make(from: [boxing], goal: .strength, experience: .intermediate, now: now)
+        let prefs = CoachSchedulePreferences.default.withTwoADays(true)
+        let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
+
+        // Cardio done, strength still needed → one recommendation remains
+        XCTAssertEqual(decision.todayPlannedRecommendations.count, 1,
+                       "After cardio, only strength should remain")
+        XCTAssertEqual(decision.todayPlannedRecommendations.first?.kind, .strength,
+                       "Remaining should be strength")
+        XCTAssertEqual(decision.planAdherence, .planAhead,
+                       "Plan should not be complete — strength still needed")
+    }
+
+    func testTwoADayAfterStrengthCompleteShowsOnlyCardio() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        // Complete a strength event today
+        let strength = try makeStrengthEvent(context: ctx, name: "Bench Press",
+                                              primaryMuscles: ["chest"],
+                                              date: now.addingTimeInterval(-3600))
+        let facts = CoachFacts.make(from: [strength], goal: .strength, experience: .intermediate, now: now)
+        let prefs = CoachSchedulePreferences.default.withTwoADays(true)
+        let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
+
+        // Strength done, cardio still needed → one recommendation remains
+        XCTAssertEqual(decision.todayPlannedRecommendations.count, 1,
+                       "After strength, only cardio should remain")
+        XCTAssertTrue(decision.todayPlannedRecommendations.first?.isAerobic ?? false,
+                      "Remaining should be cardio")
+        XCTAssertEqual(decision.planAdherence, .planAhead,
+                       "Plan should not be complete — cardio still needed")
+    }
+
+    func testTwoADayAfterBothComplete() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        let strength = try makeStrengthEvent(context: ctx, name: "Bench Press",
+                                              primaryMuscles: ["chest"],
+                                              date: now.addingTimeInterval(-7200))
+        let boxing = makeCardioEvent(context: ctx, type: .boxing,
+                                      date: now.addingTimeInterval(-3600),
+                                      duration: 44 * 60, avgHR: 135)
+        let facts = CoachFacts.make(from: [strength, boxing], goal: .strength,
+                                     experience: .intermediate, now: now)
+        let prefs = CoachSchedulePreferences.default.withTwoADays(true)
+        let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
+
+        XCTAssertEqual(decision.todayPlannedRecommendations.count, 0,
+                       "Both done — no remaining recommendations")
+        if case .planComplete = decision.planAdherence {
+            // Expected
+        } else {
+            XCTFail("Plan should be complete after both strength and cardio. Got: \(decision.planAdherence)")
+        }
+    }
+
+    func testTwoADayOffByDefault() throws {
+        let now = testNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+        // Default prefs (allowsTwoADays = false)
+        let decision = CoachDecisionEngine.run(facts)
+
+        XCTAssertEqual(decision.todayPlannedRecommendations.count, 0,
+                       "Without two-a-day opt-in, recommendations should be empty")
+    }
 }

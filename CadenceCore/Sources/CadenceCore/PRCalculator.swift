@@ -3,7 +3,7 @@ import Foundation
 /// A minimal value representation of a set, so PR logic stays pure and
 /// independently unit-testable (no SwiftData required).
 public struct SetSample: Equatable, Sendable {
-    public var weight: Double      // canonical kg
+    public var weight: Double      // canonical kg (effective load for new-accounting sets)
     public var reps: Int
     public var date: Date
     public var isWarmup: Bool
@@ -13,6 +13,11 @@ public struct SetSample: Equatable, Sendable {
         self.reps = reps
         self.date = date
         self.isWarmup = isWarmup
+    }
+
+    /// Create a SetSample from a SetEntry, using effective load for calculations.
+    public static func from(_ set: SetEntry) -> SetSample {
+        SetSample(weight: set.effectiveLoadKg, reps: set.reps, date: set.completedAt, isWarmup: set.isWarmup)
     }
 }
 

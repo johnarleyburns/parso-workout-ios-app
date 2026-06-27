@@ -14,6 +14,10 @@ public struct CoachDecision: Sendable, Identifiable {
     public let planAdherence: PlanAdherence
     public let todayCompletedMatches: [CoachSession]
     public let scoreBreakdowns: [String: SessionScoreBreakdown]
+    /// Every uncompleted planned workout for today (strength + cardio two-a-days).
+    /// When today's plan includes both strength and cardio, both appear here.
+    /// Completed session kinds are filtered out. Empty when plan is complete.
+    public let todayPlannedRecommendations: [CoachSession]
 
     public init(id: String, generatedAt: Date, primary: CoachSession,
                 alternatives: [CoachSession] = [], deferred: [DeferredCandidate] = [],
@@ -22,7 +26,8 @@ public struct CoachDecision: Sendable, Identifiable {
                 citationIds: [String] = [],
                 planAdherence: PlanAdherence = .planAhead,
                 todayCompletedMatches: [CoachSession] = [],
-                scoreBreakdowns: [String: SessionScoreBreakdown] = [:]) {
+                scoreBreakdowns: [String: SessionScoreBreakdown] = [:],
+                todayPlannedRecommendations: [CoachSession] = []) {
         self.id = id
         self.generatedAt = generatedAt
         self.primary = primary
@@ -36,6 +41,7 @@ public struct CoachDecision: Sendable, Identifiable {
         self.planAdherence = planAdherence
         self.todayCompletedMatches = todayCompletedMatches
         self.scoreBreakdowns = scoreBreakdowns
+        self.todayPlannedRecommendations = todayPlannedRecommendations
     }
 }
 
@@ -184,10 +190,35 @@ public enum CoachDecisionEngine {
         let breakdownMap = Dictionary(scored.map { ($0.session.id, $0.breakdown) },
                                       uniquingKeysWith: { first, _ in first })
 
-        // Gate 4: Plan adherence — check if today's planned session is already done
-        let planState = computePlanAdherence(primary: primary, todayCompleted: todayCompleted,
-                                               candidates: candidates, facts: facts,
-                                               schedulePreferences: schedulePreferences)
+        // Two-a-day recommendations: collect the best uncompleted strength + cardio
+        // candidates for today. The Coach card shows all of them stacked.
+        let todayRecommendations = buildTodayRecommendations(
+            scored: scored, todayCompleted: todayCompleted,
+            facts: facts, schedulePreferences: schedulePreferences)
+
+        // When today has planned recommendations, use the first uncompleted one
+        // as primary only if the scored primary's kind is already done today.
+        // Otherwise the scored primary (highest-scored candidate) stays.
+        let effectivePrimary: CoachSession
+        if let first = todayRecommendations.first {
+            let primaryKindDone: Bool = {
+                switch primary.kind {
+                case .strength: return todayCompleted.contains { $0.isStrength }
+                case .easyAerobic, .moderateAerobic, .vo2Intervals:
+                    return todayCompleted.contains { $0.isAerobic }
+                default: return false
+                }
+            }()
+            effectivePrimary = primaryKindDone ? first : primary
+        } else {
+            effectivePrimary = primary
+        }
+
+        // Gate 4: Plan adherence — check if today's planned session is already done.
+        // Uses effectivePrimary so two-a-day completion is correctly detected.
+        let planState = computePlanAdherence(primary: effectivePrimary, todayCompleted: todayCompleted,
+                                                candidates: candidates, facts: facts,
+                                                schedulePreferences: schedulePreferences)
 
         // Generate warnings
         let warnings = generateWarnings(facts: facts)
@@ -239,15 +270,15 @@ public enum CoachDecisionEngine {
             detail: "Research-informed aerobic target"
         ))
 
-        var allCitationIds = Set(primary.citationIds)
+        var allCitationIds = Set(effectivePrimary.citationIds)
         for w in warnings { allCitationIds.formUnion(w.citationIds) }
 
-        let todayMatches = findTodayPlanMatches(primary: primary, todayCompleted: todayCompleted, candidates: candidates)
+        let todayMatches = findTodayPlanMatches(primary: effectivePrimary, todayCompleted: todayCompleted, candidates: candidates)
 
         return CoachDecision(
             id: "decision.\(now.timeIntervalSince1970)",
             generatedAt: now,
-            primary: primary,
+            primary: effectivePrimary,
             alternatives: alternatives,
             deferred: deferred,
             warnings: warnings,
@@ -257,7 +288,8 @@ public enum CoachDecisionEngine {
             citationIds: Array(allCitationIds),
             planAdherence: planState,
             todayCompletedMatches: todayMatches,
-            scoreBreakdowns: breakdownMap
+            scoreBreakdowns: breakdownMap,
+            todayPlannedRecommendations: todayRecommendations
         )
     }
 
@@ -270,9 +302,33 @@ public enum CoachDecisionEngine {
                                                 schedulePreferences: CoachSchedulePreferences = .default) -> PlanAdherence {
         guard !todayCompleted.isEmpty else { return .planAhead }
 
-        // Check if any completed event today matches the primary recommendation
-        var matchedSessions: [(event: TrainingEvent, session: CoachSession)] = []
+        // Two-a-day mode: check both types independently. Only complete when
+        // both are done; if one is done, stay planAhead so the remaining
+        // recommendation stays visible.
+        if schedulePreferences.allowsTwoADays {
+            let strengthDone = todayCompleted.contains { event in
+                candidates.contains { $0.kind == .strength && eventSatisfiesCoachSession(event, $0) }
+            }
+            let cardioDone = todayCompleted.contains { event in
+                candidates.contains { $0.isAerobic && eventSatisfiesCoachSession(event, $0) }
+            }
+            let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
+            let cardioNeeded = facts.weeklyBalance.moderateEquivalentMinutes < 150.0
 
+            if strengthNeeded && cardioNeeded {
+                if strengthDone && cardioDone {
+                    let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
+                                                                   schedulePreferences: schedulePreferences)
+                    return .planComplete(completedKind: .strength,
+                                          todayDescription: "Strength and cardio — both in the books",
+                                          tomorrowPreview: tomorrowPreview)
+                }
+                return .planAhead
+            }
+        }
+
+        // Original single-type plan adherence (preserved for backward compat).
+        var matchedSessions: [(event: TrainingEvent, session: CoachSession)] = []
         for event in todayCompleted {
             for candidate in candidates {
                 if eventSatisfiesCoachSession(event, candidate) {
@@ -282,19 +338,16 @@ public enum CoachDecisionEngine {
         }
 
         if !matchedSessions.isEmpty {
-            // Plan is complete: find the best match and generate tomorrow preview
             let bestMatch = matchedSessions.first!
             let completedKind = bestMatch.session.kind
             let todayDescription = describeCompletedEvent(bestMatch.event)
             let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
-                                                          schedulePreferences: schedulePreferences)
-
+                                                           schedulePreferences: schedulePreferences)
             return .planComplete(completedKind: completedKind,
                                   todayDescription: todayDescription,
                                   tomorrowPreview: tomorrowPreview)
         }
 
-        // Something done today but not matching plan
         return .offPlan(didSomethingToday: true)
     }
 
@@ -569,6 +622,44 @@ public enum CoachDecisionEngine {
         }
 
         return warnings
+    }
+
+    /// Builds the list of today's planned-but-uncompleted recommendations.
+    /// Only populates when the user has enabled two-a-days AND both strength and
+    /// cardio are needed. Single-type plans let the scored primary carry the
+    /// recommendation alone.
+    private static func buildTodayRecommendations(
+        scored: [(session: CoachSession, breakdown: SessionScoreBreakdown)],
+        todayCompleted: [TrainingEvent],
+        facts: CoachFacts,
+        schedulePreferences: CoachSchedulePreferences) -> [CoachSession] {
+
+        // Only activate two-a-day recommendations when the user has opted in.
+        guard schedulePreferences.allowsTwoADays else { return [] }
+
+        let strengthDone = todayCompleted.contains { $0.isStrength }
+        let cardioDone = todayCompleted.contains { $0.isAerobic }
+
+        let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
+        let cardioNeeded = facts.weeklyBalance.moderateEquivalentMinutes < 150.0
+
+        // Only build when both are needed (a two-a-day) and at least one remains.
+        guard strengthNeeded && cardioNeeded else { return [] }
+        guard !strengthDone || !cardioDone else { return [] }
+
+        let bestStrength = scored.first { $0.session.kind == .strength }?.session
+        let bestCardio = scored.first { $0.session.isAerobic }?.session
+
+        var recommendations: [CoachSession] = []
+
+        if let s = bestStrength, !strengthDone {
+            recommendations.append(s)
+        }
+        if let c = bestCardio, !cardioDone {
+            recommendations.append(c)
+        }
+
+        return recommendations
     }
 
     private static func formatRelative(_ date: Date, _ now: Date) -> String {

@@ -44,9 +44,9 @@ public enum StrengthProgress {
         for s in sessions where s.deletedAt == nil && s.date >= windowStart && s.date <= now {
             let week = calendar.dateInterval(of: .weekOfYear, for: s.date)?.start
                 ?? calendar.startOfDay(for: s.date)
-            for set in s.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.weight > 0 {
+            for set in s.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.effectiveLoadKg > 0 {
                 guard let name = set.exercise?.name, !name.isEmpty else { continue }
-                let e = WorkoutMath.estimated1RM(weight: set.weight, reps: set.reps, formula: formula)
+                let e = WorkoutMath.estimated1RM(weight: set.effectiveLoadKg, reps: set.reps, formula: formula)
                 byLift[name, default: [:]][week] = max(byLift[name, default: [:]][week] ?? 0, e)
                 setCount[name, default: 0] += 1
             }

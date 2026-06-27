@@ -219,7 +219,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             let working = mine.filter { !$0.isWarmup }
             return ExerciseLine(name: ex.name,
                                 setCount: working.count,
-                                topSetWeightKg: working.map(\.weight).max(),
+                                topSetWeightKg: working.map(\.effectiveLoadKg).max(),
                                 reps: working.map(\.reps),
                                 usesBodyweight: working.contains { $0.usesBodyweight })
         }

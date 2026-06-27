@@ -193,14 +193,14 @@ public extension TrainingFacts {
         let frequencyByPart = daysByPart.mapValues { $0.count }
 
         // e1RM reference per exercise (best across all provided history) + windowed
-        // bests for the trend.
+        // bests for the trend. Uses effective load.
         var bestAll: [String: Double] = [:]
         var bestRecent: [String: Double] = [:]
         var bestPrior: [String: Double] = [:]
         for session in sessions {
-            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.weight > 0 {
+            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.effectiveLoadKg > 0 {
                 guard let name = set.exercise?.name, !name.isEmpty else { continue }
-                let e1rm = WorkoutMath.estimated1RM(weight: set.weight, reps: set.reps, formula: formula)
+                let e1rm = WorkoutMath.estimated1RM(weight: set.effectiveLoadKg, reps: set.reps, formula: formula)
                 bestAll[name] = max(bestAll[name] ?? 0, e1rm)
                 if session.date >= weekStart && session.date <= now {
                     bestRecent[name] = max(bestRecent[name] ?? 0, e1rm)
@@ -220,11 +220,12 @@ public extension TrainingFacts {
         }
 
         // Intensity distribution over loaded week sets (relative to each lift's best).
+        // Uses effective load.
         var heavy = 0.0, moderate = 0.0, light = 0.0, loaded = 0
-        for ws in weekSets where ws.set.weight > 0 {
+        for ws in weekSets where ws.set.effectiveLoadKg > 0 {
             guard let name = ws.exercise.name.isEmpty ? nil : ws.exercise.name,
                   let ref = bestAll[name], ref > 0 else { continue }
-            let pct = ws.set.weight / ref
+            let pct = ws.set.effectiveLoadKg / ref
             loaded += 1
             if pct >= 0.80 { heavy += 1 }
             else if pct >= 0.60 { moderate += 1 }
@@ -240,12 +241,13 @@ public extension TrainingFacts {
         // Per-lift snapshot of the trailing week: the heaviest loaded working set
         // (the basis for the next-session prescription) + this week's best e1RM +
         // the trend. Primary body part taken from the heaviest set's exercise.
+        // Uses effective load.
         var topSet: [String: (weight: Double, reps: Int, exercise: Exercise)] = [:]
-        for ws in weekSets where ws.set.weight > 0 {
+        for ws in weekSets where ws.set.effectiveLoadKg > 0 {
             let name = ws.exercise.name
             guard !name.isEmpty else { continue }
-            if let cur = topSet[name], cur.weight >= ws.set.weight { continue }
-            topSet[name] = (ws.set.weight, ws.set.reps, ws.exercise)
+            if let cur = topSet[name], cur.weight >= ws.set.effectiveLoadKg { continue }
+            topSet[name] = (ws.set.effectiveLoadKg, ws.set.reps, ws.exercise)
         }
         var liftSnapshots: [String: LiftSnapshot] = [:]
         for (name, top) in topSet {
@@ -297,16 +299,17 @@ public extension TrainingFacts {
         }
 
         // Weekly-best e1RM per lift → trailing consecutive-decline count.
+        // Uses effective load.
         var weeklyBestE1RM: [String: [Date: Double]] = [:]
         var topByExerciseSession: [String: [(date: Date, weight: Double)]] = [:]
         for session in sessions {
             let wk = WeeklyStats.weekStart(now: session.date)
             var topForEx: [String: Double] = [:]
-            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.weight > 0 {
+            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.effectiveLoadKg > 0 {
                 guard let name = set.exercise?.name, !name.isEmpty else { continue }
-                let e1 = WorkoutMath.estimated1RM(weight: set.weight, reps: set.reps, formula: formula)
+                let e1 = WorkoutMath.estimated1RM(weight: set.effectiveLoadKg, reps: set.reps, formula: formula)
                 weeklyBestE1RM[name, default: [:]][wk] = max(weeklyBestE1RM[name]?[wk] ?? 0, e1)
-                topForEx[name] = max(topForEx[name] ?? 0, set.weight)
+                topForEx[name] = max(topForEx[name] ?? 0, set.effectiveLoadKg)
             }
             for (name, w) in topForEx { topByExerciseSession[name, default: []].append((session.date, w)) }
         }

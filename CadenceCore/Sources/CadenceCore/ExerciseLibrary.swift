@@ -372,13 +372,18 @@ public enum ExerciseLibrary {
     public static let byName: [String: ExerciseTemplate] =
         Dictionary(starter.map { ($0.name.lowercased(), $0) }, uniquingKeysWith: { a, _ in a })
 
-    /// Builds a SwiftData `Exercise` from a template, deriving search keywords.
+    /// Builds a SwiftData `Exercise` from a template, deriving search keywords
+    /// and load accounting defaults.
     public static func makeExercise(from t: ExerciseTemplate) -> Exercise {
         Exercise(name: t.name, category: t.category, muscleGroups: t.muscleGroups,
                  isCustom: false, equipment: t.equipment, isLateral: t.isLateral,
                  mechanics: t.mechanics, force: t.force,
                  primaryMuscles: t.primaryMuscles, secondaryMuscles: t.secondaryMuscles,
                  searchKeywords: t.searchKeywords,
-                 instructions: t.instructions, imageName: t.imageName, level: t.level)
+                 instructions: t.instructions, imageName: t.imageName, level: t.level,
+                 loadAccountingMode: Exercise.defaultLoadAccountingMode(equipment: t.equipment,
+                                                                         isLateral: t.isLateral,
+                                                                         name: t.name),
+                 defaultBarWeightKg: t.equipment == .barbell ? Exercise.defaultBarWeightKg : 0)
     }
 }

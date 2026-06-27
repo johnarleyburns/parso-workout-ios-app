@@ -4,6 +4,16 @@ import Foundation
 // data). Equipment, mechanics, force, and a muscle catalog with scientific +
 // colloquial synonyms power fast keyword search ("cable", "lats", "push").
 
+/// How the user-entered weight maps to effective load for calculations.
+/// Stored as a String on Exercise (default) and SetEntry (snapshot).
+public enum LoadAccountingMode: String, CaseIterable, Codable, Sendable {
+    case barbell            // entered = added plate load; effective = (entered + barWeight) * multiplier
+    case bodyweight         // entered = added load only; effective = entered * multiplier
+    case dualDumbbell       // entered = one dumbbell; effective = entered * 2
+    case singleDumbbell     // entered = one dumbbell; effective = entered * 1
+    case isolateralDumbbell // entered = one dumbbell; effective = entered * 2 (comparison mode)
+}
+
 /// How the exercise is loaded (decision #11). Isolateral/unilateral is a
 /// separate `isLateral` flag on the exercise so it composes with any equipment.
 public enum Equipment: String, CaseIterable, Codable, Sendable, Identifiable {

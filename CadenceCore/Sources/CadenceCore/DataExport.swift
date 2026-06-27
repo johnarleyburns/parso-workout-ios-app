@@ -24,7 +24,7 @@ public struct CadenceExport: Codable, Equatable, Sendable {
         self.coachPreferences = coachPreferences
     }
 
-    public static let currentVersion = 2
+    public static let currentVersion = 3
 }
 
 public struct ExportSession: Codable, Equatable, Sendable {
@@ -52,13 +52,21 @@ public struct ExportSet: Codable, Equatable, Sendable {
     /// Partner name when the set was performed by someone other than the owner
     /// (field-testing §04, decision #14). nil ⇒ the owner.
     public var performedBy: String?
+    /// Load accounting metadata (v3). nil for legacy pre-accounting exports.
+    public var barWeightKg: Double?
+    public var loadMultiplier: Double?
+    public var loadAccountingMode: String?
     public init(id: UUID, exerciseName: String, category: String?, weightKg: Double,
                 reps: Int, order: Int, isWarmup: Bool, rpe: Double?, note: String?, completedAt: Date,
-                performedBy: String? = nil) {
+                performedBy: String? = nil,
+                barWeightKg: Double? = nil, loadMultiplier: Double? = nil,
+                loadAccountingMode: String? = nil) {
         self.id = id; self.exerciseName = exerciseName; self.category = category
         self.weightKg = weightKg; self.reps = reps; self.order = order
         self.isWarmup = isWarmup; self.rpe = rpe; self.note = note; self.completedAt = completedAt
         self.performedBy = performedBy
+        self.barWeightKg = barWeightKg; self.loadMultiplier = loadMultiplier
+        self.loadAccountingMode = loadAccountingMode
     }
 }
 

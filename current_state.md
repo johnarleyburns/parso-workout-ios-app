@@ -2,7 +2,29 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-26 — Coach UI polish, splash restoration, completed-plan reconciliation._
+_Last updated: 2026-06-27 — Coach two-a-days, load accounting, set entry UX upgrade._
+
+## What just shipped — Coach two-a-days + load accounting + set entry UX
+
+### Load Accounting Model (Phase 1-3)
+- **`ExerciseTaxonomy.swift`**: new `LoadAccountingMode` enum — `barbell`, `bodyweight`, `dualDumbbell`, `singleDumbbell`, `isolateralDumbbell`.
+- **`Models.swift`**: Exercise gains `loadAccountingMode`, `defaultBarWeightKg`, `loadAccountingUserOverride`. SetEntry gains `barWeightKg`, `loadMultiplier`, `loadAccountingMode`, `effectiveLoadKg` computed property, `SetSample.from(_:)` helper.
+- **`ExerciseLibrary.swift`**: `makeExercise(from:)` seeds load accounting defaults from equipment/name heuristics.
+- **`WorkoutRepository.swift`**: `addSet` snapshots accounting metadata from exercise onto new sets (only when exercise has explicit accounting mode). `sampleHistory`, `currentPR`, `wouldBePR`, `trendSeries`, `prTimeline` all use `effectiveLoadKg`. `findOrCreateExercise` does NOT seed accounting (rely on seed function). `buildExport`/`merge` include accounting metadata.
+- **`DataExport.swift`**: Export v3 with `barWeightKg`, `loadMultiplier`, `loadAccountingMode` fields on `ExportSet`.
+- **Calculation call sites updated** to use `effectiveLoadKg`: `TrainingFacts.make`, `TrainingEvent.from(session:)`, `StrengthProgress.series`, `WorkoutSummaryData.lines`, `WorkoutSession.totalVolume`, `SessionView.isAllTimePR`.
+- Legacy sets (no `loadAccountingMode`) keep `effectiveLoadKg = weight` unchanged.
+
+### Coach Two-a-Days (Phase 4-6)
+- **`CoachDecision.swift`**: new `todayPlannedRecommendations: [CoachSession]` field. Gated behind `schedulePreferences.allowsTwoADays`. When enabled, populates both strength and cardio if both are needed. `computePlanAdherence` updated for two-a-day: only `.planComplete` when both types are done. `effectivePrimary` overrides scored primary when the scored primary's kind is already completed.
+- **`CoachDecisionCardView.swift`**: new `twoADayStack` shows stacked rows with independent Start buttons when `todayPlannedRecommendations.count > 1`. Each row has icon, title, subtitle, colored Start button.
+
+### Set Entry UX (Phase 7-8)
+- **`SessionView.swift`**: `openInlineEditor` now defaults first-set weight from prior session's first working set; subsequent sets default from previous set's weight. New `inlinePriorWeightHint` shows "Previously started this exercise at X" callout. RPE stepper now has explicit "none" state with clear button. Weight info button beside weight field opens context-sensitive sheet (barbell bar weight, dumbbell entry guidance). First-time dumbbell info sheet auto-shows once via `@AppStorage("dumbbellInfoShown")`. Load accounting metadata snapshotted onto new sets via `WorkoutRepository.addSet`.
+
+### Tests (473 total, 0 failures)
+- **New `LoadAccountingTests.swift`** (35 tests): accounting defaults, effective load math, snapshot on creation, export/import round-trip, PR/volume uses effective load, optional RPE, prior-set weight defaults.
+- **`CoachDecisionEngineTests.swift`**: 5 new two-a-day tests (both recommendations, cardio-only, strength-only, both-complete, off-by-default).
 
 ## What just shipped — Coach UI + splash + completed-plan reconciliation
 

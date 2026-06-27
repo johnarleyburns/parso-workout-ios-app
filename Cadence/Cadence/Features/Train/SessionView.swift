@@ -33,6 +33,10 @@ struct SessionView: View {
     @State private var inlinePerformedByID: UUID?
     @State private var inlineRPE: Int? = nil
     @State private var showRPEInfo = false
+    @State private var showWeightInfo = false
+    @State private var showDumbbellInfo = false
+    @State private var inlinePriorWeightHint: Double? = nil
+    @AppStorage("dumbbellInfoShown") private var dumbbellInfoShown = false
     @State private var showDeleteConfirm = false
     @FocusState private var weightFocused: Bool
     @State private var healthSaved = false
@@ -174,15 +178,48 @@ struct SessionView: View {
             inlinePerformedByID = editing.performedBy.flatMap { $0.isMe ? nil : $0.id }
             inlineRPE = editing.rpe.map { Int($0.rounded()) }
         } else {
-            let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
-            inlineWeight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: inlineUnit) : ""
             let loggedCount = session.orderedSets.filter { $0.exercise?.id == exercise.id }.count
             inlineReps = repsOverride ?? plannedReps(for: exercise, setIndex: loggedCount)
             inlineBodyweight = isBodyweight(exercise)
             inlinePerformedByID = nextPerson().flatMap { $0.isMe ? nil : $0.id }
             inlineRPE = nil
+
+            // Weight defaulting: first set → prior session's first working weight;
+            // subsequent sets → previous set's weight in this session; else prescribed.
+            if loggedCount == 0 {
+                // First set: use first working weight from most recent prior session.
+                if let firstPrior = firstWorkingSetWeight(for: exercise) {
+                    inlineWeight = Format.weightValue(firstPrior, unit: inlineUnit)
+                    inlinePriorWeightHint = firstPrior
+                } else {
+                    let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
+                    inlineWeight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: inlineUnit) : ""
+                    inlinePriorWeightHint = nil
+                }
+            } else if let last = session.orderedSets.last(where: { $0.exercise?.id == exercise.id }) {
+                // Subsequent set: prefill previous set's entered weight.
+                inlineWeight = Format.weightValue(last.weight, unit: inlineUnit)
+                inlinePriorWeightHint = nil
+            } else {
+                let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
+                inlineWeight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: inlineUnit) : ""
+                inlinePriorWeightHint = nil
+            }
         }
         weightFocused = true
+
+        // First-time dumbbell info: show once when starting a dumbbell exercise.
+        if !dumbbellInfoShown, case .dumbbell = exercise.equipmentValue {
+            dumbbellInfoShown = true
+            showDumbbellInfo = true
+        }
+    }
+
+    /// The first working-set weight from the most recent prior session for this
+    /// exercise, if any. nil when no prior data exists.
+    private func firstWorkingSetWeight(for exercise: Exercise) -> Double? {
+        let lastSets = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
+        return lastSets.first { !$0.isWarmup && $0.weight > 0 }?.weight
     }
 
     private func closeInlineEditor() {
@@ -490,6 +527,12 @@ struct SessionView: View {
         }
         .sheet(isPresented: $showRPEInfo) {
             RPEInfoView()
+        }
+        .sheet(isPresented: $showWeightInfo) {
+            weightInfoSheet
+        }
+        .sheet(isPresented: $showDumbbellInfo) {
+            dumbbellInfoSheet
         }
         .fullScreenCover(isPresented: $coolingDown) {
             GuidedPhaseOverlay(
@@ -965,11 +1008,11 @@ struct SessionView: View {
 
     private func isAllTimePR(_ set: SetEntry, exercise: Exercise) -> Bool {
         // Partner sets never earn the owner's PR badge (field-testing §04).
-        guard set.isOwnerSet, !set.isWarmup, set.reps > 0, set.weight > 0 else { return false }
+        guard set.isOwnerSet, !set.isWarmup, set.reps > 0, set.effectiveLoadKg > 0 else { return false }
         let previous = (exercise.sets ?? [])
             .filter { $0.isOwnerSet && $0.completedAt < set.completedAt }
-            .map { SetSample(weight: $0.weight, reps: $0.reps, date: $0.completedAt, isWarmup: $0.isWarmup) }
-        let candidate = SetSample(weight: set.weight, reps: set.reps, date: set.completedAt, isWarmup: set.isWarmup)
+            .map { SetSample.from($0) }
+        let candidate = SetSample.from(set)
         return PRCalculator.isNewPR(candidate: candidate, previous: previous,
                                     rule: settings.prRule, formula: settings.formula)
     }
@@ -1018,11 +1061,12 @@ struct SessionView: View {
     private func activeSetRow(for exercise: Exercise) -> some View {
         let parsed = Double(inlineWeight) ?? 0
         let kg = WorkoutMath.canonical(parsed, from: settings.unit)
+        let effectiveKg = exercise.prospectiveEffectiveLoadKg(rawWeightKg: kg)
         let altUnit: MeasurementUnitPreference = settings.unit == .kilograms ? .pounds : .kilograms
         let canSave = inlineReps > 0 && (inlineBodyweight || !inlineWeight.isEmpty)
         let number = String(workingNumber(for: exercise))
         let wouldBePR = canSave && WorkoutRepository.wouldBePR(
-            exercise: exercise, weightKg: kg, reps: inlineReps, isWarmup: false,
+            exercise: exercise, weightKg: effectiveKg, reps: inlineReps, isWarmup: false,
             rule: settings.prRule, formula: settings.formula)
 
         VStack(alignment: .leading, spacing: 5) {
@@ -1100,12 +1144,26 @@ struct SessionView: View {
                         .toggleStyle(.button).controlSize(.mini)
                         .accessibilityIdentifier("inline.bodyweight")
                 }
+                // Weight info button (barbell/bodyweight/dumbbell guidance)
+                Button { showWeightInfo = true } label: {
+                    Image(systemName: "info.circle")
+                        .font(.caption2).foregroundStyle(.tint)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("inline.weightInfo")
                 HStack(spacing: 3) {
                     Text("RPE").font(.caption2).foregroundStyle(.secondary)
                     if let rpe = inlineRPE {
                         Text("\(rpe)").font(.caption.monospacedDigit()).foregroundStyle(.primary)
+                        Button {
+                            inlineRPE = nil
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
                     } else {
-                        Text("—").font(.caption).foregroundStyle(.tertiary)
+                        Text("none").font(.caption).foregroundStyle(.tertiary)
                     }
                     Stepper("RPE", value: Binding(
                         get: { inlineRPE ?? 5 },
@@ -1141,6 +1199,14 @@ struct SessionView: View {
                     .accessibilityIdentifier("inline.cancel")
             }
             .padding(.leading, whoColumnWidth + SetCol.gap)
+
+            // Prior-weight hint for first set of an exercise.
+            if let hint = inlinePriorWeightHint, weightFocused {
+                Text("Previously started this exercise at \(Format.weight(hint, unit: settings.unit))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, whoColumnWidth + SetCol.gap)
+            }
         }
         .padding(8)
         .background(.tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
@@ -1383,6 +1449,76 @@ struct SessionView: View {
     private func setPerformedBy(_ set: SetEntry, person: Person) -> Bool {
         if person.isMe { return set.isOwnerSet }
         return set.performedBy?.id == person.id
+    }
+
+    private var weightInfoSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 12) {
+                if let ex = inlineExercise {
+                    switch ex.resolvedLoadAccountingMode {
+                    case .barbell:
+                        Text("Barbell Weight")
+                            .font(.headline)
+                        Text("Enter the added plate load only. The bar weight (\(Format.weight(ex.effectiveDefaultBarWeightKg, unit: settings.unit))) is added automatically for calculations.\n\nEnter 0 when using only the bar or bodyweight. Bar weight is added separately for barbell calculations.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    case .bodyweight:
+                        Text("Bodyweight Exercise")
+                            .font(.headline)
+                        Text("Enter 0 when using only your bodyweight. Enter a positive value for added weight (e.g., weighted vest, dip belt).\n\nThe app tracks added load; bodyweight is yours alone.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    case .dualDumbbell, .isolateralDumbbell:
+                        Text("Dumbbell Weight")
+                            .font(.headline)
+                        Text("Enter the weight of one dumbbell. The app accounts for paired, single, and isolateral dumbbell movements in calculations.\n\nFor standard two-dumbbell exercises (bench press, curls, etc.), your entered weight is doubled automatically.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    case .singleDumbbell:
+                        Text("Dumbbell Weight")
+                            .font(.headline)
+                        Text("Enter the weight of the single dumbbell used. This exercise uses one dumbbell at a time (e.g., goblet squat, skullcrusher).\n\nThe entered weight is used as-is for calculations.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    case nil:
+                        Text("Weight Entry")
+                            .font(.headline)
+                        Text("Enter the weight as you would normally. This exercise uses standard weight accounting — what you enter is what's used for PRs, volume, and trends.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text("Weight Entry")
+                        .font(.headline)
+                    Text("Enter the weight you lifted. For barbell exercises, enter the plate load — the bar weight is added automatically. For dumbbell exercises, enter the weight of one dumbbell.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            .padding()
+            .navigationTitle("Weight Help")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showWeightInfo = false }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var dumbbellInfoSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Dumbbell Weight Entry")
+                    .font(.headline)
+                Text("For dumbbell exercises, enter the weight of a single dumbbell — the app handles the accounting automatically:\n\n• **Two-dumbbell exercises** like bench press or curls: your entered weight is doubled for calculations (you're lifting two of them).\n\n• **Single-dumbbell exercises** like goblet squats or skullcrushers: your entered weight is used as-is.\n\n• **Isolateral exercises** like one-arm rows: your entered weight is doubled for comparison against barbell movements.\n\nThis way you can always enter what's printed on the dumbbell, and the math works correctly behind the scenes.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            .padding()
+            .navigationTitle("Dumbbell Help")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Got it") { showDumbbellInfo = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,

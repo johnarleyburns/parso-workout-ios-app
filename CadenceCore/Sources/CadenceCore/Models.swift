@@ -65,6 +65,13 @@ public final class Exercise {
     public var createdAt: Date = Date()
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
+    /// Default load-accounting mode for sets of this exercise. Raw `LoadAccountingMode`.
+    public var loadAccountingMode: String?
+    /// Default bar weight in kg (canonical). For barbell exercises, this is the bar
+    /// weight added to the user-entered plate load. Default 0 = not set / no bar.
+    public var defaultBarWeightKg: Double = 0
+    /// True when the user has explicitly set the accounting mode, overriding the seed.
+    public var loadAccountingUserOverride: Bool = false
 
     @Relationship(deleteRule: .nullify, inverse: \SetEntry.exercise)
     public var sets: [SetEntry]? = []
@@ -87,7 +94,10 @@ public final class Exercise {
                 isFavorite: Bool = false,
                 createdAt: Date = Date(),
                 updatedAt: Date = Date(),
-                originDevice: String = "") {
+                originDevice: String = "",
+                loadAccountingMode: LoadAccountingMode? = nil,
+                defaultBarWeightKg: Double = 0,
+                loadAccountingUserOverride: Bool = false) {
         self.id = id
         self.name = name
         self.category = category?.rawValue
@@ -107,6 +117,9 @@ public final class Exercise {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.originDevice = originDevice
+        self.loadAccountingMode = loadAccountingMode?.rawValue
+        self.defaultBarWeightKg = defaultBarWeightKg
+        self.loadAccountingUserOverride = loadAccountingUserOverride
     }
 
     public var muscleGroups: [String] {
@@ -145,6 +158,73 @@ public final class Exercise {
     public var forceValue: Force? {
         get { force.flatMap(Force.init(rawValue:)) }
         set { force = newValue?.rawValue }
+    }
+
+    public var loadAccountingModeValue: LoadAccountingMode? {
+        get { loadAccountingMode.flatMap(LoadAccountingMode.init(rawValue:)) }
+        set { loadAccountingMode = newValue?.rawValue }
+    }
+
+    /// Derives the default load-accounting mode from equipment, isLateral, and
+    /// exercise name. Returns nil for equipment types that don't need accounting
+    /// (machine, cable, kettlebell, band).
+    public var resolvedLoadAccountingMode: LoadAccountingMode? {
+        if let mode = loadAccountingModeValue { return mode }
+        return Exercise.defaultLoadAccountingMode(equipment: equipmentValue, isLateral: isLateral, name: name)
+    }
+
+    /// Seeds the default accounting mode from equipment + name heuristics.
+    /// Returns nil for equipment where the raw entered weight is already correct.
+    public static func defaultLoadAccountingMode(equipment: Equipment?, isLateral: Bool, name: String) -> LoadAccountingMode? {
+        guard let equipment else { return nil }
+        switch equipment {
+        case .barbell, .smith:
+            return .barbell
+        case .bodyweight:
+            return .bodyweight
+        case .dumbbell:
+            if isLateral { return .isolateralDumbbell }
+            if Exercise.isSingleDumbbellMovement(name) { return .singleDumbbell }
+            return .dualDumbbell
+        case .machine, .cable, .kettlebell, .band, .plyometric:
+            return nil
+        }
+    }
+
+    /// Standard bar weight in kg (20.4117 kg ≈ 45 lb).
+    public static let defaultBarWeightKg: Double = 45.0 / 2.2046226218487757
+
+    /// Returns the effective default bar weight for this exercise.
+    public var effectiveDefaultBarWeightKg: Double {
+        if defaultBarWeightKg > 0 { return defaultBarWeightKg }
+        if equipmentValue == .barbell { return Exercise.defaultBarWeightKg }
+        return 0
+    }
+
+    /// Computes the prospective effective load for a new set with the given
+    /// user-entered weight, using this exercise's accounting defaults.
+    public func prospectiveEffectiveLoadKg(rawWeightKg: Double, barWeightKg: Double? = nil) -> Double {
+        guard let mode = resolvedLoadAccountingMode else { return rawWeightKg }
+        let bar = barWeightKg ?? effectiveDefaultBarWeightKg
+        switch mode {
+        case .barbell: return (rawWeightKg + bar)
+        case .bodyweight: return rawWeightKg
+        case .dualDumbbell: return rawWeightKg * 2.0
+        case .singleDumbbell: return rawWeightKg
+        case .isolateralDumbbell: return rawWeightKg * 2.0
+        }
+    }
+
+    /// Known single-dumbbell movement name patterns (case-insensitive).
+    private static let singleDumbbellPatterns: [String] = [
+        "skullcrusher", "goblet", "concentration curl", "kickback",
+        "one-arm", "single-arm", "single arm", "overhead tricep extension",
+        "tate press", "pull-over", "pullover"
+    ]
+
+    private static func isSingleDumbbellMovement(_ name: String) -> Bool {
+        let lower = name.lowercased()
+        return singleDumbbellPatterns.contains { lower.contains($0) }
     }
 }
 
@@ -300,10 +380,11 @@ public final class WorkoutSession {
     }
 
     /// Total working volume (kg) across the owner's non-warmup sets. Partner
-    /// sets are excluded (field-testing §04, decision #13).
+    /// sets are excluded (field-testing §04, decision #13). Uses effective load
+    /// for new-accounting sets, raw weight for legacy sets.
     public var totalVolume: Double {
         orderedSets.filter { !$0.isWarmup && $0.isOwnerSet }
-            .reduce(0) { $0 + WorkoutMath.volume(weight: $1.weight, reps: $1.reps) }
+            .reduce(0) { $0 + WorkoutMath.volume(weight: $1.effectiveLoadKg, reps: $1.reps) }
     }
 }
 
@@ -328,6 +409,14 @@ public final class SetEntry {
     public var completedAt: Date = Date()
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
+    /// Snapshotted bar weight in kg for barbell exercises. The bar weight added to
+    /// the user-entered plate load when computing effective load. Default 0.
+    public var barWeightKg: Double = 0
+    /// Snapshotted load multiplier (default 1.0). Used for dumbbell pairing, etc.
+    public var loadMultiplier: Double = 1.0
+    /// Snapshotted load-accounting mode. Raw `LoadAccountingMode`. nil = legacy set
+    /// without accounting metadata (effective load = weight).
+    public var loadAccountingMode: String?
 
     // To-one relationships (inverses declared on the parents above).
     public var session: WorkoutSession?
@@ -350,7 +439,10 @@ public final class SetEntry {
                 originDevice: String = "",
                 session: WorkoutSession? = nil,
                 exercise: Exercise? = nil,
-                performedBy: Person? = nil) {
+                performedBy: Person? = nil,
+                barWeightKg: Double = 0,
+                loadMultiplier: Double = 1.0,
+                loadAccountingMode: String? = nil) {
         self.id = id
         self.weight = weight
         self.reps = reps
@@ -365,6 +457,9 @@ public final class SetEntry {
         self.session = session
         self.exercise = exercise
         self.performedBy = performedBy
+        self.barWeightKg = barWeightKg
+        self.loadMultiplier = loadMultiplier
+        self.loadAccountingMode = loadAccountingMode
     }
 
     /// True when the set belongs to the device owner (nobody attributed, or the
@@ -372,6 +467,31 @@ public final class SetEntry {
     public var isOwnerSet: Bool {
         guard let p = performedBy else { return true }
         return p.isMe
+    }
+
+    public var loadAccountingModeValue: LoadAccountingMode? {
+        get { loadAccountingMode.flatMap(LoadAccountingMode.init(rawValue:)) }
+        set { loadAccountingMode = newValue?.rawValue }
+    }
+
+    /// The effective load in kg for calculations (PRs, volume, trends, etc.).
+    /// For new-accounting sets, transforms the user-entered weight by the
+    /// accounting mode, bar weight, and multiplier. Legacy sets without
+    /// accounting metadata return the stored weight as-is.
+    public var effectiveLoadKg: Double {
+        guard let mode = loadAccountingModeValue else { return weight }
+        switch mode {
+        case .barbell:
+            return (weight + barWeightKg) * loadMultiplier
+        case .bodyweight:
+            return weight * loadMultiplier
+        case .dualDumbbell:
+            return weight * 2.0
+        case .singleDumbbell:
+            return weight * 1.0
+        case .isolateralDumbbell:
+            return weight * 2.0
+        }
     }
 }
 

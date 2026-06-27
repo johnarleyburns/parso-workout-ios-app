@@ -183,8 +183,8 @@ extension TrainingEvent {
             let hardSetCount = hardSets.count
             totalHardSets += hardSetCount
 
-            let topSet = hardSets.max { a, b in a.weight < b.weight }
-            let topWeight = topSet?.weight ?? 0
+            let topSet = hardSets.max { a, b in a.effectiveLoadKg < b.effectiveLoadKg }
+            let topWeight = topSet?.effectiveLoadKg ?? 0
             let topReps = topSet?.reps ?? 0
             let e1rm = WorkoutMath.estimated1RM(weight: topWeight, reps: topReps, formula: formula)
 

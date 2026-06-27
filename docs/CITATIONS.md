@@ -526,8 +526,7 @@ is tappable science:
   `fieldTestValidity`.
 - **`CoachDecision.scoreBreakdowns[…].reasons`** are typed `EvidenceClaim`s (e.g. a
   stale-system nudge) carrying their own category + selected citation.
-- **UI** renders all of the above via `CitationLink`: `WhyThisTodayView` ("why this won"
-  weekly-balance claims use `strengthFrequency` / `activityMinutesHealth` /
-  `recoveryMonitoring`; the age-estimated-HRmax caveat cites `tanakaMaxHR2001`),
-  `CoachDecisionCardView` warnings, and each `CoachAlternativesView` option. No production
-  UI references the legacy `aerobicPool` / `recoveryLoadPool` any longer.
+- **UI** renders all of the above via `CitationLink`: `CoachInsightsView` rows,
+  `CoachDecisionCardView` warnings, `CoachSchedulePreferencesView` guidance, and each
+  `CoachAlternativesView` option. No production UI references the legacy
+  `aerobicPool` / `recoveryLoadPool` any longer.

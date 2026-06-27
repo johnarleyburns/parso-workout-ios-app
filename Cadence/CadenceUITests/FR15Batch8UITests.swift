@@ -1,8 +1,8 @@
 import XCTest
 
-/// Feedback batch 8 — quick-start shortcuts from the Home quick-actions row and
-/// stat tiles, optional cardio distance goals, and the redesigned exercise picker
-/// (popular shortlist + body-part filter chips + in-app detail).
+/// Feedback batch 8 — quick-start shortcuts from the Home quick-actions row,
+/// optional cardio distance goals, and the redesigned exercise picker (popular
+/// shortlist + body-part filter chips + in-app detail).
 final class FR15Batch8UITests: CadenceUITestCase {
 
     // Hero "Start Workout" → opens the Strength start screen directly.
@@ -32,15 +32,18 @@ final class FR15Batch8UITests: CadenceUITestCase {
         XCTAssertFalse(app.buttons["startType.weights"].exists, "Strength should be filtered out")
     }
 
-    // "This week" card shows the four key metrics and missing body parts.
-    func testThisWeekCardShowsMetrics() {
+    // Home shows the rest-of-week plan and keeps history behind "View more".
+    func testHomeShowsPlanAndWhatYouDidSurfaces() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.descendants(matching: .any)["home.thisWeek"].waitForExistence(timeout: 10),
-                      "This week card should exist")
-        XCTAssertTrue(app.descendants(matching: .any)["home.workoutsCount"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["home.cardioMinutes"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["home.volume"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["home.bodyParts"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.plannedRestOfWeek"].waitForExistence(timeout: 10),
+                      "rest-of-week plan card should exist")
+
+        let whatYouDid = app.descendants(matching: .any)["home.whatYouDid"].firstMatch
+        for _ in 0..<8 where !whatYouDid.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(whatYouDid.exists, "What you did card should exist")
+        XCTAssertTrue(app.buttons["home.train"].exists, "History should be behind View more")
     }
 
     // Tapping "Add" inside ExerciseDetailView should dismiss the picker sheet and

@@ -2,6 +2,14 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
+/// A history row's read-only summary destination (field-testing Round 4 A5).
+/// Wraps the `@Model` row (already `Hashable`) so the big `WorkoutSummaryData`
+/// value type needn't be `Hashable`.
+enum HistorySummaryRoute: Hashable {
+    case strength(WorkoutSession)
+    case cardio(CardioWorkout)
+}
+
 struct HistoryView: View {
     @Binding var path: NavigationPath
 

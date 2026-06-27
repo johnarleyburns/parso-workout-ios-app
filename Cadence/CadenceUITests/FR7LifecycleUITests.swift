@@ -91,8 +91,8 @@ final class FR7LifecycleUITests: CadenceUITestCase {
                       "cancelling End keeps us on the session")
 
         // End again → confirm → the summary appears (A3); Done finishes & saves,
-        // leaving the session. (Started from Home, so Done returns to Home — the
-        // saved workout now lists in Home's Recent workouts.)
+        // leaving the session. Started from Home, so Done returns to Home and the
+        // saved workout updates the compact training summary.
         XCTAssertTrue(app.buttons["workout.end"].waitTap(), "End again")
         XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "summary Done")
@@ -100,8 +100,10 @@ final class FR7LifecycleUITests: CadenceUITestCase {
                       "confirming End finishes the workout and leaves the session")
         XCTAssertFalse(app.buttons["session.addExercise"].exists,
                        "the live session screen should be gone after End")
-        XCTAssertTrue(app.buttons["home.sessionRow"].firstMatch.waitForExistence(timeout: 10),
-                      "the finished workout should be saved to history")
+        let lastStrength = app.descendants(matching: .any)["home.fact.lastStrength"].firstMatch
+        for _ in 0..<8 where !lastStrength.exists { app.swipeUp() }
+        XCTAssertTrue(lastStrength.exists,
+                      "the finished workout should update Home's latest strength fact")
     }
 
     // A3 — confirming End on a strength workout shows an always-on summary with the
@@ -144,14 +146,18 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["summary.duration"].waitForExistence(timeout: 25),
                       "cardio summary should show duration")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "Done")
-        XCTAssertTrue(app.buttons["home.cardioRow.other"].waitForExistence(timeout: 25),
-                      "the recorded session should be saved to history")
+        let lastCardio = app.descendants(matching: .any)["home.fact.lastCardio"].firstMatch
+        for _ in 0..<8 where !lastCardio.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(lastCardio.exists,
+                      "the recorded session should be reflected in Home's latest cardio fact")
     }
 
     // A4 — the unified history lists strength sessions and cardio workouts together.
     func testUnifiedHistoryShowsCardioAndStrength() {
         let app = XCUIApplication.launched(seeds: ["historyMixed"])
-        app.goToTab("Train") // Home "Recent workouts → See all" → unified HistoryView
+        app.goToTab("Train") // Home "What you did → View more" → unified HistoryView
 
         XCTAssertTrue(app.buttons["session.row"].firstMatch.waitForExistence(timeout: 25),
                       "strength sessions should list")

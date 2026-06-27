@@ -1,8 +1,8 @@
 import XCTest
 
 /// strength-pivot P3 — the bottom tab bar (Workout/Tests/Progress), the Coach card on
-/// Home with its cited "why / the science" expander, the Coach settings, and the
-/// redesigned Home layout (quick-actions row, this-week card, Coach start button).
+/// Home with simplified Coach navigation, the Coach settings, and the redesigned
+/// Home layout (quick-actions row, planned-rest-of-week card, Coach start button).
 final class P3CoachHomeUITests: CadenceUITestCase {
 
     func testTabBarHasThreeTabs() {
@@ -41,7 +41,7 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["settings.coach.experience"].exists, "Coach experience picker")
     }
 
-    // MARK: Home redesign — quick-actions row, this-week card, Coach start button
+    // MARK: Home redesign — quick-actions row, plan card, Coach start button
 
     func testCoachCardHasStartButton() {
         let app = XCUIApplication.launched()
@@ -117,12 +117,15 @@ final class P3CoachHomeUITests: CadenceUITestCase {
                        "Start button must not appear when today's plan is already complete")
     }
 
-    // MARK: - This week card Details removal
+    // MARK: - Planned rest of week
 
-    func testThisWeekCardDoesNotShowDetailsLink() {
+    func testHomeShowsPlannedRestOfWeekAndYourPlanLink() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.descendants(matching: .any)["home.thisWeek"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.buttons["Details"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["home.plannedRestOfWeek"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["home.yourPlan"].exists)
+        app.buttons["home.yourPlan"].tap()
+        XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Planned (rest of week)"].exists)
     }
 
     // MARK: - Settings schedule preferences link

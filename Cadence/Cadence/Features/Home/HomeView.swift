@@ -40,8 +40,6 @@ struct HomeView: View {
     @State private var historyRefreshToken = UUID()
     /// Setup surface for non-GPS timer cardio (rowing/other) launched from Coach.
     @State private var timerCardioSetup: TimerCardioSetup?
-    @State private var homeSessionToDelete: WorkoutSession?
-    @State private var homeCardioToDelete: CardioWorkout?
     @State private var pendingPlan: EditablePlan?
     @State private var captureHR = false
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
@@ -50,21 +48,6 @@ struct HomeView: View {
     @State private var cardioGoalFor: CardioType?     // optional distance goal before run/walk/cycle
     @State private var warnAddOn: (session: CoachSession, status: CoachAddOnStatus)?
     @State private var outdoorGoalMeters: Double?     // goal handed to the outdoor recorder
-
-    // Weekly tiles (feedback batch 3) — pure aggregates from CadenceCore.
-    private var weekStart: Date { WeeklyStats.weekStart() }
-    private var cardioMinutesThisWeek: Int { WeeklyStats.cardioMinutes(cardio, since: weekStart) }
-    private var volumeThisWeekKg: Double { WeeklyStats.volumeKg(sessions, since: weekStart) }
-    private var bodyPartsThisWeek: (hit: Set<BodyPart>, missing: [BodyPart]) {
-        WeeklyStats.bodyParts(sessions, since: weekStart)
-    }
-
-    private var workoutsThisWeek: Int {
-        let ws = weekStart
-        let strengthCount = sessions.filter { $0.date >= ws && $0.deletedAt == nil }.count
-        let cardioCount = cardio.filter { $0.start >= ws && $0.deletedAt == nil }.count
-        return strengthCount + cardioCount
-    }
 
     // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
     // read-only insights and the prescriptive recommendation surfaced on the card.
@@ -93,6 +76,13 @@ struct HomeView: View {
                                          profile: settings.coachPreferenceProfile,
                                          schedulePreferences: settings.coachSchedulePreferences,
                                          hasPainConcern: hasPain)
+    }
+
+    private var coachPlan: WeeklyPlan {
+        let facts = CoachFacts.make(
+            from: buildTrainingEvents(), goal: settings.trainingGoal,
+            experience: settings.experienceLevel, formula: settings.formula)
+        return WeeklyPlan.generate(from: facts, schedulePreferences: settings.coachSchedulePreferences)
     }
 
     private var addOnRecommendation: CoachAddOnRecommendation {
@@ -141,15 +131,15 @@ struct HomeView: View {
                     CoachDecisionCardView(
                         decision: coachDecision,
                         addOnRecommendation: addOnRecommendation,
+                        topInsight: coachInsights.first,
                         onStart: { launchDecision($0) },
                         onAddOn: { session, status in handleAddOn(session, status) },
-                        onSeeWeek: { path.append(HomeRoute.yourWeek) },
-                        onSeeWhy: { path.append(HomeRoute.whyToday) },
-                        onSeeTomorrow: { path.append(HomeRoute.yourWeek) })
+                        onSeeInsights: { path.append(HomeRoute.coach) },
+                        onPreferences: { path.append(HomeRoute.coachPreferences) })
                     quickActionsRow
-                    thisWeekCard
+                    plannedRestOfWeekSection
                     favoritesSection
-                    recentWorkoutsSection
+                    whatYouDidSection
                 }
                 .padding()
             }
@@ -163,8 +153,6 @@ struct HomeView: View {
             .navigationDestination(for: WorkoutSession.self) { SessionView(session: $0) }
             .navigationDestination(for: CardioWorkout.self) { CardioDetailView(workout: $0) }
             .navigationDestination(for: HistorySummaryRoute.self) { route in
-                // A5 — history rows open the read-only summary; strength offers Edit
-                // (pushes the live session into the set editor).
                 switch route {
                 case .strength(let s):
                     WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
@@ -177,27 +165,14 @@ struct HomeView: View {
                 case .history: HistoryView(path: $path)
                 case .settings: SettingsView()
                 case .coach: CoachInsightsView(insights: coachInsights)
+                case .coachPreferences: CoachSchedulePreferencesView()
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
-                case .yourWeek:
+                case .yourPlan:
                     let facts = CoachFacts.make(
                         from: buildTrainingEvents(), goal: settings.trainingGoal,
                         experience: settings.experienceLevel, formula: settings.formula)
                     YourWeekView(decision: coachDecision, facts: facts,
-                                 preferences: settings.coachSchedulePreferences,
-                                 insights: coachInsights)
-                case .whyToday:
-                    WhyThisTodayView(decision: coachDecision,
-                                     addOnRecommendation: addOnRecommendation,
-                                     onAltTap: { path.append(HomeRoute.coachAlternatives) },
-                                     onAddOnTap: { session, status in handleAddOn(session, status) })
-                case .coachAlternatives:
-                    CoachAlternativesView(decision: coachDecision,
-                                          onSelect: { session in
-                        settings.recordCoachSelection(session,
-                                                      alternatives: coachDecision.alternatives)
-                        launchDecision(session)
-                        path = NavigationPath()
-                    })
+                                 preferences: settings.coachSchedulePreferences)
                 case .workoutEditor(let plan):
                     WorkoutPlanEditor(plan: plan, onStart: { plan in
                         handleEditorStart(plan)
@@ -257,28 +232,6 @@ struct HomeView: View {
             }
             .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: captureHR, onSaved: { _ in markWorkoutHistoryChanged() }) }
             .fullScreenCover(isPresented: $swimPresented) { SwimRecordView(onSaved: { _ in markWorkoutHistoryChanged() }) }
-            .confirmationDialog("Delete this workout?",
-                                isPresented: Binding(get: { homeSessionToDelete != nil },
-                                                     set: { if !$0 { homeSessionToDelete = nil } }),
-                                presenting: homeSessionToDelete) { session in
-                Button("Delete", role: .destructive) {
-                    try? WorkoutRepository.softDeleteSession(session, in: context)
-                    homeSessionToDelete = nil
-                    markWorkoutHistoryChanged()
-                }
-                Button("Cancel", role: .cancel) { homeSessionToDelete = nil }
-            } message: { _ in Text("You can restore it from History → View Deleted.") }
-            .confirmationDialog("Delete this cardio workout?",
-                                isPresented: Binding(get: { homeCardioToDelete != nil },
-                                                     set: { if !$0 { homeCardioToDelete = nil } }),
-                                presenting: homeCardioToDelete) { c in
-                Button("Delete", role: .destructive) {
-                    try? WorkoutRepository.softDeleteCardio(c, in: context)
-                    homeCardioToDelete = nil
-                    markWorkoutHistoryChanged()
-                }
-                Button("Cancel", role: .cancel) { homeCardioToDelete = nil }
-            } message: { _ in Text("You can restore it from History → View Deleted.") }
             .confirmationDialog(
                 "This is more load than planned today.",
                 isPresented: Binding(
@@ -424,44 +377,49 @@ struct HomeView: View {
         .accessibilityIdentifier(id)
     }
 
-    /// "This week" at a glance — one calm card, not four launcher tiles.
-    private var thisWeekCard: some View {
+    private var restOfWeekDays: [WeeklyPlan.DayOutline] {
         _ = historyRefreshToken
-        let balance = coachDecision.weeklyBalance
-        return VStack(alignment: .leading, spacing: 12) {
+        return coachPlan.remainingCalendarWeekDays.filter { !$0.sessions.isEmpty }
+    }
+
+    /// The near-term schedule is now on Home, so users do not have to open a
+    /// second overview screen just to see what is coming next this week.
+    private var plannedRestOfWeekSection: some View {
+        _ = historyRefreshToken
+        let days = restOfWeekDays
+        return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("This week").font(.headline)
+                Text("Planned (rest of week)").font(.headline)
                 Spacer()
             }
-            HStack(spacing: 0) {
-                weekMetric("\(balance.strengthDays)", "strength", id: "home.workoutsCount")
-                weekMetric("\(Int(balance.moderateEquivalentMinutes))", "min", id: "home.cardioMinutes")
-                weekMetric(compactVolume(), "volume", id: "home.volume")
-                weekMetric("\(bodyPartsThisWeek.hit.count)/\(BodyPart.allCases.count)",
-                           "parts", id: "home.bodyParts")
+
+            if days.isEmpty {
+                Text("No more planned sessions this week.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                        if index > 0 { Divider().padding(.leading, 38) }
+                        CoachPlanDayRow(day: day)
+                    }
+                }
             }
+
+            Button { Haptics.selection(); path.append(HomeRoute.yourPlan) } label: {
+                HStack(spacing: 4) {
+                    Text("Your plan")
+                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.tint)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.yourPlan")
         }
         .padding()
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
-        .accessibilityIdentifier("home.thisWeek")
-    }
-
-    private func weekMetric(_ value: String, _ label: String, id: String) -> some View {
-        VStack(spacing: 3) {
-            Text(value).font(.title3.bold()).monospacedDigit()
-                .minimumScaleFactor(0.5).lineLimit(1)
-                .accessibilityIdentifier(id)
-            Text(label).font(.caption2).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    /// Compact weekly volume for the calm 4-across row (e.g. "12.4k"); the unit
-    /// is implied by Settings and shown in full on the Details screen.
-    private func compactVolume() -> String {
-        let value = settings.unit == .pounds ? volumeThisWeekKg * 2.2046226 : volumeThisWeekKg
-        if value >= 1000 { return String(format: "%.1fk", value / 1000) }
-        return String(format: "%.0f", value)
+        .accessibilityIdentifier("home.plannedRestOfWeek")
     }
 
     private var homeFavoriteRoutines: [WorkoutPlan] {
@@ -515,92 +473,71 @@ struct HomeView: View {
 
     // MARK: Inline sections (surfaced, not hidden)
 
-    /// One merged, date-sorted "Recent workouts" list — cardio counts as a workout
-    /// too, so strength sessions and cardio recordings share a single section (P1 #10).
-    private var recentItems: [RecentWorkoutItem] {
+    private var whatYouDidFacts: [ObservedFact] {
         _ = historyRefreshToken
-        let merged = sessions.filter { $0.deletedAt == nil }.map { RecentWorkoutItem.strength($0) }
-                   + cardio.filter { $0.deletedAt == nil }.map { RecentWorkoutItem.cardio($0) }
-        return Array(merged.sorted { $0.date > $1.date }.prefix(5))
+        return coachDecision.observedFacts
+            .filter { $0.kind == .lastStrength || $0.kind == .lastCardio }
+            .sorted { ($0.occurredAt ?? .distantPast) > ($1.occurredAt ?? .distantPast) }
     }
 
-    private var recentWorkoutsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionHeader("Recent workouts", route: .history, id: "home.train")
-            if recentItems.isEmpty {
-                Text("No workouts yet.").font(.caption).foregroundStyle(.secondary)
-            }
-            ForEach(recentItems) { item in
-                switch item {
-                case .strength(let s): strengthRow(s)
-                case .cardio(let w): cardioRow(w)
-                }
-            }
-        }
-    }
+    private var whatYouDidSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("What you did").font(.headline)
 
-    private func strengthRow(_ s: WorkoutSession) -> some View {
-        Button { Haptics.selection(); path.append(HistorySummaryRoute.strength(s)) } label: {
-            HStack {
-                Image(systemName: s.symbol).foregroundStyle(.tint).frame(width: 26)
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: 6) {
-                        Text(s.title.isEmpty ? "Workout" : s.title)
-                        if s.isLogged { LoggedTag() }
+            let facts = whatYouDidFacts
+            if facts.isEmpty {
+                Text("No recent training data.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(facts.enumerated()), id: \.element.id) { index, fact in
+                        if index > 0 { Divider().padding(.leading, 40) }
+                        whatYouDidFactRow(fact)
                     }
-                    Text("\(s.orderedSets.count) sets").font(.caption2).foregroundStyle(.secondary)
                 }
-                Spacer()
-                Text(s.date.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption).foregroundStyle(.secondary)
             }
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.sessionRow")
-        .swipeActions {
-            Button(role: .destructive) { homeSessionToDelete = s } label: {
-                Label("Delete", systemImage: "trash")
+
+            Button { Haptics.selection(); path.append(HomeRoute.history) } label: {
+                HStack(spacing: 4) {
+                    Text("View more")
+                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                }
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.tint)
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.train")
         }
+        .padding()
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityIdentifier("home.whatYouDid")
     }
 
-    private func cardioRow(_ w: CardioWorkout) -> some View {
-        Button { Haptics.selection(); path.append(HistorySummaryRoute.cardio(w)) } label: {
-            HStack {
-                Image(systemName: w.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
-                Text(w.displayTitle)
-                if w.isLogged { LoggedTag() }
-                Spacer()
-                Text(w.start.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption).foregroundStyle(.secondary)
+    private func whatYouDidFactRow(_ fact: ObservedFact) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: fact.kind == .lastStrength ? "dumbbell.fill" : "heart.fill")
+                .font(.caption)
+                .foregroundStyle(fact.kind == .lastStrength ? .green : .teal)
+                .frame(width: 22, height: 22)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(fact.title)
+                    .font(.subheadline.weight(.medium))
+                if let detail = fact.detail {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
-            .padding(.vertical, 6)
-            .contentShape(Rectangle())
+            Spacer()
+            Text(fact.value)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.cardioRow.\(w.typeValue.rawValue)")
-        .swipeActions {
-            Button(role: .destructive) { homeCardioToDelete = w } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
-    }
-
-    private func sectionHeader(_ title: String, route: HomeRoute, id: String) -> some View {
-        Button { Haptics.selection(); path.append(route) } label: {
-            HStack {
-                Text(title).font(.headline)
-                Spacer()
-                Text("See all").font(.caption)
-                Image(systemName: "chevron.right").font(.caption)
-            }
-            .foregroundStyle(.primary)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(id)
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("home.fact.\(fact.id)")
     }
 
     private func resumeCard(_ session: WorkoutSession) -> some View {
@@ -813,37 +750,7 @@ struct PendingWorkout: Identifiable {
 
 /// Pushed destinations reachable from Home.
 enum HomeRoute: Hashable {
-    case history, settings, coach, planning
-    case yourWeek
-    case whyToday
-    case coachAlternatives
+    case history, settings, coach, coachPreferences, planning
+    case yourPlan
     case workoutEditor(EditablePlan)
-}
-
-/// A row in Home's merged "Recent workouts" list — strength and cardio together,
-/// sorted by date (P1 #10).
-enum RecentWorkoutItem: Identifiable {
-    case strength(WorkoutSession)
-    case cardio(CardioWorkout)
-
-    var id: String {
-        switch self {
-        case .strength(let s): return "s-\(s.id.uuidString)"
-        case .cardio(let c): return "c-\(c.id.uuidString)"
-        }
-    }
-    var date: Date {
-        switch self {
-        case .strength(let s): return s.date
-        case .cardio(let c): return c.start
-        }
-    }
-}
-
-/// A history row's read-only summary destination (field-testing Round 4 A5).
-/// Wraps the `@Model` row (already `Hashable`) so the big `WorkoutSummaryData`
-/// value type needn't be `Hashable`.
-enum HistorySummaryRoute: Hashable {
-    case strength(WorkoutSession)
-    case cardio(CardioWorkout)
 }

@@ -3,8 +3,8 @@ import XCTest
 /// UI coverage for the strength logging / history-edit / coach-UI bug batch:
 /// opt-in partners (1a), removing a partner mid-workout (1b), changing a set's
 /// performer while editing (1c), and from history editing the performer (2a),
-/// the exercise (2b), the weight (2c) and reps (2d); plus the "Why this won"
-/// compact format (3) and the left-justified Home "Why this today" link (4).
+/// the exercise (2b), the weight (2c) and reps (2d); plus Home's simplified
+/// Coach links.
 final class StrengthEditingUITests: CadenceUITestCase {
 
     // MARK: Helpers
@@ -57,10 +57,9 @@ final class StrengthEditingUITests: CadenceUITestCase {
 
     private func openPastSessionForEdit(_ app: XCUIApplication) {
         app.popToHome()
-        let row = app.descendants(matching: .any)["home.sessionRow"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 15), "recent session row")
-        var tries = 0
-        while !row.isHittable && tries < 8 { app.swipeUp(); tries += 1 }
+        app.goToTab("Train")
+        let row = app.buttons["session.row"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 15), "history session row")
         row.tap()
         XCTAssertTrue(app.buttons["summary.edit"].waitTap(), "summary edit button")
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 15), "edit screen")
@@ -210,35 +209,16 @@ final class StrengthEditingUITests: CadenceUITestCase {
         waitForExpectations(timeout: 10)
     }
 
-    // MARK: 3 — "Why this won" uses the compact (icon + subtitle) format
+    // MARK: 3 — Home Coach links are streamlined
 
-    func testWhyWonCompactFormat() {
+    func testHomeCoachCardUsesPreferencesAndInsightsOnly() {
         let app = XCUIApplication.launched(seeds: ["coachWhyMixedHistory"])
         app.popToHome()
-        XCTAssertTrue(app.scrollToHittableAndTap("coach.card.whyToday"), "open why this today")
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 15))
 
-        let claim = app.descendants(matching: .any)["whyToday.claim.strengthDays"]
-        scrollUntilExists(app, claim)
-        XCTAssertTrue(claim.exists, "why-won should render compact claim rows")
-        XCTAssertTrue(exists(app, "whyToday.claim.aerobicMinutes", timeout: 2))
-        XCTAssertTrue(exists(app, "whyToday.claim.recoveryLoad", timeout: 2))
-    }
-
-    // MARK: 4 — Home "Why this today" link is left-justified to the card
-
-    func testHomeWhyThisTodayLeftAligned() {
-        let app = XCUIApplication.launched(seeds: ["coachWhyMixedHistory"])
-        app.popToHome()
-        let why = app.buttons["coach.card.whyToday"]
-        let week = app.buttons["coach.card.yourWeek"]
-        let card = app.descendants(matching: .any)["coach.card"].firstMatch
-        XCTAssertTrue(why.waitForExistence(timeout: 15), "why link")
-        var tries = 0
-        while !why.isHittable && tries < 6 { app.swipeUp(); tries += 1 }
-
-        XCTAssertTrue(why.frame.minX < week.frame.minX,
-                      "'Why this today' should sit left of 'Your week'")
-        XCTAssertTrue(why.frame.minX < card.frame.midX,
-                      "'Why this today' should be left-justified to the card")
+        XCTAssertTrue(app.buttons["coach.card.preferences"].exists)
+        XCTAssertTrue(app.buttons["coach.card.insights"].exists)
+        XCTAssertFalse(app.buttons["coach.card.whyToday"].exists)
+        XCTAssertFalse(app.buttons["coach.card.yourWeek"].exists)
     }
 }

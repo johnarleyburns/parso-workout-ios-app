@@ -5,14 +5,15 @@ import XCTest
 /// GPS-or-not). Items 1/2 (inline keypad) are covered by FR1/FR8/FR10.
 final class FR13Feedback6UITests: CadenceUITestCase {
 
-    // Logging a run lands it in Home's recent workouts with the "Logged" tag.
+    // Logging a run lands it in History with the "Logged" tag.
     func testLogCardioAppearsAsLogged() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.buttons["home.logWorkout"].waitTap(), "Log Workout")
         XCTAssertTrue(app.buttons["logType.run"].waitTap(), "Run log tile")
         XCTAssertTrue(app.buttons["log.save"].waitTap(), "Log Workout save")
 
-        XCTAssertTrue(app.buttons["home.cardioRow.run"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.scrollToHittableAndTap("home.train"), "open History")
+        XCTAssertTrue(app.buttons["history.cardioRow.run"].waitForExistence(timeout: 25),
                       "the logged run should appear in history")
         XCTAssertTrue(app.staticTexts["workout.loggedTag"].waitForExistence(timeout: 10)
                       || app.images["workout.loggedTag"].waitForExistence(timeout: 2),
@@ -30,6 +31,7 @@ final class FR13Feedback6UITests: CadenceUITestCase {
         desc.tap(); desc.typeText("Rowing")
         XCTAssertTrue(app.buttons["log.save"].waitTap(), "Log Workout save")
 
+        XCTAssertTrue(app.scrollToHittableAndTap("home.train"), "open History")
         XCTAssertTrue(app.staticTexts["Rowing"].waitForExistence(timeout: 25),
                       "the custom description should show as the workout title")
     }
@@ -49,7 +51,8 @@ final class FR13Feedback6UITests: CadenceUITestCase {
         app.recordKeypadSet("100")
 
         XCTAssertTrue(app.buttons["log.done"].waitTap(), "Done")
-        XCTAssertTrue(app.buttons["home.sessionRow"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.scrollToHittableAndTap("home.train"), "open History")
+        XCTAssertTrue(app.buttons["session.row"].waitForExistence(timeout: 25),
                       "the logged strength workout should appear in history")
         XCTAssertTrue(app.staticTexts["workout.loggedTag"].waitForExistence(timeout: 10)
                       || app.images["workout.loggedTag"].waitForExistence(timeout: 2),

@@ -1,22 +1,21 @@
 import XCTest
 
-/// Feedback batch 3 (field-testing round 4B) — Home weekly tiles + body-part
-/// coverage, the "Strength" library with fixed (5×5/Olympic) and flexible presets
+/// Feedback batch 3 (field-testing round 4B) — Home plan/history surfaces, the
+/// "Strength" library with fixed (5×5/Olympic) and flexible presets
 /// (rep-scheme chooser), first-class bodyweight sets, and partner-aware history.
 final class FR10Feedback3UITests: CadenceUITestCase {
 
     // MARK: Home dashboard
 
-    // The Home dashboard surfaces the new weekly metrics: steps + cardio minutes,
-    // then volume + body-part coverage ("M/8" with the missing parts listed).
-    func testHomeShowsWeeklyTiles() {
+    // Home now surfaces the rest-of-week plan and the compact training summary.
+    func testHomeShowsPlanAndTrainingSummary() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.staticTexts["home.cardioMinutes"].waitForExistence(timeout: 25),
-                      "Home should show cardio minutes this week")
-        XCTAssertTrue(app.staticTexts["home.volume"].waitForExistence(timeout: 10),
-                      "Home should show volume this week")
-        XCTAssertTrue(app.staticTexts["home.bodyParts"].waitForExistence(timeout: 10),
-                      "Home should show the body-part coverage tile (M/8)")
+        XCTAssertTrue(app.descendants(matching: .any)["home.plannedRestOfWeek"].waitForExistence(timeout: 25),
+                      "Home should show the rest-of-week plan")
+        XCTAssertTrue(app.buttons["home.yourPlan"].exists, "Home should link to Your Plan")
+        let summary = app.descendants(matching: .any)["home.whatYouDid"].firstMatch
+        for _ in 0..<8 where !summary.exists { app.swipeUp() }
+        XCTAssertTrue(summary.exists, "Home should show the compact training summary")
     }
 
     // MARK: Strength library

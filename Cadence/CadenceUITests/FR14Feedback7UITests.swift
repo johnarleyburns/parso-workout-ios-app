@@ -37,8 +37,10 @@ final class FR14Feedback7UITests: CadenceUITestCase {
         mins.clearAndType("42")
         XCTAssertTrue(app.buttons["log.save"].waitTap(), "Log Workout save")
 
-        XCTAssertTrue(app.buttons["home.cardioRow.run"].waitForExistence(timeout: 25),
-                      "the logged run appears in history")
+        let lastCardio = app.descendants(matching: .any)["home.fact.lastCardio"].firstMatch
+        for _ in 0..<8 where !lastCardio.exists { app.swipeUp() }
+        XCTAssertTrue(lastCardio.exists,
+                      "the logged run appears in Home's latest cardio fact")
     }
 
     // Item 6 — Cool Down asks "are you sure?" first; Cancel keeps the session.

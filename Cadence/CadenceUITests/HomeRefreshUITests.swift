@@ -1,14 +1,12 @@
 import XCTest
 
 /// Post-save Home refresh (audio/coach routing plan §C): logging/completing a
-/// workout must update Home's Coach surfaces immediately — without backgrounding
-/// or re-entering the app. We assert via "Why this today" (reliably queryable),
-/// per the plan's fallback of checking the Coach last-cardio fact rather than the
-/// integer minute tile.
+/// workout must update Home's Coach-derived surfaces immediately — without
+/// backgrounding or re-entering the app.
 final class HomeRefreshUITests: CadenceUITestCase {
 
-    /// Log a run, then — without relaunch — open "Why this today" and confirm the
-    /// just-logged run is surfaced as the most recent cardio.
+    /// Log a run, then — without relaunch — confirm the just-logged run is
+    /// surfaced as the most recent cardio in Home's "What you did" summary.
     func testLoggedCardioImmediatelyShowsAsLastCardio() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
@@ -19,13 +17,12 @@ final class HomeRefreshUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["log.save"].waitForExistence(timeout: 10), "log save button")
         app.buttons["log.save"].tap()
 
-        // Back on Home without relaunch: the Coach surfaces must already reflect it.
-        XCTAssertTrue(app.buttons["coach.card.whyToday"].waitForExistence(timeout: 10))
-        app.buttons["coach.card.whyToday"].tap()
-        _ = app.navigationBars["Why this today"].waitForExistence(timeout: 5)
-
-        let lastCardio = app.descendants(matching: .any)["whyToday.fact.lastCardio"].firstMatch
-        XCTAssertTrue(lastCardio.waitForExistence(timeout: 5),
+        // Back on Home without relaunch: the Coach-derived facts must already reflect it.
+        let lastCardio = app.descendants(matching: .any)["home.fact.lastCardio"].firstMatch
+        for _ in 0..<8 where !lastCardio.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(lastCardio.exists,
                       "last cardio fact should exist immediately after logging")
         XCTAssertTrue(lastCardio.label.contains("Run"),
                       "the just-logged run should be the most recent cardio, got: \(lastCardio.label)")

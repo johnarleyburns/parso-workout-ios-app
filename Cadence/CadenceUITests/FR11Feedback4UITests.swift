@@ -1,28 +1,21 @@
 import XCTest
 
-/// Feedback batch 4 (field-testing round 4B) — Home goal ratios (steps + cardio
-/// minutes shown as value/goal with a progress bar), configurable cardio goal +
-/// warm-up/cool-down lengths in Settings, the "Start with Warm-Up" path, the
-/// "Cool Down" control on a strength session, and interval (HIIT/boxing) history
-/// detail in the summary.
+/// Feedback batch 4 (field-testing round 4B) — Home plan summary, configurable
+/// cardio goal + warm-up/cool-down lengths in Settings, the "Start with Warm-Up"
+/// path, the "Cool Down" control on a strength session, and interval
+/// (HIIT/boxing) history detail in the summary.
 final class FR11Feedback4UITests: CadenceUITestCase {
 
-    // MARK: Home goal ratios
+    // MARK: Home summary
 
-    // The steps and cardio tiles show progress toward a goal: a "value / goal"
-    // label and a progress bar.
-    func testHomeTilesShowGoalRatios() {
+    func testHomeShowsPlanAndWhatYouDidSummary() {
         let app = XCUIApplication.launched()
-        let steps = app.staticTexts["today.steps"]
-        XCTAssertTrue(steps.waitForExistence(timeout: 25), "steps tile should show")
-        XCTAssertTrue(steps.label.contains("/"), "steps should read as value / goal")
-        let cardio = app.staticTexts["home.cardioMinutes"]
-        XCTAssertTrue(cardio.waitForExistence(timeout: 10), "cardio tile should show")
-        XCTAssertTrue(cardio.label.contains("/"), "cardio minutes should read as value / goal")
-        XCTAssertTrue(app.progressIndicators["today.steps.progress"].waitForExistence(timeout: 10),
-                      "steps tile should show a progress bar")
-        XCTAssertTrue(app.progressIndicators["home.cardioMinutes.progress"].exists,
-                      "cardio tile should show a progress bar")
+        XCTAssertTrue(app.descendants(matching: .any)["home.headerDate"].waitForExistence(timeout: 25))
+        XCTAssertTrue(app.descendants(matching: .any)["home.plannedRestOfWeek"].exists)
+
+        let whatYouDid = app.descendants(matching: .any)["home.whatYouDid"].firstMatch
+        for _ in 0..<8 where !whatYouDid.exists { app.swipeUp() }
+        XCTAssertTrue(whatYouDid.exists, "Home should show the compact training summary")
     }
 
     // MARK: Settings — goal + warm-up/cool-down

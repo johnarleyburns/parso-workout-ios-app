@@ -1,16 +1,19 @@
 import XCTest
 
 /// UI tests for FR-2 cardio. The dedicated Cardio screen was removed in feedback
-/// batch 3: cardio is recorded from Start Workout and reviewed in Home's recent
-/// list / unified history. Sync now runs automatically on Home's appear.
+/// batch 3: cardio is recorded from Start Workout and reviewed in Home's summary
+/// / unified history. Sync now runs automatically on Home's appear.
 final class FR2CardioUITests: CadenceUITestCase {
 
     // FR-2.1 — auto-sync on Home surfaces a Watch-recorded run. (Dedup by
     // HealthKit UUID is covered by CadenceCore's repository tests.)
     func testSyncSurfacesWatchRunOnHome() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.buttons["home.cardioRow.run"].waitForExistence(timeout: 25),
-                      "a synced Watch run should appear in Home's recent workouts")
+        let lastCardio = app.descendants(matching: .any)["home.fact.lastCardio"].firstMatch
+        for _ in 0..<8 where !lastCardio.exists { app.swipeUp() }
+        XCTAssertTrue(lastCardio.exists,
+                      "a synced Watch run should appear in Home's latest cardio fact")
+        XCTAssertTrue(lastCardio.label.contains("Run"))
     }
 
     // Field-testing §05 — Start Workout → Run opens the purpose-built outdoor GPS
@@ -36,9 +39,11 @@ final class FR2CardioUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["summary.metric.distance"].waitForExistence(timeout: 25),
                       "outdoor run summary should show distance")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "summary Done")
-        // Back on Home; the recorded run is now in the recent list.
-        XCTAssertTrue(app.buttons["home.cardioRow.run"].waitForExistence(timeout: 25),
-                      "recorded outdoor run should appear in Home history")
+        // Back on Home; the recorded run is now reflected in the latest cardio fact.
+        let lastCardio = app.descendants(matching: .any)["home.fact.lastCardio"].firstMatch
+        for _ in 0..<8 where !lastCardio.exists { app.swipeUp() }
+        XCTAssertTrue(lastCardio.exists,
+                      "recorded outdoor run should appear in Home's latest cardio fact")
     }
 
     // FR-2.3 — live HR shown during an indoor recording when strap is connected
@@ -58,7 +63,8 @@ final class FR2CardioUITests: CadenceUITestCase {
     // FR-2.3 / 5.3 — a synced cardio workout's summary shows its HR chart.
     func testCardioSummaryShowsHR() {
         let app = XCUIApplication.launched()
-        let row = app.buttons["home.cardioRow.run"]
+        XCTAssertTrue(app.scrollToHittableAndTap("home.train"), "open History")
+        let row = app.buttons["history.cardioRow.run"]
         XCTAssertTrue(row.waitForExistence(timeout: 25), "synced run row")
         row.tap()
         XCTAssertTrue(app.otherElements["summary.hrChart"].waitForExistence(timeout: 25)

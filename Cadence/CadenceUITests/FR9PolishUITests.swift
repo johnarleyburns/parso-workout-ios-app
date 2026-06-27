@@ -1,26 +1,21 @@
 import XCTest
 
 /// Field-testing Round 4 Part B — P1 polish. Covers the user-visible polish:
-/// the merged "Recent workouts" list (cardio counts as a workout, #10) and the
-/// auto-save-to-Health setting (#8). The three screen-flash fixes (#1/#5/#9) are
-/// animation-only and are covered indirectly by the FR7/FR8 flows still landing
-/// on the right screens.
+/// unified History (cardio counts as a workout, #10) and the auto-save-to-Health
+/// setting (#8). The three screen-flash fixes (#1/#5/#9) are animation-only and
+/// are covered indirectly by the FR7/FR8 flows still landing on the right screens.
 final class FR9PolishUITests: CadenceUITestCase {
 
-    // #10 — Home surfaces strength sessions and cardio recordings in one section.
-    func testHomeRecentWorkoutsMergesCardioAndStrength() {
+    // #10 — History surfaces strength sessions and cardio recordings in one list.
+    func testHistoryMergesCardioAndStrength() {
         let app = XCUIApplication.launched(seeds: ["historyMixed"])
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25), "home")
 
-        // The recent list sits below the fold on the scrolling dashboard.
-        let session = app.buttons["home.sessionRow"].firstMatch
-        let cardio = app.buttons["home.cardioRow.walk"].firstMatch
-        var merged = false
-        for _ in 0..<8 {
-            if session.exists && cardio.exists { merged = true; break }
-            app.swipeUp()
-        }
-        XCTAssertTrue(merged, "strength + cardio should share one Recent workouts list")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.train"), "open History from Home")
+        XCTAssertTrue(app.buttons["session.row"].firstMatch.waitForExistence(timeout: 25),
+                      "strength sessions should list")
+        XCTAssertTrue(app.buttons["history.cardioRow.walk"].firstMatch.waitForExistence(timeout: 25),
+                      "the seeded walk should appear in the same list as strength")
     }
 
     // #8 — the auto-save-to-Apple-Health preference is exposed in Settings.

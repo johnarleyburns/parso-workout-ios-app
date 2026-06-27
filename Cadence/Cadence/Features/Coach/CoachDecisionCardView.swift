@@ -4,11 +4,11 @@ import CadenceCore
 struct CoachDecisionCardView: View {
     let decision: CoachDecision
     let addOnRecommendation: CoachAddOnRecommendation
+    let topInsight: Insight?
     var onStart: (CoachSession) -> Void
     var onAddOn: (CoachSession, CoachAddOnStatus) -> Void = { _, _ in }
-    var onSeeWeek: () -> Void
-    var onSeeWhy: () -> Void
-    var onSeeTomorrow: () -> Void
+    var onSeeInsights: () -> Void
+    var onPreferences: () -> Void
 
     @State private var warningsExpanded = false
     @State private var addOnsExpanded = false
@@ -21,6 +21,13 @@ struct CoachDecisionCardView: View {
                 Text("COACH · \(stateKind)")
                     .font(.caption.bold()).tracking(1.2)
                 Spacer()
+                Button { onPreferences() } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("coach.card.preferences")
+                .accessibilityLabel("Coach preferences")
             }
             .foregroundStyle(stateColor)
 
@@ -43,23 +50,6 @@ struct CoachDecisionCardView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
-                    if isCompleteState, let tomorrow = tomorrowPreview {
-                        Button { onSeeTomorrow() } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "forward.fill")
-                                    .font(.caption2)
-                                Text("Tomorrow: \(tomorrow)")
-                                    .font(.caption.weight(.medium))
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.weight(.bold))
-                                    .opacity(0.7)
-                            }
-                            .foregroundStyle(stateColor)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 4)
-                        .accessibilityLabel("View tomorrow's recommendation")
-                    }
                 }
             }
 
@@ -175,30 +165,37 @@ struct CoachDecisionCardView: View {
                 .accessibilityLabel(ctaLabel)
             }
 
-            HStack {
-                Button { onSeeWhy() } label: {
-                    HStack(spacing: 3) {
-                        Text("Why this today")
-                            .font(.caption.weight(.medium))
-                        Image(systemName: "chevron.right")
-                            .font(.caption2.weight(.bold))
-                            .opacity(0.7)
+            if let topInsight {
+                Divider().padding(.top, 2)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 9) {
+                        Image(systemName: topInsight.kind.symbol)
+                            .font(.subheadline)
+                            .foregroundStyle(topInsight.severity.tint)
+                            .frame(width: 22, height: 22)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(topInsight.title)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(2)
+                            Text(topInsight.message)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
                     }
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("coach.card.whyToday")
-                Spacer()
-                Button { onSeeWeek() } label: {
-                    HStack(spacing: 3) {
-                        Text("Your week")
-                            .font(.caption.weight(.medium))
-                        Image(systemName: "chevron.right")
-                            .font(.caption2.weight(.bold))
-                            .opacity(0.7)
+
+                    Button { onSeeInsights() } label: {
+                        HStack(spacing: 4) {
+                            Text("More insights")
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.bold))
+                        }
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(stateColor)
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("coach.card.insights")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("coach.card.yourWeek")
             }
         }
         .padding(18)
@@ -214,11 +211,6 @@ struct CoachDecisionCardView: View {
     private var isCompleteState: Bool {
         if case .planComplete = decision.planAdherence { return true }
         return false
-    }
-
-    private var tomorrowPreview: String? {
-        if case .planComplete(_, _, let preview) = decision.planAdherence { return preview }
-        return nil
     }
 
     private var todayCompleteDescription: String {

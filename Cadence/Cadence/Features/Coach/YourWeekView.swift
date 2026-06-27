@@ -5,13 +5,11 @@ struct YourWeekView: View {
     let decision: CoachDecision
     let facts: CoachFacts
     let preferences: CoachSchedulePreferences
-    let insights: [Insight]
 
     var body: some View {
         let balance = decision.weeklyBalance
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: preferences)
         let completed = plan.completedDaysInGeneratedWeek
-        let remaining = plan.remainingCalendarWeekDays.filter { !$0.sessions.isEmpty }
         let nextWeek = plan.nextWeekDays.filter { !$0.sessions.isEmpty }
         List {
             Section("This Week So Far") {
@@ -67,23 +65,10 @@ struct YourWeekView: View {
                 }
             }
 
-            if !remaining.isEmpty {
-                Section("Planned (rest of week)") {
-                    ForEach(remaining) { day in
-                        dayRow(day)
-                    }
-                }
-            } else {
-                Section("Planned (rest of week)") {
-                    Text("No more planned sessions this week.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-
             if !nextWeek.isEmpty {
                 Section("Planned (next week)") {
                     ForEach(nextWeek) { day in
-                        dayRow(day)
+                        CoachPlanDayRow(day: day)
                     }
                 }
             }
@@ -102,22 +87,16 @@ struct YourWeekView: View {
                     }
                 }
             }
-
-            if !insights.isEmpty {
-                Section("Coach's Insights") {
-                    ForEach(insights) { insight in
-                        CompactInsightRow(insight: insight)
-                    }
-                }
-                .accessibilityIdentifier("yourWeek.insights")
-            }
         }
-        .navigationTitle("Your week")
+        .navigationTitle("Your Plan")
         .navigationBarTitleDisplayMode(.inline)
     }
+}
 
-    @ViewBuilder
-    private func dayRow(_ day: WeeklyPlan.DayOutline) -> some View {
+struct CoachPlanDayRow: View {
+    let day: WeeklyPlan.DayOutline
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(weekdayLabel(for: day.date)).font(.caption.weight(.semibold)).frame(width: 32, alignment: .leading)
@@ -146,64 +125,5 @@ struct YourWeekView: View {
         let f = DateFormatter()
         f.dateFormat = "EEE"
         return f.string(from: date)
-    }
-}
-
-private struct CompactInsightRow: View {
-    let insight: Insight
-    @State private var expanded = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    expanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: insight.kind.symbol)
-                        .foregroundStyle(insight.severity.tint)
-                        .frame(width: 22, height: 22)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(insight.title)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(2)
-                        Text(insight.severity.compactLabel)
-                            .font(.caption2)
-                            .foregroundStyle(insight.severity.tint)
-                    }
-                    Spacer()
-                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("yourWeek.insight.\(insight.id)")
-            .accessibilityLabel(insight.title)
-
-            if expanded {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(insight.message)
-                        .font(.caption)
-                    Text(insight.detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    CitationLink(citation: insight.citation, compact: true)
-                }
-                .padding(.leading, 32)
-                .accessibilityIdentifier("yourWeek.insight.\(insight.id).detail")
-            }
-        }
-    }
-}
-
-private extension InsightSeverity {
-    var compactLabel: String {
-        switch self {
-        case .attention: return "Needs attention"
-        case .info: return "Info"
-        }
     }
 }

@@ -117,6 +117,17 @@ public struct ObservedFact: Sendable, Equatable, Identifiable {
 
 public enum CoachDecisionEngine {
 
+    private struct TodayPlanStatus {
+        let strengthPlannedAtStart: Bool
+        let cardioPlannedAtStart: Bool
+        let strengthCompleted: Bool
+        let cardioCompleted: Bool
+
+        var wasTwoADayAtStart: Bool {
+            strengthPlannedAtStart && cardioPlannedAtStart
+        }
+    }
+
     public static func run(_ facts: CoachFacts,
                            profile: CoachPreferenceProfile = .empty,
                            schedulePreferences: CoachSchedulePreferences = .default,
@@ -311,6 +322,23 @@ public enum CoachDecisionEngine {
 
         let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
         let cardioNeeded = facts.weeklyBalance.moderateEquivalentMinutes < 150.0
+        let todayPlan = todayPlanStatus(todayCompleted: todayCompleted,
+                                        facts: facts,
+                                        schedulePreferences: schedulePreferences)
+
+        // Two-a-day completion is anchored to what was planned at the start of
+        // the day. If the first workout satisfies one weekly target, the other
+        // planned workout still remains due today.
+        if todayPlan.wasTwoADayAtStart {
+            if todayPlan.strengthCompleted && todayPlan.cardioCompleted {
+                let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
+                                                               schedulePreferences: schedulePreferences)
+                return .planComplete(completedKind: nil,
+                                      todayDescription: "Strength and cardio — both in the books",
+                                      tomorrowPreview: tomorrowPreview)
+            }
+            return .planAhead
+        }
 
         // When both strength and cardio are weekly-needed, require both to be
         // completed before the day is done. If only one is done, stay planAhead
@@ -348,6 +376,43 @@ public enum CoachDecisionEngine {
         }
 
         return .offPlan(didSomethingToday: true)
+    }
+
+    private static func todayPlanStatus(todayCompleted: [TrainingEvent],
+                                        facts: CoachFacts,
+                                        schedulePreferences: CoachSchedulePreferences) -> TodayPlanStatus {
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: facts.referenceDate)
+        let weekStart = WeeklyStats.weekStart(now: facts.referenceDate)
+
+        let beforeToday = facts.rolling7dCompletedEvents.filter { event in
+            event.start >= weekStart && event.start < todayStart
+        }
+
+        let strengthDaysBeforeToday = Set(beforeToday.compactMap { event -> Date? in
+            guard event.isStrength else { return nil }
+            return cal.startOfDay(for: event.start)
+        }).count
+
+        let moderateEquivalentBeforeToday = beforeToday.reduce(0.0) { total, event in
+            total + moderateEquivalentMinutes(for: event)
+        }
+
+        return TodayPlanStatus(
+            strengthPlannedAtStart: strengthDaysBeforeToday < schedulePreferences.strengthDaysPerWeek,
+            cardioPlannedAtStart: moderateEquivalentBeforeToday < 150.0,
+            strengthCompleted: todayCompleted.contains(where: \.isStrength),
+            cardioCompleted: todayCompleted.contains(where: \.isAerobic)
+        )
+    }
+
+    private static func moderateEquivalentMinutes(for event: TrainingEvent) -> Double {
+        switch event.kind {
+        case .aerobic(let details), .intervals(let details):
+            return details.moderateEquivalentMinutes
+        case .strength, .unknown:
+            return 0
+        }
     }
 
     private static func findTodayPlanMatches(primary: CoachSession,
@@ -636,25 +701,23 @@ public enum CoachDecisionEngine {
         // Only activate two-a-day recommendations when the user has opted in.
         guard schedulePreferences.allowsTwoADays else { return [] }
 
-        let strengthDone = todayCompleted.contains { $0.isStrength }
-        let cardioDone = todayCompleted.contains { $0.isAerobic }
-
-        let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
-        let cardioNeeded = facts.weeklyBalance.moderateEquivalentMinutes < 150.0
+        let todayPlan = todayPlanStatus(todayCompleted: todayCompleted,
+                                        facts: facts,
+                                        schedulePreferences: schedulePreferences)
 
         // Only build when both are needed (a two-a-day) and at least one remains.
-        guard strengthNeeded && cardioNeeded else { return [] }
-        guard !strengthDone || !cardioDone else { return [] }
+        guard todayPlan.wasTwoADayAtStart else { return [] }
+        guard !todayPlan.strengthCompleted || !todayPlan.cardioCompleted else { return [] }
 
         let bestStrength = scored.first { $0.session.kind == .strength }?.session
         let bestCardio = scored.first { $0.session.isAerobic }?.session
 
         var recommendations: [CoachSession] = []
 
-        if let s = bestStrength, !strengthDone {
+        if let s = bestStrength, !todayPlan.strengthCompleted {
             recommendations.append(s)
         }
-        if let c = bestCardio, !cardioDone {
+        if let c = bestCardio, !todayPlan.cardioCompleted {
             recommendations.append(c)
         }
 

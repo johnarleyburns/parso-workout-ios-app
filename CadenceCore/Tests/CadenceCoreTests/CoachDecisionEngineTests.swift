@@ -15,14 +15,28 @@ final class CoachDecisionEngineTests: XCTestCase {
         return cal.date(from: comps) ?? Date()
     }
 
+    private var testSaturday: Date {
+        var comps = DateComponents()
+        comps.year = 2026; comps.month = 6; comps.day = 27
+        comps.hour = 12; comps.minute = 0; comps.second = 0
+        return Calendar.current.date(from: comps) ?? Date()
+    }
+
     private func makeStrengthEvent(context: ModelContext, name: String,
                                     primaryMuscles: [String], date: Date, sets: Int = 3,
-                                    rpe: Double? = 8) throws -> TrainingEvent {
+                                    rpe: Double? = 8,
+                                    setCompletedAt: Date? = nil) throws -> TrainingEvent {
         let session = try WorkoutRepository.createSession(date: date.addingTimeInterval(-600), in: context)
         let ex = try WorkoutRepository.findOrCreateExercise(
             named: name, primaryMuscles: primaryMuscles, in: context)
         for _ in 0..<sets {
-            _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 100, reps: 5, rpe: rpe, in: context)
+            if let setCompletedAt {
+                _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 100, reps: 5,
+                                                 rpe: rpe, completedAt: setCompletedAt, in: context)
+            } else {
+                _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 100, reps: 5,
+                                                 rpe: rpe, in: context)
+            }
         }
         session.endedAt = date
         return TrainingEvent.from(session: session)!
@@ -933,6 +947,59 @@ final class CoachDecisionEngineTests: XCTestCase {
                        "Plan should not be complete — cardio still needed")
     }
 
+    func testTwoADayAfterStrengthCompletesWeeklyTargetStillShowsCardio() throws {
+        let ctx = try makeContext()
+        let now = testSaturday
+
+        let earlierStrength = try makeStrengthEvent(context: ctx, name: "Back Squat",
+                                                     primaryMuscles: ["quadriceps"],
+                                                     date: now.addingTimeInterval(-3 * 86400),
+                                                     setCompletedAt: now.addingTimeInterval(-3 * 86400))
+        let prefs = CoachSchedulePreferences.default.withTwoADays(true)
+
+        let beforeFacts = CoachFacts.make(from: [earlierStrength], goal: .strength,
+                                          experience: .intermediate, now: now)
+        let beforeDecision = CoachDecisionEngine.run(beforeFacts, schedulePreferences: prefs)
+        XCTAssertEqual(beforeDecision.todayPlannedRecommendations.count, 2,
+                       "Before either workout, Saturday should show both planned workouts")
+
+        let todayStrength = try makeStrengthEvent(context: ctx, name: "Bench Press",
+                                                   primaryMuscles: ["chest"],
+                                                   date: now.addingTimeInterval(-3600),
+                                                   setCompletedAt: now.addingTimeInterval(-3600))
+        let afterFacts = CoachFacts.make(from: [earlierStrength, todayStrength],
+                                         goal: .strength, experience: .intermediate, now: now)
+        let afterDecision = CoachDecisionEngine.run(afterFacts, schedulePreferences: prefs)
+
+        XCTAssertEqual(afterFacts.weeklyBalance.strengthDays, prefs.strengthDaysPerWeek,
+                       "The morning strength workout should satisfy the weekly strength target")
+        XCTAssertEqual(afterDecision.todayPlannedRecommendations.count, 1,
+                       "Cardio should remain planned after only strength is complete")
+        XCTAssertTrue(afterDecision.todayPlannedRecommendations.first?.isAerobic ?? false,
+                      "The remaining planned workout should be cardio")
+        XCTAssertTrue(afterDecision.primary.isAerobic,
+                      "The card's single Start action should launch the remaining cardio workout")
+        XCTAssertEqual(afterDecision.planAdherence, .planAhead,
+                       "Plan should not be complete until the planned cardio is also done")
+
+        let todayCardio = makeCardioEvent(context: ctx, type: .cycle,
+                                          date: now.addingTimeInterval(-900),
+                                          duration: 35 * 60, avgHR: 135)
+        let completeFacts = CoachFacts.make(from: [earlierStrength, todayStrength, todayCardio],
+                                            goal: .strength, experience: .intermediate, now: now)
+        let completeDecision = CoachDecisionEngine.run(completeFacts, schedulePreferences: prefs)
+
+        XCTAssertEqual(completeDecision.todayPlannedRecommendations.count, 0,
+                       "No planned workouts should remain after both two-a-day sessions are complete")
+        if case .planComplete(let completedKind, let description, _) = completeDecision.planAdherence {
+            XCTAssertNil(completedKind,
+                         "Two-a-day completion should render the generic Plan followed state")
+            XCTAssertEqual(description, "Strength and cardio — both in the books")
+        } else {
+            XCTFail("Plan should be complete after both planned workouts. Got: \(completeDecision.planAdherence)")
+        }
+    }
+
     func testTwoADayAfterBothComplete() throws {
         let ctx = try makeContext()
         let now = testNow
@@ -950,8 +1017,9 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         XCTAssertEqual(decision.todayPlannedRecommendations.count, 0,
                        "Both done — no remaining recommendations")
-        if case .planComplete = decision.planAdherence {
-            // Expected
+        if case .planComplete(let completedKind, _, _) = decision.planAdherence {
+            XCTAssertNil(completedKind,
+                         "Two-a-day completion should render the generic Plan followed state")
         } else {
             XCTFail("Plan should be complete after both strength and cardio. Got: \(decision.planAdherence)")
         }

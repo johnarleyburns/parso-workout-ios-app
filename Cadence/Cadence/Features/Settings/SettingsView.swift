@@ -6,6 +6,7 @@ import CadenceCore
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(AppSettings.self) private var settingsObject
+    @Environment(ContributionCoordinator.self) private var contributions
 
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false
@@ -200,6 +201,21 @@ struct SettingsView: View {
                         Label("About", systemImage: "info.circle")
                     }
                     .accessibilityIdentifier("settings.about")
+                }
+
+                // Appended at the very bottom (per the §06 convention) so earlier
+                // sections' coordinate-tap UI tests keep their offsets.
+                Section {
+                    NavigationLink {
+                        ContributionSupportView(store: contributions.store)
+                    } label: {
+                        Label(contributions.store.isSupporter ? "Supporter — Thank You" : "Support Cladiron",
+                              systemImage: contributions.store.isSupporter ? "heart.fill" : "heart")
+                            .foregroundStyle(contributions.store.isSupporter ? Color.pink : Color.accentColor)
+                    }
+                    .accessibilityIdentifier("settings.support")
+                } footer: {
+                    Text("Cladiron is free and open-source. A one-time tip is an optional way to support development — never required.")
                 }
             }
         .navigationTitle("Settings")

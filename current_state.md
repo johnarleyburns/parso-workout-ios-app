@@ -2,7 +2,54 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-27 — Coach card "Pick another" cardio alternatives link._
+_Last updated: 2026-06-28 — App Store readiness fixes + supporter (tip-jar) flow._
+
+## What just shipped — Supporter / contribution flow (StoreKit 2 tip jar)
+
+Ported from the Parso Radio app, adapted to Cladiron's Observation paradigm. Plan +
+decisions: `plans/supporter-flow/2026-06-28/`.
+
+- **`CadenceCore/ContributionPromptEngine.swift`** (+ tests): pure "when to prompt" logic.
+  Gate = **6 completed workouts** AND ≥2 sessions; snooze 7 days + 5 launches; never when
+  opted-out/already-supporter/first-session/once-per-session. 7 tests, fixed `now` (flake-proof).
+- **`App/ContributionStore.swift`**: `@Observable @MainActor` StoreKit 2 layer. Consumables
+  `guru.parso.cladiron.tip.small/medium/generous`. `everContributed` in UserDefaults; loads
+  products, `purchase`, `restore`, `Transaction.updates` listener. Dormant until ASC products exist.
+- **`App/ContributionCoordinator.swift`**: `@Observable` lifecycle. Owns its store, counters
+  in UserDefaults, `beginSession`, static `recordWorkoutCompleted`, `evaluate`, dismiss/optOut.
+- **`Features/Settings/ContributionToast.swift`** + **`ContributionSupportView.swift`**: bottom
+  card (Support / Maybe later / Don't ask again) + Support screen ("Support Cladiron", no charity
+  line, placeholder when no products, Restore).
+- **Wiring:** `CadenceApp` injects the coordinator via `.environment` and calls `beginSession()`.
+  Per decision D6 the prompt is **Home-only**: `HomeView` renders the toast + calls `evaluate()`
+  on scene-active, both gated by `contributionPromptAllowed` (no active workout / start sequence).
+  Engagement counter bumps via `workoutSaved()` on genuine cardio/interval/swim/logged saves
+  (NOT HealthKit ingest) and via `active.finishedSummary` for strength.
+- **Settings** gains an appended "Support Cladiron" section; **About** copy reworded
+  ("optional tip jar … never required"). **`Cadence.storekit`** added for local testing
+  (maintainer adds it to the project + Run scheme per `02-manual-steps.md`).
+- Verified: `xcodebuild` **BUILD SUCCEEDED**; `swift test` 481 tests (the 7 new engine tests
+  pass; the 13 failures are the **pre-existing** date-relative recovery/weekly-stats flakes,
+  reproduced identically on a stashed clean tree).
+
+## What just shipped — App Store readiness fixes
+
+- **Privacy manifest** `Cadence/Cadence/PrivacyInfo.xcprivacy` — Data Not Collected + the one
+  required-reason API actually used (`UserDefaults`/CA92.1). Auto-included via the Xcode-16
+  synchronized group.
+- **Device family → iPhone-only** (`TARGETED_DEVICE_FAMILY = 1`, both app configs).
+- **Logic bug fixed:** `RecommendationEngine.pickRoutine` no longer indexes a guarded-empty
+  array — added `StrengthPresets.fallback`, uses `presets.first`.
+- **Persistent medical disclaimer** added to About (onboarding already had one).
+- **VoiceOver:** labels on icon-only buttons (SessionView save-health/menu/info/save-set/RPE,
+  Onboarding back); 44pt hit target on the exercise menu; accessible summaries on all 4 Swift
+  Charts (HR avg/range, assessment trend; strength chart deferred to its text list); decorative
+  alternatives icon hidden.
+- **README:** states plainly there is **no companion watch app currently** (Watch data imported
+  from Health); a watchOS app is only a possible future addition.
+- **Audio background mode kept** (per maintainer — used for interval/finish cues over video).
+- Still open (not done): App Store Connect listing/screenshots/privacy answers; CloudKit vs
+  `remote-notification` entitlement reconciliation; Dynamic Type on hardcoded-size timer screens.
 
 ## What just shipped — Coach card cardio alternatives link
 

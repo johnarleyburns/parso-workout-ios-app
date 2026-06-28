@@ -1,0 +1,66 @@
+{
+  "identifier" : "C1AD1R0N",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayName" : "Small Tip",
+      "family" : "consumable",
+      "localizations" : [
+        {
+          "description" : "A small thank-you that helps support Cladiron's development.",
+          "displayName" : "Buy us a coffee",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "guru.parso.cladiron.tip.small",
+      "price" : 1.99,
+      "referenceName" : "Cladiron Small Tip",
+      "type" : "consumable"
+    },
+    {
+      "displayName" : "Supporter Tip",
+      "family" : "consumable",
+      "localizations" : [
+        {
+          "description" : "Support continued development of this free, open-source coach.",
+          "displayName" : "Supporter",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "guru.parso.cladiron.tip.medium",
+      "price" : 4.99,
+      "referenceName" : "Cladiron Supporter Tip",
+      "type" : "consumable"
+    },
+    {
+      "displayName" : "Patron Tip",
+      "family" : "consumable",
+      "localizations" : [
+        {
+          "description" : "A generous contribution to keep Cladiron free, open-source, and independent.",
+          "displayName" : "Patron",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "guru.parso.cladiron.tip.generous",
+      "price" : 9.99,
+      "referenceName" : "Cladiron Patron Tip",
+      "type" : "consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "3264Y8YUGV",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_localizedDescription" : "Support Cladiron and help keep it free, open-source, and ad-free.",
+    "_localizedName" : "Cladiron Support",
+    "_storefront" : "USA",
+    "_timeRate" : "1"
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 2,
+    "minor" : 0
+  }
+}

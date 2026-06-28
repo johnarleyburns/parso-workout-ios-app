@@ -10,6 +10,7 @@ struct HomeView: View {
     @Environment(AppModel.self) private var model
     @Environment(AppSettings.self) private var settings
     @Environment(ActiveWorkoutModel.self) private var active
+    @Environment(ContributionCoordinator.self) private var contributions
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
@@ -50,6 +51,8 @@ struct HomeView: View {
     @State private var outdoorGoalMeters: Double?     // goal handed to the outdoor recorder
     /// Presents the "same prescription, different way" cardio chooser from the card.
     @State private var showAlternatives = false
+    /// Presents the Support screen from the contribution toast.
+    @State private var showSupport = false
 
     // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
     // read-only insights and the prescriptive recommendation surfaced on the card.
@@ -186,7 +189,7 @@ struct HomeView: View {
             .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
             .refreshable { today = await model.health.todayActivity(); await syncCardioFromHealth() }
             .sheet(isPresented: $logPickerPresented) {
-                LogWorkoutPicker(onSaved: markWorkoutHistoryChanged)
+                LogWorkoutPicker(onSaved: workoutSaved)
             }
             // P1 #9 — the post-workout summary is presented here, above the whole
             // NavigationStack, so the finished session can pop behind it.
@@ -194,16 +197,34 @@ struct HomeView: View {
                 WorkoutSummaryView(data: finished.data,
                                    onDone: { active.finishedSummary = nil })
             }
-            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR, onSaved: { _ in markWorkoutHistoryChanged() }) }
-            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR, onSaved: { _ in markWorkoutHistoryChanged() }) }
+            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR, onSaved: { _ in workoutSaved() }) }
+            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR, onSaved: { _ in workoutSaved() }) }
             .sheet(item: $timerCardioSetup) { setup in
                 TimerCardioSetupView(type: setup.type, suggestedMinutes: setup.suggestedMinutes,
-                                     onSaved: { _ in markWorkoutHistoryChanged() })
+                                     onSaved: { _ in workoutSaved() })
             }
             .sheet(isPresented: $showAlternatives) {
                 NavigationStack {
                     CoachAlternativesView(decision: coachDecision,
                                           onSelect: { chooseAlternative($0) })
+                }
+            }
+            // Contribution prompt — Home only, never during a workout or its
+            // start sequence (decision: don't interfere with a workout).
+            .overlay(alignment: .bottom) {
+                if contributions.showToast, contributionPromptAllowed {
+                    ContributionToast(
+                        onSupport: { contributions.dismissToast(); showSupport = true },
+                        onLater:   { contributions.dismissToast() },
+                        onNever:   { contributions.optOutForever() })
+                        .padding(.bottom, 24)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(duration: 0.3), value: contributions.showToast)
+            .sheet(isPresented: $showSupport) {
+                NavigationStack {
+                    ContributionSupportView(store: contributions.store, showsDoneButton: true)
                 }
             }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
@@ -239,8 +260,8 @@ struct HomeView: View {
                     intervalLaunch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)
                 }
             }
-            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: captureHR, onSaved: { _ in markWorkoutHistoryChanged() }) }
-            .fullScreenCover(isPresented: $swimPresented) { SwimRecordView(onSaved: { _ in markWorkoutHistoryChanged() }) }
+            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: captureHR, onSaved: { _ in workoutSaved() }) }
+            .fullScreenCover(isPresented: $swimPresented) { SwimRecordView(onSaved: { _ in workoutSaved() }) }
             .confirmationDialog(
                 "This is more load than planned today.",
                 isPresented: Binding(
@@ -325,7 +346,17 @@ struct HomeView: View {
                 settings.lastCoachComputeDay = today
                 historyRefreshToken = UUID()
             }
+            if contributionPromptAllowed { contributions.evaluate() }
         }
+        .onChange(of: active.finishedSummary != nil) { _, shown in
+            if shown { ContributionCoordinator.recordWorkoutCompleted() }
+        }
+    }
+
+    /// The contribution toast is allowed only on Home with no workout (or workout
+    /// start sequence) in progress, so it never interrupts training.
+    private var contributionPromptAllowed: Bool {
+        active.strengthSession == nil && hrGateKind == nil && pending == nil && !warmupActive
     }
 
     private static func dayString(_ date: Date = Date()) -> String {
@@ -340,6 +371,15 @@ struct HomeView: View {
             await Task.yield()
             historyRefreshToken = UUID()
         }
+    }
+
+    /// A genuine, user-completed workout (cardio/interval/swim/logged) was saved:
+    /// refresh history AND count it toward the optional contribution prompt.
+    /// HealthKit ingest (`syncCardioFromHealth`) intentionally does NOT count;
+    /// strength completion is counted separately via `active.finishedSummary`.
+    private func workoutSaved() {
+        markWorkoutHistoryChanged()
+        ContributionCoordinator.recordWorkoutCompleted()
     }
 
     /// Pulls any new Watch/Health-recorded cardio into the local store (FR-2.1).

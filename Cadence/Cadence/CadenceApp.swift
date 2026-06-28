@@ -7,6 +7,7 @@ struct CadenceApp: App {
     @State private var model = AppModel()
     @State private var settings = AppSettings()
     @State private var active = ActiveWorkoutModel()
+    @State private var contributions = ContributionCoordinator()
     let container: ModelContainer
 
     /// Bump when an incompatible on-disk schema change ships, so the local
@@ -58,7 +59,9 @@ struct CadenceApp: App {
                 .environment(model)
                 .environment(settings)
                 .environment(active)
+                .environment(contributions)
                 .task { model.activateWCSession() }
+                .task { contributions.beginSession() }
         }
         .modelContainer(container)
     }

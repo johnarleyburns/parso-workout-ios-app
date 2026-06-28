@@ -38,7 +38,7 @@ struct TimerCardioSetupView: View {
     private var setupScreen: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                Image(systemName: type.symbol).font(.system(size: 64)).foregroundStyle(.tint)
+                Image(systemName: type.symbol).scaledSystemFont(64, relativeTo: .largeTitle).foregroundStyle(.tint)
                 Text(type.displayName).font(.title2.bold())
 
                 if let suggestedMinutes {

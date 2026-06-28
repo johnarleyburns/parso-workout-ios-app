@@ -193,7 +193,10 @@ extension TrainingEvent {
             let maxRPE = rpes.max()
 
             let reachedFailure = hardSets.contains { ($0.rpe ?? 0) >= 10 }
-            let lastTime = hardSets.compactMap(\.completedAt).max() ?? endDate
+            // A session can't end before its last working set: anchor to the later
+            // of the set timestamps and the session end (defends against clock skew,
+            // imported data, and deterministic test fixtures).
+            let lastTime = (hardSets.compactMap(\.completedAt) + [endDate]).max() ?? endDate
 
             perExercise.append(StrengthEventDetails.PerExercise(
                 exerciseID: ex.id.uuidString,

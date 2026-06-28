@@ -70,7 +70,7 @@ struct WorkoutHero: View {
                                             startPoint: .top, endPoint: .bottom))
             }
             VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: type.symbol).font(.system(size: 30, weight: .bold))
+                Image(systemName: type.symbol).scaledSystemFont(30, relativeTo: .title, weight: .bold)
                 Text(type.displayName).font(.title3.bold())
                 if type.usesGPS { Text("GPS").font(.caption2).opacity(0.85) }
             }

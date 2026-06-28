@@ -6,9 +6,9 @@
 	<string>Cladiron</string>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>remote-notification</string>
 		<string>location</string>
 		<string>audio</string>
+		<string>bluetooth-central</string>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Cladiron reads your steps, workouts, and heart rate so your activity and Watch-recorded sessions appear here. Your health data never leaves your device.</string>

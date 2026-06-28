@@ -6,15 +6,15 @@ import Foundation
 /// arrays straight in, and it stays `swift test`-able with an in-memory store.
 public enum WeeklyStats {
 
-    /// The most recent Monday at 00:00 local time (start of the training week).
-    /// Weeks reset every Monday at midnight.
+    /// The most recent Monday at 00:00 local time (start of the training week) for
+    /// the week CONTAINING `now`. Weeks reset every Monday at midnight. Uses a
+    /// Monday-first calendar so this is correct on Sundays too (a Sunday belongs to
+    /// the week that started the previous Monday — not the upcoming one).
     public static func weekStart(now: Date = Date()) -> Date {
-        let cal = Calendar.current
-        var components = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
-        components.weekday = 2  // Monday
-        components.hour = 0
-        components.minute = 0
-        components.second = 0
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2  // Monday starts the week
+        cal.timeZone = Calendar.current.timeZone
+        let components = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
         return cal.date(from: components) ?? now.addingTimeInterval(-7 * 86_400)
     }
 

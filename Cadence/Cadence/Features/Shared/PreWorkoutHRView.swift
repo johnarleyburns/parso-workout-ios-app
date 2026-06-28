@@ -43,7 +43,7 @@ struct PreWorkoutHRView: View {
             Spacer()
 
             VStack(spacing: 8) {
-                Image(systemName: "heart.fill").font(.system(size: 44)).foregroundStyle(.pink)
+                Image(systemName: "heart.fill").scaledSystemFont(44, relativeTo: .largeTitle).foregroundStyle(.pink)
                 Text("Connect Heart Rate")
                     .font(.title.bold())
                     .accessibilityIdentifier("prehr.title")

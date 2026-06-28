@@ -1,6 +1,6 @@
 # Cladiron
 
-A free, open-source, science-based **strength coach** for iPhone. v1 is iPhone-first: log strength workouts with per-set tracking, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported as a secondary capability. **There is no companion Apple Watch app at this time** — the iPhone imports Watch-recorded workouts and heart rate from Apple Health, and a native watchOS app is only a possible future addition. Your data stays on-device and in your own iCloud.
+A free, open-source, science-based **strength coach** for iPhone. v1 is iPhone-first: log strength workouts with per-set tracking, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported as a secondary capability. **There is no companion Apple Watch app at this time** — the iPhone imports Watch-recorded workouts and heart rate from Apple Health, and a native watchOS app is only a possible future addition. Your data stays entirely on-device, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
 
 **Every single coaching output cites published, user-navigable science.** Cladiron never makes a recommendation, insight, warning, or deferred decision without a tappable "The science >" link to the study behind it.
 
@@ -20,7 +20,7 @@ A free, open-source, science-based **strength coach** for iPhone. v1 is iPhone-f
 - **BLE chest strap** — CoreBluetooth `0x180D` with exponential-backoff reconnection, battery monitoring, and cold-launch auto-reconnect.
 - **HealthKit** — reads steps, ingests Watch-recorded workouts + HR; writes strength/cardio/interval summaries, HR samples, and GPS routes back to Health.
 - **History & trends** — unified strength + cardio history, per-exercise trend charts, PR timeline, consistency heatmap, workout summary with full per-set detail.
-- **Privacy-first** — local-first (SwiftData), optional iCloud sync (CloudKit private DB, your quota). No accounts, no server, no ads.
+- **Privacy-first** — fully local (SwiftData), no cloud sync, no accounts, no server, no ads. A complete JSON export/import lets you back up and move your data (full history + preferences) to a fresh install.
 
 ## Architecture
 
@@ -31,7 +31,7 @@ A free, open-source, science-based **strength coach** for iPhone. v1 is iPhone-f
 
 ## Build
 
-Requires Xcode 16+, Swift 6. Real-device testing needed for HealthKit/CloudKit/CoreBluetooth.
+Requires Xcode 16+, Swift 6. Real-device testing needed for HealthKit/CoreBluetooth.
 
 ```sh
 cd CadenceCore && swift build        # core package

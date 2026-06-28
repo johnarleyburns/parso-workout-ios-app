@@ -24,9 +24,9 @@ struct PreWorkoutCountdownView: View {
             Color.green.ignoresSafeArea()
             VStack(spacing: 24) {
                 Spacer()
-                Text("Get Ready").font(.system(size: 34, weight: .heavy, design: .rounded))
+                Text("Get Ready").scaledSystemFont(34, relativeTo: .largeTitle, weight: .heavy, design: .rounded)
                 Text("\(remaining)")
-                    .font(.system(size: 140, weight: .black, design: .rounded))
+                    .scaledSystemFont(140, relativeTo: .largeTitle, weight: .black, design: .rounded)
                     .monospacedDigit().contentTransition(.numericText())
                     .scaleEffect(scale)
                     .accessibilityIdentifier("countdown.remaining")

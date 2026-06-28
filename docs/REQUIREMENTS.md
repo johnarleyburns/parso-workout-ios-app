@@ -26,7 +26,7 @@ Cladiron is a free, open-source, privacy-first, iPhone-native **strength coach**
 - **Auditable science:** every prescription and every test cites its published source via the built-in CitationRegistry. The user can always see *why*.
 - **Built-in established programs:** 5/3/1, GZCLP, nSuns, PPL, 5x5, and more for self-directed users who prefer a published program over coach-generated prescriptions.
 - **Strength-first, cardio secondary:** strength logging and coaching is the core loop. Cardio is capture-only (ingest Watch workouts from HealthKit, record with iPhone GPS or chest strap) — not coached in v1.
-- **Privacy by design:** no accounts, no server, no telemetry, no third-party SDKs. Works in airplane mode. Sync only via the user's own iCloud (CloudKit private DB).
+- **Privacy by design:** no accounts, no server, no telemetry, no third-party SDKs. Works in airplane mode. Fully local — no cloud sync; portability is via JSON export/import.
 - **Apple Design Award polish:** HIG-native, fully accessible (VoiceOver, Dynamic Type, Reduce Motion), restrained motion, inclusive design.
 
 **Non-goals (for v1)**
@@ -99,7 +99,7 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - FR-4.2 Local-first storage (SwiftData) as the source of truth for the rich strength model HealthKit cannot represent.
 - FR-4.3 Write summary strength workouts to HealthKit for unified history; keep detailed set data local.
 - FR-4.4 **Chest strap:** discover, connect, and subscribe to a BLE HRM via 0x180D; reconnect automatically; surface battery and signal status; persist a remembered device.
-- FR-4.5 Optional iCloud/CloudKit private-database sync across the user's own devices (off by default).
+- FR-4.5 (removed) Cladiron is **local-only — no cloud sync.** Data portability is via the complete JSON export/import (FR-6) covering full history + preferences.
 
 ### FR-5 History, PRs & trends
 - FR-5.1 Per-exercise history list and trend chart (top weight, est. 1RM, volume over time).
@@ -126,11 +126,11 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - FR-8.1 Standalone watchOS app for wrist workouts (deferred to v2).
 - FR-8.2-8.7: see v2 phasing.
 
-### FR-9 Cross-device sync & roles
-- FR-9.1 Local store + CloudKit private DB; WatchConnectivity for live handoff only.
-- FR-9.2 Stable UUID + `updatedAt`; last-write-wins conflict resolution.
-- FR-9.3 Phone is the analysis surface; watch is the in-workout surface (v2).
-- FR-9.4 Sync stays in the user's own iCloud; can be disabled.
+### FR-9 Cross-device portability & roles
+- FR-9.1 (removed) No cloud sync. The store is local; cross-install portability is the JSON export/import (FR-6). WatchConnectivity is for live handoff only.
+- FR-9.2 Every entity carries a stable UUID so export/import merges idempotently by id.
+- FR-9.3 Phone is the analysis surface; watch is the in-workout surface (future).
+- FR-9.4 (removed) Cloud sync is not part of the app.
 
 ### FR-10 Fitness assessment battery (Tests)
 **Hard constraint:** all tests require only an ordinary gym + a field/track + the app's stopwatch + optionally a BLE chest strap (0x180D). No lab gear.
@@ -173,12 +173,12 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - NFR-1 **Design quality (HIG):** native components, large titles, grouped-inset lists, SF Symbols, system materials/vibrancy, Dynamic Type, light/dark/tinted appearances, restrained motion. Apple Design Award criteria: inclusivity, delight, innovation, visual/graphic craft.
 - NFR-2 **Accessibility:** full VoiceOver labels, Dynamic Type to AX5, sufficient contrast, Reduce Motion honored, large tap targets (>=44pt).
 - NFR-3 **Privacy (strengthened):**
-  - NFR-3.1 **No-network core:** all features work offline / airplane mode. Network is used only for optional iCloud sync.
+  - NFR-3.1 **No-network core:** all features work offline / airplane mode. Network is used only to fetch the public exercise-image dataset (cached on device).
   - NFR-3.2 **No third-party SDKs or telemetry.** Zero analytics, zero crash reporters, zero ad frameworks.
   - NFR-3.3 **App Store privacy label: "Data Not Collected."** No data is collected by the developer or any third party.
-  - NFR-3.4 **Sync only via user's own iCloud** (CloudKit private DB). No developer-operated server. Sync is optional and off by default.
+  - NFR-3.4 **No cloud sync and no developer-operated server.** Data is fully local; portability is via JSON export/import.
   - NFR-3.5 **Clear purpose strings** for every permission (HealthKit, Bluetooth, Location, Motion). Each explains exactly what data is accessed and that it never leaves the device.
-  - NFR-3.6 **Plain-English privacy commitment:** Cladiron does not collect, transmit, or sell user data. There is no account, no server, and no analytics. Health, Bluetooth, and location data stay on the device or in the user's own iCloud, only with explicit permission. The user can export or delete all data at any time. The complete source code is public for verification.
+  - NFR-3.6 **Plain-English privacy commitment:** Cladiron does not collect, transmit, or sell user data. There is no account, no server, and no analytics. Health, Bluetooth, and location data stay on the device, only with explicit permission. The user can export or delete all data at any time. The complete source code is public for verification.
 - NFR-4 **Performance:** cold launch < 1.5s; logging a set <= 2 taps; charts render < 100ms.
 - NFR-5 **Reliability/offline:** fully functional with no network; workout recording survives backgrounding.
 - NFR-6 **Open source:** MIT-licensed, documented build, no proprietary dependencies; reproducible from clean checkout.
@@ -242,11 +242,11 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - **PRSnapshot** (derived): exerciseRef, rule, value, achievedAt
 - **Sync metadata:** every entity carries stable UUID + `updatedAt` + `originDevice`
 
-Schema changes are **additive only** — optional fields, no unique constraints, no destructive migrations. CloudKit + existing user data must stay safe.
+Schema changes are **additive only** — optional fields, no unique constraints, no destructive migrations. The local store + existing JSON exports must stay safe.
 
 ## 9. Phasing
 
-- **CadenceCore (foundation):** data model, PR logic, coaching engine, assessment math, sync layer. Testable with `swift test`. Prerequisite to everything.
+- **CadenceCore (foundation):** data model, PR logic, coaching engine, assessment math, export/import layer. Testable with `swift test`. Prerequisite to everything.
 - **v1 — iPhone-only (current release):**
   - P1: Docs/repositioning (naming, requirements consolidation, privacy NFRs)
   - P2: Information architecture (Workout/Tests/Progress tabs, Library relocation, exercise browser unification)
@@ -260,8 +260,8 @@ Schema changes are **additive only** — optional fields, no unique constraints,
 
 - PR default: estimated 1RM (Brzycki formula). Configurable.
 - Units: kg canonical, lb toggle global.
-- Sync: CloudKit private DB. WatchConnectivity for live handoff only.
-- Watch store: full local store with CloudKit reconciliation.
+- Portability: complete JSON export/import (no cloud sync). WatchConnectivity for live handoff only.
+- Watch store: local store (no sync).
 - IA: Workout / Tests / Progress (3 tabs). Planning inside Workout.
 - Naming: Cladiron (user-visible), Cadence (internal codename).
 - Wingate: kept but gated behind "advanced" (no-lab constraint).

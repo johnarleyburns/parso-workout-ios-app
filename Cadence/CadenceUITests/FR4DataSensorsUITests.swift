@@ -32,19 +32,6 @@ final class FR4DataSensorsUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["hrm.battery"].exists, "battery should be shown")
     }
 
-    // FR-4.5 — iCloud sync toggle persists.
-    func testCloudSyncToggle() {
-        let app = XCUIApplication.launched()
-        app.goToTab("Settings")
-        let toggle = app.switches["settings.cloudSync"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 25))
-        let before = (toggle.value as? String) ?? "0"
-        // The row-level switch element's center is the label; tap the control edge.
-        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
-        let after = (toggle.value as? String) ?? "0"
-        XCTAssertNotEqual(before, after, "iCloud sync toggle should flip")
-    }
-
     // FR-4.3 — save a summary strength workout to Apple Health.
     func testSaveStrengthToHealth() {
         let app = XCUIApplication.launched()

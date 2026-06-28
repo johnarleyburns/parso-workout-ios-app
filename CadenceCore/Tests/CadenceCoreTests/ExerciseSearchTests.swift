@@ -6,7 +6,7 @@ import SwiftData
 final class ExerciseSearchTests: XCTestCase {
 
     private func makeContext() throws -> ModelContext {
-        let container = try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false)
+        let container = try CadenceStore.makeModelContainer(inMemory: true)
         return ModelContext(container)
     }
 

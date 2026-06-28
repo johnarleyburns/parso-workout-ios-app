@@ -89,6 +89,7 @@ public struct CoachSession: Sendable, Equatable, Identifiable {
 extension CoachSession {
 
     public static func candidates(for facts: CoachFacts,
+                                  schedulePreferences: CoachSchedulePreferences = .default,
                                   anaerobicOptIn: Bool = false) -> [CoachSession] {
         let balance = facts.weeklyBalance
         let goal = facts.goal
@@ -97,10 +98,15 @@ extension CoachSession {
 
         var candidates: [CoachSession] = []
 
-        let strengthFloor = 2
+        // The weekly strength floor is the user's own target (was hardcoded 2).
+        let strengthFloor = schedulePreferences.strengthDaysPerWeek
         let aerobicFloor = 150.0
 
         let strengthNeeded = balance.strengthDays < strengthFloor
+        // Once the weekly strength target is met, NO strength is offered (general,
+        // beginner, or reduced-load) — the user's expectation, and two-a-days must
+        // not override it.
+        let strengthCapMet = balance.strengthDays >= strengthFloor
         let aerobicNeeded = balance.moderateEquivalentMinutes < aerobicFloor
         let allBodyPartsCovered = balance.bodyPartsTrained.count >= 5
 
@@ -121,7 +127,7 @@ extension CoachSession {
         }
 
         // Full-body A/B for beginners
-        if facts.events.count < 5 && facts.experience == .beginner {
+        if facts.events.count < 5 && facts.experience == .beginner && !strengthCapMet {
             let aExercises = generateBeginnerA(facts: facts)
             candidates.append(CoachSession(
                 id: "strength.beginnerA",
@@ -378,7 +384,7 @@ extension CoachSession {
         // poor readiness check-in is logged, so the user can keep training lighter.
         let loadSpiked = facts.loadSpikeFlags.contains { $0.ratio >= 1.3 }
         let readinessPoor = facts.readiness?.isPoor == true
-        if (loadSpiked || readinessPoor) && !facts.events.isEmpty {
+        if (loadSpiked || readinessPoor) && !facts.events.isEmpty && !strengthCapMet {
             let exercises = buildStrengthExercises(facts: facts).map {
                 RecommendedExercise(name: $0.name, primaryMuscles: $0.primaryMuscles,
                                     sets: max(2, ($0.sets ?? 3) - 1),

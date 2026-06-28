@@ -10,21 +10,48 @@ public struct CadenceExport: Codable, Equatable, Sendable {
     public var exportedAt: Date
     public var sessions: [ExportSession]
     public var cardio: [ExportCardio]
+    public var assessments: [ExportAssessment]
     public var coachPreferences: ExportCoachPreferences?
+    /// All app/user preferences (settings + schedule) so a fresh install round-trips
+    /// completely (v4). nil for legacy exports.
+    public var preferences: ExportPreferences?
 
     public init(version: Int = CadenceExport.currentVersion,
                 exportedAt: Date = Date(),
                 sessions: [ExportSession],
                 cardio: [ExportCardio] = [],
-                coachPreferences: ExportCoachPreferences? = nil) {
+                assessments: [ExportAssessment] = [],
+                coachPreferences: ExportCoachPreferences? = nil,
+                preferences: ExportPreferences? = nil) {
         self.version = version
         self.exportedAt = exportedAt
         self.sessions = sessions
         self.cardio = cardio
+        self.assessments = assessments
         self.coachPreferences = coachPreferences
+        self.preferences = preferences
     }
 
-    public static let currentVersion = 3
+    enum CodingKeys: String, CodingKey {
+        case version, exportedAt, sessions, cardio, assessments, coachPreferences, preferences
+    }
+
+    // Custom decode so older exports (v1–v3) that lack `cardio`/`assessments`/
+    // `preferences` still decode cleanly.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = try c.decode(Int.self, forKey: .version)
+        exportedAt = try c.decode(Date.self, forKey: .exportedAt)
+        sessions = try c.decodeIfPresent([ExportSession].self, forKey: .sessions) ?? []
+        cardio = try c.decodeIfPresent([ExportCardio].self, forKey: .cardio) ?? []
+        assessments = try c.decodeIfPresent([ExportAssessment].self, forKey: .assessments) ?? []
+        coachPreferences = try c.decodeIfPresent(ExportCoachPreferences.self, forKey: .coachPreferences)
+        preferences = try c.decodeIfPresent(ExportPreferences.self, forKey: .preferences)
+    }
+
+    /// v4 adds full cardio (incl. HR/route samples), assessments, session/set
+    /// metadata, and all user preferences — a fully lossless round-trip.
+    public static let currentVersion = 4
 }
 
 public struct ExportSession: Codable, Equatable, Sendable {
@@ -33,8 +60,29 @@ public struct ExportSession: Codable, Equatable, Sendable {
     public var date: Date
     public var notes: String?
     public var sets: [ExportSet]
-    public init(id: UUID, title: String, date: Date, notes: String?, sets: [ExportSet]) {
+    // Metadata (v4, all optional for back-compat).
+    public var endedAt: Date?
+    public var isLogged: Bool?
+    public var planKey: String?
+    public var templateName: String?
+    public var plannedExerciseNames: [String]?
+    public var plannedRepLadder: [Int]?
+    public var warmupSeconds: Double?
+    public var cooldownSeconds: Double?
+    public var prescribedLoadKg: Double?
+    public var activePartnerIDs: [String]?
+    public init(id: UUID, title: String, date: Date, notes: String?, sets: [ExportSet],
+                endedAt: Date? = nil, isLogged: Bool? = nil, planKey: String? = nil,
+                templateName: String? = nil, plannedExerciseNames: [String]? = nil,
+                plannedRepLadder: [Int]? = nil, warmupSeconds: Double? = nil,
+                cooldownSeconds: Double? = nil, prescribedLoadKg: Double? = nil,
+                activePartnerIDs: [String]? = nil) {
         self.id = id; self.title = title; self.date = date; self.notes = notes; self.sets = sets
+        self.endedAt = endedAt; self.isLogged = isLogged; self.planKey = planKey
+        self.templateName = templateName; self.plannedExerciseNames = plannedExerciseNames
+        self.plannedRepLadder = plannedRepLadder; self.warmupSeconds = warmupSeconds
+        self.cooldownSeconds = cooldownSeconds; self.prescribedLoadKg = prescribedLoadKg
+        self.activePartnerIDs = activePartnerIDs
     }
 }
 
@@ -56,17 +104,19 @@ public struct ExportSet: Codable, Equatable, Sendable {
     public var barWeightKg: Double?
     public var loadMultiplier: Double?
     public var loadAccountingMode: String?
+    /// Bodyweight set flag (v4). nil for legacy exports.
+    public var usesBodyweight: Bool?
     public init(id: UUID, exerciseName: String, category: String?, weightKg: Double,
                 reps: Int, order: Int, isWarmup: Bool, rpe: Double?, note: String?, completedAt: Date,
                 performedBy: String? = nil,
                 barWeightKg: Double? = nil, loadMultiplier: Double? = nil,
-                loadAccountingMode: String? = nil) {
+                loadAccountingMode: String? = nil, usesBodyweight: Bool? = nil) {
         self.id = id; self.exerciseName = exerciseName; self.category = category
         self.weightKg = weightKg; self.reps = reps; self.order = order
         self.isWarmup = isWarmup; self.rpe = rpe; self.note = note; self.completedAt = completedAt
         self.performedBy = performedBy
         self.barWeightKg = barWeightKg; self.loadMultiplier = loadMultiplier
-        self.loadAccountingMode = loadAccountingMode
+        self.loadAccountingMode = loadAccountingMode; self.usesBodyweight = usesBodyweight
     }
 }
 
@@ -79,11 +129,135 @@ public struct ExportCardio: Codable, Equatable, Sendable {
     public var activeEnergyKcal: Double?
     public var avgHeartRate: Double?
     public var source: String
+    // Metadata + samples (v4, all optional for back-compat).
+    public var maxHeartRate: Double?
+    public var laps: Int?
+    public var targetLaps: Int?
+    public var targetDistance: Double?
+    public var notes: String?
+    public var isLogged: Bool?
+    public var customTitle: String?
+    public var importedWorkoutKindRaw: String?
+    public var intervalDetailData: String?
+    public var hrSamples: [ExportHRSample]?
+    public var routeSamples: [ExportRouteSample]?
     public init(id: UUID, type: String, start: Date, end: Date?, distanceMeters: Double?,
-                activeEnergyKcal: Double?, avgHeartRate: Double?, source: String) {
+                activeEnergyKcal: Double?, avgHeartRate: Double?, source: String,
+                maxHeartRate: Double? = nil, laps: Int? = nil, targetLaps: Int? = nil,
+                targetDistance: Double? = nil, notes: String? = nil, isLogged: Bool? = nil,
+                customTitle: String? = nil, importedWorkoutKindRaw: String? = nil,
+                intervalDetailData: String? = nil,
+                hrSamples: [ExportHRSample]? = nil, routeSamples: [ExportRouteSample]? = nil) {
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.avgHeartRate = avgHeartRate; self.source = source
+        self.maxHeartRate = maxHeartRate; self.laps = laps; self.targetLaps = targetLaps
+        self.targetDistance = targetDistance; self.notes = notes; self.isLogged = isLogged
+        self.customTitle = customTitle; self.importedWorkoutKindRaw = importedWorkoutKindRaw
+        self.intervalDetailData = intervalDetailData
+        self.hrSamples = hrSamples; self.routeSamples = routeSamples
+    }
+}
+
+public struct ExportHRSample: Codable, Equatable, Sendable {
+    public var t: TimeInterval
+    public var bpm: Double
+    public init(t: TimeInterval, bpm: Double) { self.t = t; self.bpm = bpm }
+}
+
+public struct ExportRouteSample: Codable, Equatable, Sendable {
+    public var t: TimeInterval
+    public var lat: Double
+    public var lon: Double
+    public var elevation: Double
+    public init(t: TimeInterval, lat: Double, lon: Double, elevation: Double) {
+        self.t = t; self.lat = lat; self.lon = lon; self.elevation = elevation
+    }
+}
+
+public struct ExportAssessment: Codable, Equatable, Sendable {
+    public var id: UUID
+    public var date: Date
+    public var kind: String
+    public var value: Double
+    public var inputWeight: Double?
+    public var inputReps: Int?
+    public var exerciseName: String?
+    public var protocolName: String?
+    public var notes: String?
+    public var inputDistance: Double?
+    public var inputTime: Double?
+    public var inputEndingHR: Double?
+    public var inputAge: Int?
+    public var inputSex: Int?
+    public init(id: UUID, date: Date, kind: String, value: Double,
+                inputWeight: Double? = nil, inputReps: Int? = nil, exerciseName: String? = nil,
+                protocolName: String? = nil, notes: String? = nil, inputDistance: Double? = nil,
+                inputTime: Double? = nil, inputEndingHR: Double? = nil,
+                inputAge: Int? = nil, inputSex: Int? = nil) {
+        self.id = id; self.date = date; self.kind = kind; self.value = value
+        self.inputWeight = inputWeight; self.inputReps = inputReps; self.exerciseName = exerciseName
+        self.protocolName = protocolName; self.notes = notes; self.inputDistance = inputDistance
+        self.inputTime = inputTime; self.inputEndingHR = inputEndingHR
+        self.inputAge = inputAge; self.inputSex = inputSex
+    }
+}
+
+/// All app/user preferences for a lossless round-trip (v4). The coach's *learned*
+/// profile travels in `CadenceExport.coachPreferences`; this carries the rest.
+public struct ExportPreferences: Codable, Equatable, Sendable {
+    public var unit: String?
+    public var prRule: String?
+    public var oneRepMaxFormula: String?
+    public var stepGoal: Int?
+    public var weeklyCardioMinutesGoal: Int?
+    public var restSeconds: Int?
+    public var warmupMinutes: Int?
+    public var cooldownMinutes: Int?
+    public var autoStartRest: Bool?
+    public var idleTimeoutMinutes: Int?
+    public var gpsHighAccuracy: Bool?
+    public var autoPause: Bool?
+    public var intervalColorBlind: Bool?
+    public var spokenCues: Bool?
+    public var plateRounding: Bool?
+    public var autoSaveHealth: Bool?
+    public var autoEndOnIdle: Bool?
+    public var workoutSounds: Bool?
+    public var preWorkoutCountdown: Int?
+    public var trainingGoal: String?
+    public var experienceLevel: String?
+    public var useHRMonitoring: Bool?
+    public var recoveryAwareCoachV2: Bool?
+    public var favoriteRoutineIDs: [String]?
+    public var hasCompletedOnboarding: Bool?
+    public var schedulePreferences: CoachSchedulePreferences?
+    /// The coach's learned preference profile, carried losslessly as its own
+    /// Codable type (the top-level `coachPreferences` DTO stays for back-compat).
+    public var coachProfile: CoachPreferenceProfile?
+    public init(unit: String? = nil, prRule: String? = nil, oneRepMaxFormula: String? = nil,
+                stepGoal: Int? = nil, weeklyCardioMinutesGoal: Int? = nil, restSeconds: Int? = nil,
+                warmupMinutes: Int? = nil, cooldownMinutes: Int? = nil, autoStartRest: Bool? = nil,
+                idleTimeoutMinutes: Int? = nil, gpsHighAccuracy: Bool? = nil, autoPause: Bool? = nil,
+                intervalColorBlind: Bool? = nil, spokenCues: Bool? = nil, plateRounding: Bool? = nil,
+                autoSaveHealth: Bool? = nil, autoEndOnIdle: Bool? = nil, workoutSounds: Bool? = nil,
+                preWorkoutCountdown: Int? = nil, trainingGoal: String? = nil, experienceLevel: String? = nil,
+                useHRMonitoring: Bool? = nil, recoveryAwareCoachV2: Bool? = nil,
+                favoriteRoutineIDs: [String]? = nil, hasCompletedOnboarding: Bool? = nil,
+                schedulePreferences: CoachSchedulePreferences? = nil,
+                coachProfile: CoachPreferenceProfile? = nil) {
+        self.unit = unit; self.prRule = prRule; self.oneRepMaxFormula = oneRepMaxFormula
+        self.stepGoal = stepGoal; self.weeklyCardioMinutesGoal = weeklyCardioMinutesGoal
+        self.restSeconds = restSeconds; self.warmupMinutes = warmupMinutes; self.cooldownMinutes = cooldownMinutes
+        self.autoStartRest = autoStartRest; self.idleTimeoutMinutes = idleTimeoutMinutes
+        self.gpsHighAccuracy = gpsHighAccuracy; self.autoPause = autoPause
+        self.intervalColorBlind = intervalColorBlind; self.spokenCues = spokenCues; self.plateRounding = plateRounding
+        self.autoSaveHealth = autoSaveHealth; self.autoEndOnIdle = autoEndOnIdle; self.workoutSounds = workoutSounds
+        self.preWorkoutCountdown = preWorkoutCountdown; self.trainingGoal = trainingGoal
+        self.experienceLevel = experienceLevel; self.useHRMonitoring = useHRMonitoring
+        self.recoveryAwareCoachV2 = recoveryAwareCoachV2; self.favoriteRoutineIDs = favoriteRoutineIDs
+        self.hasCompletedOnboarding = hasCompletedOnboarding; self.schedulePreferences = schedulePreferences
+        self.coachProfile = coachProfile
     }
 }
 

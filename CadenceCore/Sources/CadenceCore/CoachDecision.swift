@@ -134,7 +134,7 @@ public enum CoachDecisionEngine {
                            hasPainConcern: Bool = false,
                            anaerobicOptIn: Bool = false) -> CoachDecision {
         let now = facts.referenceDate
-        let candidates = CoachSession.candidates(for: facts, anaerobicOptIn: anaerobicOptIn)
+        let candidates = CoachSession.candidates(for: facts, schedulePreferences: schedulePreferences, anaerobicOptIn: anaerobicOptIn)
         let todayCompleted = facts.todayCompletedEvents
 
         // Gate 1: pain/illness block
@@ -714,7 +714,10 @@ public enum CoachDecisionEngine {
 
         var recommendations: [CoachSession] = []
 
-        if let s = bestStrength, !todayPlan.strengthCompleted {
+        // Weekly cap: never add strength once the weekly strength target is met,
+        // even on a two-a-day day (the user's expectation).
+        let strengthCapMet = facts.weeklyBalance.strengthDays >= schedulePreferences.strengthDaysPerWeek
+        if let s = bestStrength, !todayPlan.strengthCompleted, !strengthCapMet {
             recommendations.append(s)
         }
         if let c = bestCardio, !todayPlan.cardioCompleted {

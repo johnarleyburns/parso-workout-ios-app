@@ -18,7 +18,6 @@ final class AppSettings {
             for key in [SettingsKey.unit, SettingsKey.prRule, SettingsKey.oneRepMaxFormula,
                         SettingsKey.stepGoal, SettingsKey.weeklyCardioMinutesGoal,
                         SettingsKey.restSeconds, SettingsKey.warmupMinutes, SettingsKey.cooldownMinutes,
-                        SettingsKey.cloudSyncEnabled,
                         SettingsKey.lastHealthSync, "settings.autoRest",
                         "settings.idleTimeout", "settings.gpsHighAccuracy", "settings.autoPause",
                         "settings.intervalColorBlind", "settings.spokenCues", "settings.plateRounding",
@@ -42,7 +41,6 @@ final class AppSettings {
         self.warmupMinutes = defaults.object(forKey: SettingsKey.warmupMinutes) as? Int ?? SettingsDefault.warmupMinutes
         self.cooldownMinutes = defaults.object(forKey: SettingsKey.cooldownMinutes) as? Int ?? SettingsDefault.cooldownMinutes
         self.autoStartRest = defaults.object(forKey: "settings.autoRest") as? Bool ?? true
-        self.cloudSyncEnabled = defaults.object(forKey: SettingsKey.cloudSyncEnabled) as? Bool ?? SettingsDefault.cloudSyncEnabled
         // Field-testing §06 polish settings.
         self.idleTimeoutMinutes = defaults.object(forKey: "settings.idleTimeout") as? Int ?? 10
         self.gpsHighAccuracy = defaults.object(forKey: "settings.gpsHighAccuracy") as? Bool ?? false
@@ -106,7 +104,6 @@ final class AppSettings {
     var warmupMinutes: Int { didSet { defaults.set(warmupMinutes, forKey: SettingsKey.warmupMinutes) } }
     var cooldownMinutes: Int { didSet { defaults.set(cooldownMinutes, forKey: SettingsKey.cooldownMinutes) } }
     var autoStartRest: Bool { didSet { defaults.set(autoStartRest, forKey: "settings.autoRest") } }
-    var cloudSyncEnabled: Bool { didSet { defaults.set(cloudSyncEnabled, forKey: SettingsKey.cloudSyncEnabled) } }
     // Field-testing §06 polish settings.
     var idleTimeoutMinutes: Int { didSet { defaults.set(idleTimeoutMinutes, forKey: "settings.idleTimeout") } }
     var gpsHighAccuracy: Bool { didSet { defaults.set(gpsHighAccuracy, forKey: "settings.gpsHighAccuracy") } }
@@ -185,5 +182,58 @@ final class AppSettings {
     private static func read<T: RawRepresentable>(_ d: UserDefaults, _ key: String, _ type: T.Type) -> T? where T.RawValue == String {
         guard let raw = d.string(forKey: key) else { return nil }
         return T(rawValue: raw)
+    }
+}
+
+// MARK: - Lossless preferences export/import (FR-6.2)
+
+extension AppSettings {
+    /// A complete snapshot of all preferences (settings + schedule + learned coach
+    /// profile) so a fresh install round-trips exactly.
+    func exportPreferences() -> ExportPreferences {
+        ExportPreferences(
+            unit: unit.rawValue, prRule: prRule.rawValue, oneRepMaxFormula: formula.rawValue,
+            stepGoal: stepGoal, weeklyCardioMinutesGoal: weeklyCardioMinutesGoal, restSeconds: restSeconds,
+            warmupMinutes: warmupMinutes, cooldownMinutes: cooldownMinutes, autoStartRest: autoStartRest,
+            idleTimeoutMinutes: idleTimeoutMinutes, gpsHighAccuracy: gpsHighAccuracy, autoPause: autoPause,
+            intervalColorBlind: intervalColorBlind, spokenCues: spokenCues, plateRounding: plateRounding,
+            autoSaveHealth: autoSaveHealth, autoEndOnIdle: autoEndOnIdle, workoutSounds: workoutSounds,
+            preWorkoutCountdown: preWorkoutCountdown, trainingGoal: trainingGoal.rawValue,
+            experienceLevel: experienceLevel.rawValue, useHRMonitoring: useHRMonitoring,
+            recoveryAwareCoachV2: recoveryAwareCoachV2, favoriteRoutineIDs: Array(favoriteRoutineIDs),
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            schedulePreferences: coachSchedulePreferences, coachProfile: coachPreferenceProfile)
+    }
+
+    /// Restores preferences from an imported export. Only non-nil fields are applied
+    /// (partial/legacy exports never clobber existing settings).
+    func applyImportedPreferences(_ p: ExportPreferences) {
+        if let v = p.unit.flatMap(MeasurementUnitPreference.init(rawValue:)) { unit = v }
+        if let v = p.prRule.flatMap(PRRule.init(rawValue:)) { prRule = v }
+        if let v = p.oneRepMaxFormula.flatMap(OneRepMaxFormula.init(rawValue:)) { formula = v }
+        if let v = p.stepGoal { stepGoal = v }
+        if let v = p.weeklyCardioMinutesGoal { weeklyCardioMinutesGoal = v }
+        if let v = p.restSeconds { restSeconds = v }
+        if let v = p.warmupMinutes { warmupMinutes = v }
+        if let v = p.cooldownMinutes { cooldownMinutes = v }
+        if let v = p.autoStartRest { autoStartRest = v }
+        if let v = p.idleTimeoutMinutes { idleTimeoutMinutes = v }
+        if let v = p.gpsHighAccuracy { gpsHighAccuracy = v }
+        if let v = p.autoPause { autoPause = v }
+        if let v = p.intervalColorBlind { intervalColorBlind = v }
+        if let v = p.spokenCues { spokenCues = v }
+        if let v = p.plateRounding { plateRounding = v }
+        if let v = p.autoSaveHealth { autoSaveHealth = v }
+        if let v = p.autoEndOnIdle { autoEndOnIdle = v }
+        if let v = p.workoutSounds { workoutSounds = v }
+        if let v = p.preWorkoutCountdown { preWorkoutCountdown = v }
+        if let v = p.trainingGoal.flatMap(TrainingGoal.init(rawValue:)) { trainingGoal = v }
+        if let v = p.experienceLevel.flatMap(ExperienceLevel.init(rawValue:)) { experienceLevel = v }
+        if let v = p.useHRMonitoring { useHRMonitoring = v }
+        if let v = p.recoveryAwareCoachV2 { recoveryAwareCoachV2 = v }
+        if let v = p.favoriteRoutineIDs { favoriteRoutineIDs = Set(v) }
+        if let v = p.hasCompletedOnboarding { hasCompletedOnboarding = v }
+        if let v = p.schedulePreferences { coachSchedulePreferences = v }
+        if let v = p.coachProfile { coachPreferenceProfile = v }
     }
 }

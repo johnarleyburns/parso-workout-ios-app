@@ -24,7 +24,7 @@ struct WorkoutElapsedHeader: View {
                 .font(.title2)
                 .foregroundStyle(isPaused ? .secondary : .primary)
             Text(time)
-                .font(.system(size: 44, weight: .bold, design: .rounded))
+                .scaledSystemFont(44, relativeTo: .largeTitle, weight: .bold, design: .rounded)
                 .monospacedDigit()
                 .foregroundStyle(isPaused ? .secondary : .primary)
                 .accessibilityIdentifier("session.elapsed")

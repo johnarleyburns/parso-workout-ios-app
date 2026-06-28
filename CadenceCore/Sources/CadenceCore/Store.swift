@@ -1,13 +1,10 @@
 import Foundation
 import SwiftData
 
-/// Builds the shared SwiftData store. Both the iOS and watchOS apps use this,
-/// so logging on the watch mirrors to the phone through the user's private
-/// CloudKit database automatically (FR-9).
+/// Builds the shared SwiftData store. Cladiron is local-only: all data lives on
+/// the device (no cloud sync). Portability is handled by full JSON export/import
+/// (see `DataExport` / `WorkoutRepository.buildExport` & `merge`).
 public enum CadenceStore {
-
-    /// Must match the iCloud container enabled on BOTH targets in Xcode.
-    public static let cloudKitContainerID = "iCloud.guru.parso.ios-workout-app"
 
     public static let schema = Schema([
         WorkoutSession.self,
@@ -23,33 +20,12 @@ public enum CadenceStore {
         Assessment.self
     ])
 
-    /// - Parameters:
-    ///   - inMemory: pass `true` for previews/tests (no CloudKit).
-    ///   - cloudKitEnabled: when false (and not in-memory), the store runs fully
-    ///     local on a single device (FR-4.5 / FR-9.4 — sync off by default).
-    public static func makeModelContainer(inMemory: Bool = false,
-                                          cloudKitEnabled: Bool = false) throws -> ModelContainer {
-        let configuration: ModelConfiguration
-
-        if inMemory {
-            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        } else if cloudKitEnabled {
-            // If the compiler ever rejects `.private(_:)` on your toolchain,
-            // fall back to `.automatic` — it picks up the container from the
-            // app's iCloud entitlement instead.
-            configuration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: false,
-                cloudKitDatabase: .private(cloudKitContainerID)
-            )
-        } else {
-            configuration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: false,
-                cloudKitDatabase: .none
-            )
-        }
-
+    /// - Parameter inMemory: pass `true` for previews/tests. The on-disk store is
+    ///   always local (no CloudKit) — data portability is via export/import.
+    public static func makeModelContainer(inMemory: Bool = false) throws -> ModelContainer {
+        let configuration = inMemory
+            ? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            : ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .none)
         return try ModelContainer(for: schema, configurations: [configuration])
     }
 
@@ -81,7 +57,6 @@ public enum SettingsKey {
     public static let restSeconds = "settings.restSeconds"   // Int
     public static let warmupMinutes = "settings.warmupMinutes"   // Int (minutes)
     public static let cooldownMinutes = "settings.cooldownMinutes" // Int (minutes)
-    public static let cloudSyncEnabled = "settings.cloudSync"// Bool
     public static let lastHealthSync = "settings.lastHealthSync" // Date (timeIntervalSince1970)
 }
 
@@ -97,5 +72,4 @@ public enum SettingsDefault {
     // in Settings.
     public static let warmupMinutes = 5
     public static let cooldownMinutes = 5
-    public static let cloudSyncEnabled = false
 }

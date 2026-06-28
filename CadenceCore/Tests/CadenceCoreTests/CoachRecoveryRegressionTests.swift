@@ -10,16 +10,15 @@ final class CoachRecoveryRegressionTests: XCTestCase {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
 
-    /// A known Thursday at noon so session dates fall within the Monday-bounded week
-    /// regardless of what real day the test runs.
+    /// A fixed absolute Thursday (2026-06-25 12:00) so session dates fall within the
+    /// Monday-bounded week deterministically, regardless of when the test runs.
     private var testNow: Date {
-        let cal = Calendar.current
-        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
-        comps.weekday = 5
+        var comps = DateComponents()
+        comps.year = 2026; comps.month = 6; comps.day = 25
         comps.hour = 12
         comps.minute = 0
         comps.second = 0
-        return cal.date(from: comps) ?? Date()
+        return Calendar.current.date(from: comps) ?? Date(timeIntervalSince1970: 1_750_000_000)
     }
 
     // MARK: - Recovery gate tests

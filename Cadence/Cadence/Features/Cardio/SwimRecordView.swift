@@ -51,7 +51,7 @@ struct SwimRecordView: View {
 
     private var setupScreen: some View {
         VStack(spacing: 24) {
-            Image(systemName: "figure.pool.swim").font(.system(size: 64)).foregroundStyle(.tint)
+            Image(systemName: "figure.pool.swim").scaledSystemFont(64, relativeTo: .largeTitle).foregroundStyle(.tint)
             Stepper(value: $targetLaps, in: 1...200) {
                 HStack { Text("Target laps"); Spacer(); Text("\(targetLaps)").monospacedDigit() }
             }
@@ -79,24 +79,24 @@ struct SwimRecordView: View {
     private var liveScreen: some View {
         VStack(spacing: 28) {
             Text(Format.duration(now.timeIntervalSince(startDate)))
-                .font(.system(size: 56, weight: .bold, design: .rounded)).monospacedDigit()
+                .scaledSystemFont(56, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit()
                 .accessibilityIdentifier("swim.elapsed")
 
             VStack(spacing: 4) {
                 Text("\(laps)/\(targetLaps)")
-                    .font(.system(size: 48, weight: .bold, design: .rounded)).monospacedDigit()
+                    .scaledSystemFont(48, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit()
                     .accessibilityIdentifier("swim.laps")
                 Text("laps").font(.caption).foregroundStyle(.secondary)
             }
 
             HStack(spacing: 32) {
                 Button { if laps > 0 { laps -= 1 } } label: {
-                    Image(systemName: "minus.circle.fill").font(.system(size: 48))
+                    Image(systemName: "minus.circle.fill").scaledSystemFont(48, relativeTo: .largeTitle)
                 }
                 .accessibilityIdentifier("swim.lapMinus")
                 .accessibilityLabel("Remove a lap")
                 Button { laps += 1 } label: {
-                    Image(systemName: "plus.circle.fill").font(.system(size: 48))
+                    Image(systemName: "plus.circle.fill").scaledSystemFont(48, relativeTo: .largeTitle)
                 }
                 .accessibilityIdentifier("swim.lapPlus")
                 .accessibilityLabel("Add a lap")

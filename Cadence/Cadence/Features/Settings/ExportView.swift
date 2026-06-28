@@ -37,7 +37,7 @@ struct ExportView: View {
             } header: {
                 Text("Export")
             } footer: {
-                Text("Includes workout history, cardio history, and Coach preferences learned from alternatives you selected. JSON round-trips back into Cladiron; CSV opens in any spreadsheet.")
+                Text("A complete backup: strength history, cardio (with heart-rate and route data), fitness-test results, and all your preferences — including what the Coach has learned. Importing the JSON into a fresh install restores everything, as if nothing happened. CSV opens in any spreadsheet (strength sets only).")
             }
 
             Section {
@@ -65,7 +65,8 @@ struct ExportView: View {
 
     private func rebuild() {
         guard let export = try? WorkoutRepository.buildExport(context,
-                    coachPreferences: settings.coachPreferenceProfile.exportDTO)
+                    coachPreferences: settings.coachPreferenceProfile.exportDTO,
+                    preferences: settings.exportPreferences())
         else { preview = ""; return }
         switch format {
         case .json:
@@ -82,7 +83,8 @@ struct ExportView: View {
             return
         }
         let added = (try? WorkoutRepository.merge(export, in: context)) ?? 0
-        restoreMessage = "Restored \(added) session\(added == 1 ? "" : "s")."
+        if let prefs = export.preferences { settings.applyImportedPreferences(prefs) }
+        restoreMessage = "Restored \(added) workout\(added == 1 ? "" : "s")\(export.preferences != nil ? " and your preferences" : "")."
         rebuild()
     }
 }

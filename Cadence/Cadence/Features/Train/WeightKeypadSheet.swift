@@ -94,7 +94,7 @@ struct WeightKeypadSheet: View {
                     // Big weight read-out + auto-converted alt unit.
                     VStack(spacing: 2) {
                         Text("\(displayWeight) \(unit.abbreviation)")
-                            .font(.system(size: 56, weight: .bold, design: .rounded))
+                            .scaledSystemFont(56, relativeTo: .largeTitle, weight: .bold, design: .rounded)
                             .monospacedDigit()
                             .contentTransition(.numericText())
                             .accessibilityIdentifier("set.weight")
@@ -212,7 +212,7 @@ struct WeightKeypadSheet: View {
             tapKey(key)
         } label: {
             Text(key)
-                .font(.system(size: 28, weight: .semibold, design: .rounded))
+                .scaledSystemFont(28, relativeTo: .title, weight: .semibold, design: .rounded)
                 .frame(maxWidth: .infinity, minHeight: 56)
                 .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
         }

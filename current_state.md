@@ -2,8 +2,38 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-28 — App Store readiness fixes + supporter (tip-jar) flow._
+_Last updated: 2026-06-28 — local-only (no iCloud sync), lossless export/import, coach weekly-strength cap + Sunday fix, deterministic tests, Dynamic Type, bluetooth-central._
 
+## What just shipped — local-only + lossless portability + coach Sunday fix + accessibility
+
+### Removed iCloud sync (now fully local)
+- **`Store.swift`**: dropped `cloudKitContainerID` + the `cloudKitEnabled` branch; `makeModelContainer(inMemory:)` is always local (`.none`). Removed `cloudSyncEnabled` key/default.
+- **`AppSettings.swift`**: removed `cloudSyncEnabled`. **`CadenceApp.swift`**: no cloud flag. **`SettingsView`**: removed the iCloud Sync section. **`AboutView`**: copy now emphasizes local + export portability.
+- **Entitlements**: removed `aps-environment`. **Info.plist**: removed `remote-notification` background mode (CloudKit push), **added `bluetooth-central`** (chest strap keeps streaming with the screen locked). Removed the obsolete iCloud-sync UI test.
+- Docs (README, CLAUDE.md, REQUIREMENTS.md) updated: no cloud sync; portability via JSON export/import.
+
+### Lossless export/import (`CadenceExport` v4)
+- **Fixed a real data-loss bug:** `merge` previously **dropped all cardio on import**. Cardio now round-trips (incl. HR + route samples + metadata).
+- Added **assessments** export/import (were never exported), full **session/set metadata** (endedAt, isLogged, planKey, templateName, planned names/ladder, warm/cool seconds, prescribedLoad, partners, usesBodyweight), and an **`ExportPreferences`** block (all settings + schedule prefs + the learned `CoachPreferenceProfile`).
+- **`AppSettings.exportPreferences()` / `applyImportedPreferences(_:)`** map settings ↔ the DTO; `ExportView` exports + restores them. v1–v3 exports still decode (custom decoder + optional fields).
+- Tests: `DataExportTests.testLosslessRoundTripFullData` (export → JSON → fresh-store import → re-export → identical history + cardio + assessments + prefs) and `testMergeIsIdempotent`.
+
+### Coach: weekly strength cap + Sunday bug
+- **Root cause fixed:** `WeeklyStats.weekStart` returned *next* Monday on Sundays (Sunday-first calendar) → "this week" counted 0 strength on Sundays → coach recommended more strength. Now uses a Monday-first calendar (correct on Sundays).
+- **Cap enforced:** `CoachSession.candidates` now uses the user's `strengthDaysPerWeek` as the floor and gates general/beginner/reduced-load strength on `strengthCapMet`; `buildTodayRecommendations` won't add strength once the weekly target is met (two-a-day can't override it).
+- New test `testThreeStrengthThisWeekMeetsTargetNoMoreStrengthOnSundayEvenWithTwoADay`.
+
+### Deterministic tests (13 flakes fixed)
+- Production: `TrainingEvent.from` anchors `lastWorkingSetAt` to `max(setTimes, endDate)` (a session can't end before its last set) + the `weekStart` fix above.
+- Tests: pinned `testNow` to a fixed Thursday across 4 suites, anchored helper `completedAt`, pinned `Date()` in WeeklyStats/CoachSchedulePreferences. **Suite now 484 tests, 0 failures, deterministic regardless of time of day.**
+
+### Dynamic Type everywhere
+- New `scaledSystemFont(_:relativeTo:weight:design:)` (`@ScaledMetric`-backed) replaces all **24** hardcoded `.system(size:)` usages across 14 files (timers, countdowns, clocks, keypad, icons) so they scale with the user's text size.
+
+### Verification
+- `swift test`: 484 tests, 0 failures. `xcodebuild` iOS scheme: **BUILD SUCCEEDED**.
+
+## What just shipped — App Store readiness fixes + supporter (tip-jar) flow
 ## What just shipped — Supporter / contribution flow (StoreKit 2 tip jar)
 
 Ported from the Parso Radio app, adapted to Cladiron's Observation paradigm. Plan +

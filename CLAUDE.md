@@ -22,27 +22,27 @@ The watch app is **deferred** (hardware-blocked for now) but stays in the repo; 
 - Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**.
 - Review history, PRs, trends, and assessment results.
 - Follow **built-in programs** (5/3/1, GZCLP, nSuns, PPL, 5x5, splits, calisthenics, Olympic).
-CloudKit sync stays wired (single-device iCloud backup + future multi-device) but is non-blocking for v1.
+Cladiron is **fully local — no cloud sync**. Data portability is handled by a complete JSON **export/import** (full workout history + assessments + all preferences), so a user can back up and move to a fresh install losslessly.
 
 ## Stack
 - Swift + SwiftUI, **SwiftData** for the local store
 - **HealthKit** (steps, workouts, HR, routes, bodyweight)
-- **CloudKit private DB** for watch↔phone sync (free; counts against the user's iCloud, not ours)
+- **No cloud component** — fully local; data portability is JSON export/import (no CloudKit, no server)
 - **CoreBluetooth** (chest-strap HRM `0x180D`; cardio-machine FTMS `0x1826`)
 - **CoreLocation** (geofence + iPhone GPS), **CoreMotion** (activity class), **Swift Charts** (trends)
 - Targets: watchOS 10+, iOS 17+
 
 ## Architecture (decisions already made — don't re-litigate without asking)
-- **`CadenceCore` Swift package** holds the data model, Smart Start ranking, PR logic, and the sync layer. Both app targets depend on it. Write logging logic ONCE here; it's headlessly testable with `swift test`.
+- **`CadenceCore` Swift package** holds the data model, Smart Start ranking, PR logic, and the export/import layer. Both app targets depend on it. Write logging logic ONCE here; it's headlessly testable with `swift test`.
 - HealthKit has **no schema for sets/reps/weight** — the rich strength model lives in SwiftData locally. Only a *summary* `HKWorkout` is written back to HealthKit.
 - **Live HR from the Watch requires an `HKWorkoutSession` on watchOS** (relayed to phone). The iPhone cannot stream the Watch's HR. The chest strap streams to the phone directly over BLE, no watch needed.
-- Sync = CloudKit private DB; WatchConnectivity only for live handoff, never as system of record. Every entity carries a stable `UUID` + `updatedAt`; conflicts resolve last-write-wins per set. Handle `CKError.quotaExceeded` gracefully.
+- **No cloud sync.** Data portability is JSON export/import: every entity carries a stable `UUID` so import merges idempotently by id. WatchConnectivity is only for live handoff, never a system of record.
 
 ## Commands
 - Core package: `cd CadenceCore && swift build` / `swift test`
 - App: open `Cadence.xcodeproj`; schemes are **Cadence** (iOS) and **Cadence Watch App**. The `.xcodeproj` is committed (created in Xcode, not generated).
 - CLI build: `xcodebuild -scheme Cadence -destination 'platform=iOS Simulator,name=iPhone 16' build`
-- Real-device runs are required to test HealthKit/CloudKit — the simulator has no real Health data.
+- Real-device runs are required to test HealthKit — the simulator has no real Health data.
 
 ## Conventions
 - Small, focused commits; one feature per branch; push to main when verified.
@@ -96,7 +96,7 @@ This is how large bodies of work (e.g. the field-testing redesign) are run. Mirr
   branch off `main`.
 - Logic lives in `CadenceCore` (pure, `swift test`-verifiable); UI is thin on top.
 - Schema changes are **additive only** (optional/defaulted, no destructive
-  migration) to keep CloudKit + existing data working.
+  migration) to keep the local store + older JSON exports working.
 - **Verify, then commit/push/PR.** `swift test` is the reliable gate (Mac
   toolchain). The `xcodebuild` UI suite is the integration gate but can be flaky
   on a degraded simulator — if launches balloon (~45s, `no debugger version`),

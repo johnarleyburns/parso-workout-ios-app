@@ -96,7 +96,7 @@ struct RecordCardioView: View {
                 .font(.title3.weight(.semibold))
 
             Text(Format.duration(TimeInterval(recorder.elapsed)))
-                .font(.system(size: 56, weight: .bold, design: .rounded))
+                .scaledSystemFont(56, relativeTo: .largeTitle, weight: .bold, design: .rounded)
                 .monospacedDigit()
                 .accessibilityIdentifier("record.elapsed")
 

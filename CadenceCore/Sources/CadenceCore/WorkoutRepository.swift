@@ -679,7 +679,8 @@ public enum WorkoutRepository {
     // MARK: Export / Import (FR-6)
 
     public static func buildExport(_ context: ModelContext,
-                                     coachPreferences: ExportCoachPreferences? = nil) throws -> CadenceExport {
+                                     coachPreferences: ExportCoachPreferences? = nil,
+                                     preferences: ExportPreferences? = nil) throws -> CadenceExport {
         let sessions = try allSessions(context).map { session -> ExportSession in
             let sets = session.orderedSets.map { set in
                 ExportSet(id: set.id,
@@ -691,17 +692,43 @@ public enum WorkoutRepository {
                           performedBy: set.isOwnerSet ? nil : set.performedBy?.name,
                           barWeightKg: set.loadAccountingMode != nil ? set.barWeightKg : nil,
                           loadMultiplier: set.loadAccountingMode != nil ? set.loadMultiplier : nil,
-                          loadAccountingMode: set.loadAccountingMode)
+                          loadAccountingMode: set.loadAccountingMode,
+                          usesBodyweight: set.usesBodyweight)
             }
-            return ExportSession(id: session.id, title: session.title,
-                                 date: session.date, notes: session.notes, sets: sets)
+            return ExportSession(
+                id: session.id, title: session.title, date: session.date,
+                notes: session.notes, sets: sets,
+                endedAt: session.endedAt, isLogged: session.isLogged,
+                planKey: session.planKey, templateName: session.templateName,
+                plannedExerciseNames: session.plannedExerciseNames.isEmpty ? nil : session.plannedExerciseNames,
+                plannedRepLadder: session.plannedRepLadder.isEmpty ? nil : session.plannedRepLadder,
+                warmupSeconds: session.warmupSeconds, cooldownSeconds: session.cooldownSeconds,
+                prescribedLoadKg: session.prescribedLoadKg,
+                activePartnerIDs: session.activePartnerIDs.isEmpty ? nil : session.activePartnerIDs)
         }
-        let cardio = try allCardio(context).map { c in
-            ExportCardio(id: c.id, type: c.type, start: c.start, end: c.end,
-                         distanceMeters: c.distance, activeEnergyKcal: c.activeEnergy,
-                         avgHeartRate: c.avgHeartRate, source: c.source)
+        let cardio = try allCardio(context).map { c -> ExportCardio in
+            ExportCardio(
+                id: c.id, type: c.type, start: c.start, end: c.end,
+                distanceMeters: c.distance, activeEnergyKcal: c.activeEnergy,
+                avgHeartRate: c.avgHeartRate, source: c.source,
+                maxHeartRate: c.maxHeartRate, laps: c.laps, targetLaps: c.targetLaps,
+                targetDistance: c.targetDistance, notes: c.notes, isLogged: c.isLogged,
+                customTitle: c.customTitle, importedWorkoutKindRaw: c.importedWorkoutKindRaw,
+                intervalDetailData: c.intervalDetailData.isEmpty ? nil : c.intervalDetailData,
+                hrSamples: c.orderedHRSamples.map { ExportHRSample(t: $0.t, bpm: $0.bpm) },
+                routeSamples: c.orderedRouteSamples.map {
+                    ExportRouteSample(t: $0.t, lat: $0.lat, lon: $0.lon, elevation: $0.elevation)
+                })
         }
-        return CadenceExport(sessions: sessions, cardio: cardio, coachPreferences: coachPreferences)
+        let assessments = try context.fetch(FetchDescriptor<Assessment>()).map { a in
+            ExportAssessment(id: a.id, date: a.date, kind: a.kind, value: a.value,
+                             inputWeight: a.inputWeight, inputReps: a.inputReps,
+                             exerciseName: a.exerciseName, protocolName: a.protocolName, notes: a.notes,
+                             inputDistance: a.inputDistance, inputTime: a.inputTime,
+                             inputEndingHR: a.inputEndingHR, inputAge: a.inputAge, inputSex: a.inputSex)
+        }
+        return CadenceExport(sessions: sessions, cardio: cardio, assessments: assessments,
+                             coachPreferences: coachPreferences, preferences: preferences)
     }
 
     /// Applies parsed sessions (from the Gmail importer) into the store,
@@ -726,21 +753,36 @@ public enum WorkoutRepository {
         return parsed.count
     }
 
-    /// Merges a JSON export back into the store, skipping sessions whose id
-    /// already exists (FR-6.2 import). Returns sessions added.
+    /// Merges a JSON export back into the store, skipping rows whose id already
+    /// exists (FR-6.2 import). Returns the number of sessions + cardio + assessments
+    /// added. Preferences (`export.preferences` / `export.coachPreferences`) are
+    /// applied by the app layer, which owns UserDefaults.
     @discardableResult
     public static func merge(_ export: CadenceExport, in context: ModelContext) throws -> Int {
-        let existingIDs = Set(try allSessions(context).map(\.id))
         var added = 0
-        for es in export.sessions where !existingIDs.contains(es.id) {
+
+        // Sessions
+        let existingSessionIDs = Set(try allSessions(context).map(\.id))
+        for es in export.sessions where !existingSessionIDs.contains(es.id) {
             let session = WorkoutSession(id: es.id, title: es.title, date: es.date, notes: es.notes)
+            session.endedAt = es.endedAt
+            session.isLogged = es.isLogged ?? false
+            session.templateName = es.templateName
+            session.planKey = es.planKey
+            if let names = es.plannedExerciseNames { session.plannedExerciseNames = names }
+            if let ladder = es.plannedRepLadder { session.plannedRepLadder = ladder }
+            session.warmupSeconds = es.warmupSeconds ?? 0
+            session.cooldownSeconds = es.cooldownSeconds ?? 0
+            session.prescribedLoadKg = es.prescribedLoadKg ?? 0
+            if let partners = es.activePartnerIDs { session.activePartnerIDs = partners }
             context.insert(session)
             for set in es.sets {
                 let cat = set.category.flatMap(ExerciseCategory.init(rawValue:))
                 let ex = try findOrCreateExercise(named: set.exerciseName, category: cat, in: context)
                 let person = try set.performedBy.map { try findOrCreatePerson(named: $0, in: context) }
                 let s = SetEntry(id: set.id, weight: set.weightKg, reps: set.reps, order: set.order,
-                                 isWarmup: set.isWarmup, rpe: set.rpe, note: set.note,
+                                 isWarmup: set.isWarmup, usesBodyweight: set.usesBodyweight ?? false,
+                                 rpe: set.rpe, note: set.note,
                                  completedAt: set.completedAt, session: session, exercise: ex,
                                  performedBy: person,
                                  barWeightKg: set.barWeightKg ?? 0,
@@ -750,6 +792,44 @@ public enum WorkoutRepository {
             }
             added += 1
         }
+
+        // Cardio (was previously dropped on import — the big data-loss bug)
+        let existingCardioIDs = Set(try allCardio(context).map(\.id))
+        for ec in export.cardio where !existingCardioIDs.contains(ec.id) {
+            let type = CardioType(rawValue: ec.type) ?? .other
+            let source = CardioSource(rawValue: ec.source) ?? .iphone
+            let kind = ec.importedWorkoutKindRaw.flatMap(ImportedWorkoutKind.init(rawValue:))
+            let cardio = CardioWorkout(id: ec.id, type: type, start: ec.start, end: ec.end,
+                                       distance: ec.distanceMeters, activeEnergy: ec.activeEnergyKcal,
+                                       avgHeartRate: ec.avgHeartRate, maxHeartRate: ec.maxHeartRate,
+                                       laps: ec.laps, targetLaps: ec.targetLaps,
+                                       targetDistance: ec.targetDistance, source: source,
+                                       notes: ec.notes, isLogged: ec.isLogged ?? false,
+                                       customTitle: ec.customTitle, importedWorkoutKind: kind)
+            cardio.intervalDetailData = ec.intervalDetailData ?? ""
+            context.insert(cardio)
+            for hr in ec.hrSamples ?? [] {
+                context.insert(HRSample(t: hr.t, bpm: hr.bpm, cardio: cardio))
+            }
+            for r in ec.routeSamples ?? [] {
+                context.insert(RouteSample(t: r.t, lat: r.lat, lon: r.lon, elevation: r.elevation, cardio: cardio))
+            }
+            added += 1
+        }
+
+        // Assessments (were never exported/imported before)
+        let existingAssessmentIDs = Set(try context.fetch(FetchDescriptor<Assessment>()).map(\.id))
+        for ea in export.assessments where !existingAssessmentIDs.contains(ea.id) {
+            let kind = AssessmentKind(rawValue: ea.kind) ?? .pushupMax
+            let a = Assessment(id: ea.id, date: ea.date, kind: kind, value: ea.value,
+                               inputWeight: ea.inputWeight ?? 0, inputReps: ea.inputReps ?? 0,
+                               exerciseName: ea.exerciseName, protocolName: ea.protocolName, notes: ea.notes,
+                               inputDistance: ea.inputDistance, inputTime: ea.inputTime,
+                               inputEndingHR: ea.inputEndingHR, inputAge: ea.inputAge, inputSex: ea.inputSex)
+            context.insert(a)
+            added += 1
+        }
+
         try context.save()
         return added
     }

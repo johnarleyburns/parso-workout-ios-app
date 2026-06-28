@@ -49,10 +49,10 @@ struct GuidedPhaseOverlay: View {
             tint.ignoresSafeArea()
             VStack(spacing: 24) {
                 Spacer()
-                Text(title).font(.system(size: 34, weight: .heavy, design: .rounded))
+                Text(title).scaledSystemFont(34, relativeTo: .largeTitle, weight: .heavy, design: .rounded)
                     .accessibilityIdentifier("\(idPrefix).title")
                 Text(clock)
-                    .font(.system(size: 96, weight: .black, design: .rounded))
+                    .scaledSystemFont(96, relativeTo: .largeTitle, weight: .black, design: .rounded)
                     .monospacedDigit().contentTransition(.numericText())
                     .accessibilityIdentifier("\(idPrefix).remaining")
                 Spacer()

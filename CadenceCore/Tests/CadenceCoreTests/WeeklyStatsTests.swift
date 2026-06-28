@@ -10,12 +10,12 @@ final class WeeklyStatsTests: XCTestCase {
     }
 
     func testCardioMinutesSumsLastSevenDays() throws {
-        let now = Date()
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
         let recent = CardioWorkout(type: .run, start: now.addingTimeInterval(-3600),
                                    end: now.addingTimeInterval(-3600 + 1800)) // 30 min
         let stale = CardioWorkout(type: .walk, start: now.addingTimeInterval(-10 * 86_400),
                                   end: now.addingTimeInterval(-10 * 86_400 + 3600)) // 60 min, > 7d ago
-        let since = WeeklyStats.weekStart(now: now)
+        let since = now.addingTimeInterval(-7 * 86_400)  // genuine trailing 7 days
         XCTAssertEqual(WeeklyStats.cardioMinutes([recent, stale], since: since), 30)
     }
 

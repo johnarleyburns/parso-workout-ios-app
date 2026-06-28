@@ -12,7 +12,7 @@ struct HealthPrimingView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 Image(systemName: "heart.text.square.fill")
-                    .font(.system(size: 64))
+                    .scaledSystemFont(64, relativeTo: .largeTitle)
                     .foregroundStyle(.pink)
                     .padding(.top, 24)
                 Text("Connect Apple Health")

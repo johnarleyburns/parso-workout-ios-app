@@ -53,7 +53,7 @@ struct AboutView: View {
                     .frame(width: 72, height: 72)
                     .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
                 Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.system(size: 32, weight: .medium))
+                    .scaledSystemFont(32, relativeTo: .largeTitle, weight: .medium)
                     .foregroundStyle(.white)
                     .accessibilityHidden(true)
             }
@@ -85,8 +85,8 @@ struct AboutView: View {
                       "Every recommendation comes from published exercise-science research and shows the principle and citation behind it. No black box.")
             principle("dollarsign.circle", "Free & open source",
                       "No subscriptions and no ads. An optional tip jar is the only thing you can buy — and it's never required. The complete source is public, so anyone can verify exactly what it does.")
-            principle("icloud", "Your data, your iCloud",
-                      "Optional backup and sync go through your own private iCloud — never our servers — and you can export or delete everything at any time.")
+            principle("square.and.arrow.up", "Your data, fully portable",
+                      "Everything lives on this device — no cloud. You can export a complete backup of your entire history and preferences at any time and import it into a fresh install, so your data is never locked in.")
         }
     }
 
@@ -161,7 +161,7 @@ struct AboutView: View {
                 Link("View Online", destination: privacyURL)
                     .font(.subheadline).accessibilityIdentifier("about.privacyLink")
             }
-            Text("We don't collect, transmit, or sell your data — there's nothing to collect, because Cladiron runs entirely on your device. Apple Health, Bluetooth heart-rate, and location data all stay on your device or in your own iCloud, and only with your permission.")
+            Text("We don't collect, transmit, or sell your data — there's nothing to collect, because Cladiron runs entirely on your device. Apple Health, Bluetooth heart-rate, and location data all stay on your device, and only with your permission.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Link(destination: privacyURL) {

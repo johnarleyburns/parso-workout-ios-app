@@ -65,15 +65,6 @@ struct SettingsView: View {
                     Text("Your health data stays on your device. Detailed sets stay local; only workout summaries are written to Apple Health.")
                 }
 
-                Section {
-                    Toggle("iCloud Sync", isOn: $settings.cloudSyncEnabled)
-                        .accessibilityIdentifier("settings.cloudSync")
-                } header: {
-                    Text("iCloud")
-                } footer: {
-                    Text("Off by default — Cladiron runs fully on this device. When on, your data syncs through your private iCloud database. Takes effect after the app restarts.")
-                }
-
                 Section("Data") {
                     NavigationLink {
                         ImportView()

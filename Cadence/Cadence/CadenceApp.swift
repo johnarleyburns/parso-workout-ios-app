@@ -21,24 +21,23 @@ struct CadenceApp: App {
     init() {
         let args = ProcessInfo.processInfo.arguments
         let uiTest = args.contains("-uiTest")
-        let cloud = !uiTest && (UserDefaults.standard.object(forKey: SettingsKey.cloudSyncEnabled) as? Bool ?? false)
 
-        // Reset a pre-version-2 local store once (pre-release; sync off by
-        // default so there's nothing remote to lose).
+        // Reset a pre-version-2 local store once (pre-release; data is local and
+        // back-up-able via export, so nothing irreplaceable is lost).
         if !uiTest, UserDefaults.standard.integer(forKey: Self.schemaVersionKey) < Self.schemaVersion {
             CadenceStore.destroyDefaultStore()
             UserDefaults.standard.set(Self.schemaVersion, forKey: Self.schemaVersionKey)
         }
 
         do {
-            container = try CadenceStore.makeModelContainer(inMemory: uiTest, cloudKitEnabled: cloud)
+            container = try CadenceStore.makeModelContainer(inMemory: uiTest)
         } catch {
             // A dev schema change can leave an incompatible on-disk store.
-            // Reset it once and retry rather than crashing (pre-release; sync
-            // off by default so there's nothing remote to lose).
+            // Reset it once and retry rather than crashing (pre-release; data is
+            // local and export-backed, so nothing irreplaceable is lost).
             CadenceStore.destroyDefaultStore()
             do {
-                container = try CadenceStore.makeModelContainer(inMemory: uiTest, cloudKitEnabled: cloud)
+                container = try CadenceStore.makeModelContainer(inMemory: uiTest)
             } catch {
                 fatalError("Failed to create ModelContainer after reset: \(error)")
             }

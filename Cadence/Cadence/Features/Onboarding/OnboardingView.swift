@@ -87,7 +87,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             Spacer()
             Image(systemName: "lock.fill")
-                .font(.system(size: 34)).foregroundStyle(.tint)
+                .scaledSystemFont(34, relativeTo: .largeTitle).foregroundStyle(.tint)
                 .frame(width: 72, height: 72)
                 .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
             Text("Private by design").font(.title.bold()).padding(.top, 22)
@@ -202,7 +202,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             Spacer()
             Image(systemName: "stethoscope")
-                .font(.system(size: 30)).foregroundStyle(.orange)
+                .scaledSystemFont(30, relativeTo: .largeTitle).foregroundStyle(.orange)
                 .frame(width: 72, height: 72)
                 .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
             Text("Coaching, not medical advice")

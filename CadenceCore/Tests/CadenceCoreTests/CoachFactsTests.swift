@@ -9,10 +9,11 @@ final class CoachFactsTests: XCTestCase {
     }
 
     private var testNow: Date {
-        let cal = Calendar.current
-        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
-        comps.weekday = 5; comps.hour = 12; comps.minute = 0; comps.second = 0
-        return cal.date(from: comps) ?? Date()
+        // Fixed absolute Thursday (2026-06-25 12:00) — deterministic, no wall-clock drift.
+        var comps = DateComponents()
+        comps.year = 2026; comps.month = 6; comps.day = 25
+        comps.hour = 12; comps.minute = 0; comps.second = 0
+        return Calendar.current.date(from: comps) ?? Date(timeIntervalSince1970: 1_750_000_000)
     }
 
     private func makeStrengthEvent(context: ModelContext, name: String, primaryMuscles: [String],
@@ -21,9 +22,9 @@ final class CoachFactsTests: XCTestCase {
         let session = try WorkoutRepository.createSession(date: date.addingTimeInterval(-600), in: context)
         let ex = try WorkoutRepository.findOrCreateExercise(
             named: name, primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles, in: context)
-        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: weight, reps: reps, rpe: rpe, in: context)
-        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: weight, reps: reps, rpe: rpe, in: context)
-        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: weight, reps: reps, rpe: rpe, in: context)
+        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: weight, reps: reps, rpe: rpe, completedAt: date, in: context)
+        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: weight, reps: reps, rpe: rpe, completedAt: date, in: context)
+        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: weight, reps: reps, rpe: rpe, completedAt: date, in: context)
         session.endedAt = date
         return TrainingEvent.from(session: session)!
     }

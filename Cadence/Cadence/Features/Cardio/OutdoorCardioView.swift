@@ -62,7 +62,7 @@ struct OutdoorCardioView: View {
                     .accessibilityLabel("Route map, \(Format.distance(recorder?.distanceMeters ?? 0))")
 
                 Text(Format.duration(elapsed))
-                    .font(.system(size: 52, weight: .bold, design: .rounded))
+                    .scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded)
                     .monospacedDigit()
                     .accessibilityIdentifier("outdoor.elapsed")
 

@@ -190,7 +190,10 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     func testCardioDayTargetIndependentOfMinutes() throws {
         let context = try ModelContext(CadenceStore.makeModelContainer(inMemory: true))
-        let now = Date()
+        // Fixed Thursday so a "1 day ago" event stays inside the same Monday-week.
+        var nowComps = DateComponents()
+        nowComps.year = 2026; nowComps.month = 6; nowComps.day = 25; nowComps.hour = 12
+        let now = Calendar.current.date(from: nowComps) ?? Date(timeIntervalSince1970: 1_750_000_000)
         let cal = Calendar.current
 
         // Create a cardio event: 180 min (enough for minutes target)
@@ -340,7 +343,12 @@ final class CoachSchedulePreferencesTests: XCTestCase {
     // MARK: - WeeklyPlan planned properties
 
     func testWeeklyPlanPlannedProperties() throws {
-        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: Date())
+        // Fixed Monday so the current week has remaining planned days (deterministic;
+        // independent of which weekday the suite runs on).
+        var comps = DateComponents()
+        comps.year = 2026; comps.month = 6; comps.day = 22; comps.hour = 12
+        let now = Calendar.current.date(from: comps) ?? Date(timeIntervalSince1970: 1_750_000_000)
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let plan = WeeklyPlan.generate(from: facts)
 
         XCTAssertNotNil(plan.today)

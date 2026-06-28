@@ -26,7 +26,8 @@ final class AppSettings {
                         "settings.autoEndOnIdle", "settings.workoutSounds",
                         "settings.trainingGoal", "settings.experienceLevel",
                         "settings.useHRMonitoring",
-                        "settings.coachPreferenceProfile"] {
+                        "settings.coachPreferenceProfile",
+                        "settings.coachSchedulePreferences"] {
                 defaults.removeObject(forKey: key)
             }
         }

@@ -117,6 +117,20 @@ final class P3CoachHomeUITests: CadenceUITestCase {
                        "Start button must not appear when today's plan is already complete")
     }
 
+    func testTwoADayAfterStrengthShowsRemainingCardioRecommendation() {
+        let app = XCUIApplication.launched(seeds: ["coachTwoADayStrengthDone"],
+                                           extraArgs: ["-noHealthWorkouts"])
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10))
+
+        let title = app.staticTexts["coach.card.heroTitle"]
+        XCTAssertTrue(title.waitForExistence(timeout: 10), "Coach card hero title should exist")
+        XCTAssertEqual(title.label, "Steady run",
+                       "After the planned strength workout, Home should keep recommending the remaining planned cardio")
+        XCTAssertFalse(title.label.contains("Strength is done today"))
+        XCTAssertTrue(app.buttons["home.coachStart"].exists,
+                      "Remaining cardio recommendation should still have a Start button")
+    }
+
     // MARK: - Planned rest of week
 
     func testHomeShowsPlannedRestOfWeekAndYourPlanLink() {

@@ -17,6 +17,7 @@ enum UITestSeed {
         if seeds.contains("coachAerobicGap") { seedCoachAerobicGap(ctx) }
         if seeds.contains("coachCyclePreference") { seedCoachAerobicGap(ctx); UserDefaults.standard.set(cyclePreferenceJSON(), forKey: "settings.coachPreferenceProfile") }
         if seeds.contains("coachLowerBodyRecovery") { seedCoachLowerBodyRecovery(ctx) }
+        if seeds.contains("coachTwoADayStrengthDone") { seedCoachTwoADayStrengthDone(ctx) }
         // Coach Start routing seeds (audio/coach routing plan §D5). Boxing wins among
         // moderate-aerobic candidates by id sort; run wins via a stored preference;
         // strength wins when aerobic is met but strength days are missing.
@@ -169,6 +170,32 @@ enum UITestSeed {
         try? ctx.save()
     }
 
+    /// Two-a-day enabled, today's strength is done, cardio is still due. This
+    /// catches the Home card copy path after the engine correctly leaves one
+    /// planned workout remaining.
+    private static func seedCoachTwoADayStrengthDone(_ ctx: ModelContext) {
+        UserDefaults.standard.set(twoADaySchedulePreferencesJSON(), forKey: "settings.coachSchedulePreferences")
+        UserDefaults.standard.set(runPreferenceJSON(), forKey: "settings.coachPreferenceProfile")
+
+        let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        guard let bench else { return }
+
+        let now = Date()
+        let todayStart = Calendar.current.startOfDay(for: now)
+        let sessionEnd = now.addingTimeInterval(-60)
+        let proposedStart = sessionEnd.addingTimeInterval(-1800)
+        let sessionStart = proposedStart > todayStart ? proposedStart : todayStart.addingTimeInterval(60)
+
+        let s = WorkoutSession(title: "Morning Strength", date: sessionStart)
+        s.endedAt = sessionEnd
+        ctx.insert(s)
+        for i in 0..<3 {
+            ctx.insert(SetEntry(weight: 80, reps: 8, order: i, rpe: 8,
+                                completedAt: sessionStart, session: s, exercise: bench))
+        }
+        try? ctx.save()
+    }
+
     /// Mixed history with the most recent strength + cardio both *yesterday*, and
     /// older strength + cardio the previous week. Verifies "Why this today" surfaces
     /// the yesterday events as last-strength / last-cardio (not last week's).
@@ -278,5 +305,10 @@ enum UITestSeed {
         {"version":1,"aerobicPreferences":[{"intent":"moderateAerobic","modality":"cycle","score":3,"updatedAt":"2026-06-23T14:00:00Z"}],"strengthPreferences":[],"avoidedTags":[],"selectionEvents":[]}
         """
         return json.data(using: .utf8)!
+    }
+
+    private static func twoADaySchedulePreferencesJSON() -> Data {
+        let prefs = CoachSchedulePreferences.default.withTwoADays(true)
+        return (try? JSONEncoder().encode(prefs)) ?? Data()
     }
 }

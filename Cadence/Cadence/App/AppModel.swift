@@ -49,6 +49,9 @@ final class AppModel: NSObject {
             if let idx = args.firstIndex(of: "-todaySteps"), idx + 1 < args.count, let n = Int(args[idx + 1]) {
                 fake.seededTodaySteps = n
             }
+            if args.contains("-noHealthWorkouts") {
+                fake.pendingWorkouts = []
+            }
             self.health = fake
         } else {
             self.health = HealthKitProvider()

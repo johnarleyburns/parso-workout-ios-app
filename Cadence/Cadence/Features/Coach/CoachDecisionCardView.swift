@@ -46,10 +46,12 @@ struct CoachDecisionCardView: View {
                     Text(heroTitle)
                         .font(.title2.bold())
                         .lineLimit(2)
+                        .accessibilityIdentifier("coach.card.heroTitle")
                     Text(heroSubtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
+                        .accessibilityIdentifier("coach.card.heroSubtitle")
                 }
             }
 
@@ -230,6 +232,7 @@ struct CoachDecisionCardView: View {
 
     private var stateKind: String {
         if isCompleteState { return "PLAN DONE" }
+        if remainingPlannedRecommendation?.isAerobic == true { return "AEROBIC" }
         switch decision.primary.kind {
         case .rest: return "RECOVERY"
         case .recovery: return "RECOVERY"
@@ -277,6 +280,9 @@ struct CoachDecisionCardView: View {
                 return "Plan followed"
             }
         }
+        if let planned = remainingPlannedRecommendation {
+            return planned.title
+        }
         if hasRecentStrength && decision.primary.kind != .strength {
             return "Strength is done today"
         }
@@ -291,6 +297,9 @@ struct CoachDecisionCardView: View {
             return todayCompleteDescription
         }
         let recent = decision.observedFacts.first.map { "\($0.title): \($0.value)" } ?? ""
+        if let planned = remainingPlannedRecommendation {
+            return planned.subtitle.isEmpty ? recent : planned.subtitle
+        }
         if hasRecentStrength && decision.primary.kind != .strength {
             let exercises = recentlyTrainedExercises()
             if exercises.isEmpty { return recent }
@@ -312,6 +321,11 @@ struct CoachDecisionCardView: View {
 
     private var hasRecentStrength: Bool {
         decision.deferred.contains { $0.session.kind == .strength && !$0.reason.id.isEmpty }
+    }
+
+    private var remainingPlannedRecommendation: CoachSession? {
+        guard decision.todayPlannedRecommendations.count == 1 else { return nil }
+        return decision.todayPlannedRecommendations.first
     }
 
     private func recentlyTrainedExercises() -> String {

@@ -2,7 +2,14 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-27 — Coach two-a-days, load accounting, set entry UX upgrade._
+_Last updated: 2026-06-27 — Coach card "Pick another" cardio alternatives link._
+
+## What just shipped — Coach card cardio alternatives link
+
+- **`CoachDecisionCardView.swift`**: new `onPickAlternative` callback + a "Not feeling it? Pick another" link rendered under the single-CTA Start button. Gated by `showsAlternativesLink` — only shown for cardio prescriptions (`easyAerobic`/`moderateAerobic`/`vo2Intervals`) that have scored `decision.alternatives`. Accessibility id `coach.card.pickAlternative`.
+- **`HomeView.swift`**: `showAlternatives` state presents the previously-unwired `CoachAlternativesView` in a sheet (wrapped in a `NavigationStack`). New `chooseAlternative(_:)` records the preference via `settings.recordCoachSelection(_:alternatives:)` (so Coach learns the modality), dismisses the sheet, then defers `launchDecision(_:)` one runloop turn so the chooser finishes dismissing before the cardio setup sheet/cover presents.
+- No `CadenceCore` changes — `CoachDecision.alternatives` and the preference-learning hook already existed; `CoachAlternativesView` already renders each option's `CitationLink` (HARD RULE satisfied).
+- Verified: `xcodebuild` Cadence scheme **BUILD SUCCEEDED**; `swift test` 474 tests, 0 failures.
 
 ## What just shipped — Coach two-a-days + load accounting + set entry UX
 

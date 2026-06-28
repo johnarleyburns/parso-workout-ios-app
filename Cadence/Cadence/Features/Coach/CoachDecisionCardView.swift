@@ -9,6 +9,7 @@ struct CoachDecisionCardView: View {
     var onAddOn: (CoachSession, CoachAddOnStatus) -> Void = { _, _ in }
     var onSeeInsights: () -> Void
     var onPreferences: () -> Void
+    var onPickAlternative: () -> Void = {}
 
     @State private var warningsExpanded = false
     @State private var addOnsExpanded = false
@@ -160,16 +161,35 @@ struct CoachDecisionCardView: View {
                 // this stack.
                 twoADayStack
             } else {
-                Button { onStart(decision.primary) } label: {
-                    Label(ctaLabel, systemImage: ctaSymbol)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
+                VStack(spacing: 8) {
+                    Button { onStart(decision.primary) } label: {
+                        Label(ctaLabel, systemImage: ctaSymbol)
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                    }
+                    .foregroundStyle(.white)
+                    .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
+                    .accessibilityIdentifier("home.coachStart")
+                    .accessibilityLabel(ctaLabel)
+
+                    if showsAlternativesLink {
+                        Button { onPickAlternative() } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                    .font(.caption2.weight(.bold))
+                                Text("Not feeling it? Pick another")
+                            }
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(stateColor)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("coach.card.pickAlternative")
+                        .accessibilityLabel("Pick an alternative workout")
+                    }
                 }
-                .foregroundStyle(.white)
-                .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
-                .accessibilityIdentifier("home.coachStart")
-                .accessibilityLabel(ctaLabel)
             }
 
             if let topInsight {
@@ -355,6 +375,16 @@ struct CoachDecisionCardView: View {
 
     private var ctaSymbol: String {
         decision.primary.kind == .rest || decision.primary.kind == .recovery ? "moon.fill" : "play.fill"
+    }
+
+    /// "Pick another" is offered only for cardio prescriptions that have scored
+    /// alternatives to swap to (e.g. easy cycle → easy walk/swim/row).
+    private var showsAlternativesLink: Bool {
+        guard !decision.alternatives.isEmpty else { return false }
+        switch decision.primary.kind {
+        case .easyAerobic, .moderateAerobic, .vo2Intervals: return true
+        default: return false
+        }
     }
 
     private var nextEligibleTime: String? {

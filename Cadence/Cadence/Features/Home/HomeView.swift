@@ -48,6 +48,8 @@ struct HomeView: View {
     @State private var cardioGoalFor: CardioType?     // optional distance goal before run/walk/cycle
     @State private var warnAddOn: (session: CoachSession, status: CoachAddOnStatus)?
     @State private var outdoorGoalMeters: Double?     // goal handed to the outdoor recorder
+    /// Presents the "same prescription, different way" cardio chooser from the card.
+    @State private var showAlternatives = false
 
     // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
     // read-only insights and the prescriptive recommendation surfaced on the card.
@@ -135,7 +137,8 @@ struct HomeView: View {
                         onStart: { launchDecision($0) },
                         onAddOn: { session, status in handleAddOn(session, status) },
                         onSeeInsights: { path.append(HomeRoute.coach) },
-                        onPreferences: { path.append(HomeRoute.coachPreferences) })
+                        onPreferences: { path.append(HomeRoute.coachPreferences) },
+                        onPickAlternative: { showAlternatives = true })
                     quickActionsRow
                     plannedRestOfWeekSection
                     favoritesSection
@@ -196,6 +199,12 @@ struct HomeView: View {
             .sheet(item: $timerCardioSetup) { setup in
                 TimerCardioSetupView(type: setup.type, suggestedMinutes: setup.suggestedMinutes,
                                      onSaved: { _ in markWorkoutHistoryChanged() })
+            }
+            .sheet(isPresented: $showAlternatives) {
+                NavigationStack {
+                    CoachAlternativesView(decision: coachDecision,
+                                          onSelect: { chooseAlternative($0) })
+                }
             }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
             .sheet(isPresented: $cardioPickerPresented) {
@@ -692,6 +701,21 @@ struct HomeView: View {
             }
         case .recovery, .rest, .assessment:
             break
+        }
+    }
+
+    /// User picked a different cardio modality from the alternatives chooser.
+    /// Records the preference so Coach learns, dismisses the sheet, then launches
+    /// the chosen session on the next runloop turn — deferring the launch lets the
+    /// alternatives sheet finish dismissing before the cardio setup sheet/cover
+    /// presents (SwiftUI drops a present that races an in-flight dismiss).
+    private func chooseAlternative(_ session: CoachSession) {
+        let decision = coachDecision
+        settings.recordCoachSelection(session, alternatives: [decision.primary] + decision.alternatives)
+        showAlternatives = false
+        Task { @MainActor in
+            await Task.yield()
+            launchDecision(session)
         }
     }
 

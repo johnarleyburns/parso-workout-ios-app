@@ -40,6 +40,9 @@ struct CardioDetailView: View {
                     .chartXAxisLabel("min")
                     .frame(height: 180)
                     .accessibilityIdentifier("cardioDetail.hrChart")
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Heart rate over time")
+                    .accessibilityValue(hrChartAXSummary(hr.map(\.bpm)))
                 }
             }
 
@@ -113,6 +116,16 @@ struct CardioDetailView: View {
             }
         }
         return splits
+    }
+
+    /// Spoken summary of an HR series for VoiceOver (the chart itself is opaque).
+    private func hrChartAXSummary(_ bpms: [Double]) -> String {
+        let valid = bpms.filter { $0 > 0 }
+        guard !valid.isEmpty else { return "No heart rate samples" }
+        let lo = Int(valid.min() ?? 0)
+        let hi = Int(valid.max() ?? 0)
+        let avg = Int(valid.reduce(0, +) / Double(valid.count))
+        return "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples"
     }
 }
 

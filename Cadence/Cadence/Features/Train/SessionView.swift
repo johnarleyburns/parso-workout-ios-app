@@ -464,6 +464,7 @@ struct SessionView: View {
                             } label: { Image(systemName: healthSaved ? "checkmark.circle.fill" : "heart.text.square") }
                                 .disabled(session.orderedSets.isEmpty)
                                 .accessibilityIdentifier("session.saveHealth")
+                                .accessibilityLabel(healthSaved ? "Saved to Apple Health" : "Save workout to Apple Health")
                         }
                     }
                 }
@@ -844,9 +845,10 @@ struct SessionView: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis").font(.headline)
-                        .foregroundStyle(.secondary).frame(width: 32, height: 32)
+                        .foregroundStyle(.secondary).frame(width: 44, height: 44)
                 }
                 .accessibilityIdentifier("exercise.menu.\(exercise.name)")
+                .accessibilityLabel("Exercise options")
             }
             contextLine(for: exercise)
 
@@ -1105,6 +1107,7 @@ struct SessionView: View {
                         .frame(width: SetCol.prev, alignment: .leading)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Use previous set values")
 
                 TextField("0", text: $inlineWeight)
                     .keyboardType(.decimalPad).focused($weightFocused)
@@ -1131,6 +1134,7 @@ struct SessionView: View {
                 .buttonStyle(.plain).disabled(!canSave)
                 .frame(width: SetCol.check)
                 .accessibilityIdentifier("inline.save")
+                .accessibilityLabel("Save set")
             }
 
             HStack(spacing: 10) {
@@ -1151,6 +1155,7 @@ struct SessionView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("inline.weightInfo")
+                .accessibilityLabel("Weight entry help")
                 HStack(spacing: 3) {
                     Text("RPE").font(.caption2).foregroundStyle(.secondary)
                     if let rpe = inlineRPE {
@@ -1162,6 +1167,7 @@ struct SessionView: View {
                                 .font(.caption2).foregroundStyle(.tertiary)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Clear RPE")
                     } else {
                         Text("none").font(.caption).foregroundStyle(.tertiary)
                     }
@@ -1175,6 +1181,7 @@ struct SessionView: View {
                         Image(systemName: "info.circle").font(.caption2).foregroundStyle(.tint)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("RPE help")
                 }
                 .accessibilityIdentifier("inline.rpe")
                 if wouldBePR {

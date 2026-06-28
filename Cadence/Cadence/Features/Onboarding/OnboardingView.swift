@@ -52,6 +52,7 @@ struct OnboardingView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("onboarding.back")
+                .accessibilityLabel("Back")
             }
             Spacer()
             Button("Skip") { Haptics.selection(); finish() }

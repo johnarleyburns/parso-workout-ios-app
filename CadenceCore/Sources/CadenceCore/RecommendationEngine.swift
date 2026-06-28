@@ -45,8 +45,8 @@ public enum RecommendationEngine {
                                    recentPlanKeys: [String]) -> WorkoutPlan {
         let recs = run(facts)
         let presets = StrengthPresets.all
-        guard !presets.isEmpty else {
-            return StrengthPresets.all[0]
+        guard let firstPreset = presets.first else {
+            return StrengthPresets.fallback
         }
 
         let recentKeySet = Set(recentPlanKeys)
@@ -56,7 +56,7 @@ public enum RecommendationEngine {
             return parts.count >= 2 ? "\(parts[0])-\(parts[1])" : nil
         })
 
-        var bestPlan = presets[0]
+        var bestPlan = firstPreset
         var bestScore = Int.min
 
         for plan in presets {

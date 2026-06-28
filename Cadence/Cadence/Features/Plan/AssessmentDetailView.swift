@@ -129,6 +129,19 @@ struct AssessmentDetailView: View {
                 .foregroundStyle(.tint)
         }
         .chartYScale(domain: .automatic(includesZero: false))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Assessment trend over time")
+        .accessibilityValue(chartAXSummary(history))
+    }
+
+    /// Spoken summary of the trend for VoiceOver (the chart itself is opaque).
+    private func chartAXSummary(_ history: [Assessment]) -> String {
+        let sorted = history.sorted { $0.date < $1.date }
+        guard let earliest = sorted.first, let latest = sorted.last else { return "No readings yet" }
+        let first = AssessmentDisplay.value(earliest.value, kind: kind, unit: settings.unit)
+        let last = AssessmentDisplay.value(latest.value, kind: kind, unit: settings.unit)
+        if sorted.count == 1 { return "One reading, \(last)" }
+        return "\(sorted.count) readings, earliest \(first), latest \(last)"
     }
 
     /// Chart values follow the same display unit as the text: kg-tests convert to

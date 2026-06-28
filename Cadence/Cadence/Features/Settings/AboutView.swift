@@ -31,6 +31,9 @@ struct AboutView: View {
                 privacy
                     .padding(.horizontal, 20).padding(.vertical, 24)
                 Divider()
+                medicalDisclaimer
+                    .padding(.horizontal, 20).padding(.vertical, 24)
+                Divider()
                 disclaimer
                     .padding(.horizontal, 20).padding(.vertical, 24)
             }
@@ -81,7 +84,7 @@ struct AboutView: View {
             principle("book.closed", "Science-based & transparent",
                       "Every recommendation comes from published exercise-science research and shows the principle and citation behind it. No black box.")
             principle("dollarsign.circle", "Free & open source",
-                      "No subscriptions, no ads, no upsells. The complete source is public, so anyone can verify exactly what it does.")
+                      "No subscriptions and no ads. An optional tip jar is the only thing you can buy — and it's never required. The complete source is public, so anyone can verify exactly what it does.")
             principle("icloud", "Your data, your iCloud",
                       "Optional backup and sync go through your own private iCloud — never our servers — and you can export or delete everything at any time.")
         }
@@ -170,6 +173,24 @@ struct AboutView: View {
                 .font(.body)
             }
         }
+    }
+
+    // MARK: Medical disclaimer
+
+    private var medicalDisclaimer: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "stethoscope")
+                    .font(.title3).foregroundStyle(.orange)
+                    .accessibilityHidden(true)
+                Text("Coaching, Not Medical Advice").font(.title3.bold())
+            }
+            Text("Cladiron's fitness tests, scores, and training recommendations are general educational guidance, not medical advice, diagnosis, or treatment. It is not a medical device. Always consult a qualified healthcare professional before starting or changing an exercise program, and stop and seek care if you feel pain, dizziness, or other warning signs.")
+                .font(.footnote).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("about.medicalDisclaimer")
     }
 
     // MARK: Disclaimer

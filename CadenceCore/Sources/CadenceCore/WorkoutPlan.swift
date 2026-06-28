@@ -143,6 +143,12 @@ public enum StrengthPresets {
         ("Back Squat", 5, 5), ("Overhead Press", 5, 5), ("Deadlift", 1, 5),
     ]
 
+    /// A guaranteed non-empty fallback used when `all` is somehow empty, so
+    /// `pickRoutine` never has to force-index an empty array. Independent of `all`.
+    public static let fallback: WorkoutPlan = template("preset-fullbody-fallback", "Full Body", [
+        "Back Squat", "Bench Press", "Deadlift",
+    ])
+
     public static let all: [WorkoutPlan] = [
         // 5×5 — four alternating days across two weeks (feedback batch 3).
         // Science: Krieger 2010 multi-set meta-analysis.

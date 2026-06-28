@@ -118,6 +118,7 @@ struct CoachAlternativesView: View {
             RoundedRectangle(cornerRadius: 12).fill(.teal)
             Image(systemName: icon).font(.body.weight(.bold)).foregroundStyle(.white)
         }
+        .accessibilityHidden(true)
     }
 
     private func altSubtitle(for session: CoachSession) -> String {

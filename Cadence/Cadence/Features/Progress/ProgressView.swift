@@ -116,6 +116,7 @@ struct TrainingProgressView: View {
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
                 .frame(height: 150)
+                .accessibilityHidden(true)
 
                 VStack(spacing: 5) {
                     ForEach(strengthSeries) { s in

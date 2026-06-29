@@ -164,6 +164,34 @@ final class AppSettings {
         }
     }
 
+    var lastStrengthSettings: WorkoutSettings {
+        get { Self.readWorkoutSettings(defaults, "settings.lastStrengthSettings") }
+        set { Self.writeWorkoutSettings(defaults, "settings.lastStrengthSettings", newValue) }
+    }
+
+    var lastCardioSettings: WorkoutSettings {
+        get { Self.readWorkoutSettings(defaults, "settings.lastCardioSettings") }
+        set { Self.writeWorkoutSettings(defaults, "settings.lastCardioSettings", newValue) }
+    }
+
+    var lastIntervalSettings: WorkoutSettings {
+        get { Self.readWorkoutSettings(defaults, "settings.lastIntervalSettings") }
+        set { Self.writeWorkoutSettings(defaults, "settings.lastIntervalSettings", newValue) }
+    }
+
+    private static func readWorkoutSettings(_ defaults: UserDefaults, _ key: String) -> WorkoutSettings {
+        guard let data = defaults.data(forKey: key),
+              let ws = try? JSONDecoder().decode(WorkoutSettings.self, from: data)
+        else { return .default }
+        return ws
+    }
+
+    private static func writeWorkoutSettings(_ defaults: UserDefaults, _ key: String, _ ws: WorkoutSettings) {
+        if let data = try? JSONEncoder().encode(ws) {
+            defaults.set(data, forKey: key)
+        }
+    }
+
     @discardableResult
     func recordCoachSelection(_ session: CoachSession, alternatives: [CoachSession],
                                at date: Date = Date()) -> CoachPreferenceProfile {

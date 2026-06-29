@@ -115,12 +115,64 @@ struct WorkoutPlanEditor: View {
     @State private var showingExercisePicker = false
     @State private var newPartnerName = ""
 
+    @State private var restSeconds: Int
+    @State private var autoStartRest: Bool
+    @State private var preWorkoutCountdown: Int
+    @State private var autoEndOnIdle: Bool
+    @State private var idleTimeoutMinutes: Int
+    @State private var plateRounding: Bool
+    @State private var useHR: Bool
+
+    init(plan: EditablePlan, onStart: @escaping (EditablePlan) -> Void) {
+        self._plan = State(initialValue: plan)
+        self.onStart = onStart
+
+        let ws = WorkoutSettings.default
+        self._restSeconds = State(initialValue: ws.restSeconds)
+        self._autoStartRest = State(initialValue: ws.autoStartRest)
+        self._preWorkoutCountdown = State(initialValue: ws.preWorkoutCountdown)
+        self._autoEndOnIdle = State(initialValue: ws.autoEndOnIdle)
+        self._idleTimeoutMinutes = State(initialValue: ws.idleTimeoutMinutes)
+        self._plateRounding = State(initialValue: ws.plateRounding)
+        self._useHR = State(initialValue: ws.useHRMonitoring)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             List {
                 Section {
                     Stepper("Warm-up: \(plan.warmupMinutes) min", value: $plan.warmupMinutes, in: 0...30)
                         .accessibilityIdentifier("editor.warmup")
+                }
+
+                Section {
+                    Stepper("Get-ready countdown: \(preWorkoutCountdown)s",
+                            value: $preWorkoutCountdown, in: 0...60, step: 5)
+                        .accessibilityIdentifier("editor.countdown")
+                }
+
+                Section {
+                    Stepper("Rest timer: \(restSeconds)s",
+                            value: $restSeconds, in: 15...600, step: 15)
+                        .accessibilityIdentifier("editor.restSeconds")
+                    Toggle("Auto-start rest timer", isOn: $autoStartRest)
+                        .accessibilityIdentifier("editor.autoRest")
+                }
+
+                Section {
+                    Toggle("Round weights to nearest plate", isOn: $plateRounding)
+                        .accessibilityIdentifier("editor.plateRounding")
+                }
+
+                Section {
+                    Toggle("Auto-end when idle", isOn: $autoEndOnIdle)
+                        .accessibilityIdentifier("editor.autoEndOnIdle")
+                    Stepper("Auto-end after \(idleTimeoutMinutes) min idle",
+                            value: $idleTimeoutMinutes, in: 2...30)
+                        .disabled(!autoEndOnIdle)
+                        .accessibilityIdentifier("editor.idleTimeout")
+                } header: {
+                    Text("Idle Auto-End")
                 }
 
                 Section {
@@ -149,8 +201,6 @@ struct WorkoutPlanEditor: View {
                             let name = newPartnerName.trimmingCharacters(in: .whitespaces)
                             if !name.isEmpty,
                                let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: modelContext) {
-                                // A partner you just added is one you intend to train
-                                // with — select them (partners are otherwise opt-in).
                                 if !plan.partnerIDs.contains(p.id) { plan.partnerIDs.append(p.id) }
                             }
                             newPartnerName = ""
@@ -185,14 +235,14 @@ struct WorkoutPlanEditor: View {
                 }
 
                 Section {
-                    @Bindable var settings = settings
-                    Toggle("Use HR monitoring", isOn: $settings.useHRMonitoring)
+                    Toggle("Use HR monitoring", isOn: $useHR)
                         .accessibilityIdentifier("editor.hrToggle")
                 }
             }
             .environment(\.editMode, .constant(.active))
+            .onAppear { loadSettings() }
 
-            Button(action: { onStart(plan) }) {
+            Button(action: { saveAndStart() }) {
                 Label("Start", systemImage: "play.fill")
                     .font(.title3.bold())
                     .frame(maxWidth: .infinity, minHeight: 56)
@@ -215,6 +265,47 @@ struct WorkoutPlanEditor: View {
                 }
             }
         }
+    }
+
+    private func loadSettings() {
+        let ws = settings.lastStrengthSettings
+        restSeconds = ws.restSeconds
+        autoStartRest = ws.autoStartRest
+        preWorkoutCountdown = ws.preWorkoutCountdown
+        autoEndOnIdle = ws.autoEndOnIdle
+        idleTimeoutMinutes = ws.idleTimeoutMinutes
+        plateRounding = ws.plateRounding
+        useHR = ws.useHRMonitoring
+    }
+
+    private func saveAndStart() {
+        let ws = WorkoutSettings(
+            restSeconds: restSeconds,
+            autoStartRest: autoStartRest,
+            preWorkoutCountdown: preWorkoutCountdown,
+            autoEndOnIdle: autoEndOnIdle,
+            idleTimeoutMinutes: idleTimeoutMinutes,
+            plateRounding: plateRounding,
+            gpsHighAccuracy: settings.lastStrengthSettings.gpsHighAccuracy,
+            autoPause: settings.lastStrengthSettings.autoPause,
+            intervalColorBlind: settings.lastStrengthSettings.intervalColorBlind,
+            spokenCues: settings.lastStrengthSettings.spokenCues,
+            weeklyCardioMinutesGoal: settings.lastStrengthSettings.weeklyCardioMinutesGoal,
+            warmupMinutes: plan.warmupMinutes,
+            cooldownMinutes: plan.cooldownMinutes,
+            useHRMonitoring: useHR
+        )
+        settings.lastStrengthSettings = ws
+
+        settings.restSeconds = restSeconds
+        settings.autoStartRest = autoStartRest
+        settings.preWorkoutCountdown = preWorkoutCountdown
+        settings.autoEndOnIdle = autoEndOnIdle
+        settings.idleTimeoutMinutes = idleTimeoutMinutes
+        settings.plateRounding = plateRounding
+        settings.useHRMonitoring = useHR
+
+        onStart(plan)
     }
 
     @ViewBuilder

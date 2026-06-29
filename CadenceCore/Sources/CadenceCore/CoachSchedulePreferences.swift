@@ -63,6 +63,7 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public var restPreference: RestPreference
     public var allowsTwoADays: Bool
     public var sameDayCardioTiming: SameDayCardioTiming
+    public var dailyStepTarget: Int
 
     public static let `default` = CoachSchedulePreferences(
         strengthDaysPerWeek: 2,
@@ -76,12 +77,14 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
                 cardioDaysPerWeek: Int = 3,
                 restPreference: RestPreference = .defaultRolling,
                 allowsTwoADays: Bool = false,
-                sameDayCardioTiming: SameDayCardioTiming = .afterStrength) {
+                sameDayCardioTiming: SameDayCardioTiming = .afterStrength,
+                dailyStepTarget: Int = 8_000) {
         self.strengthDaysPerWeek = min(5, max(2, strengthDaysPerWeek))
         self.cardioDaysPerWeek = min(7, max(0, cardioDaysPerWeek))
         self.restPreference = restPreference
         self.allowsTwoADays = allowsTwoADays
         self.sameDayCardioTiming = sameDayCardioTiming
+        self.dailyStepTarget = min(20_000, max(2_000, dailyStepTarget))
     }
 
     // MARK: Constrained setters for use in UI
@@ -113,6 +116,12 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public func withSameDayCardioTiming(_ t: SameDayCardioTiming) -> CoachSchedulePreferences {
         var copy = self
         copy.sameDayCardioTiming = t
+        return copy
+    }
+
+    public func withDailyStepTarget(_ target: Int) -> CoachSchedulePreferences {
+        var copy = self
+        copy.dailyStepTarget = min(20_000, max(2_000, target))
         return copy
     }
 }

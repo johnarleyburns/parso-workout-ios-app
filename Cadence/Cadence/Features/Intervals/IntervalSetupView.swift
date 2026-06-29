@@ -1,14 +1,8 @@
 import SwiftUI
 import CadenceCore
 
-/// Pick an interval protocol, then tap **START** (field-test round 3 — selecting
-/// a preset no longer auto-launches). HIIT offers Tabata, Norwegian 4×4, Gibala,
-/// SIT (Wingate), 10-20-30, REHIT, and Custom; Boxing shows Details directly with
-/// round-style steppers (no presets).
 struct IntervalSetupView: View {
-    let type: WorkoutType   // .hiit or .boxing
-    /// Called with the chosen plan; the presenter runs the countdown then the
-    /// runner so it unwinds back to Home (not this sheet) when the workout ends.
+    let type: WorkoutType
     let onSelect: (IntervalPlan) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -22,6 +16,12 @@ struct IntervalSetupView: View {
     @State private var warmupMin = 5
     @State private var cooldownMin = 5
 
+    // Settings from lastIntervalSettings
+    @State private var preWorkoutCountdown: Int
+    @State private var intervalColorBlind: Bool
+    @State private var spokenCues: Bool
+    @State private var useHR: Bool
+
     init(type: WorkoutType, onSelect: @escaping (IntervalPlan) -> Void) {
         self.type = type
         self.onSelect = onSelect
@@ -34,6 +34,11 @@ struct IntervalSetupView: View {
             _workSec = State(initialValue: 30)
             _restSec = State(initialValue: 30)
         }
+        let ws = WorkoutSettings.default
+        _preWorkoutCountdown = State(initialValue: ws.preWorkoutCountdown)
+        _intervalColorBlind = State(initialValue: ws.intervalColorBlind)
+        _spokenCues = State(initialValue: ws.spokenCues)
+        _useHR = State(initialValue: ws.useHRMonitoring)
     }
 
     private struct Preset: Identifiable { let id: String; let title: String; let subtitle: String; let make: () -> IntervalPlan }
@@ -80,22 +85,36 @@ struct IntervalSetupView: View {
                         Stepper("Fighting: \(formatMinSec(workSec))", value: $workSec, in: 10...600, step: stepSize)
                         Stepper("Rest: \(restSec) sec", value: $restSec, in: 0...300, step: stepSize)
                         Stepper("Cool-down: \(cooldownMin) min", value: $cooldownMin, in: 0...20)
-                    if type == .hiit {
-                        rowLabel("custom", "Custom", "your settings")
+                        if type == .hiit {
+                            rowLabel("custom", "Custom", "your settings")
+                        }
                     }
-                }
-                Section {
-                    @Bindable var settings = settings
-                    Toggle("Use HR monitoring", isOn: $settings.useHRMonitoring)
-                        .accessibilityIdentifier("interval.hrToggle")
-                } footer: {
-                    Text("Connect a chest strap or Apple Watch before the workout starts.")
-                }
+
+                    Section {
+                        Stepper("Get-ready countdown: \(preWorkoutCountdown > 0 ? "\(preWorkoutCountdown)s" : "off")",
+                                value: $preWorkoutCountdown, in: 0...60, step: 5)
+                            .accessibilityIdentifier("interval.countdown")
+                    }
+
+                    Section {
+                        Toggle("Color-blind palette", isOn: $intervalColorBlind)
+                            .accessibilityIdentifier("interval.colorBlind")
+                        Toggle("Spoken announcements", isOn: $spokenCues)
+                            .accessibilityIdentifier("interval.spokenCues")
+                    } header: {
+                        Text("Display & Audio")
+                    }
+
+                    Section {
+                        Toggle("Use HR monitoring", isOn: $useHR)
+                            .accessibilityIdentifier("interval.hrToggle")
+                    } footer: {
+                        Text("Connect a chest strap or Apple Watch before the workout starts.")
+                    }
                 }
 
                 Button {
-                    onSelect(selectedPlan())
-                    dismiss()
+                    saveAndStart()
                 } label: {
                     Label("START", systemImage: "play.fill")
                         .font(.title3.weight(.bold))
@@ -113,8 +132,46 @@ struct IntervalSetupView: View {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("interval.cancel")
                 }
             }
-            .onAppear { if selectedID.isEmpty, !presets.isEmpty { selectedID = presets[0].id } }
+            .onAppear {
+                loadSettings()
+                if selectedID.isEmpty, !presets.isEmpty { selectedID = presets[0].id }
+            }
         }
+    }
+
+    private func loadSettings() {
+        let ws = settings.lastIntervalSettings
+        preWorkoutCountdown = ws.preWorkoutCountdown
+        intervalColorBlind = ws.intervalColorBlind
+        spokenCues = ws.spokenCues
+        useHR = ws.useHRMonitoring
+    }
+
+    private func saveAndStart() {
+        let ws = WorkoutSettings(
+            restSeconds: settings.lastIntervalSettings.restSeconds,
+            autoStartRest: settings.lastIntervalSettings.autoStartRest,
+            preWorkoutCountdown: preWorkoutCountdown,
+            autoEndOnIdle: settings.lastIntervalSettings.autoEndOnIdle,
+            idleTimeoutMinutes: settings.lastIntervalSettings.idleTimeoutMinutes,
+            plateRounding: settings.lastIntervalSettings.plateRounding,
+            gpsHighAccuracy: settings.lastIntervalSettings.gpsHighAccuracy,
+            autoPause: settings.lastIntervalSettings.autoPause,
+            intervalColorBlind: intervalColorBlind,
+            spokenCues: spokenCues,
+            weeklyCardioMinutesGoal: settings.lastIntervalSettings.weeklyCardioMinutesGoal,
+            warmupMinutes: warmupMin,
+            cooldownMinutes: cooldownMin,
+            useHRMonitoring: useHR
+        )
+        settings.lastIntervalSettings = ws
+        settings.preWorkoutCountdown = preWorkoutCountdown
+        settings.intervalColorBlind = intervalColorBlind
+        settings.spokenCues = spokenCues
+        settings.useHRMonitoring = useHR
+
+        onSelect(selectedPlan())
+        dismiss()
     }
 
     private var sectionTitle: String { type == .boxing ? "Details" : "Custom" }
@@ -147,8 +204,6 @@ struct IntervalSetupView: View {
     }
 }
 
-/// Identifiable launch descriptor so a plan + its HealthKit save-type can drive
-/// `.fullScreenCover(item:)` from the presenter (Home).
 struct IntervalLaunch: Identifiable {
     let id = UUID()
     let plan: IntervalPlan

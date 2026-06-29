@@ -1,34 +1,34 @@
 import SwiftUI
 import CadenceCore
 
-/// Identifiable descriptor so a Coach-launched timer-cardio target can drive
-/// `.sheet(item:)` from Home.
 struct TimerCardioSetup: Identifiable {
     let id = UUID()
     let type: CardioType
     let suggestedMinutes: Int?
 }
 
-/// A compact setup surface for non-GPS timer cardio (rowing, "Other" indoor
-/// cardio) reached from a Coach Start. Coach recommendations must always land on
-/// a workout's settings before any recording begins (field-testing audio/coach
-/// routing plan §D): this screen shows the target type, the Coach's suggested
-/// duration (read-only), and the HR-monitoring toggle, and only starts the live
-/// recorder after the user taps **Start**.
 struct TimerCardioSetupView: View {
     let type: CardioType
-    /// Coach's suggested duration, shown as read-only guidance. nil ⇒ hidden.
     var suggestedMinutes: Int? = nil
-    /// Forwarded to the live recorder so Home can refresh on save.
     var onSaved: (CardioWorkout) -> Void = { _ in }
 
     @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
     @State private var started = false
+    @State private var preWorkoutCountdown: Int
+    @State private var useHR: Bool
+
+    init(type: CardioType, suggestedMinutes: Int? = nil, onSaved: @escaping (CardioWorkout) -> Void = { _ in }) {
+        self.type = type
+        self.suggestedMinutes = suggestedMinutes
+        self.onSaved = onSaved
+        let ws = WorkoutSettings.default
+        self._preWorkoutCountdown = State(initialValue: ws.preWorkoutCountdown)
+        self._useHR = State(initialValue: ws.useHRMonitoring)
+    }
 
     var body: some View {
         if started {
-            // The setup is the "settings first" gate; the recorder begins only now.
             RecordCardioView(initialType: type, captureHR: settings.useHRMonitoring, onSaved: onSaved)
         } else {
             setupScreen
@@ -48,13 +48,18 @@ struct TimerCardioSetupView: View {
                 }
 
                 HStack {
-                    @Bindable var settings = settings
-                    Toggle("Use HR monitoring", isOn: $settings.useHRMonitoring)
+                    Stepper("Get-ready countdown: \(preWorkoutCountdown > 0 ? "\(preWorkoutCountdown)s" : "off")",
+                            value: $preWorkoutCountdown, in: 0...60, step: 5)
+                        .accessibilityIdentifier("timerCardio.countdown")
+                }
+
+                HStack {
+                    Toggle("Use HR monitoring", isOn: $useHR)
                         .accessibilityIdentifier("timerCardio.hrToggle")
                 }
 
                 Button {
-                    started = true
+                    saveAndStart()
                 } label: {
                     Label("Start", systemImage: "play.fill")
                         .font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 56)
@@ -72,6 +77,36 @@ struct TimerCardioSetupView: View {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("timerCardio.cancel")
                 }
             }
+            .onAppear { loadSettings() }
         }
+    }
+
+    private func loadSettings() {
+        let ws = settings.lastCardioSettings
+        preWorkoutCountdown = ws.preWorkoutCountdown
+        useHR = ws.useHRMonitoring
+    }
+
+    private func saveAndStart() {
+        let ws = WorkoutSettings(
+            restSeconds: settings.lastCardioSettings.restSeconds,
+            autoStartRest: settings.lastCardioSettings.autoStartRest,
+            preWorkoutCountdown: preWorkoutCountdown,
+            autoEndOnIdle: settings.lastCardioSettings.autoEndOnIdle,
+            idleTimeoutMinutes: settings.lastCardioSettings.idleTimeoutMinutes,
+            plateRounding: settings.lastCardioSettings.plateRounding,
+            gpsHighAccuracy: settings.lastCardioSettings.gpsHighAccuracy,
+            autoPause: settings.lastCardioSettings.autoPause,
+            intervalColorBlind: settings.lastCardioSettings.intervalColorBlind,
+            spokenCues: settings.lastCardioSettings.spokenCues,
+            weeklyCardioMinutesGoal: settings.lastCardioSettings.weeklyCardioMinutesGoal,
+            warmupMinutes: settings.lastCardioSettings.warmupMinutes,
+            cooldownMinutes: settings.lastCardioSettings.cooldownMinutes,
+            useHRMonitoring: useHR
+        )
+        settings.lastCardioSettings = ws
+        settings.preWorkoutCountdown = preWorkoutCountdown
+        settings.useHRMonitoring = useHR
+        started = true
     }
 }

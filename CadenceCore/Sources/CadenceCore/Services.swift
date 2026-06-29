@@ -67,6 +67,23 @@ public struct StepActivitySummary: Equatable, Sendable {
         }
     }
 
+    public init(from activity: [DayActivity], targetDailySteps: Int) {
+        let sorted = activity.sorted { $0.date > $1.date }
+        self.todaySteps = sorted.first?.steps ?? 0
+        self.weeklyTotalSteps = sorted.prefix(7).reduce(0) { $0 + $1.steps }
+        let avg = sorted.isEmpty ? 0 : Double(sorted.prefix(7).reduce(0) { $0 + $1.steps }) / Double(min(7, sorted.count))
+        self.sevenDayAverageSteps = avg
+
+        let target = Double(targetDailySteps)
+        if avg < Double(Self.floorDailySteps) {
+            self.status = .low
+        } else if avg < target {
+            self.status = .building
+        } else {
+            self.status = .onTrack
+        }
+    }
+
     public static let empty = StepActivitySummary(from: [])
 }
 

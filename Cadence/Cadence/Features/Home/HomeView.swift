@@ -45,15 +45,14 @@ struct HomeView: View {
     @State private var pendingPlan: EditablePlan?
     @State private var captureHR = false
     // Quick-start shortcuts from the stat tiles (feedback batch 8).
-    @State private var cardioPickerPresented = false  // cardio-min tile → cardio-only picker
-    @State private var weightsStartPresented = false  // volume tile → strength start
-    @State private var cardioGoalFor: CardioType?     // optional distance goal before run/walk/cycle
+    @State private var cardioPickerPresented = false
+    @State private var weightsStartPresented = false
+    @State private var cardioGoalFor: CardioType?
     @State private var warnAddOn: (session: CoachSession, status: CoachAddOnStatus)?
-    @State private var outdoorGoalMeters: Double?     // goal handed to the outdoor recorder
-    /// Presents the "same prescription, different way" cardio chooser from the card.
+    @State private var outdoorGoalMeters: Double?
     @State private var showAlternatives = false
-    /// Presents the Support screen from the contribution toast.
     @State private var showSupport = false
+    @State private var showCoachSettings = false
 
     // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
     // read-only insights and the prescriptive recommendation surfaced on the card.
@@ -74,8 +73,7 @@ struct HomeView: View {
         let events = buildTrainingEvents()
         let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
                                      experience: settings.experienceLevel,
-                                     formula: settings.formula,
-                                     activityTrend: activityTrend)
+                                     formula: settings.formula)
         let todayDate = Calendar.current.startOfDay(for: Date())
         let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == todayDate }
         let hasPain = todayReadiness?.hasPainOrIllnessConcern ?? false
@@ -142,10 +140,9 @@ struct HomeView: View {
                         onStart: { launchDecision($0) },
                         onAddOn: { session, status in handleAddOn(session, status) },
                         onSeeInsights: { path.append(HomeRoute.coach) },
-                        onPreferences: { path.append(HomeRoute.coachPreferences) },
+                        onPreferences: { showCoachSettings = true },
                         onPickAlternative: { showAlternatives = true })
                     quickActionsRow
-                    stepHealthSection
                     plannedRestOfWeekSection
                     favoritesSection
                     whatYouDidSection
@@ -179,7 +176,8 @@ struct HomeView: View {
                 case .yourPlan:
                     let facts = CoachFacts.make(
                         from: buildTrainingEvents(), goal: settings.trainingGoal,
-                        experience: settings.experienceLevel, formula: settings.formula)
+                        experience: settings.experienceLevel, formula: settings.formula,
+                        activityTrend: activityTrend)
                     YourWeekView(decision: coachDecision, facts: facts,
                                  preferences: settings.coachSchedulePreferences)
                 case .workoutEditor(let plan):
@@ -218,6 +216,11 @@ struct HomeView: View {
                 NavigationStack {
                     CoachAlternativesView(decision: coachDecision,
                                           onSelect: { chooseAlternative($0) })
+                }
+            }
+            .sheet(isPresented: $showCoachSettings) {
+                NavigationStack {
+                    CoachContextSettingsView()
                 }
             }
             // Contribution prompt — Home only, never during a workout or its
@@ -437,67 +440,6 @@ struct HomeView: View {
         .accessibilityIdentifier(id)
     }
 
-    @ViewBuilder
-    private var stepHealthSection: some View {
-        let summary = StepActivitySummary(from: activityTrend)
-        let todaySteps = summary.todaySteps
-        let avgSteps = Int(summary.sevenDayAverageSteps)
-        let status = summary.status
-
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("Steps", systemImage: "shoeprints.fill")
-                    .font(.headline)
-                    .foregroundStyle(statusColor(status))
-                Spacer()
-                Text(status.displayName)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(statusColor(status))
-                    .padding(.horizontal, 8).padding(.vertical, 2)
-                    .background(statusColor(status).opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
-            }
-
-            HStack(spacing: 16) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Today")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(formattedSteps(todaySteps))
-                        .font(.title3.weight(.semibold))
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("7-day avg")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text("\(formattedSteps(avgSteps))/day")
-                        .font(.title3.weight(.semibold))
-                }
-                Spacer()
-            }
-
-            if let citation = CitationRegistry.citation(forId: "saintMauriceSteps2020") {
-                CitationLink(citation: citation, compact: true)
-            }
-        }
-        .padding()
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
-        .accessibilityIdentifier("home.stepHealth")
-    }
-
-    private func statusColor(_ status: StepHealthStatus) -> Color {
-        switch status {
-        case .low: return .orange
-        case .building: return .blue
-        case .onTrack: return .green
-        }
-    }
-
-    private func formattedSteps(_ value: Int) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        return f.string(from: NSNumber(value: value)) ?? String(value)
-    }
-
     private var restOfWeekDays: [WeeklyPlan.DayOutline] {
         _ = historyRefreshToken
         return coachPlan.remainingCalendarWeekDays.filter { !$0.sessions.isEmpty }
@@ -505,22 +447,33 @@ struct HomeView: View {
 
     /// The near-term schedule is now on Home, so users do not have to open a
     /// second overview screen just to see what is coming next this week.
+    /// When the rest of the current week is empty, shows planned next week instead.
     private var plannedRestOfWeekSection: some View {
         _ = historyRefreshToken
-        let days = restOfWeekDays
+        let thisWeekDays = restOfWeekDays
+        let nextWeekDays = coachPlan.nextWeekDays.filter { !$0.sessions.isEmpty }
+        let showNextWeek = thisWeekDays.isEmpty && !nextWeekDays.isEmpty
+
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Planned (rest of week)").font(.headline)
+                Text(showNextWeek ? "Planned (next week)" : "Planned (rest of week)").font(.headline)
                 Spacer()
             }
 
-            if days.isEmpty {
-                Text("No more planned sessions this week.")
+            if thisWeekDays.isEmpty && nextWeekDays.isEmpty {
+                Text("No more planned sessions.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            } else if showNextWeek {
+                VStack(spacing: 0) {
+                    ForEach(Array(nextWeekDays.prefix(7).enumerated()), id: \.element.id) { index, day in
+                        if index > 0 { Divider().padding(.leading, 38) }
+                        CoachPlanDayRow(day: day)
+                    }
+                }
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                    ForEach(Array(thisWeekDays.enumerated()), id: \.element.id) { index, day in
                         if index > 0 { Divider().padding(.leading, 38) }
                         CoachPlanDayRow(day: day)
                     }

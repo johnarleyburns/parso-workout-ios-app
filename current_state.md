@@ -2,7 +2,37 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-28 — settings cleanup, evidence-based steps, fixed rest days._
+_Last updated: 2026-06-28 — settings & workflow redesign: per-workout settings, coach context panel, steps in Your Plan, next-week fallback._
+
+## What just shipped — Settings & workflow redesign
+
+### Per-workout settings — remember & reuse
+- **`WorkoutSettings`** struct (CadenceCore): all per-workout settings (rest timer, auto-rest, countdown, idle auto-end, plate rounding, GPS, auto-pause, interval palette, spoken cues, warm-up, cool-down, HR monitoring).
+- **Per-type memory** in `AppSettings`: `lastStrengthSettings`, `lastCardioSettings`, `lastIntervalSettings`. Saved on workout Start, loaded on next setup screen.
+- **`WorkoutPlanEditor`**: now shows rest timer, auto-rest, countdown, plate rounding, idle auto-end toggle + timeout, warm-up, cool-down, HR — all pre-populated from last strength settings.
+- **`CardioGoalSheet`**: now shows countdown, GPS accuracy, auto-pause, HR — loaded from `lastCardioSettings`.
+- **`TimerCardioSetupView`**: now shows countdown + HR — loaded from `lastCardioSettings`.
+- **`IntervalSetupView`**: now shows countdown, color-blind palette, spoken cues, HR — loaded from `lastIntervalSettings`.
+- **Every workout path now shows settings before starting** — no workout ever starts without a settings screen.
+
+### Coach settings moved to Coach panel on Home
+- **`CoachContextSettingsView`** (new): sheet accessible from the gear icon on `CoachDecisionCardView`. Contains Training Goal, Experience Level, Schedule Preferences link, and Daily Step Target stepper.
+- **Removed** the Coach section from `SettingsView` — it now lives on the Home coach panel.
+- **`HomeView`**: gear button on Coach card now opens `CoachContextSettingsView` sheet instead of navigating to standalone coach preferences.
+
+### Steps moved to "Your Plan" with adjustable target
+- **Removed** the `stepHealthSection` from HomeView front page.
+- **Added** steps section to `YourWeekView`: 7-day avg, progress bar vs target, today's steps, status badge, citation link — placed right after mod-equivalent minutes.
+- **`CoachSchedulePreferences.dailyStepTarget`**: user-adjustable daily step target (2,000–20,000, step 500, default 8,000). Adjustable in `CoachContextSettingsView`.
+- **`StepActivitySummary(from:targetDailySteps:)`**: new initializer that computes status against a custom target (floor 4,000 is fixed).
+
+### Planned (next week) when rest of week empty
+- **`plannedRestOfWeekSection`** on HomeView: when `restOfWeekDays` is empty, shows `coachPlan.nextWeekDays` with "Planned (next week)" header instead of "No more planned sessions".
+
+### SettingsView simplified
+- **Removed sections**: Coach, Workout, Workout Start, Idle Auto-End, Strength (plate rounding), Cardio, Intervals, Goals, Warm-up & Cool-down.
+- **Kept sections**: Units & Records, Health & Sensors, Data, Sounds, About, Support.
+- Per-workout settings now live on each workout's pre-start screen, remembered per type.
 
 ## What just shipped — Settings cleanup, evidence-based steps, fixed rest days
 

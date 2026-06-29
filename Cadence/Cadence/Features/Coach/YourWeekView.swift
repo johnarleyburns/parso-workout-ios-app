@@ -11,6 +11,9 @@ struct YourWeekView: View {
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: preferences)
         let completed = plan.completedDaysInGeneratedWeek
         let nextWeek = plan.nextWeekDays.filter { !$0.sessions.isEmpty }
+        let stepSummary = facts.stepSummary ?? StepActivitySummary(from: [])
+        let stepTarget = preferences.dailyStepTarget
+
         List {
             Section("This Week So Far") {
                 VStack(spacing: 12) {
@@ -47,6 +50,32 @@ struct YourWeekView: View {
                     }
                     ProgressView(value: min(1, balance.moderateEquivalentMinutes / 150))
                         .tint(.blue)
+
+                    HStack {
+                        Image(systemName: "shoeprints.fill")
+                            .foregroundStyle(stepsColor(stepSummary.status))
+                        Text("Steps (7-day avg)").font(.subheadline)
+                        Spacer()
+                        Text("\(Int(stepSummary.sevenDayAverageSteps))")
+                            .font(.subheadline.bold()).monospacedDigit()
+                            + Text("  (target: \(stepTarget))").font(.caption).foregroundStyle(.secondary)
+                    }
+                    ProgressView(value: min(1, stepSummary.sevenDayAverageSteps / Double(stepTarget)))
+                        .tint(stepsColor(stepSummary.status))
+
+                    HStack(spacing: 4) {
+                        Text(stepSummary.status.displayName)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(stepsColor(stepSummary.status))
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(stepsColor(stepSummary.status).opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
+                        Text("Today: \(stepSummary.todaySteps) steps").font(.caption2).foregroundStyle(.secondary)
+                        Spacer()
+                    }
+
+                    if let citation = CitationRegistry.citation(forId: "saintMauriceSteps2020") {
+                        CitationLink(citation: citation, compact: true)
+                    }
 
                     HStack {
                         Image(systemName: "flame.fill").foregroundStyle(.orange)
@@ -90,6 +119,14 @@ struct YourWeekView: View {
         }
         .navigationTitle("Your Plan")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func stepsColor(_ status: StepHealthStatus) -> Color {
+        switch status {
+        case .low: return .orange
+        case .building: return .blue
+        case .onTrack: return .green
+        }
     }
 }
 

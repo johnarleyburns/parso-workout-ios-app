@@ -8,14 +8,16 @@ import CadenceCore
 /// platform services or deterministic fakes based on launch arguments so the
 /// app is fully UI-testable on the simulator (which has no Health/BLE/GPS data).
 ///
-/// Also acts as the phone-side WCSession delegate for FR-8: receives live HR
-/// from the Apple Watch and feeds it into the same `HeartRateMonitor` pipeline
-/// as the BLE chest strap.
+/// Also contains the deferred phone-side WCSession plumbing for future live
+/// Apple Watch HR. v1 ships without a companion Watch app, so that path stays
+/// disabled in release behavior.
 ///
 /// WCSession activation is deferred to `activateWCSession()`, called from
 /// `CadenceApp.task{}` so it never blocks app launch.
 @Observable
 final class AppModel: NSObject {
+    private static let liveWatchHREnabled = false
+
     let health: HealthDataProviding
     let hrm: HeartRateMonitor
     let location: LocationTracker
@@ -71,13 +73,13 @@ final class AppModel: NSObject {
     /// Is the Apple Watch available to stream HR? Uses cached value to avoid
     /// synchronous IPC calls from SwiftUI body evaluation.
     var watchAvailable: Bool {
-        !isUITestMode && watchAppInstalled
+        Self.liveWatchHREnabled && !isUITestMode && watchAppInstalled
     }
 
     /// Activates the WCSession and caches `isWatchAppInstalled`. Called once from
     /// `CadenceApp.task{}` so it doesn't block launch (FR-8 reliability fix).
     func activateWCSession() {
-        guard !isUITestMode, WCSession.isSupported() else { return }
+        guard Self.liveWatchHREnabled, !isUITestMode, WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self
         session.activate()
@@ -102,7 +104,7 @@ final class AppModel: NSObject {
         watchTimeout?.invalidate()
 
         guard session.isReachable else {
-            watchError = "Open Cladiron on your Apple Watch and keep the screen on"
+            watchError = "Open the companion Watch app and keep the screen on"
             return
         }
 

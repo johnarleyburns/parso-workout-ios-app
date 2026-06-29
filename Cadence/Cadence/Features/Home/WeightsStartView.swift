@@ -127,7 +127,7 @@ struct WeightsStartView: View {
                 Toggle("Use HR monitoring", isOn: $settings.useHRMonitoring)
                     .accessibilityIdentifier("weights.hrToggle")
             } footer: {
-                Text("Connect a chest strap or Apple Watch before the workout starts.")
+                Text("Connect a Bluetooth chest strap before the workout starts.")
             }
         }
         .navigationTitle("Strength")

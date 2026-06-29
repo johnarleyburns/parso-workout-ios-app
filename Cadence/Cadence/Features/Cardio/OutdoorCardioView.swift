@@ -7,8 +7,8 @@ import CadenceCore
 /// wall-clock elapsed that survives backgrounding (a call / the phone in a
 /// pocket). Reuses `CardioRecorder` + the shared `LocationTracker`.
 ///
-/// FR-8 follow-up: shows a pre-workout HR gate before starting, letting the
-/// user connect a strap or use the Apple Watch.
+/// Shows a pre-workout HR gate before starting, letting the user connect a
+/// Bluetooth chest strap for live HR.
 struct OutdoorCardioView: View {
     let type: CardioType
     /// Free-text label for an "Other Cardio" workout (feedback batch 6), else nil.

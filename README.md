@@ -46,6 +46,8 @@ xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence \
 
 Active development. The app ships a full recovery-aware coaching engine with 30+ peer-reviewed citations, 1,000+ exercises, and 28+ preset routines. See `PLAN_STATUS.md` for detailed phase tracking and `docs/CITATIONS.md` for the evidence base.
 
+App Store launch materials live in `docs/app-store/metadata.md` and `docs/app-store/release-checklist.md`.
+
 Built supervised with Claude Code / opencode — see `CLAUDE.md`.
 
 ## License

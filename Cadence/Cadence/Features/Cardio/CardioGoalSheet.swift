@@ -85,7 +85,7 @@ struct CardioGoalSheet: View {
                     Toggle("Use HR monitoring", isOn: $useHR)
                         .accessibilityIdentifier("goal.hrToggle")
                 } footer: {
-                    Text("Connect a chest strap or Apple Watch before the workout starts.")
+                    Text("Connect a Bluetooth chest strap before the workout starts.")
                 }
             }
             .navigationTitle("\(type.displayName) goal")

@@ -100,7 +100,7 @@ struct HRMSettingsView: View {
                 }
             } footer: {
                 if hrm.battery == nil, hrm.discovered.isEmpty {
-                    Text("Make sure the strap is awake and the electrodes are damp. Cadence reconnects to your default device automatically.")
+                    Text("Make sure the strap is awake and the electrodes are damp. Cladiron reconnects to your default device automatically.")
                 }
             }
 

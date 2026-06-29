@@ -3,9 +3,8 @@ import CadenceCore
 
 /// Live iPhone workout recording (FR-2.2–2.5).
 ///
-/// FR-8 follow-up: shows a pre-workout HR gate before recording starts,
-/// mirroring `IntervalView`'s pattern. All cardio types can connect a strap
-/// or use the Apple Watch.
+/// Shows a pre-workout HR gate before recording starts, mirroring
+/// `IntervalView`'s pattern. In v1, live HR comes from a Bluetooth chest strap.
 struct RecordCardioView: View {
     /// When set (from the Start Workout picker, field-testing §02), recording
     /// begins immediately for this type after the HR gate.

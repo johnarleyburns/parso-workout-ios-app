@@ -2,7 +2,22 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-28 — settings & workflow redesign: per-workout settings, coach context panel, steps in Your Plan, next-week fallback._
+_Last updated: 2026-06-29 — App Store positioning pack: metadata, release checklist, v1 copy alignment._
+
+## What just shipped — App Store positioning pack
+
+- **`docs/app-store/metadata.md`**: canonical App Store positioning, subtitle, promo text,
+  description, keyword bank, screenshot storyboard, review notes, privacy answers, and manual
+  links. Locked to the launch decisions: science-minded self-coached lifters, App Store v1,
+  free with optional one-time tips.
+- **`docs/app-store/release-checklist.md`**: code verification, App Store Connect, IAP,
+  screenshot, and post-approval checklist for the first public submission.
+- **Public copy cleanup:** About and Coach About now describe the coach as a deterministic
+  on-device expert/rule system, not a cloud service or black box. Cold-start insight now uses the
+  public product name Cladiron instead of the internal codename Cadence.
+- **v1 Watch-scope alignment:** pre-workout live-HR copy now references Bluetooth chest straps
+  only; Apple Watch remains described only as a HealthKit import source for v1. Deferred live
+  Watch HR plumbing remains dormant behind a disabled internal flag.
 
 ## What just shipped — Settings & workflow redesign
 

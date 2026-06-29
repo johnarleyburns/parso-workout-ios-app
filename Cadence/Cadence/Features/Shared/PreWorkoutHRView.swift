@@ -2,17 +2,15 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
-/// Pre-workout heart-rate connection screen (feedback batch 5, FR-8).
+/// Pre-workout heart-rate connection screen.
 /// Shown before cardio/interval/strength workouts so the user can connect a
-/// strap or start the Apple Watch sensor, see live HR, then press Start when
-/// ready.  Connecting does NOT start the workout — "Start Workout" is a
+/// Bluetooth chest strap, see live HR, then press Start when ready.
+/// Connecting does NOT start the workout — "Start Workout" is a
 /// separate deliberate button so the user can verify their HR data first.
 ///
 /// `onContinue(useHR)` proceeds to the workout — `true` if the user is
-/// capturing HR (strap or watch), `false` to record without HR.
+/// capturing HR from a strap, `false` to record without HR.
 ///
-/// When `workoutType` is nil (defensive, or for strength), the Watch row uses
-/// `startWatchStrength()` instead of a cardio type.
 struct PreWorkoutHRView: View {
     let workoutType: CardioType?
     let onContinue: (_ useHR: Bool) -> Void
@@ -34,10 +32,6 @@ struct PreWorkoutHRView: View {
         strapConnected ? hrm.currentBPM : nil
     }
 
-    private var watchBPM: Double? {
-        model.watchActive ? hrm.currentBPM : nil
-    }
-
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -47,16 +41,13 @@ struct PreWorkoutHRView: View {
                 Text("Connect Heart Rate")
                     .font(.title.bold())
                     .accessibilityIdentifier("prehr.title")
-                Text("Connect a strap or your Apple Watch, then start when you see your live heart rate.")
+                Text("Connect a Bluetooth chest strap, then start when you see your live heart rate.")
                     .font(.subheadline).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal)
             }
 
             VStack(spacing: 12) {
                 strapRow
-                if model.watchAvailable {
-                    watchRow
-                }
             }
             .padding(.horizontal)
 
@@ -104,32 +95,6 @@ struct PreWorkoutHRView: View {
         }
     }
 
-    private var watchRow: some View {
-        HRSourceCard(
-            icon: "applewatch",
-            title: "Apple Watch",
-            tint: .orange
-        ) {
-            if let bpm = watchBPM {
-                HRValueLabel(bpm: Int(bpm), note: "live", noteColor: .green)
-                    .accessibilityIdentifier("prehr.watchBPM")
-            } else if model.watchActive {
-                ProgressView()
-            } else if let error = model.watchError {
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(error).font(.caption).foregroundStyle(.red)
-                    Button("Try Again") { startWatch() }
-                        .buttonStyle(.bordered).tint(.orange)
-                        .accessibilityIdentifier("prehr.watchRetry")
-                }
-            } else {
-                Button("Use Watch") { startWatch() }
-                    .buttonStyle(.bordered).tint(.orange)
-                    .accessibilityIdentifier("prehr.useWatch")
-            }
-        }
-    }
-
     // MARK: Helpers
 
     private func connectStrap() {
@@ -140,13 +105,6 @@ struct PreWorkoutHRView: View {
         }
     }
 
-    private func startWatch() {
-        if let type = workoutType {
-            model.startWatchWorkout(type: type)
-        } else {
-            model.startWatchStrength()
-        }
-    }
 }
 
 /// A labeled HR source row (icon + title on the left, a value/control on the right).

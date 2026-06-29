@@ -48,7 +48,7 @@ public enum InsightEngine {
         kind: .coldStart,
         title: "Let's get a baseline",
         message: "Log a few workouts and your coach will start spotting volume, intensity, and progress trends from your own data.",
-        detail: "Cadence's coaching is grounded in published resistance-training science — weekly volume dose-response, the load/rep continuum, and training frequency. Once you've logged some sets, those principles get applied to your actual history, with the citation behind every insight.",
+        detail: "Cladiron's coaching is grounded in published resistance-training science — weekly volume dose-response, the load/rep continuum, and training frequency. Once you've logged some sets, those principles get applied to your actual history, with the citation behind every insight.",
         citation: CitationRegistry.volumeDoseResponse,
         severity: .info)
 }

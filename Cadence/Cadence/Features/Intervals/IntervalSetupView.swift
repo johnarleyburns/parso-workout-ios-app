@@ -109,7 +109,7 @@ struct IntervalSetupView: View {
                         Toggle("Use HR monitoring", isOn: $useHR)
                             .accessibilityIdentifier("interval.hrToggle")
                     } footer: {
-                        Text("Connect a chest strap or Apple Watch before the workout starts.")
+                        Text("Connect a Bluetooth chest strap before the workout starts.")
                     }
                 }
 

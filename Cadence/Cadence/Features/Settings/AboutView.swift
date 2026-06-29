@@ -108,7 +108,7 @@ struct AboutView: View {
     private var methodology: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("How the Coach Works").font(.title3.bold())
-            Text("Cladiron's coach is a deterministic, on-device expert engine — \"1980s rule-based AI on modern hardware\" — not a cloud model. It reads the workouts and assessments you log and reasons over a curated, citable knowledge base of strength and hypertrophy science.")
+            Text("Cladiron's coach is a deterministic, on-device expert system, not a cloud service or black box. It reads the workouts and assessments you log and reasons over a curated, citable knowledge base of strength and hypertrophy science.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("From that it derives concrete next steps — weekly volume versus evidence-based landmarks, estimated-1RM trends, double-progression load and rep targets, deloads, and periodic strength assessments to track progress like a study's pre/post. Because the rules are open and cited, you can always see why it suggests what it does.")

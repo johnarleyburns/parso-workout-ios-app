@@ -2,7 +2,40 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-28 — local-only (no iCloud sync), lossless export/import, coach weekly-strength cap + Sunday fix, deterministic tests, Dynamic Type, bluetooth-central._
+_Last updated: 2026-06-28 — settings cleanup, evidence-based steps, fixed rest days._
+
+## What just shipped — Settings cleanup, evidence-based steps, fixed rest days
+
+### Settings cleanup
+- **Removed** the user-editable `stepGoal` stepper from Settings. Steps are now an evidence-based health signal, not a user setting.
+- **Merged** the two separate Apple Health sections into one "Health & Sensors" area: connection/status row, auto-save toggle, and last sync timestamp all in one place.
+- **Fixed** idle auto-end grouping: "Auto-end when idle" toggle now precedes the "Auto-end after N min idle" timeout, which is disabled when the toggle is off.
+- **Renamed** Data rows: "Import" → "Import Workout Log", "Export" → "Backup & Restore".
+- **Reorganized** Settings into clean sections: Coach, Units & Records, Health & Sensors, Data, Workout, Workout start, Idle Auto-End, Strength, Cardio, Intervals, Goals, Warm-up & Cool-down, Sounds, About, Support.
+- **Stopped** exporting `stepGoal` in new exports (`exportPreferences()` writes nil). `ExportPreferences.stepGoal` remains optional for decoding older backups.
+
+### Fixed rest days (Coach schedule preferences)
+- **Count control**: segmented picker (1 day / 2 days) when fixed rest is selected.
+- **Weekday chips**: Sun–Sat buttons; selecting a new day when full replaces the lowest-rawValue selected day.
+- **Defaults**: switching from rolling to fixed initializes with Saturday/Sunday (2-day) or Sunday (1-day). Switching from fixed back to rolling uses `everyNDays: 3`.
+- **Footer copy**: "Fixed rest days are days the Coach will not schedule workouts. You can still start one manually."
+- **Coverage**: `WeeklyPlan.generate` respects fixed rest days via `isRestDay` (already implemented); new tests prevent regression.
+
+### Evidence-based steps health
+- **`StepActivitySummary`** model (CadenceCore) with `StepHealthStatus` (low/building/onTrack), derived from `[DayActivity]`.
+- **Fixed thresholds**: floor=4,000, target=8,000, weekly target=56,000 — no user setting.
+- **`CoachFacts.make(activityTrend:)`** overload that wraps the existing `make` and attaches a `StepActivitySummary`.
+- **Observed fact**: `.weeklySteps` fact shows today's steps, 7-day avg, and status with `stepsHealth` citations.
+- **Low-step nudge** (`CoachWarning(id: "lowSteps")`) only when 7-day avg is below 4,000. Cites only `stepsHealthPool` (`saintMauriceSteps2020`, `leeAccelerometer2019`). Does not override strength/cardio session selection. Not presented as medical advice.
+- **HomeView**: fetches `activityTrend(days: 7)` alongside `todayActivity()`; displays a step health section with today's steps, 7-day avg, status badge, and citation link.
+
+### Tests (24 new, 0 regressions)
+- **`StepActivitySummaryTests`** (12 new): threshold categorization, 7-day avg, weekly total, today steps, static constants.
+- **CoachFactsTests** (3 new): `make` with/without activityTrend, preserves existing behavior.
+- **CoachDecisionEngineTests** (4 new): low-step nudge, no nudge when on track, no fact without trend, nudge doesn't override primary.
+- **CoachSchedulePreferencesTests** (4 new): 1-day and 2-day fixed round-trips, `WeeklyPlan` marks fixed rest days, non-fixed days not forced rest.
+- **DataExportTests** (1 new): legacy export JSON with `stepGoal` still decodes.
+- **Total**: 508 tests, 0 failures, deterministic.
 
 ## What just shipped — local-only + lossless portability + coach Sunday fix + accessibility
 

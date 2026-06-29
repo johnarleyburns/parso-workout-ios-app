@@ -193,7 +193,7 @@ extension AppSettings {
     func exportPreferences() -> ExportPreferences {
         ExportPreferences(
             unit: unit.rawValue, prRule: prRule.rawValue, oneRepMaxFormula: formula.rawValue,
-            stepGoal: stepGoal, weeklyCardioMinutesGoal: weeklyCardioMinutesGoal, restSeconds: restSeconds,
+            stepGoal: nil, weeklyCardioMinutesGoal: weeklyCardioMinutesGoal, restSeconds: restSeconds,
             warmupMinutes: warmupMinutes, cooldownMinutes: cooldownMinutes, autoStartRest: autoStartRest,
             idleTimeoutMinutes: idleTimeoutMinutes, gpsHighAccuracy: gpsHighAccuracy, autoPause: autoPause,
             intervalColorBlind: intervalColorBlind, spokenCues: spokenCues, plateRounding: plateRounding,

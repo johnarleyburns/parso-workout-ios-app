@@ -333,8 +333,44 @@ final class CoachFactsTests: XCTestCase {
         XCTAssertEqual(factsHR.zoneSource, .ageEstimated)
 
         let noHR = makeCardioEvent(context: ctx, type: .run, start: now.addingTimeInterval(-86400),
-                                   duration: 1800, avgHR: nil)
+                                    duration: 1800, avgHR: nil)
         let factsNoHR = CoachFacts.make(from: [noHR], goal: .strength, experience: .intermediate, now: now)
         XCTAssertEqual(factsNoHR.zoneSource, .unknown)
+    }
+
+    // MARK: - Step summary
+
+    func testMakeWithActivityTrendAddsStepSummary() {
+        let activity: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
+            DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 9000)
+        }
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    activityTrend: activity)
+        XCTAssertNotNil(facts.stepSummary)
+        XCTAssertEqual(facts.stepSummary?.status, .onTrack)
+        XCTAssertEqual(facts.stepSummary?.sevenDayAverageSteps, 9000.0)
+    }
+
+    func testMakeWithoutActivityTrendHasNoStepSummary() {
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate)
+        XCTAssertNil(facts.stepSummary)
+    }
+
+    func testMakeWithActivityTrendPreservesExistingBehavior() {
+        let now = testNow
+        let facts1 = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+        let activity: [DayActivity] = [DayActivity(date: now, steps: 5000)]
+        let facts2 = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                     now: now, activityTrend: activity)
+
+        XCTAssertEqual(facts1.events.count, facts2.events.count)
+        XCTAssertEqual(facts1.weeklyBalance.strengthDays, facts2.weeklyBalance.strengthDays)
+        XCTAssertEqual(facts1.weeklyBalance.cardioDays, facts2.weeklyBalance.cardioDays)
+        XCTAssertEqual(facts1.weeklyBalance.moderateEquivalentMinutes, facts2.weeklyBalance.moderateEquivalentMinutes)
+        XCTAssertEqual(facts1.recovery, facts2.recovery)
+        XCTAssertEqual(facts1.goal, facts2.goal)
+        XCTAssertEqual(facts1.experience, facts2.experience)
+        XCTAssertNotNil(facts2.stepSummary)
+        XCTAssertNil(facts1.stepSummary)
     }
 }

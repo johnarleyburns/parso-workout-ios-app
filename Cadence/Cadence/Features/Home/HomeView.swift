@@ -35,6 +35,7 @@ struct HomeView: View {
     @State private var startWarmupAfterHRGate = false
     @State private var warmupActive = false
     @State private var today: DayActivity?
+    @State private var activityTrend: [DayActivity] = []
     /// Bumped after any workout-history mutation (save, log, ingest, delete) so the
     /// computed Coach / This Week / recent surfaces recompute immediately — without
     /// waiting for `scenePhase == .active` (the old "only fixed after re-entry" bug).
@@ -73,9 +74,10 @@ struct HomeView: View {
         let events = buildTrainingEvents()
         let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
                                      experience: settings.experienceLevel,
-                                     formula: settings.formula)
-        let today = Calendar.current.startOfDay(for: Date())
-        let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == today }
+                                     formula: settings.formula,
+                                     activityTrend: activityTrend)
+        let todayDate = Calendar.current.startOfDay(for: Date())
+        let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == todayDate }
         let hasPain = todayReadiness?.hasPainOrIllnessConcern ?? false
         return CoachDecisionEngine.run(facts,
                                          profile: settings.coachPreferenceProfile,
@@ -96,8 +98,8 @@ struct HomeView: View {
         let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
                                      experience: settings.experienceLevel,
                                      formula: settings.formula)
-        let today = Calendar.current.startOfDay(for: Date())
-        let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == today }
+        let todayDate = Calendar.current.startOfDay(for: Date())
+        let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == todayDate }
         let hasPain = todayReadiness?.hasPainOrIllnessConcern ?? false
         return CoachAddOnEngine.run(facts: facts,
                                      schedulePreferences: settings.coachSchedulePreferences,
@@ -143,6 +145,7 @@ struct HomeView: View {
                         onPreferences: { path.append(HomeRoute.coachPreferences) },
                         onPickAlternative: { showAlternatives = true })
                     quickActionsRow
+                    stepHealthSection
                     plannedRestOfWeekSection
                     favoritesSection
                     whatYouDidSection
@@ -186,8 +189,16 @@ struct HomeView: View {
                     })
                 }
             }
-            .task { today = await model.health.todayActivity(); await syncCardioFromHealth() }
-            .refreshable { today = await model.health.todayActivity(); await syncCardioFromHealth() }
+            .task {
+                today = await model.health.todayActivity()
+                activityTrend = await model.health.activityTrend(days: 7)
+                await syncCardioFromHealth()
+            }
+            .refreshable {
+                today = await model.health.todayActivity()
+                activityTrend = await model.health.activityTrend(days: 7)
+                await syncCardioFromHealth()
+            }
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker(onSaved: workoutSaved)
             }
@@ -424,6 +435,67 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(id)
+    }
+
+    @ViewBuilder
+    private var stepHealthSection: some View {
+        let summary = StepActivitySummary(from: activityTrend)
+        let todaySteps = summary.todaySteps
+        let avgSteps = Int(summary.sevenDayAverageSteps)
+        let status = summary.status
+
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Steps", systemImage: "shoeprints.fill")
+                    .font(.headline)
+                    .foregroundStyle(statusColor(status))
+                Spacer()
+                Text(status.displayName)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(statusColor(status))
+                    .padding(.horizontal, 8).padding(.vertical, 2)
+                    .background(statusColor(status).opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
+            }
+
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Today")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(formattedSteps(todaySteps))
+                        .font(.title3.weight(.semibold))
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("7-day avg")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("\(formattedSteps(avgSteps))/day")
+                        .font(.title3.weight(.semibold))
+                }
+                Spacer()
+            }
+
+            if let citation = CitationRegistry.citation(forId: "saintMauriceSteps2020") {
+                CitationLink(citation: citation, compact: true)
+            }
+        }
+        .padding()
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .accessibilityIdentifier("home.stepHealth")
+    }
+
+    private func statusColor(_ status: StepHealthStatus) -> Color {
+        switch status {
+        case .low: return .orange
+        case .building: return .blue
+        case .onTrack: return .green
+        }
+    }
+
+    private func formattedSteps(_ value: Int) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        return f.string(from: NSNumber(value: value)) ?? String(value)
     }
 
     private var restOfWeekDays: [WeeklyPlan.DayOutline] {

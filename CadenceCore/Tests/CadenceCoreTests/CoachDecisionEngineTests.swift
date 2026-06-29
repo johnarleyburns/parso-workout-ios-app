@@ -1078,4 +1078,66 @@ final class CoachDecisionEngineTests: XCTestCase {
         XCTAssertEqual(decision.todayPlannedRecommendations.count, 0,
                        "Without two-a-day opt-in, recommendations should be empty")
     }
+
+    // MARK: - Step health nudge
+
+    func testLowStepNudgeWhenBelowFloor() {
+        let activity: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
+            DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 3000)
+        }
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    activityTrend: activity)
+        let decision = CoachDecisionEngine.run(facts)
+
+        let stepFact = decision.observedFacts.first { $0.kind == .weeklySteps }
+        XCTAssertNotNil(stepFact, "Should have weeklySteps observed fact")
+        XCTAssertTrue(stepFact!.detail?.contains("Low") ?? false)
+
+        let lowWarning = decision.warnings.first { $0.id == "lowSteps" }
+        XCTAssertNotNil(lowWarning, "Should have lowSteps warning when below floor")
+        XCTAssertTrue(lowWarning!.citationIds.contains("saintMauriceSteps2020"))
+        XCTAssertTrue(lowWarning!.citationIds.contains("leeAccelerometer2019"))
+    }
+
+    func testNoStepNudgeWhenOnTrack() {
+        let activity: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
+            DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 9000)
+        }
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    activityTrend: activity)
+        let decision = CoachDecisionEngine.run(facts)
+
+        let stepFact = decision.observedFacts.first { $0.kind == .weeklySteps }
+        XCTAssertNotNil(stepFact, "Should have weeklySteps observed fact")
+        XCTAssertTrue(stepFact!.detail?.contains("On track") ?? false)
+
+        let lowWarning = decision.warnings.first { $0.id == "lowSteps" }
+        XCTAssertNil(lowWarning, "Should not have lowSteps warning when on track")
+    }
+
+    func testNoStepFactWithoutActivityTrend() {
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate)
+        let decision = CoachDecisionEngine.run(facts)
+
+        let stepFact = decision.observedFacts.first { $0.kind == .weeklySteps }
+        XCTAssertNil(stepFact, "Should not have weeklySteps fact without activity data")
+    }
+
+    func testStepNudgeDoesNotOverridePrimarySession() {
+        let activity: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
+            DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 2000)
+        }
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    activityTrend: activity)
+        let decision = CoachDecisionEngine.run(facts)
+
+        XCTAssertNotEqual(decision.primary.kind, .rest, "Primary should not be rest despite low steps")
+        let lowWarning = decision.warnings.first { $0.id == "lowSteps" }
+        XCTAssertNotNil(lowWarning, "Should have lowSteps nudge")
+        // Warning should not cite anything outside stepsHealth pool
+        let allStepCitations = Set(lowWarning!.citationIds)
+        let stepPoolIds = Set(CitationRegistry.stepsHealthPool.citationIds)
+        XCTAssertTrue(allStepCitations.isSubset(of: stepPoolIds),
+                      "Low-step warning should only cite stepsHealth pool citations")
+    }
 }

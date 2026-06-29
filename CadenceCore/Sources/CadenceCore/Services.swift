@@ -25,6 +25,51 @@ public struct DayActivity: Equatable, Sendable, Identifiable {
     }
 }
 
+// MARK: - Step health status (evidence-based, not a user setting)
+
+public enum StepHealthStatus: String, Sendable, Equatable, CaseIterable {
+    case low
+    case building
+    case onTrack
+
+    public var displayName: String {
+        switch self {
+        case .low: return "Low"
+        case .building: return "Building"
+        case .onTrack: return "On track"
+        }
+    }
+}
+
+public struct StepActivitySummary: Equatable, Sendable {
+    public static let floorDailySteps = 4_000
+    public static let targetDailySteps = 8_000
+    public static let weeklyTargetSteps = 56_000
+
+    public let todaySteps: Int
+    public let weeklyTotalSteps: Int
+    public let sevenDayAverageSteps: Double
+    public let status: StepHealthStatus
+
+    public init(from activity: [DayActivity]) {
+        let sorted = activity.sorted { $0.date > $1.date }
+        self.todaySteps = sorted.first?.steps ?? 0
+        self.weeklyTotalSteps = sorted.prefix(7).reduce(0) { $0 + $1.steps }
+        let avg = sorted.isEmpty ? 0 : Double(sorted.prefix(7).reduce(0) { $0 + $1.steps }) / Double(min(7, sorted.count))
+        self.sevenDayAverageSteps = avg
+
+        if avg < Double(Self.floorDailySteps) {
+            self.status = .low
+        } else if avg < Double(Self.targetDailySteps) {
+            self.status = .building
+        } else {
+            self.status = .onTrack
+        }
+    }
+
+    public static let empty = StepActivitySummary(from: [])
+}
+
 // MARK: - Ingested workout summary (FR-2.1)
 
 /// A summary of a workout read back from HealthKit (e.g. one the Watch saved).

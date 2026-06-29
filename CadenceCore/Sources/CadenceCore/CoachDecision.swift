@@ -96,6 +96,7 @@ public struct ObservedFact: Sendable, Equatable, Identifiable {
         case lastCardio
         case weeklyStrengthDays
         case weeklyModerateEquivalentMinutes
+        case weeklySteps
     }
 
     public let id: String
@@ -232,7 +233,7 @@ public enum CoachDecisionEngine {
                                                 schedulePreferences: schedulePreferences)
 
         // Generate warnings
-        let warnings = generateWarnings(facts: facts)
+        var warnings = generateWarnings(facts: facts)
 
         // Generate observed facts
         var factsList: [ObservedFact] = []
@@ -280,6 +281,24 @@ public enum CoachDecisionEngine {
             value: "\(Int(facts.weeklyBalance.moderateEquivalentMinutes)) / 150",
             detail: "Research-informed aerobic target"
         ))
+
+        if let stepSummary = facts.stepSummary {
+            let avg = Int(stepSummary.sevenDayAverageSteps)
+            let avgStr = formatted(avg)
+            factsList.append(ObservedFact(
+                kind: .weeklySteps,
+                title: "Steps (7-day avg)",
+                value: "\(avgStr)/day",
+                detail: "\(stepSummary.status.displayName) — evidence-informed target is \(formatted(StepActivitySummary.targetDailySteps))"
+            ))
+            if stepSummary.status == .low {
+                warnings.append(CoachWarning(
+                    id: "lowSteps",
+                    message: "Your 7-day step average (\(avgStr)/day) is below the research-informed floor of \(formatted(StepActivitySummary.floorDailySteps)). An easy walk or short walking breaks can help without compromising your training.",
+                    citationIds: CitationRegistry.stepsHealthPool.citationIds
+                ))
+            }
+        }
 
         var allCitationIds = Set(effectivePrimary.citationIds)
         for w in warnings { allCitationIds.formUnion(w.citationIds) }
@@ -733,5 +752,16 @@ public enum CoachDecisionEngine {
         let hrs = mins / 60
         if hrs < 48 { return "\(hrs)h ago" }
         return "\(hrs / 24)d ago"
+    }
+
+    private static let _stepFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.groupingSeparator = ","
+        return f
+    }()
+
+    private static func formatted(_ value: Int) -> String {
+        _stepFormatter.string(from: NSNumber(value: value)) ?? String(value)
     }
 }

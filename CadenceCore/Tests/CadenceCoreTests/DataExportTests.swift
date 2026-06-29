@@ -205,4 +205,28 @@ final class DataExportTests: XCTestCase {
     private func sortedCardio(_ c: [ExportCardio]) -> [ExportCardio] {
         c.sorted { $0.id.uuidString < $1.id.uuidString }
     }
+
+    // MARK: - Legacy stepGoal compatibility
+
+    func testLegacyExportWithStepGoalStillDecodes() throws {
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+        let dateStr = ISO8601DateFormatter.string(from: now, timeZone: .current, formatOptions: .withInternetDateTime)
+        let legacyJSON = """
+        {
+          "version": 4,
+          "exportedAt": "\(dateStr)",
+          "sessions": [],
+          "cardio": [],
+          "assessments": [],
+          "preferences": {
+            "stepGoal": 15000,
+            "unit": "pounds",
+            "trainingGoal": "strength"
+          }
+        }
+        """
+        let decoded = try DataExport.decodeJSON(Data(legacyJSON.utf8))
+        XCTAssertEqual(decoded.preferences?.stepGoal, 15000,
+                       "Legacy stepGoal field should still decode without error")
+    }
 }

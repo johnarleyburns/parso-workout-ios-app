@@ -109,6 +109,8 @@ public struct CoachFacts: Sendable {
     public let zoneSource: CardioZoneSource
     public let aerobicMinutesByBucket: [AerobicIntensityBucket: Double]
 
+    public let stepSummary: StepActivitySummary?
+
     public init(events: [TrainingEvent],
                 recovery: RecoveryState,
                 weeklyBalance: WeeklyBalance,
@@ -123,7 +125,8 @@ public struct CoachFacts: Sendable {
                 assessmentCoverage: [TrainingSystem: AssessmentCoverage] = [:],
                 loadSpikeFlags: [LoadSpikeFlag] = [],
                 zoneSource: CardioZoneSource = .unknown,
-                aerobicMinutesByBucket: [AerobicIntensityBucket: Double] = [:]) {
+                aerobicMinutesByBucket: [AerobicIntensityBucket: Double] = [:],
+                stepSummary: StepActivitySummary? = nil) {
         self.events = events
         self.recovery = recovery
         self.weeklyBalance = weeklyBalance
@@ -139,6 +142,7 @@ public struct CoachFacts: Sendable {
         self.loadSpikeFlags = loadSpikeFlags
         self.zoneSource = zoneSource
         self.aerobicMinutesByBucket = aerobicMinutesByBucket
+        self.stepSummary = stepSummary
     }
 
     /// Systems with no exposure this week (or never), most-stale first. The basis for
@@ -216,6 +220,38 @@ public extension CoachFacts {
             loadSpikeFlags: spikeFlags,
             zoneSource: zoneSrc,
             aerobicMinutesByBucket: aerobicBuckets
+        )
+    }
+
+    static func make(from events: [TrainingEvent],
+                     goal: TrainingGoal,
+                     experience: ExperienceLevel,
+                     assessments: [AssessmentSummary] = [],
+                     readinessEntry: ReadinessEntry? = nil,
+                     formula: OneRepMaxFormula = .epley,
+                     now: Date = Date(),
+                     activityTrend: [DayActivity]) -> CoachFacts {
+        let base = make(from: events, goal: goal, experience: experience,
+                        assessments: assessments, readinessEntry: readinessEntry,
+                        formula: formula, now: now)
+        let summary = StepActivitySummary(from: activityTrend)
+        return CoachFacts(
+            events: base.events,
+            recovery: base.recovery,
+            weeklyBalance: base.weeklyBalance,
+            goal: base.goal,
+            experience: base.experience,
+            referenceDate: base.referenceDate,
+            rolling72hCompletedEvents: base.rolling72hCompletedEvents,
+            rolling7dCompletedEvents: base.rolling7dCompletedEvents,
+            rolling28dCompletedEvents: base.rolling28dCompletedEvents,
+            systemLoads: base.systemLoads,
+            readiness: base.readiness,
+            assessmentCoverage: base.assessmentCoverage,
+            loadSpikeFlags: base.loadSpikeFlags,
+            zoneSource: base.zoneSource,
+            aerobicMinutesByBucket: base.aerobicMinutesByBucket,
+            stepSummary: summary
         )
     }
 

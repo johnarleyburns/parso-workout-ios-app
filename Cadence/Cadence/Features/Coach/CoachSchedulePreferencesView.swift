@@ -58,7 +58,7 @@ struct CoachSchedulePreferencesView: View {
             }
 
             Section {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 10) {
                     Text("Rest pattern").font(.subheadline.weight(.medium))
                     Picker("Rest", selection: Binding(get: {
                         if case .fixed = settings.coachSchedulePreferences.restPreference { return 0 }
@@ -78,26 +78,56 @@ struct CoachSchedulePreferencesView: View {
                     .pickerStyle(.segmented)
 
                     if case .fixed(let days) = settings.coachSchedulePreferences.restPreference {
+                        let fixedCount = max(1, min(2, days.count))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Fixed rest days per week").font(.caption.weight(.medium))
+                            Picker("Count", selection: Binding(get: { fixedCount }, set: { newCount in
+                                let clamped = max(1, min(2, newCount))
+                                var newDays = days
+                                while newDays.count > clamped {
+                                    if let first = newDays.sorted(by: { $0.rawValue < $1.rawValue }).first {
+                                        newDays.remove(first)
+                                    }
+                                }
+                                settings.coachSchedulePreferences = settings.coachSchedulePreferences.withRestPreference(.fixed(days: newDays))
+                            })) {
+                                Text("1 day").tag(1)
+                                Text("2 days").tag(2)
+                            }
+                            .pickerStyle(.segmented)
+                        }
+
                         HStack(spacing: 6) {
                             ForEach(Weekday.allCases, id: \.self) { wd in
+                                let isSelected = days.contains(wd)
+                                let isFull = days.count >= fixedCount
                                 Button {
                                     var newDays = days
-                                    if newDays.contains(wd) { newDays.remove(wd) }
-                                    else { newDays.insert(wd) }
+                                    if isSelected {
+                                        newDays.remove(wd)
+                                    } else if isFull {
+                                        if let oldest = newDays.sorted(by: { $0.rawValue < $1.rawValue }).first {
+                                            newDays.remove(oldest)
+                                        }
+                                        newDays.insert(wd)
+                                    } else {
+                                        newDays.insert(wd)
+                                    }
                                     settings.coachSchedulePreferences = settings.coachSchedulePreferences.withRestPreference(.fixed(days: newDays))
                                 } label: {
                                     Text(wd.displayName)
                                         .font(.caption2.weight(.medium))
                                         .padding(.horizontal, 8).padding(.vertical, 4)
-                                        .background(days.contains(wd) ? Color.blue : Color(.systemGray5),
+                                        .background(isSelected ? Color.blue : Color(.systemGray5),
                                                     in: RoundedRectangle(cornerRadius: 8))
-                                        .foregroundStyle(days.contains(wd) ? .white : .primary)
+                                        .foregroundStyle(isSelected ? .white : .primary)
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
+
                         if !days.isEmpty {
-                            Text("Coach will not schedule workouts on selected days.")
+                            Text("Coach will not schedule workouts on your fixed rest days.")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }
@@ -114,6 +144,8 @@ struct CoachSchedulePreferencesView: View {
                 }
             } header: {
                 Text("Rest")
+            } footer: {
+                Text("Fixed rest days are days the Coach will not schedule workouts. You can still start one manually on those days if you want.")
             }
 
             Section {

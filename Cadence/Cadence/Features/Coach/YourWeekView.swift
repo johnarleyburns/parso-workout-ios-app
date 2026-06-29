@@ -4,15 +4,17 @@ import CadenceCore
 struct YourWeekView: View {
     let decision: CoachDecision
     let facts: CoachFacts
-    let preferences: CoachSchedulePreferences
+    @Environment(AppSettings.self) private var settings
+    @State private var showSchedulePrefs = false
 
     var body: some View {
+        let effectivePrefs = settings.coachSchedulePreferences
         let balance = decision.weeklyBalance
-        let plan = WeeklyPlan.generate(from: facts, schedulePreferences: preferences)
+        let plan = WeeklyPlan.generate(from: facts, schedulePreferences: effectivePrefs)
         let completed = plan.completedDaysInGeneratedWeek
         let nextWeek = plan.nextWeekDays.filter { !$0.sessions.isEmpty }
         let stepSummary = facts.stepSummary ?? StepActivitySummary(from: [])
-        let stepTarget = preferences.dailyStepTarget
+        let stepTarget = effectivePrefs.dailyStepTarget
 
         List {
             Section("This Week So Far") {
@@ -23,9 +25,9 @@ struct YourWeekView: View {
                         Spacer()
                         Text("\(balance.strengthDays)")
                             .font(.subheadline.bold()).monospacedDigit()
-                            + Text("  (target: \(preferences.strengthDaysPerWeek)+)").font(.caption).foregroundStyle(.secondary)
+                            + Text("  (target: \(effectivePrefs.strengthDaysPerWeek)+)").font(.caption).foregroundStyle(.secondary)
                     }
-                    ProgressView(value: min(1, Double(balance.strengthDays) / Double(preferences.strengthDaysPerWeek)))
+                    ProgressView(value: min(1, Double(balance.strengthDays) / Double(effectivePrefs.strengthDaysPerWeek)))
                         .tint(.green)
 
                     HStack {
@@ -34,10 +36,10 @@ struct YourWeekView: View {
                         Spacer()
                         Text("\(balance.cardioDays)")
                             .font(.subheadline.bold()).monospacedDigit()
-                            + Text("  (target: \(preferences.cardioDaysPerWeek))").font(.caption).foregroundStyle(.secondary)
+                            + Text("  (target: \(effectivePrefs.cardioDaysPerWeek))").font(.caption).foregroundStyle(.secondary)
                     }
-                    ProgressView(value: preferences.cardioDaysPerWeek > 0
-                        ? min(1, Double(balance.cardioDays) / Double(preferences.cardioDaysPerWeek)) : 1)
+                    ProgressView(value: effectivePrefs.cardioDaysPerWeek > 0
+                        ? min(1, Double(balance.cardioDays) / Double(effectivePrefs.cardioDaysPerWeek)) : 1)
                         .tint(.teal)
 
                     HStack {
@@ -119,6 +121,19 @@ struct YourWeekView: View {
         }
         .navigationTitle("Your Plan")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { showSchedulePrefs = true } label: {
+                    Image(systemName: "calendar.badge.clock")
+                }
+                .accessibilityLabel("Schedule preferences")
+            }
+        }
+        .sheet(isPresented: $showSchedulePrefs) {
+            NavigationStack {
+                CoachSchedulePreferencesView()
+            }
+        }
     }
 
     private func stepsColor(_ status: StepHealthStatus) -> Color {

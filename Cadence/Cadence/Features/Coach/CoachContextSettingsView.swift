@@ -15,11 +15,6 @@ struct CoachContextSettingsView: View {
                 Picker("Experience", selection: $settings.experienceLevel) {
                     ForEach(ExperienceLevel.allCases) { Text($0.displayName).tag($0) }
                 }
-                NavigationLink {
-                    CoachSchedulePreferencesView()
-                } label: {
-                    Label("Schedule preferences", systemImage: "calendar.badge.clock")
-                }
             } header: {
                 Text("Coach")
             } footer: {

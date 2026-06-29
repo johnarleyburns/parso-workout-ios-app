@@ -64,6 +64,23 @@ final class AppSettings {
         self.recoveryAwareCoachV2 = defaults.object(forKey: "settings.recoveryAwareCoachV2") as? Bool ?? true
         self.lastCoachComputeDay = defaults.string(forKey: "settings.lastCoachComputeDay") ?? ""
         self.favoriteRoutineIDs = Set(defaults.stringArray(forKey: "settings.favoriteRoutineIDs") ?? [])
+        // Coach preferences are stored properties (not computed) so @Observable
+        // tracks mutations and SwiftUI re-renders when they change.
+        if let data = defaults.data(forKey: "settings.coachPreferenceProfile"),
+           let profile = try? JSONDecoder().decode(CoachPreferenceProfile.self, from: data) {
+            self.coachPreferenceProfile = profile
+        } else {
+            self.coachPreferenceProfile = .empty
+        }
+        if let data = defaults.data(forKey: "settings.coachSchedulePreferences"),
+           let prefs = try? JSONDecoder().decode(CoachSchedulePreferences.self, from: data) {
+            self.coachSchedulePreferences = prefs
+        } else {
+            self.coachSchedulePreferences = .default
+        }
+        self.lastStrengthSettings = Self.readWorkoutSettings(defaults, "settings.lastStrengthSettings")
+        self.lastCardioSettings = Self.readWorkoutSettings(defaults, "settings.lastCardioSettings")
+        self.lastIntervalSettings = Self.readWorkoutSettings(defaults, "settings.lastIntervalSettings")
         // In UI tests the countdown is off by default (so workout-start flows stay
         // fast); a test can opt in with `-preCountdown N`.
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {
@@ -135,14 +152,8 @@ final class AppSettings {
     /// Learned Coach preferences from alternative selections. Stored as JSON in
     /// UserDefaults because it is compact and gets exported transparently.
     var coachPreferenceProfile: CoachPreferenceProfile {
-        get {
-            guard let data = defaults.data(forKey: "settings.coachPreferenceProfile"),
-                  let profile = try? JSONDecoder().decode(CoachPreferenceProfile.self, from: data)
-            else { return .empty }
-            return profile
-        }
-        set {
-            if let data = try? JSONEncoder().encode(newValue) {
+        didSet {
+            if let data = try? JSONEncoder().encode(coachPreferenceProfile) {
                 defaults.set(data, forKey: "settings.coachPreferenceProfile")
             }
         }
@@ -151,32 +162,23 @@ final class AppSettings {
     /// User-selected weekly schedule preferences, replacing hard-coded defaults.
     /// Persisted as JSON in UserDefaults; defaults conservatively.
     var coachSchedulePreferences: CoachSchedulePreferences {
-        get {
-            guard let data = defaults.data(forKey: "settings.coachSchedulePreferences"),
-                  let prefs = try? JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
-            else { return .default }
-            return prefs
-        }
-        set {
-            if let data = try? JSONEncoder().encode(newValue) {
+        didSet {
+            if let data = try? JSONEncoder().encode(coachSchedulePreferences) {
                 defaults.set(data, forKey: "settings.coachSchedulePreferences")
             }
         }
     }
 
     var lastStrengthSettings: WorkoutSettings {
-        get { Self.readWorkoutSettings(defaults, "settings.lastStrengthSettings") }
-        set { Self.writeWorkoutSettings(defaults, "settings.lastStrengthSettings", newValue) }
+        didSet { Self.writeWorkoutSettings(defaults, "settings.lastStrengthSettings", lastStrengthSettings) }
     }
 
     var lastCardioSettings: WorkoutSettings {
-        get { Self.readWorkoutSettings(defaults, "settings.lastCardioSettings") }
-        set { Self.writeWorkoutSettings(defaults, "settings.lastCardioSettings", newValue) }
+        didSet { Self.writeWorkoutSettings(defaults, "settings.lastCardioSettings", lastCardioSettings) }
     }
 
     var lastIntervalSettings: WorkoutSettings {
-        get { Self.readWorkoutSettings(defaults, "settings.lastIntervalSettings") }
-        set { Self.writeWorkoutSettings(defaults, "settings.lastIntervalSettings", newValue) }
+        didSet { Self.writeWorkoutSettings(defaults, "settings.lastIntervalSettings", lastIntervalSettings) }
     }
 
     private static func readWorkoutSettings(_ defaults: UserDefaults, _ key: String) -> WorkoutSettings {

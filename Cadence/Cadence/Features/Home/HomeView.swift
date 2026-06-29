@@ -178,8 +178,7 @@ struct HomeView: View {
                         from: buildTrainingEvents(), goal: settings.trainingGoal,
                         experience: settings.experienceLevel, formula: settings.formula,
                         activityTrend: activityTrend)
-                    YourWeekView(decision: coachDecision, facts: facts,
-                                 preferences: settings.coachSchedulePreferences)
+                    YourWeekView(decision: coachDecision, facts: facts)
                 case .workoutEditor(let plan):
                     WorkoutPlanEditor(plan: plan, onStart: { plan in
                         handleEditorStart(plan)
@@ -431,8 +430,8 @@ struct HomeView: View {
                 Image(systemName: symbol).font(.title3)
                 Text(title).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .padding(.vertical, 8)
             .foregroundStyle(.tint)
             .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
         }

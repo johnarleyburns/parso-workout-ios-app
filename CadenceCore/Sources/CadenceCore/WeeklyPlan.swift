@@ -422,12 +422,12 @@ public struct WeeklyPlan: Sendable, Equatable {
             guard let weekday = Weekday(from: date, calendar: calendar) else { return false }
             return days.contains(weekday)
         case .rolling(let everyNDays):
-            // Rolling rest: always rest on the N-th day after the last rest.
-            // For forward-planning, rest when the number of non-rest days since
-            // the week start modulo N equals N-1 (i.e., every N days).
+            // Rolling rest: after N consecutive training days, take a rest day.
+            // The (N+1)-day cycle repeats: rest on day N, 2N+1, 3N+2, …
             let weekStart = WeeklyStats.weekStart(now: date)
             let daysSinceWeekStart = calendar.dateComponents([.day], from: weekStart, to: date).day ?? 0
-            return daysSinceWeekStart > 0 && (daysSinceWeekStart % everyNDays) == 0
+            let cycleLength = everyNDays + 1
+            return daysSinceWeekStart > 0 && (daysSinceWeekStart % cycleLength) == everyNDays
         }
     }
 }

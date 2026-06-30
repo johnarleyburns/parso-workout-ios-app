@@ -488,6 +488,8 @@ citation pool via `CitationRegistry.citationPool(for:)`. A pool curated for one 
 | `flexibilityROM` | flexibilityROMPool | konradStretchROM2024, behmStretching2016 |
 | `recoveryMonitoring` | recoveryMonitoringPool | halsonRecovery2014, sawMonitoring2016, dupuyFatigue2018, meeusenOvertraining2013 |
 | `concurrentTraining` | concurrentTrainingPool | schumannConcurrent2022 |
+| `publicHealthGuideline` | publicHealthGuidelinePool | ekelundActivityMortality2016 |
+| `schedulePreference` | schedulePreferencePool | frequencyMeta, pellandDoseResponse2026, schumannConcurrent2022, sawMonitoring2016, halsonRecovery2014, murlasitsConcurrentSequence2018 |
 | `fieldTestValidity` | fieldTestValidityPool | oneRMEstimation, cooperVo2max, rockportWalk, queensCollegeStep, wingateTest, tongPlank2014, fieldFitnessReliability2022 |
 
 **Rules:**

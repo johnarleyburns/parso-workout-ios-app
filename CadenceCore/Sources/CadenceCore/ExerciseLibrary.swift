@@ -278,6 +278,8 @@ public enum ExerciseLibrary {
         .init("Kettlebell Clean", .pull, .kettlebell, .pull, .compound, primary: ["glutes", "traps"], secondary: ["quads"], lateral: true),
         .init("Farmer's Carry", .legs, .dumbbell, .static, .compound, primary: ["forearms", "traps"], secondary: ["abs", "quads"]),
         .init("Thruster", .legs, .barbell, .push, .compound, primary: ["quads", "delts"], secondary: ["glutes", "triceps"]),
+        .init("Clean and Press", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "delts"], secondary: ["triceps", "traps"]),
+        .init("Turkish Get-Up", .core, .kettlebell, .push, .compound, primary: ["delts", "abs", "glutes"], secondary: ["quads", "triceps"]),
     ]
 
     // MARK: CrossFit / functional movements (round4b §B-1)

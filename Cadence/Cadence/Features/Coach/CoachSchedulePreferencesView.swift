@@ -50,7 +50,7 @@ struct CoachSchedulePreferencesView: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                if let citation = CitationRegistry.citation(forId: "cdcActivityGuidelines2018") {
+                if let citation = CitationRegistry.citation(forId: "ekelundActivityMortality2016") {
                     CitationLink(citation: citation, compact: true)
                 }
             } header: {

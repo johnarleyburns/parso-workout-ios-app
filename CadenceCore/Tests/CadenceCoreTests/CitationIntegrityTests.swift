@@ -270,4 +270,40 @@ final class CitationIntegrityTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - No health-organization citations (2026-06-29)
+
+    func testNoHealthOrganizationCitationsInRegistry() {
+        let healthOrgAuths: Set<String> = [
+            "U.S. Department of Health and Human Services",
+            "World Health Organization",
+            "Centers for Disease Control",
+        ]
+        for c in CitationRegistry.all {
+            XCTAssertFalse(healthOrgAuths.contains(c.authors),
+                           "Citation \(c.id) has a health-org author: \(c.authors). Only published scientific studies allowed.")
+        }
+    }
+
+    func testCDCActivityGuidelinesNotInRegistry() {
+        XCTAssertNil(CitationRegistry.citation(forId: "cdcActivityGuidelines2018"),
+                     "cdcActivityGuidelines2018 must not be in the registry")
+    }
+
+    func testPublicHealthGuidelinePoolContainsOnlyPeerReviewedStudies() {
+        let pool = CitationRegistry.publicHealthGuidelinePool
+        XCTAssertFalse(pool.citationIds.isEmpty,
+                       "publicHealthGuidelinePool must not be empty")
+        XCTAssertFalse(pool.citationIds.contains("cdcActivityGuidelines2018"),
+                       "publicHealthGuidelinePool must not cite CDC/HHS guidelines")
+        for id in pool.citationIds {
+            guard let c = CitationRegistry.citation(forId: id) else {
+                XCTFail("Pool cites unknown citation \(id)"); continue
+            }
+            // Verify it's a published study (has a DOI or PubMed URL, not a .gov page)
+            let url = c.url.lowercased()
+            XCTAssertFalse(url.contains("health.gov") || url.contains("who.int"),
+                           "Citation \(id) has an organization URL, not a published study: \(url)")
+        }
+    }
 }

@@ -695,7 +695,8 @@ public enum CoachDecisionEngine {
 
         for event in facts.rolling7dCompletedEvents {
             guard case .strength(let details) = event.kind, let d = details else { continue }
-            for ex in d.exercises where ex.hardSetCount > 10 {
+            for ex in d.exercises where ex.hardSetCount > 10
+                    && !Exercise.cnsLiftNames.contains(ex.exerciseName) {
                 warnings.append(CoachWarning(
                     id: "excessiveSetsPerSession.\(ex.exerciseName)",
                     message: "\(ex.exerciseName) had \(ex.hardSetCount) hard sets in one session. Research found no advantage beyond ~5 hard sets per muscle per session.",

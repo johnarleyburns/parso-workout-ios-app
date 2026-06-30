@@ -487,19 +487,7 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1007/s40279-021-01635-2"
     )
 
-    // MARK: - Schedule-preference / guideline citations (2026-06-25)
-
-    /// CDC / HHS adult physical-activity guideline — anchors the public-health
-    /// aerobic floor (150 min moderate-equivalent). Kept OUT of performance-
-    /// prescription pools so it never backs a training recommendation directly.
-    public static let cdcActivityGuidelines2018 = Citation(
-        id: "cdcActivityGuidelines2018",
-        authors: "U.S. Department of Health and Human Services",
-        year: 2018,
-        title: "Physical Activity Guidelines for Americans, 2nd edition",
-        source: "HHS / CDC",
-        url: "https://health.gov/our-work/nutrition-physical-activity/physical-activity-guidelines"
-    )
+    // MARK: - Schedule-preference / concurrent-training citations (2026-06-25)
 
     /// Concurrent-training sequence meta-analysis — anchors the "cardio after
     /// strength" default advice when strength is the priority.
@@ -540,7 +528,7 @@ public enum CitationRegistry {
         zourdosRIR2016, tanakaMaxHR2001, kaufmannThreshold2023, milanovicHIIT2015,
         slothSIT2013, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
         lauersenInjuryPrevention2014, fieldFitnessReliability2022, tongPlank2014,
-        cdcActivityGuidelines2018, murlasitsConcurrentSequence2018,
+        murlasitsConcurrentSequence2018,
     ]
 
     public static func citation(forId id: String) -> Citation? {
@@ -667,11 +655,11 @@ public enum CitationRegistry {
         "murlasitsConcurrentSequence2018",
     ])
 
-    /// Public-health guideline citation pool (kept entirely separate from
-    /// performance-prescription pools so public-health guidance never backs a
-    /// training recommendation directly).
+    /// Public-health aerobic floor (150 min moderate-equivalent). Kept in a separate
+    /// pool so it never backs a training recommendation directly; this pool cites the
+    /// same peer-reviewed evidence as activityMinutesHealthPool.
     public static let publicHealthGuidelinePool = CitationPool(id: "publicHealthGuideline", citationIds: [
-        "cdcActivityGuidelines2018",
+        "ekelundActivityMortality2016",
     ])
 
     /// The single citation pool that may support a given claim category. Total over

@@ -1140,4 +1140,59 @@ final class CoachDecisionEngineTests: XCTestCase {
         XCTAssertTrue(allStepCitations.isSubset(of: stepPoolIds),
                       "Low-step warning should only cite stepsHealth pool citations")
     }
+
+    // MARK: - CNS lift warning suppression
+
+    func testCNSLiftSkipsExcessiveSetsPerSessionWarning() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        // Snatch with 12 sets — typical Olympic CNS training volume
+        let snatch = try makeStrengthEvent(context: ctx, name: "Snatch",
+                                            primaryMuscles: ["quadriceps", "glutes", "delts"],
+                                            date: now.addingTimeInterval(-3600), sets: 12)
+        let facts = CoachFacts.make(from: [snatch], goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+        let snatchWarnings = decision.warnings.filter { $0.id.contains("excessiveSetsPerSession") }
+        XCTAssertTrue(snatchWarnings.isEmpty,
+                      "CNS lift Snatch should NOT trigger excessiveSetsPerSession warning. Got: \(snatchWarnings.map(\.message))")
+    }
+
+    func testNonCNSLiftStillTriggersExcessiveSetsPerSessionWarning() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        // Back Squat with 12 sets — exceeds the threshold for a non-CNS lift
+        let squat = try makeStrengthEvent(context: ctx, name: "Back Squat",
+                                           primaryMuscles: ["quadriceps", "glutes"],
+                                           date: now.addingTimeInterval(-3600), sets: 12)
+        let facts = CoachFacts.make(from: [squat], goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+        let squatWarnings = decision.warnings.filter { $0.id.contains("excessiveSetsPerSession.Back Squat") }
+        XCTAssertFalse(squatWarnings.isEmpty,
+                       "Non-CNS lift Back Squat should still trigger excessiveSetsPerSession warning")
+    }
+
+    func testCNSLiftBelowThresholdDoesNotTriggerWarning() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        // Clean and Jerk with 8 sets — below warning threshold
+        let cj = try makeStrengthEvent(context: ctx, name: "Clean and Jerk",
+                                        primaryMuscles: ["quadriceps", "glutes", "delts"],
+                                        date: now.addingTimeInterval(-3600), sets: 8)
+        let facts = CoachFacts.make(from: [cj], goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+        let cjWarnings = decision.warnings.filter { $0.id.contains("excessiveSetsPerSession") }
+        XCTAssertTrue(cjWarnings.isEmpty,
+                      "Clean and Jerk with 8 sets should not trigger warning (below 10 threshold)")
+    }
+
+    func testAllCNSLiftNamesAreRecognized() {
+        for name in Exercise.cnsLiftNames {
+            XCTAssertTrue(Exercise.cnsLiftNames.contains(name),
+                          "CNS lift '\(name)' should be in the cnsLiftNames set")
+        }
+        // Verify known non-CNS lifts are NOT in the set
+        XCTAssertFalse(Exercise.cnsLiftNames.contains("Back Squat"))
+        XCTAssertFalse(Exercise.cnsLiftNames.contains("Bench Press"))
+        XCTAssertFalse(Exercise.cnsLiftNames.contains("Deadlift"))
+    }
 }

@@ -226,6 +226,11 @@ public final class Exercise {
         let lower = name.lowercased()
         return singleDumbbellPatterns.contains { lower.contains($0) }
     }
+
+    public static let cnsLiftNames: Set<String> = [
+        "Clean and Jerk", "Snatch", "Power Clean", "Clean and Press",
+        "Clean", "Turkish Get-Up", "Kettlebell Clean", "Kettlebell Swing"
+    ]
 }
 
 /// Coarse training split categories (FR-1.1).

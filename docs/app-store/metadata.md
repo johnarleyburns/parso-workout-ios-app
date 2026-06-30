@@ -192,7 +192,7 @@ Rationale:
 ## Manual Link Checklist
 
 - Marketing URL: `https://www.parso.guru`
-- Privacy Policy URL: `https://parso.guru/cladiron_privacy.html`
+- Privacy Policy URL: `https://parso.guru/cladiron_privacy`
 - Source URL: `https://github.com/johnarleyburns/parso-workout-ios-app`
 - Apple App Review Guidelines: `https://developer.apple.com/app-store/review/guidelines/`
 - Apple screenshot specifications: `https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications/`

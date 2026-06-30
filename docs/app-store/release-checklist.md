@@ -47,7 +47,7 @@ Use this checklist for the first public App Store v1 submission.
   `docs/app-store/metadata.md`.
 - Set App Privacy to `Data Not Collected`.
 - Confirm the privacy policy URL is live and accurate:
-  `https://parso.guru/cladiron_privacy.html`.
+  `https://parso.guru/cladiron_privacy`.
 - Add review notes from `docs/app-store/metadata.md`.
 - Confirm no demo account is required.
 

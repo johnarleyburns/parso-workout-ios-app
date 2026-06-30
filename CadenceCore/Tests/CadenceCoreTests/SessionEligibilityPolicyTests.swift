@@ -62,6 +62,30 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         XCTAssertFalse(reasons.isEmpty, "Should have at least one reason")
     }
 
+    func testStrengthDeferralUsesRecoveryWindowNotCurrentTime() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 3600), in: ctx)
+        let squat = try WorkoutRepository.findOrCreateExercise(
+            named: "Back Squat", primaryMuscles: ["quadriceps"], in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: squat, weightKg: 100, reps: 5, rpe: 8, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: squat, weightKg: 100, reps: 5, rpe: 8, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: squat, weightKg: 100, reps: 5, rpe: 8, in: ctx)
+        session.endedAt = now.addingTimeInterval(-1.9 * 3600)
+        try ctx.save()
+
+        let event = TrainingEvent.from(session: session)!
+        let facts = makeFacts(events: [event], now: now)
+
+        let result = SessionEligibilityPolicy.evaluate(makeStrengthCandidate(), facts: facts)
+        guard case .deferred(let until, _) = result else {
+            XCTFail("Expected defer for recent hard squat"); return
+        }
+        let expected = facts.recovery.byExercise["Back Squat"]?.hardEligibleAt
+        XCTAssertEqual(until.timeIntervalSince1970, expected?.timeIntervalSince1970 ?? 0, accuracy: 1)
+        XCTAssertGreaterThan(until, now)
+    }
+
     func testDeadlift23h59mAgoBlocksExactDeadlift() throws {
         let ctx = try makeContext()
         let now = testNow

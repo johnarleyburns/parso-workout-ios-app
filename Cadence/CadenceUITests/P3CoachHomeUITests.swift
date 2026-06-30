@@ -28,9 +28,10 @@ final class P3CoachHomeUITests: CadenceUITestCase {
 
     func testCoachSettingsPickersExist() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.scrollToHittableAndTap("home.settings"), "open Settings")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.yourPlan"), "open Your Plan")
+        XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
 
-        // The Coach section is appended at the bottom of Settings — scroll to it.
+        // Coach settings now live at the bottom of Your Plan.
         let goal = app.buttons["settings.coach.goal"]
         var found = goal.waitForExistence(timeout: 2)
         for _ in 0..<8 where !found {
@@ -142,13 +143,14 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         XCTAssertFalse(app.staticTexts["Planned (rest of week)"].exists)
     }
 
-    // MARK: - Settings schedule preferences link
+    // MARK: - Your Plan schedule preferences link
 
     func testSettingsLinksToCoachSchedulePreferences() {
         let app = XCUIApplication.launched()
-        app.buttons["home.settings"].tap()
+        XCTAssertTrue(app.scrollToHittableAndTap("home.yourPlan"), "open Your Plan")
+        XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
 
-        // Scroll to the Coach section at the bottom of Settings
+        // Scroll to the Coach settings section at the bottom of Your Plan.
         let link = app.buttons["settings.coach.schedulePreferences"]
         if !link.exists || !link.isHittable {
             app.swipeUp()

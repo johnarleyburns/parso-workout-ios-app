@@ -20,6 +20,7 @@ struct GuidedPhaseOverlay: View {
     /// Play a transition bell when this phase begins (batch 7 item 9).
     var soundsEnabled: Bool = false
     let onFinish: (_ elapsedSeconds: Int) -> Void
+    let onSkip: ((_ elapsedSeconds: Int) -> Void)?
 
     private let total: Int
     @State private var remaining: Int
@@ -28,13 +29,15 @@ struct GuidedPhaseOverlay: View {
 
     init(title: String, minutes: Int, tint: Color = .green,
          idPrefix: String, soundsEnabled: Bool = false,
-         onFinish: @escaping (_ elapsedSeconds: Int) -> Void) {
+         onFinish: @escaping (_ elapsedSeconds: Int) -> Void,
+         onSkip: ((_ elapsedSeconds: Int) -> Void)? = nil) {
         self.title = title
         self.minutes = minutes
         self.tint = tint
         self.idPrefix = idPrefix
         self.soundsEnabled = soundsEnabled
         self.onFinish = onFinish
+        self.onSkip = onSkip
         let seconds = max(1, minutes) * 60
         self.total = seconds
         _remaining = State(initialValue: seconds)
@@ -68,7 +71,7 @@ struct GuidedPhaseOverlay: View {
                     .accessibilityIdentifier("\(idPrefix).pause")
 
                     Button {
-                        onFinish(total - remaining)
+                        (onSkip ?? onFinish)(total - remaining)
                     } label: {
                         Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity)
                     }

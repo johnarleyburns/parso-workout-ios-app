@@ -9,6 +9,7 @@ enum TonePlayer {
     private static let engine = AVAudioEngine()
     private static let playerNode = AVAudioPlayerNode()
     private static var configured = false
+    private static var sequenceToken = 0
 
     /// Soft low tick — used for phase transitions and countdown sequences.
     /// ~1047 Hz (C6), 0.04 s, low volume.
@@ -24,22 +25,51 @@ enum TonePlayer {
 
     /// 3 countdown ticks (1 s apart) followed by a start alert.
     static func countdownStart() {
+        sequenceToken += 1
+        let token = sequenceToken
         playTick()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { playTick() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { playTick() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            guard token == sequenceToken else { return }
+            playTick()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            guard token == sequenceToken else { return }
+            playTick()
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            guard token == sequenceToken else { return }
             playAlert()
             Haptics.restComplete()
         }
     }
 
+    /// A single start alert, used when the workout begins immediately.
+    static func singleStart() {
+        cancelPending()
+        playAlert()
+        Haptics.restComplete()
+    }
+
     /// 3 rapid ticks (0.15 s apart).
     static func rapidEnd() {
+        sequenceToken += 1
+        let token = sequenceToken
         playTick()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { playTick() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            guard token == sequenceToken else { return }
+            playTick()
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
+            guard token == sequenceToken else { return }
             playTick()
             Haptics.restComplete()
+        }
+    }
+
+    static func cancelPending() {
+        sequenceToken += 1
+        if configured, playerNode.isPlaying {
+            playerNode.stop()
         }
     }
 

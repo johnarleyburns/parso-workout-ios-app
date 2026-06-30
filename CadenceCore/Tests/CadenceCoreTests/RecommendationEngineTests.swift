@@ -386,23 +386,38 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertTrue(Set([rec!.citation.id] + rec!.citationIds).isDisjoint(with: mortality))
     }
 
-    func testAnaerobicIsOptInOnlyAndNeverAutoPrimary() throws {
+    func testAnaerobicIsDefaultWhenEligibleAndPreferenceRanked() throws {
         let c = try makeContext()
         let now = coachNow
         let base = cardioEvent(c, type: .run, daysAgo: 3, now: now, avgHR: 130)
 
         let inter = CoachFacts.make(from: [base], goal: .strength, experience: .intermediate, now: now)
         let interRecs = CoachRecommendationEngine.run(inter)
-        XCTAssertNil(interRecs.first { $0.id == "anaerobicOptIn" })
-        XCTAssertNotEqual(interRecs.first?.kind, .anaerobicOptIn)   // never primary
-
-        let interOptIn = CoachRecommendationEngine.run(inter, anaerobicOptIn: true)
-        let rec = interOptIn.first { $0.id == "anaerobicOptIn" }
+        let rec = interRecs.first { $0.id == "anaerobicOptIn" }
         XCTAssertNotNil(rec)
-        XCTAssertNotEqual(interOptIn.first?.kind, .anaerobicOptIn)  // still not primary (low priority)
         XCTAssertFalse(rec!.riskNotes.isEmpty)
         let pool = Set(CitationRegistry.anaerobicTrainingPool.citationIds)
         XCTAssertTrue(Set([rec!.citation.id] + rec!.citationIds).allSatisfy { pool.contains($0) })
+
+        let easyChoice = CoachSession(
+            id: "aerobic.easyWalk", kind: .easyAerobic, title: "Easy walk",
+            durationMinutes: 30, modality: .walk, intensity: .easy,
+            trainingLoadTags: ["aerobic", "easy", "lowImpact"],
+            launchPayload: .cardio(type: "walk", durationMinutes: 30)
+        )
+        let sprintAlternative = CoachSession(
+            id: "aerobic.anaerobicIntervals", kind: .vo2Intervals, title: "Sprint intervals",
+            durationMinutes: 20, modality: .run, intensity: .vigorous,
+            trainingLoadTags: ["aerobic", "hard", "highImpact", "anaerobic"],
+            launchPayload: .cardio(type: "hiit", durationMinutes: 20)
+        )
+        var profile = CoachPreferenceProfile.empty
+        profile.recordSelection(easyChoice, from: [sprintAlternative], at: now)
+        profile.recordSelection(easyChoice, from: [sprintAlternative], at: now.addingTimeInterval(60))
+        let rankedDown = CoachRecommendationEngine.run(inter, profile: profile)
+            .first { $0.id == "anaerobicOptIn" }
+        XCTAssertNotNil(rankedDown)
+        XCTAssertLessThan(rankedDown!.priority, rec!.priority)
 
         let advanced = CoachFacts.make(from: [base], goal: .strength, experience: .advanced, now: now)
         XCTAssertNotNil(CoachRecommendationEngine.run(advanced).first { $0.id == "anaerobicOptIn" })

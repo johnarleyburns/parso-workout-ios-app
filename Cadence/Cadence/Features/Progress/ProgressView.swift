@@ -151,10 +151,10 @@ struct TrainingProgressView: View {
 
     @ViewBuilder private var volumeCard: some View {
         let parts = BodyPart.allCases.filter { (facts.weeklySetsByPart[$0] ?? 0) > 0 }
-        card(title: "Weekly volume", subtitle: "working sets per muscle vs. MEV \u{00b7} MAV \u{00b7} MRV",
+        card(title: "Weekly volume", subtitle: "working sets per muscle vs. experience-scaled ranges",
              citation: CitationRegistry.volumeDoseResponse) {
             if parts.isEmpty {
-                emptyNote("Once you log resistance sets, each muscle's weekly volume appears against its MEV (the minimum to grow), MAV (the productive range), and MRV (the recovery ceiling).")
+                emptyNote("Once you log resistance sets, each muscle's weekly volume appears against an evidence-informed starting range and high-end range for your experience level.")
             } else {
                 VStack(spacing: 10) {
                     ForEach(parts, id: \.self) { part in

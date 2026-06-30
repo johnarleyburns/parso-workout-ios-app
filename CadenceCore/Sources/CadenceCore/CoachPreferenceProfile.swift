@@ -81,6 +81,8 @@ public struct CoachPreferenceProfile: Codable, Equatable, Sendable {
                 }
             }
         }
+
+        recordHardAvoidanceIfNeeded(selected: session, alternatives: alternatives)
     }
 
     public func preferenceScore(for session: CoachSession) -> Int {
@@ -104,9 +106,52 @@ public struct CoachPreferenceProfile: Codable, Equatable, Sendable {
             }
         }
         for tag in session.trainingLoadTags {
-            if avoidedTags.contains(tag) { score -= 2 }
+            score -= avoidedTags.filter { $0 == tag }.count * 2
         }
         return score
+    }
+
+    /// Repeatedly choosing easier work over hard/high-fatigue options becomes a
+    /// soft preference. It down-ranks future hard options without hiding them.
+    public func avoidancePenalty(forTags tags: [String]) -> Int {
+        tags.reduce(0) { total, tag in
+            total + avoidedTags.filter { $0 == tag }.count * 2
+        }
+    }
+
+    private mutating func recordHardAvoidanceIfNeeded(selected: CoachSession,
+                                                       alternatives: [CoachSession]) {
+        let selectedHardness = Self.hardnessScore(for: selected)
+        for alternative in alternatives where alternative.id != selected.id {
+            guard Self.hardnessScore(for: alternative) > selectedHardness else { continue }
+            for tag in Self.avoidanceTags(from: alternative) {
+                appendAvoidedTag(tag)
+            }
+        }
+    }
+
+    private mutating func appendAvoidedTag(_ tag: String) {
+        // Cap repeated penalties so old behavior can be overcome by future choices.
+        guard avoidedTags.filter({ $0 == tag }).count < 5 else { return }
+        avoidedTags.append(tag)
+    }
+
+    private static func avoidanceTags(from session: CoachSession) -> [String] {
+        let tags = Set(session.trainingLoadTags)
+        return ["anaerobic", "threshold", "hard", "highImpact"].filter { tags.contains($0) }
+    }
+
+    private static func hardnessScore(for session: CoachSession) -> Int {
+        if session.trainingLoadTags.contains("anaerobic") { return 5 }
+        if session.trainingLoadTags.contains("threshold") { return 4 }
+        switch session.kind {
+        case .vo2Intervals: return 4
+        case .strength: return 3
+        case .moderateAerobic:
+            return session.intensity == .vigorous ? 4 : 2
+        case .easyAerobic: return 1
+        case .recovery, .rest, .assessment: return 0
+        }
     }
 
     public static func intent(for kind: CoachSessionKind) -> CoachPrescriptionIntent {

@@ -40,7 +40,7 @@ struct CoachAboutView: View {
                 row("target", "Training goal",
                     "Strength: favors heavy loads (>=80% e1RM). Hypertrophy: targets moderate loads with controlled RIR. Endurance: flags excessive heavy work.")
                 row("person.fill", "Experience level",
-                    "Scales the weekly volume targets (MEV/MAV/MRV) per body part. Beginners need fewer sets; advanced lifters tolerate more.")
+                    "Scales weekly starting volume ranges per body part. Beginners usually need fewer sets; advanced lifters often tolerate more.")
             }
 
             Section {

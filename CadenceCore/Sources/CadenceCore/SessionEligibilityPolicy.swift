@@ -60,18 +60,11 @@ public enum SessionEligibilityPolicy {
         }
 
         if !reasons.isEmpty {
-            let latest = reasons.compactMap { r in
-                if case .deferred(let until, _) = evaluateBlock(reasons: reasons) { return until }
-                return nil
-            }.max() ?? now
+            let latest = deferredUntil(for: session, facts: facts, now: now) ?? now
             return .deferred(until: latest, reasons: reasons)
         }
 
         return .eligible(notes: notes)
-    }
-
-    private static func evaluateBlock(reasons: [DecisionReason]) -> EligibilityDecision {
-        .deferred(until: Date.distantFuture, reasons: reasons)
     }
 
     private static func evaluateStrength(_ session: CoachSession, recovery: RecoveryState,
@@ -123,6 +116,56 @@ public enum SessionEligibilityPolicy {
                 citationIds: []
             ))
         }
+    }
+
+    private static func deferredUntil(for session: CoachSession,
+                                      facts: CoachFacts,
+                                      now: Date) -> Date? {
+        var dates: [Date] = []
+
+        if session.kind == .strength, let exercises = session.exercises {
+            for ex in exercises {
+                let patterns = MovementPattern.patterns(forExerciseNamed: ex.name,
+                                                        primaryMuscles: ex.primaryMuscles)
+                let bodyParts = BodyPart.parts(forMuscleIDs: ex.primaryMuscles)
+                if let w = facts.recovery.byExercise[ex.name], now < w.hardEligibleAt {
+                    dates.append(w.hardEligibleAt)
+                }
+                for pattern in patterns {
+                    if let w = facts.recovery.byPattern[pattern], now < w.hardEligibleAt {
+                        dates.append(w.hardEligibleAt)
+                    }
+                }
+                for part in bodyParts {
+                    if let w = facts.recovery.byBodyPart[part], now < w.hardEligibleAt {
+                        dates.append(w.hardEligibleAt)
+                    }
+                }
+            }
+            if let wb = facts.recovery.wholeBody, wb.reason == .unknownImport, now < wb.hardEligibleAt {
+                dates.append(wb.hardEligibleAt)
+            }
+        }
+
+        if session.kind == .moderateAerobic || session.kind == .vo2Intervals {
+            for event in facts.rolling72hCompletedEvents {
+                guard case .strength(let details) = event.kind, let d = details else { continue }
+                let hasLowerBody = d.exercises.contains {
+                    $0.patterns.contains(where: \.isLowerBody) && $0.hardSetCount > 0
+                }
+                if hasLowerBody {
+                    let until = event.end.addingTimeInterval(24 * 3600)
+                    if now < until { dates.append(until) }
+                }
+            }
+        }
+
+        if session.kind == .vo2Intervals,
+           let wb = facts.recovery.wholeBody, wb.reason == .unknownImport, now < wb.hardEligibleAt {
+            dates.append(wb.hardEligibleAt)
+        }
+
+        return dates.max()
     }
 
     private static func evaluateAerobic(_ session: CoachSession, recovery: RecoveryState,

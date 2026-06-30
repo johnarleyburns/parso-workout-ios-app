@@ -209,8 +209,9 @@ extension TrainingEvent {
             }
 
         case .intervals(let d):
-            // Interval (HIIT) sessions default to VO₂ work; all-out short SIT is an
-            // opt-in lane handled elsewhere and never auto-classified as anaerobic.
+            // Interval (HIIT) sessions default to VO₂ work; short all-out sprint
+            // sessions are recommended explicitly by the coach and not inferred
+            // from a generic interval label.
             switch d.intensity {
             case .vigorous:
                 return [SystemExposure(system: .vo2max, exposures: 1, hard: true)]

@@ -32,7 +32,7 @@ public extension KnowledgeBase {
     ]
 
     /// P6 cardio rules — prescribe aerobic work. Conservative: beginners get
-    /// moderate, not HIIT; SIT is opt-in only, not auto-prescribed.
+    /// moderate work before harder interval prescriptions.
     static let p6RecRules: [RecommendationRule] = [
         cardioModerate,
         cardioHIIT,
@@ -59,9 +59,11 @@ public extension KnowledgeBase {
                 if let e1rm = assessedE1RM {
                     let goalLoad = PrescriptionMath.roundLoad(e1rm * facts.goal.targetLoadPercentage)
                     if snap.topSetWeightKg < goalLoad * 0.90 {
+                        let incrementLoad = PrescriptionMath.roundLoad(snap.topSetWeightKg + loadIncrementKg)
+                        let nextLoad = min(goalLoad, incrementLoad)
                         target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
-                                           loadKg: goalLoad, rir: rir)
-                        action = "Your assessed 1RM supports a higher working load — try \(SetTarget.trimmed(goalLoad)) kg (\(Int(facts.goal.targetLoadPercentage * 100))% of your tested 1RM)."
+                                           loadKg: nextLoad, rir: rir)
+                        action = "Your assessed 1RM supports building load, but keep the jump conservative — try \(SetTarget.trimmed(nextLoad)) kg and reassess from there."
                     } else {
                         let nextReps = snap.topSetReps + 1
                         target = SetTarget(sets: nil, repsLow: nextReps, repsHigh: nextReps,
@@ -78,10 +80,10 @@ public extension KnowledgeBase {
                 if let e1rm = assessedE1RM {
                     let goalLoad = PrescriptionMath.roundLoad(e1rm * facts.goal.targetLoadPercentage)
                     let incrementLoad = PrescriptionMath.roundLoad(snap.topSetWeightKg + loadIncrementKg)
-                    let nextLoad = max(goalLoad, incrementLoad)
+                    let nextLoad = goalLoad > snap.topSetWeightKg ? min(goalLoad, incrementLoad) : incrementLoad
                     target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
                                        loadKg: nextLoad, rir: rir)
-                    action = "You hit \(range.upperBound) reps — move to \(SetTarget.trimmed(nextLoad)) kg (\(Int(facts.goal.targetLoadPercentage * 100))% of your tested 1RM) and reset to \(range.lowerBound)."
+                    action = "You hit \(range.upperBound) reps — add a small load jump to \(SetTarget.trimmed(nextLoad)) kg and reset to \(range.lowerBound)."
                 } else {
                     let nextLoad = PrescriptionMath.roundLoad(snap.topSetWeightKg + loadIncrementKg)
                     target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
@@ -94,9 +96,9 @@ public extension KnowledgeBase {
                 kind: .progression, part: snap.part, exercise: lift,
                 title: "Progress your \(lift.lowercased())",
                 action: action,
-                detail: "Progressive overload drives strength and size: within a rep range, add reps to the top of the range first, then add load and reset — autoregulated by reps in reserve (RIR). Your \(facts.goal.displayName.lowercased()) range is \(range.lowerBound)–\(range.upperBound) reps at about \(rir) RIR.\(assessedE1RM != nil ? " Your assessed 1RM anchors the prescribed load." : "")",
+                detail: "Progressive overload drives strength and size: within a rep range, add reps to the top of the range first, then add load and reset — autoregulated by reps in reserve (RIR). Your \(facts.goal.displayName.lowercased()) range is \(range.lowerBound)–\(range.upperBound) reps at about \(rir) RIR.\(assessedE1RM != nil ? " Your assessed 1RM informs the load, but Coach still limits the jump so the next session confirms it." : "")",
                 citation: CitationRegistry.rpeAutoregulation,
-                citationIds: assessedE1RM != nil ? ["oneRMEstimation"] : [],
+                citationIds: assessedE1RM != nil ? ["oneRMEstimation", "currierResistancePrescription2023"] : ["currierResistancePrescription2023"],
                 target: target,
                 confidence: confidence,
                 priority: 100))
@@ -151,7 +153,7 @@ public extension KnowledgeBase {
                 kind: .addVolume, part: part,
                 title: "Add \(name.lowercased()) volume",
                 action: "Add about \(toAdd) set\(toAdd == 1 ? "" : "s") of \(name.lowercased()) work this week.",
-                detail: "Weekly sets per muscle drive growth in a dose-response fashion, with a minimum effective volume below which there's little adaptation. \(name) is under that threshold (~\(PrescriptionMath.sets(bands.mev)) sets/week for your experience level); adding a couple of sets lands it in the productive range.",
+                detail: "Weekly sets per muscle drive growth in a graded dose-response, but the exact useful dose varies by person. \(name) is on the low side of the starting range for your experience level (~\(PrescriptionMath.sets(bands.mev)) sets/week); add a couple of sets, then judge by performance and recovery.",
                 citation: CitationRegistry.volumeDoseResponse,
                 target: SetTarget(sets: toAdd, repsLow: range.lowerBound, repsHigh: range.upperBound,
                                   loadKg: nil, rir: rir),
@@ -226,8 +228,9 @@ public extension KnowledgeBase {
         return out
     }
 
-    /// SIT/Wingate is advanced, high-fatigue, and opt-in. It is NOT auto-prescribed;
-    /// the assessment can be recorded but Coach will not push SIT automatically.
+    /// Legacy P6 strength-card rules no longer prescribe SIT here; the richer
+    /// coach decision engine handles hard sprint work with recovery and preference
+    /// gates.
     static let cardioSIT = RecommendationRule(id: "cardio.sit", priority: 0) { _ in [] }
 
     // MARK: - Rule: prompt to run missing assessments (FR-12.3)
@@ -238,9 +241,9 @@ public extension KnowledgeBase {
         return [Recommendation(
             id: "missingBaseline.strength",
             kind: .starter,
-            title: "Unlock load-based targets",
+            title: "Add a strength test baseline",
             action: "Run an Estimated 1RM test on your main lifts so the coach can prescribe specific loads.",
-            detail: "The coach needs your baseline strength to prescribe percentage-based loads. Without it, recommendations are general. A quick test on your top lifts gives the engine the data to produce specific set/rep/load targets.",
+            detail: "Your logged workouts are enough for habit, volume, and lift-history trends. A separate e1RM or rep-max test gives Coach a measured strength baseline for percentage-based load targets.",
             citation: CitationRegistry.oneRMEstimation,
             confidence: .low,
             priority: 50)]

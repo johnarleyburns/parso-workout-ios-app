@@ -820,24 +820,21 @@ final class CoachDecisionEngineTests: XCTestCase {
         XCTAssertEqual(threshold?.citationIds, CitationRegistry.citationPool(for: .thresholdTraining).citationIds)
     }
 
-    /// Anaerobic intervals are opt-in only and are never auto-prescribed.
-    func testAnaerobicIntervalsAreOptInOnly() throws {
+    /// Anaerobic intervals are present by default once the user has an aerobic base.
+    func testAnaerobicIntervalsAreDefaultWhenEligible() throws {
         let ctx = try makeContext()
         let now = testNow
-        let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
-                                      date: now.addingTimeInterval(-3 * 86400))
-        let facts = CoachFacts.make(from: [s], goal: .strength, experience: .intermediate, now: now)
+        let base = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-2 * 86400),
+                                   duration: 60 * 60, avgHR: 130)
+        let facts = CoachFacts.make(from: [base], goal: .strength, experience: .intermediate, now: now)
 
-        XCTAssertNil(CoachSession.candidates(for: facts).first { $0.id == "aerobic.anaerobicIntervals" })
-        XCTAssertNil(CoachDecisionEngine.run(facts).scoreBreakdowns["aerobic.anaerobicIntervals"],
-                     "Engine must never surface anaerobic work without opt-in")
-
-        let optIn = CoachSession.candidates(for: facts, anaerobicOptIn: true)
+        let optIn = CoachSession.candidates(for: facts)
             .first { $0.id == "aerobic.anaerobicIntervals" }
         XCTAssertNotNil(optIn)
         XCTAssertEqual(optIn?.systemsTrained, [.anaerobicPower])
         XCTAssertEqual(optIn?.evidenceCategory, .anaerobicTraining)
         XCTAssertFalse(optIn!.citationIds.isEmpty)
+        XCTAssertNotNil(CoachDecisionEngine.run(facts).scoreBreakdowns["aerobic.anaerobicIntervals"])
     }
 
     /// A lighter strength option surfaces when readiness is poor.

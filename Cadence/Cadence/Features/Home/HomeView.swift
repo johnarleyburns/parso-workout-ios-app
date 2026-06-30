@@ -52,7 +52,6 @@ struct HomeView: View {
     @State private var outdoorGoalMeters: Double?
     @State private var showAlternatives = false
     @State private var showSupport = false
-    @State private var showCoachSettings = false
 
     // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
     // read-only insights and the prescriptive recommendation surfaced on the card.
@@ -66,7 +65,22 @@ struct HomeView: View {
     private var coachInsights: [Insight] { InsightEngine.run(coachFacts) }
     /// The top prescription the Coach card leads with (P5.2). Never nil — the engine
     /// falls back to a cited cold-start starter when there's no history yet.
-    private var coachRecommendation: Recommendation { RecommendationEngine.top(coachFacts) }
+    private var coachRecommendation: Recommendation {
+        let events = buildTrainingEvents()
+        let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
+                                     experience: settings.experienceLevel,
+                                     formula: settings.formula)
+        if let rec = CoachRecommendationEngine.run(facts, profile: settings.coachPreferenceProfile)
+            .first(where: { rec in
+                if let system = rec.system {
+                    return [.maximalStrength, .hypertrophy, .strengthEndurance].contains(system)
+                }
+                return [.progression, .deload, .addVolume, .starter, .strengthBlock, .volumeAdjust].contains(rec.kind)
+            }) {
+            return rec
+        }
+        return RecommendationEngine.top(coachFacts)
+    }
 
     private var coachDecision: CoachDecision {
         _ = historyRefreshToken
@@ -140,7 +154,7 @@ struct HomeView: View {
                         onStart: { launchDecision($0) },
                         onAddOn: { session, status in handleAddOn(session, status) },
                         onSeeInsights: { path.append(HomeRoute.coach) },
-                        onPreferences: { showCoachSettings = true },
+                        onPreferences: { path.append(HomeRoute.yourPlan) },
                         onPickAlternative: { showAlternatives = true })
                     quickActionsRow
                     plannedRestOfWeekSection
@@ -215,11 +229,6 @@ struct HomeView: View {
                 NavigationStack {
                     CoachAlternativesView(decision: coachDecision,
                                           onSelect: { chooseAlternative($0) })
-                }
-            }
-            .sheet(isPresented: $showCoachSettings) {
-                NavigationStack {
-                    CoachContextSettingsView()
                 }
             }
             // Contribution prompt — Home only, never during a workout or its
@@ -338,15 +347,11 @@ struct HomeView: View {
                 idPrefix: "warmup",
                 soundsEnabled: settings.workoutSounds,
                 onFinish: { secs in
-                    var t = Transaction(); t.disablesAnimations = true
-                    withTransaction(t) {
-                        launch(.strength)
-                        // Record the actual warm-up time on the session just created
-                        // (feedback batch 6).
-                        active.strengthSession?.warmupSeconds = Double(secs)
-                        try? context.save()
-                        warmupActive = false
-                    }
+                    finishWarmup(elapsedSeconds: secs, startCue: .countdown)
+                },
+                onSkip: { secs in
+                    WorkoutCues.cancelPendingSounds()
+                    finishWarmup(elapsedSeconds: secs, startCue: .single)
                 })
                 .transition(.identity)
                 .zIndex(1)
@@ -700,32 +705,55 @@ struct HomeView: View {
             launch(kind)
         }
     }
-    private func launch(_ kind: PendingWorkout.Kind) {
+    private func launch(_ kind: PendingWorkout.Kind, startCue: WorkoutStartCue = .countdown) {
         switch kind {
         case .strength:
             if let plan = pendingPlan {
                 pendingPlan = nil
                 if let s = try? materializePlan(plan) {
                     active.startStrength(s); path.append(s)
-                    WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+                    playStartCue(startCue)
                 }
             } else if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
                 active.startStrength(s); path.append(s)
-                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+                playStartCue(startCue)
             }
         case .plan(let plan, let ladder):
             if let s = try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) {
                 active.startStrength(s); path.append(s)
-                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+                playStartCue(startCue)
             }
         case .reuse(let past):
             if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
                 active.startStrength(s); path.append(s)
-                WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+                playStartCue(startCue)
             }
         case .outdoor(let c): outdoorType = c
         case .interval(let l): intervalLaunch = l
         case .timer(let c): cardioType = c
+        }
+    }
+
+    private func finishWarmup(elapsedSeconds secs: Int, startCue: WorkoutStartCue) {
+        var t = Transaction(); t.disablesAnimations = true
+        withTransaction(t) {
+            launch(.strength, startCue: startCue)
+            // Record the actual warm-up time on the session just created
+            // (feedback batch 6).
+            active.strengthSession?.warmupSeconds = Double(secs)
+            try? context.save()
+            warmupActive = false
+        }
+    }
+
+    private func playStartCue(_ cue: WorkoutStartCue) {
+        switch cue {
+        case .countdown:
+            WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
+        case .single:
+            WorkoutCues.singleStart(enabled: settings.workoutSounds)
+        case .none:
+            break
         }
     }
 
@@ -834,6 +862,10 @@ struct PendingWorkout: Identifiable {
         }
     }
     let kind: Kind
+}
+
+private enum WorkoutStartCue {
+    case countdown, single, none
 }
 
 /// Pushed destinations reachable from Home.

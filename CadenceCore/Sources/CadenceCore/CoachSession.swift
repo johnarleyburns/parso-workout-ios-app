@@ -90,7 +90,8 @@ extension CoachSession {
 
     public static func candidates(for facts: CoachFacts,
                                   schedulePreferences: CoachSchedulePreferences = .default,
-                                  anaerobicOptIn: Bool = false) -> [CoachSession] {
+                                  anaerobicOptIn: Bool = true) -> [CoachSession] {
+        _ = anaerobicOptIn
         let balance = facts.weeklyBalance
         let goal = facts.goal
         let range = goal.repRange
@@ -100,15 +101,12 @@ extension CoachSession {
 
         // The weekly strength floor is the user's own target (was hardcoded 2).
         let strengthFloor = schedulePreferences.strengthDaysPerWeek
-        let aerobicFloor = 150.0
 
         let strengthNeeded = balance.strengthDays < strengthFloor
         // Once the weekly strength target is met, NO strength is offered (general,
         // beginner, or reduced-load) — the user's expectation, and two-a-days must
         // not override it.
         let strengthCapMet = balance.strengthDays >= strengthFloor
-        let aerobicNeeded = balance.moderateEquivalentMinutes < aerobicFloor
-        let allBodyPartsCovered = balance.bodyPartsTrained.count >= 5
 
         // Always offer strength if something needs training and is eligible
         if strengthNeeded || facts.events.isEmpty {
@@ -362,12 +360,16 @@ extension CoachSession {
             ))
         }
 
-        // Anaerobic intervals — opt-in only; never auto-prescribed (P4 safety rule).
-        if anaerobicOptIn {
+        // Anaerobic intervals — available by default once the user is past beginner
+        // status and has some aerobic base. Preferences can down-rank it over time.
+        let hasAerobicBase = !(facts.systemLoads[.aerobicBase]?.isStale ?? true)
+            || balance.moderateEquivalentMinutes >= 75
+            || (facts.assessmentCoverage[.vo2max]?.hasBaseline ?? false)
+        if facts.experience != .beginner && hasAerobicBase {
             candidates.append(CoachSession(
                 id: "aerobic.anaerobicIntervals",
                 kind: .vo2Intervals,
-                title: "Anaerobic intervals",
+                title: "Sprint intervals",
                 subtitle: "Short, near-maximal efforts · long recoveries",
                 durationMinutes: 20,
                 modality: .run,
@@ -416,8 +418,8 @@ extension CoachSession {
                 candidates.append(CoachSession(
                     id: "assessment.baseline",
                     kind: .assessment,
-                    title: "Establish a baseline",
-                    subtitle: "A quick \(missing.displayName) test sharpens every recommendation",
+                    title: baselineTitle(for: missing),
+                    subtitle: baselineSubtitle(for: missing),
                     durationMinutes: 15,
                     citationIds: evidencePool(.fieldTestValidity),
                     launchPayload: .assessment,
@@ -432,6 +434,36 @@ extension CoachSession {
 
     private static func evidencePool(_ category: EvidenceClaimCategory) -> [String] {
         CitationRegistry.citationPool(for: category).citationIds
+    }
+
+    private static func baselineTitle(for system: TrainingSystem) -> String {
+        switch system {
+        case .vo2max, .aerobicBase:
+            return "Add a VO₂ test baseline"
+        case .maximalStrength:
+            return "Add a strength test baseline"
+        case .strengthEndurance:
+            return "Add a strength-endurance test"
+        case .anaerobicPower:
+            return "Add an anaerobic test baseline"
+        default:
+            return "Add an assessment baseline"
+        }
+    }
+
+    private static func baselineSubtitle(for system: TrainingSystem) -> String {
+        switch system {
+        case .vo2max, .aerobicBase:
+            return "Need 1 VO₂ field test; workouts do not replace this baseline"
+        case .maximalStrength:
+            return "Need 1 e1RM or rep-max test for load targets"
+        case .strengthEndurance:
+            return "Need 1 push-up, pull-up, squat, or core test"
+        case .anaerobicPower:
+            return "Need 1 Wingate-style test to compare sprint power"
+        default:
+            return "Need 1 standardized test for this system"
+        }
     }
 
     func withEvidence(_ category: EvidenceClaimCategory?, systems: [TrainingSystem],

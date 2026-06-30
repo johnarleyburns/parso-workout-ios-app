@@ -43,7 +43,7 @@ public enum KnowledgeBase {
     /// Every active rule, run by the engine.
     public static let activeRules: [InsightRule] = p3Rules + p4Rules + p6InsightRules
 
-    // MARK: - Rule 1: weekly volume vs MEV/MAV/MRV landmarks
+    // MARK: - Rule 1: weekly volume vs evidence-informed starting ranges
 
     static let volumeVsLandmarks = InsightRule(id: "volume", priority: 100) { facts in
         var out: [Insight] = []
@@ -59,8 +59,8 @@ public enum KnowledgeBase {
                     id: "volume.\(part.rawValue)",
                     kind: .volume, part: part,
                     title: "\(name) volume is low",
-                    message: "\(name): \(setsText) sets this week — below the minimum effective volume (~\(Format.sets(bands.mev))).",
-                    detail: "Meta-analyses show a dose-response between weekly sets per muscle and growth, with a threshold below which there's little adaptation. \(name) is under ~\(Format.sets(bands.mev)) working sets for your experience level; adding a set or two per session would land it in the productive range (~\(Format.sets(bands.mev))–\(Format.sets(bands.mav))).",
+                    message: "\(name): \(setsText) sets this week — below the starting range Coach uses for your experience.",
+                    detail: "Meta-analyses show a graded dose-response between weekly sets per muscle and growth, but the exact useful dose varies by person. \(name) is below Coach's starting range (~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week); add a set or two and judge by performance and recovery.",
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
             case .productive:
@@ -68,8 +68,8 @@ public enum KnowledgeBase {
                     id: "volume.\(part.rawValue)",
                     kind: .volume, part: part,
                     title: "\(name) volume is on track",
-                    message: "\(name): \(setsText) sets this week — in the productive range.",
-                    detail: "\(name) sits between its minimum effective (~\(Format.sets(bands.mev))) and maximum adaptive (~\(Format.sets(bands.mav))) weekly volume for your experience level — a good place to keep progressing.",
+                    message: "\(name): \(setsText) sets this week — in the starting range.",
+                    detail: "\(name) sits in Coach's evidence-informed starting range (~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week) for your experience level. Keep watching performance and soreness before adding more.",
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .info))
             case .approachingMRV:
@@ -78,7 +78,7 @@ public enum KnowledgeBase {
                     kind: .volume, part: part,
                     title: "\(name) volume is high",
                     message: "\(name): \(setsText) sets this week — approaching the high end.",
-                    detail: "\(name) is between its maximum adaptive (~\(Format.sets(bands.mav))) and maximum recoverable (~\(Format.sets(bands.mrv))) weekly volume. Productive, but watch recovery and session quality before adding more.",
+                    detail: "\(name) is above Coach's starting range and approaching the high end (~\(Format.sets(bands.mrv)) sets/week). It may still be useful if performance is improving, but watch recovery and session quality before adding more.",
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .info))
             case .overMRV:
@@ -86,8 +86,8 @@ public enum KnowledgeBase {
                     id: "volume.\(part.rawValue)",
                     kind: .volume, part: part,
                     title: "\(name) volume may be too high",
-                    message: "\(name): \(setsText) sets this week — over the recoverable range.",
-                    detail: "\(name) is at or above its estimated maximum recoverable volume (~\(Format.sets(bands.mrv)) sets/week). When volume outpaces recovery, more sets stop paying off; consider holding or a lighter week.",
+                    message: "\(name): \(setsText) sets this week — above Coach's high-end starting point.",
+                    detail: "\(name) is above Coach's high-end starting point (~\(Format.sets(bands.mrv)) sets/week). More sets have diminishing returns and only help if you recover from them; consider holding or taking a lighter week.",
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
             }

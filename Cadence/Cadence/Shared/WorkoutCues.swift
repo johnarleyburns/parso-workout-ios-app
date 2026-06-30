@@ -14,7 +14,8 @@ import AVFoundation
 /// `WorkoutAudioSession` — it never pauses or ducks it.
 ///
 /// FR-8 follow-up: non-boxing workouts get soft tones instead of bells.
-/// Start = 3 countdown ticks (1s apart) → 1 start alert.
+/// Start = 3 countdown ticks (1s apart) → 1 start alert, or one alert when
+/// the workout starts immediately.
 /// End = 3 rapid ticks.
 @MainActor
 enum WorkoutCues {
@@ -41,6 +42,17 @@ enum WorkoutCues {
         guard enabled else { return }
         WorkoutAudioSession.configureForCues()
         TonePlayer.countdownStart()
+    }
+
+    /// Single start alert for immediate launches, such as skipping warm-up.
+    static func singleStart(enabled: Bool) {
+        guard enabled else { return }
+        WorkoutAudioSession.configureForCues()
+        TonePlayer.singleStart()
+    }
+
+    static func cancelPendingSounds() {
+        TonePlayer.cancelPending()
     }
 
     /// Three rapid soft tones (0.15 s apart) to signal workout end.

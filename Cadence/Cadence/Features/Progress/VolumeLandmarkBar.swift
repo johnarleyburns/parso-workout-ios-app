@@ -1,7 +1,7 @@
 import SwiftUI
 import CadenceCore
 
-/// One muscle's weekly working-set count placed against its MEV·MAV·MRV bands.
+/// One muscle's weekly working-set count placed against experience-scaled volume bands.
 /// Zone color encodes `VolumeZone`; the marker is the user's set count.
 struct VolumeLandmarkBar: View {
     let part: BodyPart
@@ -51,10 +51,10 @@ struct VolumeLandmarkBar: View {
 extension VolumeZone {
     var label: String {
         switch self {
-        case .belowMEV:       "below MEV"
-        case .productive:     "productive"
-        case .approachingMRV: "approaching MRV"
-        case .overMRV:        "over MRV"
+        case .belowMEV:       "below starting range"
+        case .productive:     "in starting range"
+        case .approachingMRV: "near high end"
+        case .overMRV:        "above high range"
         }
     }
     var tint: Color {

@@ -96,4 +96,36 @@ final class CoachPreferenceProfileTests: XCTestCase {
         XCTAssertEqual(decoded.aerobicPreferences.first?.modality, .cycle)
         XCTAssertEqual(decoded.selectionEvents.count, 1)
     }
+
+    func testChoosingEasierWorkRecordsHardAvoidance() {
+        var profile = CoachPreferenceProfile.empty
+        let easy = CoachSession(
+            id: "aerobic.easyWalk",
+            kind: .easyAerobic,
+            title: "Easy walk",
+            durationMinutes: 30,
+            modality: .walk,
+            intensity: .easy,
+            trainingLoadTags: ["aerobic", "easy", "lowImpact"],
+            launchPayload: .cardio(type: "walk", durationMinutes: 30)
+        )
+        let hard = CoachSession(
+            id: "aerobic.anaerobicIntervals",
+            kind: .vo2Intervals,
+            title: "Sprint intervals",
+            durationMinutes: 20,
+            modality: .run,
+            intensity: .vigorous,
+            trainingLoadTags: ["aerobic", "hard", "highImpact", "anaerobic"],
+            launchPayload: .cardio(type: "hiit", durationMinutes: 20)
+        )
+
+        profile.recordSelection(easy, from: [hard], at: Date())
+
+        XCTAssertTrue(profile.avoidedTags.contains("hard"))
+        XCTAssertTrue(profile.avoidedTags.contains("highImpact"))
+        XCTAssertTrue(profile.avoidedTags.contains("anaerobic"))
+        XCTAssertLessThan(profile.preferenceScore(for: hard), 0)
+        XCTAssertGreaterThan(profile.avoidancePenalty(forTags: hard.trainingLoadTags), 0)
+    }
 }

@@ -4,10 +4,11 @@ import CadenceCore
 struct YourWeekView: View {
     let decision: CoachDecision
     let facts: CoachFacts
-    @Environment(AppSettings.self) private var settings
+    @Environment(AppSettings.self) private var settingsObject
     @State private var showSchedulePrefs = false
 
     var body: some View {
+        @Bindable var settings = settingsObject
         let effectivePrefs = settings.coachSchedulePreferences
         let balance = decision.weeklyBalance
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: effectivePrefs)
@@ -118,17 +119,50 @@ struct YourWeekView: View {
                     }
                 }
             }
+
+            Section {
+                Picker("Training goal", selection: $settings.trainingGoal) {
+                    ForEach(TrainingGoal.allCases) { Text($0.displayName).tag($0) }
+                }
+                .accessibilityIdentifier("settings.coach.goal")
+
+                Picker("Experience", selection: $settings.experienceLevel) {
+                    ForEach(ExperienceLevel.allCases) { Text($0.displayName).tag($0) }
+                }
+                .accessibilityIdentifier("settings.coach.experience")
+            } header: {
+                Text("Coach Settings")
+            } footer: {
+                Text("Your coach uses these to tailor its insights. Goal sets the load and effort it looks for; experience scales weekly starting volume ranges. Coaching only, not medical advice.")
+            }
+
+            Section {
+                Stepper("Daily step target: \(settings.coachSchedulePreferences.dailyStepTarget)",
+                        value: Binding(get: {
+                            settings.coachSchedulePreferences.dailyStepTarget
+                        }, set: { value in
+                            settings.coachSchedulePreferences = settings.coachSchedulePreferences.withDailyStepTarget(value)
+                        }), in: 2_000...20_000, step: 500)
+                    .accessibilityIdentifier("settings.coach.stepTarget")
+
+                Button {
+                    showSchedulePrefs = true
+                } label: {
+                    Label("Schedule preferences", systemImage: "calendar.badge.clock")
+                }
+                .accessibilityIdentifier("settings.coach.schedulePreferences")
+
+                if let citation = CitationRegistry.citation(forId: "saintMauriceSteps2020") {
+                    CitationLink(citation: citation, compact: true)
+                }
+            } header: {
+                Text("Steps and Schedule")
+            } footer: {
+                Text("Evidence-informed default is 8,000 steps/day. The fixed health floor is 4,000/day; your target controls how Coach reads step health and plans the week.")
+            }
         }
         .navigationTitle("Your Plan")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { showSchedulePrefs = true } label: {
-                    Image(systemName: "calendar.badge.clock")
-                }
-                .accessibilityLabel("Schedule preferences")
-            }
-        }
         .sheet(isPresented: $showSchedulePrefs) {
             NavigationStack {
                 CoachSchedulePreferencesView()

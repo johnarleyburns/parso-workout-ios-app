@@ -34,7 +34,7 @@ public enum RecommendationKind: String, Sendable, Equatable {
     case aerobicBase        // easy/moderate base building
     case vo2Intervals       // long VO₂ intervals (4×4, etc.)
     case thresholdTempo      // tempo/threshold work
-    case anaerobicOptIn     // SIT/short sprints — offered, never auto-primary
+    case anaerobicOptIn     // SIT/short sprints — hard lane, preference-ranked
     case flexibility        // mobility/stretching
     case recoveryReadiness  // rest / easy / reduced-load from readiness or load
     case assessmentPrompt   // run/refresh a baseline for a system
@@ -199,7 +199,7 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
     public let evidenceCategory: EvidenceClaimCategory?
     /// Short "why now" facts (e.g. "VO₂ system hasn't been trained in 12 days").
     public let whyNowFacts: [String]
-    /// Safety/risk notes the UI surfaces (e.g. opt-in, stop for pain/dizziness).
+    /// Safety/risk notes the UI surfaces (e.g. stop for pain/dizziness).
     public let riskNotes: [String]
     /// Coaching uncertainty distinct from `confidence` (e.g. low when HRmax estimated).
     public let uncertainty: FactConfidence?

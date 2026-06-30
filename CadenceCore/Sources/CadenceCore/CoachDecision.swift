@@ -133,9 +133,10 @@ public enum CoachDecisionEngine {
                            profile: CoachPreferenceProfile = .empty,
                            schedulePreferences: CoachSchedulePreferences = .default,
                            hasPainConcern: Bool = false,
-                           anaerobicOptIn: Bool = false) -> CoachDecision {
+                           anaerobicOptIn: Bool = true) -> CoachDecision {
+        _ = anaerobicOptIn
         let now = facts.referenceDate
-        let candidates = CoachSession.candidates(for: facts, schedulePreferences: schedulePreferences, anaerobicOptIn: anaerobicOptIn)
+        let candidates = CoachSession.candidates(for: facts, schedulePreferences: schedulePreferences)
         let todayCompleted = facts.todayCompletedEvents
 
         // Gate 1: pain/illness block

@@ -424,7 +424,7 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1007/s40279-015-0365-0"
     )
 
-    /// Sprint interval training effects — anaerobic opt-in claims only.
+    /// Sprint interval training effects — short, hard anaerobic interval claims.
     public static let slothSIT2013 = Citation(
         id: "slothSIT2013",
         authors: "Sloth, Sloth, Overgaard & Dalgas",
@@ -500,6 +500,15 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1080/02640414.2017.1364405"
     )
 
+    public static let currierResistancePrescription2023 = Citation(
+        id: "currierResistancePrescription2023",
+        authors: "Currier, Mcleod, Banfield, Beyene, Welton, D'Souza, Keogh, Lin, Coletta, Yang, Colenso-Semple, Lau, Verboom & Phillips",
+        year: 2023,
+        title: "Resistance training prescription for muscle strength and hypertrophy in healthy adults: a systematic review and Bayesian network meta-analysis",
+        source: "British Journal of Sports Medicine 57(18)",
+        url: "https://doi.org/10.1136/bjsports-2023-106807"
+    )
+
     /// Plank / global core-endurance test validity + reliability.
     public static let tongPlank2014 = Citation(
         id: "tongPlank2014",
@@ -528,7 +537,7 @@ public enum CitationRegistry {
         zourdosRIR2016, tanakaMaxHR2001, kaufmannThreshold2023, milanovicHIIT2015,
         slothSIT2013, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
         lauersenInjuryPrevention2014, fieldFitnessReliability2022, tongPlank2014,
-        murlasitsConcurrentSequence2018,
+        murlasitsConcurrentSequence2018, currierResistancePrescription2023,
     ]
 
     public static func citation(forId id: String) -> Citation? {
@@ -609,6 +618,7 @@ public enum CitationRegistry {
 
     public static let strengthIntensityPool = CitationPool(id: "strengthIntensity", citationIds: [
         "schoenfeld2021",
+        "currierResistancePrescription2023",
         "zourdosRIR2016",
         "rpeAutoregulation",
     ])

@@ -46,9 +46,9 @@ public enum InsightEngine {
     static let coldStart = Insight(
         id: "coldStart",
         kind: .coldStart,
-        title: "Let's get a baseline",
-        message: "Log a few workouts and your coach will start spotting volume, intensity, and progress trends from your own data.",
-        detail: "Cladiron's coaching is grounded in published resistance-training science — weekly volume dose-response, the load/rep continuum, and training frequency. Once you've logged some sets, those principles get applied to your actual history, with the citation behind every insight.",
+        title: "Log your first working sets",
+        message: "Need 1 completed strength workout with working sets before Coach can read volume, intensity, or lift trends.",
+        detail: "Workout history and assessment baselines are different. Logged sets let Coach analyze training patterns; separate tests such as e1RM or VO₂ field tests unlock measured baselines for percentage targets and retest comparisons.",
         citation: CitationRegistry.volumeDoseResponse,
         severity: .info)
 }

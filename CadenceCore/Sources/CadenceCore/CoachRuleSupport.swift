@@ -4,7 +4,7 @@ import Foundation
 //
 // These rules read the richer `CoachFacts` (system loads, readiness, assessment
 // coverage) and emit typed, cited `Recommendation`s covering strength blocks, volume
-// personalization, aerobic base, VO₂, threshold, anaerobic opt-in, flexibility, and
+// personalization, aerobic base, VO₂, threshold, anaerobic power, flexibility, and
 // recovery/readiness. They are deterministic and pure. Phase 3 only *produces* them;
 // the decision engine consumes them in Phase 4, so primary behavior is unchanged.
 //
@@ -14,9 +14,13 @@ import Foundation
 public enum CoachRecommendationEngine {
 
     /// All system recommendations for the current facts, highest priority first.
-    /// `anaerobicOptIn` gates the SIT/anaerobic lane — it is never produced for a
-    /// non-advanced user who hasn't opted in.
-    public static func run(_ facts: CoachFacts, anaerobicOptIn: Bool = false) -> [Recommendation] {
+    /// The hard anaerobic/SIT lane is available by default when recovery and
+    /// training history support it; repeated easier choices down-rank it through
+    /// `profile` rather than removing it.
+    public static func run(_ facts: CoachFacts,
+                           profile: CoachPreferenceProfile = .empty,
+                           anaerobicOptIn: Bool = true) -> [Recommendation] {
+        _ = anaerobicOptIn
         var out: [Recommendation] = []
         out += recoveryReadiness(facts)
         out += strengthBlock(facts)
@@ -25,7 +29,7 @@ public enum CoachRecommendationEngine {
         out += vo2Intervals(facts)
         out += thresholdTempo(facts)
         out += flexibility(facts)
-        out += anaerobicOptInRule(facts, optedIn: anaerobicOptIn)
+        out += anaerobicRule(facts, profile: profile)
         out += assessmentPrompt(facts)
 
         var seen = Set<String>()
@@ -95,7 +99,7 @@ public enum CoachRecommendationEngine {
             action: action,
             detail: "Organizing training into blocks (periodization) produces greater strength gains than unstructured training, and the load/rep emphasis follows the repetition continuum for your goal. Effort is autoregulated by reps in reserve.",
             citation: cite("williamsLinearPeriodization"),
-            citationIds: ["schoenfeld2021", "rpeAutoregulation"],
+            citationIds: ["currierResistancePrescription2023", "schoenfeld2021", "rpeAutoregulation"],
             target: SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.upperBound, loadKg: nil, rir: rir),
             confidence: .moderate,
             priority: 60,
@@ -239,28 +243,35 @@ public enum CoachRecommendationEngine {
             uncertainty: estimatedHR ? .low : .moderate)]
     }
 
-    // MARK: - C6 Anaerobic opt-in (never auto-primary)
+    // MARK: - C6 Anaerobic / SIT default lane
 
-    static func anaerobicOptInRule(_ facts: CoachFacts, optedIn: Bool) -> [Recommendation] {
-        guard facts.experience == .advanced || optedIn else { return [] }
+    static func anaerobicRule(_ facts: CoachFacts,
+                              profile: CoachPreferenceProfile = .empty) -> [Recommendation] {
+        guard facts.experience != .beginner else { return [] }
+        let baseExists = !(facts.systemLoads[.aerobicBase]?.isStale ?? true)
+            || (facts.assessmentCoverage[.vo2max]?.hasBaseline ?? false)
+        guard baseExists else { return [] }
         guard !recentHardLowerOrHighIntensity(facts) else { return [] }
 
+        let tags = ["aerobic", "hard", "highImpact", "anaerobic"]
+        let penalty = profile.avoidancePenalty(forTags: tags)
+        let priority = max(5, 34 - penalty)
         return [Recommendation(
             id: "anaerobicOptIn",
             kind: .anaerobicOptIn,
-            title: "Optional: short sprint intervals",
-            action: "If you want to develop anaerobic power, you could add short all-out efforts (e.g. 4–6 × 20–30 s sprints with full recovery). This is optional, not prescribed.",
-            detail: "Sprint-interval training can improve fitness in little time, but it is very fatiguing and high-effort. Coach never schedules it for you — it is an opt-in lane.",
+            title: "Short sprint intervals",
+            action: "Add short all-out efforts only if you feel ready today: e.g. 4–6 × 20–30 s sprints with full recovery.",
+            detail: "Sprint-interval training can improve fitness in little time, but it is very fatiguing and high-effort. Coach keeps it in the plan when you are eligible, then learns from your choices: if you keep skipping it or choosing easier work, it will rank lower over time.",
             citation: cite("slothSIT2013"),
             citationIds: ["wingateTest", "buchheitLaursenHIIT2013"],
             confidence: .moderate,
-            priority: 15,
+            priority: priority,
             system: .anaerobicPower,
             evidenceCategory: .anaerobicTraining,
             riskNotes: ["High fatigue and high effort.",
                         "Stop for pain, chest discomfort, or dizziness.",
-                        "Requires your explicit opt-in — never auto-prescribed."],
-            minimumEligibility: ["advanced, or explicitly opted in"])]
+                        "If you usually choose easier alternatives, Coach will lower this in the future."],
+            minimumEligibility: ["aerobic base", "intermediate or advanced"])]
     }
 
     // MARK: - C7 Flexibility / mobility
@@ -329,30 +340,30 @@ public enum CoachRecommendationEngine {
             out.append(Recommendation(
                 id: "assessmentPrompt.vo2max",
                 kind: .assessmentPrompt,
-                title: "Test your aerobic fitness",
+                title: "Add a VO₂ test baseline",
                 action: "Run a Cooper 12-minute run (or 1.5-mile run / Rockport walk) so Coach can track VO₂max and tailor cardio.",
-                detail: "Field run/walk tests give a usable VO₂max estimate validated against treadmill testing. A fresh baseline lets Coach prescribe and re-test like a study.",
+                detail: "Your workout history and assessment baselines are different things. Logged workouts let Coach see training habits; one standardized VO₂ field test gives Coach a measured aerobic baseline for trend checks and interval recommendations.",
                 citation: cite("cooperVo2max"),
                 confidence: .low,
                 priority: 30,
                 system: .vo2max,
                 evidenceCategory: .fieldTestValidity,
-                whyNowFacts: ["No fresh aerobic baseline"]))
+                whyNowFacts: ["Need 1 standardized VO₂ field test; logged workouts do not replace this test baseline"]))
         }
 
         if missing(.maximalStrength), strengthWeeks(facts) >= 1 {
             out.append(Recommendation(
                 id: "assessmentPrompt.strength",
                 kind: .assessmentPrompt,
-                title: "Test your main lifts",
+                title: "Add a strength test baseline",
                 action: "Run an Estimated 1RM test on your main lifts so Coach can prescribe specific loads.",
-                detail: "Prediction equations estimate 1RM from a heavy set with reasonable accuracy at low reps. A baseline unlocks percentage-based load targets.",
+                detail: "Your logged workouts are enough for volume and habit trends. A separate e1RM or rep-max test gives Coach a measured strength baseline, which unlocks percentage-based load targets and cleaner retest comparisons.",
                 citation: cite("oneRMEstimation"),
                 confidence: .low,
                 priority: 31,
                 system: .maximalStrength,
                 evidenceCategory: .fieldTestValidity,
-                whyNowFacts: ["No fresh strength baseline"]))
+                whyNowFacts: ["Need 1 e1RM or rep-max test for a main lift; workout count alone does not create this assessment baseline"]))
         }
 
         return out

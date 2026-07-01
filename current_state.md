@@ -2,6 +2,37 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-01 — Field-test batch: audio mixing, both-modality completion, no imported-workout references, partner-set attribution._
+
+## What just shipped — Field-test fixes (audio, completion, imports, partners)
+
+- **Background music no longer silenced by cues (SHOW STOPPER):** `TonePlayer` no longer uses
+  `AVAudioEngine` (whose output unit interrupted background audio even with `.mixWithOthers`).
+  It now pre-renders tick/alert tones to in-memory WAV via the new pure `ToneWAV` builder
+  (`CadenceCore`) and plays them through `AVAudioPlayer` — matching the bundled bells, which
+  always mixed. `CadenceApp.init()` sets `.playback` + `.mixWithOthers` at launch; interval
+  spoken cues set `synth.usesApplicationAudioSession = true`. Only `AVAudioPlayer` /
+  `AVSpeechSynthesizer` remain (no `AVAudioEngine`). WAV builder unit-tested; mixing verified
+  manually on-device.
+- **"Today's workouts are completed" when both done:** `computePlanAdherence` now completes the
+  day whenever both a strength and an aerobic event were logged today (any duration), regardless
+  of the coach's candidate plan (previously a recovery-plan day dropped real work into offPlan and
+  showed a strength-only message). `CoachDecisionCardView` renders the generic (nil-kind) complete
+  state as "Today's workouts are completed".
+- **No more imported-workout references:** removed both "An imported workout may have included
+  strength work" deferral messages, the `.unknownImport` recovery gate, and `RecoveryReason.unknownImport`.
+  `TrainingEvent.from(cardio:)` always maps to aerobic/intervals. `CoachAboutView` reworded to drop
+  "imported HealthKit data". Watch-cardio-only auto-import is unchanged.
+- **Partner sets no longer counted as yours:** the "Repeat" set button and the pending planned-row
+  chip in `SessionView` now carry the partner-rotation performer (`nextPerson()`) instead of
+  defaulting to the owner — the source of the "8 sets of legs" (4 mine + 4 partner) miscount. Core
+  counting already filtered `isOwnerSet`; a regression scenario test now locks it.
+- **Tests:** +10 CadenceCore tests (both-modality completion ×3, imported-workout ×2, partner
+  volume exclusion ×1, ToneWAV ×4). Full suite 547 tests green; `xcodebuild` iOS build succeeds.
+
+## What just shipped — Liquid glass visibility & warm-up shortcut removal
+
+_Prior entry:_
 _Last updated: 2026-07-01 — Liquid glass visibility on main tabs, remove redundant warm-up shortcut._
 
 ## What just shipped — Liquid glass visibility & warm-up shortcut removal

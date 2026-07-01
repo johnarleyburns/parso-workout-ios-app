@@ -297,7 +297,7 @@ struct CoachDecisionCardView: View {
             case .assessment:
                 return "Baseline in the books"
             case nil:
-                return "Plan followed"
+                return "Today's workouts are completed"
             }
         }
         if let planned = remainingPlannedRecommendation {

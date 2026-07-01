@@ -108,14 +108,6 @@ public enum SessionEligibilityPolicy {
                 }
             }
         }
-
-        if let wb = recovery.wholeBody, wb.reason == .unknownImport, now < wb.hardEligibleAt {
-            reasons.append(DecisionReason(
-                id: "unknownImport",
-                message: "An imported workout may have included strength work — deferring hard training for 24h. Add details or wait.",
-                citationIds: []
-            ))
-        }
     }
 
     private static func deferredUntil(for session: CoachSession,
@@ -142,9 +134,6 @@ public enum SessionEligibilityPolicy {
                     }
                 }
             }
-            if let wb = facts.recovery.wholeBody, wb.reason == .unknownImport, now < wb.hardEligibleAt {
-                dates.append(wb.hardEligibleAt)
-            }
         }
 
         if session.kind == .moderateAerobic || session.kind == .vo2Intervals {
@@ -158,11 +147,6 @@ public enum SessionEligibilityPolicy {
                     if now < until { dates.append(until) }
                 }
             }
-        }
-
-        if session.kind == .vo2Intervals,
-           let wb = facts.recovery.wholeBody, wb.reason == .unknownImport, now < wb.hardEligibleAt {
-            dates.append(wb.hardEligibleAt)
         }
 
         return dates.max()
@@ -186,14 +170,6 @@ public enum SessionEligibilityPolicy {
                     citationIds: ["schumannConcurrent2022"]
                 ))
             }
-        }
-
-        if let wb = recovery.wholeBody, wb.reason == .unknownImport, now < wb.hardEligibleAt, isHard {
-            reasons.append(DecisionReason(
-                id: "unknownImportCardio",
-                message: "An imported workout may include strength work — deferring hard cardio for 24h.",
-                citationIds: []
-            ))
         }
     }
 

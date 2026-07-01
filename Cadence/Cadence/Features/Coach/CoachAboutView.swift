@@ -5,7 +5,7 @@ struct CoachAboutView: View {
     var body: some View {
         List {
             Section {
-                Text("Cladiron's coach is a recovery-aware, on-device rule engine, not a cloud service or black box. It reads your workouts, cardio, imported HealthKit data, and optional readiness check-ins, then chooses an eligible session that fits your balanced weekly plan.")
+                Text("Cladiron's coach is a recovery-aware, on-device rule engine, not a cloud service or black box. It reads your workouts, cardio (including Apple Watch cardio), and optional readiness check-ins, then chooses an eligible session that fits your balanced weekly plan.")
                     .font(.subheadline)
             }
 

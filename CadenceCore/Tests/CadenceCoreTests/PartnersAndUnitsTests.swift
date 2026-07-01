@@ -56,6 +56,46 @@ final class PartnersAndUnitsTests: XCTestCase {
         XCTAssertTrue(lastTime.allSatisfy { $0.isOwnerSet })
     }
 
+    /// Field-test issue #4: training with a partner must never inflate the
+    /// owner's coach counts. Owner does 4 hard sets of hack squat, partner does 4
+    /// of the same — every coach-facing count (event, weekly sets by part, weekly
+    /// balance) must read 4, never 8.
+    func testPartnerSetsExcludedFromCoachVolumeCounts() throws {
+        let ctx = try makeContext()
+        let now = Date()
+        let when = now.addingTimeInterval(-1800)
+        let session = try WorkoutRepository.createSession(date: when, in: ctx)
+        let hackSquat = try WorkoutRepository.findOrCreateExercise(
+            named: "Hack Squat", primaryMuscles: ["quadriceps"], in: ctx)
+        let sam = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+
+        for _ in 0..<4 {
+            _ = try WorkoutRepository.addSet(to: session, exercise: hackSquat, weightKg: 120, reps: 8,
+                                             rpe: 8, completedAt: when, in: ctx)
+        }
+        for _ in 0..<4 {
+            _ = try WorkoutRepository.addSet(to: session, exercise: hackSquat, weightKg: 120, reps: 8,
+                                             rpe: 8, completedAt: when, performedBy: sam, in: ctx)
+        }
+        session.endedAt = now
+
+        let event = TrainingEvent.from(session: session)!
+        guard case .strength(let details) = event.kind, let d = details else {
+            return XCTFail("expected a strength event")
+        }
+        XCTAssertEqual(d.totalHardSets, 4, "Only the owner's 4 sets should count, not the partner's")
+        XCTAssertEqual(d.exercises.first?.hardSetCount, 4)
+
+        let tf = TrainingFacts.make(sessions: [session], now: now,
+                                    goal: .strength, experience: .intermediate)
+        XCTAssertEqual(tf.weeklySetsByPart.values.reduce(0, +), 4, accuracy: 0.001,
+                       "Weekly sets by body part must count only the owner's 4 sets")
+
+        let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate, now: now)
+        XCTAssertEqual(facts.weeklyBalance.fractionalSets.values.reduce(0, +), 4, accuracy: 0.001,
+                       "Coach weekly balance must count only the owner's 4 sets")
+    }
+
     func testNilAttributionIsOwner() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(in: ctx)

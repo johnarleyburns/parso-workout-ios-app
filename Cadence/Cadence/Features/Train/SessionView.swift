@@ -886,7 +886,8 @@ struct SessionView: View {
                     if let last = sets.last {
                         Button {
                             addSet(to: exercise, weightKg: last.weight, reps: last.reps, rpe: last.rpe,
-                                   isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight, note: nil)
+                                   isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight, note: nil,
+                                   performedBy: nextPerson())
                         } label: {
                             Label("Repeat", systemImage: "arrow.clockwise").frame(maxWidth: .infinity).lineLimit(1)
                         }
@@ -910,7 +911,7 @@ struct SessionView: View {
         Button { openInlineEditor(for: exercise, repsOverride: reps) } label: {
             HStack(spacing: SetCol.gap) {
                 if hasPartners {
-                    performerChip(nil)
+                    performerChip(nextPerson())
                 } else {
                     setIndexBadge(number, isWarmup: false)
                 }

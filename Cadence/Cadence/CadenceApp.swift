@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AVFoundation
 import CadenceCore
 
 @main
@@ -21,6 +22,12 @@ struct CadenceApp: App {
     init() {
         let args = ProcessInfo.processInfo.arguments
         let uiTest = args.contains("-uiTest")
+
+        // Put the audio session in non-interrupting mix mode before any audio
+        // object initializes, so workout cues never pause the user's background
+        // music/podcast (field-testing: warm-up silenced background audio).
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default,
+                                                         options: [.mixWithOthers])
 
         // Reset a pre-version-2 local store once (pre-release; data is local and
         // back-up-able via export, so nothing irreplaceable is lost).

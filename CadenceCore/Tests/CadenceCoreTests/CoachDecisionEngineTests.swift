@@ -1192,4 +1192,98 @@ final class CoachDecisionEngineTests: XCTestCase {
         XCTAssertFalse(Exercise.cnsLiftNames.contains("Bench Press"))
         XCTAssertFalse(Exercise.cnsLiftNames.contains("Deadlift"))
     }
+
+    // MARK: - Both-modality completion (field-test issue #2)
+
+    /// Doing BOTH strength and cardio today must complete the day even when the
+    /// coach's plan for today would otherwise be recovery (both weekly targets
+    /// already met). Previously this fell to offPlan and the card ignored cardio,
+    /// showing a strength-only message.
+    func testBothStrengthAndCardioTodayCompletesEvenOnRecoveryDay() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        // Prior work this week so both weekly targets are already met and the
+        // coach would recommend recovery/rest rather than strength or cardio.
+        let priorStrength = [
+            try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                  date: now.addingTimeInterval(-3 * 86400)),
+            try makeStrengthEvent(context: ctx, name: "Bench", primaryMuscles: ["chest"],
+                                  date: now.addingTimeInterval(-2 * 86400)),
+            try makeStrengthEvent(context: ctx, name: "Deadlift", primaryMuscles: ["hamstrings"],
+                                  date: now.addingTimeInterval(-1 * 86400)),
+        ]
+        let priorCardio = [
+            makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-3 * 86400),
+                            duration: 3600, avgHR: 140),
+            makeCardioEvent(context: ctx, type: .cycle, date: now.addingTimeInterval(-2 * 86400),
+                            duration: 3600, avgHR: 135),
+            makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-1 * 86400),
+                            duration: 3600, avgHR: 140),
+        ]
+
+        // Today: both a strength session AND a cardio session.
+        let todayStrength = try makeStrengthEvent(context: ctx, name: "Hack Squat",
+                                                  primaryMuscles: ["quadriceps"],
+                                                  date: now.addingTimeInterval(-3600),
+                                                  setCompletedAt: now.addingTimeInterval(-3600))
+        let todayCardio = makeCardioEvent(context: ctx, type: .cycle,
+                                          date: now.addingTimeInterval(-900),
+                                          duration: 30 * 60, avgHR: 130)
+
+        let facts = CoachFacts.make(from: priorStrength + priorCardio + [todayStrength, todayCardio],
+                                    goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+
+        if case .planComplete(let completedKind, let description, _) = decision.planAdherence {
+            XCTAssertNil(completedKind,
+                         "Both-modality completion should use the generic (nil) completed kind")
+            XCTAssertEqual(description, "Strength and cardio — both in the books")
+        } else {
+            XCTFail("Both strength and cardio done today should complete the plan. Got: \(decision.planAdherence)")
+        }
+    }
+
+    /// A short (any-duration) cardio still counts toward both-modality completion.
+    func testShortCardioStillCompletesWithStrength() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        let todayStrength = try makeStrengthEvent(context: ctx, name: "Hack Squat",
+                                                  primaryMuscles: ["quadriceps"],
+                                                  date: now.addingTimeInterval(-3600),
+                                                  setCompletedAt: now.addingTimeInterval(-3600))
+        // Just a 6-minute walk.
+        let shortWalk = makeCardioEvent(context: ctx, type: .walk,
+                                        date: now.addingTimeInterval(-600),
+                                        duration: 6 * 60, avgHR: 105)
+        let facts = CoachFacts.make(from: [todayStrength, shortWalk],
+                                    goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+
+        if case .planComplete(let completedKind, let description, _) = decision.planAdherence {
+            XCTAssertNil(completedKind)
+            XCTAssertEqual(description, "Strength and cardio — both in the books")
+        } else {
+            XCTFail("Any-duration cardio + strength today should complete. Got: \(decision.planAdherence)")
+        }
+    }
+
+    /// Strength alone today (no cardio) must NOT report both-modality completion.
+    func testStrengthOnlyTodayIsNotBothComplete() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let todayStrength = try makeStrengthEvent(context: ctx, name: "Hack Squat",
+                                                  primaryMuscles: ["quadriceps"],
+                                                  date: now.addingTimeInterval(-3600),
+                                                  setCompletedAt: now.addingTimeInterval(-3600))
+        let facts = CoachFacts.make(from: [todayStrength],
+                                    goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+
+        if case .planComplete(_, let description, _) = decision.planAdherence {
+            XCTAssertNotEqual(description, "Strength and cardio — both in the books",
+                              "Strength alone must not claim both modalities are done")
+        }
+    }
 }

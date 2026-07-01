@@ -15,7 +15,13 @@ final class IntervalCues {
     var spokenEnabled = false
     /// When true, use the bundled MP3 bells (boxing). When false, use soft system beeps.
     var isBoxing = false
-    private let synth = AVSpeechSynthesizer()
+    private let synth: AVSpeechSynthesizer = {
+        let s = AVSpeechSynthesizer()
+        // Route speech through the app's `.mixWithOthers` session so spoken cues
+        // never pause or duck the user's background audio.
+        s.usesApplicationAudioSession = true
+        return s
+    }()
     private var sessionActive = false
 
     /// Opening/closing bell (round start & end) and the 30-second warning bell,

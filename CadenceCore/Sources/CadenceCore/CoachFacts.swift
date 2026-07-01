@@ -18,7 +18,6 @@ public enum RecoveryReason: String, Sendable, Equatable {
     case exactLift
     case pattern
     case bodyPart
-    case unknownImport
     case fatigue
     case pain
     case none
@@ -262,7 +261,6 @@ public extension CoachFacts {
         var byPattern: [MovementPattern: RecoveryWindow] = [:]
         var byBodyPart: [BodyPart: RecoveryWindow] = [:]
         var wholeBodyLatest: Date?
-        var wholeBodyIsUnknown = false
 
         for event in completed {
             guard case .strength(let details) = event.kind, let d = details else { continue }
@@ -319,25 +317,13 @@ public extension CoachFacts {
             }
         }
 
-        for event in completed {
-            guard case .unknown = event.kind else { continue }
-            let hoursAgo = now.timeIntervalSince(event.end)
-            if hoursAgo < 24 * 3600 {
-                wholeBodyIsUnknown = true
-                if wholeBodyLatest == nil || event.end > wholeBodyLatest! {
-                    wholeBodyLatest = event.end
-                }
-            }
-        }
-
         let wholeBody: RecoveryWindow?
         if let latest = wholeBodyLatest {
-            let hours: TimeInterval = wholeBodyIsUnknown ? 24 : 48
             wholeBody = RecoveryWindow(
                 lastExposedAt: latest,
-                hardEligibleAt: latest.addingTimeInterval(hours * 3600),
-                reason: wholeBodyIsUnknown ? .unknownImport : .none,
-                confidence: wholeBodyIsUnknown ? .low : .moderate
+                hardEligibleAt: latest.addingTimeInterval(48 * 3600),
+                reason: .none,
+                confidence: .moderate
             )
         } else {
             wholeBody = nil

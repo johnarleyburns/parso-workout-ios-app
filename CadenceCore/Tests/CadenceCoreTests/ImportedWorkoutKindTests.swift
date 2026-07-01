@@ -109,4 +109,38 @@ final class ImportedWorkoutKindTests: XCTestCase {
         XCTAssertEqual(walking.importedKind, .walking)
         XCTAssertEqual(swim.importedKind, .swimming)
     }
+
+    // MARK: - Imported workouts are never treated as strength (field-test issue #3)
+
+    /// Even a strength-labeled imported cardio workout must map to an aerobic
+    /// event, never `.unknown` — the coach must never reason about "imported
+    /// strength" or defer training because of it.
+    func testStrengthKindImportBecomesAerobicNotUnknown() {
+        let now = Date()
+        let cardio = CardioWorkout(type: .other, start: now.addingTimeInterval(-3600), end: now,
+                                   avgHeartRate: 120, source: .watch,
+                                   healthKitWorkoutUUID: UUID(),
+                                   importedWorkoutKind: .traditionalStrength)
+        let event = TrainingEvent.from(cardio: cardio)
+        if case .unknown = event.kind {
+            XCTFail("Imported strength-kind cardio must not become an .unknown event")
+        }
+    }
+
+    /// A recent imported strength-kind workout must not create any import-based
+    /// deferral message or recovery gate in the coach's decision.
+    func testImportedWorkoutNeverProducesImportDeferralMessage() {
+        let now = Date()
+        let cardio = CardioWorkout(type: .other, start: now.addingTimeInterval(-3600), end: now,
+                                   avgHeartRate: 120, source: .watch,
+                                   healthKitWorkoutUUID: UUID(),
+                                   importedWorkoutKind: .functionalStrength)
+        let event = TrainingEvent.from(cardio: cardio)
+        let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+
+        let messages = decision.deferred.map { $0.reason.message } + decision.warnings.map { $0.message }
+        XCTAssertFalse(messages.contains { $0.localizedCaseInsensitiveContains("imported") },
+                       "Coach must never surface 'imported workout' language. Got: \(messages)")
+    }
 }

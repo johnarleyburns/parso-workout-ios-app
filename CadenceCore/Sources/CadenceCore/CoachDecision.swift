@@ -333,6 +333,20 @@ public enum CoachDecisionEngine {
                                                 schedulePreferences: CoachSchedulePreferences = .default) -> PlanAdherence {
         guard !todayCompleted.isEmpty else { return .planAhead }
 
+        // If the user actually did BOTH strength and cardio today, the day is
+        // complete regardless of what the coach's candidate plan was (e.g. a
+        // recovery day). This is event-based (not candidate-matched) so real
+        // work is never ignored just because it wasn't the recommended session.
+        let didStrengthToday = todayCompleted.contains(where: \.isStrength)
+        let didCardioToday = todayCompleted.contains(where: \.isAerobic)
+        if didStrengthToday && didCardioToday {
+            let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
+                                                           schedulePreferences: schedulePreferences)
+            return .planComplete(completedKind: nil,
+                                  todayDescription: "Strength and cardio — both in the books",
+                                  tomorrowPreview: tomorrowPreview)
+        }
+
         let strengthDone = todayCompleted.contains { event in
             candidates.contains { $0.kind == .strength && eventSatisfiesCoachSession(event, $0) }
         }

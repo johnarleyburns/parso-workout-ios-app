@@ -91,9 +91,6 @@ jobs:
             MARKETING_VERSION="$MKT_VERSION" \
             IPHONEOS_DEPLOYMENT_TARGET=17.0 \
             "DEVELOPMENT_TEAM=$TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="Parso Workout App Store" \
             2>&1 | tee build.log
           if [ ! -d "./build/Cadence.xcarchive" ]; then
             echo "Archive not found — build failed"

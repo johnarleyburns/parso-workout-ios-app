@@ -37,7 +37,7 @@ struct CardioGoalSheet: View {
                         Label("No goal — just start", systemImage: "play.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent).tint(.green).controlSize(.large)
+                    .cadenceGlassButton(prominent: true, tint: .green)
                     .accessibilityIdentifier("goal.none")
                     .listRowBackground(Color.clear)
                 }

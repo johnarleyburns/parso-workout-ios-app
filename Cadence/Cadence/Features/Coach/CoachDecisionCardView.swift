@@ -168,8 +168,7 @@ struct CoachDecisionCardView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 13)
                     }
-                    .foregroundStyle(.white)
-                    .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
+                    .cadenceGlassButton(prominent: true, tint: stateColor)
                     .accessibilityIdentifier("home.coachStart")
                     .accessibilityLabel(ctaLabel)
 
@@ -439,7 +438,10 @@ struct CoachDecisionCardView: View {
                     .background(sessionColor(session), in: RoundedRectangle(cornerRadius: 9))
             }
             .padding(10)
-            .background(sessionColor(session).opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+            .cadenceGlassBackground(
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous),
+                interactive: true,
+                fallback: AnyShapeStyle(sessionColor(session).opacity(0.08)))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("coach.card.twoADay.\(session.id)")
@@ -489,7 +491,10 @@ struct CoachDecisionCardView: View {
             .padding(.vertical, 8)
         }
         .foregroundStyle(addOnStatusColor(option.status))
-        .background(addOnStatusColor(option.status).opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+        .cadenceGlassBackground(
+            in: RoundedRectangle(cornerRadius: 10, style: .continuous),
+            interactive: true,
+            fallback: AnyShapeStyle(addOnStatusColor(option.status).opacity(0.10)))
         .buttonStyle(.plain)
     }
 

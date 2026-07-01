@@ -463,11 +463,13 @@ struct HomeView: View {
                 path.append(HomeRoute.planning)
             }
         }
+        .glassGroup(spacing: 10)
     }
 
     private func quickAction(_ title: String, _ symbol: String, id: String,
                              action: @escaping () -> Void) -> some View {
-        Button { Haptics.selection(); action() } label: {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return Button { Haptics.selection(); action() } label: {
             VStack(spacing: 6) {
                 Image(systemName: symbol).font(.title3)
                 Text(title).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
@@ -475,7 +477,7 @@ struct HomeView: View {
             .frame(maxWidth: .infinity, minHeight: 64)
             .padding(.vertical, 8)
             .foregroundStyle(.tint)
-            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+            .cadenceGlassBackground(in: shape, interactive: true, fallback: AnyShapeStyle(.background.secondary))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(id)
@@ -667,7 +669,11 @@ struct HomeView: View {
                 Image(systemName: "chevron.right").foregroundStyle(.secondary)
             }
             .padding().frame(maxWidth: .infinity, alignment: .leading)
-            .background(.green.opacity(0.18), in: RoundedRectangle(cornerRadius: 18))
+            .cadenceGlassBackground(
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous),
+                tint: .green,
+                interactive: true,
+                fallback: AnyShapeStyle(.green.opacity(0.18)))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain).accessibilityIdentifier("home.resume")

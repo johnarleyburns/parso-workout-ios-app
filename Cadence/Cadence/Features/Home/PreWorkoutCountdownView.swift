@@ -39,15 +39,16 @@ struct PreWorkoutCountdownView: View {
                               systemImage: paused ? "play.fill" : "pause.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered).controlSize(.large).tint(.white)
+                    .cadenceGlassButton(tint: .white)
                     .accessibilityIdentifier("countdown.pause")
 
                     Button {
                         onStart()
                     } label: { Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity) }
-                        .buttonStyle(.borderedProminent).controlSize(.large).tint(.black.opacity(0.4))
+                        .cadenceGlassButton(prominent: true, tint: .black.opacity(0.4))
                         .accessibilityIdentifier("countdown.skip")
                 }
+                .glassGroup(spacing: 16)
                 Button("Cancel") { onCancel() }
                     .accessibilityIdentifier("countdown.cancel")
                     .padding(.bottom)

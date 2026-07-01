@@ -23,6 +23,37 @@ extension View {
         }
     }
 
+    /// Liquid Glass on iOS 26+, otherwise the call site's original non-material
+    /// background style. Use this for existing solid/gradient entry controls.
+    @ViewBuilder
+    func cadenceGlassBackground<S: Shape>(
+        in shape: S,
+        tint: Color? = nil,
+        interactive: Bool = false,
+        fallback: AnyShapeStyle
+    ) -> some View {
+        if GlassFeature.isEnabled, #available(iOS 26.0, *) {
+            glassEffect(GlassFactory.regular(tint: tint, interactive: interactive), in: shape)
+        } else {
+            background(fallback, in: shape)
+        }
+    }
+
+    /// Adds glass only when the SDK/runtime supports it; older OSes render the
+    /// view exactly as provided by the caller.
+    @ViewBuilder
+    func cadenceGlassIfAvailable<S: Shape>(
+        in shape: S,
+        tint: Color? = nil,
+        interactive: Bool = false
+    ) -> some View {
+        if GlassFeature.isEnabled, #available(iOS 26.0, *) {
+            glassEffect(GlassFactory.regular(tint: tint, interactive: interactive), in: shape)
+        } else {
+            self
+        }
+    }
+
     /// Glass button on iOS 26+, matching bordered button style elsewhere.
     @ViewBuilder
     func cadenceGlassButton(prominent: Bool = false, tint: Color? = nil) -> some View {

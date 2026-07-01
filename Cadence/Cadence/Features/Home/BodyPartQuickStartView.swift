@@ -69,7 +69,7 @@ struct BodyPartQuickStartView: View {
                             Label("Start with these", systemImage: "plus.circle.fill")
                                 .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent).tint(.green).controlSize(.large)
+                        .cadenceGlassButton(prominent: true, tint: .green)
                         .accessibilityIdentifier("bodyQuick.buildStart")
                     }
                 }

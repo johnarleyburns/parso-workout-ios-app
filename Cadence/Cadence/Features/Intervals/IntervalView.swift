@@ -90,8 +90,7 @@ struct IntervalView: View {
                     Label("Skip", systemImage: "forward.fill")
                         .frame(maxWidth: .infinity, minHeight: 56)
                 }
-                .buttonStyle(.bordered).controlSize(.large)
-                .tint(.black.opacity(0.4))
+                .cadenceGlassButton(tint: .black.opacity(0.4))
                 .accessibilityIdentifier("interval.skip")
                 .accessibilityLabel("Skip phase")
 

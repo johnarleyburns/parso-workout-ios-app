@@ -59,7 +59,7 @@ struct PreWorkoutHRView: View {
                 } label: {
                     Text("Start").frame(maxWidth: .infinity, minHeight: 52)
                 }
-                .buttonStyle(.borderedProminent).controlSize(.large).tint(.green)
+                .cadenceGlassButton(prominent: true, tint: .green)
                 .accessibilityIdentifier("prehr.start")
             }
             .padding(.horizontal)

@@ -104,8 +104,7 @@ struct RoutineDetailView: View {
                             .font(.title3.bold())
                             .frame(maxWidth: .infinity, minHeight: 56)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .cadenceGlassButton(prominent: true, tint: .green)
                     .accessibilityIdentifier("routine.chooseScheme")
                 } else {
                     NavigationLink {
@@ -118,9 +117,7 @@ struct RoutineDetailView: View {
                             .font(.title3.bold())
                             .frame(maxWidth: .infinity, minHeight: 56)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
-                    .controlSize(.large)
+                    .cadenceGlassButton(prominent: true, tint: .green)
                     .accessibilityIdentifier("routine.start")
                 }
             }

@@ -30,7 +30,11 @@ struct WeightsStartView: View {
                         .padding(.vertical, 14).padding(.horizontal, 16)
                         .frame(maxWidth: .infinity, minHeight: 60)
                         .foregroundStyle(.white)
-                        .background(.green, in: RoundedRectangle(cornerRadius: 18))
+                        .cadenceGlassBackground(
+                            in: RoundedRectangle(cornerRadius: 18, style: .continuous),
+                            tint: .green,
+                            interactive: true,
+                            fallback: AnyShapeStyle(Color.green))
                     }
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
@@ -57,8 +61,14 @@ struct WeightsStartView: View {
                     .padding(.vertical, 16).padding(.horizontal, 16)
                     .frame(maxWidth: .infinity, minHeight: 60)
                     .foregroundStyle(.white)
-                    .background(LinearGradient(colors: [.green, .teal], startPoint: .topLeading, endPoint: .bottomTrailing),
-                                in: RoundedRectangle(cornerRadius: 18))
+                    .cadenceGlassBackground(
+                        in: RoundedRectangle(cornerRadius: 18, style: .continuous),
+                        tint: .green,
+                        interactive: true,
+                        fallback: AnyShapeStyle(LinearGradient(
+                            colors: [.green, .teal],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing)))
                 }
                 .buttonStyle(.plain)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
@@ -79,7 +89,10 @@ struct WeightsStartView: View {
                     .padding(.vertical, 12).padding(.horizontal, 16)
                     .frame(maxWidth: .infinity)
                     .foregroundStyle(.tint)
-                    .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 14))
+                    .cadenceGlassBackground(
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous),
+                        interactive: true,
+                        fallback: AnyShapeStyle(.tint.opacity(0.12)))
                 }
                 .buttonStyle(.plain)
                 .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))

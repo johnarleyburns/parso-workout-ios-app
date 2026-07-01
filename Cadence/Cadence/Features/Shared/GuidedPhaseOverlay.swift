@@ -67,7 +67,7 @@ struct GuidedPhaseOverlay: View {
                               systemImage: paused ? "play.fill" : "pause.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered).controlSize(.large).tint(.white)
+                    .cadenceGlassButton(tint: .white)
                     .accessibilityIdentifier("\(idPrefix).pause")
 
                     Button {
@@ -75,9 +75,10 @@ struct GuidedPhaseOverlay: View {
                     } label: {
                         Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent).controlSize(.large).tint(.black.opacity(0.4))
+                    .cadenceGlassButton(prominent: true, tint: .black.opacity(0.4))
                     .accessibilityIdentifier("\(idPrefix).skip")
                 }
+                .glassGroup(spacing: 16)
             }
             .foregroundStyle(.white)
             .padding()

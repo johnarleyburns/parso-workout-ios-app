@@ -309,9 +309,7 @@ struct WorkoutPlanEditor: View {
                     .font(.title3.bold())
                     .frame(maxWidth: .infinity, minHeight: 56)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.green)
-            .controlSize(.large)
+            .cadenceGlassButton(prominent: true, tint: .green)
             .padding()
             .accessibilityIdentifier("editor.start")
         }

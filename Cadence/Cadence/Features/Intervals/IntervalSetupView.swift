@@ -120,8 +120,7 @@ struct IntervalSetupView: View {
                         .font(.title3.weight(.bold))
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .cadenceGlassButton(prominent: true, tint: .green)
                 .padding()
                 .accessibilityIdentifier("interval.start")
             }

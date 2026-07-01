@@ -25,6 +25,7 @@ struct OtherCardioEntryView: View {
                 } label: {
                     Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
                 }
+                .cadenceGlassButton(prominent: true, tint: .green)
                 .accessibilityIdentifier("otherCardio.start")
             } footer: {
                 Text("Records like any cardio workout; its description shows in history.")
@@ -76,6 +77,7 @@ struct LogWorkoutPicker: View {
                         .accessibilityIdentifier("logType.other")
                 }
                 .padding()
+                .glassGroup(spacing: 16)
             }
             .navigationTitle("Log Workout")
             .navigationBarTitleDisplayMode(.inline)
@@ -93,7 +95,10 @@ struct LogWorkoutPicker: View {
             Text(name).font(.headline)
         }
         .frame(maxWidth: .infinity, minHeight: 110)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .cadenceGlassBackground(
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous),
+            interactive: true,
+            fallback: AnyShapeStyle(.background.secondary))
     }
 }
 
@@ -159,9 +164,7 @@ struct LogCardioView: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 // A positive, green action button like "Start Workout" (item 1).
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .controlSize(.large)
+                .cadenceGlassButton(prominent: true, tint: .green)
                 .accessibilityIdentifier("log.save")
             }
             .listRowBackground(Color.clear)

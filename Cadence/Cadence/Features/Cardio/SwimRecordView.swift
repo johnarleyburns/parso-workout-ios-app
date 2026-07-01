@@ -69,7 +69,7 @@ struct SwimRecordView: View {
                 Label("Start", systemImage: "play.fill")
                     .font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 56)
             }
-            .buttonStyle(.borderedProminent).controlSize(.large)
+            .cadenceGlassButton(prominent: true, tint: .blue)
             .accessibilityIdentifier("swim.start")
             Spacer()
         }

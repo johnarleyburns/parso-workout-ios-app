@@ -75,7 +75,11 @@ struct WorkoutHero: View {
                 if type.usesGPS { Text("GPS").font(.caption2).opacity(0.85) }
             }
             .foregroundStyle(.white)
-            .padding(14)
+            .padding(12)
+            .cadenceGlassIfAvailable(
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous),
+                interactive: true)
+            .padding(2)
         }
         .frame(maxWidth: .infinity, minHeight: 120, alignment: .bottomLeading)
         .clipShape(RoundedRectangle(cornerRadius: 18))

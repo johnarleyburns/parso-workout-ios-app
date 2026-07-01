@@ -21,7 +21,19 @@ struct SplashView: View {
             Color.black.opacity(0.45)
                 .ignoresSafeArea()
 
-            feTile
+            VStack(spacing: 16) {
+                feTile
+                VStack(spacing: 4) {
+                    Text("Cladiron")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                    Text("Your strength coach")
+                        .font(.headline.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                .foregroundStyle(.white)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Cladiron, your strength coach")
+            }
             .scaleEffect(scale)
             .opacity(opacity)
         }

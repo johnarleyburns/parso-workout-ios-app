@@ -80,7 +80,7 @@ final class FR1PartnersUnitsUITests: CadenceUITestCase {
         // Navigate to Quick Start → Editor
         app.popToHome()
         XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"))
-        XCTAssertTrue(app.buttons["weights.warmupStart"].waitTap())
+        XCTAssertTrue(app.buttons["weights.quickStart"].waitTap())
 
         // Partner picker should show Sam
         XCTAssertTrue(app.staticTexts["editor.partner.Sam"].waitForExistence(timeout: 10),

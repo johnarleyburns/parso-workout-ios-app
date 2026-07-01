@@ -34,17 +34,20 @@ extension View {
         fallback: Material = .thinMaterial
     ) -> some View {
         let accent = tint ?? .primary
-        let fillOpacity = tint == nil ? 0.025 : 0.055
-        let strokeOpacity = tint == nil ? 0.12 : 0.22
+        let fillOpacity = tint == nil ? 0.045 : 0.08
+        let strokeOpacity = tint == nil ? 0.18 : 0.28
+        let glassTint = tint?.opacity(0.45)
 
         if GlassFeature.isEnabled, #available(iOS 26.0, *) {
             background(accent.opacity(fillOpacity), in: shape)
-                .glassEffect(GlassFactory.regular(tint: tint?.opacity(0.35), interactive: interactive), in: shape)
+                .glassEffect(GlassFactory.regular(tint: glassTint, interactive: interactive), in: shape)
                 .overlay(shape.stroke(accent.opacity(strokeOpacity), lineWidth: 0.75))
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
         } else {
             background(accent.opacity(fillOpacity), in: shape)
                 .background(fallback, in: shape)
                 .overlay(shape.stroke(accent.opacity(strokeOpacity), lineWidth: 0.75))
+                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
         }
     }
 

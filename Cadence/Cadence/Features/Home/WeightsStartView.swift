@@ -74,32 +74,8 @@ struct WeightsStartView: View {
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
                 .listRowBackground(Color.clear)
                 .accessibilityIdentifier("weights.quickStart")
-
-                NavigationLink {
-                    WorkoutPlanEditor(
-                        plan: .empty(warmup: settings.warmupMinutes, cooldown: settings.cooldownMinutes),
-                        onStart: onEditorStart)
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "figure.cooldown").font(.headline)
-                        Text("Start with Warm-Up").font(.headline)
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.subheadline).opacity(0.6)
-                    }
-                    .padding(.vertical, 12).padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity)
-                    .foregroundStyle(.tint)
-                    .cadenceGlassBackground(
-                        in: RoundedRectangle(cornerRadius: 14, style: .continuous),
-                        interactive: true,
-                        fallback: AnyShapeStyle(.tint.opacity(0.12)))
-                }
-                .buttonStyle(.plain)
-                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
-                .accessibilityIdentifier("weights.warmupStart")
             } footer: {
-                Text("Start a blank workout and add exercises as you go — or warm up first.")
+                Text("Start a blank workout and add exercises as you go.")
             }
 
             Section("Start from Previous Workout") {

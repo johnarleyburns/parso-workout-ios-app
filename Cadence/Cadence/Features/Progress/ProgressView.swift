@@ -59,6 +59,7 @@ struct TrainingProgressView: View {
     @ViewBuilder
     private func card<Content: View>(title: String, subtitle: String? = nil,
                                      citation: Citation? = nil, compact: Bool = false,
+                                     tint: Color? = nil,
                                      @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title).font(compact ? .subheadline.weight(.semibold) : .headline)
@@ -75,7 +76,7 @@ struct TrainingProgressView: View {
         }
         .padding(compact ? 13 : 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: tint)
     }
 
     private func emptyNote(_ text: String) -> some View {
@@ -101,7 +102,7 @@ struct TrainingProgressView: View {
 
     @ViewBuilder private var strengthCard: some View {
         card(title: "Strength over time", subtitle: "estimated 1RM \u{00b7} last 12 weeks",
-             citation: CitationRegistry.oneRMEstimation) {
+             citation: CitationRegistry.oneRMEstimation, tint: .blue) {
             if strengthSeries.allSatisfy({ $0.points.count < 2 }) {
                 emptyNote("Log a few weeks of working sets and your estimated-1RM trend appears here. e1RM is projected from the weight and reps of your heaviest sets.")
             } else {
@@ -153,7 +154,7 @@ struct TrainingProgressView: View {
     @ViewBuilder private var volumeCard: some View {
         let parts = BodyPart.allCases.filter { (facts.weeklySetsByPart[$0] ?? 0) > 0 }
         card(title: "Weekly volume", subtitle: "working sets per muscle vs. experience-scaled ranges",
-             citation: CitationRegistry.volumeDoseResponse) {
+             citation: CitationRegistry.volumeDoseResponse, tint: .teal) {
             if parts.isEmpty {
                 emptyNote("Once you log resistance sets, each muscle's weekly volume appears against an evidence-informed starting range and high-end range for your experience level.")
             } else {
@@ -179,7 +180,7 @@ struct TrainingProgressView: View {
         let i = facts.intensity
         card(title: "Load intensity",
              subtitle: "vs. your goal \u{2014} \(settings.trainingGoal.displayName.lowercased())",
-             citation: CitationRegistry.schoenfeld2021) {
+             citation: CitationRegistry.schoenfeld2021, tint: .blue) {
             if i.sampleCount == 0 {
                 emptyNote("Log the weight on your sets and we'll show how your work splits across heavy, moderate, and light loads \u{2014} and whether that matches your goal's rep range.")
             } else {
@@ -224,7 +225,7 @@ struct TrainingProgressView: View {
     // MARK: - §5 Effort + Frequency
 
     @ViewBuilder private var effortCard: some View {
-        card(title: "Effort", citation: CitationRegistry.rpeAutoregulation, compact: true) {
+        card(title: "Effort", citation: CitationRegistry.rpeAutoregulation, compact: true, tint: .orange) {
             if let rir = facts.avgRIR {
                 Text(String(format: "%.1f", rir)).font(.title2.weight(.semibold))
                 + Text(" RIR").font(.caption).foregroundStyle(.secondary)
@@ -239,7 +240,7 @@ struct TrainingProgressView: View {
     @ViewBuilder private var frequencyCard: some View {
         let hits = BodyPart.allCases.filter { (facts.frequencyByPart[$0] ?? 0) >= 2 }
         let lows = BodyPart.allCases.filter { (facts.frequencyByPart[$0] ?? 0) == 1 }
-        card(title: "Frequency", citation: CitationRegistry.frequencyMeta, compact: true) {
+        card(title: "Frequency", citation: CitationRegistry.frequencyMeta, compact: true, tint: .orange) {
             if facts.frequencyByPart.isEmpty {
                 emptyNote("Train each muscle \u{2265}2\u{00d7}/week to get more from the same weekly sets.")
             } else {
@@ -265,7 +266,7 @@ struct TrainingProgressView: View {
     // MARK: - §6 Test results
 
     @ViewBuilder private var testResultsCard: some View {
-        card(title: "Test results", citation: nil) {
+        card(title: "Test results", citation: nil, tint: .blue) {
             if facts.assessments.isEmpty {
                 emptyNote("Run a test from the Tests tab \u{2014} strength, push-ups, plank, or a VO\u{2082}max field test \u{2014} and your results trend here, noise-guarded.")
             } else {

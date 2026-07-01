@@ -40,8 +40,11 @@ final class FR11Feedback4UITests: CadenceUITestCase {
     // blank session.
     func testStartWithWarmUpThenSession() {
         let app = XCUIApplication.launched(extraArgs: ["-warmupMinutes", "1"])
-        XCTAssertTrue(app.tapToReveal("home.startWorkout", "weights.warmupStart"), "Start Workout")
-        XCTAssertTrue(app.tapToReveal("weights.warmupStart", "editor.start"), "Start with Warm-Up")
+        XCTAssertTrue(app.tapToReveal("home.startWorkout", "weights.quickStart"), "Start Workout")
+        // Enable warm-up in the plan editor before starting
+        let warmupStepper = app.steppers["editor.warmup"]
+        XCTAssertTrue(warmupStepper.waitForExistence(timeout: 10))
+        warmupStepper.buttons.element(boundBy: 1).tap()
         XCTAssertTrue(app.tapToReveal("editor.start", "warmup.remaining"),
                       "the warm-up timer should appear")
         XCTAssertTrue(app.tapToReveal("warmup.skip", "session.addExercise"),
@@ -51,8 +54,11 @@ final class FR11Feedback4UITests: CadenceUITestCase {
     // The warm-up is pausable (the count freezes while paused).
     func testWarmUpPauses() {
         let app = XCUIApplication.launched(extraArgs: ["-warmupMinutes", "1"])
-        XCTAssertTrue(app.tapToReveal("home.startWorkout", "weights.warmupStart"), "Start Workout")
-        XCTAssertTrue(app.tapToReveal("weights.warmupStart", "editor.start"), "Start with Warm-Up")
+        XCTAssertTrue(app.tapToReveal("home.startWorkout", "weights.quickStart"), "Start Workout")
+        // Enable warm-up in the plan editor before starting
+        let warmupStepper = app.steppers["editor.warmup"]
+        XCTAssertTrue(warmupStepper.waitForExistence(timeout: 10))
+        warmupStepper.buttons.element(boundBy: 1).tap()
         XCTAssertTrue(app.tapToReveal("editor.start", "warmup.remaining"), "warm-up timer")
 
         let remaining = app.staticTexts["warmup.remaining"]

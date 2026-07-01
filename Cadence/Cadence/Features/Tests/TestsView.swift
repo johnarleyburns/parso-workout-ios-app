@@ -32,6 +32,7 @@ struct TestsView: View {
                     Text("Standardized tests your coach tracks over time. Re-test on the same protocol after a training block to measure real change.")
                         .font(.footnote).foregroundStyle(.secondary)
                         .accessibilityIdentifier("tests.assessments.intro")
+                        .listRowBackground(Color.clear)
                 }
 
                 ForEach(AssessmentCategory.allCases) { category in
@@ -45,6 +46,7 @@ struct TestsView: View {
                                     batteryRow(kind)
                                 }
                                 .accessibilityIdentifier("tests.assessment.\(kind.rawValue)")
+                                .listRowBackground(Color.clear)
                             }
                         }
                     }
@@ -62,8 +64,10 @@ struct TestsView: View {
                                     batteryRow(kind)
                                 }
                                 .accessibilityIdentifier("tests.assessment.\(kind.rawValue)")
+                                .listRowBackground(Color.clear)
                             }
                         }
+                        .listRowBackground(Color.clear)
                         .accessibilityIdentifier("tests.advanced")
                     }
                 }

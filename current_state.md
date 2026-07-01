@@ -2,7 +2,16 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-06-29 — App Store positioning pack: metadata, release checklist, v1 copy alignment._
+_Last updated: 2026-07-01 — Liquid glass visibility on main tabs, remove redundant warm-up shortcut._
+
+## What just shipped — Liquid glass visibility & warm-up shortcut removal
+
+- **GlassSupport.swift**: increased `cadenceGlassCard` fill opacity (0.025→0.045 untinted, 0.055→0.08 tinted), stroke opacity (0.12→0.18, 0.22→0.28), glass tint (0.35→0.45), added `.shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)` to both iOS 26+ and fallback paths so cards read as floating glass panels.
+- **ProgressView.swift**: `card` helper now accepts optional `tint` param; all major cards get explicit tints (blue for strength/intensity/testResults, teal for volume, orange for effort/frequency).
+- **TestsView.swift**: added `.listRowBackground(Color.clear)` to all List sections (intro, battery, advanced) so the glass backdrop and baseline card are visible.
+- **WeightsStartView.swift**: removed the redundant "Start with Warm-Up" row; footer updated from "…or warm up first." to "…". Warm-up remains intact inside `WorkoutPlanEditor` / pre-workout settings.
+- **FR11Feedback4UITests.swift**: `testStartWithWarmUpThenSession` and `testWarmUpPauses` now use `weights.quickStart` + increment the `editor.warmup` stepper to enable warm-up before starting.
+- **FR1PartnersUnitsUITests.swift**: `testAddedPartnerAppearsInEditor` now uses `weights.quickStart` instead of removed `weights.warmupStart`.
 
 ## What just shipped — App Store positioning pack
 

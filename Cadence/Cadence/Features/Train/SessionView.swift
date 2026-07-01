@@ -79,7 +79,7 @@ struct SessionView: View {
     private var activePartnerPeople: [Person] {
         SessionRoster.scopedPartners(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
     }
-    /// Owner first, then session-scoped partners alphabetically. Solo ⇒ just the owner.
+    /// Configured performer order. Solo ⇒ just the owner.
     private var roster: [Person] {
         SessionRoster.roster(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
     }
@@ -184,22 +184,16 @@ struct SessionView: View {
             inlinePerformedByID = nextPerson().flatMap { $0.isMe ? nil : $0.id }
             inlineRPE = nil
 
-            // Weight defaulting: first set → prior session's first working weight;
-            // subsequent sets → previous set's weight in this session; else prescribed.
-            if loggedCount == 0 {
-                // First set: use first working weight from most recent prior session.
-                if let firstPrior = firstWorkingSetWeight(for: exercise) {
-                    inlineWeight = Format.weightValue(firstPrior, unit: inlineUnit)
-                    inlinePriorWeightHint = firstPrior
-                } else {
-                    let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
-                    inlineWeight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: inlineUnit) : ""
-                    inlinePriorWeightHint = nil
-                }
-            } else if let last = session.orderedSets.last(where: { $0.exercise?.id == exercise.id }) {
-                // Subsequent set: prefill previous set's entered weight.
-                inlineWeight = Format.weightValue(last.weight, unit: inlineUnit)
+            // Weight defaulting is performer-specific: current-session work by
+            // that person first, then that person's prior history, then any coach
+            // prescription for the movement.
+            let performer = people(for: inlinePerformedByID)
+            if let last = lastSessionWeight(for: exercise, performerID: inlinePerformedByID) {
+                inlineWeight = Format.weightValue(last, unit: inlineUnit)
                 inlinePriorWeightHint = nil
+            } else if let firstPrior = firstWorkingSetWeight(for: exercise, performedBy: performer) {
+                inlineWeight = Format.weightValue(firstPrior, unit: inlineUnit)
+                inlinePriorWeightHint = firstPrior
             } else {
                 let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
                 inlineWeight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: inlineUnit) : ""
@@ -217,9 +211,14 @@ struct SessionView: View {
 
     /// The first working-set weight from the most recent prior session for this
     /// exercise, if any. nil when no prior data exists.
-    private func firstWorkingSetWeight(for exercise: Exercise) -> Double? {
-        let lastSets = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
-        return lastSets.first { !$0.isWarmup && $0.weight > 0 }?.weight
+    private func firstWorkingSetWeight(for exercise: Exercise, performedBy person: Person?) -> Double? {
+        WorkoutRepository.firstWorkingSetWeight(for: exercise, performedBy: person, excluding: session)
+    }
+
+    private func lastSessionWeight(for exercise: Exercise, performerID: UUID?) -> Double? {
+        session.orderedSets.reversed().first {
+            $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID)
+        }?.weight
     }
 
     private func closeInlineEditor() {
@@ -498,7 +497,7 @@ struct SessionView: View {
             get: { swappingPlannedName != nil },
             set: { if !$0 { swappingPlannedName = nil } }
         )) {
-            ExercisePickerView { exercise in
+            ExercisePickerView(action: .swap) { exercise in
                 if let oldName = swappingPlannedName {
                     swapPlannedExercise(oldName: oldName, newName: exercise.name)
                     swappingPlannedName = nil
@@ -511,7 +510,7 @@ struct SessionView: View {
             get: { changingExerciseFor != nil },
             set: { if !$0 { changingExerciseFor = nil } }
         )) {
-            ExercisePickerView { picked in
+            ExercisePickerView(action: .use) { picked in
                 if let old = changingExerciseFor, old.id != picked.id {
                     _ = try? WorkoutRepository.changeExercise(in: session, from: old, to: picked, in: context)
                     poke()
@@ -582,10 +581,10 @@ struct SessionView: View {
                 let name = newPartnerName.trimmingCharacters(in: .whitespaces)
                 if !name.isEmpty {
                     if let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) {
-                        var ids = session.activePartnerIDs
+                        var ids = explicitRosterIDs()
                         if !ids.contains(p.id.uuidString) {
                             ids.append(p.id.uuidString)
-                            session.activePartnerIDs = ids
+                            session.activePartnerIDs = normalizedRosterIDs(ids)
                             try? context.save()
                         }
                     }
@@ -737,7 +736,7 @@ struct SessionView: View {
                             Button(role: .destructive) {
                                 var ids = session.activePartnerIDs
                                 ids.removeAll { $0 == p.id.uuidString }
-                                session.activePartnerIDs = ids
+                                session.activePartnerIDs = normalizedRosterIDs(ids)
                                 try? context.save()
                             } label: { Label("Remove from session", systemImage: "person.slash") }
                         }
@@ -1065,7 +1064,7 @@ struct SessionView: View {
         let kg = WorkoutMath.canonical(parsed, from: settings.unit)
         let effectiveKg = exercise.prospectiveEffectiveLoadKg(rawWeightKg: kg)
         let altUnit: MeasurementUnitPreference = settings.unit == .kilograms ? .pounds : .kilograms
-        let canSave = inlineReps > 0 && (inlineBodyweight || !inlineWeight.isEmpty)
+        let canSave = inlineReps > 0
         let number = String(workingNumber(for: exercise))
         let wouldBePR = canSave && WorkoutRepository.wouldBePR(
             exercise: exercise, weightKg: effectiveKg, reps: inlineReps, isWarmup: false,
@@ -1374,6 +1373,42 @@ struct SessionView: View {
     private var managePartnersSheet: some View {
         NavigationStack {
             List {
+                if hasPartners {
+                    Section {
+                        ForEach(Array(roster.enumerated()), id: \.element.id) { index, person in
+                            HStack {
+                                performerChip(person)
+                                Text(person.isMe ? "Me" : person.name)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Button {
+                                    moveRosterMember(from: index, by: -1)
+                                } label: {
+                                    Image(systemName: "chevron.up")
+                                }
+                                .disabled(index == 0)
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("partner.order.up.\(person.isMe ? "Me" : person.name)")
+                                .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) earlier")
+
+                                Button {
+                                    moveRosterMember(from: index, by: 1)
+                                } label: {
+                                    Image(systemName: "chevron.down")
+                                }
+                                .disabled(index >= roster.count - 1)
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("partner.order.down.\(person.isMe ? "Me" : person.name)")
+                                .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) later")
+                            }
+                        }
+                    } header: {
+                        Text("Order")
+                    } footer: {
+                        Text("The logger rotates through this order after each saved set.")
+                    }
+                }
+
                 Section {
                     ForEach(allPeople.filter { !$0.isMe }) { p in
                         Button { togglePartnerScope(p) } label: {
@@ -1414,13 +1449,13 @@ struct SessionView: View {
 
     /// Adds or removes a partner from this session's roster.
     private func togglePartnerScope(_ p: Person) {
-        var ids = session.activePartnerIDs
+        var ids = explicitRosterIDs()
         if let idx = ids.firstIndex(of: p.id.uuidString) {
             ids.remove(at: idx)
         } else {
             ids.append(p.id.uuidString)
         }
-        session.activePartnerIDs = ids
+        session.activePartnerIDs = normalizedRosterIDs(ids)
         try? context.save()
     }
 
@@ -1430,32 +1465,58 @@ struct SessionView: View {
         defer { newPartnerName = "" }
         guard !name.isEmpty,
               let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) else { return }
-        var ids = session.activePartnerIDs
+        var ids = explicitRosterIDs()
         if !ids.contains(p.id.uuidString) {
             ids.append(p.id.uuidString)
-            session.activePartnerIDs = ids
+            session.activePartnerIDs = normalizedRosterIDs(ids)
             try? context.save()
         }
     }
 
     private func nextPerson() -> Person? {
         guard hasPartners else { return nil }
-        let allSets = session.orderedSets
-        return roster.min { a, b in
-            let aLast = allSets.filter { setPerformedBy($0, person: a) }.map(\.completedAt).max()
-            let bLast = allSets.filter { setPerformedBy($0, person: b) }.map(\.completedAt).max()
-            switch (aLast, bLast) {
-            case (nil, nil): return false
-            case (nil, _): return true
-            case (_, nil): return false
-            case (let a?, let b?): return a < b
-            }
+        let ordered = roster
+        guard !ordered.isEmpty else { return nil }
+        guard let last = session.orderedSets.reversed().first(where: { set in
+            ordered.contains { setPerformedBy(set, person: $0) }
+        }), let lastIndex = ordered.firstIndex(where: { setPerformedBy(last, person: $0) }) else {
+            return ordered.first
         }
+        return ordered[(lastIndex + 1) % ordered.count]
     }
 
     private func setPerformedBy(_ set: SetEntry, person: Person) -> Bool {
         if person.isMe { return set.isOwnerSet }
         return set.performedBy?.id == person.id
+    }
+
+    private func setPerformedBy(_ set: SetEntry, performerID: UUID?) -> Bool {
+        guard let performerID else { return set.isOwnerSet }
+        return set.performedBy?.id == performerID
+    }
+
+    private func explicitRosterIDs() -> [String] {
+        let current = session.activePartnerIDs
+        guard hasPartners else { return current }
+        let ids = roster.map { $0.id.uuidString }
+        return ids.isEmpty ? current : ids
+    }
+
+    private func normalizedRosterIDs(_ ids: [String]) -> [String] {
+        let valid = Set(allPeople.map { $0.id.uuidString })
+        var seen = Set<String>()
+        let cleaned = ids.filter { valid.contains($0) && seen.insert($0).inserted }
+        let partnerIDs = Set(allPeople.filter { !$0.isMe }.map { $0.id.uuidString })
+        return cleaned.contains(where: { partnerIDs.contains($0) }) ? cleaned : []
+    }
+
+    private func moveRosterMember(from index: Int, by offset: Int) {
+        var ids = explicitRosterIDs()
+        let target = index + offset
+        guard ids.indices.contains(index), ids.indices.contains(target) else { return }
+        ids.swapAt(index, target)
+        session.activePartnerIDs = normalizedRosterIDs(ids)
+        try? context.save()
     }
 
     private var weightInfoSheet: some View {

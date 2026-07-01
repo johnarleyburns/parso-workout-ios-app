@@ -62,7 +62,15 @@ struct HomeView: View {
                            experience: settings.experienceLevel,
                            formula: settings.formula)
     }
-    private var coachInsights: [Insight] { InsightEngine.run(coachFacts) }
+    private var coachInsights: [Insight] {
+        _ = historyRefreshToken
+        return PlanAwareInsightEngine.run(
+            completed: coachFacts,
+            plan: coachPlan,
+            plannedStrengthSessions: plannedStrengthSessionsForInsights,
+            isBehindPlan: coachInsightsBehindPlan,
+            now: Date())
+    }
     /// The top prescription the Coach card leads with (P5.2). Never nil — the engine
     /// falls back to a cited cold-start starter when there's no history yet.
     private var coachRecommendation: Recommendation {
@@ -102,6 +110,35 @@ struct HomeView: View {
             from: buildTrainingEvents(), goal: settings.trainingGoal,
             experience: settings.experienceLevel, formula: settings.formula)
         return WeeklyPlan.generate(from: facts, schedulePreferences: settings.coachSchedulePreferences)
+    }
+
+    private var plannedStrengthSessionsForInsights: [CoachSession] {
+        let decision = coachDecision
+        let facts = CoachFacts.make(
+            from: buildTrainingEvents(), goal: settings.trainingGoal,
+            experience: settings.experienceLevel, formula: settings.formula)
+        let candidates = CoachSession.candidates(for: facts,
+                                                 schedulePreferences: settings.coachSchedulePreferences)
+        let fallbackStrength = ([decision.primary] + decision.todayPlannedRecommendations + decision.alternatives + candidates)
+            .first { $0.kind == .strength && !($0.exercises ?? []).isEmpty }
+
+        var planned = decision.todayPlannedRecommendations.filter { $0.kind == .strength }
+        if planned.isEmpty, decision.primary.kind == .strength {
+            planned.append(decision.primary)
+        }
+
+        let futureStrengthCount = coachPlan.remainingCalendarWeekDays.reduce(0) { count, day in
+            count + day.sessions.filter { $0.kind == .strength }.count
+        }
+        if let fallbackStrength {
+            planned.append(contentsOf: Array(repeating: fallbackStrength, count: futureStrengthCount))
+        }
+        return planned
+    }
+
+    private var coachInsightsBehindPlan: Bool {
+        if case .offPlan = coachDecision.planAdherence { return true }
+        return false
     }
 
     private var addOnRecommendation: CoachAddOnRecommendation {

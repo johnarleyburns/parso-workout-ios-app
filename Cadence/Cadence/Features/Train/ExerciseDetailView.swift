@@ -3,6 +3,7 @@ import CadenceCore
 
 struct ExerciseDetailView: View {
     let exercise: Exercise
+    var actionTitle: String = "Add"
     var onPick: ((Exercise) -> Void)?
 
     @Environment(\.modelContext) private var context
@@ -49,7 +50,7 @@ struct ExerciseDetailView: View {
                     }
                     .accessibilityLabel(exercise.isFavorite ? "Remove from favorites" : "Add to favorites")
                     if let onPick {
-                        Button("Add") { onPick(exercise); dismiss() }
+                        Button(actionTitle) { onPick(exercise); dismiss() }
                             .accessibilityIdentifier("detail.add")
                     }
                 }

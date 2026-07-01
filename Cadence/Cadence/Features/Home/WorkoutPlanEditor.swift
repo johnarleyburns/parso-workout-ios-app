@@ -27,7 +27,8 @@ struct EditablePlan: Hashable {
             title: session.title,
             warmupMinutes: 0,
             cooldownMinutes: 0,
-            exercises: exercises
+            exercises: exercises,
+            partnerIDs: session.activePartnerIDs.compactMap(UUID.init(uuidString:))
         )
     }
 
@@ -105,6 +106,25 @@ struct EditableSet: Identifiable, Hashable {
     var targetWeight: Double?
 }
 
+private enum ExercisePickerIntent: Identifiable {
+    case add
+    case swap(UUID)
+
+    var id: String {
+        switch self {
+        case .add: return "add"
+        case .swap(let id): return "swap.\(id.uuidString)"
+        }
+    }
+
+    var pickerAction: ExercisePickerView.PickAction {
+        switch self {
+        case .add: return .add
+        case .swap: return .swap
+        }
+    }
+}
+
 struct WorkoutPlanEditor: View {
     @State var plan: EditablePlan
     let onStart: (EditablePlan) -> Void
@@ -112,7 +132,7 @@ struct WorkoutPlanEditor: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Person.name) private var allPeople: [Person]
-    @State private var showingExercisePicker = false
+    @State private var exercisePickerIntent: ExercisePickerIntent?
     @State private var newPartnerName = ""
 
     @State private var restSeconds: Int
@@ -176,7 +196,7 @@ struct WorkoutPlanEditor: View {
                 }
 
                 Section {
-                    ForEach(allPeople.filter { !$0.isMe }) { person in
+                    ForEach(partnerPeople) { person in
                         HStack {
                             Text(person.name)
                             Spacer()
@@ -188,8 +208,11 @@ struct WorkoutPlanEditor: View {
                         .onTapGesture {
                             if let idx = plan.partnerIDs.firstIndex(of: person.id) {
                                 plan.partnerIDs.remove(at: idx)
+                                plan.partnerIDs = normalizedPartnerIDs(plan.partnerIDs)
                             } else {
-                                plan.partnerIDs.append(person.id)
+                                var ids = explicitPartnerIDs()
+                                ids.append(person.id)
+                                plan.partnerIDs = normalizedPartnerIDs(ids)
                             }
                         }
                         .accessibilityIdentifier("editor.partner.\(person.name)")
@@ -201,7 +224,11 @@ struct WorkoutPlanEditor: View {
                             let name = newPartnerName.trimmingCharacters(in: .whitespaces)
                             if !name.isEmpty,
                                let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: modelContext) {
-                                if !plan.partnerIDs.contains(p.id) { plan.partnerIDs.append(p.id) }
+                                if !plan.partnerIDs.contains(p.id) {
+                                    var ids = explicitPartnerIDs()
+                                    ids.append(p.id)
+                                    plan.partnerIDs = normalizedPartnerIDs(ids)
+                                }
                             }
                             newPartnerName = ""
                         }
@@ -214,6 +241,38 @@ struct WorkoutPlanEditor: View {
                     Text("Partners are optional — leave everyone unchecked to train solo.")
                 }
 
+                if !selectedPartnerPeople.isEmpty {
+                    Section {
+                        ForEach(Array(editorRoster.enumerated()), id: \.element.id) { index, person in
+                            HStack {
+                                Text(person.isMe ? "Me" : person.name)
+                                Spacer()
+                                Button {
+                                    moveRosterMember(from: index, by: -1)
+                                } label: {
+                                    Image(systemName: "chevron.up")
+                                }
+                                .disabled(index == 0)
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("editor.partnerOrder.up.\(person.isMe ? "Me" : person.name)")
+
+                                Button {
+                                    moveRosterMember(from: index, by: 1)
+                                } label: {
+                                    Image(systemName: "chevron.down")
+                                }
+                                .disabled(index >= editorRoster.count - 1)
+                                .buttonStyle(.borderless)
+                                .accessibilityIdentifier("editor.partnerOrder.down.\(person.isMe ? "Me" : person.name)")
+                            }
+                        }
+                    } header: {
+                        Text("Performer order")
+                    } footer: {
+                        Text("The logger rotates through this order after each saved set.")
+                    }
+                }
+
                 ForEach($plan.exercises) { $exercise in
                     exerciseSection($exercise)
                 }
@@ -222,7 +281,7 @@ struct WorkoutPlanEditor: View {
 
                 Section {
                     Button {
-                        showingExercisePicker = true
+                        exercisePickerIntent = .add
                     } label: {
                         Label("Add Exercise", systemImage: "plus.circle.fill")
                     }
@@ -240,7 +299,10 @@ struct WorkoutPlanEditor: View {
                 }
             }
             .environment(\.editMode, .constant(.active))
-            .onAppear { loadSettings() }
+            .onAppear {
+                loadSettings()
+                _ = try? WorkoutRepository.me(in: modelContext)
+            }
 
             Button(action: { saveAndStart() }) {
                 Label("Start", systemImage: "play.fill")
@@ -255,13 +317,11 @@ struct WorkoutPlanEditor: View {
         }
         .navigationTitle("Workout Plan")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showingExercisePicker) {
+        .sheet(item: $exercisePickerIntent) { intent in
             NavigationStack {
-                ExercisePickerView { exercise in
-                    plan.exercises.append(
-                        EditableExercise(name: exercise.name, sets: [EditableSet(targetReps: 10, targetWeight: nil)], notes: "")
-                    )
-                    showingExercisePicker = false
+                ExercisePickerView(action: intent.pickerAction) { exercise in
+                    applyPickedExercise(exercise, for: intent)
+                    exercisePickerIntent = nil
                 }
             }
         }
@@ -316,6 +376,26 @@ struct WorkoutPlanEditor: View {
                     .foregroundStyle(.secondary)
                 Text(exercise.wrappedValue.name).font(.headline)
                 Spacer()
+                Menu {
+                    Button {
+                        exercisePickerIntent = .swap(exercise.wrappedValue.id)
+                    } label: {
+                        Label("Swap Exercise", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .accessibilityIdentifier("editor.swapExercise.\(exercise.wrappedValue.name)")
+
+                    Button(role: .destructive) {
+                        removeExercise(id: exercise.wrappedValue.id)
+                    } label: {
+                        Label("Remove Exercise", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, height: 36)
+                }
+                .accessibilityIdentifier("editor.exerciseMenu.\(exercise.wrappedValue.name)")
+                .accessibilityLabel("Exercise options")
             }
             .accessibilityIdentifier("editor.exercise.\(exercise.wrappedValue.name)")
 
@@ -333,6 +413,73 @@ struct WorkoutPlanEditor: View {
                     .font(.subheadline)
             }
             .accessibilityIdentifier("editor.addSet.\(exercise.wrappedValue.name)")
+        }
+    }
+
+    private var owner: Person? {
+        allPeople.first(where: \.isMe)
+    }
+
+    private var partnerPeople: [Person] {
+        allPeople.filter { !$0.isMe }
+    }
+
+    private var selectedPartnerPeople: [Person] {
+        let ids = Set(plan.partnerIDs)
+        return partnerPeople.filter { ids.contains($0.id) }
+    }
+
+    private var editorRoster: [Person] {
+        guard !selectedPartnerPeople.isEmpty else { return owner.map { [$0] } ?? [] }
+        let peopleByID = Dictionary(allPeople.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let selectedIDs = Set(selectedPartnerPeople.map(\.id))
+        var seen = Set<UUID>()
+        let ordered = plan.partnerIDs.compactMap { id -> Person? in
+            guard seen.insert(id).inserted else { return nil }
+            return peopleByID[id]
+        }
+        if ordered.contains(where: \.isMe) {
+            return ordered.filter { $0.isMe || selectedIDs.contains($0.id) }
+        }
+        return (owner.map { [$0] } ?? []) + selectedPartnerPeople
+    }
+
+    private func explicitPartnerIDs() -> [UUID] {
+        guard !selectedPartnerPeople.isEmpty else {
+            return owner.map { [$0.id] } ?? []
+        }
+        let ids = editorRoster.map(\.id)
+        return ids.isEmpty ? plan.partnerIDs : ids
+    }
+
+    private func normalizedPartnerIDs(_ ids: [UUID]) -> [UUID] {
+        let ownerID = owner?.id
+        var seen = Set<UUID>()
+        let cleaned = ids.filter { seen.insert($0).inserted }
+        return cleaned.contains(where: { $0 != ownerID }) ? cleaned : []
+    }
+
+    private func moveRosterMember(from index: Int, by offset: Int) {
+        var ids = explicitPartnerIDs()
+        let target = index + offset
+        guard ids.indices.contains(index), ids.indices.contains(target) else { return }
+        ids.swapAt(index, target)
+        plan.partnerIDs = normalizedPartnerIDs(ids)
+    }
+
+    private func removeExercise(id: UUID) {
+        plan.exercises.removeAll { $0.id == id }
+    }
+
+    private func applyPickedExercise(_ exercise: Exercise, for intent: ExercisePickerIntent) {
+        switch intent {
+        case .add:
+            plan.exercises.append(
+                EditableExercise(name: exercise.name, sets: [EditableSet(targetReps: 10, targetWeight: nil)], notes: "")
+            )
+        case .swap(let id):
+            guard let index = plan.exercises.firstIndex(where: { $0.id == id }) else { return }
+            plan.exercises[index].name = exercise.name
         }
     }
 

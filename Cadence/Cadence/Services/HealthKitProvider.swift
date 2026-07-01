@@ -101,6 +101,17 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
         }
         var result: [IngestedWorkout] = []
         for w in workouts {
+            let source: CardioSource = Self.isWatchSource(w.sourceRevision) ? .watch : .iphone
+            let importedKind = Self.importedWorkoutKind(from: w.workoutActivityType)
+            let type = Self.cardioType(from: w.workoutActivityType)
+            let summary = IngestedWorkout(
+                id: w.uuid,
+                type: type,
+                start: w.startDate, end: w.endDate,
+                source: source,
+                importedKind: importedKind)
+            guard WorkoutRepository.shouldAutoImport(summary) else { continue }
+
             let distance = w.totalDistance?.doubleValue(for: .meter())
             let energy = w.totalEnergyBurned?.doubleValue(for: .kilocalorie())
             // Pull the recorded heart-rate curve for this workout (e.g. one the
@@ -110,14 +121,14 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
             let bpms = hr.map(\.bpm).filter { $0 > 0 }
             result.append(IngestedWorkout(
                 id: w.uuid,
-                type: Self.cardioType(from: w.workoutActivityType),
+                type: type,
                 start: w.startDate, end: w.endDate,
                 distanceMeters: distance, activeEnergyKcal: energy,
                 avgHeartRate: bpms.isEmpty ? nil : bpms.reduce(0, +) / Double(bpms.count),
                 maxHeartRate: bpms.max(),
-                source: w.sourceRevision.source.name.localizedCaseInsensitiveContains("watch") ? .watch : .iphone,
+                source: source,
                 hrSamples: hr,
-                importedKind: Self.importedWorkoutKind(from: w.workoutActivityType)))
+                importedKind: importedKind))
         }
         return result
     }
@@ -277,5 +288,15 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
         case .rowing: return .rowing
         default: return .other
         }
+    }
+
+    private static func isWatchSource(_ sourceRevision: HKSourceRevision) -> Bool {
+        let source = sourceRevision.source
+        let fields = [
+            source.name,
+            source.bundleIdentifier,
+            sourceRevision.productType ?? ""
+        ]
+        return fields.contains { $0.localizedCaseInsensitiveContains("watch") }
     }
 }

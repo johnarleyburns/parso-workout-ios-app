@@ -10,6 +10,28 @@ import CadenceCore
 /// muscles, and instructions (P2 — no external links). An inline "Create '<query>'"
 /// row adds a custom exercise.
 struct ExercisePickerView: View {
+    enum PickAction {
+        case add
+        case swap
+        case use
+
+        var navigationTitle: String {
+            switch self {
+            case .add: return "Add Exercise"
+            case .swap: return "Swap Exercise"
+            case .use: return "Choose Exercise"
+            }
+        }
+
+        var detailActionTitle: String {
+            switch self {
+            case .add: return "Add"
+            case .swap: return "Swap"
+            case .use: return "Use Exercise"
+            }
+        }
+    }
+
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
@@ -17,7 +39,13 @@ struct ExercisePickerView: View {
     @State private var selectedPart: BodyPart?
     @State private var browseAll = false
     @State private var detailExercise: Exercise?
+    let action: PickAction
     let onPick: (Exercise) -> Void
+
+    init(action: PickAction = .add, onPick: @escaping (Exercise) -> Void) {
+        self.action = action
+        self.onPick = onPick
+    }
 
     private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -81,7 +109,7 @@ struct ExercisePickerView: View {
                     }
                 }
             }
-            .navigationTitle("Add Exercise")
+            .navigationTitle(action.navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "Search name, muscle, or equipment")
             .toolbar {
@@ -92,7 +120,7 @@ struct ExercisePickerView: View {
         }
         .accessibilityIdentifier("picker.search")
         .navigationDestination(item: $detailExercise) { exercise in
-            ExerciseDetailView(exercise: exercise) { picked in
+            ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
                 detailExercise = nil
                 dismiss()
                 onPick(picked)
@@ -142,7 +170,7 @@ struct ExercisePickerView: View {
     private func exerciseRow(_ ex: Exercise) -> some View {
         HStack {
             Button {
-                onPick(ex); dismiss()
+                detailExercise = ex
             } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {

@@ -75,6 +75,46 @@ final class PartnersAndUnitsTests: XCTestCase {
         XCTAssertNotEqual(me.id, a.id)
     }
 
+    func testSessionRosterPreservesExplicitOrderWithOwnerNotFirst() throws {
+        let ctx = try makeContext()
+        let me = try WorkoutRepository.me(in: ctx)
+        let sam = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        let alex = try WorkoutRepository.findOrCreatePerson(named: "Alex", in: ctx)
+        let people = [alex, me, sam]
+
+        let roster = SessionRoster.roster(
+            activePartnerIDs: [sam.id.uuidString, me.id.uuidString, alex.id.uuidString],
+            allPeople: people)
+
+        XCTAssertEqual(roster.map(\.name), ["Sam", "Me", "Alex"])
+        XCTAssertEqual(SessionRoster.scopedPartners(
+            activePartnerIDs: [sam.id.uuidString, me.id.uuidString, alex.id.uuidString],
+            allPeople: people).map(\.name), ["Sam", "Alex"])
+    }
+
+    func testPartnerSpecificPriorWeightLookupUsesPerformer() throws {
+        let ctx = try makeContext()
+        let me = try WorkoutRepository.me(in: ctx)
+        let sam = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+
+        let prior = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 1_000), in: ctx)
+        _ = try WorkoutRepository.addSet(to: prior, exercise: bench, weightKg: 130, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: prior, exercise: bench, weightKg: 85, reps: 8,
+                                         performedBy: sam, in: ctx)
+
+        let today = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 2_000), in: ctx)
+        XCTAssertEqual(
+            WorkoutRepository.firstWorkingSetWeight(for: bench, performedBy: me, excluding: today),
+            130)
+        XCTAssertEqual(
+            WorkoutRepository.firstWorkingSetWeight(for: bench, performedBy: nil, excluding: today),
+            130)
+        XCTAssertEqual(
+            WorkoutRepository.firstWorkingSetWeight(for: bench, performedBy: sam, excluding: today),
+            85)
+    }
+
     // MARK: Reuse workout (decision #16)
 
     func testReuseSessionClonesExercisesWithoutSets() throws {

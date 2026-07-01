@@ -112,7 +112,8 @@ final class WorkoutRepositoryTests: XCTestCase {
         let hkID = UUID()
         let w = IngestedWorkout(id: hkID, type: .run, start: Date(timeIntervalSince1970: 0),
                                 end: Date(timeIntervalSince1970: 1800), distanceMeters: 5000,
-                                hrSamples: [HRSamplePoint(t: 0, bpm: 120), HRSamplePoint(t: 60, bpm: 140)])
+                                hrSamples: [HRSamplePoint(t: 0, bpm: 120), HRSamplePoint(t: 60, bpm: 140)],
+                                importedKind: .running)
         XCTAssertEqual(try WorkoutRepository.ingest([w], in: ctx), 1)
         XCTAssertEqual(try WorkoutRepository.ingest([w], in: ctx), 0) // dup skipped
         let all = try WorkoutRepository.allCardio(ctx)
@@ -138,7 +139,8 @@ final class WorkoutRepositoryTests: XCTestCase {
 
         // A later HealthKit ingest of the same workout must not duplicate it.
         let ingestSame = IngestedWorkout(id: hkID, type: .run,
-                                         start: summary.start, end: summary.end)
+                                         start: summary.start, end: summary.end,
+                                         importedKind: .running)
         XCTAssertEqual(try WorkoutRepository.ingest([ingestSame], in: ctx), 0)
         XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
     }

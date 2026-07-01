@@ -9,22 +9,44 @@ import Foundation
 /// both correctly collapse to solo (field-testing §04 bug fix).
 public enum SessionRoster {
 
-    /// Partners explicitly scoped to a session, sorted by name. Empty when the
-    /// user chose none (solo).
+    /// Partners explicitly scoped to a session, in the configured session order.
+    /// Empty when the user chose none (solo).
     public static func scopedPartners(activePartnerIDs: [String],
                                       allPeople: [Person]) -> [Person] {
         guard !activePartnerIDs.isEmpty else { return [] }
-        let ids = Set(activePartnerIDs.compactMap(UUID.init(uuidString:)))
-        return allPeople
-            .filter { !$0.isMe && ids.contains($0.id) }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let orderedIDs = activePartnerIDs.compactMap(UUID.init(uuidString:))
+        let peopleByID = Dictionary(allPeople.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var seen = Set<UUID>()
+        return orderedIDs.compactMap { id in
+            guard seen.insert(id).inserted,
+                  let person = peopleByID[id],
+                  !person.isMe else { return nil }
+            return person
+        }
     }
 
-    /// Owner first, then scoped partners. Solo sessions resolve to just the owner.
+    /// The configured session roster. Solo sessions resolve to just the owner.
+    ///
+    /// Back-compat: older sessions stored partner ids only, so the owner remains
+    /// first until a UI reorder writes the owner's id as an explicit roster member.
     public static func roster(activePartnerIDs: [String],
                               allPeople: [Person]) -> [Person] {
-        allPeople.filter(\.isMe)
-            + scopedPartners(activePartnerIDs: activePartnerIDs, allPeople: allPeople)
+        let owners = allPeople.filter(\.isMe)
+        guard !activePartnerIDs.isEmpty else { return owners }
+
+        let orderedIDs = activePartnerIDs.compactMap(UUID.init(uuidString:))
+        let peopleByID = Dictionary(allPeople.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var seen = Set<UUID>()
+        let ordered = orderedIDs.compactMap { id -> Person? in
+            guard seen.insert(id).inserted else { return nil }
+            return peopleByID[id]
+        }
+
+        if ordered.contains(where: \.isMe) {
+            return ordered
+        }
+
+        return owners + ordered.filter { !$0.isMe }
     }
 
     /// At least one partner is scoped to the session.
@@ -36,15 +58,17 @@ public enum SessionRoster {
     /// Partners that may be picked when attributing a set: the scoped partners
     /// PLUS anyone already attributed to a set in the session (so a set
     /// mistakenly attributed to a now-unscoped partner can still be corrected
-    /// back to "Me"). Sorted by name, owner excluded (the caller adds "Me").
+    /// back to "Me"). Session-scoped partners keep configured order; attributed
+    /// extras are appended by name. Owner excluded (the caller adds "Me").
     public static func attributablePartners(activePartnerIDs: [String],
                                             allPeople: [Person],
                                             includingAttributed attributedIDs: [UUID] = []) -> [Person] {
-        var ids = Set(activePartnerIDs.compactMap(UUID.init(uuidString:)))
-        ids.formUnion(attributedIDs)
-        return allPeople
-            .filter { !$0.isMe && ids.contains($0.id) }
+        let scoped = scopedPartners(activePartnerIDs: activePartnerIDs, allPeople: allPeople)
+        let scopedIDs = Set(scoped.map(\.id))
+        let extras = allPeople
+            .filter { !$0.isMe && attributedIDs.contains($0.id) && !scopedIDs.contains($0.id) }
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        return scoped + extras
     }
 
     /// Whether the session can attribute sets to a partner: either a partner is

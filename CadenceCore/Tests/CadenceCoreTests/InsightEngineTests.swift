@@ -45,6 +45,45 @@ final class InsightEngineTests: XCTestCase {
         XCTAssertEqual(chest?.severity, .info)
     }
 
+    func testPlanAwareInsightsSuppressLowVolumeWhenProjectedPlanMeetsTarget() throws {
+        let now = fixedThursday()
+        let facts = try populatedFacts(chestSets: 4, goal: .hypertrophy, now: now)
+        XCTAssertEqual(InsightEngine.run(facts).first { $0.id == "volume.chest" }?.severity, .attention)
+
+        let insights = PlanAwareInsightEngine.run(
+            completed: facts,
+            plan: WeeklyPlan(days: [], generatedAt: now),
+            plannedStrengthSessions: [plannedBenchSession(sets: 4)],
+            now: now)
+
+        XCTAssertNil(insights.first { $0.id == "volume.chest" })
+        XCTAssertNil(insights.first { $0.id == "behindPlan.chest" })
+    }
+
+    func testPlanAwareInsightsEmitBehindPlanOnlyWhenAdherenceBehind() throws {
+        let now = fixedThursday()
+        let facts = try populatedFacts(chestSets: 4, goal: .hypertrophy, now: now)
+        let plan = WeeklyPlan(days: [], generatedAt: now)
+        let planned = [plannedBenchSession(sets: 4)]
+
+        let onPlan = PlanAwareInsightEngine.run(
+            completed: facts, plan: plan,
+            plannedStrengthSessions: planned,
+            isBehindPlan: false,
+            now: now)
+        XCTAssertNil(onPlan.first { $0.id == "behindPlan.chest" })
+
+        let behind = PlanAwareInsightEngine.run(
+            completed: facts, plan: plan,
+            plannedStrengthSessions: planned,
+            isBehindPlan: true,
+            now: now)
+        let chest = behind.first { $0.id == "behindPlan.chest" }
+        XCTAssertEqual(chest?.severity, .attention)
+        XCTAssertTrue(chest?.message.contains("completed so far") ?? false)
+        XCTAssertTrue(chest?.message.contains("planned this week") ?? false)
+    }
+
     // MARK: ranking
 
     func testAttentionRanksBeforeInfo() throws {
@@ -67,12 +106,17 @@ final class InsightEngineTests: XCTestCase {
 
     /// A facts snapshot with `chestSets` working sets of bench this week (chest
     /// primary), all light (40 kg) so the strength intensity rule can fire.
-    private func populatedFacts(chestSets: Int, goal: TrainingGoal) throws -> TrainingFacts {
+    private func populatedFacts(chestSets: Int, goal: TrainingGoal, now fixedNow: Date? = nil) throws -> TrainingFacts {
         let ctx = try makeContext()
         let cal = Calendar.current
-        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
-        comps.weekday = 5; comps.hour = 12; comps.minute = 0; comps.second = 0
-        let now = cal.date(from: comps) ?? Date()
+        let now: Date
+        if let fixedNow {
+            now = fixedNow
+        } else {
+            var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+            comps.weekday = 5; comps.hour = 12; comps.minute = 0; comps.second = 0
+            now = cal.date(from: comps) ?? Date()
+        }
         let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(
             named: "EngineBench", primaryMuscles: ["chest"], secondaryMuscles: ["triceps"], in: ctx)
@@ -80,5 +124,26 @@ final class InsightEngineTests: XCTestCase {
             _ = try WorkoutRepository.addSet(to: s, exercise: bench, weightKg: 40, reps: 10, rpe: 6, in: ctx)
         }
         return TrainingFacts.make(sessions: [s], now: now, goal: goal, experience: .intermediate)
+    }
+
+    private func fixedThursday() -> Date {
+        var comps = DateComponents()
+        comps.calendar = Calendar(identifier: .gregorian)
+        comps.year = 2026
+        comps.month = 6
+        comps.day = 25
+        comps.hour = 12
+        return comps.date ?? Date(timeIntervalSince1970: 1_782_388_800)
+    }
+
+    private func plannedBenchSession(sets: Int) -> CoachSession {
+        CoachSession(
+            id: "test.strength",
+            kind: .strength,
+            title: "Strength",
+            exercises: [
+                CoachSession.RecommendedExercise(name: "Bench Press", sets: sets)
+            ],
+            launchPayload: .strengthPlan("test"))
     }
 }

@@ -21,17 +21,7 @@ struct SplashView: View {
             Color.black.opacity(0.45)
                 .ignoresSafeArea()
 
-            VStack(spacing: 14) {
-                Text("Cladiron")
-                    .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(.white)
-
-                Text("Your strength coach")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
+            feTile
             .scaleEffect(scale)
             .opacity(opacity)
         }
@@ -48,5 +38,34 @@ struct SplashView: View {
                 }
             }
         }
+    }
+
+    private var feTile: some View {
+        VStack(spacing: 3) {
+            HStack {
+                Text("26")
+                    .font(.caption2.weight(.semibold))
+                Spacer()
+            }
+            Text("Fe")
+                .font(.system(size: 42, weight: .bold, design: .serif))
+                .minimumScaleFactor(0.8)
+            Text("Iron")
+                .font(.caption.weight(.semibold))
+            Text("55.845")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.white.opacity(0.82))
+        }
+        .foregroundStyle(.white)
+        .frame(width: 92, height: 108)
+        .padding(10)
+        .background(.black.opacity(0.32), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.white.opacity(0.82), lineWidth: 1.5)
+        )
+        .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Iron, Fe, atomic number 26, atomic weight 55.845")
     }
 }

@@ -352,13 +352,38 @@ public enum WorkoutRepository {
     /// excluding the given session. Returns sets in logged order.
     public static func lastTimeSets(for exercise: Exercise,
                                     excluding session: WorkoutSession?) -> [SetEntry] {
-        let sets = (exercise.sets ?? []).filter { $0.session?.id != session?.id && $0.isOwnerSet }
+        lastTimeSets(for: exercise, performedBy: nil, excluding: session)
+    }
+
+    /// The most recent prior session's working sets for an exercise by performer,
+    /// excluding the given session. nil / an owner `Person` means the device owner.
+    public static func lastTimeSets(for exercise: Exercise,
+                                    performedBy person: Person?,
+                                    excluding session: WorkoutSession?) -> [SetEntry] {
+        let sets = (exercise.sets ?? []).filter {
+            $0.session?.id != session?.id && set($0, wasPerformedBy: person)
+        }
         // Group by session, pick the most recent session by date.
         let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
         let mostRecent = grouped.values.max { a, b in
             (a.first?.session?.date ?? .distantPast) < (b.first?.session?.date ?? .distantPast)
         }
         return (mostRecent ?? []).sorted { $0.order < $1.order }
+    }
+
+    /// First prior working weight for the performer, mirroring the owner-only
+    /// default used by the logger while allowing partner-attributed history.
+    public static func firstWorkingSetWeight(for exercise: Exercise,
+                                             performedBy person: Person?,
+                                             excluding session: WorkoutSession?) -> Double? {
+        lastTimeSets(for: exercise, performedBy: person, excluding: session)
+            .first { !$0.isWarmup && $0.weight > 0 }?
+            .weight
+    }
+
+    private static func set(_ set: SetEntry, wasPerformedBy person: Person?) -> Bool {
+        guard let person, !person.isMe else { return set.isOwnerSet }
+        return set.performedBy?.id == person.id
     }
 
     /// Current PR value for an exercise under the rule, optionally excluding a
@@ -564,7 +589,7 @@ public enum WorkoutRepository {
         let existing = try context.fetch(FetchDescriptor<CardioWorkout>())
         let known = Set(existing.compactMap { $0.healthKitWorkoutUUID })
         var inserted = 0
-        for w in workouts where !known.contains(w.id) {
+        for w in workouts where !known.contains(w.id) && shouldAutoImport(w) {
             let c = CardioWorkout(type: w.type, start: w.start, end: w.end,
                                    distance: w.distanceMeters, activeEnergy: w.activeEnergyKcal,
                                    avgHeartRate: w.avgHeartRate, maxHeartRate: w.maxHeartRate,
@@ -578,6 +603,21 @@ public enum WorkoutRepository {
         }
         if inserted > 0 { try context.save() }
         return inserted
+    }
+
+    /// Auto-import policy for HealthKit workouts: clear Apple Watch cardio only.
+    /// iPhone-origin workouts, strength, `.other`, and unknown/ambiguous kinds are
+    /// ignored so local history does not fill with false positives.
+    public static func shouldAutoImport(_ workout: IngestedWorkout) -> Bool {
+        guard workout.source == .watch else { return false }
+        guard workout.type != .other else { return false }
+        guard let kind = workout.importedKind else { return false }
+        switch kind {
+        case .running, .walking, .cycling, .swimming, .rowing, .hiit, .boxing:
+            return true
+        case .traditionalStrength, .functionalStrength, .other:
+            return false
+        }
     }
 
     public static func allCardio(_ context: ModelContext) throws -> [CardioWorkout] {

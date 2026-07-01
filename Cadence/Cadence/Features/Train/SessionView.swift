@@ -471,7 +471,7 @@ struct SessionView: View {
                     if healthSaved {
                         Text("Saved to Apple Health")
                             .font(.caption).padding(8)
-                            .background(.thinMaterial, in: Capsule())
+                            .cadenceGlass(in: Capsule(), fallback: .thinMaterial)
                             .accessibilityIdentifier("session.healthSaved")
                     }
                 }
@@ -1327,7 +1327,7 @@ struct SessionView: View {
             Spacer()
         }
         .padding(.horizontal, 12).padding(.vertical, 4)
-        .background(.ultraThinMaterial)
+        .cadenceGlass(in: Rectangle(), fallback: .ultraThinMaterial)
     }
 
     /// Samples the live BPM from the connected BLE strap into `hrSamples` (FR-2.3).

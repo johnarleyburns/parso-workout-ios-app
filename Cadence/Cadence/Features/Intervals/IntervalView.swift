@@ -62,10 +62,7 @@ struct IntervalView: View {
 
             VStack(spacing: 16) {
                 // The chosen protocol's name stays visible the whole workout.
-                Text(plan.name.uppercased())
-                    .font(.title3.weight(.heavy))
-                    .padding(.horizontal, 14).padding(.vertical, 6)
-                    .background(.black.opacity(0.25), in: Capsule())
+                planNamePill
                     .padding(.top, 8)
                     .accessibilityIdentifier("interval.planName")
                 Spacer()
@@ -127,6 +124,18 @@ struct IntervalView: View {
     }
 
     // MARK: Colour palette (label + icon also convey meaning, NFR-2)
+
+    @ViewBuilder
+    private var planNamePill: some View {
+        let pill = Text(plan.name.uppercased())
+            .font(.title3.weight(.heavy))
+            .padding(.horizontal, 14).padding(.vertical, 6)
+        if GlassFeature.isEnabled, #available(iOS 26.0, *) {
+            pill.glassEffect(.regular, in: Capsule())
+        } else {
+            pill.background(.black.opacity(0.25), in: Capsule())
+        }
+    }
 
     private var background: Color {
         // Color-blind-safe palette swaps green/red for blue/purple (decision #20);

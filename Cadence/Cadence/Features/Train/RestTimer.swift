@@ -69,7 +69,7 @@ struct RestTimerBar: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(.thinMaterial, in: Capsule())
+        .cadenceGlass(in: Capsule(), fallback: .thinMaterial)
         .overlay(alignment: .bottom) {
             ProgressView(value: model.progress)
                 .padding(.horizontal, 32)

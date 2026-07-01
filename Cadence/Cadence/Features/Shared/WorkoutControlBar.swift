@@ -39,39 +39,34 @@ struct WorkoutControlBar: View {
 
     var body: some View {
         VStack(spacing: 12) {
-        if let onCoolDown {
-            Button(action: onCoolDown) {
-                Label("Cool Down", systemImage: "figure.cooldown")
-                    .frame(maxWidth: .infinity, minHeight: 56)
+            if let onCoolDown {
+                Button(action: onCoolDown) {
+                    Label("Cool Down", systemImage: "figure.cooldown")
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                }
+                .cadenceGlassButton(tint: .teal)
+                .accessibilityIdentifier("\(idPrefix).coolDown")
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .tint(.teal)
-            .accessibilityIdentifier("\(idPrefix).coolDown")
-        }
-        HStack(spacing: 16) {
-            Button(action: onPauseToggle) {
-                Label(isPaused ? "Resume" : "Pause",
-                      systemImage: isPaused ? "play.fill" : "pause.fill")
-                    .frame(maxWidth: .infinity, minHeight: 56)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .tint(pauseTint)
-            .accessibilityIdentifier("\(idPrefix).pause")
+            HStack(spacing: 16) {
+                Button(action: onPauseToggle) {
+                    Label(isPaused ? "Resume" : "Pause",
+                          systemImage: isPaused ? "play.fill" : "pause.fill")
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                }
+                .cadenceGlassButton(tint: pauseTint)
+                .accessibilityIdentifier("\(idPrefix).pause")
 
-            Button(role: .destructive) {
-                if confirmEnd { confirming = true } else { onEnd() }
-            } label: {
-                Label(endTitle, systemImage: "stop.fill")
-                    .frame(maxWidth: .infinity, minHeight: 56)
+                Button(role: .destructive) {
+                    if confirmEnd { confirming = true } else { onEnd() }
+                } label: {
+                    Label(endTitle, systemImage: "stop.fill")
+                        .frame(maxWidth: .infinity, minHeight: 56)
+                }
+                .cadenceGlassButton(prominent: true, tint: endTint)
+                .accessibilityIdentifier("\(idPrefix).end")
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .tint(endTint)
-            .accessibilityIdentifier("\(idPrefix).end")
         }
-        }
+        .glassGroup()
         .confirmationDialog(confirmTitle, isPresented: $confirming, titleVisibility: .visible) {
             if let onCoolDown {
                 Button("Cool down, then finish") { onCoolDown() }

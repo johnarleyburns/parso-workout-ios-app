@@ -34,7 +34,7 @@ struct ContributionToast: View {
                 .padding(.top, 2)
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .cadenceGlass(in: RoundedRectangle(cornerRadius: 16), fallback: .regularMaterial)
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(.quaternary))
         .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
         .padding(.horizontal, 16)

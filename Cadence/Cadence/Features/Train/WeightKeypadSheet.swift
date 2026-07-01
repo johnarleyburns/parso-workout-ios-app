@@ -146,19 +146,7 @@ struct WeightKeypadSheet: View {
             }
             // Record stays pinned and hittable regardless of keypad height.
             .safeAreaInset(edge: .bottom) {
-                Button {
-                    let kg = plateRounding ? UnitEntry.plateRounded(kg: weightKg, unit: unit) : weightKg
-                    onSave(kg, reps, usesBodyweight, selectedPerson)
-                    dismiss()
-                } label: {
-                    Label("Record", systemImage: "checkmark").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent).controlSize(.large)
-                .disabled(!canSave)
-                .accessibilityIdentifier("set.save")
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-                .background(.bar)
+                recordFooter
             }
             .navigationTitle(exerciseName)
             .navigationBarTitleDisplayMode(.inline)
@@ -167,6 +155,28 @@ struct WeightKeypadSheet: View {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("set.cancel")
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var recordFooter: some View {
+        let footer = Button {
+            let kg = plateRounding ? UnitEntry.plateRounded(kg: weightKg, unit: unit) : weightKg
+            onSave(kg, reps, usesBodyweight, selectedPerson)
+            dismiss()
+        } label: {
+            Label("Record", systemImage: "checkmark").frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent).controlSize(.large)
+        .disabled(!canSave)
+        .accessibilityIdentifier("set.save")
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+
+        if GlassFeature.isEnabled, #available(iOS 26.0, *) {
+            footer.glassEffect(.regular, in: Rectangle())
+        } else {
+            footer.background(.bar)
         }
     }
 

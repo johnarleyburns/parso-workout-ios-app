@@ -23,6 +23,31 @@ extension View {
         }
     }
 
+    /// Subtle dashboard glass for grouped surfaces. The tinted wash and hairline
+    /// keep the effect visible over plain system backgrounds without turning every
+    /// row into a glass control.
+    @ViewBuilder
+    func cadenceGlassCard<S: Shape>(
+        in shape: S = RoundedRectangle(cornerRadius: 16, style: .continuous),
+        tint: Color? = nil,
+        interactive: Bool = false,
+        fallback: Material = .thinMaterial
+    ) -> some View {
+        let accent = tint ?? .primary
+        let fillOpacity = tint == nil ? 0.025 : 0.055
+        let strokeOpacity = tint == nil ? 0.12 : 0.22
+
+        if GlassFeature.isEnabled, #available(iOS 26.0, *) {
+            background(accent.opacity(fillOpacity), in: shape)
+                .glassEffect(GlassFactory.regular(tint: tint?.opacity(0.35), interactive: interactive), in: shape)
+                .overlay(shape.stroke(accent.opacity(strokeOpacity), lineWidth: 0.75))
+        } else {
+            background(accent.opacity(fillOpacity), in: shape)
+                .background(fallback, in: shape)
+                .overlay(shape.stroke(accent.opacity(strokeOpacity), lineWidth: 0.75))
+        }
+    }
+
     /// Liquid Glass on iOS 26+, otherwise the call site's original non-material
     /// background style. Use this for existing solid/gradient entry controls.
     @ViewBuilder
@@ -98,6 +123,25 @@ extension View {
                 .controlSize(.large)
                 .tint(tint)
         }
+    }
+}
+
+struct CadenceGlassBackdrop: View {
+    var tint: Color = .green
+
+    var body: some View {
+        ZStack {
+            Color(.systemGroupedBackground)
+            LinearGradient(
+                colors: [
+                    tint.opacity(0.09),
+                    Color.teal.opacity(0.035),
+                    Color.clear
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing)
+        }
+        .ignoresSafeArea()
     }
 }
 

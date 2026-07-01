@@ -226,8 +226,9 @@ struct CoachDecisionCardView: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(stateColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(stateColor.opacity(0.35), lineWidth: 1.5))
+        .cadenceGlassCard(
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous),
+            tint: stateColor)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("coach.card")
     }

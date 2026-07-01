@@ -38,6 +38,7 @@ struct TrainingProgressView: View {
                 }
                 .padding()
             }
+            .background { CadenceGlassBackdrop(tint: .blue) }
             .navigationTitle("Progress")
             .navigationDestination(for: AssessmentKind.self) { AssessmentDetailView(kind: $0) }
             .navigationDestination(for: ProgressRoute.self) { _ in HistoryView(path: $path) }
@@ -74,7 +75,7 @@ struct TrainingProgressView: View {
         }
         .padding(compact ? 13 : 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(.quaternary, lineWidth: 0.5))
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private func emptyNote(_ text: String) -> some View {
@@ -92,7 +93,7 @@ struct TrainingProgressView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 13, style: .continuous), tint: .blue)
         .accessibilityIdentifier("progress.scienceBanner")
     }
 

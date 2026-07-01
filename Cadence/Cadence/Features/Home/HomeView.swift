@@ -253,6 +253,7 @@ struct HomeView: View {
                 }
                 .padding()
             }
+            .background { CadenceGlassBackdrop(tint: .green) }
             .navigationTitle("Today")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -588,7 +589,7 @@ struct HomeView: View {
             .accessibilityIdentifier("home.yourPlan")
         }
         .padding()
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
         .accessibilityIdentifier("home.plannedRestOfWeek")
     }
 
@@ -637,7 +638,7 @@ struct HomeView: View {
                 }
             }
             .padding()
-            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+            .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .pink)
         }
     }
 
@@ -680,7 +681,7 @@ struct HomeView: View {
             .accessibilityIdentifier("home.train")
         }
         .padding()
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .teal)
         .accessibilityIdentifier("home.whatYouDid")
     }
 

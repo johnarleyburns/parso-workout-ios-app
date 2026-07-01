@@ -68,6 +68,8 @@ struct TestsView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { CadenceGlassBackdrop(tint: .blue) }
             .navigationTitle("Tests")
             .accessibilityIdentifier("tests.assessments.list")
         }
@@ -88,7 +90,10 @@ struct TestsView: View {
                     baselineContent
                 }
             }
-            .padding(.vertical, 4)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .blue)
+            .listRowBackground(Color.clear)
         }
     }
 

@@ -64,10 +64,14 @@ struct HomeView: View {
     }
     private var coachInsights: [Insight] {
         _ = historyRefreshToken
+        let decision = baseCoachDecision
+        let optimized = optimizedCoachPlan(for: decision)
         return PlanAwareInsightEngine.run(
             completed: coachFacts,
             plan: coachPlan,
-            plannedStrengthSessions: plannedStrengthSessionsForInsights,
+            plannedStrengthSessions: optimized.plannedStrengthSessions,
+            unresolvedDeficits: optimized.unresolvedDeficits,
+            diagnostics: optimized.diagnostics,
             isBehindPlan: coachInsightsBehindPlan,
             now: Date())
     }
@@ -90,7 +94,7 @@ struct HomeView: View {
         return RecommendationEngine.top(coachFacts)
     }
 
-    private var coachDecision: CoachDecision {
+    private var baseCoachDecision: CoachDecision {
         _ = historyRefreshToken
         let events = buildTrainingEvents()
         let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
@@ -105,6 +109,11 @@ struct HomeView: View {
                                          hasPainConcern: hasPain)
     }
 
+    private var coachDecision: CoachDecision {
+        let decision = baseCoachDecision
+        return decisionByApplyingOptimizedStrength(decision, optimizedPlan: optimizedCoachPlan(for: decision))
+    }
+
     private var coachPlan: WeeklyPlan {
         let facts = CoachFacts.make(
             from: buildTrainingEvents(), goal: settings.trainingGoal,
@@ -112,33 +121,77 @@ struct HomeView: View {
         return WeeklyPlan.generate(from: facts, schedulePreferences: settings.coachSchedulePreferences)
     }
 
-    private var plannedStrengthSessionsForInsights: [CoachSession] {
-        let decision = coachDecision
-        let facts = CoachFacts.make(
-            from: buildTrainingEvents(), goal: settings.trainingGoal,
-            experience: settings.experienceLevel, formula: settings.formula)
-        let candidates = CoachSession.candidates(for: facts,
-                                                 schedulePreferences: settings.coachSchedulePreferences)
-        let fallbackStrength = ([decision.primary] + decision.todayPlannedRecommendations + decision.alternatives + candidates)
-            .first { $0.kind == .strength && !($0.exercises ?? []).isEmpty }
-
-        var planned = decision.todayPlannedRecommendations.filter { $0.kind == .strength }
-        if planned.isEmpty, decision.primary.kind == .strength {
-            planned.append(decision.primary)
-        }
-
-        let futureStrengthCount = coachPlan.remainingCalendarWeekDays.reduce(0) { count, day in
-            count + day.sessions.filter { $0.kind == .strength }.count
-        }
-        if let fallbackStrength {
-            planned.append(contentsOf: Array(repeating: fallbackStrength, count: futureStrengthCount))
-        }
-        return planned
-    }
-
     private var coachInsightsBehindPlan: Bool {
         if case .offPlan = coachDecision.planAdherence { return true }
         return false
+    }
+
+    private func optimizedCoachPlan(for decision: CoachDecision) -> OptimizedCoachPlan {
+        let events = buildTrainingEvents()
+        let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
+                                    experience: settings.experienceLevel,
+                                    formula: settings.formula)
+        let plan = WeeklyPlan.generate(from: facts, schedulePreferences: settings.coachSchedulePreferences)
+        let candidates = strengthOptimizationCandidates(for: decision, facts: facts)
+        return CoachPlanOptimizer.optimize(
+            trainingFacts: coachFacts,
+            coachFacts: facts,
+            weeklyPlan: plan,
+            schedulePreferences: settings.coachSchedulePreferences,
+            candidates: candidates)
+    }
+
+    private func strengthOptimizationCandidates(for decision: CoachDecision,
+                                                facts: CoachFacts) -> [CoachSession] {
+        let engineCandidates = CoachSession.candidates(for: facts,
+                                                       schedulePreferences: settings.coachSchedulePreferences)
+        var seen = Set<String>()
+        return ([decision.primary] + decision.todayPlannedRecommendations + decision.alternatives + engineCandidates)
+            .filter { session in
+                guard session.kind == .strength, !((session.exercises ?? []).isEmpty) else { return false }
+                return seen.insert(session.id).inserted
+            }
+    }
+
+    private func decisionByApplyingOptimizedStrength(_ decision: CoachDecision,
+                                                     optimizedPlan: OptimizedCoachPlan) -> CoachDecision {
+        guard !optimizedPlan.plannedStrengthSessions.isEmpty else { return decision }
+
+        var nextOptimized = optimizedPlan.plannedStrengthSessions.makeIterator()
+        var optimizedToday: [CoachSession] = []
+        for session in decision.todayPlannedRecommendations {
+            if session.kind == .strength, let replacement = nextOptimized.next() {
+                optimizedToday.append(replacement)
+            } else {
+                optimizedToday.append(session)
+            }
+        }
+
+        var primary = decision.primary
+        if primary.kind == .strength {
+            primary = optimizedToday.first(where: { $0.kind == .strength })
+                ?? optimizedPlan.plannedStrengthSessions.first
+                ?? primary
+        } else if optimizedToday.count == 1, let only = optimizedToday.first, only.kind == .strength {
+            primary = only
+        }
+
+        let citationIds = Array(Set(decision.citationIds + primary.citationIds)).sorted()
+        return CoachDecision(
+            id: decision.id,
+            generatedAt: decision.generatedAt,
+            primary: primary,
+            alternatives: decision.alternatives,
+            deferred: decision.deferred,
+            warnings: decision.warnings,
+            observedFacts: decision.observedFacts,
+            weeklyBalance: decision.weeklyBalance,
+            confidence: decision.confidence,
+            citationIds: citationIds,
+            planAdherence: decision.planAdherence,
+            todayCompletedMatches: decision.todayCompletedMatches,
+            scoreBreakdowns: decision.scoreBreakdowns,
+            todayPlannedRecommendations: optimizedToday)
     }
 
     private var addOnRecommendation: CoachAddOnRecommendation {

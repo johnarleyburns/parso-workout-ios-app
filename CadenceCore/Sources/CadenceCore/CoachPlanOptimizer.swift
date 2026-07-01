@@ -1,0 +1,736 @@
+import Foundation
+
+public struct OptimizedCoachPlan: Sendable, Equatable {
+    public let plannedStrengthSessions: [CoachSession]
+    public let unresolvedDeficits: [BodyPart: Double]
+    public let diagnostics: [PlanningDiagnostic]
+
+    public init(plannedStrengthSessions: [CoachSession],
+                unresolvedDeficits: [BodyPart: Double] = [:],
+                diagnostics: [PlanningDiagnostic] = []) {
+        self.plannedStrengthSessions = plannedStrengthSessions
+        self.unresolvedDeficits = unresolvedDeficits
+        self.diagnostics = diagnostics
+    }
+
+    public static let empty = OptimizedCoachPlan(plannedStrengthSessions: [])
+}
+
+public struct PlanningDiagnostic: Sendable, Equatable, Identifiable {
+    public enum Kind: String, Sendable, Equatable {
+        case plannedExistingSlot
+        case plannedExtraSlot
+        case reshapedCandidate
+        case synthesizedSession
+        case skippedRestDay
+        case recoveryBlocked
+        case noStrengthSlots
+        case unresolvedDeficit
+    }
+
+    public let id: String
+    public let kind: Kind
+    public let message: String
+    public let part: BodyPart?
+    public let value: Double?
+
+    public init(id: String, kind: Kind, message: String,
+                part: BodyPart? = nil, value: Double? = nil) {
+        self.id = id
+        self.kind = kind
+        self.message = message
+        self.part = part
+        self.value = value
+    }
+}
+
+public enum CoachPlanOptimizer {
+    private static let maxSetsPerExercise = 4
+    private static let maxExercisesPerSession = 5
+    private static let maxTotalSetsPerSession = 16
+    private static let maxExtraStrengthSlots = 1
+
+    private struct PlanningSlot: Equatable {
+        let id: String
+        let date: Date
+        let isExtra: Bool
+    }
+
+    private struct CandidatePlan {
+        let session: CoachSession
+        let remainingDeficits: [BodyPart: Double]
+        let score: CandidateScore
+    }
+
+    private struct CandidateScore: Comparable {
+        let remainingParts: Int
+        let remainingMagnitude: Double
+        let totalSets: Int
+        let overMRV: Double
+        let unfamiliarExercises: Int
+        let sessionID: String
+
+        static func < (lhs: CandidateScore, rhs: CandidateScore) -> Bool {
+            if lhs.remainingParts != rhs.remainingParts { return lhs.remainingParts < rhs.remainingParts }
+            if lhs.remainingMagnitude != rhs.remainingMagnitude { return lhs.remainingMagnitude < rhs.remainingMagnitude }
+            if lhs.totalSets != rhs.totalSets { return lhs.totalSets < rhs.totalSets }
+            if lhs.overMRV != rhs.overMRV { return lhs.overMRV < rhs.overMRV }
+            if lhs.unfamiliarExercises != rhs.unfamiliarExercises { return lhs.unfamiliarExercises < rhs.unfamiliarExercises }
+            return lhs.sessionID < rhs.sessionID
+        }
+    }
+
+    public static func optimize(trainingFacts: TrainingFacts,
+                                coachFacts: CoachFacts,
+                                weeklyPlan: WeeklyPlan,
+                                schedulePreferences: CoachSchedulePreferences,
+                                candidates candidateSessions: [CoachSession]) -> OptimizedCoachPlan {
+        let lowParts = lowVolumeAttentionParts(in: trainingFacts)
+        let strengthCandidates = uniqueStrengthCandidates(candidateSessions)
+        var diagnostics: [PlanningDiagnostic] = []
+
+        var slots = remainingStrengthSlots(in: weeklyPlan,
+                                           facts: coachFacts,
+                                           schedulePreferences: schedulePreferences,
+                                           diagnostics: &diagnostics)
+
+        if slots.isEmpty {
+            diagnostics.append(PlanningDiagnostic(
+                id: "noStrengthSlots",
+                kind: .noStrengthSlots,
+                message: "No eligible remaining strength slots were available in this week's plan."))
+        }
+
+        var projected = trainingFacts.weeklySetsByPart
+        var planned: [CoachSession] = []
+        var deficits = lowDeficits(for: lowParts, projected: projected, experience: trainingFacts.experience)
+
+        plan(slots: slots,
+             into: &planned,
+             projected: &projected,
+             deficits: &deficits,
+             lowParts: lowParts,
+             trainingFacts: trainingFacts,
+             coachFacts: coachFacts,
+             strengthCandidates: strengthCandidates,
+             diagnostics: &diagnostics)
+
+        if !deficits.isEmpty, schedulePreferences.allowsTwoADays {
+            let extras = extraStrengthSlots(in: weeklyPlan,
+                                           existingSlots: slots,
+                                           facts: coachFacts,
+                                           schedulePreferences: schedulePreferences,
+                                           diagnostics: &diagnostics)
+            slots.append(contentsOf: extras)
+            plan(slots: extras,
+                 into: &planned,
+                 projected: &projected,
+                 deficits: &deficits,
+                 lowParts: lowParts,
+                 trainingFacts: trainingFacts,
+                 coachFacts: coachFacts,
+                 strengthCandidates: strengthCandidates,
+                 diagnostics: &diagnostics)
+        }
+
+        for (part, value) in deficits.sorted(by: partDeficitSort) {
+            diagnostics.append(PlanningDiagnostic(
+                id: "unresolved.\(part.rawValue)",
+                kind: .unresolvedDeficit,
+                message: "\(part.displayName) remains \(Format.sets(value)) sets below the starting range after safe planned work.",
+                part: part,
+                value: value))
+        }
+
+        return OptimizedCoachPlan(
+            plannedStrengthSessions: planned,
+            unresolvedDeficits: deficits,
+            diagnostics: diagnostics)
+    }
+
+    private static func plan(slots: [PlanningSlot],
+                             into planned: inout [CoachSession],
+                             projected: inout [BodyPart: Double],
+                             deficits: inout [BodyPart: Double],
+                             lowParts: Set<BodyPart>,
+                             trainingFacts: TrainingFacts,
+                             coachFacts: CoachFacts,
+                             strengthCandidates: [CoachSession],
+                             diagnostics: inout [PlanningDiagnostic]) {
+        for slot in slots {
+            let choice = chooseSession(
+                for: slot,
+                deficits: deficits,
+                projected: projected,
+                trainingFacts: trainingFacts,
+                coachFacts: coachFacts,
+                strengthCandidates: strengthCandidates)
+            planned.append(choice.session)
+            let added = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [choice.session])
+            projected = projected.merging(added) { $0 + $1 }
+            deficits = lowDeficits(for: lowParts, projected: projected, experience: trainingFacts.experience)
+
+            let kind: PlanningDiagnostic.Kind = slot.isExtra ? .plannedExtraSlot : .plannedExistingSlot
+            diagnostics.append(PlanningDiagnostic(
+                id: "\(kind.rawValue).\(slot.id)",
+                kind: kind,
+                message: "Planned \(choice.session.title) for \(slot.id)."))
+
+            if choice.session.id.contains(".synthetic.") {
+                diagnostics.append(PlanningDiagnostic(
+                    id: "synthesized.\(slot.id)",
+                    kind: .synthesizedSession,
+                    message: "Synthesized a focused strength session for remaining volume deficits."))
+            } else if choice.session.id.contains(".optimized.") {
+                diagnostics.append(PlanningDiagnostic(
+                    id: "reshaped.\(slot.id)",
+                    kind: .reshapedCandidate,
+                    message: "Reshaped an existing strength candidate to better cover projected deficits."))
+            }
+        }
+    }
+
+    private static func chooseSession(for slot: PlanningSlot,
+                                      deficits: [BodyPart: Double],
+                                      projected: [BodyPart: Double],
+                                      trainingFacts: TrainingFacts,
+                                      coachFacts: CoachFacts,
+                                      strengthCandidates: [CoachSession]) -> CandidatePlan {
+        let candidatePool = strengthCandidates.isEmpty ? [syntheticBaseSession()] : strengthCandidates
+        let options = candidatePool.map {
+            optimizedVersion(of: $0,
+                             slot: slot,
+                             deficits: deficits,
+                             projected: projected,
+                             trainingFacts: trainingFacts,
+                             coachFacts: coachFacts)
+        } + [
+            optimizedVersion(of: syntheticBaseSession(),
+                             slot: slot,
+                             deficits: deficits,
+                             projected: projected,
+                             trainingFacts: trainingFacts,
+                             coachFacts: coachFacts)
+        ]
+
+        return options.min { $0.score < $1.score } ?? CandidatePlan(
+            session: materialize(syntheticBaseSession(), slot: slot,
+                                 exercises: defaultExercises(for: deficits,
+                                                             facts: trainingFacts,
+                                                             coachFacts: coachFacts,
+                                                             slot: slot),
+                                 targetedParts: Set(deficits.keys), synthesized: true),
+            remainingDeficits: deficits,
+            score: CandidateScore(remainingParts: deficits.count,
+                                  remainingMagnitude: deficits.values.reduce(0, +),
+                                  totalSets: 0,
+                                  overMRV: 0,
+                                  unfamiliarExercises: 0,
+                                  sessionID: "strength.synthetic"))
+    }
+
+    private static func optimizedVersion(of base: CoachSession,
+                                         slot: PlanningSlot,
+                                         deficits: [BodyPart: Double],
+                                         projected: [BodyPart: Double],
+                                         trainingFacts: TrainingFacts,
+                                         coachFacts: CoachFacts) -> CandidatePlan {
+        let originalNames = Set((base.exercises ?? []).map(\.name))
+        let exercises = reshapedExercises(from: base.exercises ?? [],
+                                          deficits: deficits,
+                                          projected: projected,
+                                          trainingFacts: trainingFacts,
+                                          coachFacts: coachFacts,
+                                          slot: slot)
+        let added = PlanAwareWeeklyAccounting.plannedSetsByPart(from: exercises)
+        let nextProjected = projected.merging(added) { $0 + $1 }
+        let remaining = lowDeficits(for: Set(deficits.keys),
+                                    projected: nextProjected,
+                                    experience: trainingFacts.experience)
+        let totalSets = exercises.reduce(0) { $0 + max(1, $1.sets ?? 3) }
+        let unfamiliar = exercises.filter { !originalNames.contains($0.name) }.count
+        let session = materialize(base,
+                                  slot: slot,
+                                  exercises: exercises,
+                                  targetedParts: Set(deficits.keys),
+                                  synthesized: base.id == syntheticBaseSession().id)
+        let score = CandidateScore(
+            remainingParts: remaining.count,
+            remainingMagnitude: remaining.values.reduce(0, +),
+            totalSets: totalSets,
+            overMRV: overMRVAmount(projected: nextProjected, experience: trainingFacts.experience),
+            unfamiliarExercises: unfamiliar,
+            sessionID: session.id)
+        return CandidatePlan(session: session, remainingDeficits: remaining, score: score)
+    }
+
+    private static func reshapedExercises(from baseExercises: [CoachSession.RecommendedExercise],
+                                          deficits: [BodyPart: Double],
+                                          projected: [BodyPart: Double],
+                                          trainingFacts: TrainingFacts,
+                                          coachFacts: CoachFacts,
+                                          slot: PlanningSlot) -> [CoachSession.RecommendedExercise] {
+        guard !deficits.isEmpty else {
+            let preserved = baseExercises
+                .filter { isExerciseEligible($0, on: slot.date, facts: coachFacts) }
+                .prefix(maxExercisesPerSession)
+                .map { exercise in
+                    copy(exercise,
+                         sets: min(maxSetsPerExercise, max(1, exercise.sets ?? 3)),
+                         goal: trainingFacts.goal)
+                }
+            if !preserved.isEmpty { return Array(preserved) }
+            return ["Back Squat", "Bench Press", "Barbell Row", "Romanian Deadlift"]
+                .map { CoachSession.RecommendedExercise(name: $0, sets: 3) }
+        }
+
+        var selected: [CoachSession.RecommendedExercise] = []
+        var sessionSets = 0
+        var runningProjected = projected
+
+        let usefulBase = baseExercises
+            .filter { exerciseHelps($0, deficits: deficits) }
+            .sorted { a, b in
+                let ascore = exerciseDeficitScore(a, deficits: deficits)
+                let bscore = exerciseDeficitScore(b, deficits: deficits)
+                if ascore != bscore { return ascore > bscore }
+                return a.name < b.name
+            }
+
+        for exercise in usefulBase {
+            guard selected.count < maxExercisesPerSession else { break }
+            guard isExerciseEligible(exercise, on: slot.date, facts: coachFacts) else { continue }
+            let sets = plannedSets(for: exercise,
+                                   deficits: lowDeficits(for: Set(deficits.keys),
+                                                         projected: runningProjected,
+                                                         experience: trainingFacts.experience),
+                                   projected: runningProjected,
+                                   experience: trainingFacts.experience)
+            guard sets > 0, sessionSets + sets <= maxTotalSetsPerSession else { continue }
+            let planned = copy(exercise, sets: sets, goal: trainingFacts.goal)
+            selected.append(planned)
+            sessionSets += sets
+            runningProjected = runningProjected.merging(
+                PlanAwareWeeklyAccounting.plannedSetsByPart(from: [planned])) { $0 + $1 }
+        }
+
+        var remaining = lowDeficits(for: Set(deficits.keys),
+                                    projected: runningProjected,
+                                    experience: trainingFacts.experience)
+        while !remaining.isEmpty,
+              selected.count < maxExercisesPerSession,
+              sessionSets < maxTotalSetsPerSession {
+            guard let part = remaining.sorted(by: partDeficitSort).first?.key,
+                  let next = bestExercise(for: part,
+                                          existing: selected + baseExercises,
+                                          facts: trainingFacts,
+                                          coachFacts: coachFacts,
+                                          slot: slot) else {
+                break
+            }
+            if selected.contains(where: { $0.name == next.name }) {
+                break
+            }
+            let sets = plannedSets(for: next,
+                                   deficits: remaining,
+                                   projected: runningProjected,
+                                   experience: trainingFacts.experience)
+            guard sets > 0, sessionSets + sets <= maxTotalSetsPerSession else { break }
+            let planned = copy(next, sets: sets, goal: trainingFacts.goal)
+            selected.append(planned)
+            sessionSets += sets
+            runningProjected = runningProjected.merging(
+                PlanAwareWeeklyAccounting.plannedSetsByPart(from: [planned])) { $0 + $1 }
+            remaining = lowDeficits(for: Set(deficits.keys),
+                                    projected: runningProjected,
+                                    experience: trainingFacts.experience)
+        }
+
+        if selected.isEmpty {
+            let fallback = defaultExercises(for: deficits,
+                                            facts: trainingFacts,
+                                            coachFacts: coachFacts,
+                                            slot: slot)
+                .filter { isExerciseEligible($0, on: slot.date, facts: coachFacts) }
+                .prefix(maxExercisesPerSession)
+            selected = Array(fallback)
+        }
+
+        return selected.sorted { a, b in
+            let apart = primarySortPart(for: a)
+            let bpart = primarySortPart(for: b)
+            if apart != bpart { return partIndex(apart) < partIndex(bpart) }
+            return a.name < b.name
+        }
+    }
+
+    private static func plannedSets(for exercise: CoachSession.RecommendedExercise,
+                                    deficits: [BodyPart: Double],
+                                    projected: [BodyPart: Double],
+                                    experience: ExperienceLevel) -> Int {
+        guard !deficits.isEmpty else { return min(maxSetsPerExercise, max(2, exercise.sets ?? 3)) }
+        let perSet = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [copy(exercise, sets: 1)])
+        guard perSet.contains(where: { deficits[$0.key] != nil && $0.value > 0 }) else { return 0 }
+
+        var needed = 1
+        for (part, amount) in deficits {
+            guard let contribution = perSet[part], contribution > 0 else { continue }
+            needed = max(needed, Int(ceil(amount / contribution)))
+        }
+
+        var safe = maxSetsPerExercise
+        for (part, contribution) in perSet where contribution > 0 {
+            let bands = VolumeLandmarks.bands(for: part, experience: experience)
+            let remaining = bands.mrv - (projected[part] ?? 0)
+            safe = min(safe, Int(floor(max(0, remaining) / contribution)))
+        }
+
+        let desired = max(exercise.sets ?? 0, needed)
+        return min(maxSetsPerExercise, max(0, safe), max(1, desired))
+    }
+
+    private static func bestExercise(for part: BodyPart,
+                                     existing: [CoachSession.RecommendedExercise],
+                                     facts: TrainingFacts,
+                                     coachFacts: CoachFacts,
+                                     slot: PlanningSlot) -> CoachSession.RecommendedExercise? {
+        let existingOptions = existing
+            .filter { partsCovered(by: $0).contains(part) }
+            .filter { isExerciseEligible($0, on: slot.date, facts: coachFacts) }
+            .sorted { $0.name < $1.name }
+        if let first = existingOptions.first {
+            return copy(first, sets: nil, goal: facts.goal)
+        }
+
+        let preferred = CoachSession.mostTrainedExercises(facts: coachFacts)
+        for pattern in preferredPatternOrder(for: part) {
+            if let name = preferred[pattern],
+               partsCovered(by: CoachSession.RecommendedExercise(name: name)).contains(part) {
+                let exercise = CoachSession.RecommendedExercise(name: name)
+                if isExerciseEligible(exercise, on: slot.date, facts: coachFacts) {
+                    return copy(exercise, sets: nil, goal: facts.goal)
+                }
+            }
+        }
+
+        return defaultExerciseNames(for: part)
+            .map { CoachSession.RecommendedExercise(name: $0) }
+            .first { isExerciseEligible($0, on: slot.date, facts: coachFacts) }
+            .map { copy($0, sets: nil, goal: facts.goal) }
+    }
+
+    private static func defaultExercises(for deficits: [BodyPart: Double],
+                                         facts: TrainingFacts,
+                                         coachFacts: CoachFacts,
+                                         slot: PlanningSlot) -> [CoachSession.RecommendedExercise] {
+        deficits.sorted(by: partDeficitSort).compactMap { part, _ in
+            return bestExercise(for: part, existing: [], facts: facts, coachFacts: coachFacts, slot: slot)
+        }
+    }
+
+    private static func materialize(_ base: CoachSession,
+                                    slot: PlanningSlot,
+                                    exercises: [CoachSession.RecommendedExercise],
+                                    targetedParts: Set<BodyPart>,
+                                    synthesized: Bool) -> CoachSession {
+        let parts = targetedParts.sorted { partIndex($0) < partIndex($1) }
+        let title: String
+        if parts.isEmpty {
+            title = base.title
+        } else if parts.count == 1 {
+            title = "\(parts[0].displayName) focus"
+        } else {
+            title = "Strength focus"
+        }
+
+        let subtitle: String
+        if parts.isEmpty {
+            subtitle = base.subtitle
+        } else {
+            let names = parts.prefix(3).map { $0.displayName.lowercased() }.joined(separator: ", ")
+            subtitle = "\(names) volume · \(exercises.reduce(0) { $0 + max(1, $1.sets ?? 3) }) planned sets"
+        }
+
+        let idPrefix = synthesized ? "strength.synthetic" : base.id
+        return CoachSession(
+            id: "\(idPrefix).optimized.\(stableID(slot.id))",
+            kind: .strength,
+            title: title,
+            subtitle: subtitle,
+            durationMinutes: max(30, min(60, exercises.reduce(0) { $0 + max(1, $1.sets ?? 3) } * 4)),
+            exercises: exercises,
+            modality: nil,
+            intensity: nil,
+            trainingLoadTags: Array(Set(base.trainingLoadTags + ["strength", "planned"])).sorted(),
+            citationIds: base.citationIds.isEmpty
+                ? CitationRegistry.citationPool(for: .strengthIntensity).citationIds
+                : base.citationIds,
+            launchPayload: .strengthPlan("optimized.\(stableID(slot.id))"),
+            systemsTrained: base.systemsTrained.isEmpty ? [.maximalStrength, .hypertrophy] : base.systemsTrained,
+            evidenceCategory: base.evidenceCategory ?? .strengthIntensity)
+    }
+
+    private static func syntheticBaseSession() -> CoachSession {
+        CoachSession(
+            id: "strength.synthetic",
+            kind: .strength,
+            title: "Strength focus",
+            subtitle: "Targeted volume",
+            durationMinutes: 45,
+            exercises: [],
+            trainingLoadTags: ["strength", "planned"],
+            citationIds: CitationRegistry.citationPool(for: .strengthIntensity).citationIds,
+            launchPayload: .strengthPlan("optimized"),
+            systemsTrained: [.maximalStrength, .hypertrophy],
+            evidenceCategory: .strengthIntensity)
+    }
+
+    private static func remainingStrengthSlots(in plan: WeeklyPlan,
+                                               facts: CoachFacts,
+                                               schedulePreferences: CoachSchedulePreferences,
+                                               diagnostics: inout [PlanningDiagnostic]) -> [PlanningSlot] {
+        plan.remainingCalendarWeekDays.flatMap { day -> [PlanningSlot] in
+            let strengthSessions = day.sessions.filter { $0.kind == .strength }
+            guard !strengthSessions.isEmpty else { return [] }
+            guard hardStrengthAllowed(on: day.date, facts: facts, schedulePreferences: schedulePreferences) else {
+                diagnostics.append(PlanningDiagnostic(
+                    id: "recoveryBlocked.\(day.id)",
+                    kind: .recoveryBlocked,
+                    message: "Skipped a planned strength slot that was not recovery eligible."))
+                return []
+            }
+            return strengthSessions.map { PlanningSlot(id: $0.id, date: day.date, isExtra: false) }
+        }
+    }
+
+    private static func extraStrengthSlots(in plan: WeeklyPlan,
+                                           existingSlots: [PlanningSlot],
+                                           facts: CoachFacts,
+                                           schedulePreferences: CoachSchedulePreferences,
+                                           diagnostics: inout [PlanningDiagnostic]) -> [PlanningSlot] {
+        let usedDays = Set(existingSlots.map { Calendar.current.startOfDay(for: $0.date) })
+        var extras: [PlanningSlot] = []
+        for day in plan.remainingCalendarWeekDays.sorted(by: { $0.date < $1.date }) {
+            guard extras.count < maxExtraStrengthSlots else { break }
+            let dayStart = Calendar.current.startOfDay(for: day.date)
+            guard !usedDays.contains(dayStart), !day.sessions.contains(where: { $0.kind == .strength }) else { continue }
+            guard !day.sessions.contains(where: { $0.kind == .rest || $0.kind == .recovery }) else {
+                diagnostics.append(PlanningDiagnostic(
+                    id: "skippedRest.\(day.id)",
+                    kind: .skippedRestDay,
+                    message: "Did not add strength work on a rest or recovery day."))
+                continue
+            }
+            guard hardStrengthAllowed(on: day.date, facts: facts, schedulePreferences: schedulePreferences) else {
+                diagnostics.append(PlanningDiagnostic(
+                    id: "extraRecoveryBlocked.\(day.id)",
+                    kind: .recoveryBlocked,
+                    message: "Did not add extra strength work before recovery eligibility."))
+                continue
+            }
+            extras.append(PlanningSlot(id: "extra-\(day.id)-strength", date: day.date, isExtra: true))
+        }
+        return extras
+    }
+
+    private static func hardStrengthAllowed(on date: Date,
+                                            facts: CoachFacts,
+                                            schedulePreferences: CoachSchedulePreferences) -> Bool {
+        let calendar = Calendar.current
+        if isRestDay(date: date, restPreference: schedulePreferences.restPreference, calendar: calendar) {
+            return false
+        }
+        if let wholeBody = facts.recovery.wholeBody {
+            let plannedMidday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+            if plannedMidday < wholeBody.hardEligibleAt { return false }
+        }
+        return true
+    }
+
+    private static func isExerciseEligible(_ exercise: CoachSession.RecommendedExercise,
+                                           on date: Date,
+                                           facts: CoachFacts) -> Bool {
+        let calendar = Calendar.current
+        let plannedMidday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+        let muscles = muscleIDs(for: exercise)
+        let primaryParts = BodyPart.parts(forMuscleIDs: muscles.primary)
+        let secondaryParts = BodyPart.parts(forMuscleIDs: muscles.secondary)
+        let bodyParts = primaryParts.union(secondaryParts)
+        let patterns = MovementPattern.patterns(forExerciseNamed: exercise.name,
+                                                primaryMuscles: muscles.primary)
+
+        if let window = facts.recovery.byExercise[exercise.name], plannedMidday < window.hardEligibleAt {
+            return false
+        }
+        for pattern in patterns {
+            if let window = facts.recovery.byPattern[pattern], plannedMidday < window.hardEligibleAt {
+                return false
+            }
+        }
+        for part in bodyParts {
+            if let window = facts.recovery.byBodyPart[part], plannedMidday < window.hardEligibleAt {
+                return false
+            }
+        }
+        return true
+    }
+
+    private static func lowVolumeAttentionParts(in facts: TrainingFacts) -> Set<BodyPart> {
+        Set(InsightEngine.run(facts).compactMap { insight in
+            guard insight.kind == .volume,
+                  insight.severity == .attention,
+                  insight.title.localizedCaseInsensitiveContains("low"),
+                  let part = insight.part else {
+                return nil
+            }
+            return part
+        })
+    }
+
+    private static func lowDeficits(for parts: Set<BodyPart>,
+                                    projected: [BodyPart: Double],
+                                    experience: ExperienceLevel) -> [BodyPart: Double] {
+        var result: [BodyPart: Double] = [:]
+        for part in parts {
+            let target = VolumeLandmarks.bands(for: part, experience: experience).mev
+            let sets = projected[part] ?? 0
+            if sets < target {
+                result[part] = target - sets
+            }
+        }
+        return result
+    }
+
+    private static func overMRVAmount(projected: [BodyPart: Double],
+                                      experience: ExperienceLevel) -> Double {
+        BodyPart.allCases.reduce(0) { total, part in
+            let mrv = VolumeLandmarks.bands(for: part, experience: experience).mrv
+            return total + max(0, (projected[part] ?? 0) - mrv)
+        }
+    }
+
+    private static func exerciseHelps(_ exercise: CoachSession.RecommendedExercise,
+                                      deficits: [BodyPart: Double]) -> Bool {
+        let parts = partsCovered(by: exercise)
+        return deficits.keys.contains { parts.contains($0) }
+    }
+
+    private static func exerciseDeficitScore(_ exercise: CoachSession.RecommendedExercise,
+                                             deficits: [BodyPart: Double]) -> Double {
+        let parts = partsCovered(by: exercise)
+        return deficits.reduce(0) { total, row in
+            parts.contains(row.key) ? total + row.value : total
+        }
+    }
+
+    private static func partsCovered(by exercise: CoachSession.RecommendedExercise) -> Set<BodyPart> {
+        let muscles = muscleIDs(for: exercise)
+        return BodyPart.parts(forMuscleIDs: muscles.primary)
+            .union(BodyPart.parts(forMuscleIDs: muscles.secondary))
+    }
+
+    private static func primarySortPart(for exercise: CoachSession.RecommendedExercise) -> BodyPart {
+        let muscles = muscleIDs(for: exercise)
+        return BodyPart.parts(forMuscleIDs: muscles.primary)
+            .sorted { partIndex($0) < partIndex($1) }
+            .first ?? .abs
+    }
+
+    private static func muscleIDs(for exercise: CoachSession.RecommendedExercise) -> (primary: [String], secondary: [String]) {
+        if !exercise.primaryMuscles.isEmpty {
+            return (exercise.primaryMuscles, [])
+        }
+        if let template = ExerciseLibrary.byName[exercise.name.lowercased()] {
+            return (template.primaryMuscles, template.secondaryMuscles)
+        }
+        return ([], [])
+    }
+
+    private static func copy(_ exercise: CoachSession.RecommendedExercise,
+                             sets: Int? = nil,
+                             goal: TrainingGoal? = nil) -> CoachSession.RecommendedExercise {
+        let range = goal?.repRange
+        return CoachSession.RecommendedExercise(
+            name: exercise.name,
+            primaryMuscles: exercise.primaryMuscles,
+            sets: sets ?? exercise.sets,
+            repsLow: exercise.repsLow ?? range?.lowerBound,
+            repsHigh: exercise.repsHigh ?? range?.upperBound,
+            loadKg: exercise.loadKg,
+            rir: exercise.rir ?? goal?.targetRIR)
+    }
+
+    private static func defaultExerciseNames(for part: BodyPart) -> [String] {
+        switch part {
+        case .legs: return ["Back Squat", "Leg Press", "Romanian Deadlift"]
+        case .back: return ["Barbell Row", "Lat Pulldown", "Seated Cable Row"]
+        case .chest: return ["Bench Press", "Dumbbell Bench Press", "Machine Chest Press"]
+        case .shoulders: return ["Overhead Press", "Dumbbell Lateral Raise", "Machine Shoulder Press"]
+        case .biceps: return ["Barbell Curl", "Dumbbell Curl", "Lat Pulldown"]
+        case .triceps: return ["Triceps Pushdown", "Overhead Cable Extension", "Close-Grip Bench Press"]
+        case .calves: return ["Standing Calf Raise", "Seated Calf Raise", "Calf Press on Leg Press"]
+        case .abs: return ["Cable Crunch", "Plank", "Hanging Leg Raise"]
+        }
+    }
+
+    private static func preferredPatternOrder(for part: BodyPart) -> [MovementPattern] {
+        switch part {
+        case .legs: return [.squat, .hinge]
+        case .back: return [.horizontalPull, .verticalPull, .hinge]
+        case .chest: return [.horizontalPush]
+        case .shoulders: return [.verticalPush, .horizontalPush]
+        case .biceps: return [.verticalPull, .horizontalPull]
+        case .triceps: return [.horizontalPush, .verticalPush]
+        case .calves: return [.locomotion, .squat]
+        case .abs: return [.core, .carry]
+        }
+    }
+
+    private static func uniqueStrengthCandidates(_ sessions: [CoachSession]) -> [CoachSession] {
+        var seen = Set<String>()
+        return sessions
+            .filter { $0.kind == .strength && !($0.exercises ?? []).isEmpty }
+            .filter { seen.insert($0.id).inserted }
+            .sorted { a, b in
+                if a.id != b.id { return a.id < b.id }
+                return a.title < b.title
+            }
+    }
+
+    private static func partDeficitSort(_ lhs: (key: BodyPart, value: Double),
+                                        _ rhs: (key: BodyPart, value: Double)) -> Bool {
+        if lhs.value != rhs.value { return lhs.value > rhs.value }
+        return partIndex(lhs.key) < partIndex(rhs.key)
+    }
+
+    private static func partIndex(_ part: BodyPart) -> Int {
+        BodyPart.allCases.firstIndex(of: part) ?? Int.max
+    }
+
+    private static func stableID(_ value: String) -> String {
+        value
+            .lowercased()
+            .map { ch -> Character in
+                ch.isLetter || ch.isNumber ? ch : "."
+            }
+            .reduce(into: "") { result, ch in
+                if ch == ".", result.last == "." { return }
+                result.append(ch)
+            }
+            .trimmingCharacters(in: CharacterSet(charactersIn: "."))
+    }
+
+    private static func isRestDay(date: Date, restPreference: RestPreference,
+                                  calendar: Calendar) -> Bool {
+        switch restPreference {
+        case .fixed(let days):
+            guard let weekday = Weekday(from: date, calendar: calendar) else { return false }
+            return days.contains(weekday)
+        case .rolling(let everyNDays):
+            let weekStart = WeeklyStats.weekStart(now: date)
+            let daysSinceWeekStart = calendar.dateComponents([.day], from: weekStart, to: date).day ?? 0
+            let cycleLength = everyNDays + 1
+            return daysSinceWeekStart > 0 && (daysSinceWeekStart % cycleLength) == everyNDays
+        }
+    }
+}

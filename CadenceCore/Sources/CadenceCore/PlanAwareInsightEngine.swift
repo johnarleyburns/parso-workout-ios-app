@@ -13,20 +13,25 @@ public struct PlanAwareWeeklyAccounting: Sendable, Equatable {
         self.plannedStrengthSessionCount = plannedStrengthSessions.filter { $0.kind == .strength }.count
     }
 
-    private static func plannedSetsByPart(from sessions: [CoachSession]) -> [BodyPart: Double] {
+    public static func plannedSetsByPart(from sessions: [CoachSession]) -> [BodyPart: Double] {
+        plannedSetsByPart(from: sessions.flatMap { session -> [CoachSession.RecommendedExercise] in
+            guard session.kind == .strength else { return [] }
+            return session.exercises ?? []
+        })
+    }
+
+    public static func plannedSetsByPart(from exercises: [CoachSession.RecommendedExercise]) -> [BodyPart: Double] {
         var result: [BodyPart: Double] = [:]
-        for session in sessions where session.kind == .strength {
-            for exercise in session.exercises ?? [] {
-                let sets = Double(max(1, exercise.sets ?? 3))
-                let muscles = muscleIDs(for: exercise)
-                let primary = BodyPart.parts(forMuscleIDs: muscles.primary)
-                let secondary = BodyPart.parts(forMuscleIDs: muscles.secondary).subtracting(primary)
-                for part in primary {
-                    result[part, default: 0] += sets
-                }
-                for part in secondary {
-                    result[part, default: 0] += sets * TrainingFacts.secondaryWeight
-                }
+        for exercise in exercises {
+            let sets = Double(max(1, exercise.sets ?? 3))
+            let muscles = muscleIDs(for: exercise)
+            let primary = BodyPart.parts(forMuscleIDs: muscles.primary)
+            let secondary = BodyPart.parts(forMuscleIDs: muscles.secondary).subtracting(primary)
+            for part in primary {
+                result[part, default: 0] += sets
+            }
+            for part in secondary {
+                result[part, default: 0] += sets * TrainingFacts.secondaryWeight
             }
         }
         return result
@@ -47,6 +52,8 @@ public enum PlanAwareInsightEngine {
     public static func run(completed facts: TrainingFacts,
                            plan: WeeklyPlan,
                            plannedStrengthSessions: [CoachSession],
+                           unresolvedDeficits: [BodyPart: Double] = [:],
+                           diagnostics: [PlanningDiagnostic] = [],
                            isBehindPlan: Bool = false,
                            now: Date = Date()) -> [Insight] {
         let base = InsightEngine.run(facts)
@@ -54,14 +61,31 @@ public enum PlanAwareInsightEngine {
 
         let accounting = PlanAwareWeeklyAccounting(completed: facts,
                                                    plannedStrengthSessions: plannedStrengthSessions)
-        guard accounting.plannedStrengthSessionCount > 0 else { return base }
+        guard accounting.plannedStrengthSessionCount > 0 else {
+            guard !unresolvedDeficits.isEmpty else { return base }
+            let unresolvedParts = Set(unresolvedDeficits.keys)
+            let filtered = base.filter { insight in
+                !(insight.kind == .volume
+                  && insight.severity == .attention
+                  && insight.title.localizedCaseInsensitiveContains("low")
+                  && insight.part.map { unresolvedParts.contains($0) } == true)
+            }
+            return ranked(filtered + unresolvedPlanningInsights(deficits: unresolvedDeficits,
+                                                                diagnostics: diagnostics,
+                                                                experience: facts.experience))
+        }
 
+        let unresolvedParts = Set(unresolvedDeficits.keys)
         let filtered = base.compactMap { insight -> Insight? in
             guard insight.kind == .volume,
                   insight.severity == .attention,
                   let part = insight.part,
                   insight.title.localizedCaseInsensitiveContains("low") else {
                 return insight
+            }
+
+            if unresolvedParts.contains(part) {
+                return nil
             }
 
             let projectedSets = accounting.projectedSetsByPart[part] ?? 0
@@ -81,7 +105,10 @@ public enum PlanAwareInsightEngine {
 
         let behind = behindPlanInsights(facts: facts, accounting: accounting,
                                         isBehindPlan: isBehindPlan, plan: plan, now: now)
-        return ranked(filtered + behind)
+        let unresolved = unresolvedPlanningInsights(deficits: unresolvedDeficits,
+                                                    diagnostics: diagnostics,
+                                                    experience: facts.experience)
+        return ranked(filtered + behind + unresolved)
     }
 
     private static func projectedLowVolumeInsight(for part: BodyPart,
@@ -129,6 +156,43 @@ public enum PlanAwareInsightEngine {
                 severity: .attention))
         }
         return result
+    }
+
+    private static func unresolvedPlanningInsights(deficits: [BodyPart: Double],
+                                                   diagnostics: [PlanningDiagnostic],
+                                                   experience: ExperienceLevel) -> [Insight] {
+        guard !deficits.isEmpty else { return [] }
+        let ordered = deficits.sorted { a, b in
+            if a.value != b.value { return a.value > b.value }
+            let ai = BodyPart.allCases.firstIndex(of: a.key) ?? Int.max
+            let bi = BodyPart.allCases.firstIndex(of: b.key) ?? Int.max
+            return ai < bi
+        }
+        let summary = ordered
+            .map { "\($0.key.displayName) \(Format.sets($0.value))" }
+            .joined(separator: ", ")
+        let reason: String
+        if diagnostics.contains(where: { $0.kind == .recoveryBlocked }) {
+            reason = "Some remaining hard work is blocked by recovery eligibility."
+        } else if diagnostics.contains(where: { $0.kind == .noStrengthSlots }) {
+            reason = "There are no eligible remaining strength slots in the current week."
+        } else {
+            reason = "The remaining scheduled strength work cannot close every target without exceeding conservative session volume."
+        }
+
+        let ranges = ordered.map { part, _ -> String in
+            let bands = VolumeLandmarks.bands(for: part, experience: experience)
+            return "\(part.displayName) starts around \(Format.sets(bands.mev)) sets/week"
+        }.joined(separator: "; ")
+
+        return [Insight(
+            id: "planning.unresolvedVolume",
+            kind: .volume,
+            title: "Some planned volume still needs attention",
+            message: "Still projected low after safe planning: \(summary) sets.",
+            detail: "\(reason) \(ranges). Keep the planned work as the priority, then adjust the schedule or add another eligible strength slot if recovery allows.",
+            citation: CitationRegistry.volumeDoseResponse,
+            severity: .attention)]
     }
 
     private static func lateEnoughForBehindPlan(plan: WeeklyPlan, now: Date) -> Bool {

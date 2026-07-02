@@ -36,9 +36,14 @@ struct ExercisePickerView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var query = ""
+    /// Debounced mirror of `query`; the expensive ranking keys off this so typing
+    /// stays smooth (the ranking never runs on every keystroke).
+    @State private var debouncedQuery = ""
+    /// Normalization is precomputed once here, so per-keystroke ranking is cheap.
+    @State private var searchIndex = ExerciseSearchIndex<Exercise>([])
+    @State private var indexedCount = -1
     @State private var selectedPart: BodyPart?
     @State private var browseAll = false
-    @State private var detailExercise: Exercise?
     let action: PickAction
     let onPick: (Exercise) -> Void
 
@@ -47,7 +52,7 @@ struct ExercisePickerView: View {
         self.onPick = onPick
     }
 
-    private var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var trimmedQuery: String { debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     /// The popular shortlist, resolved against the seeded store (in catalog order).
     private var popular: [Exercise] {
@@ -58,9 +63,17 @@ struct ExercisePickerView: View {
     /// What to show: a search beats everything; then a body-part filter; else the
     /// popular shortlist (until "Browse all" reveals the full grouped catalog).
     private var filtered: [Exercise] {
-        if !trimmedQuery.isEmpty { return ExerciseSearch.rank(trimmedQuery, over: exercises) }
+        if !trimmedQuery.isEmpty { return searchIndex.rank(trimmedQuery) }
         if let part = selectedPart { return exercises.filter { $0.bodyParts.contains(part) } }
         return browseAll ? exercises : popular
+    }
+
+    /// Rebuilds the normalized search index when the catalog size changes (first
+    /// load, custom exercise added). Cheap-guarded so it never runs per keystroke.
+    private func rebuildIndexIfNeeded() {
+        guard exercises.count != indexedCount else { return }
+        searchIndex = ExerciseSearchIndex(exercises)
+        indexedCount = exercises.count
     }
 
     private var grouped: [(ExerciseCategory, [Exercise])] {
@@ -111,7 +124,14 @@ struct ExercisePickerView: View {
             }
             .navigationTitle(action.navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .scrollDismissesKeyboard(.immediately)
             .searchable(text: $query, prompt: "Search name, muscle, or equipment")
+            .navigationDestination(for: Exercise.self) { exercise in
+                ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
+                    dismiss()
+                    onPick(picked)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("picker.cancel")
@@ -119,12 +139,15 @@ struct ExercisePickerView: View {
             }
         }
         .accessibilityIdentifier("picker.search")
-        .navigationDestination(item: $detailExercise) { exercise in
-            ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
-                detailExercise = nil
-                dismiss()
-                onPick(picked)
-            }
+        .onAppear { rebuildIndexIfNeeded() }
+        .onChange(of: exercises.count) { _, _ in rebuildIndexIfNeeded() }
+        // Debounce: coalesce keystrokes so ranking runs after a brief pause, not
+        // on every character. A cleared query updates immediately.
+        .task(id: query) {
+            if query.isEmpty { debouncedQuery = ""; return }
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard !Task.isCancelled else { return }
+            debouncedQuery = query
         }
     }
 
@@ -167,11 +190,13 @@ struct ExercisePickerView: View {
 
     // MARK: Rows
 
+    /// A single `NavigationLink` per row. Making the whole row the tap target (vs a
+    /// `Button` inside a `.searchable` `List`) fixes the "tap does nothing" bug: a
+    /// button's first tap was being consumed by the keyboard dismissal, whereas a
+    /// List `NavigationLink` registers on the first tap with the keyboard up.
     private func exerciseRow(_ ex: Exercise) -> some View {
-        HStack {
-            Button {
-                detailExercise = ex
-            } label: {
+        NavigationLink(value: ex) {
+            HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(ex.name)
@@ -184,21 +209,14 @@ struct ExercisePickerView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
+                Image(systemName: "info.circle")
+                    .foregroundStyle(.tint)
+                    .accessibilityIdentifier("picker.info.\(ex.name)")
+                    .accessibilityLabel("View \(ex.name) details")
             }
-            .foregroundStyle(.primary)
-            .accessibilityIdentifier("picker.row.\(ex.name)")
-
-            Button {
-                detailExercise = ex
-            } label: {
-                Image(systemName: "info.circle").foregroundStyle(.tint)
-            }
-            .buttonStyle(.plain)
-            .fixedSize()
-            .accessibilityIdentifier("picker.info.\(ex.name)")
-            .accessibilityLabel("View \(ex.name) details")
+            .contentShape(Rectangle())
         }
+        .accessibilityIdentifier("picker.row.\(ex.name)")
     }
 
     /// Friendly muscle list from the exercise's primary muscles ("upper-chest" →

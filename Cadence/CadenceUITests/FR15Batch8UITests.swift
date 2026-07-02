@@ -54,7 +54,7 @@ final class FR15Batch8UITests: CadenceUITestCase {
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
         app.buttons["session.addExercise"].tap()
 
-        XCTAssertTrue(app.buttons["picker.info.Bench Press"].waitTap(), "info button for Bench Press")
+        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "Bench Press row")
         XCTAssertTrue(app.buttons["detail.add"].waitTap(), "Add button in detail view")
 
         // After tapping Add, the picker sheet must be dismissed and the session
@@ -75,7 +75,7 @@ final class FR15Batch8UITests: CadenceUITestCase {
         // Popular shortlist shows Bench Press with an in-app detail info button.
         XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitForExistence(timeout: 25),
                       "popular shortlist shows Bench Press")
-        XCTAssertTrue(app.buttons["picker.info.Bench Press"].exists, "in-app detail button present")
+        XCTAssertTrue(app.buttons["picker.row.Bench Press"].isHittable, "row is tappable")
 
         // Filter to Back → a back movement that isn't in the popular shortlist appears.
         XCTAssertTrue(app.buttons["picker.filter.back"].waitTap(), "Back filter chip")

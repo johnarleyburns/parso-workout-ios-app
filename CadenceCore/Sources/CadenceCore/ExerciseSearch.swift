@@ -37,35 +37,19 @@ public enum ExerciseSearch {
     /// Ranks candidates for a query. Empty query returns all (built-ins first,
     /// then alphabetical). Multi-word queries require every term to match some
     /// facet (AND across terms).
+    ///
+    /// Convenience wrapper — normalizes every candidate on each call, so it is
+    /// O(candidates × keywords) per invocation. For interactive, per-keystroke
+    /// search over a large catalog build an `ExerciseSearchIndex` once and reuse
+    /// it (that precomputes the normalization); this stays for one-shot callers
+    /// and tests.
     public static func rank<T: ExerciseSearchable>(_ query: String, over candidates: [T]) -> [T] {
-        let terms = normalize(query).split(separator: " ").map(String.init).filter { !$0.isEmpty }
-        guard !terms.isEmpty else {
-            return candidates.sorted { lhs, rhs in
-                if lhs.isCustom != rhs.isCustom { return !lhs.isCustom }
-                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-            }
-        }
-        let scored: [(T, Int)] = candidates.compactMap { c in
-            let nameNorm = normalize(c.name)
-            let keys = c.searchKeywords.map(normalize)
-            var total = 0
-            for term in terms {
-                let s = termScore(term, name: nameNorm, keywords: keys)
-                if s == 0 { return nil }          // every term must match
-                total += s
-            }
-            return (c, total)
-        }
-        return scored.sorted { a, b in
-            if a.1 != b.1 { return a.1 > b.1 }
-            if a.0.isCustom != b.0.isCustom { return !a.0.isCustom }
-            return a.0.name.localizedCaseInsensitiveCompare(b.0.name) == .orderedAscending
-        }.map(\.0)
+        ExerciseSearchIndex(candidates).rank(query)
     }
 
     // MARK: Scoring
 
-    private static func termScore(_ term: String, name: String, keywords: [String]) -> Int {
+    static func termScore(_ term: String, name: String, keywords: [String]) -> Int {
         if name.hasPrefix(term) { return 4 }
         if name.contains(term) { return 3 }
         if keywords.contains(term) { return 2 }
@@ -73,11 +57,70 @@ public enum ExerciseSearch {
         return 0
     }
 
-    /// Lowercased, diacritic-folded, whitespace-collapsed.
+    /// Splits a query into normalized, non-empty terms.
+    static func terms(_ query: String) -> [String] {
+        normalize(query).split(separator: " ").map(String.init).filter { !$0.isEmpty }
+    }
+
+    /// Lowercased, diacritic-folded, whitespace-collapsed. Regex-free — the old
+    /// `\s+` regular expression was the dominant cost when normalizing thousands
+    /// of strings per keystroke.
     public static func normalize(_ s: String) -> String {
         s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+    }
+}
+
+/// A precomputed, reusable search index. Normalizing each exercise's name and
+/// keywords is done **once** at construction, so per-keystroke `rank` is a cheap
+/// prefix/contains scan over already-normalized strings — no diacritic folding,
+/// no keyword decoding, no regex on the hot path. Build it once from the loaded
+/// catalog and reuse across keystrokes (fixes the "extremely slow/jerky" search).
+public struct ExerciseSearchIndex<T: ExerciseSearchable> {
+    private struct Indexed {
+        let item: T
+        let name: String
+        let keywords: [String]
+        let isCustom: Bool
+    }
+
+    private let indexed: [Indexed]
+
+    public init(_ items: [T]) {
+        indexed = items.map { item in
+            Indexed(item: item,
+                    name: ExerciseSearch.normalize(item.name),
+                    keywords: item.searchKeywords.map(ExerciseSearch.normalize),
+                    isCustom: item.isCustom)
+        }
+    }
+
+    public var count: Int { indexed.count }
+
+    public func rank(_ query: String) -> [T] {
+        let terms = ExerciseSearch.terms(query)
+        guard !terms.isEmpty else {
+            return indexed.sorted(by: Self.alphabeticalBuiltInsFirst).map(\.item)
+        }
+        let scored: [(Indexed, Int)] = indexed.compactMap { entry in
+            var total = 0
+            for term in terms {
+                let s = ExerciseSearch.termScore(term, name: entry.name, keywords: entry.keywords)
+                if s == 0 { return nil }          // every term must match (AND)
+                total += s
+            }
+            return (entry, total)
+        }
+        return scored.sorted { a, b in
+            if a.1 != b.1 { return a.1 > b.1 }
+            return Self.alphabeticalBuiltInsFirst(a.0, b.0)
+        }.map(\.0.item)
+    }
+
+    private static func alphabeticalBuiltInsFirst(_ lhs: Indexed, _ rhs: Indexed) -> Bool {
+        if lhs.isCustom != rhs.isCustom { return !lhs.isCustom }
+        return lhs.item.name.localizedCaseInsensitiveCompare(rhs.item.name) == .orderedAscending
     }
 }
 

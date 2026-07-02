@@ -20,6 +20,8 @@ let package = Package(
                 // on-device into our taxonomy by `ImportedExerciseLibrary`.
                 // Images loaded at runtime from raw.githubusercontent.com.
                 .copy("Resources/free-exercise-db.json"),
+                // Versioned Coach knowledge-base changelog (quarterly protocol packs).
+                .copy("Resources/coach-kb-version.json"),
             ]
         ),
         .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore"])

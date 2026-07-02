@@ -63,6 +63,7 @@ final class AppSettings {
         self.useHRMonitoring = defaults.object(forKey: "settings.useHRMonitoring") as? Bool ?? false
         self.recoveryAwareCoachV2 = defaults.object(forKey: "settings.recoveryAwareCoachV2") as? Bool ?? true
         self.lastCoachComputeDay = defaults.string(forKey: "settings.lastCoachComputeDay") ?? ""
+        self.lastSeenCoachKBVersion = defaults.string(forKey: "settings.lastSeenCoachKBVersion") ?? ""
         self.favoriteRoutineIDs = Set(defaults.stringArray(forKey: "settings.favoriteRoutineIDs") ?? [])
         // Coach preferences are stored properties (not computed) so @Observable
         // tracks mutations and SwiftUI re-renders when they change.
@@ -145,6 +146,9 @@ final class AppSettings {
     /// in debug builds; can be toggled in Settings for rollback testing.
     var recoveryAwareCoachV2: Bool { didSet { defaults.set(recoveryAwareCoachV2, forKey: "settings.recoveryAwareCoachV2") } }
     var lastCoachComputeDay: String { didSet { defaults.set(lastCoachComputeDay, forKey: "settings.lastCoachComputeDay") } }
+    /// Last Coach knowledge-base version the user has viewed in "Coach research
+    /// updates" — drives the "new pack" badge when an app update bumps the KB.
+    var lastSeenCoachKBVersion: String { didSet { defaults.set(lastSeenCoachKBVersion, forKey: "settings.lastSeenCoachKBVersion") } }
     /// Whether the user has completed the new-user onboarding flow.
     var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
     var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }

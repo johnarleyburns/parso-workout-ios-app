@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(AppSettings.self) private var settingsObject
     @Environment(ContributionCoordinator.self) private var contributions
+    @Environment(StoreService.self) private var store
 
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false
@@ -65,6 +66,47 @@ struct SettingsView: View {
                 Text("Your health data stays on your device. Detailed sets stay local; only workout summaries are written to Apple Health.")
             }
 
+            Section {
+                NavigationLink {
+                    CoachResearchUpdatesView()
+                } label: {
+                    HStack {
+                        Label("Coach Research Updates", systemImage: "book.closed")
+                        Spacer()
+                        if CoachKBBadge.hasUnseenUpdate(lastSeen: settings.lastSeenCoachKBVersion) {
+                            Text("New")
+                                .font(.caption2.weight(.bold))
+                                .padding(.horizontal, 7).padding(.vertical, 2)
+                                .background(.green, in: Capsule())
+                                .foregroundStyle(.white)
+                                .accessibilityIdentifier("settings.coachUpdates.badge")
+                        }
+                    }
+                }
+                .accessibilityIdentifier("settings.coachUpdates")
+
+                if store.isPro {
+                    HStack {
+                        Label("Cladiron Pro", systemImage: "checkmark.seal.fill")
+                            .foregroundStyle(.green)
+                        Spacer()
+                        Text(proStatusText).font(.caption).foregroundStyle(.secondary)
+                    }
+                    .accessibilityIdentifier("settings.proStatus")
+                } else {
+                    Button {
+                        Task { await store.restore() }
+                    } label: {
+                        Label("Restore Purchases", systemImage: "arrow.clockwise")
+                    }
+                    .accessibilityIdentifier("settings.restore")
+                }
+            } header: {
+                Text("Coach")
+            } footer: {
+                Text("The coaching engine updates quarterly with new research. Everything else in Cladiron is free forever.")
+            }
+
             Section("Data") {
                 NavigationLink {
                     ImportView()
@@ -110,6 +152,15 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .sheet(isPresented: $primingPresented) {
             HealthPrimingView { status in healthStatus = status }
+        }
+    }
+
+    private var proStatusText: String {
+        switch store.entitlement.source {
+        case .lifetime: return "Lifetime"
+        case .subscription: return "Subscribed"
+        case .trial: return store.trialDaysRemaining.map { "Trial — \($0)d left" } ?? "Trial"
+        case .none: return ""
         }
     }
 

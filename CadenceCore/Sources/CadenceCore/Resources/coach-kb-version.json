@@ -1,0 +1,17 @@
+{
+  "version": "2026.3.0",
+  "releaseDate": "2026-07-02",
+  "entries": [
+    {
+      "version": "2026.3.0",
+      "date": "2026-07-02",
+      "title": "Launch knowledge base",
+      "summary": "The initial Coach knowledge base: goal-based rep/load prescription, recovery-aware session eligibility, weekly volume landmarks, and RIR-based autoregulation — each grounded in the cited literature.",
+      "citationIds": [
+        "schoenfeld2021",
+        "parejaBlancoRecovery2020",
+        "pellandDoseResponse2026"
+      ]
+    }
+  ]
+}

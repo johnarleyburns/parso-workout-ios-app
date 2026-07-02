@@ -240,15 +240,20 @@ struct HomeView: View {
 
                     if let s = active.strengthSession { resumeCard(s) }
                     CoachGate {
-                        CoachDecisionCardView(
-                            decision: coachDecision,
-                            addOnRecommendation: addOnRecommendation,
-                            topInsight: coachInsights.first,
-                            onStart: { launchDecision($0) },
-                            onAddOn: { session, status in handleAddOn(session, status) },
-                            onSeeInsights: { path.append(HomeRoute.coach) },
-                            onPreferences: { path.append(HomeRoute.yourPlan) },
-                            onPickAlternative: { showAlternatives = true })
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let days = store.trialDaysRemaining {
+                                trialBanner(daysLeft: days)
+                            }
+                            CoachDecisionCardView(
+                                decision: coachDecision,
+                                addOnRecommendation: addOnRecommendation,
+                                topInsight: coachInsights.first,
+                                onStart: { launchDecision($0) },
+                                onAddOn: { session, status in handleAddOn(session, status) },
+                                onSeeInsights: { path.append(HomeRoute.coach) },
+                                onPreferences: { path.append(HomeRoute.yourPlan) },
+                                onPickAlternative: { showAlternatives = true })
+                        }
                     } locked: {
                         CoachPreviewView(plan: coachPlan, onUnlock: { showPaywall = true })
                     }
@@ -532,6 +537,20 @@ struct HomeView: View {
             }
         }
         .glassGroup(spacing: 10)
+    }
+
+    /// Quiet trial status shown above the Coach card while on the free trial.
+    private func trialBanner(daysLeft: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "gift.fill").font(.caption)
+            Text("Trial — \(daysLeft) day\(daysLeft == 1 ? "" : "s") left")
+                .font(.caption.weight(.medium))
+            Spacer()
+        }
+        .foregroundStyle(.green)
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .background(.green.opacity(0.10), in: Capsule())
+        .accessibilityIdentifier("coach.trialBanner")
     }
 
     private func quickAction(_ title: String, _ symbol: String, id: String,

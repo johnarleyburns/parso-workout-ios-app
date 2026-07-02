@@ -7,6 +7,7 @@ import CadenceCore
 struct OnboardingView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
+    @Environment(StoreService.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     @State private var step = 0
@@ -16,8 +17,9 @@ struct OnboardingView: View {
     @State private var healthRequested = false
     @State private var strengthDays: Int = 2
     @State private var cardioDays: Int = 3
+    @State private var showPaywall = false
 
-    private let lastStep = 5
+    private let lastStep = 6
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,12 +31,17 @@ struct OnboardingView: View {
                 schedulePage.tag(3)
                 unitsPage.tag(4)
                 disclaimerPage.tag(5)
+                programPage.tag(6)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut, value: step)
             footer
         }
         .interactiveDismissDisabled()
+        .sheet(isPresented: $showPaywall, onDismiss: { finish() }) {
+            PaywallView(headline: "Your program is ready",
+                        subheadline: "Start training with the Coach — it adapts every set to what you log and cites the research.")
+        }
         .onAppear {
             goal = settings.trainingGoal
             experience = settings.experienceLevel
@@ -66,19 +73,38 @@ struct OnboardingView: View {
         VStack(spacing: 14) {
             Button {
                 Haptics.selection()
-                if step < lastStep { withAnimation { step += 1 } } else { finish() }
+                if step == lastStep {
+                    showPaywall = true
+                } else {
+                    withAnimation { step += 1 }
+                }
             } label: {
-                Text(step < lastStep ? "Continue" : "I understand")
+                Text(footerTitle)
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 15)
                     .foregroundStyle(.white)
-                    .background(step < lastStep ? AnyShapeStyle(.tint) : AnyShapeStyle(.green),
+                    .background(step == 5 || step == lastStep ? AnyShapeStyle(.green) : AnyShapeStyle(.tint),
                                 in: RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("onboarding.primary")
+
+            if step == lastStep {
+                Button("Maybe later — explore the free app") { Haptics.selection(); finish() }
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("onboarding.exploreFree")
+            }
+
             PageDots(count: lastStep + 1, index: step)
         }
         .padding(.horizontal).padding(.bottom, 12)
+    }
+
+    private var footerTitle: String {
+        switch step {
+        case lastStep: return "Start training with the Coach"
+        case 5: return "I understand"
+        default: return "Continue"
+        }
     }
 
     // MARK: Pages
@@ -95,7 +121,7 @@ struct OnboardingView: View {
                 .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).padding(.top, 8).padding(.horizontal, 24)
             VStack(alignment: .leading, spacing: 14) {
-                valueRow("checkmark.circle.fill", "No ads, no account, no subscription")
+                valueRow("checkmark.circle.fill", "No ads. No account. No tracking.")
                 valueRow("iphone", "Your data stays on your iPhone")
                 valueRow("book.closed", "Every recommendation is sourced")
             }
@@ -214,6 +240,51 @@ struct OnboardingView: View {
             Spacer(); Spacer()
         }
         .padding(.horizontal, 24)
+    }
+
+    private var previewPlan: WeeklyPlan {
+        let prefs = CoachSchedulePreferences(
+            strengthDaysPerWeek: strengthDays,
+            cardioDaysPerWeek: cardioDays,
+            restPreference: .defaultRolling,
+            allowsTwoADays: false,
+            sameDayCardioTiming: .afterStrength)
+        let facts = CoachFacts.make(from: [], goal: goal, experience: experience, formula: settings.formula)
+        return WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
+    }
+
+    private var programPage: some View {
+        let days = previewPlan.days.filter { !$0.sessions.isEmpty }
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Your program is ready").font(.title.bold()).padding(.top, 4)
+                Text("Built from your goals and schedule. The Coach fills in the exact sets, reps, and loads — then adapts them to what you log, and cites the research for every call.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if days.isEmpty {
+                    Text("A balanced week tuned to your \(goal.displayName.lowercased()) goal.")
+                        .font(.subheadline)
+                        .padding().frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
+                            if index > 0 { Divider().padding(.leading, 38) }
+                            CoachPlanDayRow(day: day)
+                        }
+                    }
+                    .padding()
+                    .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+                    .accessibilityIdentifier("onboarding.programPreview")
+                }
+
+                Text("Everything else in Cladiron — logging, history, trends, export — is free forever.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 24).padding(.top, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     // MARK: Building blocks

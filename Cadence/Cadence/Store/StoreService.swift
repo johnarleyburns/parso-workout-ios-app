@@ -29,6 +29,17 @@ final class StoreService {
     private(set) var purchasingID: String?
     var lastError: String?
 
+    /// When the current introductory trial ends (set only while on a trial), used
+    /// for the quiet "Trial — X days left" header and the 3-days-before reminder.
+    private(set) var trialEndDate: Date?
+
+    /// Whole days remaining in the trial, or nil when not on a trial.
+    var trialDaysRemaining: Int? {
+        guard entitlement.source == .trial, let end = trialEndDate else { return nil }
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: end).day ?? 0
+        return max(0, days)
+    }
+
     var annual: Product? { products.first { $0.id == ProProductID.annual } }
     var monthly: Product? { products.first { $0.id == ProProductID.monthly } }
     var lifetime: Product? { products.first { $0.id == ProProductID.lifetime } }
@@ -131,6 +142,22 @@ final class StoreService {
         let resolved = EntitlementResolver.resolve(records: records)
         entitlement = resolved
         saveCache(CachedEntitlement(entitlement: resolved, recordedAt: Date()))
+        updateTrialState(records: records, resolved: resolved)
+    }
+
+    /// Track the trial end date and (de)schedule the single value-receipt reminder.
+    private func updateTrialState(records: [EntitlementRecord], resolved: ProEntitlement) {
+        guard resolved.source == .trial else {
+            trialEndDate = nil
+            TrialNotifier.cancel()
+            return
+        }
+        let end = records
+            .filter { $0.isIntroductoryOffer && $0.revocationDate == nil }
+            .compactMap(\.expirationDate)
+            .min()
+        trialEndDate = end
+        if let end { TrialNotifier.scheduleReminder(trialEnd: end) }
     }
 
     // MARK: - Private

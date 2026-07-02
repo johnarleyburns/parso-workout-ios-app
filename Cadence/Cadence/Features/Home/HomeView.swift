@@ -11,6 +11,7 @@ struct HomeView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(ActiveWorkoutModel.self) private var active
     @Environment(ContributionCoordinator.self) private var contributions
+    @Environment(StoreService.self) private var store
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
@@ -52,6 +53,7 @@ struct HomeView: View {
     @State private var outdoorGoalMeters: Double?
     @State private var showAlternatives = false
     @State private var showSupport = false
+    @State private var showPaywall = false
 
     // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
     // read-only insights and the prescriptive recommendation surfaced on the card.
@@ -237,15 +239,19 @@ struct HomeView: View {
                         .accessibilityIdentifier("home.headerDate")
 
                     if let s = active.strengthSession { resumeCard(s) }
-                    CoachDecisionCardView(
-                        decision: coachDecision,
-                        addOnRecommendation: addOnRecommendation,
-                        topInsight: coachInsights.first,
-                        onStart: { launchDecision($0) },
-                        onAddOn: { session, status in handleAddOn(session, status) },
-                        onSeeInsights: { path.append(HomeRoute.coach) },
-                        onPreferences: { path.append(HomeRoute.yourPlan) },
-                        onPickAlternative: { showAlternatives = true })
+                    CoachGate {
+                        CoachDecisionCardView(
+                            decision: coachDecision,
+                            addOnRecommendation: addOnRecommendation,
+                            topInsight: coachInsights.first,
+                            onStart: { launchDecision($0) },
+                            onAddOn: { session, status in handleAddOn(session, status) },
+                            onSeeInsights: { path.append(HomeRoute.coach) },
+                            onPreferences: { path.append(HomeRoute.yourPlan) },
+                            onPickAlternative: { showAlternatives = true })
+                    } locked: {
+                        CoachPreviewView(plan: coachPlan, onUnlock: { showPaywall = true })
+                    }
                     quickActionsRow
                     plannedRestOfWeekSection
                     favoritesSection
@@ -275,7 +281,12 @@ struct HomeView: View {
                 switch route {
                 case .history: HistoryView(path: $path)
                 case .settings: SettingsView()
-                case .coach: CoachInsightsView(insights: coachInsights)
+                case .coach:
+                    CoachGate {
+                        CoachInsightsView(insights: coachInsights)
+                    } locked: {
+                        CoachLockedView(onUnlock: { showPaywall = true })
+                    }
                 case .coachPreferences: CoachSchedulePreferencesView()
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
                 case .yourPlan:
@@ -339,6 +350,9 @@ struct HomeView: View {
                 NavigationStack {
                     ContributionSupportView(store: contributions.store, showsDoneButton: true)
                 }
+            }
+            .sheet(isPresented: $showPaywall) {
+                PaywallView()
             }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
             .sheet(isPresented: $cardioPickerPresented) {

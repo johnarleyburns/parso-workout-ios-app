@@ -45,10 +45,14 @@ final class StoreService {
         // UI tests can force an entitlement so both gated and unlocked states are
         // exercisable without a live StoreKit session.
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("-proUnlocked") {
-            uiTestForcedEntitlement = .pro(source: .lifetime)
-        } else if args.contains("-proLocked") {
+        if args.contains("-proLocked") {
             uiTestForcedEntitlement = .free
+        } else if args.contains("-proUnlocked") {
+            uiTestForcedEntitlement = .pro(source: .lifetime)
+        } else if args.contains("-uiTest") {
+            // Existing coach UI tests assume the Coach is present; default UI-test
+            // runs to unlocked. Paywall/gating tests opt in with `-proLocked`.
+            uiTestForcedEntitlement = .pro(source: .lifetime)
         } else {
             uiTestForcedEntitlement = nil
         }

@@ -52,4 +52,14 @@ Built supervised with Claude Code / opencode — see `CLAUDE.md`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+**GPLv3** — see [LICENSE](LICENSE). The Cladiron source code is free software
+under the GNU General Public License v3.0.
+
+The **"Cladiron" name, app icon, and brand assets are trademarks** and are *not*
+covered by the GPL — see [TRADEMARKS.md](TRADEMARKS.md). Forks must use their own
+name and icon.
+
+Cladiron is open source so users can independently verify there is no tracking,
+no telemetry, and no account or server — the privacy claims are auditable.
+Purchasing **Cladiron Pro** on the App Store funds continued development. The free
+app is complete on its own; Pro adds the coaching layer (see below).

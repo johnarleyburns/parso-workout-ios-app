@@ -2,7 +2,7 @@
 
 > **Product name (user-visible): Cladiron.** Internal codename: Cadence — used for the repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, and type names.
 
-**Status:** Draft v1.0 · **Platforms:** **v1 ships iPhone-only (iOS 17+).** watchOS 10+ is planned but **deferred** (hardware); in v1, Watch-recorded workouts/steps/HR are read from HealthKit. · **License:** MIT · **Distribution:** Source + TestFlight + App Store
+**Status:** Draft v1.0 · **Platforms:** **v1 ships iPhone-only (iOS 17+).** watchOS 10+ is planned but **deferred** (hardware); in v1, Watch-recorded workouts/steps/HR are read from HealthKit. · **License:** GPLv3 (brand/trademark reserved) · **Distribution:** Source + TestFlight + App Store
 
 > **v1 release scope:** log strength on the phone with coaching; read steps + ingest Watch-recorded workouts/HR from HealthKit; run a no-lab fitness test battery that feeds the coach; review history, PRs, and trends. The watch app (FR-8) and on-device cardio/sensors move to later releases — see §8.
 
@@ -181,7 +181,7 @@ Planning (program selection + routine building) lives **inside the Workout tab**
   - NFR-3.6 **Plain-English privacy commitment:** Cladiron does not collect, transmit, or sell user data. There is no account, no server, and no analytics. Health, Bluetooth, and location data stay on the device, only with explicit permission. The user can export or delete all data at any time. The complete source code is public for verification.
 - NFR-4 **Performance:** cold launch < 1.5s; logging a set <= 2 taps; charts render < 100ms.
 - NFR-5 **Reliability/offline:** fully functional with no network; workout recording survives backgrounding.
-- NFR-6 **Open source:** MIT-licensed, documented build, no proprietary dependencies; reproducible from clean checkout.
+- NFR-6 **Open source:** GPLv3-licensed (name/icon/brand are reserved trademarks — see TRADEMARKS.md), documented build, no proprietary dependencies; reproducible from clean checkout.
 - NFR-7 **Battery:** GPS + BLE recording optimized; configurable GPS accuracy.
 
 ---

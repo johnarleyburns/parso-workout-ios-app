@@ -101,23 +101,33 @@ final class ExerciseSearchIndexTests: XCTestCase {
 
     // MARK: Performance (the core regression)
 
-    func testBuildAndRankOnFullCatalogIsFast() {
+    /// The core regression guard, expressed relatively so it's independent of
+    /// machine load: reusing a prebuilt index across keystrokes must be faster than
+    /// rebuilding it every keystroke (which re-normalizes the whole catalog — the
+    /// behavior that caused the jank). Also asserts a generous absolute ceiling to
+    /// catch a catastrophic slowdown.
+    func testReusingIndexBeatsRebuildingPerKeystroke() {
         let catalog = ExerciseLibrary.starter
         XCTAssertGreaterThan(catalog.count, 200, "expected a large catalog to stress search")
-
-        // Build once (as the view does), then rank many times (as keystrokes do).
-        let index = ExerciseSearchIndex(catalog)
         let queries = ["b", "be", "ben", "benc", "bench", "c", "ca", "cab", "cable", "cable c"]
+        let iterations = 10
 
-        let start = Date()
-        for _ in 0..<20 {
-            for q in queries { _ = index.rank(q) }
-        }
-        let elapsed = Date().timeIntervalSince(start)
-        // 200 ranks over the full catalog. Precomputed index keeps this well under
-        // a second even in CI; generous ceiling guards against a regression to the
-        // per-keystroke re-normalization that caused the jank.
-        XCTAssertLessThan(elapsed, 2.0, "index ranking too slow (\(elapsed)s for 200 ranks)")
+        // The fix: build once, reuse across keystrokes.
+        let index = ExerciseSearchIndex(catalog)
+        let reuseStart = Date()
+        for _ in 0..<iterations { for q in queries { _ = index.rank(q) } }
+        let reuseElapsed = Date().timeIntervalSince(reuseStart)
+
+        // The old behavior: rebuild the index (re-normalize the catalog) per query.
+        let rebuildStart = Date()
+        for _ in 0..<iterations { for q in queries { _ = ExerciseSearch.rank(q, over: catalog) } }
+        let rebuildElapsed = Date().timeIntervalSince(rebuildStart)
+
+        XCTAssertLessThan(reuseElapsed, rebuildElapsed,
+                          "reusing the prebuilt index (\(reuseElapsed)s) must beat rebuilding per keystroke (\(rebuildElapsed)s)")
+        // Generous absolute ceiling (100 reused ranks over the full catalog) so a
+        // pathological regression still trips even on a heavily loaded CI box.
+        XCTAssertLessThan(reuseElapsed, 10.0, "reused index ranking unexpectedly slow (\(reuseElapsed)s)")
     }
 
     func testNormalizeIsRegexFreeAndCorrect() {

@@ -1,9 +1,15 @@
 import SwiftUI
+import CadenceCore
 
 /// A guided warm-up / cool-down countdown shown over a workout (feedback batch 4).
 /// Generalizes the get-ready countdown: a big `mm:ss` clock, the phase name,
 /// Pause/Resume and Skip. When the timer reaches zero — or the user taps Skip —
 /// `onFinish` fires (warm-up → opens the session; cool-down → finishes it).
+///
+/// Timing is wall-clock based via `PhaseCountdownClock`, so the countdown **keeps
+/// running while the app is backgrounded** and is correct on return; it only
+/// freezes when the user explicitly taps Pause. The 1 Hz timer is a display
+/// refresh only.
 ///
 /// `idPrefix` namespaces the accessibility ids ("warmup"/"cooldown") so the two
 /// surfaces are individually addressable in UI tests:
@@ -23,8 +29,9 @@ struct GuidedPhaseOverlay: View {
     let onSkip: ((_ elapsedSeconds: Int) -> Void)?
 
     private let total: Int
-    @State private var remaining: Int
-    @State private var paused = false
+    @State private var countdown: PhaseCountdownClock
+    @State private var now = Date()
+    @State private var finished = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(title: String, minutes: Int, tint: Color = .green,
@@ -40,8 +47,17 @@ struct GuidedPhaseOverlay: View {
         self.onSkip = onSkip
         let seconds = max(1, minutes) * 60
         self.total = seconds
-        _remaining = State(initialValue: seconds)
+        _countdown = State(initialValue: PhaseCountdownClock(total: TimeInterval(seconds)))
     }
+
+    private var paused: Bool { countdown.isPaused }
+
+    /// Whole seconds remaining, rounded up so a fresh phase shows its full length
+    /// and only drops after a full second elapses.
+    private var remaining: Int { Int(countdown.remaining(now: now).rounded(.up)) }
+
+    /// Seconds actually consumed so far, for history reporting.
+    private var consumedSeconds: Int { Int(countdown.consumed(now: now).rounded()) }
 
     private var clock: String {
         String(format: "%d:%02d", remaining / 60, remaining % 60)
@@ -61,7 +77,10 @@ struct GuidedPhaseOverlay: View {
                 Spacer()
                 HStack(spacing: 16) {
                     Button {
-                        paused.toggle()
+                        let ref = Date()
+                        if countdown.isPaused { countdown.resume(now: ref) }
+                        else { countdown.pause(now: ref) }
+                        now = ref
                     } label: {
                         Label(paused ? "Resume" : "Pause",
                               systemImage: paused ? "play.fill" : "pause.fill")
@@ -71,7 +90,7 @@ struct GuidedPhaseOverlay: View {
                     .accessibilityIdentifier("\(idPrefix).pause")
 
                     Button {
-                        (onSkip ?? onFinish)(total - remaining)
+                        (onSkip ?? onFinish)(consumedSeconds)
                     } label: {
                         Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity)
                     }
@@ -86,11 +105,20 @@ struct GuidedPhaseOverlay: View {
         // Keep the screen awake through the whole warm-up / cool-down timer.
         .keepAwake()
         // Beep sequence as the phase begins (entering warm-up / cool-down).
-        .onAppear { WorkoutCues.startBeepSequence(enabled: soundsEnabled) }
-        .onReceive(tick) { _ in
-            guard !paused, remaining > 0 else { return }
-            remaining -= 1
-            if remaining <= 0 { onFinish(total) }
+        .onAppear {
+            // Anchor the start to now, so the full duration is honored regardless
+            // of any delay between init and appearance.
+            countdown = PhaseCountdownClock(total: TimeInterval(total))
+            now = Date()
+            WorkoutCues.startBeepSequence(enabled: soundsEnabled)
+        }
+        .onReceive(tick) { date in
+            now = date
+            guard !finished, !countdown.isPaused else { return }
+            if countdown.isFinished(now: date) {
+                finished = true
+                onFinish(total)
+            }
         }
     }
 }

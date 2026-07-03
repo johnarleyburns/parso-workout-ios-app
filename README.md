@@ -63,3 +63,9 @@ Cladiron is open source so users can independently verify there is no tracking,
 no telemetry, and no account or server — the privacy claims are auditable.
 Purchasing **Cladiron Pro** on the App Store funds continued development. The free
 app is complete on its own; Pro adds the coaching layer (see below).
+
+Free users see the coach's **live insights** continuously — real, cited
+observations about their own training that update after every workout. What Pro
+unlocks is the **prescription**: the exact sets, reps, and load the coach would
+have you do next, plus the adapting weekly plan. The free experience is never an
+ad — the upsell only surfaces occasionally, while the insights are always on.

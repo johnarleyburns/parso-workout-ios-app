@@ -1,75 +1,98 @@
 import SwiftUI
 import CadenceCore
 
-/// The free-tier Coach surface shown in place of the live coaching card. It shows
-/// the *structure* of what the Coach would do — the weekly program skeleton and a
-/// couple of real, tappable citations — with the day-to-day coaching locked. This
-/// preview *is* the paywall funnel (monetization plan §4.5); treat it as a
-/// first-class screen, not an ad.
+/// The free-tier Coach surface shown in place of the live coaching card.
+///
+/// Design (coach-surface-design.md, 2026-07-03 amendment): the coach's *insight* —
+/// its live observation about the user's actual training — is shown here
+/// **continuously**, exactly like the Pro coach, and updates every day / after
+/// every workout. What stays locked is the *prescription*: the exact sets, reps,
+/// and load the coach would prescribe, plus the adapting plan. The prominent
+/// "Unlock the Coach" CTA is paced by `CoachUpsellPolicy` (passed in as
+/// `showUnlockCTA`) so free Home never reads like a running ad; a discreet tap on
+/// the locked prescription still lets a motivated user convert at any time.
 struct CoachPreviewView: View {
     let plan: WeeklyPlan
+    /// The continuously-updated observation. Always shown when present.
+    let topInsight: Insight?
+    /// What the coach *would do* — locked for free users.
+    let prescription: Recommendation?
     var onUnlock: () -> Void
+    /// Called once when the prominent CTA is actually displayed, so its cadence
+    /// can be recorded. No-op when the CTA is suppressed.
+    var onCTADisplayed: () -> Void = {}
 
-    /// A few real citations so the science is visible (and tappable) even in free.
-    private var sampleCitations: [Citation] {
-        Array(CitationRegistry.all.prefix(3))
+    /// Captured once at creation from the rate-limit policy so recording the
+    /// impression (which flips the policy) can't make the CTA blink out from under
+    /// the user mid-view.
+    @State private var showCTA: Bool
+    @State private var didRecordCTA = false
+
+    init(plan: WeeklyPlan,
+         topInsight: Insight?,
+         prescription: Recommendation?,
+         showUnlockCTA: Bool,
+         onUnlock: @escaping () -> Void,
+         onCTADisplayed: @escaping () -> Void = {}) {
+        self.plan = plan
+        self.topInsight = topInsight
+        self.prescription = prescription
+        self.onUnlock = onUnlock
+        self.onCTADisplayed = onCTADisplayed
+        _showCTA = State(initialValue: showUnlockCTA)
     }
 
-    private var previewDays: [WeeklyPlan.DayOutline] {
-        let upcoming = plan.remainingCalendarWeekDays.filter { !$0.sessions.isEmpty }
-        if !upcoming.isEmpty { return Array(upcoming.prefix(4)) }
-        return Array(plan.nextWeekDays.filter { !$0.sessions.isEmpty }.prefix(4))
+    /// Real citation titles behind today's observation + prescription. Free to
+    /// read — the science is marketing; the *application* of it is Pro.
+    private var citations: [Citation] {
+        var seen = Set<String>()
+        var result: [Citation] = []
+        if let c = topInsight?.citation, seen.insert(c.id).inserted { result.append(c) }
+        for c in prescription?.allCitations ?? [] where seen.insert(c.id).inserted {
+            result.append(c)
+        }
+        if result.isEmpty { result = Array(CitationRegistry.all.prefix(3)) }
+        return Array(result.prefix(3))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
 
-            Text("The Coach builds a plan around your goals, then adjusts every set to what you actually log — and shows the research for each call.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            observationSection
+            lockedPrescriptionSection
 
-            if !previewDays.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("YOUR PROGRAM")
-                        .font(.caption.bold()).tracking(1.1)
-                        .foregroundStyle(.secondary)
-                    VStack(spacing: 0) {
-                        ForEach(Array(previewDays.enumerated()), id: \.element.id) { index, day in
-                            if index > 0 { Divider().padding(.leading, 38) }
-                            CoachPlanDayRow(day: day)
-                        }
-                    }
-                }
-            }
-
-            lockedRows
-
-            if !sampleCitations.isEmpty {
+            if !citations.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("THE SCIENCE")
                         .font(.caption.bold()).tracking(1.1)
                         .foregroundStyle(.secondary)
-                    ForEach(sampleCitations) { citation in
-                        CitationLink(citation: citation, compact: true)
+                    ForEach(citations) { citation in
+                        CitationLink(citation: citation)
                     }
                 }
             }
 
-            Button { onUnlock() } label: {
-                Label("Unlock the Coach", systemImage: "lock.open.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 13)
-            }
-            .cadenceGlassButton(prominent: true, tint: .green)
-            .accessibilityIdentifier("coach.preview.unlock")
+            if showCTA {
+                Button { onUnlock() } label: {
+                    Label("Unlock the Coach", systemImage: "lock.open.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                }
+                .cadenceGlassButton(prominent: true, tint: .green)
+                .accessibilityIdentifier("coach.preview.unlock")
+                .onAppear {
+                    guard !didRecordCTA else { return }
+                    didRecordCTA = true
+                    onCTADisplayed()
+                }
 
-            Text("Everything else in Cladiron is free forever.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity)
+                Text("Everything else in Cladiron is free forever.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+            }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -81,40 +104,85 @@ struct CoachPreviewView: View {
     private var header: some View {
         HStack(spacing: 8) {
             Image(systemName: "figure.mind.and.body").font(.caption)
-            Text("COACH · PREVIEW").font(.caption.bold()).tracking(1.2)
+            Text("COACH").font(.caption.bold()).tracking(1.2)
             Spacer()
-            Image(systemName: "lock.fill").font(.caption)
         }
         .foregroundStyle(.green)
     }
 
-    private var lockedRows: some View {
-        VStack(spacing: 8) {
-            lockedRow("slider.horizontal.3", "Today's prescription",
-                      "Exact sets, reps, and load for right now")
-            lockedRow("chart.line.uptrend.xyaxis", "Autoregulation",
-                      "Adjusts load and volume from your logged RIR")
-            lockedRow("waveform.path.ecg", "Deload & adaptation",
-                      "Detects fatigue and plans recovery")
+    // MARK: - Observation (free, continuous)
+
+    @ViewBuilder
+    private var observationSection: some View {
+        if let topInsight {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("WHAT THE COACH NOTICED")
+                    .font(.caption.bold()).tracking(1.1)
+                    .foregroundStyle(.secondary)
+                InsightContentView(insight: topInsight)
+            }
+            .accessibilityIdentifier("coach.preview.insight")
+        } else {
+            Text("Log a few workouts and the Coach starts noticing patterns in your training — the observations update here every day.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private func lockedRow(_ symbol: String, _ title: String, _ subtitle: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: symbol)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-                .frame(width: 26)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(.subheadline.weight(.semibold))
-                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+    // MARK: - Prescription (locked)
+
+    private var lockedPrescriptionSection: some View {
+        Button { onUnlock() } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("WHAT THE COACH WOULD DO")
+                        .font(.caption.bold()).tracking(1.1)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text("PRO")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.green)
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(.green.opacity(0.14), in: Capsule())
+                }
+
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "lock.fill")
+                        .font(.headline)
+                        .foregroundStyle(.green)
+                        .frame(width: 26)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(prescriptionTitle)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(prescriptionAction)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .redacted(reason: .placeholder)
+                    }
+                    Spacer(minLength: 0)
+                }
             }
-            Spacer()
-            Image(systemName: "lock.fill")
-                .font(.footnote)
-                .foregroundStyle(.tertiary)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
         }
-        .padding(.vertical, 4)
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("What the Coach would do — Pro. \(prescriptionTitle). Unlock to see the exact prescription.")
+        .accessibilityIdentifier("coach.preview.lockedPrescription")
+    }
+
+    private var prescriptionTitle: String {
+        if let t = prescription?.title, !t.isEmpty { return t }
+        return "Your next adjustment"
+    }
+
+    /// The exact prescription copy, shown redacted so the free user sees there is a
+    /// concrete, cited call waiting behind the paywall.
+    private var prescriptionAction: String {
+        if let a = prescription?.action, !a.isEmpty { return a }
+        return "Exact sets, reps, and load for right now."
     }
 }

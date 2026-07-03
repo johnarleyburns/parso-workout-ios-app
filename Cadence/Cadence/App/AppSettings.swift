@@ -26,7 +26,8 @@ final class AppSettings {
                         "settings.trainingGoal", "settings.experienceLevel",
                         "settings.useHRMonitoring",
                         "settings.coachPreferenceProfile",
-                        "settings.coachSchedulePreferences"] {
+                        "settings.coachSchedulePreferences",
+                        "settings.lastCoachUpsellShown"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -64,6 +65,7 @@ final class AppSettings {
         self.recoveryAwareCoachV2 = defaults.object(forKey: "settings.recoveryAwareCoachV2") as? Bool ?? true
         self.lastCoachComputeDay = defaults.string(forKey: "settings.lastCoachComputeDay") ?? ""
         self.lastSeenCoachKBVersion = defaults.string(forKey: "settings.lastSeenCoachKBVersion") ?? ""
+        self.lastCoachUpsellShown = defaults.object(forKey: "settings.lastCoachUpsellShown") as? Date
         self.favoriteRoutineIDs = Set(defaults.stringArray(forKey: "settings.favoriteRoutineIDs") ?? [])
         // Coach preferences are stored properties (not computed) so @Observable
         // tracks mutations and SwiftUI re-renders when they change.
@@ -149,6 +151,10 @@ final class AppSettings {
     /// Last Coach knowledge-base version the user has viewed in "Coach research
     /// updates" — drives the "new pack" badge when an app update bumps the KB.
     var lastSeenCoachKBVersion: String { didSet { defaults.set(lastSeenCoachKBVersion, forKey: "settings.lastSeenCoachKBVersion") } }
+    /// When the prominent "Unlock the Coach" CTA was last shown on the free Coach
+    /// card. Insights update continuously regardless; this only paces the upsell
+    /// billboard so free Home never feels like a running ad (`CoachUpsellPolicy`).
+    var lastCoachUpsellShown: Date? { didSet { defaults.set(lastCoachUpsellShown, forKey: "settings.lastCoachUpsellShown") } }
     /// Whether the user has completed the new-user onboarding flow.
     var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
     var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }

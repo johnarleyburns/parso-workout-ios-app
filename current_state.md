@@ -2,6 +2,34 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-03 — Free Coach card: continuous insights, locked prescription, rate-limited upsell._
+
+## What just shipped — Continuous coach insights, occasional upsell (coach-surface-design amendment)
+
+- **Insights are now continuous and always shown for free users.** The free-tier
+  `CoachPreviewView` leads with the coach's live observation ("What the Coach
+  noticed") — the same `coachInsights` the Pro coach computes, recomputed every
+  day / after every workout via `historyRefreshToken`. No frequency cap, no
+  suppression: seeing real, continuously-updated value is the funnel.
+- **Only the prescription is paywalled.** A single-lock "What the Coach would do"
+  panel shows the prescription headline with the exact action (`Recommendation.action`)
+  redacted behind a `PRO` pill; tapping it opens the paywall. This is the line.
+- **"Unlock the Coach" is the only rate-limited element.** New pure
+  `CadenceCore.CoachUpsellPolicy` (min 14 days between billboard impressions) gates
+  the prominent green CTA; `AppSettings.lastCoachUpsellShown` records the cadence,
+  stamped once via `onCTADisplayed` (captured into local `@State` so recording it
+  can't blink the button out mid-view). Between billboards the locked panel is
+  still a discreet, always-available tap-to-convert path.
+- **Science links fixed:** the preview's THE SCIENCE section now renders real
+  citation titles (from the insight + prescription) via the full `CitationLink`,
+  replacing the 3× "The science ›" placeholder.
+- **Free `.coach` route** now shows the full live insights list for everyone
+  (observations are free), instead of the hard `CoachLockedView`.
+- **Tests:** +5 CadenceCore tests (`CoachUpsellPolicyTests`); `swift build`/`swift test`
+  green; `xcodebuild` iOS build succeeds; `MonetizationUITests` suite green (free
+  preview, paywall open+restore, free-logging-loop regression, Pro card).
+
+_Prior entry:_
 _Last updated: 2026-07-01 — Field-test batch: audio mixing, both-modality completion, no imported-workout references, partner-set attribution._
 
 ## What just shipped — Field-test fixes (audio, completion, imports, partners)

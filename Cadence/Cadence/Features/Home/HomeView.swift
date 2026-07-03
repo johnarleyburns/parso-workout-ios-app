@@ -255,7 +255,14 @@ struct HomeView: View {
                                 onPickAlternative: { showAlternatives = true })
                         }
                     } locked: {
-                        CoachPreviewView(plan: coachPlan, onUnlock: { showPaywall = true })
+                        CoachPreviewView(
+                            plan: coachPlan,
+                            topInsight: coachInsights.first,
+                            prescription: coachRecommendation,
+                            showUnlockCTA: CoachUpsellPolicy.shouldShowCTA(
+                                isPro: false, lastShown: settings.lastCoachUpsellShown),
+                            onUnlock: { showPaywall = true },
+                            onCTADisplayed: { settings.lastCoachUpsellShown = Date() })
                     }
                     quickActionsRow
                     plannedRestOfWeekSection
@@ -287,11 +294,10 @@ struct HomeView: View {
                 case .history: HistoryView(path: $path)
                 case .settings: SettingsView()
                 case .coach:
-                    CoachGate {
-                        CoachInsightsView(insights: coachInsights)
-                    } locked: {
-                        CoachLockedView(onUnlock: { showPaywall = true })
-                    }
+                    // Observations are free and continuous for everyone; only the
+                    // prescription behind them is Pro. Free users still get the
+                    // full, live insights list here.
+                    CoachInsightsView(insights: coachInsights)
                 case .coachPreferences: CoachSchedulePreferencesView()
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
                 case .yourPlan:

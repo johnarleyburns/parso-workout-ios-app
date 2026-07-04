@@ -128,6 +128,70 @@ struct HomeView: View {
         return false
     }
 
+    // MARK: Coach presence (coach-surface-design.md §2, as amended)
+
+    /// The current Home coach surface. Insights are continuous; only the introducing
+    /// card and the "Unlock the Coach" CTA are paced.
+    private var coachSurfaceState: CoachSurfaceState {
+        CoachSurfacePresenter.state(
+            entitlement: store.entitlement,
+            hidden: settings.coachHidden,
+            introImpressions: settings.coachIntroImpressions,
+            hasInsight: coachInsights.first != nil,
+            protocolPackPending: !settings.lastSeenCoachKBVersion.isEmpty
+                && CoachKBBadge.hasUnseenUpdate(lastSeen: settings.lastSeenCoachKBVersion))
+    }
+
+    private var coachShowsUnlockCTA: Bool {
+        CoachUpsellPolicy.shouldShowCTA(isPro: false, lastShown: settings.lastCoachUpsellShown)
+    }
+
+    /// Top-of-Home coach surface: the functional card for entitled users, the full
+    /// introducing pitch for new/updated free users, nothing otherwise (the ambient
+    /// row lives below the user's own data).
+    @ViewBuilder
+    private var coachTopSurface: some View {
+        switch coachSurfaceState {
+        case .pro, .trial:
+            VStack(alignment: .leading, spacing: 8) {
+                if let days = store.trialDaysRemaining {
+                    trialBanner(daysLeft: days)
+                }
+                CoachDecisionCardView(
+                    decision: coachDecision,
+                    addOnRecommendation: addOnRecommendation,
+                    topInsight: coachInsights.first,
+                    onStart: { launchDecision($0) },
+                    onAddOn: { session, status in handleAddOn(session, status) },
+                    onSeeInsights: { path.append(HomeRoute.coach) },
+                    onPreferences: { path.append(HomeRoute.yourPlan) },
+                    onPickAlternative: { showAlternatives = true })
+            }
+        case .introducing:
+            CoachPreviewView(
+                plan: coachPlan,
+                topInsight: coachInsights.first,
+                prescription: coachRecommendation,
+                showUnlockCTA: coachShowsUnlockCTA,
+                onUnlock: { showPaywall = true },
+                onCTADisplayed: { settings.lastCoachUpsellShown = Date() })
+                .onAppear { settings.coachIntroImpressions += 1 }
+        case .ambient, .insight, .hidden:
+            EmptyView()
+        }
+    }
+
+    /// The compact ambient/insight coach row, placed after the user's own data.
+    @ViewBuilder
+    private var coachAmbientSurface: some View {
+        if coachSurfaceState.showsCompactRow {
+            CoachRow(
+                topInsight: coachInsights.first,
+                onTap: { path.append(HomeRoute.coachPreview) },
+                onHide: { settings.coachHidden = true })
+        }
+    }
+
     private func optimizedCoachPlan(for decision: CoachDecision) -> OptimizedCoachPlan {
         let events = buildTrainingEvents()
         let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
@@ -239,33 +303,10 @@ struct HomeView: View {
                         .accessibilityIdentifier("home.headerDate")
 
                     if let s = active.strengthSession { resumeCard(s) }
-                    CoachGate {
-                        VStack(alignment: .leading, spacing: 8) {
-                            if let days = store.trialDaysRemaining {
-                                trialBanner(daysLeft: days)
-                            }
-                            CoachDecisionCardView(
-                                decision: coachDecision,
-                                addOnRecommendation: addOnRecommendation,
-                                topInsight: coachInsights.first,
-                                onStart: { launchDecision($0) },
-                                onAddOn: { session, status in handleAddOn(session, status) },
-                                onSeeInsights: { path.append(HomeRoute.coach) },
-                                onPreferences: { path.append(HomeRoute.yourPlan) },
-                                onPickAlternative: { showAlternatives = true })
-                        }
-                    } locked: {
-                        CoachPreviewView(
-                            plan: coachPlan,
-                            topInsight: coachInsights.first,
-                            prescription: coachRecommendation,
-                            showUnlockCTA: CoachUpsellPolicy.shouldShowCTA(
-                                isPro: false, lastShown: settings.lastCoachUpsellShown),
-                            onUnlock: { showPaywall = true },
-                            onCTADisplayed: { settings.lastCoachUpsellShown = Date() })
-                    }
+                    coachTopSurface
                     quickActionsRow
                     plannedRestOfWeekSection
+                    coachAmbientSurface
                     favoritesSection
                     whatYouDidSection
                 }
@@ -298,8 +339,20 @@ struct HomeView: View {
                     // prescription behind them is Pro. Free users still get the
                     // full, live insights list here.
                     CoachInsightsView(insights: coachInsights)
+                case .coachPreview:
+                    CoachPreviewScreen(
+                        topInsight: coachInsights.first,
+                        prescription: coachRecommendation,
+                        showUnlockCTA: coachShowsUnlockCTA,
+                        onUnlock: { showPaywall = true },
+                        onCTADisplayed: { settings.lastCoachUpsellShown = Date() },
+                        onHide: {
+                            settings.coachHidden = true
+                            if !path.isEmpty { path.removeLast() }
+                        })
                 case .coachPreferences: CoachSchedulePreferencesView()
-                case .planning: PlanningView(switchToWorkout: { path = NavigationPath() })
+                case .planning: PlanningView(switchToWorkout: { path = NavigationPath() },
+                                             onOpenCoach: { path.append(HomeRoute.coachPreview) })
                 case .yourPlan:
                     let facts = CoachFacts.make(
                         from: buildTrainingEvents(), goal: settings.trainingGoal,
@@ -1006,7 +1059,7 @@ private enum WorkoutStartCue {
 
 /// Pushed destinations reachable from Home.
 enum HomeRoute: Hashable {
-    case history, settings, coach, coachPreferences, planning
+    case history, settings, coach, coachPreview, coachPreferences, planning
     case yourPlan
     case workoutEditor(EditablePlan)
 }

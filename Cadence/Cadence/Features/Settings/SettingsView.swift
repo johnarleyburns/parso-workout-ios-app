@@ -94,6 +94,14 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("settings.proStatus")
                 } else {
+                    Toggle("Hide Coach offers", isOn: $settings.coachHidden)
+                        .accessibilityIdentifier("settings.coach.hideOffers")
+                        .onChange(of: settings.coachHidden) { _, hidden in
+                            // Re-enabling returns the coach to the introducing state
+                            // (design §2: hidden → introducing only on manual re-enable).
+                            if !hidden { settings.coachIntroImpressions = 0 }
+                        }
+
                     Button {
                         Task { await store.restore() }
                     } label: {

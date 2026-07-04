@@ -27,7 +27,9 @@ final class AppSettings {
                         "settings.useHRMonitoring",
                         "settings.coachPreferenceProfile",
                         "settings.coachSchedulePreferences",
-                        "settings.lastCoachUpsellShown"] {
+                        "settings.lastCoachUpsellShown",
+                        "settings.coachHidden",
+                        "settings.coachIntroImpressions"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -66,6 +68,8 @@ final class AppSettings {
         self.lastCoachComputeDay = defaults.string(forKey: "settings.lastCoachComputeDay") ?? ""
         self.lastSeenCoachKBVersion = defaults.string(forKey: "settings.lastSeenCoachKBVersion") ?? ""
         self.lastCoachUpsellShown = defaults.object(forKey: "settings.lastCoachUpsellShown") as? Date
+        self.coachHidden = defaults.bool(forKey: "settings.coachHidden")
+        self.coachIntroImpressions = defaults.object(forKey: "settings.coachIntroImpressions") as? Int ?? 0
         self.favoriteRoutineIDs = Set(defaults.stringArray(forKey: "settings.favoriteRoutineIDs") ?? [])
         // Coach preferences are stored properties (not computed) so @Observable
         // tracks mutations and SwiftUI re-renders when they change.
@@ -109,6 +113,14 @@ final class AppSettings {
             }
             if a.contains("-enableHRMonitoring") {
                 self.useHRMonitoring = true
+            }
+            // Coach-surface state hooks so ambient/insight/hidden are UI-testable
+            // (a fresh launch is otherwise always `introducing`).
+            if let i = a.firstIndex(of: "-coachImpressions"), i + 1 < a.count, let n = Int(a[i + 1]) {
+                self.coachIntroImpressions = n
+            }
+            if a.contains("-coachHidden") {
+                self.coachHidden = true
             }
         }
     }
@@ -155,6 +167,13 @@ final class AppSettings {
     /// card. Insights update continuously regardless; this only paces the upsell
     /// billboard so free Home never feels like a running ad (`CoachUpsellPolicy`).
     var lastCoachUpsellShown: Date? { didSet { defaults.set(lastCoachUpsellShown, forKey: "settings.lastCoachUpsellShown") } }
+    /// User opted out of coach offers on Home ("Hide Coach offers"). The coach is
+    /// still reachable from the Programs tab and Settings; insights are never shown
+    /// on Home in this state (coach-surface-design.md §2 `hidden`).
+    var coachHidden: Bool { didSet { defaults.set(coachHidden, forKey: "settings.coachHidden") } }
+    /// How many times the full introducing coach card has been shown on Home. After
+    /// `CoachSurfacePresenter.introImpressionCap` it demotes to the compact row.
+    var coachIntroImpressions: Int { didSet { defaults.set(coachIntroImpressions, forKey: "settings.coachIntroImpressions") } }
     /// Whether the user has completed the new-user onboarding flow.
     var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
     var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }

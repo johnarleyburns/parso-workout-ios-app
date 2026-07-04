@@ -4,6 +4,9 @@ import CadenceCore
 
 struct PlanningView: View {
     let switchToWorkout: () -> Void
+    /// Opens the Coach preview. Present in every coach surface state (including
+    /// `hidden`), so the coach is always reachable from Programs (design §2/§8).
+    var onOpenCoach: (() -> Void)? = nil
 
     @Environment(\.modelContext) private var context
     @Environment(ActiveWorkoutModel.self) private var active
@@ -203,6 +206,25 @@ struct PlanningView: View {
 
     private var routinesList: some View {
         List {
+            if let onOpenCoach, trimmedQuery.isEmpty {
+                Section {
+                    Button(action: onOpenCoach) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "leaf.fill").foregroundStyle(.green)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Coach").font(.headline)
+                                Text("Builds and adjusts your program")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("programs.coachEntry")
+                }
+            }
             if trimmedQuery.isEmpty {
                 if !favoriteRoutines.isEmpty {
                     Section("Favorites") {

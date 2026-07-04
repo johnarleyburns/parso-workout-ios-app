@@ -2,6 +2,46 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-04 — Coach presence system (surface state machine, CoachRow, preview screen, hide-offers) + plan constraint override._
+
+## What just shipped — Coach surface presence system (coach-surface-design.md, amended)
+
+- **`CoachSurfacePresenter` (CadenceCore, pure)** — resolves the Home coach surface:
+  `introducing | ambient | insight | hidden | trial | pro`. Entitlement overrides
+  all; else hidden → hidden; else protocol-pack-pending or under the 3-impression
+  cap → introducing; else insight (observation available) or ambient. +10 unit tests.
+- **`CoachRow`** — compact ambient/insight surface placed after the user's own data
+  (quick actions + Planned), before What You Did. Shows the continuous observation
+  when present; long-press → Hide Coach offers / Learn more.
+- **`CoachPreviewScreen`** — the full pitch moved off Home to a pushed screen: promise,
+  live "What the Coach noticed" insight, Pro capability rows (single Pro pill), locked
+  "What it would do" (redacted prescription), real citation titles, rate-limited
+  Unlock CTA, and a Hide Coach offers footer.
+- **HomeView** now renders per surface state: full card (pro/trial) or introducing
+  card at top; CoachRow below data for ambient/insight; nothing when hidden. Intro
+  impressions counter increments on the introducing card.
+- **Settings** → "Hide Coach offers" toggle (free only); re-enabling returns to
+  introducing. **Programs** → always-present Coach entry row (reachable even when
+  hidden). AppSettings adds `coachHidden`, `coachIntroImpressions` (+ UI-test hooks
+  `-coachImpressions N`, `-coachHidden`).
+- **Tests:** +10 CadenceCore (`CoachSurfacePresenterTests`); +6 e2e
+  (`CoachSurfaceUITests`: introducing card, ambient row → preview screen, hidden
+  removes Home presence, hidden still reachable via Programs, Programs entry,
+  Settings hide toggle). `MonetizationUITests` (4) still green. Full CadenceCore
+  suite 596 green; `xcodebuild` iOS build succeeds.
+- **Note:** 5 `P3CoachHomeUITests` are failing on `main` independently of this work
+  (verified against the stashed baseline) — bit-rotted since CI doesn't run the UI
+  suite (CI archives + uploads TestFlight only). Not introduced here.
+
+## What just shipped — Plan constraint-override ("ignore constraints to meet deficits")
+
+- **`PlanningConstraintPolicy`** (`.safe` default, `.meetDeficits` override) threaded
+  through `CoachPlanOptimizer`. When a missed day makes weekly volume unreachable
+  without violating guardrails, `.meetDeficits` plans through back-to-back days,
+  larger sessions, MRV, and rest days to close the deficits. +5 tests; `.safe`
+  preserves all prior behavior.
+
+_Prior entry:_
 _Last updated: 2026-07-03 — Free Coach card: continuous insights, locked prescription, rate-limited upsell._
 
 ## What just shipped — Continuous coach insights, occasional upsell (coach-surface-design amendment)

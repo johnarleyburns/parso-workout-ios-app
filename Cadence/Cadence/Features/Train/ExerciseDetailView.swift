@@ -11,7 +11,6 @@ struct ExerciseDetailView: View {
 
     private var startImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 0) }
     private var endImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 1) }
-    private var libraryPageURL: URL? { ExerciseLibrary.exercisePageURL(forImageName: exercise.imageName) }
 
     var body: some View {
         ScrollView {
@@ -29,8 +28,6 @@ struct ExerciseDetailView: View {
                 if !exercise.instructions.isEmpty {
                     instructions
                 }
-
-                libraryLink
 
                 attribution
             }
@@ -132,21 +129,6 @@ struct ExerciseDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var libraryLink: some View {
-        Group {
-            if let url = libraryPageURL {
-                Link(destination: url) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "book")
-                        Text("View in exercise library")
-                        Image(systemName: "arrow.up.right").font(.caption2)
-                    }
-                    .font(.subheadline)
-                }
-            }
-        }
     }
 
     private var attribution: some View {

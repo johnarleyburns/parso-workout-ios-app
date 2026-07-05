@@ -2,7 +2,28 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-04 — App Store polish (a11y sweep + location transparency) and exercise-picker equipment sub-filter._
+_Last updated: 2026-07-05 — Exercise catalog de-duplication + duplicate facet-pill fix._
+
+## What just shipped — Exercise de-duplication (spelling variants) + duplicate pill fix
+
+- **Root cause:** `ExerciseLibrary.starter` merged our curated catalog with the
+  free-exercise-db by *exact* lowercased name, so singular/plural & hyphen variants
+  escaped dedup — e.g. the empty curated "Handstand Push-Up" stub coexisted with the
+  full imported "Handstand Push-Ups". Diagnostic found **14** such duplicate groups.
+- **Catalog fix:** added `ExerciseLibrary.dedupKey` (lowercase, hyphen→space,
+  punctuation-strip, single trailing-plural fold) and a `collapseVariants` pass that
+  keeps the first (curated, canonical name + our facets) entry and backfills its
+  instructions/image/level from the dropped twin. 1001 → 987 entries, zero variant
+  collisions.
+- **Existing-install migration:** `WorkoutRepository.collapseDuplicateBuiltInExercises`
+  runs at seed time — collapses already-seeded duplicate built-in rows by `dedupKey`,
+  keeps the canonical/richest row, **repoints logged sets** + favorite, deletes the
+  loser. Idempotent; never touches custom exercises.
+- **Duplicate pills:** the detail view showed "Push" twice because `force` and
+  `category` both render "Push"/"Pull". Extracted `ExerciseFacetTagBuilder.tags`
+  (pure) that de-dups labels case-insensitively; `ExerciseDetailView` now renders it.
+- **Tests:** +13 CadenceCore (`ExerciseLibraryDedupTests`, `ExerciseFacetTagsTests`,
+  `ExerciseDedupMigrationTests`). Core suite 618 green; iOS build succeeds.
 
 ## What just shipped — App Store polish + exercise-picker equipment sub-filter
 

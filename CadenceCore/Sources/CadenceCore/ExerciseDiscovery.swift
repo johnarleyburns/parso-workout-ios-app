@@ -73,4 +73,31 @@ public extension ExerciseLibrary {
 public extension Exercise {
     /// Body parts this (possibly custom) exercise trains, from its muscle groups.
     var bodyParts: Set<BodyPart> { BodyPart.parts(forMuscleIDs: muscleGroups) }
+
+    /// The de-duplicated facet chips shown in the exercise detail (level, equipment,
+    /// mechanics, force, category). `force` and `category` both read "Push"/"Pull"
+    /// for pressing/pulling movements, so identical labels are collapsed (fixes the
+    /// duplicated "Push" pill). Order is preserved.
+    var displayFacetTags: [String] {
+        ExerciseFacetTagBuilder.tags(level: level, equipment: equipmentValue,
+                                     mechanics: mechanicsValue, force: forceValue,
+                                     category: categoryValue)
+    }
+}
+
+/// Pure builder for the exercise-detail facet chips, kept out of the `@Model` so it
+/// is headlessly `swift test`-verifiable. Collapses labels that repeat (force and
+/// category both say "Push" for pressing movements).
+public enum ExerciseFacetTagBuilder {
+    public static func tags(level: String?, equipment: Equipment?, mechanics: Mechanics?,
+                            force: Force?, category: ExerciseCategory?) -> [String] {
+        var tags: [String] = []
+        if let level { tags.append(level.capitalized) }
+        if let equipment { tags.append(equipment.displayName) }
+        if let mechanics { tags.append(mechanics == .compound ? "Compound" : "Isolation") }
+        if let force { tags.append(force.rawValue.capitalized) }
+        if let category { tags.append(category.displayName) }
+        var seen = Set<String>()
+        return tags.filter { seen.insert($0.lowercased()).inserted }
+    }
 }

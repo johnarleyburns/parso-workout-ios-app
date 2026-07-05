@@ -15,10 +15,13 @@ public enum WorkoutRepository {
     /// anything changed.
     @discardableResult
     public static func seedStarterLibraryIfNeeded(_ context: ModelContext) throws -> Bool {
+        // First collapse any duplicate built-in rows a prior seed created (e.g. the
+        // empty "Handstand Push-Up" stub alongside the full "Handstand Push-Ups").
+        var changed = try collapseDuplicateBuiltInExercises(context)
+
         let existing = try allExercises(context)
         var byName: [String: Exercise] = [:]
         for ex in existing { byName[ex.name.lowercased()] = ex }
-        var changed = false
 
         for t in ExerciseLibrary.starter {
             if let ex = byName[t.name.lowercased()] {
@@ -66,6 +69,47 @@ public enum WorkoutRepository {
                 }
             } else {
                 context.insert(ExerciseLibrary.makeExercise(from: t))
+                changed = true
+            }
+        }
+        if changed { try context.save() }
+        return changed
+    }
+
+    /// Collapses duplicate **built-in** exercise rows that differ only by spelling
+    /// (singular/plural, hyphen) — same `ExerciseLibrary.dedupKey`. Keeps the row
+    /// with the canonical library name (else the richest, then the oldest), repoints
+    /// its logged sets and favorite flag onto the survivor, and deletes the losers so
+    /// history is preserved. Never touches custom exercises. Idempotent.
+    @discardableResult
+    static func collapseDuplicateBuiltInExercises(_ context: ModelContext) throws -> Bool {
+        let builtIns = try allExercises(context).filter { !$0.isCustom }
+        var groups: [String: [Exercise]] = [:]
+        for ex in builtIns { groups[ExerciseLibrary.dedupKey(ex.name), default: []].append(ex) }
+
+        let canonical = Set(ExerciseLibrary.starter.map { $0.name.lowercased() })
+        var changed = false
+        for (_, rows) in groups where rows.count > 1 {
+            let survivor = rows.max { a, b in
+                let ca = canonical.contains(a.name.lowercased()) ? 1 : 0
+                let cb = canonical.contains(b.name.lowercased()) ? 1 : 0
+                if ca != cb { return ca < cb }
+                if a.instructions.count != b.instructions.count {
+                    return a.instructions.count < b.instructions.count
+                }
+                return a.createdAt > b.createdAt   // older row wins on a full tie
+            }!
+            for loser in rows where loser.id != survivor.id {
+                // Preserve the richer content on the survivor before dropping the twin.
+                if survivor.instructions.isEmpty, !loser.instructions.isEmpty {
+                    survivor.instructions = loser.instructions
+                }
+                if survivor.imageName == nil { survivor.imageName = loser.imageName }
+                if survivor.level == nil { survivor.level = loser.level }
+                for set in (loser.sets ?? []) { set.exercise = survivor }
+                if loser.isFavorite { survivor.isFavorite = true }
+                survivor.updatedAt = Date()
+                context.delete(loser)
                 changed = true
             }
         }

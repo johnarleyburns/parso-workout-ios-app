@@ -93,8 +93,47 @@ public enum ExerciseLibrary {
         for t in ImportedExerciseLibrary.templates where seen.insert(t.name.lowercased()).inserted {
             merged.append(t)
         }
-        return merged
+        // Final safety net: collapse singular/plural & punctuation variants that
+        // escape the exact-name + alias dedup above (e.g. curated "Handstand Push-Up"
+        // stub vs imported "Handstand Push-Ups"). The first occurrence wins — curated
+        // entries lead `merged`, so our canonical name + hand-mapped facets survive —
+        // and we backfill its missing instructions/image/level from the dropped twin.
+        return collapseVariants(merged)
     }()
+
+    /// Collapses catalog entries whose names are the same movement written slightly
+    /// differently (plural, hyphen). Keeps the first entry per `dedupKey`, enriched
+    /// with any instructions/image/level the later duplicates carry.
+    static func collapseVariants(_ templates: [ExerciseTemplate]) -> [ExerciseTemplate] {
+        var byKey: [String: Int] = [:]
+        var deduped: [ExerciseTemplate] = []
+        for t in templates {
+            let key = dedupKey(t.name)
+            if let idx = byKey[key] {
+                var survivor = deduped[idx]
+                if survivor.instructions.isEmpty { survivor.instructions = t.instructions }
+                if survivor.imageName == nil { survivor.imageName = t.imageName }
+                if survivor.level == nil { survivor.level = t.level }
+                deduped[idx] = survivor
+            } else {
+                byKey[key] = deduped.count
+                deduped.append(t)
+            }
+        }
+        return deduped
+    }
+
+    /// Canonical key for detecting "same movement, different spelling" duplicates:
+    /// lowercased, hyphens→spaces, punctuation stripped, whitespace collapsed, and a
+    /// single trailing plural "s" dropped. Shared by the catalog dedup and the
+    /// store-migration that collapses already-seeded duplicate rows.
+    public static func dedupKey(_ name: String) -> String {
+        var s = name.lowercased().replacingOccurrences(of: "-", with: " ")
+        s = String(s.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) || $0 == " " })
+        s = s.split(whereSeparator: { $0 == " " }).joined(separator: " ")
+        if s.hasSuffix("s") { s = String(s.dropLast()) }
+        return s
+    }
 
     static let curatedAlias: [String: String] = [
         "bench press": "Barbell_Bench_Press_-_Medium_Grip",

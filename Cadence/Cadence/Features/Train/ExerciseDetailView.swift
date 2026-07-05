@@ -93,11 +93,7 @@ struct ExerciseDetailView: View {
 
     private var facets: some View {
         FlowLayout(spacing: 8) {
-            if let level = exercise.level { tag(level.capitalized) }
-            if let eq = exercise.equipmentValue { tag(eq.displayName) }
-            if let mech = exercise.mechanicsValue { tag(mech == .compound ? "Compound" : "Isolation") }
-            if let f = exercise.forceValue { tag(f.rawValue.capitalized) }
-            if let cat = exercise.categoryValue { tag(cat.displayName) }
+            ForEach(exercise.displayFacetTags, id: \.self) { tag($0) }
         }
         .accessibilityElement(children: .combine)
     }

@@ -39,9 +39,11 @@ final class HomeSimplificationUITests: CadenceUITestCase {
         // and schedule preferences now live.
         XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
         let goal = app.buttons["settings.coach.goal"]
-        var found = goal.waitForExistence(timeout: 2)
-        for _ in 0..<8 where !found { app.swipeUp(); found = goal.exists }
-        XCTAssertTrue(found, "Coach goal picker should be reachable from Your Plan")
+        if !goal.exists || !goal.isHittable {
+            for _ in 0..<6 { app.swipeUp() }
+        }
+        XCTAssertTrue(goal.waitForExistence(timeout: 5),
+                      "Coach goal picker should be reachable from Your Plan")
     }
 
     func testCoachCardInsightsButtonOpensDedicatedInsights() {

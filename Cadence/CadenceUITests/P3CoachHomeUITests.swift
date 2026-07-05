@@ -31,15 +31,17 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         XCTAssertTrue(app.scrollToHittableAndTap("home.yourPlan"), "open Your Plan")
         XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
 
-        // Coach settings now live at the bottom of Your Plan.
+        // Coach settings live at the bottom of Your Plan — scroll to reveal.
         let goal = app.buttons["settings.coach.goal"]
-        var found = goal.waitForExistence(timeout: 2)
-        for _ in 0..<8 where !found {
-            app.swipeUp()
-            found = goal.exists
+        if !goal.exists || !goal.isHittable {
+            for _ in 0..<6 { app.swipeUp() }
         }
-        XCTAssertTrue(found, "Coach training-goal picker")
-        XCTAssertTrue(app.buttons["settings.coach.experience"].exists, "Coach experience picker")
+        XCTAssertTrue(goal.waitForExistence(timeout: 5),
+                      "Coach training-goal picker")
+
+        let experience = app.buttons["settings.coach.experience"]
+        XCTAssertTrue(experience.waitForExistence(timeout: 3),
+                      "Coach experience picker")
     }
 
     // MARK: Home redesign — quick-actions row, plan card, Coach start button

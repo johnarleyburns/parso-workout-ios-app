@@ -123,6 +123,8 @@ struct CoachSchedulePreferencesView: View {
                                         .foregroundStyle(isSelected ? .white : .primary)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel(wd.displayName)
+                                .accessibilityAddTraits(isSelected ? .isSelected : [])
                             }
                         }
 

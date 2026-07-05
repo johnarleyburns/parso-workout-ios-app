@@ -280,6 +280,7 @@ struct SessionView: View {
             Color.clear.frame(width: SetCol.check)
         }
         .font(.caption2).textCase(.uppercase).foregroundStyle(.tertiary)
+        .lineLimit(1).minimumScaleFactor(0.5)
         .padding(.horizontal, 2)
     }
 
@@ -990,8 +991,10 @@ struct SessionView: View {
                 if isAllTimePR(set, exercise: exercise) {
                     Image(systemName: "trophy.fill").foregroundStyle(.orange)
                         .accessibilityIdentifier("set.prBadge")
+                        .accessibilityLabel("Personal record")
                 } else {
                     Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(.green)
+                        .accessibilityLabel("Set completed")
                 }
             }
             .frame(width: SetCol.check)
@@ -1144,9 +1147,13 @@ struct SessionView: View {
                         .accessibilityIdentifier("inline.alt")
                 }
                 if isBodyweight(exercise) {
-                    Toggle("Bodyweight", isOn: $inlineBodyweight)
-                        .toggleStyle(.button).controlSize(.mini)
-                        .accessibilityIdentifier("inline.bodyweight")
+                    Toggle(isOn: $inlineBodyweight) {
+                        Text("BW").lineLimit(1).fixedSize()
+                    }
+                    .toggleStyle(.button).controlSize(.mini)
+                    .fixedSize()
+                    .accessibilityIdentifier("inline.bodyweight")
+                    .accessibilityLabel("Bodyweight")
                 }
                 // Weight info button (barbell/bodyweight/dumbbell guidance)
                 Button { showWeightInfo = true } label: {
@@ -1200,6 +1207,7 @@ struct SessionView: View {
                     }
                     .buttonStyle(.plain).foregroundStyle(.red)
                     .accessibilityIdentifier("inline.delete")
+                    .accessibilityLabel("Delete set")
                 }
                 Button("Cancel") { closeInlineEditor() }
                     .font(.caption)

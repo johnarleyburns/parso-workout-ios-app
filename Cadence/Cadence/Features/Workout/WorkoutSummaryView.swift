@@ -87,6 +87,7 @@ struct WorkoutSummaryView: View {
                 .font(.largeTitle)
                 .foregroundStyle(.tint)
                 .accessibilityIdentifier("summary.icon")
+                .accessibilityHidden(true)
             Text(data.title)
                 .font(.title.weight(.bold))
                 .accessibilityIdentifier("summary.title")

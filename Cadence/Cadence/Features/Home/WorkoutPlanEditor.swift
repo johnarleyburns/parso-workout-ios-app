@@ -255,6 +255,7 @@ struct WorkoutPlanEditor: View {
                                 .disabled(index == 0)
                                 .buttonStyle(.borderless)
                                 .accessibilityIdentifier("editor.partnerOrder.up.\(person.isMe ? "Me" : person.name)")
+                                .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) earlier")
 
                                 Button {
                                     moveRosterMember(from: index, by: 1)
@@ -264,6 +265,7 @@ struct WorkoutPlanEditor: View {
                                 .disabled(index >= editorRoster.count - 1)
                                 .buttonStyle(.borderless)
                                 .accessibilityIdentifier("editor.partnerOrder.down.\(person.isMe ? "Me" : person.name)")
+                                .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) later")
                             }
                         }
                     } header: {

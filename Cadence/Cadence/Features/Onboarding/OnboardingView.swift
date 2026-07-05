@@ -126,6 +126,11 @@ struct OnboardingView: View {
                 valueRow("book.closed", "Every recommendation is sourced")
             }
             .padding(.top, 28)
+            Text("Location is used only while you're recording an outdoor run, walk, or ride you start — it maps your route in the background (shown by the blue status bar) and stops the moment you finish. Never at any other time.")
+                .font(.caption2).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 22).padding(.horizontal, 8)
             Spacer(); Spacer()
         }
         .padding(.horizontal, 24)

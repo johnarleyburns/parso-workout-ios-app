@@ -118,21 +118,41 @@ struct TrainingProgressView: View {
                 }
                 .chartYScale(domain: .automatic(includesZero: false))
                 .frame(height: 150)
-                .accessibilityHidden(true)
+                .accessibilityElement()
+                .accessibilityLabel("Estimated 1RM trend, last 12 weeks")
+                .accessibilityValue(strengthTrendSummary)
 
                 VStack(spacing: 5) {
                     ForEach(strengthSeries) { s in
                         HStack(spacing: 8) {
-                            Text(s.exercise).font(.subheadline).lineLimit(1)
+                            Text(s.exercise).font(.subheadline).lineLimit(1).minimumScaleFactor(0.7)
                             Spacer()
                             Text(Format.weight(s.current, unit: settings.unit, decimals: 0))
                                 .font(.subheadline.weight(.semibold)).monospacedDigit()
                             trendTag(s.trend, delta: s.delta)
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("\(s.exercise): \(Format.weight(s.current, unit: settings.unit, decimals: 0)), \(trendLabel(s.trend, delta: s.delta))")
                     }
                 }
                 .padding(.top, 8)
             }
+        }
+    }
+
+    /// One-line VoiceOver summary of the (visually hidden) e1RM chart.
+    private var strengthTrendSummary: String {
+        let tracked = strengthSeries.filter { $0.points.count >= 2 }
+        guard !tracked.isEmpty else { return "No lifts tracked yet." }
+        let parts = tracked.map { "\($0.exercise) \(trendLabel($0.trend, delta: $0.delta))" }
+        return "\(tracked.count) lifts tracked. " + parts.joined(separator: ", ")
+    }
+
+    private func trendLabel(_ t: TrendDirection, delta: Double) -> String {
+        switch t {
+        case .rising: return "up \(Format.weight(abs(delta), unit: settings.unit, decimals: 0))"
+        case .declining: return "down \(Format.weight(abs(delta), unit: settings.unit, decimals: 0))"
+        case .flat: return "no change"
         }
     }
 
@@ -194,6 +214,7 @@ struct TrainingProgressView: View {
                 }
                 .frame(height: 22)
                 .clipShape(RoundedRectangle(cornerRadius: 7))
+                .accessibilityHidden(true)
                 HStack {
                     Text("heavy \(pct(i.heavy))").foregroundStyle(.blue)
                     Spacer(); Text("moderate \(pct(i.moderate))").foregroundStyle(.green)

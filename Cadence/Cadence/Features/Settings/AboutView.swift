@@ -164,6 +164,9 @@ struct AboutView: View {
             Text("We don't collect, transmit, or sell your data — there's nothing to collect, because Cladiron runs entirely on your device. Apple Health, Bluetooth heart-rate, and location data all stay on your device, and only with your permission.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Text("Location is used only while you're recording an outdoor run, walk, or ride. It keeps mapping your route in the background — shown by the blue status-bar indicator — and stops the moment you end the workout. Cladiron never tracks your location at any other time.")
+                .font(.footnote).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Link(destination: privacyURL) {
                 HStack(spacing: 6) {
                     Image(systemName: "hand.raised")

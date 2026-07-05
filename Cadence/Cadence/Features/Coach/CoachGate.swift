@@ -28,7 +28,7 @@ struct CoachLockedView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "figure.mind.and.body")
-                .font(.system(size: 46))
+                .scaledSystemFont(46, relativeTo: .largeTitle)
                 .foregroundStyle(.green)
             Text(title).font(.title2.bold()).multilineTextAlignment(.center)
             Text(message)

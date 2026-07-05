@@ -143,6 +143,8 @@ struct LogCardioView: View {
                     Stepper("Minutes", value: $minutes, in: 1...600, step: 5)
                         .labelsHidden()
                         .accessibilityIdentifier("log.minutesStepper")
+                        .accessibilityLabel("Minutes")
+                        .accessibilityValue("\(minutes)")
                 }
             }
             if showsDistance {

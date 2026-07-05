@@ -49,6 +49,10 @@ struct OutdoorCardioView: View {
             liveView
                 .keepAwake()
                 .onAppear { startIfNeeded() }
+                // Safety net: background GPS must never outlive this screen. The
+                // End/Cancel paths already stop the tracker; this guards any other
+                // dismissal so location is only ever active during a live workout.
+                .onDisappear { if recorder?.isRecording == true { model.location.stop() } }
         }
     }
 

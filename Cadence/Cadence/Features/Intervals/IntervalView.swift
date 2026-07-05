@@ -108,7 +108,8 @@ struct IntervalView: View {
             .padding()
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(label), \(Int(runner.phaseRemaining)) seconds left")
+        .accessibilityLabel(label)
+        .accessibilityValue("\(Int(runner.phaseRemaining)) seconds left")
         .statusBarHidden()
         .onAppear { cues.spokenEnabled = settings.spokenCues; cues.isBoxing = saveType == .boxing }
         .onReceive(tick) { _ in advance() }

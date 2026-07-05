@@ -55,77 +55,97 @@ struct HomeView: View {
     @State private var showSupport = false
     @State private var showPaywall = false
 
-    // Coach engine (strength-pivot P3/P5): one computed snapshot drives both the
-    // read-only insights and the prescriptive recommendation surfaced on the card.
-    private var coachFacts: TrainingFacts {
-        TrainingFacts.make(sessions: sessions.filter { $0.deletedAt == nil },
-                           assessments: assessments,
-                           goal: settings.trainingGoal,
-                           experience: settings.experienceLevel,
-                           formula: settings.formula)
-    }
-    private var coachInsights: [Insight] {
-        _ = historyRefreshToken
-        let decision = baseCoachDecision
-        let optimized = optimizedCoachPlan(for: decision)
-        return PlanAwareInsightEngine.run(
-            completed: coachFacts,
-            plan: coachPlan,
-            plannedStrengthSessions: optimized.plannedStrengthSessions,
-            unresolvedDeficits: optimized.unresolvedDeficits,
-            diagnostics: optimized.diagnostics,
-            isBehindPlan: coachInsightsBehindPlan,
-            now: Date())
-    }
-    /// The top prescription the Coach card leads with (P5.2). Never nil — the engine
-    /// falls back to a cited cold-start starter when there's no history yet.
-    private var coachRecommendation: Recommendation {
-        let events = buildTrainingEvents()
-        let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
-                                     experience: settings.experienceLevel,
-                                     formula: settings.formula)
-        if let rec = CoachRecommendationEngine.run(facts, profile: settings.coachPreferenceProfile)
-            .first(where: { rec in
-                if let system = rec.system {
-                    return [.maximalStrength, .hypertrophy, .strengthEndurance].contains(system)
-                }
-                return [.progression, .deload, .addVolume, .starter, .strengthBlock, .volumeAdjust].contains(rec.kind)
-            }) {
-            return rec
+    // Coach engine (strength-pivot P3/P5). The whole pipeline (facts + decision +
+    // plan optimization + insights over ALL history) is expensive. It used to be a
+    // set of plain computed properties that re-ran ~8–10× on every SwiftUI body
+    // evaluation — including on every logged set, because a set save mutates the
+    // session `@Query`, which invalidated this (still-alive) Home view even while
+    // SessionView was pushed. That caused the 1–2s stalls when logging. It is now
+    // computed ONCE into `coachSnapshot` by a `.task(id:)` that only refires when
+    // history or coach-relevant settings actually change — never on per-set churn.
+    struct HomeCoachSnapshot {
+        var facts: TrainingFacts
+        var insights: [Insight]
+        var recommendation: Recommendation
+        var decision: CoachDecision
+        var plan: WeeklyPlan
+        var behindPlan: Bool
+        var addOn: CoachAddOnRecommendation
+
+        init(_ s: CoachSnapshot) {
+            facts = s.facts; insights = s.insights; recommendation = s.recommendation
+            decision = s.decision; plan = s.plan; behindPlan = s.behindPlan; addOn = s.addOn
         }
-        return RecommendationEngine.top(coachFacts)
+
+        /// Cheap cold-start value shown for the first frame before `.task` computes
+        /// the real snapshot (empty inputs → cold-start decision/recommendation).
+        static let placeholder = HomeCoachSnapshot(
+            CoachSnapshotBuilder.build(
+                sessions: [], cardio: [], assessments: [], hasPainToday: false,
+                goal: .strength, experience: .intermediate, formula: .epley,
+                schedulePreferences: CoachSchedulePreferences(), profile: .empty))
     }
 
-    private var baseCoachDecision: CoachDecision {
-        _ = historyRefreshToken
-        let events = buildTrainingEvents()
-        let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
-                                     experience: settings.experienceLevel,
-                                     formula: settings.formula)
+    @State private var coachSnapshot: HomeCoachSnapshot = .placeholder
+
+    private var coachFacts: TrainingFacts { coachSnapshot.facts }
+    private var coachInsights: [Insight] { coachSnapshot.insights }
+    private var coachRecommendation: Recommendation { coachSnapshot.recommendation }
+    private var coachDecision: CoachDecision { coachSnapshot.decision }
+    private var coachPlan: WeeklyPlan { coachSnapshot.plan }
+    private var coachInsightsBehindPlan: Bool { coachSnapshot.behindPlan }
+
+    /// Gates coach recomputation. Deliberately keyed on coarse history counts + the
+    /// refresh token + coach-relevant settings — NOT per-set session churn — so
+    /// logging a set never re-runs the pipeline. The token is bumped when a workout
+    /// completes (and on log / ingest / delete / day-change); counts catch
+    /// create/delete; settings catch preference edits.
+    private struct CoachSignature: Equatable {
+        var token: UUID
+        var sessionCount: Int
+        var cardioCount: Int
+        var assessmentCount: Int
+        var goal: TrainingGoal
+        var experience: ExperienceLevel
+        var formula: OneRepMaxFormula
+        var schedule: CoachSchedulePreferences
+        var profile: CoachPreferenceProfile
+        var painToday: Bool
+    }
+    private var coachSignature: CoachSignature {
         let todayDate = Calendar.current.startOfDay(for: Date())
-        let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == todayDate }
-        let hasPain = todayReadiness?.hasPainOrIllnessConcern ?? false
-        return CoachDecisionEngine.run(facts,
-                                         profile: settings.coachPreferenceProfile,
-                                         schedulePreferences: settings.coachSchedulePreferences,
-                                         hasPainConcern: hasPain)
+        let painToday = readinessEntries
+            .first { Calendar.current.startOfDay(for: $0.date) == todayDate }?
+            .hasPainOrIllnessConcern ?? false
+        return CoachSignature(
+            token: historyRefreshToken,
+            sessionCount: sessions.count,
+            cardioCount: cardio.count,
+            assessmentCount: assessments.count,
+            goal: settings.trainingGoal,
+            experience: settings.experienceLevel,
+            formula: settings.formula,
+            schedule: settings.coachSchedulePreferences,
+            profile: settings.coachPreferenceProfile,
+            painToday: painToday)
     }
 
-    private var coachDecision: CoachDecision {
-        let decision = baseCoachDecision
-        return decisionByApplyingOptimizedStrength(decision, optimizedPlan: optimizedCoachPlan(for: decision))
-    }
-
-    private var coachPlan: WeeklyPlan {
-        let facts = CoachFacts.make(
-            from: buildTrainingEvents(), goal: settings.trainingGoal,
-            experience: settings.experienceLevel, formula: settings.formula)
-        return WeeklyPlan.generate(from: facts, schedulePreferences: settings.coachSchedulePreferences)
-    }
-
-    private var coachInsightsBehindPlan: Bool {
-        if case .offPlan = coachDecision.planAdherence { return true }
-        return false
+    /// Builds the full coach snapshot ONCE via the pure CadenceCore builder.
+    private func buildCoachSnapshot() -> HomeCoachSnapshot {
+        let todayDate = Calendar.current.startOfDay(for: Date())
+        let hasPain = readinessEntries
+            .first { Calendar.current.startOfDay(for: $0.date) == todayDate }?
+            .hasPainOrIllnessConcern ?? false
+        return HomeCoachSnapshot(CoachSnapshotBuilder.build(
+            sessions: sessions,
+            cardio: cardio,
+            assessments: assessments,
+            hasPainToday: hasPain,
+            goal: settings.trainingGoal,
+            experience: settings.experienceLevel,
+            formula: settings.formula,
+            schedulePreferences: settings.coachSchedulePreferences,
+            profile: settings.coachPreferenceProfile))
     }
 
     // MARK: Coach presence (coach-surface-design.md §2, as amended)
@@ -192,87 +212,7 @@ struct HomeView: View {
         }
     }
 
-    private func optimizedCoachPlan(for decision: CoachDecision) -> OptimizedCoachPlan {
-        let events = buildTrainingEvents()
-        let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
-                                    experience: settings.experienceLevel,
-                                    formula: settings.formula)
-        let plan = WeeklyPlan.generate(from: facts, schedulePreferences: settings.coachSchedulePreferences)
-        let candidates = strengthOptimizationCandidates(for: decision, facts: facts)
-        return CoachPlanOptimizer.optimize(
-            trainingFacts: coachFacts,
-            coachFacts: facts,
-            weeklyPlan: plan,
-            schedulePreferences: settings.coachSchedulePreferences,
-            candidates: candidates)
-    }
-
-    private func strengthOptimizationCandidates(for decision: CoachDecision,
-                                                facts: CoachFacts) -> [CoachSession] {
-        let engineCandidates = CoachSession.candidates(for: facts,
-                                                       schedulePreferences: settings.coachSchedulePreferences)
-        var seen = Set<String>()
-        return ([decision.primary] + decision.todayPlannedRecommendations + decision.alternatives + engineCandidates)
-            .filter { session in
-                guard session.kind == .strength, !((session.exercises ?? []).isEmpty) else { return false }
-                return seen.insert(session.id).inserted
-            }
-    }
-
-    private func decisionByApplyingOptimizedStrength(_ decision: CoachDecision,
-                                                     optimizedPlan: OptimizedCoachPlan) -> CoachDecision {
-        guard !optimizedPlan.plannedStrengthSessions.isEmpty else { return decision }
-
-        var nextOptimized = optimizedPlan.plannedStrengthSessions.makeIterator()
-        var optimizedToday: [CoachSession] = []
-        for session in decision.todayPlannedRecommendations {
-            if session.kind == .strength, let replacement = nextOptimized.next() {
-                optimizedToday.append(replacement)
-            } else {
-                optimizedToday.append(session)
-            }
-        }
-
-        var primary = decision.primary
-        if primary.kind == .strength {
-            primary = optimizedToday.first(where: { $0.kind == .strength })
-                ?? optimizedPlan.plannedStrengthSessions.first
-                ?? primary
-        } else if optimizedToday.count == 1, let only = optimizedToday.first, only.kind == .strength {
-            primary = only
-        }
-
-        let citationIds = Array(Set(decision.citationIds + primary.citationIds)).sorted()
-        return CoachDecision(
-            id: decision.id,
-            generatedAt: decision.generatedAt,
-            primary: primary,
-            alternatives: decision.alternatives,
-            deferred: decision.deferred,
-            warnings: decision.warnings,
-            observedFacts: decision.observedFacts,
-            weeklyBalance: decision.weeklyBalance,
-            confidence: decision.confidence,
-            citationIds: citationIds,
-            planAdherence: decision.planAdherence,
-            todayCompletedMatches: decision.todayCompletedMatches,
-            scoreBreakdowns: decision.scoreBreakdowns,
-            todayPlannedRecommendations: optimizedToday)
-    }
-
-    private var addOnRecommendation: CoachAddOnRecommendation {
-        guard case .planComplete = coachDecision.planAdherence else { return .empty }
-        let events = buildTrainingEvents()
-        let facts = CoachFacts.make(from: events, goal: settings.trainingGoal,
-                                     experience: settings.experienceLevel,
-                                     formula: settings.formula)
-        let todayDate = Calendar.current.startOfDay(for: Date())
-        let todayReadiness = readinessEntries.first { Calendar.current.startOfDay(for: $0.date) == todayDate }
-        let hasPain = todayReadiness?.hasPainOrIllnessConcern ?? false
-        return CoachAddOnEngine.run(facts: facts,
-                                     schedulePreferences: settings.coachSchedulePreferences,
-                                     hasPainConcern: hasPain)
-    }
+    private var addOnRecommendation: CoachAddOnRecommendation { coachSnapshot.addOn }
 
     private func buildTrainingEvents() -> [TrainingEvent] {
         _ = historyRefreshToken
@@ -536,7 +476,18 @@ struct HomeView: View {
             if contributionPromptAllowed { contributions.evaluate() }
         }
         .onChange(of: active.finishedSummary != nil) { _, shown in
-            if shown { ContributionCoordinator.recordWorkoutCompleted() }
+            if shown {
+                ContributionCoordinator.recordWorkoutCompleted()
+                // A strength workout just finished — refresh the (decoupled) coach
+                // snapshot so Home reflects it when the user returns.
+                markWorkoutHistoryChanged()
+            }
+        }
+        // Recompute the coach pipeline OFF the render/tap path, only when history or
+        // coach-relevant settings actually change (see `coachSignature`). This keeps
+        // set logging instant — the pipeline no longer runs on every set save.
+        .task(id: coachSignature) {
+            coachSnapshot = buildCoachSnapshot()
         }
     }
 

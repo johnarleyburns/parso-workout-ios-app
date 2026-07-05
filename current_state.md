@@ -2,7 +2,32 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-05 — Coach reports every body part's weekly volume (untrained parts no longer silent)._
+_Last updated: 2026-07-05 — Coach pipeline cached off the render path (fixes 1–2s set-log / add-exercise stalls)._
+
+## What just shipped — Coach snapshot cache (performance: instant set logging)
+
+- **Feedback:** tapping the green checkmark to save a set (and adding an exercise)
+  stalled 1–2s — "unacceptable, will kill adoption."
+- **Root cause:** `HomeView` computed the whole coach pipeline
+  (`TrainingFacts.make`/`CoachFacts.make`/plan optimize/insights over ALL history)
+  as plain computed properties that ran ~8–10× per SwiftUI body evaluation. A set
+  save does a synchronous `context.save()` that mutates the session `@Query`, which
+  re-evaluated the still-alive Home view (even under a pushed `SessionView`),
+  re-running the entire pipeline synchronously on the main thread.
+- **Fix:**
+  - New pure `CoachSnapshotBuilder` (CadenceCore) computes facts→decision→plan→
+    insights→recommendation→add-on **once** (no redundant recomputation).
+  - `HomeView` caches it in `@State` and rebuilds it in a `.task(id: coachSignature)`
+    **off** the render/tap path. `coachSignature` is keyed on coarse history counts
+    + the refresh token + coach-relevant settings — deliberately NOT per-set churn —
+    so logging a set no longer runs the pipeline. The token is bumped on workout
+    completion (`active.finishedSummary`) so Home is fresh on return.
+  - Removed the now-dead per-property getters + helpers from HomeView.
+- **Tests:** +4 CadenceCore (`CoachSnapshotBuilderTests`: cold-start safe+cited,
+  facts wired, deterministic, deleted-sessions ignored). Suite 625 green; iOS build
+  succeeds; 12/13 P3CoachHome UI tests pass (the 1 failure, a Settings
+  experience-picker scroll assertion, is pre-existing — fails identically on the
+  prior commit).
 
 ## What just shipped — Coach volume insight covers every body part
 

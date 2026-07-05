@@ -61,6 +61,32 @@ final class ExercisePickerUITests: CadenceUITestCase {
                       "session must show the added Deadlift")
     }
 
+    /// Selecting a body part reveals a second "equipment" chip row that narrows the
+    /// (often hundreds-long) list to a single equipment type (the user's request:
+    /// fast browsing when constructing a workout).
+    func testEquipmentSubFilterNarrowsBodyPartList() {
+        let app = openPicker()
+
+        // Enter the browse-by-body-part flow (the case the user hit: a part has
+        // hundreds of movements).
+        let chest = app.buttons["picker.filter.chest"]
+        XCTAssertTrue(chest.waitForExistence(timeout: 10), "chest body-part chip")
+        chest.tap()
+
+        // A second-level equipment chip row appears with the equipment chest offers.
+        XCTAssertTrue(app.buttons["picker.equip.dumbbell"].waitForExistence(timeout: 15),
+                      "equipment sub-filter should offer Dumbbell for Chest")
+        XCTAssertTrue(app.buttons["picker.equip.barbell"].waitForExistence(timeout: 5),
+                      "equipment sub-filter should offer Barbell for Chest")
+
+        // Narrow to Dumbbell → dumbbell movements remain, barbell ones drop out.
+        app.buttons["picker.equip.dumbbell"].tap()
+        XCTAssertTrue(app.buttons["picker.row.Dumbbell Bench Press"].waitForExistence(timeout: 15),
+                      "Dumbbell filter keeps Dumbbell Bench Press")
+        XCTAssertFalse(app.buttons["picker.row.Bench Press"].waitForExistence(timeout: 3),
+                       "Dumbbell filter must remove the barbell Bench Press")
+    }
+
     /// Typing several characters must keep filtering responsively (no crash/hang)
     /// and narrow the results — a smoke test for the debounced, indexed search.
     func testIncrementalTypingNarrowsResults() {

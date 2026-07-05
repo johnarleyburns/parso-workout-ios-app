@@ -41,8 +41,14 @@ struct ExercisePickerView: View {
     @State private var debouncedQuery = ""
     /// Normalization is precomputed once here, so per-keystroke ranking is cheap.
     @State private var searchIndex = ExerciseSearchIndex<Exercise>([])
+    /// Body-part → exercises / equipment, precomputed once so the equipment
+    /// sub-filter is an instant lookup (not an O(catalog) scan per render).
+    @State private var facetIndex = ExerciseFacetIndex<Exercise>([])
     @State private var indexedCount = -1
     @State private var selectedPart: BodyPart?
+    /// Second-level filter under the selected body part (feedback: hundreds of
+    /// movements per part). nil ⇒ all equipment for that part.
+    @State private var selectedEquipment: Equipment?
     @State private var browseAll = false
     let action: PickAction
     let onPick: (Exercise) -> Void
@@ -64,8 +70,14 @@ struct ExercisePickerView: View {
     /// popular shortlist (until "Browse all" reveals the full grouped catalog).
     private var filtered: [Exercise] {
         if !trimmedQuery.isEmpty { return searchIndex.rank(trimmedQuery) }
-        if let part = selectedPart { return exercises.filter { $0.bodyParts.contains(part) } }
+        if let part = selectedPart { return facetIndex.exercises(for: part, equipment: selectedEquipment) }
         return browseAll ? exercises : popular
+    }
+
+    /// Equipment types available for the selected body part, in canonical order.
+    private var availableEquipment: [Equipment] {
+        guard let part = selectedPart else { return [] }
+        return facetIndex.equipment(for: part)
     }
 
     /// Rebuilds the normalized search index when the catalog size changes (first
@@ -73,6 +85,7 @@ struct ExercisePickerView: View {
     private func rebuildIndexIfNeeded() {
         guard exercises.count != indexedCount else { return }
         searchIndex = ExerciseSearchIndex(exercises)
+        facetIndex = ExerciseFacetIndex(exercises)
         indexedCount = exercises.count
     }
 
@@ -96,6 +109,7 @@ struct ExercisePickerView: View {
         NavigationStack {
             List {
                 filterChips
+                if showsEquipmentFilter { equipmentChips }
 
                 if !trimmedQuery.isEmpty && !exactMatchExists {
                     Section {
@@ -141,6 +155,9 @@ struct ExercisePickerView: View {
         .accessibilityIdentifier("picker.search")
         .onAppear { rebuildIndexIfNeeded() }
         .onChange(of: exercises.count) { _, _ in rebuildIndexIfNeeded() }
+        // Changing body part invalidates the equipment sub-filter (each part offers
+        // a different equipment set), so reset it.
+        .onChange(of: selectedPart) { _, _ in selectedEquipment = nil }
         // Debounce: coalesce keystrokes so ranking runs after a brief pause, not
         // on every character. A cleared query updates immediately.
         .task(id: query) {
@@ -153,7 +170,10 @@ struct ExercisePickerView: View {
 
     private var sectionTitle: String {
         if !trimmedQuery.isEmpty { return "Results" }
-        if let part = selectedPart { return part.displayName }
+        if let part = selectedPart {
+            if let eq = selectedEquipment { return "\(part.displayName) · \(eq.displayName)" }
+            return part.displayName
+        }
         return "Popular"
     }
 
@@ -174,6 +194,31 @@ struct ExercisePickerView: View {
             .padding(.vertical, 2)
         }
         .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 0))
+    }
+
+    // MARK: Equipment sub-filter chips
+
+    /// The second chip row only earns its space when a body part is selected, no
+    /// search is active, and the part actually offers more than one equipment type.
+    private var showsEquipmentFilter: Bool {
+        trimmedQuery.isEmpty && selectedPart != nil && availableEquipment.count > 1
+    }
+
+    private var equipmentChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip("All", active: selectedEquipment == nil) { selectedEquipment = nil }
+                    .accessibilityIdentifier("picker.equip.all")
+                ForEach(availableEquipment) { eq in
+                    chip(eq.displayName, active: selectedEquipment == eq) {
+                        selectedEquipment = (selectedEquipment == eq) ? nil : eq
+                    }
+                    .accessibilityIdentifier("picker.equip.\(eq.rawValue)")
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 6, trailing: 0))
     }
 
     private func chip(_ label: String, active: Bool, _ tap: @escaping () -> Void) -> some View {

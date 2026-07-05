@@ -2,7 +2,30 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-04 — Coach presence system (surface state machine, CoachRow, preview screen, hide-offers) + plan constraint override._
+_Last updated: 2026-07-04 — App Store polish (a11y sweep + location transparency) and exercise-picker equipment sub-filter._
+
+## What just shipped — App Store polish + exercise-picker equipment sub-filter
+
+**Equipment sub-filter (feedback: hundreds of movements per body part)**
+- `ExerciseFacetIndex` (CadenceCore, pure) precomputes `bodyPart → exercises` and
+  `bodyPart → equipment[]` once, so the picker's new **second chip row** (equipment
+  under the body-part row) is an O(1) lookup, never an O(catalog) scan per render.
+- `ExercisePickerView` shows the equipment row only when a body part is selected,
+  no search is active, and the part offers >1 equipment type; resets on part change.
+- Tests: +9 CadenceCore (`ExerciseFacetIndexTests`); +1 e2e
+  (`ExercisePickerUITests.testEquipmentSubFilterNarrowsBodyPartList`). Core suite
+  605 green.
+
+**App Store readiness polish (commit 889d894)**
+- Fixed the inline set-editor "Bodyweight" toggle wrapping one char per line → "BW"
+  with `.fixedSize()`, VoiceOver label preserved.
+- Added missing VoiceOver labels (PR trophy, set checkmark, inline delete, performer
+  reorder chevrons); ProgressView chart gained a spoken summary + per-lift trend
+  labels; weekday buttons announce selected state; coach/column-header Dynamic Type
+  scaling; timer/stepper a11y cleanup.
+- Location transparency: background GPS is scoped to a live outdoor workout only
+  (verified `CardioRecorder.start/end`; added defensive `.onDisappear` stop);
+  documented in About → Privacy and Onboarding.
 
 ## What just shipped — Coach surface presence system (coach-surface-design.md, amended)
 

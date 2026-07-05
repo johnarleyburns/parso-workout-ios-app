@@ -73,26 +73,25 @@ final class FR10Feedback3UITests: CadenceUITestCase {
 
     // MARK: Bodyweight sets
 
-    // Logging a bodyweight movement (Pull-Up) defaults to a BW set; the row shows
-    // "BW" rather than a 0 kg weight.
+    // Logging a bodyweight movement (Pull-Up) defaults to a BW set via the inline
+    // editor; the logged row shows "BW" rather than a 0 kg weight.
     func testBodyweightSetShowsBW() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
 
         app.buttons["session.addExercise"].tap()
-        // Pull-Up sits below the fold in the grouped picker; search to surface it.
         let search = app.searchFields["picker.search"].exists
             ? app.searchFields["picker.search"] : app.searchFields.firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 25), "exercise search field")
         search.tap(); search.typeText("Pull-Up")
         XCTAssertTrue(app.buttons["picker.row.Pull-Up"].waitTap(), "pick Pull-Up")
 
-        // A bodyweight exercise shows the Bodyweight toggle, defaulted on.
-        let bwToggle = app.switches["set.bodyweight"]
-        XCTAssertTrue(bwToggle.waitForExistence(timeout: 25), "Bodyweight toggle should show")
-        let reps = app.textFields["set.reps"]
-        if reps.exists { reps.tap(); reps.clearAndType("8") }
-        app.buttons["set.save"].tap()
+        // The inline weight/reps editor appears for the first set slot. Enter
+        // 0 kg (bodyweight) + 8 reps, then save via the checkmark button.
+        XCTAssertTrue(app.keypadEnter("0", clear: false), "weight field")
+        let repsField = app.textFields["inline.reps"]
+        if repsField.exists { repsField.tap(); repsField.clearAndType("8") }
+        app.buttons["inline.save"].tap()
         if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
 
         let bwRow = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "BW")).firstMatch

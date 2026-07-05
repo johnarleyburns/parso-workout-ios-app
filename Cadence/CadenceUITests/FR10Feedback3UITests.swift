@@ -86,9 +86,11 @@ final class FR10Feedback3UITests: CadenceUITestCase {
         search.tap(); search.typeText("Pull-Up")
         XCTAssertTrue(app.buttons["picker.row.Pull-Up"].waitTap(), "pick Pull-Up")
 
-        // The inline weight/reps editor appears for the first set slot. Enter
-        // 0 kg (bodyweight) + 8 reps, then save via the checkmark button.
-        XCTAssertTrue(app.keypadEnter("0", clear: false), "weight field")
+        // The inline editor appears at the bottom for the first set slot.
+        // Enter 0 kg (bodyweight + no added load) + 8 reps, then save.
+        let weightField = app.textFields["inline.weight"]
+        XCTAssertTrue(weightField.waitForExistence(timeout: 25), "weight field")
+        weightField.tap(); weightField.typeText("0")
         let repsField = app.textFields["inline.reps"]
         if repsField.exists { repsField.tap(); repsField.clearAndType("8") }
         app.buttons["inline.save"].tap()

@@ -8,7 +8,8 @@ final class HomeSimplificationUITests: CadenceUITestCase {
 
         XCTAssertFalse(app.buttons["coach.card.whyToday"].exists)
         XCTAssertFalse(app.buttons["coach.card.yourWeek"].exists)
-        XCTAssertTrue(app.buttons["coach.card.completeBanner"].exists)
+        // Status banner is a non-interactive element — query by identifier, any type.
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card.completeBanner"].exists)
     }
 
     func testHomeSurfacesYesterdayLastStrengthAndCardio() {
@@ -34,8 +35,13 @@ final class HomeSimplificationUITests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["coach.card.preferences"].waitForExistence(timeout: 10))
         app.buttons["coach.card.preferences"].tap()
 
-        XCTAssertTrue(app.navigationBars["Coach preferences"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Strength days"].exists || app.staticTexts["Strength days/week"].exists)
+        // The preferences control opens Your Plan, where the coach goal/experience
+        // and schedule preferences now live.
+        XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
+        let goal = app.buttons["settings.coach.goal"]
+        var found = goal.waitForExistence(timeout: 2)
+        for _ in 0..<8 where !found { app.swipeUp(); found = goal.exists }
+        XCTAssertTrue(found, "Coach goal picker should be reachable from Your Plan")
     }
 
     func testCoachCardInsightsButtonOpensDedicatedInsights() {

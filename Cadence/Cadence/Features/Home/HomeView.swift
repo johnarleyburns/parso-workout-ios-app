@@ -682,6 +682,9 @@ struct HomeView: View {
         }
         .padding()
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
+        // `.contain` keeps this card's identifier from clobbering child identifiers
+        // (e.g. home.yourPlan) — matching CoachDecisionCardView's treatment.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.plannedRestOfWeek")
     }
 
@@ -774,6 +777,7 @@ struct HomeView: View {
         }
         .padding()
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .teal)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.whatYouDid")
     }
 

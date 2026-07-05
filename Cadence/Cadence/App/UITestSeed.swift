@@ -231,47 +231,62 @@ enum UITestSeed {
         try? ctx.save()
     }
 
-    /// Wednesday scenario: Monday full-body strength + 18-min run, Tuesday rest,
-    /// Wednesday with completed 44-min boxing. Coach should show complete/on-plan state.
-    /// Seeds Monday + Tuesday + Wednesday boxing complete.
+    /// "Today is complete" scenario: earlier this week a full-body strength + short
+    /// run, and TODAY both a completed strength session and a 44-min boxing workout.
+    /// With both modalities logged today the coach shows the complete/on-plan state.
+    /// Anchored to `now` (not a fixed weekday) so it is deterministic on any run day.
     private static func seedCoachWednesdayComplete(_ ctx: ModelContext) {
         let now = Date()
         let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: now)
 
-        // Find this Wednesday at noon
-        var weds = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
-        weds.weekday = 4; weds.hour = 14; weds.minute = 0; weds.second = 0  // Wednesday
-        let wednesday = cal.date(from: weds) ?? now
-
-        // Monday: full-body strength + 18-min run
-        let monday = cal.date(byAdding: .day, value: -2, to: wednesday)!
+        // Earlier this week (2 days ago): full-body strength + 18-min run for context.
+        let earlier = cal.date(byAdding: .day, value: -2, to: now) ?? now.addingTimeInterval(-2 * 86400)
         let squat = try? WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx)
         let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
         let row = try? WorkoutRepository.findOrCreateExercise(named: "Barbell Row", category: .pull, in: ctx)
         if let squat, let bench, let row {
-            let s = WorkoutSession(title: "Full-body", date: monday)
-            s.endedAt = monday.addingTimeInterval(3600)
+            let s = WorkoutSession(title: "Full-body", date: earlier)
+            s.endedAt = earlier.addingTimeInterval(3600)
             ctx.insert(s)
             for i in 0..<3 {
                 ctx.insert(SetEntry(weight: 100, reps: 5, order: i, rpe: 8,
-                                    completedAt: monday, session: s, exercise: squat))
+                                    completedAt: earlier, session: s, exercise: squat))
             }
             for i in 0..<3 {
                 ctx.insert(SetEntry(weight: 80, reps: 8, order: 3 + i, rpe: 8,
-                                    completedAt: monday, session: s, exercise: bench))
+                                    completedAt: earlier, session: s, exercise: bench))
             }
             for i in 0..<3 {
                 ctx.insert(SetEntry(weight: 60, reps: 10, order: 6 + i, rpe: 8,
-                                    completedAt: monday, session: s, exercise: row))
+                                    completedAt: earlier, session: s, exercise: row))
             }
         }
-        // Monday 18-min run
-        let mondayRunStart = monday.addingTimeInterval(3600 + 1800)
-        ctx.insert(CardioWorkout(type: .run, start: mondayRunStart, end: mondayRunStart.addingTimeInterval(18 * 60),
+        let earlierRunStart = earlier.addingTimeInterval(3600 + 1800)
+        ctx.insert(CardioWorkout(type: .run, start: earlierRunStart, end: earlierRunStart.addingTimeInterval(18 * 60),
                                  avgHeartRate: 140, source: .iphone))
 
-        // Wednesday: completed 44-min boxing workout (6 hours before "now" on Wednesday)
-        let boxingStart = wednesday.addingTimeInterval(-6 * 3600)
+        // TODAY: a completed strength session + a 44-min boxing workout. With both
+        // strength and cardio in the books today, the day is complete under the
+        // current adherence rules (both-modalities-done → planComplete), regardless
+        // of remaining weekly targets. Placed a few hours before `now` but clamped
+        // to after midnight so both events always fall on the current day.
+        let strengthStart = max(todayStart.addingTimeInterval(60), now.addingTimeInterval(-7 * 3600))
+        if let squat = try? WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx),
+           let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx) {
+            let ws = WorkoutSession(title: "Today Strength", date: strengthStart)
+            ws.endedAt = strengthStart.addingTimeInterval(2400)
+            ctx.insert(ws)
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 100, reps: 5, order: i, rpe: 8,
+                                    completedAt: strengthStart, session: ws, exercise: squat))
+            }
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 80, reps: 8, order: 3 + i, rpe: 8,
+                                    completedAt: strengthStart, session: ws, exercise: bench))
+            }
+        }
+        let boxingStart = max(todayStart.addingTimeInterval(120), now.addingTimeInterval(-4 * 3600))
         ctx.insert(CardioWorkout(type: .boxing, start: boxingStart, end: boxingStart.addingTimeInterval(44 * 60),
                                  avgHeartRate: 135, source: .iphone))
 

@@ -29,9 +29,26 @@ _Last updated: 2026-07-04 — Coach presence system (surface state machine, Coac
   removes Home presence, hidden still reachable via Programs, Programs entry,
   Settings hide toggle). `MonetizationUITests` (4) still green. Full CadenceCore
   suite 596 green; `xcodebuild` iOS build succeeds.
-- **Note:** 5 `P3CoachHomeUITests` are failing on `main` independently of this work
-  (verified against the stashed baseline) — bit-rotted since CI doesn't run the UI
-  suite (CI archives + uploads TestFlight only). Not introduced here.
+## What just shipped — fixed the bit-rotted coach-home UI tests
+
+Root causes (pre-existing; CI never ran the UI suite so they drifted):
+- **Accessibility-identifier propagation:** a container `.accessibilityIdentifier`
+  (e.g. `home.plannedRestOfWeek`, `home.whatYouDid`) fell through to every child,
+  clobbering `home.yourPlan`/`home.train`. Fixed with
+  `.accessibilityElement(children: .contain)` (matching CoachDecisionCardView).
+- **`coach.card.completeBanner`** propagated its id to both the icon and the label
+  → ambiguous query → `.combine`d into one element.
+- **`coachWednesdayComplete` seed** placed events on a fixed weekday, but the coach
+  evaluates "today" — rewritten to anchor the completing strength+cardio to `now`,
+  so the day is genuinely complete (both-modalities rule) on any run day.
+- **Stale assertions updated:** two-a-day now asserts the coach surfaces the
+  remaining *cardio* (not the dead-end "Strength is done today") rather than a
+  hardcoded modality; complete-banner queried as a status element; the card
+  preferences control now opens Your Plan (where coach settings live).
+- **Also:** `CoachDecisionCardView.heroTitle` now names the trainable cardio
+  follow-up after strength instead of the generic "Strength is done today".
+- **Result:** P3CoachHomeUITests (13), HomeSimplificationUITests (5),
+  MonetizationUITests (4), CoachSurfaceUITests (6) — all green (28/28).
 
 ## What just shipped — Plan constraint-override ("ignore constraints to meet deficits")
 

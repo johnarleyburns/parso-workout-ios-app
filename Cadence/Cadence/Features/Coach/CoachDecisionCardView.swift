@@ -123,6 +123,9 @@ struct CoachDecisionCardView: View {
                     .padding(.vertical, 11)
                     .foregroundStyle(.white)
                     .background(stateColor, in: RoundedRectangle(cornerRadius: 13))
+                    // Combine into one element so the identifier resolves uniquely
+                    // (otherwise it propagates to both the icon and the label).
+                    .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("coach.card.completeBanner")
                     .accessibilityLabel("Plan followed — today's session done")
 
@@ -304,7 +307,14 @@ struct CoachDecisionCardView: View {
             return planned.title
         }
         if hasRecentStrength && decision.primary.kind != .strength {
-            return "Strength is done today"
+            // Name the actual follow-up when it's a trainable cardio session so the
+            // two-a-day's remaining half is explicit; otherwise acknowledge strength.
+            switch decision.primary.kind {
+            case .easyAerobic, .moderateAerobic, .vo2Intervals:
+                return decision.primary.title
+            default:
+                return "Strength is done today"
+            }
         }
         if decision.primary.kind == .rest {
             return "Rest is training too"

@@ -48,10 +48,24 @@ public enum KnowledgeBase {
     static let volumeVsLandmarks = InsightRule(id: "volume", priority: 100) { facts in
         var out: [Insight] = []
         for part in BodyPart.allCases {
-            guard let sets = facts.weeklySetsByPart[part], sets > 0 else { continue }
-            let bands = VolumeLandmarks.bands(for: part, experience: facts.experience)
-            let zone = VolumeLandmarks.zone(sets: sets, for: part, experience: facts.experience)
             let name = part.displayName
+            let bands = VolumeLandmarks.bands(for: part, experience: facts.experience)
+            guard let sets = facts.weeklySetsByPart[part], sets > 0 else {
+                // No training volume for this body part this week. Surface it so the
+                // user can tell the difference between "biceps is on track" and
+                // "biceps was never trained and may need attention." (Feedback:
+                // end-of-week silence on untrained parts left users uncertain.)
+                out.append(Insight(
+                    id: "volume.\(part.rawValue)",
+                    kind: .volume, part: part,
+                    title: "\(name) volume is low",
+                    message: "\(name): 0 sets this week — below the starting range Coach uses for your experience.",
+                    detail: "\(name) has not been trained this week. Meta-analyses show a graded dose-response between weekly sets per muscle and growth; Coach's starting range is ~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week for your experience. This may be intentional (a rest week or a focused block), but if it isn't, add 1–2 sets and adjust by feel and performance.",
+                    citation: CitationRegistry.volumeDoseResponse,
+                    severity: .attention))
+                continue
+            }
+            let zone = VolumeLandmarks.zone(sets: sets, for: part, experience: facts.experience)
             let setsText = Format.sets(sets)
             switch zone {
             case .belowMEV:

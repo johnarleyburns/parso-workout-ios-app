@@ -676,7 +676,12 @@ public enum CoachPlanOptimizer {
             guard insight.kind == .volume,
                   insight.severity == .attention,
                   insight.title.localizedCaseInsensitiveContains("low"),
-                  let part = insight.part else {
+                  let part = insight.part,
+                  // Only chase deficits for parts already in training this week. The
+                  // volume rule now also flags *untrained* parts (0 sets) so the user
+                  // hears about them, but the optimizer must not treat "never trained"
+                  // as a deficit to backfill — that's a separate, user-driven choice.
+                  (facts.weeklySetsByPart[part] ?? 0) > 0 else {
                 return nil
             }
             return part

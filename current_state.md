@@ -2,7 +2,25 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-05 — Exercise catalog de-duplication + duplicate facet-pill fix._
+_Last updated: 2026-07-05 — Coach reports every body part's weekly volume (untrained parts no longer silent)._
+
+## What just shipped — Coach volume insight covers every body part
+
+- **Feedback:** at week's end the coach said "shoulders on track" but was silent on
+  biceps — the user couldn't tell if biceps was on track or simply untrained.
+- **Root cause:** `InsightRule.volumeVsLandmarks` did `guard sets > 0 else { continue }`
+  — any body part with **zero** weekly sets produced no insight at all.
+- **Fix:** untrained parts now emit an attention "…volume is low — 0 sets this week"
+  insight (cited), so every one of the 8 `BodyPart` cases is reported (on track /
+  low / high). The plan-aware engine still suppresses "low" for parts the weekly
+  plan covers, so this only nags about genuinely untrained + unplanned parts.
+- **Decoupled the optimizer:** `CoachPlanOptimizer.lowVolumeAttentionParts` now
+  ignores zero-set parts (guards `weeklySetsByPart > 0`) so surfacing untrained
+  parts to the *user* doesn't make the planner chase deficits for never-trained
+  muscles — planning behavior is unchanged.
+- **Tests:** +3 CadenceCore (`InsightEngineTests`: every part gets an insight;
+  untrained part is attention/low with "0 sets"; untrained-but-planned suppressed).
+  Suite 621 green; iOS build succeeds.
 
 ## What just shipped — Exercise de-duplication (spelling variants) + duplicate pill fix
 

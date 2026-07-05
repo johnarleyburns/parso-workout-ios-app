@@ -45,6 +45,50 @@ final class InsightEngineTests: XCTestCase {
         XCTAssertEqual(chest?.severity, .info)
     }
 
+    // MARK: every body part is reported (feedback: "told shoulders on track but
+    // nothing about biceps — are they on track or not?")
+
+    func testEveryBodyPartProducesAVolumeInsight() throws {
+        // Only chest is trained; every other part has 0 sets this week.
+        let facts = try populatedFacts(chestSets: 8, goal: .hypertrophy)
+        let insights = InsightEngine.run(facts)
+        for part in BodyPart.allCases {
+            XCTAssertNotNil(insights.first { $0.id == "volume.\(part.rawValue)" },
+                            "\(part.displayName) must get a volume insight even with 0 sets")
+        }
+    }
+
+    func testUntrainedBodyPartIsAttentionLowVolume() throws {
+        let facts = try populatedFacts(chestSets: 8, goal: .hypertrophy)
+        // Biceps was never trained this week.
+        let biceps = InsightEngine.run(facts).first { $0.id == "volume.biceps" }
+        XCTAssertEqual(biceps?.severity, .attention)
+        XCTAssertEqual(biceps?.kind, .volume)
+        XCTAssertTrue(biceps?.title.localizedCaseInsensitiveContains("low") ?? false)
+        XCTAssertTrue(biceps?.message.contains("0 sets") ?? false,
+                      "message should make clear it was not trained")
+        XCTAssertTrue(Set(CitationRegistry.all.map(\.id)).contains(biceps?.citation.id ?? ""))
+    }
+
+    /// A zero-volume "low" insight must still be suppressed when the weekly plan
+    /// projects covering that part — same override path as a trained-but-low part.
+    func testUntrainedButPlannedPartIsSuppressed() throws {
+        let now = fixedThursday()
+        let facts = try populatedFacts(chestSets: 8, goal: .hypertrophy, now: now)
+        XCTAssertEqual(InsightEngine.run(facts).first { $0.id == "volume.chest" }?.severity, .info)
+        // Chest is fully trained (info); it should stay. Verify a zero-volume part
+        // that the plan covers is dropped by the plan-aware override.
+        let insights = PlanAwareInsightEngine.run(
+            completed: facts,
+            plan: WeeklyPlan(days: [], generatedAt: now),
+            plannedStrengthSessions: [plannedBenchSession(sets: 8)],
+            now: now)
+        // Bench is chest — unrelated parts (e.g. biceps) with no plan coverage keep
+        // their zero-volume attention insight so the user still hears about them.
+        XCTAssertNotNil(insights.first { $0.id == "volume.biceps" },
+                        "an untrained, unplanned part must still be surfaced")
+    }
+
     func testPlanAwareInsightsSuppressLowVolumeWhenProjectedPlanMeetsTarget() throws {
         let now = fixedThursday()
         let facts = try populatedFacts(chestSets: 4, goal: .hypertrophy, now: now)

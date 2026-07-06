@@ -11,7 +11,7 @@ import Foundation
 /// Pure and `Sendable` with an injectable `now`, so it's headlessly testable.
 public struct PhaseCountdownClock: Equatable, Sendable {
     /// Configured length of the phase, in seconds.
-    public let total: TimeInterval
+    public private(set) var total: TimeInterval
     public var startedAt: Date
     public var pausedAccumulated: TimeInterval
     public var pausedSince: Date?
@@ -60,5 +60,20 @@ public struct PhaseCountdownClock: Equatable, Sendable {
         guard let since = pausedSince else { return }
         pausedAccumulated += max(0, now.timeIntervalSince(since))
         pausedSince = nil
+    }
+
+    /// Extends the phase by `seconds` — useful for adding extra time mid-warmup or
+    /// mid-cooldown without restarting the phase. If the countdown was already
+    /// finished, it restarts from now with the added seconds.
+    public mutating func addTime(_ seconds: TimeInterval, now: Date = Date()) {
+        let extra = max(0, seconds)
+        if isFinished(now: now) {
+            startedAt = now
+            pausedAccumulated = 0
+            pausedSince = nil
+            total = extra
+        } else {
+            total += extra
+        }
     }
 }

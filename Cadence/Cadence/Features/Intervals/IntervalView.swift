@@ -86,13 +86,27 @@ struct IntervalView: View {
 
                 // Skip the current phase (warm-up/work/rest/cool-down) — feedback
                 // batch 5. Big hit target above the Pause/End pair.
-                Button(action: skipPhase) {
-                    Label("Skip", systemImage: "forward.fill")
-                        .frame(maxWidth: .infinity, minHeight: 56)
+                HStack(spacing: 16) {
+                    Button(action: skipPhase) {
+                        Label("Skip", systemImage: "forward.fill")
+                            .frame(maxWidth: .infinity, minHeight: 56)
+                    }
+                    .cadenceGlassButton(tint: .black.opacity(0.4))
+                    .accessibilityIdentifier("interval.skip")
+                    .accessibilityLabel("Skip phase")
+
+                    if runner.phaseKind == .warmup || runner.phaseKind == .cooldown {
+                        Button {
+                            runner.addTime(60)
+                        } label: {
+                            Label("+1 min", systemImage: "plus")
+                                .frame(maxWidth: .infinity, minHeight: 56)
+                        }
+                        .cadenceGlassButton(tint: .black.opacity(0.4))
+                        .accessibilityIdentifier("interval.addMinute")
+                        .accessibilityLabel("Add one minute")
+                    }
                 }
-                .cadenceGlassButton(tint: .black.opacity(0.4))
-                .accessibilityIdentifier("interval.skip")
-                .accessibilityLabel("Skip phase")
 
                 WorkoutControlBar(
                     isPaused: runner.isPaused,
@@ -200,6 +214,7 @@ struct IntervalView: View {
         finished = true
         runner.end()
         cues.completed()
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
         model.stopWatchWorkout()
         let start = runner.clock.startedAt
         let end = Date()

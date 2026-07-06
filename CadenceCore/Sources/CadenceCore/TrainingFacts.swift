@@ -71,8 +71,13 @@ public struct TrainingFacts: Sendable {
     public var avgRIR: Double? { avgRPE.map { max(0, 10 - $0) } }
     /// Whole days since the most recent session (nil if no history).
     public let daysSinceLastSession: Int?
-    /// Total working sets in the trailing week — 0 means cold-start (no history).
+    /// Total working sets in the trailing week (Monday-to-now). 0 means no sets
+    /// this week, not necessarily cold-start — use `allTimeWorkingSets` or
+    /// `daysSinceLastSession` for the cold-start gate.
     public let totalWorkingSets: Int
+    /// Total working sets across ALL provided sessions (all-time), not just this
+    /// week. 0 means true cold-start — no logged working sets ever.
+    public let allTimeWorkingSets: Int
     /// Longitudinal assessment series (P4): one summary per test the user has run,
     /// most-recent first. Empty until the user logs an assessment.
     public let assessments: [AssessmentSummary]
@@ -124,6 +129,7 @@ public struct TrainingFacts: Sendable {
                 avgRPE: Double?,
                 daysSinceLastSession: Int?,
                 totalWorkingSets: Int,
+                allTimeWorkingSets: Int = 0,
                 assessments: [AssessmentSummary] = [],
                 assessmentsDueForRetest: [AssessmentSummary] = [],
                 liftSnapshots: [String: LiftSnapshot] = [:],
@@ -139,6 +145,7 @@ public struct TrainingFacts: Sendable {
         self.avgRPE = avgRPE
         self.daysSinceLastSession = daysSinceLastSession
         self.totalWorkingSets = totalWorkingSets
+        self.allTimeWorkingSets = allTimeWorkingSets
         self.assessments = assessments
         self.assessmentsDueForRetest = assessmentsDueForRetest
         self.liftSnapshots = liftSnapshots
@@ -338,6 +345,11 @@ public extension TrainingFacts {
             sessionsSinceDeload[name] = lastDeloadIndex.map { ordered.count - 1 - $0 } ?? ordered.count
         }
 
+        // All-time working set count (not week-scoped) — the true cold-start gate.
+        let allTimeSets = sessions.reduce(0) { count, session in
+            count + session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }.count
+        }
+
         return TrainingFacts(weeklySetsByPart: setsByPart,
                              frequencyByPart: frequencyByPart,
                              e1RMTrendByExercise: trends,
@@ -345,6 +357,7 @@ public extension TrainingFacts {
                              avgRPE: avgRPE,
                              daysSinceLastSession: daysSince,
                              totalWorkingSets: weekSets.count,
+                             allTimeWorkingSets: allTimeSets,
                              assessments: summaries,
                              assessmentsDueForRetest: dueForRetest,
                              liftSnapshots: liftSnapshots,

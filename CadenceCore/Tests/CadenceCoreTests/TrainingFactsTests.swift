@@ -52,6 +52,23 @@ final class TrainingFactsTests: XCTestCase {
         let facts = TrainingFacts.make(sessions: [old], now: now, goal: .strength, experience: .intermediate)
         XCTAssertNil(facts.weeklySetsByPart[.legs])
         XCTAssertEqual(facts.totalWorkingSets, 0)
+        XCTAssertEqual(facts.allTimeWorkingSets, 1, "all-time should count sets regardless of week window")
+    }
+
+    func testAllTimeWorkingSetsCountsAllHistory() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        // One old session (outside this week) + one recent session (inside this week).
+        let old = try WorkoutRepository.createSession(date: now.addingTimeInterval(-10 * 86_400), in: ctx)
+        let recent = try WorkoutRepository.createSession(date: now.addingTimeInterval(-1 * 86_400), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "AllTimeBench", primaryMuscles: ["chest"], in: ctx)
+        _ = try WorkoutRepository.addSet(to: old, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: old, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: recent, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+
+        let facts = TrainingFacts.make(sessions: [old, recent], now: now, goal: .strength, experience: .intermediate)
+        XCTAssertEqual(facts.totalWorkingSets, 1, "only the recent set counts for the week")
+        XCTAssertEqual(facts.allTimeWorkingSets, 3, "all three sets count all-time")
     }
 
     func testFrequencyCountsDistinctDays() throws {

@@ -11,8 +11,9 @@ public enum InsightEngine {
     /// something cited to show.
     public static func run(_ facts: TrainingFacts) -> [Insight] {
         // Cold-start only when there's nothing at all to reason about — no logged
-        // sets and no assessment history.
-        guard facts.totalWorkingSets > 0 || !facts.assessments.isEmpty else { return [coldStart] }
+        // sets ever (all-time) and no assessment history. Uses allTimeWorkingSets
+        // so a user who trained last week but not yet this week still gets insights.
+        guard facts.allTimeWorkingSets > 0 || !facts.assessments.isEmpty else { return [coldStart] }
 
         // Forward-chain every rule, then resolve to a stable ranked order.
         var produced: [(rulePriority: Int, insight: Insight)] = []

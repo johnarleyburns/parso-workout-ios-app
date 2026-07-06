@@ -67,4 +67,21 @@ final class PhaseCountdownClockTests: XCTestCase {
         // paused = 60s consumed → 240 remaining.
         XCTAssertEqual(clock.remaining(now: at(120)), 240)
     }
+
+    func testAddTimeExtendsPhase() {
+        var clock = PhaseCountdownClock(total: 300, startedAt: t0)
+        // 2:00 in (120s consumed), 180s remaining. Add 60s → 240 remaining.
+        clock.addTime(60)
+        XCTAssertEqual(clock.total, 360)
+        XCTAssertEqual(clock.remaining(now: at(120)), 240)
+    }
+
+    func testAddTimeRevivesFinishedPhase() {
+        var clock = PhaseCountdownClock(total: 60, startedAt: t0)
+        XCTAssertTrue(clock.isFinished(now: at(120)))
+        clock.addTime(60, now: at(120))
+        XCTAssertFalse(clock.isFinished(now: at(120)), "addTime should revive a finished phase")
+        XCTAssertEqual(clock.total, 60, "restarts with just the added seconds")
+        XCTAssertEqual(clock.remaining(now: at(120)), 60, "full 60s remaining from the restart")
+    }
 }

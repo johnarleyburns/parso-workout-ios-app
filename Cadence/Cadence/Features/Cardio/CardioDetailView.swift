@@ -46,6 +46,12 @@ struct CardioDetailView: View {
                 }
             }
 
+            if let interval = workout.intervalSummary {
+                Section("Intervals") {
+                    intervalRow(interval)
+                }
+            }
+
             let route = workout.orderedRouteSamples
             if route.count > 1 {
                 Section("Route") {
@@ -126,6 +132,30 @@ struct CardioDetailView: View {
         let hi = Int(valid.max() ?? 0)
         let avg = Int(valid.reduce(0, +) / Double(valid.count))
         return "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples"
+    }
+
+    @ViewBuilder
+    private func intervalRow(_ s: IntervalSummary) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            detailRow("Protocol", s.protocolName)
+            detailRow("Rounds", "completed \(s.completedRounds)/\(s.rounds)")
+            detailRow("Work / Rest",
+                      "\(Format.duration(s.workSeconds)) / \(Format.duration(s.restSeconds))")
+            if s.warmupSeconds > 0 {
+                detailRow("Warm-up", Format.duration(s.warmupSeconds))
+            }
+            if s.cooldownSeconds > 0 {
+                detailRow("Cool-down", Format.duration(s.cooldownSeconds))
+            }
+        }
+    }
+
+    private func detailRow(_ title: String, _ value: String) -> some View {
+        HStack {
+            Text(title).font(.subheadline).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).font(.subheadline.weight(.semibold)).monospacedDigit()
+        }
     }
 }
 

@@ -19,6 +19,23 @@ final class InsightEngineTests: XCTestCase {
         XCTAssertNotNil(InsightEngine.top(facts))
     }
 
+    func testColdStartNotTriggeredWhenPastWeekSetsExist() throws {
+        // User has logged sets last week, but none this week (Monday). The cold-start
+        // gate should NOT fire because allTimeWorkingSets > 0.
+        let ctx = try makeContext()
+        let bench = try WorkoutRepository.findOrCreateExercise(
+            named: "PastWeekBench", primaryMuscles: ["chest"], secondaryMuscles: ["triceps"], in: ctx)
+        let lastWeek = try WorkoutRepository.createSession(date: Calendar.current.date(byAdding: .day, value: -8 + 3, to: Date()) ?? Date(), in: ctx)
+        _ = try WorkoutRepository.addSet(to: lastWeek, exercise: bench, weightKg: 40, reps: 10, rpe: 6, in: ctx)
+        var comps = Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        comps.weekday = 2; comps.hour = 9; comps.minute = 0; comps.second = 0
+        let monday = Calendar.current.date(from: comps) ?? Date()
+        let facts = TrainingFacts.make(sessions: [lastWeek], now: monday, goal: .hypertrophy, experience: .intermediate)
+        let insights = InsightEngine.run(facts)
+        XCTAssertNotEqual(insights.first?.kind, .coldStart,
+                          "cold-start must not fire when all-time working sets > 0")
+    }
+
     // MARK: D3 — every insight is cited
 
     func testEveryInsightCarriesAKnownCitation() throws {

@@ -2,6 +2,56 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-06 — Boxing bell cutoff, history detail, add-a-minute, cold-start insight fix._
+
+## What just shipped — Boxing UX + Coach cold-start fix (4 fixes)
+
+### Fix #1: Boxing cooldown bell no longer cut off
+- **Bug:** The final boxing bell (1.176s opening-closing-bell.mp3) played at workout
+  completion was being cut off ~300–800ms in because `finishedSummary` triggered a
+  view transition, and `runnerView.onDisappear` called `cues.deactivate()` which
+  deactivated the `AVAudioSession` mid-playback.
+- **Fix:** Added `try? await Task.sleep(nanoseconds: 1_500_000_000)` in
+  `IntervalView.finish()` after `cues.completed()` so the bell fully rings out
+  before the view tears down the audio session.
+
+### Fix #2: Boxing history now shows round/timing details
+- **Bug:** `CardioDetailView` showed only date, duration, HR, source — no interval
+  structure. Boxing workouts store rounds, work/rest timing, warm-up, cooldown in
+  `intervalSummary` (JSON on `CardioWorkout.intervalDetailData`) but this was never
+  rendered in history.
+- **Fix:** Added an "Intervals" section to `CardioDetailView` that displays
+  protocol name, completed rounds, work/rest timing, warm-up time, and cool-down
+  time when `workout.intervalSummary` is non-nil.
+
+### Fix #3: "Add 1 min" button for warm-up and cool-down
+- **Strength warm-up/cool-down (`GuidedPhaseOverlay`):** Added `addTime(seconds:)`
+  to `PhaseCountdownClock` (CadenceCore). If the countdown already finished,
+  `addTime` restarts it from now with the added seconds. Added a "+1 min" button
+  between Pause and Skip on `GuidedPhaseOverlay`.
+- **Boxing intervals (`IntervalView`):** Added `phaseExtension` accumulator to
+  `IntervalRunner` that extends the current phase's remaining + overall time.
+  Added a "+1 min" button next to Skip, visible only during warm-up and cooldown
+  phases.
+
+### Fix #4: "Log your first working sets" no longer shows incorrectly at week start
+- **Bug:** `TrainingFacts.totalWorkingSets` only counted sets from Monday-to-now
+  (this week). On Monday morning, a user who trained heavily last week but hadn't
+  yet logged strength today got `totalWorkingSets = 0` → cold-start insight fired
+  incorrectly: "Log your first working sets."
+- **Fix:** Added `allTimeWorkingSets: Int` to `TrainingFacts` that counts ALL
+  working sets across all passed sessions (not week-scoped). The `InsightEngine`
+  cold-start gate now checks `allTimeWorkingSets > 0` instead of `totalWorkingSets > 0`.
+  `totalWorkingSets` (week-scoped) is preserved for other rules that need it.
+
+**Tests:** +5 CadenceCore (PhaseCountdownClock: `testAddTimeExtendsPhase`,
+`testAddTimeRevivesFinishedPhase`; TrainingFacts: `testAllTimeWorkingSetsCountsAllHistory`,
+`testStaleSessionsExcludedFromWeeklyWindow` updated with `allTimeWorkingSets` assertion;
+InsightEngine: `testColdStartNotTriggeredWhenPastWeekSetsExist`). Suite 629 tests,
+10 pre-existing failures (CoachPlanConstraintOverride/Optimizer/SnapshotBuilder —
+unrelated). All new tests pass.
+
+_Prior entry:_
 _Last updated: 2026-07-05 — Coach copy now shows explicit done-vs-remaining ("5/8 sets · 3 to go") on every countable output._
 
 ## What just shipped — Coach "done vs to-go" progress language

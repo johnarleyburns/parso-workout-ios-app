@@ -90,6 +90,17 @@ struct GuidedPhaseOverlay: View {
                     .accessibilityIdentifier("\(idPrefix).pause")
 
                     Button {
+                        let ref = Date()
+                        countdown.addTime(60, now: ref)
+                        now = ref
+                    } label: {
+                        Label("+1 min", systemImage: "plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .cadenceGlassButton(tint: .white)
+                    .accessibilityIdentifier("\(idPrefix).addMinute")
+
+                    Button {
                         (onSkip ?? onFinish)(consumedSeconds)
                     } label: {
                         Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity)

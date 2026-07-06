@@ -152,7 +152,7 @@ public extension KnowledgeBase {
                 id: "addVolume.\(part.rawValue)",
                 kind: .addVolume, part: part,
                 title: "Add \(name.lowercased()) volume",
-                action: "Add about \(toAdd) set\(toAdd == 1 ? "" : "s") of \(name.lowercased()) work this week.",
+                action: "\(name): \(Format.progress(done: current, target: bands.mev, unit: "sets")) this week. Add ~\(toAdd) set\(toAdd == 1 ? "" : "s") to start closing it.",
                 detail: "Weekly sets per muscle drive growth in a graded dose-response, but the exact useful dose varies by person. \(name) is on the low side of the starting range for your experience level (~\(PrescriptionMath.sets(bands.mev)) sets/week); add a couple of sets, then judge by performance and recovery.",
                 citation: CitationRegistry.volumeDoseResponse,
                 target: SetTarget(sets: toAdd, repsLow: range.lowerBound, repsHigh: range.upperBound,

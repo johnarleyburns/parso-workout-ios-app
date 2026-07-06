@@ -123,7 +123,7 @@ public enum PlanAwareInsightEngine {
             kind: .volume,
             part: part,
             title: "\(name) volume is projected low",
-            message: "\(name): \(Format.sets(completedSets)) completed so far + \(Format.sets(plannedSets)) planned this week — still below target.",
+            message: "\(name): \(Format.sets(completedSets)) done + \(Format.sets(plannedSets)) planned = \(Format.progress(done: projectedSets, target: bands.mev, unit: "sets")) this week.",
             detail: "\(name) is projected for \(Format.sets(projectedSets)) sets this week after planned remaining work. Coach's starting range for your experience is ~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week, so the plan likely needs more \(name.lowercased()) work.",
             citation: CitationRegistry.volumeDoseResponse,
             severity: .attention)
@@ -150,7 +150,7 @@ public enum PlanAwareInsightEngine {
                 kind: .volume,
                 part: part,
                 title: "\(name) is behind plan",
-                message: "\(name): \(Format.sets(completed)) completed so far, \(Format.sets(planned)) planned this week.",
+                message: "\(name): \(Format.sets(completed)) done this week, \(Format.sets(planned)) planned remaining — do the planned sets to stay on target.",
                 detail: "The plan still projects enough \(name.lowercased()) work by week-end, but adherence is behind late in the week. Treat the remaining planned \(name.lowercased()) work as the priority before adding extra volume elsewhere.",
                 citation: CitationRegistry.volumeDoseResponse,
                 severity: .attention))
@@ -189,7 +189,7 @@ public enum PlanAwareInsightEngine {
             id: "planning.unresolvedVolume",
             kind: .volume,
             title: "Some planned volume still needs attention",
-            message: "Still projected low after safe planning: \(summary) sets.",
+            message: "Still short after safe planning: \(summary) sets to go.",
             detail: "\(reason) \(ranges). Keep the planned work as the priority, then adjust the schedule or add another eligible strength slot if recovery allows.",
             citation: CitationRegistry.volumeDoseResponse,
             severity: .attention)]

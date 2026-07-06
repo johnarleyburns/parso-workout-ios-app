@@ -59,7 +59,7 @@ public enum KnowledgeBase {
                     id: "volume.\(part.rawValue)",
                     kind: .volume, part: part,
                     title: "\(name) volume is low",
-                    message: "\(name): 0 sets this week — below the starting range Coach uses for your experience.",
+                    message: "\(name): \(Format.progress(done: 0, target: bands.mev, unit: "sets")) this week to reach Coach's starting range.",
                     detail: "\(name) has not been trained this week. Meta-analyses show a graded dose-response between weekly sets per muscle and growth; Coach's starting range is ~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week for your experience. This may be intentional (a rest week or a focused block), but if it isn't, add 1–2 sets and adjust by feel and performance.",
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
@@ -73,7 +73,7 @@ public enum KnowledgeBase {
                     id: "volume.\(part.rawValue)",
                     kind: .volume, part: part,
                     title: "\(name) volume is low",
-                    message: "\(name): \(setsText) sets this week — below the starting range Coach uses for your experience.",
+                    message: "\(name): \(Format.progress(done: sets, target: bands.mev, unit: "sets")) this week to reach the starting range.",
                     detail: "Meta-analyses show a graded dose-response between weekly sets per muscle and growth, but the exact useful dose varies by person. \(name) is below Coach's starting range (~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week); add a set or two and judge by performance and recovery.",
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
@@ -100,7 +100,7 @@ public enum KnowledgeBase {
                     id: "volume.\(part.rawValue)",
                     kind: .volume, part: part,
                     title: "\(name) volume may be too high",
-                    message: "\(name): \(setsText) sets this week — above Coach's high-end starting point.",
+                    message: "\(name): \(setsText)/\(Format.sets(bands.mrv)) sets this week · \(Format.sets(sets - bands.mrv)) over the high end.",
                     detail: "\(name) is above Coach's high-end starting point (~\(Format.sets(bands.mrv)) sets/week). More sets have diminishing returns and only help if you recover from them; consider holding or taking a lighter week.",
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
@@ -361,4 +361,12 @@ enum Format {
     }
     static func oneDecimal(_ value: Double) -> String { String(format: "%.1f", value) }
     static func percent(_ fraction: Double) -> String { "\(Int((fraction * 100).rounded()))%" }
+
+    /// Progress-bar style summary: "5/8 sets · 3 to go" (or "· target met" when
+    /// done ≥ target). Gives the user a clear done-vs-remaining read at a glance.
+    static func progress(done: Double, target: Double, unit: String) -> String {
+        let remaining = max(0, target - done)
+        let head = "\(sets(done))/\(sets(target)) \(unit)"
+        return remaining > 0 ? "\(head) · \(sets(remaining)) to go" : "\(head) · target met"
+    }
 }

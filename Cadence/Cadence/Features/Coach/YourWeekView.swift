@@ -16,6 +16,10 @@ struct YourWeekView: View {
         let nextWeek = plan.nextWeekDays.filter { !$0.sessions.isEmpty }
         let stepSummary = facts.stepSummary ?? StepActivitySummary(from: [])
         let stepTarget = effectivePrefs.dailyStepTarget
+        let strengthToGo = max(0, effectivePrefs.strengthDaysPerWeek - balance.strengthDays)
+        let cardioToGo = max(0, effectivePrefs.cardioDaysPerWeek - balance.cardioDays)
+        let minutesToGo = max(0, 150 - Int(balance.moderateEquivalentMinutes))
+        let stepsToGo = max(0, stepTarget - Int(stepSummary.sevenDayAverageSteps))
 
         List {
             Section("This Week So Far") {
@@ -26,7 +30,7 @@ struct YourWeekView: View {
                         Spacer()
                         Text("\(balance.strengthDays)")
                             .font(.subheadline.bold()).monospacedDigit()
-                            + Text("  (target: \(effectivePrefs.strengthDaysPerWeek)+)").font(.caption).foregroundStyle(.secondary)
+                            + Text(strengthToGo > 0 ? "  \(strengthToGo) to go · target \(effectivePrefs.strengthDaysPerWeek)+" : "  target met").font(.caption).foregroundStyle(.secondary)
                     }
                     ProgressView(value: min(1, Double(balance.strengthDays) / Double(effectivePrefs.strengthDaysPerWeek)))
                         .tint(.green)
@@ -37,7 +41,7 @@ struct YourWeekView: View {
                         Spacer()
                         Text("\(balance.cardioDays)")
                             .font(.subheadline.bold()).monospacedDigit()
-                            + Text("  (target: \(effectivePrefs.cardioDaysPerWeek))").font(.caption).foregroundStyle(.secondary)
+                            + Text(cardioToGo > 0 ? "  \(cardioToGo) to go · target \(effectivePrefs.cardioDaysPerWeek)" : "  target met").font(.caption).foregroundStyle(.secondary)
                     }
                     ProgressView(value: effectivePrefs.cardioDaysPerWeek > 0
                         ? min(1, Double(balance.cardioDays) / Double(effectivePrefs.cardioDaysPerWeek)) : 1)
@@ -49,7 +53,7 @@ struct YourWeekView: View {
                         Spacer()
                         Text("\(Int(balance.moderateEquivalentMinutes))")
                             .font(.subheadline.bold()).monospacedDigit()
-                            + Text("  (health floor: 150)").font(.caption).foregroundStyle(.secondary)
+                            + Text(minutesToGo > 0 ? "  \(minutesToGo) min to go · floor 150" : "  target met").font(.caption).foregroundStyle(.secondary)
                     }
                     ProgressView(value: min(1, balance.moderateEquivalentMinutes / 150))
                         .tint(.blue)
@@ -61,7 +65,7 @@ struct YourWeekView: View {
                         Spacer()
                         Text("\(Int(stepSummary.sevenDayAverageSteps))")
                             .font(.subheadline.bold()).monospacedDigit()
-                            + Text("  (target: \(stepTarget))").font(.caption).foregroundStyle(.secondary)
+                            + Text(stepsToGo > 0 ? "  \(stepsToGo)/day to go · target \(stepTarget)" : "  on target").font(.caption).foregroundStyle(.secondary)
                     }
                     ProgressView(value: min(1, stepSummary.sevenDayAverageSteps / Double(stepTarget)))
                         .tint(stepsColor(stepSummary.status))

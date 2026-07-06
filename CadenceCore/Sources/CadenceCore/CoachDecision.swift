@@ -272,24 +272,35 @@ public enum CoachDecisionEngine {
         factsList.append(ObservedFact(
             kind: .weeklyStrengthDays,
             title: "Strength days this week",
-            value: "\(facts.weeklyBalance.strengthDays) / \(schedulePreferences.strengthDaysPerWeek)+",
+            value: {
+                let done = facts.weeklyBalance.strengthDays
+                let target = schedulePreferences.strengthDaysPerWeek
+                let toGo = max(0, target - done)
+                return toGo > 0 ? "\(done)/\(target)+ · \(toGo) to go" : "\(done)/\(target)+ · target met"
+            }(),
             detail: "Target is \(schedulePreferences.strengthDaysPerWeek) or more"
         ))
 
         factsList.append(ObservedFact(
             kind: .weeklyModerateEquivalentMinutes,
             title: "Moderate-equivalent minutes",
-            value: "\(Int(facts.weeklyBalance.moderateEquivalentMinutes)) / 150",
+            value: {
+                let done = Int(facts.weeklyBalance.moderateEquivalentMinutes)
+                let toGo = max(0, 150 - done)
+                return toGo > 0 ? "\(done)/150 · \(toGo) min to go" : "\(done)/150 · target met"
+            }(),
             detail: "Research-informed aerobic target"
         ))
 
         if let stepSummary = facts.stepSummary {
             let avg = Int(stepSummary.sevenDayAverageSteps)
             let avgStr = formatted(avg)
+            let stepTarget = StepActivitySummary.targetDailySteps
+            let stepGap = max(0, stepTarget - avg)
             factsList.append(ObservedFact(
                 kind: .weeklySteps,
                 title: "Steps (7-day avg)",
-                value: "\(avgStr)/day",
+                value: stepGap > 0 ? "\(avgStr)/day · \(formatted(stepGap))/day to go" : "\(avgStr)/day · on target",
                 detail: "\(stepSummary.status.displayName) — evidence-informed target is \(formatted(StepActivitySummary.targetDailySteps))"
             ))
             if stepSummary.status == .low {

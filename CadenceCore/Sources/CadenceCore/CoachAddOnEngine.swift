@@ -61,7 +61,14 @@ public enum CoachAddOnEngine {
                 id: "addon.encouragedCardio",
                 session: session,
                 status: .encouraged,
-                message: "You're under your weekly cardio target. Easy movement will help close the gap.",
+                message: {
+                    if minutesBelow {
+                        let gap = max(0, Int(aerobicTarget - balance.moderateEquivalentMinutes))
+                        return "\(gap) min to go on this week's aerobic target (\(Int(balance.moderateEquivalentMinutes))/150). Easy movement closes the gap."
+                    }
+                    let dayGap = max(0, cardioDayTarget - balance.cardioDays)
+                    return "\(dayGap) cardio day\(dayGap == 1 ? "" : "s") to go this week (\(balance.cardioDays)/\(cardioDayTarget)). Easy movement closes the gap."
+                }(),
                 citationIds: ["ekelundActivityMortality2016"]
             )
         }

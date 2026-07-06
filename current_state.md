@@ -2,7 +2,33 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-05 — Coach pipeline cached off the render path (fixes 1–2s set-log / add-exercise stalls)._
+_Last updated: 2026-07-05 — Coach copy now shows explicit done-vs-remaining ("5/8 sets · 3 to go") on every countable output._
+
+## What just shipped — Coach "done vs to-go" progress language
+
+- **Feedback:** with coach insights it wasn't clear how much was **done** vs how much
+  **remained** to satisfy a recommendation — the user couldn't tell what to do to "fix"
+  a request.
+- **Fix:** every countable coach output now uses a consistent progress-bar phrasing —
+  `done/target unit · N to go` (or `· target met`) — via a new shared
+  `Format.progress(done:target:unit:)` helper in CadenceCore. Citations unchanged;
+  numbers come from the same `VolumeLandmarks` bands the copy already referenced.
+  - **Volume insights** (`InsightRule`): `Chest: 4/8 sets · 4 to go this week`;
+    untrained parts read `0/8 sets · 8 to go`; over-volume reads `24/22 sets · 2 over
+    the high end`.
+  - **Plan-aware insights** (`PlanAwareInsightEngine`): projected-low reads
+    `3 done + 2 planned = 5/8 sets · 3 to go`; behind-plan reads `3 done this week,
+    2 planned remaining`; unresolved reads `… sets to go`.
+  - **Recommendations** (`RecommendationRule.addVolume`, `CoachRuleSupport`
+    volume add/trim): lead with the progress bar, then a concrete `Add ~N` / `trim ~N`.
+  - **Observed facts** (`CoachDecision`): strength days, mod-eq minutes, steps append
+    `· N to go` / `· target met`.
+  - **Add-on cardio** (`CoachAddOnEngine`): `60 min to go on this week's aerobic
+    target (90/150). Easy movement closes the gap.`
+  - **Your Week** (`YourWeekView`): trailing labels show `N to go · target X` instead
+    of `(target: X)`.
+- **Tests:** updated 2 `InsightEngineTests` assertions to the new wording. Suite **625
+  green**; iOS **build succeeds**.
 
 ## What just shipped — Coach snapshot cache (performance: instant set logging)
 

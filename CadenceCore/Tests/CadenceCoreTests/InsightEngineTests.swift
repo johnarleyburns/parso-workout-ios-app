@@ -65,7 +65,7 @@ final class InsightEngineTests: XCTestCase {
         XCTAssertEqual(biceps?.severity, .attention)
         XCTAssertEqual(biceps?.kind, .volume)
         XCTAssertTrue(biceps?.title.localizedCaseInsensitiveContains("low") ?? false)
-        XCTAssertTrue(biceps?.message.contains("0 sets") ?? false,
+        XCTAssertTrue(biceps?.message.contains("0/") ?? false,
                       "message should make clear it was not trained")
         XCTAssertTrue(Set(CitationRegistry.all.map(\.id)).contains(biceps?.citation.id ?? ""))
     }
@@ -124,8 +124,8 @@ final class InsightEngineTests: XCTestCase {
             now: now)
         let chest = behind.first { $0.id == "behindPlan.chest" }
         XCTAssertEqual(chest?.severity, .attention)
-        XCTAssertTrue(chest?.message.contains("completed so far") ?? false)
-        XCTAssertTrue(chest?.message.contains("planned this week") ?? false)
+        XCTAssertTrue(chest?.message.contains("done this week") ?? false)
+        XCTAssertTrue(chest?.message.contains("planned remaining") ?? false)
     }
 
     // MARK: ranking

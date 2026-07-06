@@ -116,14 +116,16 @@ public enum CoachRecommendationEngine {
         let readinessPoor = facts.readiness?.isPoor ?? false
         for (part, sets) in facts.weeklyBalance.fractionalSets where sets > 0 {
             let zone = VolumeLandmarks.zone(sets: sets, for: part, experience: facts.experience)
+            let bands = VolumeLandmarks.bands(for: part, experience: facts.experience)
             let name = part.displayName
             switch zone {
             case .belowMEV:
+                let toAdd = min(4, max(1, Int((bands.mev - sets).rounded(.up))))
                 out.append(Recommendation(
                     id: "volumeAdjust.add.\(part.rawValue)",
                     kind: .volumeAdjust, part: part,
                     title: "Add \(name.lowercased()) volume",
-                    action: "\(name) is on the low side this week (\(PrescriptionMath.sets(sets)) sets). Add 1–2 sets, ideally spread across 2 sessions, and judge by your own response before chasing more.",
+                    action: "\(name): \(Format.progress(done: sets, target: bands.mev, unit: "sets")) this week. Add ~\(toAdd) set\(toAdd == 1 ? "" : "s"), ideally spread across 2 sessions, and judge by your own response.",
                     detail: "Weekly sets per muscle drive growth in a graded dose-response. Start from a productive range and personalize from your own progress rather than fixed cutoffs. Spreading volume across at least two sessions a week helps you fit and recover it — frequency mainly distributes volume, it is not an independent dose.",
                     citation: cite("volumeDoseResponse"),
                     citationIds: ["pellandDoseResponse2026", "frequencyMeta"],
@@ -138,7 +140,7 @@ public enum CoachRecommendationEngine {
                         id: "volumeAdjust.reduce.\(part.rawValue)",
                         kind: .volumeAdjust, part: part,
                         title: "Hold or trim \(name.lowercased()) volume",
-                        action: "\(name) is high this week (\(PrescriptionMath.sets(sets)) sets) and your readiness is down. Hold volume steady or trim a couple of sets and reassess next week.",
+                        action: "\(name): \(PrescriptionMath.sets(sets))/\(PrescriptionMath.sets(bands.mrv)) sets this week · \(PrescriptionMath.sets(sets - bands.mrv)) over the high end, and readiness is down. Hold steady or trim ~\(max(1, Int((sets - bands.mrv).rounded(.up)))) set\(max(1, Int((sets - bands.mrv).rounded(.up))) == 1 ? "" : "s") and reassess next week.",
                         detail: "More volume helps with diminishing returns, and adaptation depends on recovering the work you do. When self-reported readiness is poor, holding or slightly reducing volume is the conservative choice — this is a coaching cue, not a diagnosis.",
                         citation: cite("pellandDoseResponse2026"),
                         citationIds: ["volumeDoseResponse"],

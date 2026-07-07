@@ -58,6 +58,14 @@ final class ExerciseLibraryDedupTests: XCTestCase {
         }
     }
 
+    func testNoZombieExercisesMissingImageAndInstructions() {
+        let zombies = ExerciseLibrary.starter.filter {
+            $0.imageName == nil && $0.instructions.isEmpty
+        }.map(\.name).sorted()
+        XCTAssertTrue(zombies.isEmpty,
+                      "Exercises missing BOTH image and instructions (zombies to purge):\n\(zombies.joined(separator: "\n"))")
+    }
+
     func testCollapseVariantsKeepsFirstAndEnriches() {
         var a = ExerciseTemplate("Foo Curl", .pull, .dumbbell, .pull, .isolation, primary: ["biceps"])
         a.instructions = []

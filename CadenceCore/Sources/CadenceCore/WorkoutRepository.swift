@@ -19,6 +19,17 @@ public enum WorkoutRepository {
         // empty "Handstand Push-Up" stub alongside the full "Handstand Push-Ups").
         var changed = try collapseDuplicateBuiltInExercises(context)
 
+        // Phase 2: delete built-in exercises removed from the curated catalog so
+        // stale rows (no template, no image, no instructions) don't linger in the
+        // picker. Sets attached to these rows keep the stale exercise reference in
+        // history (it won't cascade-delete), but the exercise itself is purged.
+        let starterNames = Set(ExerciseLibrary.starter.map { $0.name.lowercased() })
+        let builtIns = try allExercises(context).filter { !$0.isCustom }
+        for ex in builtIns where !starterNames.contains(ex.name.lowercased()) {
+            context.delete(ex)
+            changed = true
+        }
+
         let existing = try allExercises(context)
         var byName: [String: Exercise] = [:]
         for ex in existing { byName[ex.name.lowercased()] = ex }

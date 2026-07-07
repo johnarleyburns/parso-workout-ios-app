@@ -130,8 +130,8 @@ final class WorkoutPlanTests: XCTestCase {
         let before = try WorkoutRepository.allExercises(ctx).count
         XCTAssertTrue(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
         let after = try WorkoutRepository.allExercises(ctx)
-        XCTAssertTrue(after.contains { $0.name == "Wall Ball" })
-        XCTAssertTrue(after.contains { $0.name == "Double-Under" })
+        XCTAssertTrue(after.contains { $0.name == "Back Squat" })
+        XCTAssertTrue(after.contains { $0.name == "Bench Press" })
         XCTAssertGreaterThan(after.count, before)
         // Idempotent on a second pass.
         XCTAssertFalse(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))

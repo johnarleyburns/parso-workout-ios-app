@@ -53,7 +53,7 @@ public enum ExerciseLibrary {
 
     /// Built-in catalog seeded on first launch and version-upgraded thereafter.
     /// Bump `seedVersion` when entries are added so existing stores backfill.
-    public static let seedVersion = 6
+    public static let seedVersion = 7
 
     /// Our hand-curated catalog — the authoritative facet source (our muscle ids,
     /// movement-split categories, the "popular" shortlist all reference these).
@@ -170,6 +170,34 @@ public enum ExerciseLibrary {
         "air squat": "Bodyweight_Squat",
         "bulgarian split squat": "Split_Squats",
         "glute bridge": "Pelvic_Tilt_Into_Bridge",
+        // Phase 2: zombie-exercise enrichments (curated name → free-exercise-db ID)
+        "ab wheel rollout": "Ab_Roller",
+        "box jump": "Box_Jump_Multiple_Response",
+        "cable curl": "Standing_Biceps_Cable_Curl",
+        "cable hammer curl": "Cable_Hammer_Curls_-_Rope_Attachment",
+        "close-grip bench press": "Close-Grip_Barbell_Bench_Press",
+        "depth jump": "Depth_Jump_Leap",
+        "dumbbell curl": "Dumbbell_Bicep_Curl",
+        "dumbbell pullover": "Bent-Arm_Dumbbell_Pullover",
+        "farmer's carry": "Farmers_Walk",
+        "hip thrust": "Barbell_Hip_Thrust",
+        "jump squat": "Freehand_Jump_Squat",
+        "kettlebell clean": "Two-Arm_Kettlebell_Clean",
+        "landmine press": "Landmine_Linear_Jammer",
+        "medicine ball slam": "One-Arm_Medicine_Ball_Slam",
+        "pec deck": "Butterfly",
+        "pistol squat": "Kettlebell_Pistol_Squat",
+        "rear delt fly": "Cable_Rear_Delt_Fly",
+        "reverse curl": "Standing_Dumbbell_Reverse_Curl",
+        "rowing machine": "Rowing_Stationary",
+        "skull crusher": "Band_Skull_Crusher",
+        "step-up": "Step-up_with_Knee_Raise",
+        "stiff-leg deadlift": "Stiff-Legged_Barbell_Deadlift",
+        "thruster": "Kettlebell_Thruster",
+        "tuck jump": "Knee_Tuck_Jump",
+        "turkish get-up": "Kettlebell_Turkish_Get-Up_Lunge_style",
+        "walking lunge": "Barbell_Walking_Lunge",
+        "wrist curl": "Cable_Wrist_Curl",
     ]
 
     // MARK: Chest
@@ -182,25 +210,19 @@ public enum ExerciseLibrary {
         .init("Dumbbell Fly", .push, .dumbbell, .push, .isolation, primary: ["chest"]),
         .init("Incline Dumbbell Fly", .push, .dumbbell, .push, .isolation, primary: ["upper-chest", "chest"]),
         .init("Cable Fly", .push, .cable, .push, .isolation, primary: ["chest"]),
-        .init("Low Cable Fly", .push, .cable, .push, .isolation, primary: ["upper-chest", "chest"]),
-        .init("High Cable Fly", .push, .cable, .push, .isolation, primary: ["chest"]),
         .init("Cable Crossover", .push, .cable, .push, .isolation, primary: ["chest"]),
-        .init("Single-Arm Cable Press", .push, .cable, .push, .compound, primary: ["chest"], secondary: ["triceps"], lateral: true),
         .init("Machine Chest Press", .push, .machine, .push, .compound, primary: ["chest"], secondary: ["triceps"]),
         .init("Pec Deck", .push, .machine, .push, .isolation, primary: ["chest"]),
         .init("Smith Machine Bench Press", .push, .smith, .push, .compound, primary: ["chest"], secondary: ["triceps"]),
         .init("Push-Up", .push, .bodyweight, .push, .compound, primary: ["chest"], secondary: ["triceps", "front-delts"]),
         .init("Incline Push-Up", .push, .bodyweight, .push, .compound, primary: ["chest"], secondary: ["triceps"]),
         .init("Dip", .push, .bodyweight, .push, .compound, primary: ["chest"], secondary: ["triceps", "front-delts"]),
-        .init("Plyometric Push-Up", .push, .plyometric, .push, .compound, primary: ["chest"], secondary: ["triceps"]),
-        .init("Banded Chest Press", .push, .band, .push, .compound, primary: ["chest"], secondary: ["triceps"]),
     ]
 
     // MARK: Back
     private static let back: [ExerciseTemplate] = [
         .init("Deadlift", .pull, .barbell, .pull, .compound, primary: ["lower-back", "glutes", "hamstrings"], secondary: ["traps", "lats"]),
         .init("Barbell Row", .pull, .barbell, .pull, .compound, primary: ["lats", "rhomboids"], secondary: ["biceps", "rear-delts"]),
-        .init("Pendlay Row", .pull, .barbell, .pull, .compound, primary: ["lats", "rhomboids"], secondary: ["biceps"]),
         .init("T-Bar Row", .pull, .barbell, .pull, .compound, primary: ["lats", "rhomboids"], secondary: ["biceps"]),
         .init("Pull-Up", .pull, .bodyweight, .pull, .compound, primary: ["lats"], secondary: ["biceps", "rhomboids"]),
         .init("Chin-Up", .pull, .bodyweight, .pull, .compound, primary: ["lats", "biceps"], secondary: ["rhomboids"]),
@@ -208,12 +230,7 @@ public enum ExerciseLibrary {
         .init("Close-Grip Lat Pulldown", .pull, .cable, .pull, .compound, primary: ["lats"], secondary: ["biceps"]),
         .init("Straight-Arm Pulldown", .pull, .cable, .pull, .isolation, primary: ["lats"]),
         .init("Seated Cable Row", .pull, .cable, .pull, .compound, primary: ["rhomboids", "lats"], secondary: ["biceps"]),
-        .init("Single-Arm Dumbbell Row", .pull, .dumbbell, .pull, .compound, primary: ["lats", "rhomboids"], secondary: ["biceps"], lateral: true),
-        .init("Chest-Supported Dumbbell Row", .pull, .dumbbell, .pull, .compound, primary: ["rhomboids", "lats"], secondary: ["rear-delts"]),
-        .init("Machine Row", .pull, .machine, .pull, .compound, primary: ["lats", "rhomboids"], secondary: ["biceps"]),
-        .init("Single-Arm Machine Row", .pull, .machine, .pull, .compound, primary: ["lats", "rhomboids"], secondary: ["biceps"], lateral: true),
         .init("Inverted Row", .pull, .bodyweight, .pull, .compound, primary: ["rhomboids", "lats"], secondary: ["biceps"]),
-        .init("Banded Row", .pull, .band, .pull, .compound, primary: ["lats", "rhomboids"], secondary: ["biceps"]),
         .init("Back Extension", .pull, .bodyweight, .pull, .isolation, primary: ["lower-back"], secondary: ["glutes", "hamstrings"]),
         .init("Rack Pull", .pull, .barbell, .pull, .compound, primary: ["lower-back", "traps"], secondary: ["lats", "glutes"]),
     ]
@@ -226,15 +243,10 @@ public enum ExerciseLibrary {
         .init("Arnold Press", .push, .dumbbell, .push, .compound, primary: ["delts", "front-delts"], secondary: ["triceps"]),
         .init("Dumbbell Lateral Raise", .push, .dumbbell, .push, .isolation, primary: ["delts"]),
         .init("Cable Lateral Raise", .push, .cable, .push, .isolation, primary: ["delts"], lateral: true),
-        .init("Machine Lateral Raise", .push, .machine, .push, .isolation, primary: ["delts"]),
-        .init("Dumbbell Front Raise", .push, .dumbbell, .push, .isolation, primary: ["front-delts"]),
         .init("Rear Delt Fly", .pull, .dumbbell, .pull, .isolation, primary: ["rear-delts"]),
-        .init("Reverse Pec Deck", .pull, .machine, .pull, .isolation, primary: ["rear-delts"]),
         .init("Face Pull", .pull, .cable, .pull, .isolation, primary: ["rear-delts"], secondary: ["traps"]),
-        .init("Machine Shoulder Press", .push, .machine, .push, .compound, primary: ["delts"], secondary: ["triceps"]),
         .init("Barbell Shrug", .pull, .barbell, .pull, .isolation, primary: ["traps"]),
         .init("Dumbbell Shrug", .pull, .dumbbell, .pull, .isolation, primary: ["traps"]),
-        .init("Upright Row", .pull, .barbell, .pull, .compound, primary: ["delts", "traps"], secondary: ["biceps"]),
     ]
 
     // MARK: Arms
@@ -247,12 +259,8 @@ public enum ExerciseLibrary {
         .init("Concentration Curl", .pull, .dumbbell, .pull, .isolation, primary: ["biceps"], lateral: true),
         .init("Cable Curl", .pull, .cable, .pull, .isolation, primary: ["biceps"]),
         .init("Preacher Curl", .pull, .machine, .pull, .isolation, primary: ["biceps"]),
-        .init("Banded Curl", .pull, .band, .pull, .isolation, primary: ["biceps"]),
         .init("Triceps Pushdown", .push, .cable, .push, .isolation, primary: ["triceps"]),
-        .init("Rope Pushdown", .push, .cable, .push, .isolation, primary: ["triceps"]),
-        .init("Overhead Cable Extension", .push, .cable, .push, .isolation, primary: ["triceps"]),
         .init("Skull Crusher", .push, .barbell, .push, .isolation, primary: ["triceps"]),
-        .init("Dumbbell Overhead Extension", .push, .dumbbell, .push, .isolation, primary: ["triceps"]),
         .init("Close-Grip Bench Press", .push, .barbell, .push, .compound, primary: ["triceps"], secondary: ["chest"]),
         .init("Bench Dip", .push, .bodyweight, .push, .compound, primary: ["triceps"], secondary: ["chest"]),
         .init("Wrist Curl", .pull, .dumbbell, .pull, .isolation, primary: ["forearms"]),
@@ -274,11 +282,8 @@ public enum ExerciseLibrary {
         .init("Stiff-Leg Deadlift", .legs, .barbell, .pull, .compound, primary: ["hamstrings"], secondary: ["glutes", "lower-back"]),
         .init("Lying Leg Curl", .legs, .machine, .pull, .isolation, primary: ["hamstrings"]),
         .init("Seated Leg Curl", .legs, .machine, .pull, .isolation, primary: ["hamstrings"]),
-        .init("Nordic Curl", .legs, .bodyweight, .pull, .isolation, primary: ["hamstrings"]),
         .init("Standing Calf Raise", .legs, .machine, .push, .isolation, primary: ["calves"]),
         .init("Seated Calf Raise", .legs, .machine, .push, .isolation, primary: ["calves"]),
-        .init("Hip Adduction Machine", .legs, .machine, .push, .isolation, primary: ["adductors"]),
-        .init("Hip Abduction Machine", .legs, .machine, .push, .isolation, primary: ["abductors"]),
         .init("Box Jump", .legs, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["calves"]),
         .init("Jump Squat", .legs, .plyometric, .push, .compound, primary: ["quads", "glutes"]),
     ]
@@ -287,10 +292,7 @@ public enum ExerciseLibrary {
     private static let glutes: [ExerciseTemplate] = [
         .init("Hip Thrust", .legs, .barbell, .push, .compound, primary: ["glutes"], secondary: ["hamstrings"]),
         .init("Glute Bridge", .legs, .bodyweight, .push, .compound, primary: ["glutes"], secondary: ["hamstrings"]),
-        .init("Cable Kickback", .legs, .cable, .push, .isolation, primary: ["glutes"], lateral: true),
-        .init("Machine Hip Thrust", .legs, .machine, .push, .compound, primary: ["glutes"], secondary: ["hamstrings"]),
         .init("Step-Up", .legs, .dumbbell, .push, .compound, primary: ["glutes", "quads"], lateral: true),
-        .init("Banded Glute Walk", .legs, .band, .push, .isolation, primary: ["glutes", "abductors"]),
     ]
 
     // MARK: Core
@@ -298,12 +300,9 @@ public enum ExerciseLibrary {
         .init("Plank", .core, .bodyweight, .static, .isolation, primary: ["abs"], secondary: ["obliques"]),
         .init("Hanging Leg Raise", .core, .bodyweight, .pull, .isolation, primary: ["abs", "hip-flexors"]),
         .init("Cable Crunch", .core, .cable, .pull, .isolation, primary: ["abs"]),
-        .init("Crunch", .core, .bodyweight, .pull, .isolation, primary: ["abs"]),
         .init("Sit-Up", .core, .bodyweight, .pull, .isolation, primary: ["abs", "hip-flexors"]),
         .init("Russian Twist", .core, .bodyweight, .pull, .isolation, primary: ["obliques"], secondary: ["abs"]),
         .init("Ab Wheel Rollout", .core, .bodyweight, .pull, .compound, primary: ["abs"], secondary: ["lower-back"]),
-        .init("Machine Crunch", .core, .machine, .pull, .isolation, primary: ["abs"]),
-        .init("Side Plank", .core, .bodyweight, .static, .isolation, primary: ["obliques"], lateral: true),
         .init("Mountain Climber", .core, .bodyweight, .push, .compound, primary: ["abs", "hip-flexors"]),
     ]
 
@@ -312,8 +311,6 @@ public enum ExerciseLibrary {
         .init("Power Clean", .pull, .barbell, .pull, .compound, primary: ["traps", "glutes", "quads"], secondary: ["hamstrings", "delts"]),
         .init("Clean and Jerk", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "delts"], secondary: ["traps"]),
         .init("Snatch", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "delts"], secondary: ["traps", "lower-back"]),
-        .init("Kettlebell Swing", .pull, .kettlebell, .pull, .compound, primary: ["glutes", "hamstrings"], secondary: ["lower-back"]),
-        .init("Kettlebell Goblet Squat", .legs, .kettlebell, .push, .compound, primary: ["quads", "glutes"]),
         .init("Kettlebell Clean", .pull, .kettlebell, .pull, .compound, primary: ["glutes", "traps"], secondary: ["quads"], lateral: true),
         .init("Farmer's Carry", .legs, .dumbbell, .static, .compound, primary: ["forearms", "traps"], secondary: ["abs", "quads"]),
         .init("Thruster", .legs, .barbell, .push, .compound, primary: ["quads", "delts"], secondary: ["glutes", "triceps"]),
@@ -331,14 +328,9 @@ public enum ExerciseLibrary {
         .init("Overhead Squat", .legs, .barbell, .push, .compound, primary: ["quads", "glutes"], secondary: ["delts", "abs"]),
         .init("Pistol Squat", .legs, .bodyweight, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"], lateral: true),
         .init("Clean", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "traps"], secondary: ["hamstrings", "delts"]),
-        .init("Wall Ball", .legs, .bodyweight, .push, .compound, primary: ["quads", "delts"], secondary: ["glutes", "triceps"]),
         .init("Handstand Push-Up", .push, .bodyweight, .push, .compound, primary: ["delts", "triceps"], secondary: ["traps"]),
         .init("Ring Dip", .push, .bodyweight, .push, .compound, primary: ["triceps", "chest"], secondary: ["front-delts"]),
         .init("Muscle-Up", .pull, .bodyweight, .pull, .compound, primary: ["lats", "triceps"], secondary: ["chest", "biceps"]),
-        .init("Toes-to-Bar", .core, .bodyweight, .pull, .compound, primary: ["abs", "hip-flexors"], secondary: ["lats"]),
-        .init("Burpee", .legs, .bodyweight, .push, .compound, primary: ["quads", "chest"], secondary: ["triceps", "abs"]),
-        .init("Double-Under", .cardio, .plyometric, .push, .compound, primary: ["calves"], secondary: ["forearms"]),
-        .init("Run", .cardio, nil, nil, .compound, primary: ["quads", "hamstrings", "calves"], secondary: ["glutes"]),
         .init("Rowing Machine", .cardio, .machine, .pull, .compound, primary: ["lats", "quads"], secondary: ["biceps", "hamstrings"]),
     ]
 
@@ -350,19 +342,9 @@ public enum ExerciseLibrary {
     // Ring Dip, Muscle-Up, Nordic Curl) are reused as-is. All `.bodyweight`.
     private static let bodyweight: [ExerciseTemplate] = [
         .init("Pike Push-Up", .push, .bodyweight, .push, .compound, primary: ["delts"], secondary: ["triceps", "front-delts"]),
-        .init("Diamond Push-Up", .push, .bodyweight, .push, .compound, primary: ["triceps", "chest"], secondary: ["front-delts"]),
         .init("Decline Push-Up", .push, .bodyweight, .push, .compound, primary: ["upper-chest", "chest"], secondary: ["triceps", "front-delts"]),
-        .init("Wide Push-Up", .push, .bodyweight, .push, .compound, primary: ["chest"], secondary: ["front-delts"]),
-        .init("Negative Pull-Up", .pull, .bodyweight, .pull, .compound, primary: ["lats"], secondary: ["biceps", "rhomboids"]),
-        .init("Commando Pull-Up", .pull, .bodyweight, .pull, .compound, primary: ["lats", "biceps"], secondary: ["rhomboids"]),
-        .init("Bodyweight Lunge", .legs, .bodyweight, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"], lateral: true),
-        .init("Wall Sit", .legs, .bodyweight, .static, .isolation, primary: ["quads"], secondary: ["glutes"]),
-        .init("Bodyweight Calf Raise", .legs, .bodyweight, .push, .isolation, primary: ["calves"]),
         .init("Single-Leg Glute Bridge", .legs, .bodyweight, .push, .compound, primary: ["glutes"], secondary: ["hamstrings"], lateral: true),
-        .init("L-Sit", .core, .bodyweight, .static, .isolation, primary: ["abs", "hip-flexors"], secondary: ["quads"]),
-        .init("Hollow Hold", .core, .bodyweight, .static, .isolation, primary: ["abs"], secondary: ["hip-flexors"]),
         .init("Superman", .core, .bodyweight, .pull, .isolation, primary: ["lower-back"], secondary: ["glutes"]),
-        .init("Bird Dog", .core, .bodyweight, .static, .isolation, primary: ["abs", "lower-back"], secondary: ["glutes"]),
         .init("Flutter Kick", .core, .bodyweight, .pull, .isolation, primary: ["abs", "hip-flexors"]),
     ]
 
@@ -371,32 +353,18 @@ public enum ExerciseLibrary {
     // Plyometric Push-Up / Double-Under already exist above (kept in their movement
     // categories); these are dedicated plyo movements.
     private static let plyometrics: [ExerciseTemplate] = [
-        .init("Broad Jump", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings", "calves"]),
         .init("Depth Jump", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["calves"]),
         .init("Tuck Jump", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["calves", "hip-flexors"]),
-        .init("Jumping Lunge", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"], lateral: true),
         .init("Lateral Bound", .plyometrics, .plyometric, .push, .compound, primary: ["glutes", "quads"], secondary: ["abductors", "calves"], lateral: true),
-        .init("Skater Jump", .plyometrics, .plyometric, .push, .compound, primary: ["glutes", "quads"], secondary: ["abductors"], lateral: true),
-        .init("Single-Leg Box Jump", .plyometrics, .plyometric, .push, .compound, primary: ["quads", "glutes"], secondary: ["calves"], lateral: true),
-        .init("Clap Push-Up", .plyometrics, .plyometric, .push, .compound, primary: ["chest"], secondary: ["triceps", "front-delts"]),
         .init("Medicine Ball Slam", .plyometrics, .plyometric, .pull, .compound, primary: ["abs", "lats"], secondary: ["delts"]),
         .init("Medicine Ball Chest Pass", .plyometrics, .plyometric, .push, .compound, primary: ["chest"], secondary: ["triceps", "front-delts"]),
-        .init("Medicine Ball Rotational Throw", .plyometrics, .plyometric, .push, .compound, primary: ["obliques", "abs"], secondary: ["delts"], lateral: true),
-        .init("Bounding", .plyometrics, .plyometric, .push, .compound, primary: ["glutes", "hamstrings"], secondary: ["calves", "quads"]),
     ]
 
     // MARK: Accessories (feedback batch 8) — broadens coverage per body part.
     private static let accessories: [ExerciseTemplate] = [
         .init("Good Morning", .legs, .barbell, .pull, .compound, primary: ["hamstrings", "lower-back"], secondary: ["glutes"]),
-        .init("Cable Pull-Through", .legs, .cable, .pull, .compound, primary: ["glutes", "hamstrings"], secondary: ["lower-back"]),
-        .init("Dumbbell Romanian Deadlift", .legs, .dumbbell, .pull, .compound, primary: ["hamstrings", "glutes"], secondary: ["lower-back"]),
-        .init("Reverse Lunge", .legs, .dumbbell, .push, .compound, primary: ["quads", "glutes"], secondary: ["hamstrings"], lateral: true),
-        .init("Calf Press on Leg Press", .legs, .machine, .push, .isolation, primary: ["calves"]),
         .init("Landmine Press", .push, .barbell, .push, .compound, primary: ["delts", "upper-chest"], secondary: ["triceps"], lateral: true),
-        .init("Incline Cable Fly", .push, .cable, .push, .isolation, primary: ["upper-chest", "chest"]),
-        .init("Cable Woodchopper", .core, .cable, .pull, .compound, primary: ["obliques", "abs"], secondary: ["delts"], lateral: true),
         .init("Dead Bug", .core, .bodyweight, .static, .isolation, primary: ["abs"], secondary: ["hip-flexors"]),
-        .init("Hyperextension", .pull, .bodyweight, .pull, .isolation, primary: ["lower-back"], secondary: ["glutes", "hamstrings"]),
         .init("Zottman Curl", .pull, .dumbbell, .pull, .isolation, primary: ["biceps", "forearms"]),
         .init("Cable Hammer Curl", .pull, .cable, .pull, .isolation, primary: ["biceps", "forearms"]),
         .init("JM Press", .push, .barbell, .push, .compound, primary: ["triceps"], secondary: ["chest"]),
@@ -428,3 +396,4 @@ public enum ExerciseLibrary {
                  defaultBarWeightKg: t.equipment == .barbell ? Exercise.defaultBarWeightKg : 0)
     }
 }
+

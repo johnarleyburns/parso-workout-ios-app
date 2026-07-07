@@ -577,3 +577,12 @@ decisions: `plans/supporter-flow/2026-06-28/`.
 - Added RPE badge (small rounded number chip) on `completedSetRow` in SessionView.swift
 - RPE visible without tapping to edit; appears only for working sets with RPE logged
 - Row height unchanged at minHeight: 44
+
+## Phase 2: Remove zombie exercises (2026-07-06)
+- Added 27 `curatedAlias` mappings so common curated exercises (Dumbbell Curl, Kettlebell Swing, etc.)
+  get enriched with images and instructions from free-exercise-db
+- Deleted 60 exercises from the curated catalog that have no free-exercise-db equivalent
+  (Banded Chest Press, Bird Dog, Broad Jump, Burpee, Diamond Push-Up, Double-Under, Wall Ball, etc.)
+- Users can still find equivalents from free-exercise-db imports (~22k exercises) under different names
+- Added `testNoZombieExercisesMissingImageAndInstructions` as permanent regression guard
+- Bumped seedVersion to 7; migration deletes stale built-in exercises from existing user stores

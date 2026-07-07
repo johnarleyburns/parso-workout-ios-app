@@ -184,6 +184,35 @@ public enum WorkoutRepository {
         return ex
     }
 
+    /// Updates facets on a custom exercise (Phase 5). Only custom exercises can be
+    /// edited — built-in exercises get their facets from templates. Rebuilds search
+    /// keywords from the new facets so the exercise remains searchable.
+    @discardableResult
+    public static func updateExercise(_ exercise: Exercise,
+                                      category: ExerciseCategory? = nil,
+                                      equipment: Equipment? = nil,
+                                      mechanics: Mechanics? = nil,
+                                      force: Force? = nil,
+                                      primaryMuscles: [String] = [],
+                                      secondaryMuscles: [String] = [],
+                                      in context: ModelContext) throws -> Exercise {
+        guard exercise.isCustom else { return exercise }
+        exercise.categoryValue = category
+        exercise.equipmentValue = equipment
+        exercise.mechanicsValue = mechanics
+        exercise.forceValue = force
+        exercise.primaryMuscles = primaryMuscles
+        exercise.secondaryMuscles = secondaryMuscles
+        exercise.muscleGroups = primaryMuscles + secondaryMuscles
+        exercise.searchKeywords = ExerciseSearch.keywords(
+            name: exercise.name, equipment: equipment, isLateral: exercise.isLateral,
+            force: force, mechanics: mechanics,
+            primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles)
+        exercise.updatedAt = Date()
+        try context.save()
+        return exercise
+    }
+
     // MARK: Sessions & sets (FR-1.1, FR-1.2)
 
     /// `isLogged` flags a workout entered manually after the fact (feedback batch 6/7):

@@ -9,6 +9,8 @@ struct ExerciseDetailView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
 
+    @State private var showEditSheet = false
+
     private var startImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 0) }
     private var endImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 1) }
 
@@ -17,6 +19,10 @@ struct ExerciseDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 if startImageURL != nil || endImageURL != nil {
                     imageRow
+                }
+
+                if exercise.isCustom {
+                    customEditBanner
                 }
 
                 facets
@@ -54,9 +60,32 @@ struct ExerciseDetailView: View {
             }
         }
         .accessibilityIdentifier("exercise.detail")
+        .sheet(isPresented: $showEditSheet) {
+            CustomExerciseEditView(exercise: exercise)
+        }
     }
 
     // MARK: Sections
+
+    private var customEditBanner: some View {
+        HStack {
+            Image(systemName: "pencil.circle.fill")
+                .foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Custom Exercise")
+                    .font(.subheadline.weight(.semibold))
+                Text("Tag muscles, equipment, and region so it counts in your stats.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Edit") { showEditSheet = true }
+                .buttonStyle(.borderedProminent).controlSize(.small)
+        }
+        .padding(12)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    // MARK: - Image/Content Sections
 
     private var imageRow: some View {
         HStack(spacing: 8) {
@@ -153,51 +182,5 @@ struct ExerciseDetailView: View {
             .padding(.horizontal, 10).padding(.vertical, 4)
             .background(.tint.opacity(0.15), in: Capsule())
             .foregroundStyle(.tint)
-    }
-}
-
-private struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let rows = computeRows(proposal: proposal, subviews: subviews)
-        var height: CGFloat = 0
-        for (i, row) in rows.enumerated() {
-            height += row.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
-            if i < rows.count - 1 { height += spacing }
-        }
-        return CGSize(width: proposal.width ?? 0, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let rows = computeRows(proposal: proposal, subviews: subviews)
-        var y = bounds.minY
-        for row in rows {
-            let rowHeight = row.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
-            var x = bounds.minX
-            for idx in row {
-                let size = subviews[idx].sizeThatFits(.unspecified)
-                subviews[idx].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-                x += size.width + spacing
-            }
-            y += rowHeight + spacing
-        }
-    }
-
-    private func computeRows(proposal: ProposedViewSize, subviews: Subviews) -> [[Int]] {
-        let maxWidth = proposal.width ?? .infinity
-        var rows: [[Int]] = [[]]
-        var rowWidth: CGFloat = 0
-        for (i, sub) in subviews.enumerated() {
-            let size = sub.sizeThatFits(.unspecified)
-            if !rows[rows.count - 1].isEmpty && rowWidth + spacing + size.width > maxWidth {
-                rows.append([])
-                rowWidth = 0
-            }
-            if rowWidth > 0 { rowWidth += spacing }
-            rowWidth += size.width
-            rows[rows.count - 1].append(i)
-        }
-        return rows
     }
 }

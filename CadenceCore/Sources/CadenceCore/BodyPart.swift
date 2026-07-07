@@ -25,7 +25,7 @@ public enum BodyPart: String, CaseIterable, Sendable, Identifiable {
     /// Maps a fine-grained `MuscleCatalog` id to its coarse body part, if any.
     /// Forearms/grip and hip-flexors-only work map to legs where appropriate;
     /// muscles with no coarse bucket (e.g. forearms) return nil and don't count.
-    static func part(forMuscleID id: String) -> BodyPart? {
+    public static func part(forMuscleID id: String) -> BodyPart? {
         switch id {
         case "chest", "upper-chest": return .chest
         case "lats", "traps", "rhomboids", "lower-back": return .back

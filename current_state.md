@@ -604,3 +604,12 @@ decisions: `plans/supporter-flow/2026-06-28/`.
 - Updated `effectiveLoadKg` and `prospectiveEffectiveLoadKg` for new modes
 - Existing kettlebell exercises backfill their accounting mode on next seed pass
 - Added 8 kettlebell load accounting tests
+
+## Phase 5: Custom exercise facet editing (2026-07-06)
+- Added `CustomExerciseEditView` — a sheet opened from `ExerciseDetailView` when the exercise
+  is user-created (`isCustom == true`). Users can tag body regions, specific muscles,
+  equipment, category, mechanics, and force
+- Added `WorkoutRepository.updateExercise` to persist facet edits on custom exercises
+- Added edit banner on `ExerciseDetailView` for custom exercises with an "Edit" button
+- Extracted `FlowLayout` to shared `Views/Shared/FlowLayout.swift`
+- Made `BodyPart.part(forMuscleID:)` public for use in the edit UI

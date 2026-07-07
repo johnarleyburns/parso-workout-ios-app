@@ -10,6 +10,7 @@ struct PreWorkoutCountdownView: View {
     @State private var remaining: Int
     @State private var scale = 1.0
     @State private var paused = false
+    @State private var showSkipConfirmation = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(seconds: Int, onStart: @escaping () -> Void, onCancel: @escaping () -> Void) {
@@ -43,7 +44,7 @@ struct PreWorkoutCountdownView: View {
                     .accessibilityIdentifier("countdown.pause")
 
                     Button {
-                        onStart()
+                        showSkipConfirmation = true
                     } label: { Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity) }
                         .cadenceGlassButton(prominent: true, tint: .black.opacity(0.4))
                         .accessibilityIdentifier("countdown.skip")
@@ -55,6 +56,12 @@ struct PreWorkoutCountdownView: View {
             }
             .foregroundStyle(.white)
             .padding()
+        }
+        .confirmationDialog("Skip countdown?", isPresented: $showSkipConfirmation, titleVisibility: .visible) {
+            Button("Skip", role: .destructive) { onStart() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Start workout immediately.")
         }
         .onAppear { if remaining <= 0 { onStart() } }
         .onReceive(tick) { _ in

@@ -385,13 +385,20 @@ struct HomeView: View {
             .sheet(item: $intervalType) { wType in
                 IntervalSetupView(type: wType) { plan in
                     intervalType = nil
-                    // Intervals skip the numeric get-ready countdown: the pre-workout
-                    // HR gate (inside IntervalView) + the protocol's own warm-up phase
-                    // are the "get ready" (feedback batch 5).
-                    intervalLaunch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit)
+                    let useHR = settings.useHRMonitoring
+                    let launch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit, captureHR: useHR)
+                    let strapConnected: Bool = {
+                        if case .connected = model.hrm.state { return true }
+                        return false
+                    }()
+                    if useHR && !strapConnected {
+                        begin(.interval(launch))
+                    } else {
+                        intervalLaunch = launch
+                    }
                 }
             }
-            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: captureHR, onSaved: { _ in workoutSaved() }) }
+            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: $0.captureHR, onSaved: { _ in workoutSaved() }) }
             .fullScreenCover(isPresented: $swimPresented) { SwimRecordView(onSaved: { _ in workoutSaved() }) }
             .confirmationDialog(
                 "This is more load than planned today.",
@@ -843,6 +850,10 @@ struct HomeView: View {
             warmupActive = true
             return
         }
+        if case .interval = kind {
+            launch(kind)
+            return
+        }
         if kind.isStrength || settings.preWorkoutCountdown > 0 {
             pending = PendingWorkout(kind: kind)
         } else {
@@ -1001,7 +1012,8 @@ struct PendingWorkout: Identifiable {
         var cardioType: CardioType? {
             switch self {
             case .outdoor(let c), .timer(let c): return c
-            case .strength, .plan, .reuse, .interval: return nil
+            case .interval(let l): return l.saveType
+            case .strength, .plan, .reuse: return nil
             }
         }
     }

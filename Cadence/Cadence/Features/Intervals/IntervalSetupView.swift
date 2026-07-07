@@ -207,4 +207,5 @@ struct IntervalLaunch: Identifiable {
     let id = UUID()
     let plan: IntervalPlan
     let saveType: CardioType
+    var captureHR: Bool = false
 }

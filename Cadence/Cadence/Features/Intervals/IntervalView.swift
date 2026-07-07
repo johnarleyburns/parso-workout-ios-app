@@ -27,6 +27,7 @@ struct IntervalView: View {
     @State private var finishedSummary: WorkoutSummaryData?
     @State private var hrSamples: [HRSamplePoint] = []
     @State private var lastHRSecond = -1
+    @State private var showSkipConfirmation = false
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     init(plan: IntervalPlan, saveType: CardioType, captureHR: Bool = false,
@@ -77,7 +78,7 @@ struct IntervalView: View {
                     .accessibilityIdentifier("interval.countdown")
                 Text("Total left \(Format.duration(runner.overallRemaining))")
                     .font(.headline).opacity(0.85)
-                if captureHR, let bpm = model.hrm.currentBPM, bpm > 0 {
+                if let bpm = model.hrm.currentBPM, bpm > 0 {
                     Label("\(Int(bpm)) bpm", systemImage: "heart.fill")
                         .font(.headline).opacity(0.9)
                         .accessibilityIdentifier("interval.bpm")
@@ -87,7 +88,7 @@ struct IntervalView: View {
                 // Skip the current phase (warm-up/work/rest/cool-down) — feedback
                 // batch 5. Big hit target above the Pause/End pair.
                 HStack(spacing: 16) {
-                    Button(action: skipPhase) {
+                    Button(action: { showSkipConfirmation = true }) {
                         Label("Skip", systemImage: "forward.fill")
                             .frame(maxWidth: .infinity, minHeight: 56)
                     }
@@ -125,6 +126,12 @@ struct IntervalView: View {
         .accessibilityLabel(label)
         .accessibilityValue("\(Int(runner.phaseRemaining)) seconds left")
         .statusBarHidden()
+        .confirmationDialog("Skip this phase?", isPresented: $showSkipConfirmation, titleVisibility: .visible) {
+            Button("Skip", role: .destructive, action: skipPhase)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will advance to the next phase.")
+        }
         .onAppear { cues.spokenEnabled = settings.spokenCues; cues.isBoxing = saveType == .boxing }
         .onReceive(tick) { _ in advance() }
         .onChange(of: runner.currentPhaseID) { _, _ in
@@ -177,7 +184,7 @@ struct IntervalView: View {
     private func advance() {
         runner.now = Date()
         // Sample the strap's HR once per whole elapsed second (feedback batch 5).
-        if captureHR, !runner.isPaused {
+        if !runner.isPaused {
             let whole = Int(runner.elapsed)
             if whole != lastHRSecond, let bpm = model.hrm.currentBPM, bpm > 0 {
                 hrSamples.append(HRSamplePoint(t: TimeInterval(whole), bpm: bpm))

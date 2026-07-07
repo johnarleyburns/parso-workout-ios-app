@@ -44,6 +44,7 @@ struct RestTimerBar: View {
     @Bindable var model: RestTimerModel
     let onComplete: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var showSkipConfirmation = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -60,7 +61,7 @@ struct RestTimerBar: View {
                 .controlSize(.small)
                 .lineLimit(1).fixedSize()
                 .accessibilityIdentifier("rest.add30")
-            Button("Skip") { model.skip() }
+            Button("Skip") { showSkipConfirmation = true }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .lineLimit(1).fixedSize()
@@ -78,6 +79,12 @@ struct RestTimerBar: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("rest.bar")
         .accessibilityLabel("Rest timer, \(model.remaining) seconds remaining")
+        .confirmationDialog("Skip rest?", isPresented: $showSkipConfirmation, titleVisibility: .visible) {
+            Button("Skip", role: .destructive) { model.skip() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Rest will end immediately.")
+        }
         .onReceive(timer) { _ in
             let wasRunning = model.isRunning
             model.tick()

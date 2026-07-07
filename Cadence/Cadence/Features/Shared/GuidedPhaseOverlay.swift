@@ -32,6 +32,7 @@ struct GuidedPhaseOverlay: View {
     @State private var countdown: PhaseCountdownClock
     @State private var now = Date()
     @State private var finished = false
+    @State private var showSkipConfirmation = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(title: String, minutes: Int, tint: Color = .green,
@@ -101,7 +102,7 @@ struct GuidedPhaseOverlay: View {
                     .accessibilityIdentifier("\(idPrefix).addMinute")
 
                     Button {
-                        (onSkip ?? onFinish)(consumedSeconds)
+                        showSkipConfirmation = true
                     } label: {
                         Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity)
                     }
@@ -112,6 +113,10 @@ struct GuidedPhaseOverlay: View {
             }
             .foregroundStyle(.white)
             .padding()
+        }
+        .confirmationDialog("Skip \(title.lowercased())?", isPresented: $showSkipConfirmation, titleVisibility: .visible) {
+            Button("Skip", role: .destructive) { (onSkip ?? onFinish)(consumedSeconds) }
+            Button("Cancel", role: .cancel) {}
         }
         // Keep the screen awake through the whole warm-up / cool-down timer.
         .keepAwake()

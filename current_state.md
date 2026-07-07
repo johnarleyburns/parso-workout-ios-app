@@ -2,6 +2,50 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-07 — HIIT HR monitoring, round display, skip confirmations._
+
+## What just shipped — HIIT UX fixes (HR monitoring, round display, skip confirmations)
+
+### Fix #1: HR monitoring now works for HIIT workouts
+- **Bug:** Interval workouts (HIIT/boxing) bypassed the HR gate entirely. The
+  `IntervalSetupView` flow set `intervalLaunch` directly, never routing through
+  `begin()` / `hrGateKind` / `PreWorkoutHRView`. Even though the setup sheet saved
+  `useHRMonitoring` to settings, the `captureHR` flag on `IntervalView` was always
+  `false` (stale `@State` on HomeView).
+- **Fix:** Added `captureHR` to `IntervalLaunch` struct. HomeView now reads
+  `settings.useHRMonitoring` (updated by the setup sheet's `saveAndStart()`) and
+  routes through the HR gate when monitoring is on and no strap is connected.
+  `PendingWorkout.Kind.cardioType` now returns `l.saveType` for `.interval` cases.
+  `proceedFromHRGate` skips the get-ready countdown for intervals. The fullScreenCover
+  uses `$0.captureHR` instead of the ambient `captureHR` state.
+- **Always show live HR when available:** Removed `captureHR` guard from the live
+  BPM label and HR sampling in `IntervalView` — if a strap is connected (even paired
+  in Settings without "Use HR monitoring" toggled), live BPM is displayed and sampled.
+
+### Fix #2: Round number displayed during rest/recovery phases
+- **Bug:** Phase labels in `IntervalPlan.swift` factories included round info only
+  on work phases (`"Work · Round 3/8"`). Rest phases just said `"Rest"` or `"Recover"`
+  — the user couldn't tell which round they were on during recovery.
+- **Fix:** Updated all rest phase labels across 6 factory methods + 1 helper in
+  `IntervalPlan.swift` to include the round number: `"Rest · Round 3/8"`, `"Recover · 3/4"`, etc.
+  Affected: `tabata`, `norwegian4x4`, `gibala` (via `rounded`), `sit` (via `rounded`),
+  `rehit` (via `rounded`), `custom`, `boxing`.
+
+### Fix #3: Skip buttons now require confirmation
+- **Bug:** All 4 skip buttons in workout views executed immediately — an accidental
+  tap could skip a phase, rest timer, warm-up/cool-down, or get-ready countdown.
+- **Fix:** Added `.confirmationDialog` to each skip button:
+  - `IntervalView`: "Skip this phase?" / "This will advance to the next phase."
+  - `RestTimer`: "Skip rest?" / "Rest will end immediately."
+  - `GuidedPhaseOverlay`: "Skip warm up?" / "Skip cool down?"
+  - `PreWorkoutCountdownView`: "Skip countdown?" / "Start workout immediately."
+  - Onboarding skip left unchanged (non-destructive).
+
+**Files changed:** 7 files, +56/-17 lines.
+**Tests:** Core suite passes (8 pre-existing failures in unrelated CoachPlan suites).
+**Build:** `xcodebuild` iOS scheme — BUILD SUCCEEDED.
+
+_Prior entry:_
 _Last updated: 2026-07-06 — Phase 1: RPE on completed set rows._
 
 ## What just shipped — Boxing UX + Coach cold-start fix (4 fixes)

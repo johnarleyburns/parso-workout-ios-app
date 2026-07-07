@@ -84,7 +84,7 @@ public struct IntervalPlan: Equatable, Sendable {
         add(.warmup, warmup, "Warm Up")
         for r in 1...max(1, rounds) {
             add(.work, work, "Work · Round \(r)/\(rounds)")
-            if r < rounds { add(.rest, rest, "Rest") } else { add(.rest, rest, "Rest") }
+            add(.rest, rest, "Rest · Round \(r)/\(rounds)")
         }
         add(.cooldown, cooldown, "Cool Down")
         return IntervalPlan(name: "Tabata", phases: phases)
@@ -102,7 +102,7 @@ public struct IntervalPlan: Equatable, Sendable {
         add(.warmup, warmup, "Warm Up")
         for r in 1...max(1, rounds) {
             add(.work, work, "Effort · \(r)/\(rounds)")
-            if r < rounds { add(.rest, recover, "Recover") }
+            if r < rounds { add(.rest, recover, "Recover · \(r)/\(rounds)") }
         }
         add(.cooldown, cooldown, "Cool Down")
         return IntervalPlan(name: "Norwegian 4×4", phases: phases)
@@ -116,7 +116,7 @@ public struct IntervalPlan: Equatable, Sendable {
         for r in 1...max(1, rounds) {
             phases.append(IntervalPhase(id: id, kind: .work, duration: round, label: "Round \(r)/\(rounds)")); id += 1
             if r < rounds {
-                phases.append(IntervalPhase(id: id, kind: .rest, duration: rest, label: "Rest")); id += 1
+                phases.append(IntervalPhase(id: id, kind: .rest, duration: rest, label: "Rest · Round \(r)/\(rounds)")); id += 1
             }
         }
         return IntervalPlan(name: "Boxing", phases: phases)
@@ -185,7 +185,7 @@ public struct IntervalPlan: Equatable, Sendable {
         add(.warmup, warmup, "Warm Up")
         for r in 1...max(1, rounds) {
             add(.work, work, workLabel(r))
-            if r < rounds { add(.rest, rest, restLabel) }
+            if r < rounds { add(.rest, rest, "\(restLabel) · \(r)/\(rounds)") }
         }
         add(.cooldown, cooldown, "Cool Down")
         return IntervalPlan(name: name, phases: phases)
@@ -202,7 +202,7 @@ public struct IntervalPlan: Equatable, Sendable {
         add(.warmup, warmup, "Warm Up")
         for r in 1...max(1, rounds) {
             add(.work, work, "Work · Round \(r)/\(rounds)")
-            if r < rounds { add(.rest, rest, "Rest") }
+            if r < rounds { add(.rest, rest, "Rest · Round \(r)/\(rounds)") }
         }
         add(.cooldown, cooldown, "Cool Down")
         return IntervalPlan(name: name, phases: phases)

@@ -2,7 +2,7 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-06 — Boxing bell cutoff, history detail, add-a-minute, cold-start insight fix._
+_Last updated: 2026-07-06 — Phase 1: RPE on completed set rows._
 
 ## What just shipped — Boxing UX + Coach cold-start fix (4 fixes)
 
@@ -572,3 +572,8 @@ decisions: `plans/supporter-flow/2026-06-28/`.
 - `CoachSchedulePreferences` stored as JSON `Data` in UserDefaults under key `settings.coachSchedulePreferences` (same pattern).
 - Fixed-day chip UI preserved per plan; behavior fixed first, redesign deferred.
 - Background cues now require iOS `audio` background mode + `.playback` category.
+
+## Phase 1: RPE display on completed set rows (2026-07-06)
+- Added RPE badge (small rounded number chip) on `completedSetRow` in SessionView.swift
+- RPE visible without tapping to edit; appears only for working sets with RPE logged
+- Row height unchanged at minHeight: 44

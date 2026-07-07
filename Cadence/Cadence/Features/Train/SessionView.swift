@@ -987,6 +987,15 @@ struct SessionView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.editReps.\(exercise.name).\(number)")
 
+            if let rpe = set.rpe, !set.isWarmup {
+                Text("\(Int(rpe.rounded()))")
+                    .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                    .padding(.horizontal, 3).padding(.vertical, 1)
+                    .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 3))
+                    .accessibilityIdentifier("set.rpe.\(exercise.name).\(number)")
+                    .accessibilityLabel("RPE \(Int(rpe.rounded()))")
+            }
+
             Group {
                 if isAllTimePR(set, exercise: exercise) {
                     Image(systemName: "trophy.fill").foregroundStyle(.orange)

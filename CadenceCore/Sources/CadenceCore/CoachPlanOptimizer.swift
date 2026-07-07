@@ -85,11 +85,13 @@ public struct PlanningConstraintPolicy: Sendable, Equatable {
         self.requiresTwoADayPreferenceForExtraSlots = requiresTwoADayPreferenceForExtraSlots
     }
 
-    /// The coach's default guardrails (previous hard-coded behavior).
+    /// The coach's default guardrails. ~6 exercises / ~18 sets per session
+    /// (4 compound + 2 isolation) fits whole-body weekly coverage for 2-3
+    /// strength days; ~50-55 min.
     public static let safe = PlanningConstraintPolicy(
         maxSetsPerExercise: 4,
-        maxExercisesPerSession: 5,
-        maxTotalSetsPerSession: 16,
+        maxExercisesPerSession: 6,
+        maxTotalSetsPerSession: 18,
         maxExtraStrengthSlots: 1,
         respectsRecoveryEligibility: true,
         respectsRestDays: true,
@@ -146,7 +148,7 @@ public enum CoachPlanOptimizer {
                                 schedulePreferences: CoachSchedulePreferences,
                                 candidates candidateSessions: [CoachSession],
                                 constraintPolicy: PlanningConstraintPolicy = .safe) -> OptimizedCoachPlan {
-        let lowParts = lowVolumeAttentionParts(in: trainingFacts)
+        let lowParts = weeklyCoverageParts(in: trainingFacts, excluded: schedulePreferences.excludedCoverageParts)
         let strengthCandidates = uniqueStrengthCandidates(candidateSessions)
         var diagnostics: [PlanningDiagnostic] = []
 
@@ -216,19 +218,21 @@ public enum CoachPlanOptimizer {
     }
 
     private static func plan(slots: [PlanningSlot],
-                             into planned: inout [CoachSession],
-                             projected: inout [BodyPart: Double],
-                             deficits: inout [BodyPart: Double],
-                             lowParts: Set<BodyPart>,
-                             trainingFacts: TrainingFacts,
-                             coachFacts: CoachFacts,
-                             strengthCandidates: [CoachSession],
-                             policy: PlanningConstraintPolicy,
-                             diagnostics: inout [PlanningDiagnostic]) {
-        for slot in slots {
+                              into planned: inout [CoachSession],
+                              projected: inout [BodyPart: Double],
+                              deficits: inout [BodyPart: Double],
+                              lowParts: Set<BodyPart>,
+                              trainingFacts: TrainingFacts,
+                              coachFacts: CoachFacts,
+                              strengthCandidates: [CoachSession],
+                              policy: PlanningConstraintPolicy,
+                              diagnostics: inout [PlanningDiagnostic]) {
+        for (i, slot) in slots.enumerated() {
+            let slotsLeft = slots.count - i
+            let slotDeficits: [BodyPart: Double] = deficits.mapValues { ceil($0 / Double(slotsLeft)) }
             let choice = chooseSession(
                 for: slot,
-                deficits: deficits,
+                deficits: slotsLeft > 1 ? slotDeficits : deficits,
                 projected: projected,
                 trainingFacts: trainingFacts,
                 coachFacts: coachFacts,
@@ -671,20 +675,11 @@ public enum CoachPlanOptimizer {
         return true
     }
 
-    private static func lowVolumeAttentionParts(in facts: TrainingFacts) -> Set<BodyPart> {
-        Set(InsightEngine.run(facts).compactMap { insight in
-            guard insight.kind == .volume,
-                  insight.severity == .attention,
-                  insight.title.localizedCaseInsensitiveContains("low"),
-                  let part = insight.part,
-                  // Only chase deficits for parts already in training this week. The
-                  // volume rule now also flags *untrained* parts (0 sets) so the user
-                  // hears about them, but the optimizer must not treat "never trained"
-                  // as a deficit to backfill — that's a separate, user-driven choice.
-                  (facts.weeklySetsByPart[part] ?? 0) > 0 else {
-                return nil
-            }
-            return part
+    private static func weeklyCoverageParts(in facts: TrainingFacts,
+                                            excluded: Set<BodyPart> = []) -> Set<BodyPart> {
+        Set(BodyPart.allCases.filter { part in
+            guard !excluded.contains(part) else { return false }
+            return (facts.weeklySetsByPart[part] ?? 0) < VolumeLandmarks.bands(for: part, experience: facts.experience).mev
         })
     }
 

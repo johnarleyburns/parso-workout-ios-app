@@ -23,11 +23,18 @@ final class CoachPlanOptimizerTests: XCTestCase {
             schedulePreferences: prefs,
             candidates: [genericStrengthSession()])
 
+        // With whole-body coverage and only 1 slot, not all 8 body parts can
+        // reach MEV. But the coach plans a valid session covering the core
+        // deficits.
         XCTAssertEqual(optimized.plannedStrengthSessions.count, 1)
-        XCTAssertTrue(optimized.unresolvedDeficits.isEmpty)
         let names = optimized.plannedStrengthSessions.flatMap { $0.exercises ?? [] }.map(\.name)
-        XCTAssertTrue(names.contains("Bench Press"))
-        XCTAssertTrue(names.contains("Overhead Press"))
+        XCTAssertTrue(names.contains("Bench Press"),
+                      "Chest deficit (4→8 MEV) should be addressed")
+
+        // Chest had the most completed volume, so it should be resolved.
+        let chestDeficit = optimized.unresolvedDeficits[.chest]
+        XCTAssertTrue(chestDeficit == nil || (chestDeficit ?? 0) <= 0,
+                      "Chest should be at or above MEV")
 
         let insights = PlanAwareInsightEngine.run(
             completed: facts,
@@ -37,9 +44,15 @@ final class CoachPlanOptimizerTests: XCTestCase {
             diagnostics: optimized.diagnostics,
             now: now)
 
+        // Trained parts must never show "low volume" nags.
         XCTAssertNil(lowVolumeInsight(.chest, in: insights))
         XCTAssertNil(lowVolumeInsight(.shoulders, in: insights))
         XCTAssertNil(lowVolumeInsight(.triceps, in: insights))
+
+        // Genuinely unresolved deficits surface via the aggregate only.
+        if !optimized.unresolvedDeficits.isEmpty {
+            XCTAssertNotNil(insights.first { $0.id == "planning.unresolvedVolume" })
+        }
     }
 
     func testOptimizerDoesNotBlindlyRepeatGenericFallbackForFutureStrengthSlots() {
@@ -63,11 +76,16 @@ final class CoachPlanOptimizerTests: XCTestCase {
             schedulePreferences: preferences(twoADays: false),
             candidates: [generic])
 
+        // Two planned sessions should cover different body-part gaps (the
+        // optimizer reshapes each session against remaining deficits, and the
+        // even split spreads isolation evenly), never returning identical copies.
         XCTAssertEqual(optimized.plannedStrengthSessions.count, 2)
-        XCTAssertNotEqual(optimized.plannedStrengthSessions, [generic, generic])
-        XCTAssertTrue(optimized.plannedStrengthSessions.first?.exercises?.contains {
-            $0.name == "Overhead Press"
-        } ?? false)
+        let sessions = optimized.plannedStrengthSessions
+        let firstNames = Set((sessions.first?.exercises ?? []).map(\.name))
+        let secondNames = Set((sessions.last?.exercises ?? []).map(\.name))
+        let allNames = firstNames.union(secondNames)
+        XCTAssertGreaterThan(allNames.count, firstNames.count,
+                             "Two planned sessions should not have identical exercise lists")
     }
 
     func testImpossibleCaseEmitsOneUnresolvedPlanningInsight() {
@@ -114,12 +132,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
         XCTAssertTrue(individualLowVolume.isEmpty)
     }
 
-    /// Reproduces the "coach paints itself into a corner" bug (Phase 3):
-    /// User starts Monday with a coach-planned workout covering chest/back/legs/
-    /// shoulders + minimal arm work. After completing it, the base engine flags abs
-    /// and calves as "low volume." The plan-aware layer should not surface individual
-    /// low-volume attention alerts for body parts the remaining week cannot cover —
-    /// the user's scenario: abs & calves had 0 sets, biceps & triceps were underdone.
+    /// Reproduces the "coach paints itself into a corner" bug (Phase 3) — then
+    /// verifies the fix: with whole-body weekly coverage, the optimizer plans for
+    /// every body part below MEV (including abs/calves with 0 sets) and the
+    /// plan-aware layer never nags about parts the coach chose to cover.
     func testMondayPostWorkoutSuppressesUntrainedPartAlertsWhenWeekIsTight() {
         let cal = Calendar(identifier: .gregorian)
         var mondayComps = DateComponents()
@@ -129,9 +145,6 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let now = mondayComps.date ?? Date(timeIntervalSince1970: 1_782_300_000)
 
         // Monday workout: 2 sets each of chest/back/legs/shoulders, 1 set biceps/triceps.
-        // Abs and calves — zero sets. The optimizer sees biceps/triceps as containing
-        // some volume but below MEV, so it tries to fill them. But abs/calves at 0
-        // are NOT chased (by design). The base engine STILL flags them as "low volume."
         let completedSets: [BodyPart: Double] = [
             .chest: 2, .back: 2, .legs: 2, .shoulders: 2,
             .biceps: 1, .triceps: 1,
@@ -145,6 +158,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             avgRPE: nil,
             daysSinceLastSession: 1,
             totalWorkingSets: max(1, Int(completedSets.values.reduce(0, +).rounded(.up))),
+            allTimeWorkingSets: max(1, Int(completedSets.values.reduce(0, +).rounded(.up))),
             goal: .strength,
             experience: .intermediate)
 
@@ -200,12 +214,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
             diagnostics: optimized.diagnostics,
             now: now)
 
-        // BUG REPRODUCTION: individual "low volume" attention insights for
-        // abs and calves should NOT appear when the optimizer cannot cover them
-        // (they had 0 sets so they're not in lowVolumeAttentionParts, but the
-        // base engine still flags them). The plan-aware layer should suppress
-        // these when we're early in the week with remaining slots that are
-        // already committed to other deficits.
+        // With whole-body coverage, the optimizer plans for all parts below MEV,
+        // including abs/calves. No individual "low volume" attention insight
+        // should ever appear for a part the coach chose to cover (even if the
+        // plan genuinely cannot close the gap — that's reported via the aggregate).
         let individualLowVolume = insights.filter {
             $0.kind == .volume
                 && $0.severity == .attention
@@ -213,16 +225,14 @@ final class CoachPlanOptimizerTests: XCTestCase {
                 && $0.part != nil
         }
 
-        // If the optimizer can't resolve everything, suppress individual alerts
-        // for parts with 0 completed sets — the user can't act on them.
         let untrainedPartsWithAlerts = individualLowVolume.filter { ins in
             guard let part = ins.part else { return false }
             return (completedSets[part] ?? 0) == 0
         }
         XCTAssertTrue(untrainedPartsWithAlerts.isEmpty,
-                      "Should not show individual low-volume alerts for untrained parts (0 completed sets) when week is tight, but got: \(untrainedPartsWithAlerts.map { $0.part?.rawValue ?? "nil" })")
+                      "Should not show individual low-volume alerts for untrained parts (0 completed sets), but got: \(untrainedPartsWithAlerts.map { $0.part?.rawValue ?? "nil" })")
 
-        // If an unresolved planning insight exists, ensure it's the ONLY volume attention.
+        // For any genuine unresolved deficits, the aggregate insight exists.
         if !optimized.unresolvedDeficits.isEmpty {
             let unresolvedInsight = insights.first { $0.id == "planning.unresolvedVolume" }
             XCTAssertNotNil(unresolvedInsight, "Expected an unresolved planning insight when deficits exist")
@@ -308,6 +318,87 @@ final class CoachPlanOptimizerTests: XCTestCase {
         XCTAssertTrue(recoveryBlocked.diagnostics.contains { $0.kind == .recoveryBlocked })
     }
 
+    func testTuesdayNoNagForAbsCalvesWhenPlanCoversWholeBody() {
+        let cal = Calendar(identifier: .gregorian)
+        var tuesdayComps = DateComponents()
+        tuesdayComps.calendar = cal
+        tuesdayComps.year = 2026; tuesdayComps.month = 6; tuesdayComps.day = 23 // Tuesday
+        tuesdayComps.hour = 8  // morning, before any workout
+        let now = tuesdayComps.date ?? Date(timeIntervalSince1970: 1_782_300_000)
+
+        // Monday was logged: 4 compounds, 2 sets each — the coach's own workout.
+        // Abs and calves = 0 sets because the coach never planned them.
+        let completedSets: [BodyPart: Double] = [
+            .legs: 2, .chest: 2, .back: 2, .shoulders: 2,
+        ]
+        let facts = trainingFacts(completedSets)
+        let coach = coachFacts(now: now, completedSets: completedSets, strengthDays: 1, cardioDays: 0)
+
+        // 3 strength days configured, 2 remaining slots (Wed + Fri).
+        let prefs = CoachSchedulePreferences(
+            strengthDaysPerWeek: 3,
+            cardioDaysPerWeek: 6,
+            restPreference: .fixed(days: []),
+            allowsTwoADays: false)
+
+        let plan = weeklyPlan(now: now, days: [
+            (1, [.strength]),   // Wednesday
+            (3, [.strength]),   // Friday
+        ])
+
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: plan,
+            schedulePreferences: prefs,
+            candidates: [genericStrengthSession()])
+
+        let insights = PlanAwareInsightEngine.run(
+            completed: facts,
+            plan: plan,
+            plannedStrengthSessions: optimized.plannedStrengthSessions,
+            unresolvedDeficits: optimized.unresolvedDeficits,
+            diagnostics: optimized.diagnostics,
+            now: now)
+
+        // RED: The coach must never surface a "you're low" alert for a part it
+        // chose not to program. Abs and calves had 0 sets because the optimizer
+        // excluded them.
+        XCTAssertNil(lowVolumeInsight(.abs, in: insights),
+                     "Abs should not read 'low' when coach never planned them")
+        XCTAssertNil(lowVolumeInsight(.calves, in: insights),
+                     "Calves should not read 'low' when coach never planned them")
+
+        // RED: The planned sessions' exercises should include abs and calves work
+        // so the user following the coach actually hits every weekly target.
+        let allExercises = optimized.plannedStrengthSessions.flatMap { $0.exercises ?? [] }.map(\.name)
+        let hasAbWork = allExercises.contains { name in
+            ["Plank", "Cable Crunch", "Hanging Leg Raise", "Ab Wheel Rollout"].contains(name)
+        }
+        let hasCalfWork = allExercises.contains { name in
+            ["Standing Calf Raise", "Seated Calf Raise", "Calf Press on Leg Press"].contains(name)
+        }
+        XCTAssertTrue(hasAbWork,
+                      "Planned sessions should include an ab movement so coach covers whole body")
+        XCTAssertTrue(hasCalfWork,
+                      "Planned sessions should include a calf movement so coach covers whole body")
+
+        // If capacity truly can't reach MEV, we should see an aggregate
+        // planning.unresolvedVolume, never per-part "low" nags.
+        if !optimized.unresolvedDeficits.isEmpty {
+            let unresolvedInsight = insights.first { $0.id == "planning.unresolvedVolume" }
+            XCTAssertNotNil(unresolvedInsight,
+                            "Expected aggregate planning.unresolvedVolume when deficits remain")
+            let untrainedPartsWithAlerts = insights.filter {
+                $0.kind == .volume && $0.severity == .attention
+                    && $0.title.localizedCaseInsensitiveContains("low")
+                    && (completedSets[$0.part ?? .abs] ?? 0) == 0
+            }
+            XCTAssertTrue(untrainedPartsWithAlerts.isEmpty,
+                          "No per-part 'low' nags for parts coach never programmed")
+        }
+    }
+
     private func lowVolumeInsight(_ part: BodyPart, in insights: [Insight]) -> Insight? {
         insights.first {
             $0.kind == .volume
@@ -335,7 +426,8 @@ final class CoachPlanOptimizerTests: XCTestCase {
             allowsTwoADays: twoADays)
     }
 
-    private func trainingFacts(_ sets: [BodyPart: Double]) -> TrainingFacts {
+    private func trainingFacts(_ sets: [BodyPart: Double],
+                               allTimeSets: Int? = nil) -> TrainingFacts {
         TrainingFacts(
             weeklySetsByPart: sets,
             frequencyByPart: sets.mapValues { _ in 1 },
@@ -344,6 +436,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             avgRPE: nil,
             daysSinceLastSession: 2,
             totalWorkingSets: max(1, Int(sets.values.reduce(0, +).rounded(.up))),
+            allTimeWorkingSets: allTimeSets ?? max(1, Int(sets.values.reduce(0, +).rounded(.up))),
             goal: .strength,
             experience: .intermediate)
     }

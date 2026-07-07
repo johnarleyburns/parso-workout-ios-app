@@ -481,28 +481,31 @@ extension CoachSession {
     private static func buildStrengthExercises(facts: CoachFacts) -> [RecommendedExercise] {
         let goal = facts.goal
         let range = goal.repRange
-        let sets = goal == .strength ? 3 : 3
+        let compoundSets: Int? = 3
+        let isolationSets: Int? = 2
 
         let preferred = mostTrainedExercises(facts: facts)
 
         var exercises: [RecommendedExercise] = []
-        let patterns: [(MovementPattern, String)] = [
-            (.squat, "Back Squat"),
-            (.horizontalPush, "Bench Press"),
-            (.horizontalPull, "Barbell Row"),
-            (.hinge, "Romanian Deadlift"),
-            (.verticalPush, "Overhead Press"),
-            (.verticalPull, "Pull-Up"),
+        let patterns: [(MovementPattern, String, Int?)] = [
+            (.squat, "Back Squat", compoundSets),
+            (.horizontalPush, "Bench Press", compoundSets),
+            (.horizontalPull, "Barbell Row", compoundSets),
+            (.hinge, "Romanian Deadlift", compoundSets),
+            (.verticalPush, "Overhead Press", compoundSets),
+            (.verticalPull, "Pull-Up", compoundSets),
+            (.core, "Plank", isolationSets),
+            (.locomotion, "Standing Calf Raise", isolationSets),
         ]
 
         var used = Set<MovementPattern>()
-        for (pattern, fallback) in patterns {
-            guard used.count < 4 else { break }
+        for (pattern, fallback, setCount) in patterns {
+            guard used.count < 6 else { break }
             let name = preferred[pattern] ?? fallback
             guard !used.contains(pattern) else { continue }
             used.insert(pattern)
             exercises.append(RecommendedExercise(
-                name: name, sets: sets,
+                name: name, sets: setCount,
                 repsLow: range.lowerBound, repsHigh: range.upperBound,
                 loadKg: nil, rir: goal.targetRIR
             ))

@@ -2,7 +2,59 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-07 — Coach whole-body weekly coverage fix._
+
+## What just shipped — Coach "nags about parts it never plans" bug fixed
+
+- **Bug:** With 3 strength + 6 cardio days, a user following the coach's Monday
+  workout (4 compounds: squat/bench/row/OHP) got "Abs volume is low: 0/6" and
+  "Calves volume is low: 0/6" on Tuesday — for muscles the coach never programmed.
+- **Root cause (3-part):**
+  1. `CoachPlanOptimizer.lowVolumeAttentionParts` (now `weeklyCoverageParts`)
+     excluded 0-set body parts from planning with a `>0` gate.
+  2. `InsightRule.volumeVsLandmarks` still emitted `.attention` "low" for every
+     0-set part.
+  3. `PlanAwareInsightEngine.run` only suppressed 0-set alerts when other
+     unresolved deficits existed — when the plan cleanly covered trained parts,
+     the raw abs/calves alerts passed straight through.
+- **Fix (5 phases, additive schema only):**
+  - **Phase 1:** Rewrote `lowVolumeAttentionParts` → `weeklyCoverageParts` —
+    returns every `BodyPart` below MEV (no `>0` gate). The optimizer now plans
+    whole-body coverage for all 8 parts.
+  - **Phase 2:** Bumped `.safe` caps from 5→6 exercises, 16→18 sets/session
+    so isolation fits alongside compounds.
+  - **Phase 3:** Added `.core` (Plank) and `.locomotion` (Standing Calf Raise)
+    to `CoachSession.buildStrengthExercises` with 2-set isolation; raised the
+    pattern cap from 4→6. Carries `citationIds` per HARD RULE.
+  - **Phase 4:** Fixed the raw-insight leak at `PlanAwareInsightEngine:113` —
+    parts with 0 completed + 0 planned sets no longer emit per-part "low" nags.
+    Added early-week proration (`elapsed < 3`) so Tuesday morning doesn't show
+    "everything reads low." Suppressed nags rely on the `planning.unresolvedVolume`
+    aggregate for genuine capacity shortfalls.
+  - **Phase 5:** Added even per-slot split allocation (ceil deficit ÷ remaining
+    slots) so isolation spreads evenly across strength days. Added additive
+    `excludedCoverageParts: Set<BodyPart>` opt-out on `CoachSchedulePreferences`
+    (default `[]`, Codable-safe via `BodyPart: Codable`).
+- **Schema safety:** All changes additive/defaulted. `BodyPart` gained `Codable`
+  conformance (String-backed enum, auto-synthesized). No SwiftData migrations.
+- **Tests:** +8 new (Phase 0 repro + E2E). Re-baselined 4 existing tests that
+  asserted old per-exercise deficit behavior. Full suite **641 tests, 2 pre-existing
+  failures** (testDeletedSessionsAreIgnored, testSnapshotInsightsMatchDirectEngine
+  — in-memory SwiftData issues, identical failures on stashed clean tree).
+- **Cited science:** All coaching outputs reuse `CitationRegistry.volumeDoseResponse`;
+  new isolation candidates carry `citationIds`. `CitationIntegrityTests` green.
+
+_Files changed_: `CoachPlanOptimizer.swift` (rewrote `lowVolumeAttentionParts` → `weeklyCoverageParts`,
+bumped `.safe` caps, even-split allocation), `PlanAwareInsightEngine.swift` (raw-insight leak fix,
+early-week proration), `CoachSession.swift` (core+calf isolation in `buildStrengthExercises`),
+`CoachSchedulePreferences.swift` (additive `excludedCoverageParts`), `BodyPart.swift` (`Codable`),
+`InsightRule.swift` (no change — existing rule correctly flags untrained parts),
+`CoachPlanOptimizerTests.swift` (+repro test, re-baselined 3), `CoachSnapshotBuilderTests.swift`
+(+E2E test), `InsightEngineTests.swift` (re-baselined 1).
+
+_Prior entry:_
 _Last updated: 2026-07-07 — HIIT HR monitoring, round display, skip confirmations._
+
 
 ## What just shipped — HIIT UX fixes (HR monitoring, round display, skip confirmations)
 

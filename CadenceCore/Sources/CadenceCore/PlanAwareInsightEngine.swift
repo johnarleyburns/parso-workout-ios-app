@@ -80,6 +80,7 @@ public enum PlanAwareInsightEngine {
         }
 
         let unresolvedParts = Set(unresolvedDeficits.keys)
+        let earlyWeek = isEarlyWeek(plan: plan, now: now)
         let filtered = base.compactMap { insight -> Insight? in
             guard insight.kind == .volume,
                   insight.severity == .attention,
@@ -93,29 +94,53 @@ public enum PlanAwareInsightEngine {
             }
 
             let completedSets = accounting.completedSetsByPart[part] ?? 0
+            let plannedSets = accounting.plannedRemainingSetsByPart[part] ?? 0
 
-            // Phase 3: when the week's plan is already tight (unresolved deficits
-            // exist for other parts), suppress individual "low volume" alerts for
-            // parts with 0 completed sets. The user cannot realistically add a new
-            // muscle group mid-week when the optimizer can't even close the deficits
-            // for muscles already in rotation.
+            // When other deficits exist and this part has 0 completed sets, the
+            // user cannot realistically add a new muscle group mid-week — suppress
+            // the individual nag and rely on the unresolvedPlanningInsights aggregate.
             if !unresolvedDeficits.isEmpty && completedSets == 0 {
                 return nil
             }
 
+            // Fix the raw-insight leak: a part with no completed work AND no
+            // planned remaining work should not produce a per-part "low" nag.
+            // If the plan genuinely cannot cover it, the unresolvedPlanningInsights
+            // aggregate on line 176 already reports it honestly as a coach-side
+            // planning note. If the plan covers it (projected >= MEV), the
+            // guard below already drops it.
+            if completedSets == 0 && plannedSets == 0 {
+                return nil
+            }
+
+            // Early-week proration: before day ~3, a part that has 0 completed
+            // sets and no planned remaining work gets at most the projected
+            // framing (which won't trigger here since plannedSets is 0). More
+            // importantly, a part with planned remaining work gets the projected
+            // framing instead of the bare "0/6 this week." This prevents the
+            // Tuesday-morning "everything reads low" artifact from the
+            // non-prorated Monday→now weekly window.
+            if earlyWeek && completedSets == 0 && plannedSets > 0 {
+                let projectedSets = completedSets + plannedSets
+                return projectedLowVolumeInsight(for: part,
+                                                  completedSets: completedSets,
+                                                  plannedSets: plannedSets,
+                                                  projectedSets: projectedSets,
+                                                  experience: facts.experience)
+            }
+
             let projectedSets = accounting.projectedSetsByPart[part] ?? 0
             let projectedZone = VolumeLandmarks.zone(sets: projectedSets,
-                                                     for: part,
-                                                     experience: facts.experience)
+                                                      for: part,
+                                                      experience: facts.experience)
             guard projectedZone == .belowMEV else { return nil }
 
-            let plannedSets = accounting.plannedRemainingSetsByPart[part] ?? 0
             guard plannedSets > 0 else { return insight }
             return projectedLowVolumeInsight(for: part,
-                                             completedSets: accounting.completedSetsByPart[part] ?? 0,
-                                             plannedSets: plannedSets,
-                                             projectedSets: projectedSets,
-                                             experience: facts.experience)
+                                              completedSets: accounting.completedSetsByPart[part] ?? 0,
+                                              plannedSets: plannedSets,
+                                              projectedSets: projectedSets,
+                                              experience: facts.experience)
         }
 
         let behind = behindPlanInsights(facts: facts, accounting: accounting,
@@ -216,6 +241,14 @@ public enum PlanAwareInsightEngine {
         let today = cal.startOfDay(for: now)
         let elapsed = cal.dateComponents([.day], from: weekStart, to: today).day ?? 0
         return elapsed >= 3
+    }
+
+    private static func isEarlyWeek(plan: WeeklyPlan, now: Date) -> Bool {
+        let cal = Calendar.current
+        let weekStart = WeeklyStats.weekStart(now: plan.generatedAt)
+        let today = cal.startOfDay(for: now)
+        let elapsed = cal.dateComponents([.day], from: weekStart, to: today).day ?? 0
+        return elapsed < 3
     }
 
     private static func ranked(_ insights: [Insight]) -> [Insight] {

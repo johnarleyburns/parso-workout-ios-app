@@ -4,7 +4,7 @@ import Foundation
 /// (feedback batch 3). Distinct from the fine-grained `MuscleCatalog`: this is a
 /// coarse, user-facing grouping the user named — with "shoulders" in place of the
 /// originally-listed "neck" (no neck movements exist; shoulders are trained often).
-public enum BodyPart: String, CaseIterable, Sendable, Identifiable {
+public enum BodyPart: String, CaseIterable, Sendable, Identifiable, Codable {
     case legs, back, chest, shoulders, biceps, triceps, calves, abs
 
     public var id: String { rawValue }

@@ -64,27 +64,30 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public var allowsTwoADays: Bool
     public var sameDayCardioTiming: SameDayCardioTiming
     public var dailyStepTarget: Int
+    public var excludedCoverageParts: Set<BodyPart>
 
     public static let `default` = CoachSchedulePreferences(
         strengthDaysPerWeek: 2,
         cardioDaysPerWeek: 3,
         restPreference: .defaultRolling,
         allowsTwoADays: false,
-        sameDayCardioTiming: .afterStrength
-    )
+        sameDayCardioTiming: .afterStrength,
+        excludedCoverageParts: [])
 
     public init(strengthDaysPerWeek: Int = 2,
                 cardioDaysPerWeek: Int = 3,
                 restPreference: RestPreference = .defaultRolling,
                 allowsTwoADays: Bool = false,
                 sameDayCardioTiming: SameDayCardioTiming = .afterStrength,
-                dailyStepTarget: Int = 8_000) {
+                dailyStepTarget: Int = 8_000,
+                excludedCoverageParts: Set<BodyPart> = []) {
         self.strengthDaysPerWeek = min(5, max(2, strengthDaysPerWeek))
         self.cardioDaysPerWeek = min(7, max(0, cardioDaysPerWeek))
         self.restPreference = restPreference
         self.allowsTwoADays = allowsTwoADays
         self.sameDayCardioTiming = sameDayCardioTiming
         self.dailyStepTarget = min(20_000, max(2_000, dailyStepTarget))
+        self.excludedCoverageParts = excludedCoverageParts
     }
 
     // MARK: Constrained setters for use in UI

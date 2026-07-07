@@ -68,6 +68,87 @@ final class CoachSnapshotBuilderTests: XCTestCase {
         XCTAssertEqual(a.plan.days.count, b.plan.days.count)
     }
 
+    func testMondayWorkoutThenTuesdayDoesNotNagUntrainedAbsCalves() throws {
+        let cal = Calendar(identifier: .gregorian)
+        var mondayComps = DateComponents()
+        mondayComps.calendar = cal
+        mondayComps.year = 2026; mondayComps.month = 6; mondayComps.day = 22 // Monday
+        mondayComps.hour = 18
+        let mondayDate = mondayComps.date ?? Date(timeIntervalSince1970: 1_782_300_000)
+        var tuesdayComps = DateComponents()
+        tuesdayComps.calendar = cal
+        tuesdayComps.year = 2026; tuesdayComps.month = 6; tuesdayComps.day = 23 // Tuesday
+        tuesdayComps.hour = 8
+        let tuesdayDate = tuesdayComps.date ?? Date(timeIntervalSince1970: 1_782_300_000)
+
+        let ctx = try makeContext()
+        let monday = try WorkoutRepository.createSession(date: mondayDate, in: ctx)
+
+        // Monday: 4 compounds, 2 sets each — coach's own workout.
+        let squat = try WorkoutRepository.findOrCreateExercise(
+            named: "Back Squat", primaryMuscles: ["quads"], secondaryMuscles: ["glutes", "erectors"], in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(
+            named: "Bench Press", primaryMuscles: ["chest"], secondaryMuscles: ["triceps", "delts_front"], in: ctx)
+        let row = try WorkoutRepository.findOrCreateExercise(
+            named: "Barbell Row", primaryMuscles: ["lats"], secondaryMuscles: ["biceps", "rhomboids"], in: ctx)
+        let ohp = try WorkoutRepository.findOrCreateExercise(
+            named: "Overhead Press", primaryMuscles: ["delts_front"], secondaryMuscles: ["triceps", "delts_lateral"], in: ctx)
+
+        for ex in [squat, bench, row, ohp] {
+            for _ in 0..<2 {
+                _ = try WorkoutRepository.addSet(to: monday, exercise: ex, weightKg: 60, reps: 5, rpe: 7, in: ctx)
+            }
+        }
+
+        let snap = CoachSnapshotBuilder.build(
+            sessions: [monday], cardio: [], assessments: [], hasPainToday: false,
+            goal: .strength, experience: .intermediate, formula: .epley,
+            schedulePreferences: CoachSchedulePreferences(
+                strengthDaysPerWeek: 3,
+                cardioDaysPerWeek: 6,
+                restPreference: .fixed(days: []),
+                allowsTwoADays: false),
+            profile: .empty, now: tuesdayDate)
+
+        // RED: No abs or calves "low volume" nag in the insights.
+        let absNag = snap.insights.first {
+            $0.part == .abs && $0.kind == .volume && $0.severity == .attention
+                && $0.title.localizedCaseInsensitiveContains("low")
+        }
+        let calvesNag = snap.insights.first {
+            $0.part == .calves && $0.kind == .volume && $0.severity == .attention
+                && $0.title.localizedCaseInsensitiveContains("low")
+        }
+        XCTAssertNil(absNag, "Abs should not read 'low' when coach never planned them")
+        XCTAssertNil(calvesNag, "Calves should not read 'low' when coach never planned them")
+
+        // The coach's primary launched workout should carry abs + calves.
+        // Check the primary if it's strength, otherwise check the first
+        // planned strength recommendation.
+        let primary = snap.decision.primary
+        let launchedExercises: [String]
+        if primary.kind == .strength {
+            launchedExercises = (primary.exercises ?? []).map(\.name)
+        } else {
+            let strengthRecs = snap.decision.todayPlannedRecommendations
+                .filter { $0.kind == .strength }
+            launchedExercises = strengthRecs.first?.exercises?.map(\.name) ?? []
+        }
+        let hasAbWork = launchedExercises.contains { name in
+            ["Plank", "Cable Crunch", "Hanging Leg Raise", "Ab Wheel Rollout"].contains(name)
+        }
+        let hasCalfWork = launchedExercises.contains { name in
+            ["Standing Calf Raise", "Seated Calf Raise", "Calf Press on Leg Press"].contains(name)
+        }
+        // If the launched workout is a strength session, it should include
+        // whole-body coverage. A non-strength primary is fine — the planner
+        // covers abs/calves later in the week.
+        if primary.kind == .strength || !launchedExercises.isEmpty {
+            XCTAssertTrue(hasAbWork, "Launched strength should include an ab movement")
+            XCTAssertTrue(hasCalfWork, "Launched strength should include a calf movement")
+        }
+    }
+
     func testDeletedSessionsAreIgnored() throws {
         let now = Date()
         let (ctx, sessions) = try seededSession(chestSets: 8, now: now)

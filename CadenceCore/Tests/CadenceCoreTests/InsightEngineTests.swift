@@ -93,17 +93,17 @@ final class InsightEngineTests: XCTestCase {
         let now = fixedThursday()
         let facts = try populatedFacts(chestSets: 8, goal: .hypertrophy, now: now)
         XCTAssertEqual(InsightEngine.run(facts).first { $0.id == "volume.chest" }?.severity, .info)
-        // Chest is fully trained (info); it should stay. Verify a zero-volume part
-        // that the plan covers is dropped by the plan-aware override.
+        // A part with 0 completed sets AND 0 planned remaining sets should not
+        // produce a per-part "low" nag — the coach never planned it, so the user
+        // isn't failing. Genuinely unresolved coverage is reported via the
+        // planning.unresolvedVolume aggregate (not exercised by this test).
         let insights = PlanAwareInsightEngine.run(
             completed: facts,
             plan: WeeklyPlan(days: [], generatedAt: now),
             plannedStrengthSessions: [plannedBenchSession(sets: 8)],
             now: now)
-        // Bench is chest — unrelated parts (e.g. biceps) with no plan coverage keep
-        // their zero-volume attention insight so the user still hears about them.
-        XCTAssertNotNil(insights.first { $0.id == "volume.biceps" },
-                        "an untrained, unplanned part must still be surfaced")
+        XCTAssertNil(insights.first { $0.id == "volume.biceps" },
+                     "an untrained, unplanned part should not nag — coach never meant to cover it")
     }
 
     func testPlanAwareInsightsSuppressLowVolumeWhenProjectedPlanMeetsTarget() throws {

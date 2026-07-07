@@ -186,7 +186,13 @@ public final class Exercise {
             if isLateral { return .isolateralDumbbell }
             if Exercise.isSingleDumbbellMovement(name) { return .singleDumbbell }
             return .dualDumbbell
-        case .machine, .cable, .kettlebell, .band, .plyometric:
+        case .kettlebell:
+            if isLateral { return .isolateralKettlebell }
+            if Exercise.isSingleKettlebellMovement(name) { return .singleKettlebell }
+            // Phase 4: most two-kettlebell movements (clean, press, front squat, etc.)
+            // use dual-kettlebell accounting — entered weight = one bell, doubled.
+            return .dualKettlebell
+        case .machine, .cable, .band, .plyometric:
             return nil
         }
     }
@@ -212,6 +218,9 @@ public final class Exercise {
         case .dualDumbbell: return rawWeightKg * 2.0
         case .singleDumbbell: return rawWeightKg
         case .isolateralDumbbell: return rawWeightKg * 2.0
+        case .dualKettlebell: return rawWeightKg * 2.0
+        case .singleKettlebell: return rawWeightKg
+        case .isolateralKettlebell: return rawWeightKg * 2.0
         }
     }
 
@@ -225,6 +234,22 @@ public final class Exercise {
     private static func isSingleDumbbellMovement(_ name: String) -> Bool {
         let lower = name.lowercased()
         return singleDumbbellPatterns.contains { lower.contains($0) }
+    }
+
+    /// Known single-kettlebell movement name patterns (case-insensitive).
+    /// Phase 4: patterns that indicate the exercise uses one kettlebell at a time
+    /// (typically unilateral or alternating movements).
+    private static let singleKettlebellPatterns: [String] = [
+        "single-arm kettlebell", "single arm kettlebell",
+        "one-arm kettlebell", "one arm kettlebell",
+        "kettlebell swing", "kettlebell snatch",
+        "turkish get-up", "kettlebell halo",
+        "kettlebell windmill",
+    ]
+
+    private static func isSingleKettlebellMovement(_ name: String) -> Bool {
+        let lower = name.lowercased()
+        return singleKettlebellPatterns.contains { lower.contains($0) }
     }
 
     public static let cnsLiftNames: Set<String> = [
@@ -495,6 +520,12 @@ public final class SetEntry {
         case .singleDumbbell:
             return weight * 1.0
         case .isolateralDumbbell:
+            return weight * 2.0
+        case .dualKettlebell:
+            return weight * 2.0
+        case .singleKettlebell:
+            return weight * 1.0
+        case .isolateralKettlebell:
             return weight * 2.0
         }
     }

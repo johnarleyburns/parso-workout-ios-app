@@ -35,8 +35,10 @@ struct SessionView: View {
     @State private var showRPEInfo = false
     @State private var showWeightInfo = false
     @State private var showDumbbellInfo = false
+    @State private var showKettlebellInfo = false
     @State private var inlinePriorWeightHint: Double? = nil
     @AppStorage("dumbbellInfoShown") private var dumbbellInfoShown = false
+    @AppStorage("kettlebellInfoShown") private var kettlebellInfoShown = false
     @State private var showDeleteConfirm = false
     @FocusState private var weightFocused: Bool
     @State private var healthSaved = false
@@ -206,6 +208,11 @@ struct SessionView: View {
         if !dumbbellInfoShown, case .dumbbell = exercise.equipmentValue {
             dumbbellInfoShown = true
             showDumbbellInfo = true
+        }
+        // First-time kettlebell info: same treatment as dumbbells (Phase 4).
+        if !kettlebellInfoShown, case .kettlebell = exercise.equipmentValue {
+            kettlebellInfoShown = true
+            showKettlebellInfo = true
         }
     }
 
@@ -534,6 +541,9 @@ struct SessionView: View {
         }
         .sheet(isPresented: $showDumbbellInfo) {
             dumbbellInfoSheet
+        }
+        .sheet(isPresented: $showKettlebellInfo) {
+            kettlebellInfoSheet
         }
         .fullScreenCover(isPresented: $coolingDown) {
             GuidedPhaseOverlay(
@@ -1562,6 +1572,16 @@ struct SessionView: View {
                             .font(.headline)
                         Text("Enter the weight of the single dumbbell used. This exercise uses one dumbbell at a time (e.g., goblet squat, skullcrusher).\n\nThe entered weight is used as-is for calculations.")
                             .font(.subheadline).foregroundStyle(.secondary)
+                    case .dualKettlebell, .isolateralKettlebell:
+                        Text("Kettlebell Weight")
+                            .font(.headline)
+                        Text("Enter the weight of one kettlebell. The app accounts for paired and single kettlebell movements in calculations.\n\nFor standard two-kettlebell exercises (double cleans, double presses, front squats, etc.), your entered weight is doubled automatically.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    case .singleKettlebell:
+                        Text("Kettlebell Weight")
+                            .font(.headline)
+                        Text("Enter the weight of the single kettlebell used. This exercise uses one kettlebell at a time (e.g., swing, snatch, Turkish get-up).\n\nThe entered weight is used as-is for calculations.")
+                            .font(.subheadline).foregroundStyle(.secondary)
                     case nil:
                         Text("Weight Entry")
                             .font(.headline)
@@ -1571,7 +1591,7 @@ struct SessionView: View {
                 } else {
                     Text("Weight Entry")
                         .font(.headline)
-                    Text("Enter the weight you lifted. For barbell exercises, enter the plate load — the bar weight is added automatically. For dumbbell exercises, enter the weight of one dumbbell.")
+                    Text("Enter the weight you lifted. For barbell exercises, enter the plate load — the bar weight is added automatically. For dumbbell and kettlebell exercises, enter the weight of one dumbbell or kettlebell.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
             }
@@ -1585,6 +1605,26 @@ struct SessionView: View {
             }
         }
         .presentationDetents([.medium])
+    }
+
+    private var kettlebellInfoSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Kettlebell Weight Entry")
+                    .font(.headline)
+                Text("For kettlebell exercises, enter the weight of a single kettlebell — the app handles the accounting automatically:\n\n• **Two-kettlebell exercises** like double kettlebell cleans or presses: your entered weight is doubled for calculations (you're lifting two of them).\n\n• **Single-kettlebell exercises** like swings, snatches, or Turkish get-ups: your entered weight is used as-is.\n\nThis way you can always enter what's printed on the kettlebell, and the math works correctly behind the scenes.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            .padding()
+            .navigationTitle("Kettlebell Help")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Got it") { showKettlebellInfo = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 
     private var dumbbellInfoSheet: some View {

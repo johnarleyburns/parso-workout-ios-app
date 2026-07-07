@@ -593,3 +593,14 @@ decisions: `plans/supporter-flow/2026-06-28/`.
   body parts with 0 completed sets when the week's plan already has unresolved deficits
 - Also fixed the `plannedStrengthSessionCount == 0` branch to suppress low-volume alerts
   for untrained parts when no remaining slots are available
+
+## Phase 4: Kettlebell load accounting + info treatment (2026-07-06)
+- Added `dualKettlebell`, `singleKettlebell`, `isolateralKettlebell` to `LoadAccountingMode` enum
+- Kettlebell exercises now get the same load accounting as dumbbells: entered weight = one bell,
+  doubled for two-bell exercises, single for swings/snatches/Turkish get-ups
+- Added `isSingleKettlebellMovement` name pattern matching (swing, snatch, Turkish get-up, etc.)
+- Added kettlebell info popup (`kettlebellInfoShown` via AppStorage), mirroring dumbbell flow
+- Updated weight info sheet to show kettlebell-appropriate guidance
+- Updated `effectiveLoadKg` and `prospectiveEffectiveLoadKg` for new modes
+- Existing kettlebell exercises backfill their accounting mode on next seed pass
+- Added 8 kettlebell load accounting tests

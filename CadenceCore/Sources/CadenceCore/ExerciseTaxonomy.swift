@@ -12,6 +12,9 @@ public enum LoadAccountingMode: String, CaseIterable, Codable, Sendable {
     case dualDumbbell       // entered = one dumbbell; effective = entered * 2
     case singleDumbbell     // entered = one dumbbell; effective = entered * 1
     case isolateralDumbbell // entered = one dumbbell; effective = entered * 2 (comparison mode)
+    case dualKettlebell       // entered = one kettlebell; effective = entered * 2
+    case singleKettlebell     // entered = one kettlebell; effective = entered * 1
+    case isolateralKettlebell // entered = one kettlebell; effective = entered * 2 (comparison mode)
 }
 
 /// How the exercise is loaded (decision #11). Isolateral/unilateral is a

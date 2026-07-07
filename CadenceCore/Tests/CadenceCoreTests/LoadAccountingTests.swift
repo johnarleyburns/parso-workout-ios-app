@@ -52,6 +52,70 @@ final class LoadAccountingTests: XCTestCase {
         XCTAssertNil(mode)
     }
 
+    // MARK: Phase 4 — Kettlebell accounting
+
+    func testDefaultDualKettlebellAccounting() {
+        let mode = Exercise.defaultLoadAccountingMode(equipment: .kettlebell, isLateral: false, name: "Double Kettlebell Clean")
+        XCTAssertEqual(mode, .dualKettlebell)
+    }
+
+    func testDefaultSingleKettlebellSwing() {
+        let mode = Exercise.defaultLoadAccountingMode(equipment: .kettlebell, isLateral: false, name: "Kettlebell Swing")
+        XCTAssertEqual(mode, .singleKettlebell)
+    }
+
+    func testDefaultSingleKettlebellTurkishGetUp() {
+        let mode = Exercise.defaultLoadAccountingMode(equipment: .kettlebell, isLateral: false, name: "Turkish Get-Up")
+        XCTAssertEqual(mode, .singleKettlebell)
+    }
+
+    func testDefaultIsolateralKettlebellAccounting() {
+        let mode = Exercise.defaultLoadAccountingMode(equipment: .kettlebell, isLateral: true, name: "Kettlebell Clean")
+        XCTAssertEqual(mode, .isolateralKettlebell)
+    }
+
+    func testDualKettlebellEffectiveLoad() throws {
+        let ctx = try makeContext()
+        let ex = Exercise(name: "Double Kettlebell Press",
+                          equipment: .kettlebell,
+                          loadAccountingMode: .dualKettlebell)
+        ctx.insert(ex)
+        let set = SetEntry(weight: 16, reps: 8, exercise: ex,
+                           loadAccountingMode: LoadAccountingMode.dualKettlebell.rawValue)
+        ctx.insert(set)
+        XCTAssertEqual(set.effectiveLoadKg, 32.0)
+    }
+
+    func testSingleKettlebellEffectiveLoad() throws {
+        let ctx = try makeContext()
+        let ex = Exercise(name: "Kettlebell Swing",
+                          equipment: .kettlebell,
+                          loadAccountingMode: .singleKettlebell)
+        ctx.insert(ex)
+        let set = SetEntry(weight: 24, reps: 10, exercise: ex,
+                           loadAccountingMode: LoadAccountingMode.singleKettlebell.rawValue)
+        ctx.insert(set)
+        XCTAssertEqual(set.effectiveLoadKg, 24.0)
+    }
+
+    func testProspectiveDoubleKettlebellLoad() throws {
+        let ctx = try makeContext()
+        let ex = Exercise(name: "Double Kettlebell Front Squat",
+                          equipment: .kettlebell,
+                          loadAccountingMode: .dualKettlebell)
+        ctx.insert(ex)
+        XCTAssertEqual(ex.prospectiveEffectiveLoadKg(rawWeightKg: 20), 40.0)
+    }
+
+    func testProspectiveSingleKettlebellLoad() throws {
+        let ctx = try makeContext()
+        let ex = Exercise(name: "Kettlebell Snatch",
+                          equipment: .kettlebell,
+                          loadAccountingMode: .singleKettlebell)
+        ctx.insert(ex)
+        XCTAssertEqual(ex.prospectiveEffectiveLoadKg(rawWeightKg: 20), 20.0)
+    }
+
     // MARK: - Exercise.resolvedLoadAccountingMode
 
     func testResolvedModeUsesStoredValue() throws {

@@ -586,3 +586,10 @@ decisions: `plans/supporter-flow/2026-06-28/`.
 - Users can still find equivalents from free-exercise-db imports (~22k exercises) under different names
 - Added `testNoZombieExercisesMissingImageAndInstructions` as permanent regression guard
 - Bumped seedVersion to 7; migration deletes stale built-in exercises from existing user stores
+
+## Phase 3: Coach doesn't paint itself into a corner (2026-07-06)
+- Added `testMondayPostWorkoutSuppressesUntrainedPartAlertsWhenWeekIsTight` scenario test
+- Fixed `PlanAwareInsightEngine` to suppress individual "low volume" attention insights for
+  body parts with 0 completed sets when the week's plan already has unresolved deficits
+- Also fixed the `plannedStrengthSessionCount == 0` branch to suppress low-volume alerts
+  for untrained parts when no remaining slots are available

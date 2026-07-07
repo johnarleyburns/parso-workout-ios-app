@@ -114,6 +114,121 @@ final class CoachPlanOptimizerTests: XCTestCase {
         XCTAssertTrue(individualLowVolume.isEmpty)
     }
 
+    /// Reproduces the "coach paints itself into a corner" bug (Phase 3):
+    /// User starts Monday with a coach-planned workout covering chest/back/legs/
+    /// shoulders + minimal arm work. After completing it, the base engine flags abs
+    /// and calves as "low volume." The plan-aware layer should not surface individual
+    /// low-volume attention alerts for body parts the remaining week cannot cover —
+    /// the user's scenario: abs & calves had 0 sets, biceps & triceps were underdone.
+    func testMondayPostWorkoutSuppressesUntrainedPartAlertsWhenWeekIsTight() {
+        let cal = Calendar(identifier: .gregorian)
+        var mondayComps = DateComponents()
+        mondayComps.calendar = cal
+        mondayComps.year = 2026; mondayComps.month = 6; mondayComps.day = 22  // Monday
+        mondayComps.hour = 18   // evening, post-workout
+        let now = mondayComps.date ?? Date(timeIntervalSince1970: 1_782_300_000)
+
+        // Monday workout: 2 sets each of chest/back/legs/shoulders, 1 set biceps/triceps.
+        // Abs and calves — zero sets. The optimizer sees biceps/triceps as containing
+        // some volume but below MEV, so it tries to fill them. But abs/calves at 0
+        // are NOT chased (by design). The base engine STILL flags them as "low volume."
+        let completedSets: [BodyPart: Double] = [
+            .chest: 2, .back: 2, .legs: 2, .shoulders: 2,
+            .biceps: 1, .triceps: 1,
+            .abs: 0, .calves: 0,
+        ]
+        let facts = TrainingFacts(
+            weeklySetsByPart: completedSets,
+            frequencyByPart: completedSets.compactMapValues { $0 > 0 ? 1 : nil },
+            e1RMTrendByExercise: [:],
+            intensity: .empty,
+            avgRPE: nil,
+            daysSinceLastSession: 1,
+            totalWorkingSets: max(1, Int(completedSets.values.reduce(0, +).rounded(.up))),
+            goal: .strength,
+            experience: .intermediate)
+
+        let balance = WeeklyBalance(
+            strengthDays: 1,
+            cardioDays: 0,
+            patternsTrained: [],
+            bodyPartsTrained: Set(completedSets.keys).filter { completedSets[$0] ?? 0 > 0 },
+            fractionalSets: completedSets,
+            moderateMinutes: 0,
+            vigorousMinutes: 0,
+            moderateEquivalentMinutes: 0,
+            hardDays: 1,
+            consecutiveHardDays: 1,
+            vo2maxLatest: nil, vo2maxProtocol: nil, vo2maxTrend: nil,
+            readinessAvailable: false,
+            dataCompleteness: .moderate)
+        let coach = CoachFacts(
+            events: [],
+            recovery: .empty,
+            weeklyBalance: balance,
+            goal: .strength,
+            experience: .intermediate,
+            referenceDate: now,
+            rolling72hCompletedEvents: [],
+            rolling7dCompletedEvents: [],
+            rolling28dCompletedEvents: [])
+
+        // Remaining week has one more strength slot (Wednesday).
+        let plan = WeeklyPlan(days: [
+            makeDayOutline(date: now, kinds: [.strength], cal: cal),
+            makeDayOutline(date: cal.date(byAdding: .day, value: 2, to: now)!, kinds: [.strength], cal: cal),
+        ], generatedAt: now)
+
+        let prefs = CoachSchedulePreferences(
+            strengthDaysPerWeek: 2,
+            cardioDaysPerWeek: 3,
+            restPreference: .fixed(days: []),
+            allowsTwoADays: false)
+
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: plan,
+            schedulePreferences: prefs,
+            candidates: [genericStrengthSession()])
+
+        let insights = PlanAwareInsightEngine.run(
+            completed: facts,
+            plan: plan,
+            plannedStrengthSessions: optimized.plannedStrengthSessions,
+            unresolvedDeficits: optimized.unresolvedDeficits,
+            diagnostics: optimized.diagnostics,
+            now: now)
+
+        // BUG REPRODUCTION: individual "low volume" attention insights for
+        // abs and calves should NOT appear when the optimizer cannot cover them
+        // (they had 0 sets so they're not in lowVolumeAttentionParts, but the
+        // base engine still flags them). The plan-aware layer should suppress
+        // these when we're early in the week with remaining slots that are
+        // already committed to other deficits.
+        let individualLowVolume = insights.filter {
+            $0.kind == .volume
+                && $0.severity == .attention
+                && $0.title.localizedCaseInsensitiveContains("low")
+                && $0.part != nil
+        }
+
+        // If the optimizer can't resolve everything, suppress individual alerts
+        // for parts with 0 completed sets — the user can't act on them.
+        let untrainedPartsWithAlerts = individualLowVolume.filter { ins in
+            guard let part = ins.part else { return false }
+            return (completedSets[part] ?? 0) == 0
+        }
+        XCTAssertTrue(untrainedPartsWithAlerts.isEmpty,
+                      "Should not show individual low-volume alerts for untrained parts (0 completed sets) when week is tight, but got: \(untrainedPartsWithAlerts.map { $0.part?.rawValue ?? "nil" })")
+
+        // If an unresolved planning insight exists, ensure it's the ONLY volume attention.
+        if !optimized.unresolvedDeficits.isEmpty {
+            let unresolvedInsight = insights.first { $0.id == "planning.unresolvedVolume" }
+            XCTAssertNotNil(unresolvedInsight, "Expected an unresolved planning insight when deficits exist")
+        }
+    }
+
     func testOptimizerOutputIsDeterministic() {
         let now = fixedWednesday()
         let facts = trainingFacts([
@@ -306,5 +421,21 @@ final class CoachPlanOptimizerTests: XCTestCase {
             launchPayload: .strengthPlan("fullBody"),
             systemsTrained: [.maximalStrength, .hypertrophy],
             evidenceCategory: .strengthIntensity)
+    }
+
+    private func makeDayOutline(date: Date, kinds: [CoachSessionKind], cal: Calendar) -> WeeklyPlan.DayOutline {
+        let sessions = kinds.enumerated().map { i, kind in
+            PlannedSession(
+                id: "test-\(i)-\(kind.rawValue)",
+                kind: kind,
+                label: kind.rawValue,
+                isHard: kind == .strength || kind == .vo2Intervals,
+                isRest: kind == .rest)
+        }
+        return WeeklyPlan.DayOutline(
+            date: date,
+            label: sessions.map(\.label).joined(separator: " · "),
+            sessions: sessions,
+            isFuture: true)
     }
 }

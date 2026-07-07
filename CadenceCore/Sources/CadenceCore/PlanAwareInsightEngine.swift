@@ -65,10 +65,14 @@ public enum PlanAwareInsightEngine {
             guard !unresolvedDeficits.isEmpty else { return base }
             let unresolvedParts = Set(unresolvedDeficits.keys)
             let filtered = base.filter { insight in
-                !(insight.kind == .volume
-                  && insight.severity == .attention
-                  && insight.title.localizedCaseInsensitiveContains("low")
-                  && insight.part.map { unresolvedParts.contains($0) } == true)
+                guard insight.kind == .volume,
+                      insight.severity == .attention,
+                      insight.title.localizedCaseInsensitiveContains("low"),
+                      let part = insight.part else { return true }
+                // Suppress for unresolved parts AND for parts with 0 completed
+                // sets — the user can't address new muscle groups mid-week.
+                if unresolvedParts.contains(part) { return false }
+                return (facts.weeklySetsByPart[part] ?? 0) > 0
             }
             return ranked(filtered + unresolvedPlanningInsights(deficits: unresolvedDeficits,
                                                                 diagnostics: diagnostics,
@@ -85,6 +89,17 @@ public enum PlanAwareInsightEngine {
             }
 
             if unresolvedParts.contains(part) {
+                return nil
+            }
+
+            let completedSets = accounting.completedSetsByPart[part] ?? 0
+
+            // Phase 3: when the week's plan is already tight (unresolved deficits
+            // exist for other parts), suppress individual "low volume" alerts for
+            // parts with 0 completed sets. The user cannot realistically add a new
+            // muscle group mid-week when the optimizer can't even close the deficits
+            // for muscles already in rotation.
+            if !unresolvedDeficits.isEmpty && completedSets == 0 {
                 return nil
             }
 

@@ -38,9 +38,10 @@ _Last updated: 2026-07-07 — Coach whole-body weekly coverage fix._
 - **Schema safety:** All changes additive/defaulted. `BodyPart` gained `Codable`
   conformance (String-backed enum, auto-synthesized). No SwiftData migrations.
 - **Tests:** +8 new (Phase 0 repro + E2E). Re-baselined 4 existing tests that
-  asserted old per-exercise deficit behavior. Full suite **641 tests, 2 pre-existing
-  failures** (testDeletedSessionsAreIgnored, testSnapshotInsightsMatchDirectEngine
-  — in-memory SwiftData issues, identical failures on stashed clean tree).
+  asserted old per-exercise deficit behavior. Full suite **641 tests, 0 failures**
+  (the 2 prior `CoachSnapshotBuilderTests` failures were a test date-boundary bug,
+  not SwiftData — `Date()` on Mon/Tue pushed sessions into the prior training week;
+  fixed by pinning `testNow` to Thursday).
 - **Cited science:** All coaching outputs reuse `CitationRegistry.volumeDoseResponse`;
   new isolation candidates carry `citationIds`. `CitationIntegrityTests` green.
 

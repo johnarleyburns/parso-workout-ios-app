@@ -12,6 +12,18 @@ final class CoachSnapshotBuilderTests: XCTestCase {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
 
+    /// Pinned to Thursday so session dates always fall within the Monday-bounded
+    /// training week regardless of what real day the test runs on.
+    private var testNow: Date {
+        let cal = Calendar.current
+        var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        comps.weekday = 5  // Thursday
+        comps.hour = 12
+        comps.minute = 0
+        comps.second = 0
+        return cal.date(from: comps) ?? Date()
+    }
+
     private func seededSession(chestSets: Int, now: Date) throws -> (ModelContext, [WorkoutSession]) {
         let ctx = try makeContext()
         let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
@@ -36,7 +48,7 @@ final class CoachSnapshotBuilderTests: XCTestCase {
     }
 
     func testSnapshotInsightsMatchDirectEngine() throws {
-        let now = Date()
+        let now = testNow
         let (_, sessions) = try seededSession(chestSets: 8, now: now)
         let snap = CoachSnapshotBuilder.build(
             sessions: sessions, cardio: [], assessments: [], hasPainToday: false,
@@ -150,7 +162,7 @@ final class CoachSnapshotBuilderTests: XCTestCase {
     }
 
     func testDeletedSessionsAreIgnored() throws {
-        let now = Date()
+        let now = testNow
         let (ctx, sessions) = try seededSession(chestSets: 8, now: now)
 
         let before = CoachSnapshotBuilder.build(

@@ -10,48 +10,55 @@ struct CoachResearchUpdatesView: View {
     private let kb = CoachKnowledgeBaseLoader.current
 
     var body: some View {
-        List {
-            Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Coach v\(kb.version)")
-                        .font(.headline)
-                    Text("The coaching engine is updated quarterly as new strength and hypertrophy research is published. Each update lists what changed and the studies behind it.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
-            }
-
-            ForEach(kb.changelog) { entry in
+        ScrollViewReader { proxy in
+            List {
                 Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text(entry.title).font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Text("v\(entry.version)")
-                                .font(.caption2).foregroundStyle(.secondary)
-                        }
-                        Text(entry.date).font(.caption2).foregroundStyle(.secondary)
-                        Text(entry.summary)
-                            .font(.footnote)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Coach v\(kb.version)")
+                            .font(.headline)
+                        Text("The coaching engine is updated quarterly as new strength and hypertrophy research is published. Each update lists what changed and the studies behind it.")
+                            .font(.caption)
                             .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        ForEach(entry.citations) { citation in
-                            CitationLink(citation: citation, compact: true)
-                        }
                     }
                     .padding(.vertical, 4)
                 }
-            }
 
-            Section {
-                ForEach(CitationRegistry.bibliography) { citation in
-                    BibliographyRow(citation: citation)
+                ForEach(kb.changelog) { entry in
+                    Section {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text(entry.title).font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text("v\(entry.version)")
+                                    .font(.caption2).foregroundStyle(.secondary)
+                            }
+                            Text(entry.date).font(.caption2).foregroundStyle(.secondary)
+                            Text(entry.summary)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            ForEach(entry.citations) { citation in
+                                CitationJumpLink(citation: citation) {
+                                    withAnimation {
+                                        proxy.scrollTo(bibliographyAnchor(citation.id), anchor: .top)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
-            } header: {
-                Text("Bibliography")
-            } footer: {
-                Text("Every study the coaching engine cites, ordered by author. Tap any entry to read why the Coach uses it and open the paper.")
+
+                Section {
+                    ForEach(CitationRegistry.bibliography) { citation in
+                        BibliographyRow(citation: citation)
+                            .id(bibliographyAnchor(citation.id))
+                    }
+                } header: {
+                    Text("Bibliography")
+                } footer: {
+                    Text("Every study the coaching engine cites, ordered by author. Tap any entry to read why the Coach uses it and open the paper.")
+                }
             }
         }
         .navigationTitle("Coach Research Updates")
@@ -61,6 +68,36 @@ struct CoachResearchUpdatesView: View {
             // Mark the current pack as seen — clears the "new" badge.
             settings.lastSeenCoachKBVersion = kb.version
         }
+    }
+
+    private func bibliographyAnchor(_ id: String) -> String {
+        "coach.bibliography.anchor.\(id)"
+    }
+}
+
+/// An in-page citation reference for a research update. Unlike `CitationLink`
+/// (which pushes `CitationDetailView`), this scrolls to the study's entry in the
+/// in-view Bibliography so that single list stays the controlling source of
+/// truth for the whole app.
+private struct CitationJumpLink: View {
+    let citation: Citation
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: "quote.opening").font(.caption2)
+                Text(citation.shortText)
+                    .font(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
+            }
+            .foregroundStyle(.tint)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("coach.researchUpdates.citation.\(citation.id)")
+        .accessibilityLabel("See in bibliography: \(citation.shortText)")
+        .accessibilityHint("Scrolls to this study in the bibliography below")
     }
 }
 

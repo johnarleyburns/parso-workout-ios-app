@@ -97,6 +97,7 @@ public struct ObservedFact: Sendable, Equatable, Identifiable {
         case weeklyStrengthDays
         case weeklyModerateEquivalentMinutes
         case weeklySteps
+        case sessionStructure
     }
 
     public let id: String
@@ -105,14 +106,19 @@ public struct ObservedFact: Sendable, Equatable, Identifiable {
     public let value: String
     public let detail: String?
     public let occurredAt: Date?
+    /// Science backing this fact (HARD RULE): resolved + rendered wherever the fact
+    /// surfaces. Empty for purely descriptive facts (e.g. "last strength was 2d ago").
+    public let citationIds: [String]
 
-    public init(kind: Kind, title: String, value: String, detail: String? = nil, occurredAt: Date? = nil) {
+    public init(kind: Kind, title: String, value: String, detail: String? = nil,
+                occurredAt: Date? = nil, citationIds: [String] = []) {
         self.id = kind.rawValue
         self.kind = kind
         self.title = title
         self.value = value
         self.detail = detail
         self.occurredAt = occurredAt
+        self.citationIds = citationIds
     }
 }
 
@@ -314,6 +320,13 @@ public enum CoachDecisionEngine {
 
         var allCitationIds = Set(effectivePrimary.citationIds)
         for w in warnings { allCitationIds.formUnion(w.citationIds) }
+
+        // Surface *why* the coach built a full-body vs focused session (open-door
+        // principle) — grounded in ramosCampoSplit2024 via CoachPlanOptimizer.
+        if let structureFact = CoachPlanOptimizer.sessionStructureFact(for: effectivePrimary, now: now) {
+            factsList.append(structureFact)
+            allCitationIds.formUnion(structureFact.citationIds)
+        }
 
         let todayMatches = findTodayPlanMatches(primary: effectivePrimary, todayCompleted: todayCompleted, candidates: candidates)
 
@@ -706,7 +719,7 @@ public enum CoachDecisionEngine {
             warnings.append(CoachWarning(
                 id: "consecutiveHardDays",
                 message: "You've trained hard \(facts.weeklyBalance.consecutiveHardDays) days in a row. Evidence suggests recovery periods improve long-term adaptation.",
-                citationIds: ["meeusenOvertraining2013"]
+                citationIds: ["meeusenOvertraining2013", "drewFinchInjury2016"]
             ))
         }
 

@@ -217,6 +217,76 @@ public enum CoachPlanOptimizer {
             diagnostics: diagnostics)
     }
 
+    // MARK: - Session-structure classification (evidence: ramosCampoSplit2024)
+
+    /// How a built strength session is organised. Surfaced to the user so the
+    /// optimizer's full-body-vs-split reasoning is transparent ("open door").
+    public enum SessionStructure: String, Sendable, Equatable {
+        case fullBody
+        case upperFocus
+        case lowerFocus
+        case focused
+    }
+
+    /// Lower-body parts; everything else (except abs, treated as neutral core) is
+    /// considered upper body for split classification.
+    private static let lowerBodyParts: Set<BodyPart> = [.legs, .calves]
+
+    /// Classify a strength session by the body parts its exercises cover. Non-strength
+    /// or exercise-less sessions return `nil` (no structure to explain).
+    public static func classifyStructure(of session: CoachSession) -> SessionStructure? {
+        guard session.kind == .strength, let exercises = session.exercises, !exercises.isEmpty else {
+            return nil
+        }
+        let parts = coveredParts(of: session)
+        guard !parts.isEmpty else { return nil }
+        if parts.count >= 5 { return .fullBody }
+        let lower = parts.intersection(lowerBodyParts)
+        let upper = parts.subtracting(lowerBodyParts).subtracting([.abs])
+        if upper.isEmpty && !lower.isEmpty { return .lowerFocus }
+        if lower.isEmpty && upper.count >= 2 { return .upperFocus }
+        return .focused
+    }
+
+    /// Build the user-facing, cited `ObservedFact` explaining a session's structure.
+    public static func sessionStructureFact(for session: CoachSession, now: Date) -> ObservedFact? {
+        guard let structure = classifyStructure(of: session) else { return nil }
+        let parts = coveredParts(of: session)
+        let value: String
+        let detail: String
+        switch structure {
+        case .fullBody:
+            value = "Full-body"
+            detail = "Coach built a full-body session to spread weekly volume efficiently across fewer training days."
+        case .upperFocus:
+            value = "Upper body"
+            detail = "Coach focused this session on your upper body to allow adequate per-muscle volume within a single workout."
+        case .lowerFocus:
+            value = "Lower body"
+            detail = "Coach focused this session on your lower body to allow adequate per-muscle volume within a single workout."
+        case .focused:
+            let names = parts.sorted { partIndex($0) < partIndex($1) }
+                .prefix(2)
+                .map { $0.displayName.lowercased() }
+                .joined(separator: " & ")
+            value = "Focused"
+            detail = "Coach targeted \(names) specifically to close a weekly volume deficit."
+        }
+        return ObservedFact(
+            kind: .sessionStructure,
+            title: "Session structure",
+            value: value,
+            detail: detail,
+            occurredAt: now,
+            citationIds: CitationRegistry.citationPool(for: .sessionStructure).citationIds)
+    }
+
+    private static func coveredParts(of session: CoachSession) -> Set<BodyPart> {
+        (session.exercises ?? []).reduce(into: Set<BodyPart>()) { acc, exercise in
+            acc.formUnion(partsCovered(by: exercise))
+        }
+    }
+
     private static func plan(slots: [PlanningSlot],
                               into planned: inout [CoachSession],
                               projected: inout [BodyPart: Double],

@@ -43,6 +43,16 @@ struct CoachResearchUpdatesView: View {
                     .padding(.vertical, 4)
                 }
             }
+
+            Section {
+                ForEach(CitationRegistry.bibliography) { citation in
+                    BibliographyRow(citation: citation)
+                }
+            } header: {
+                Text("Bibliography")
+            } footer: {
+                Text("Every study the coaching engine cites, ordered by author. Tap any entry to read why the Coach uses it and open the paper.")
+            }
         }
         .navigationTitle("Coach Research Updates")
         .navigationBarTitleDisplayMode(.inline)
@@ -59,5 +69,41 @@ enum CoachKBBadge {
     static func hasUnseenUpdate(lastSeen: String) -> Bool {
         let current = CoachKnowledgeBaseLoader.current.version
         return current != "0.0.0" && current != lastSeen
+    }
+}
+
+/// One bibliography entry: author + year, title, source, and a tappable link to the
+/// full `CitationDetailView` (which shows the usage reason + "Read the paper" link).
+private struct BibliographyRow: View {
+    let citation: Citation
+
+    private var usageReason: String? {
+        CitationRegistry.usageReason(forId: citation.id)
+    }
+
+    var body: some View {
+        NavigationLink {
+            CitationDetailView(citation: citation, context: usageReason)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(citation.shortText)
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(citation.title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let usageReason {
+                    Text(usageReason)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(citation.authors), \(String(citation.year)). \(citation.title). \(usageReason ?? "")")
+        .accessibilityIdentifier("coach.bibliography.\(citation.id)")
     }
 }

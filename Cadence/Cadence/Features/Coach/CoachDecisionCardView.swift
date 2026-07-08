@@ -111,6 +111,29 @@ struct CoachDecisionCardView: View {
                     .padding(.vertical, 4)
                     .accessibilityIdentifier("coach.card.nextEligible")
                 }
+
+                if let structure = sessionStructureFact {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "square.grid.2x2")
+                            Text("\(structure.title): \(structure.value)")
+                                .font(.caption.weight(.medium))
+                        }
+                        .foregroundStyle(.secondary)
+                        if let detail = structure.detail {
+                            Text(detail)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        ForEach(structure.citationIds.compactMap { CitationRegistry.citation(forId: $0) }) { citation in
+                            CitationLink(citation: citation, compact: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("coach.card.sessionStructure")
+                }
             }
 
             if isCompleteState {
@@ -245,6 +268,12 @@ struct CoachDecisionCardView: View {
     private var isCompleteState: Bool {
         if case .planComplete = decision.planAdherence { return true }
         return false
+    }
+
+    /// The coach's transparent full-body-vs-split explanation for the primary
+    /// strength session, when one is being recommended (open-door principle).
+    private var sessionStructureFact: ObservedFact? {
+        decision.observedFacts.first { $0.kind == .sessionStructure }
     }
 
     private var todayCompleteDescription: String {

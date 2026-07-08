@@ -140,7 +140,7 @@ public enum CoachAddOnEngine {
                 ),
                 status: .warn,
                 message: "You've trained hard \(hardStreak) days in a row. You can continue, but keep it easy if performance drops.",
-                citationIds: ["meeusenOvertraining2013"]
+                citationIds: ["meeusenOvertraining2013", "drewFinchInjury2016"]
             ))
         }
 

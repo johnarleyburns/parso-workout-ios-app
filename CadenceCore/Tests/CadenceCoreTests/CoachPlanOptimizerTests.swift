@@ -399,6 +399,38 @@ final class CoachPlanOptimizerTests: XCTestCase {
         }
     }
 
+    // MARK: - Session-structure classification (evidence: ramosCampoSplit2024)
+
+    func testSessionStructureFactSurfaced() {
+        let now = fixedWednesday()
+
+        // A whole-body session (squat, bench, row, RDL) covers ≥5 body parts.
+        let fullBody = genericStrengthSession()
+        XCTAssertEqual(CoachPlanOptimizer.classifyStructure(of: fullBody), .fullBody)
+
+        let fact = CoachPlanOptimizer.sessionStructureFact(for: fullBody, now: now)
+        XCTAssertNotNil(fact)
+        XCTAssertEqual(fact?.kind, .sessionStructure)
+        XCTAssertEqual(fact?.value, "Full-body")
+        XCTAssertFalse((fact?.detail ?? "").isEmpty, "Structure fact must explain the choice")
+        XCTAssertEqual(fact?.citationIds, ["ramosCampoSplit2024"],
+                       "Session-structure fact must cite the full-body-vs-split study")
+
+        // An upper-only session (bench press) is classified as an upper-body focus.
+        let upper = CoachSession(
+            id: "strength.upper", kind: .strength, title: "Upper",
+            durationMinutes: 30,
+            exercises: [.init(name: "Bench Press", sets: 3)],
+            launchPayload: .strengthPlan("upper"))
+        XCTAssertEqual(CoachPlanOptimizer.classifyStructure(of: upper), .upperFocus)
+        XCTAssertEqual(CoachPlanOptimizer.sessionStructureFact(for: upper, now: now)?.value, "Upper body")
+
+        // Non-strength sessions have no structure to explain.
+        let rest = CoachSession(id: "rest.full", kind: .rest, title: "Rest", launchPayload: .rest)
+        XCTAssertNil(CoachPlanOptimizer.classifyStructure(of: rest))
+        XCTAssertNil(CoachPlanOptimizer.sessionStructureFact(for: rest, now: now))
+    }
+
     private func lowVolumeInsight(_ part: BodyPart, in insights: [Insight]) -> Insight? {
         insights.first {
             $0.kind == .volume

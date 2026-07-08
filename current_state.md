@@ -2,6 +2,49 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-07 — Coach bibliography + four unused-citation integrations._
+
+## What just shipped — Bibliography + unused-citation integration
+
+Plan: `.opencode/plans/bibliography-and-unused-citations-2026-07-07.md`.
+
+### Bibliography in Coach Research Updates
+- **`CitationRegistry.usageReasons`** — 47-entry `[String: String]` mapping every
+  citation id to a one-line "why the Coach uses it." 1:1 with `all` (test-enforced);
+  the `Citation` model stays a pure reference record. `usageReason(forId:)` accessor.
+- **`CitationRegistry.bibliography`** — computed, sorted by first-author surname
+  (`authors.localizedCaseInsensitiveCompare`).
+- **`CoachResearchUpdatesView`** gains a `Section("Bibliography")` below the changelog.
+  New private `BibliographyRow` → `CitationDetailView(context: usageReason)` (full
+  title/authors/source + "How this applies" + "Read the paper" link).
+- **`coach-kb-version.json`** bumped to **v2026.4.0** with a bibliography changelog entry.
+
+### Four unused citations integrated
+- **`hiitVo2max`** → added to `vo2TrainingPool` + the VO₂-interval candidate's `citationIds`.
+- **`ramosCampoSplit2024`** → new `EvidenceClaimCategory.sessionStructure` +
+  `sessionStructurePool`. `CoachPlanOptimizer.classifyStructure`/`sessionStructureFact`
+  classify a strength session (full-body / upper / lower / focused) and emit a cited
+  `ObservedFact` (new `.sessionStructure` kind + additive `citationIds` on `ObservedFact`).
+  `CoachDecisionEngine` attaches it for the primary strength session; `CoachDecisionCardView`
+  renders the "open-door" explanation with a `CitationLink`.
+- **`drewFinchInjury2016`** → added to `recoveryMonitoringPool`, the consecutive-hard-day
+  warning (`CoachDecision`), and the add-on hard-streak warning (`CoachAddOnEngine`).
+- **`lauersenInjuryPrevention2014`** → new standalone `injuryPreventionPool` (not tied to any
+  claim category) + a "Safety-first guardrails" row in `CoachAboutView` "How it decides,"
+  citing it. Still guarded OUT of every flexibility/ROM claim (existing test preserved).
+
+### Tests + verification
+- **+7 CadenceCore tests**: `testEveryUsageReasonResolves`, `testBibliographySortedByAuthor`
+  (CitationIntegrity); `testNewKBEntryLoads` (KB); `testHIITVo2maxInVo2Pool`,
+  `testDrewFinchInRecoveryPool`, `testLauersenInInjuryPreventionPoolNotFlexibility`
+  (RecommendationEngine); `testSessionStructureFactSurfaced` (CoachPlanOptimizer).
+  Existing `testFlexibilityRuleUsesROMCitationAndNoInjuryPreventionOverclaim` preserved.
+- **`docs/CITATIONS.md`** synced: claim-class table (vo2Training, recoveryMonitoring, new
+  sessionStructure row), per-entry "Used by" updates, and the "Where these are surfaced" section.
+- **Schema safety:** all changes additive (`ObservedFact.citationIds` defaults `[]`, new enum
+  cases only). **Full suite: 661 CadenceCore tests, 0 failures. iOS `xcodebuild` BUILD SUCCEEDED.**
+
+_Prior entry:_
 _Last updated: 2026-07-07 — Coach preferences reset hotfix + contradictory insight fix + Home redesign._
 
 ## What just shipped — Coach preferences hotfix + insight fix + Home redesign

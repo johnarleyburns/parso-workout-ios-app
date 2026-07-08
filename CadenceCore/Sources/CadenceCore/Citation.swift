@@ -51,6 +51,7 @@ public enum EvidenceClaimCategory: String, Sendable, Codable, CaseIterable {
     case fieldTestValidity
     case schedulePreference
     case publicHealthGuideline
+    case sessionStructure
 }
 
 /// The bundled reference list the P3 rules point at. Open-source + visible in-app.
@@ -544,6 +545,75 @@ public enum CitationRegistry {
         all.first { $0.id == id }
     }
 
+    // MARK: - Bibliography (Coach Research Updates)
+
+    /// One-line, user-facing description of *why the coach uses* each citation.
+    /// Kept separate from `Citation` so the model stays a pure reference record.
+    /// Every id in `all` MUST have an entry here (enforced by `CitationIntegrityTests`).
+    public static let usageReasons: [String: String] = [
+        "schoenfeld2021": "Loading recommendations — anchors the rep continuum for strength, hypertrophy, and endurance prescriptions.",
+        "volumeDoseResponse": "Weekly sets-per-muscle dose-response — backs volume add/trim recommendations and per-part progress.",
+        "frequencyMeta": "Spreading weekly volume across ≥2 sessions per week improves per-set quality and recovery.",
+        "oneRMEstimation": "Prediction equations for estimated 1RM — backs the e1RM formula picker and assessment retest prompts.",
+        "rpeAutoregulation": "RIR-based RPE scale — backs autoregulation for load selection and proximity-to-failure prescriptions.",
+        "cooperVo2max": "Cooper 12-minute run field test — backs the VO₂max assessment protocol.",
+        "wingateTest": "Wingate anaerobic test — backs the Wingate assessment and SIT/anaerobic training prescriptions.",
+        "hiitVo2max": "Aerobic high-intensity intervals improve VO₂max — backs HIIT prescriptions for cardiorespiratory fitness.",
+        "rockportWalk": "Rockport 1-mile walk VO₂max estimation — backs the walk assessment protocol.",
+        "queensCollegeStep": "Queens College step test — backs the step-test assessment protocol.",
+        "krieger2010": "Multi-set training superior to single-set for hypertrophy — backs the multi-set default for built-in programs.",
+        "rheaPeriodization": "Periodized training superior to non-periodized — backs periodized program templates and periodization logic.",
+        "calatayudBodyweight": "Bodyweight training effective for strength — backs the calisthenics program routine.",
+        "channellOlympic": "Olympic lifting for explosive power — backs the Olympic weightlifting program routine.",
+        "zourdosDUP": "Daily undulating periodization — backs the DUP program routine.",
+        "amirthalingamGVT": "German Volume Training effectiveness — backs the GVT routine and per-session volume warnings.",
+        "williamsLinearPeriodization": "Linear periodization effectiveness — backs linear programs (5/3/1, nSuns) and periodization claims.",
+        "tufanoCluster": "Cluster set training — backs the cluster-set program routine.",
+        "ekelundActivityMortality2016": "Physical activity attenuates sitting-time mortality risk — backs aerobic-base recommendations and the 150-min floor.",
+        "pellandDoseResponse2026": "Resistance training dose-response meta-regression — backs volume personalization and over-MRV trim warnings.",
+        "ramosCampoSplit2024": "Full-body vs split routine effects on strength and hypertrophy — backs session-structure choices in the weekly plan.",
+        "parejaBlancoRecovery2020": "48-hour same-lift recovery window after training to failure — backs the session eligibility deferral gates.",
+        "sawMonitoring2016": "Self-reported measures trump objective monitoring — backs the readiness check-in system and recovery recommendations.",
+        "meeusenOvertraining2013": "Overtraining prevention consensus — backs pain/illness safety gates, hard-day streak warnings, and rest-day prescriptions.",
+        "schumannConcurrent2022": "Concurrent aerobic + strength compatibility — backs lower-body collision gates and two-a-day timing guidance.",
+        "crowleyVO2Intensity2022": "Exercise intensity and VO₂max improvement — backs VO₂-interval session prescriptions.",
+        "poonHIIT2024": "HIIT and cardiorespiratory fitness umbrella review — backs HIIT session candidates and prescriptions.",
+        "mooreLeisureActivity2012": "Leisure-time activity and mortality — supplementary evidence for aerobic-base recommendations.",
+        "aremDoseResponse2015": "Dose-response of physical activity and mortality — supplementary evidence for aerobic-base recommendations.",
+        "saintMauriceSteps2020": "Daily step count and mortality — backs the step-health display and step-target guidance.",
+        "leeAccelerometer2019": "Step volume/intensity in older women — supplementary evidence for step-health insights.",
+        "halsonRecovery2014": "Monitoring training load to understand fatigue — supplementary evidence for recovery-readiness insights.",
+        "drewFinchInjury2016": "Training load and injury/illness/soreness relationship — backs warnings about excessive volume and consecutive hard days.",
+        "dupuyFatigue2018": "Evidence-based post-exercise recovery techniques — supplementary evidence for recovery-readiness insights.",
+        "zourdosRIR2016": "Novel RPE scale measuring repetitions in reserve — backs the strength-intensity prescription pool.",
+        "tanakaMaxHR2001": "Age-predicted maximal heart rate — backs threshold/tempo training when HR zones are estimated rather than tested.",
+        "kaufmannThreshold2023": "HRV-derived thresholds for exercise intensity prescription — backs threshold/tempo training prescriptions.",
+        "milanovicHIIT2015": "HIIT vs continuous endurance training for VO₂max — supplementary evidence for VO₂-interval prescriptions.",
+        "slothSIT2013": "Sprint interval training effects on VO₂max — backs the anaerobic/SIT opt-in prescription.",
+        "buchheitLaursenHIIT2013": "HIIT programming: anaerobic energy and neuromuscular load — supplementary evidence for anaerobic training.",
+        "konradStretchROM2024": "Chronic stretching effects on range of motion — backs stretch/mobility session candidates.",
+        "behmStretching2016": "Acute stretching effects on performance and ROM — supplementary evidence for flexibility recommendations.",
+        "lauersenInjuryPrevention2014": "Exercise interventions to prevent sports injuries — cited in Coach's safety-first philosophy (not tied to any single exercise modality).",
+        "fieldFitnessReliability2022": "Reliability of field-based fitness tests — backs bodyweight benchmark assessments (push-up, pull-up, squat, hollow hold).",
+        "tongPlank2014": "Sport-specific endurance plank test — backs the plank hold assessment protocol.",
+        "murlasitsConcurrentSequence2018": "Concurrent strength-endurance training sequence — backs same-day cardio-timing guidance in schedule preferences.",
+        "currierResistancePrescription2023": "Bayesian network meta-analysis of resistance training prescription — backs strength-block engine rules.",
+    ]
+
+    /// Resolve the user-facing "why we use it" line for a citation id, if present.
+    public static func usageReason(forId id: String) -> String? {
+        usageReasons[id]
+    }
+
+    /// All citations, sorted by first author surname (scientific convention). The
+    /// `authors` field is always "Surname, Others & Last" so an alphabetical sort
+    /// yields correct author-order for every entry.
+    public static var bibliography: [Citation] {
+        all.sorted { a, b in
+            a.authors.localizedCaseInsensitiveCompare(b.authors) == .orderedAscending
+        }
+    }
+
     // MARK: - Citation pools for deterministic rotation
 
     public static let aerobicPool = CitationPool(id: "aerobic", citationIds: [
@@ -595,6 +665,7 @@ public enum CitationRegistry {
         "crowleyVO2Intensity2022",
         "poonHIIT2024",
         "milanovicHIIT2015",
+        "hiitVo2max",
     ])
 
     public static let thresholdTrainingPool = CitationPool(id: "thresholdTraining", citationIds: [
@@ -638,6 +709,7 @@ public enum CitationRegistry {
         "sawMonitoring2016",
         "dupuyFatigue2018",
         "meeusenOvertraining2013",
+        "drewFinchInjury2016",
     ])
 
     public static let concurrentTrainingPool = CitationPool(id: "concurrentTraining", citationIds: [
@@ -672,6 +744,20 @@ public enum CitationRegistry {
         "ekelundActivityMortality2016",
     ])
 
+    /// Session-structure choices (full-body vs split). Backs the coach's transparent
+    /// explanation of *why* it built a full-body or focused session for a given day.
+    public static let sessionStructurePool = CitationPool(id: "sessionStructure", citationIds: [
+        "ramosCampoSplit2024",
+    ])
+
+    /// Exercise-based injury-prevention evidence. Backs the coach's safety-first
+    /// philosophy copy only — deliberately NOT tied to any flexibility/ROM claim
+    /// (Lauersen shows strength/multi-component programs, not stretching, reduce
+    /// injury risk). Not resolvable from any `EvidenceClaimCategory`.
+    public static let injuryPreventionPool = CitationPool(id: "injuryPrevention", citationIds: [
+        "lauersenInjuryPrevention2014",
+    ])
+
     /// The single citation pool that may support a given claim category. Total over
     /// `EvidenceClaimCategory`, so every typed claim has a resolvable pool.
     public static func citationPool(for category: EvidenceClaimCategory) -> CitationPool {
@@ -692,6 +778,7 @@ public enum CitationRegistry {
         case .fieldTestValidity: return fieldTestValidityPool
         case .schedulePreference: return schedulePreferencePool
         case .publicHealthGuideline: return publicHealthGuidelinePool
+        case .sessionStructure: return sessionStructurePool
         }
     }
 }

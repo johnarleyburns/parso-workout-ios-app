@@ -463,4 +463,23 @@ final class RecommendationEngineTests: XCTestCase {
         XCTAssertEqual(rec?.evidenceCategory, .fieldTestValidity)
         XCTAssertTrue(CitationRegistry.fieldTestValidityPool.citationIds.contains(rec!.citation.id))
     }
+
+    // MARK: - Unused-citation integration (2026-07-07)
+
+    func testHIITVo2maxInVo2Pool() {
+        XCTAssertTrue(CitationRegistry.vo2TrainingPool.citationIds.contains("hiitVo2max"),
+                      "hiitVo2max should broaden the VO₂-training evidence base")
+    }
+
+    func testDrewFinchInRecoveryPool() {
+        XCTAssertTrue(CitationRegistry.recoveryMonitoringPool.citationIds.contains("drewFinchInjury2016"),
+                      "drewFinchInjury2016 should back recovery/load warnings")
+    }
+
+    func testLauersenInInjuryPreventionPoolNotFlexibility() {
+        XCTAssertTrue(CitationRegistry.injuryPreventionPool.citationIds.contains("lauersenInjuryPrevention2014"),
+                      "lauersenInjuryPrevention2014 belongs in the injury-prevention pool")
+        XCTAssertFalse(CitationRegistry.flexibilityROMPool.citationIds.contains("lauersenInjuryPrevention2014"),
+                       "lauersenInjuryPrevention2014 must never back a flexibility/ROM claim")
+    }
 }

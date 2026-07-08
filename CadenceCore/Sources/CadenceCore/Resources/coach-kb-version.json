@@ -1,7 +1,18 @@
 {
-  "version": "2026.3.0",
-  "releaseDate": "2026-07-02",
+  "version": "2026.4.0",
+  "releaseDate": "2026-07-07",
   "entries": [
+    {
+      "version": "2026.4.0",
+      "date": "2026-07-07",
+      "title": "Bibliography — every study the Coach cites",
+      "summary": "The Coach Research Updates screen now includes a full bibliography of all peer-reviewed studies the coaching engine cites, ordered by author, each with a one-line explanation of why the Coach uses it and a direct link to the paper.",
+      "citationIds": [
+        "schoenfeld2021",
+        "pellandDoseResponse2026",
+        "ekelundActivityMortality2016"
+      ]
+    },
     {
       "version": "2026.3.0",
       "date": "2026-07-02",

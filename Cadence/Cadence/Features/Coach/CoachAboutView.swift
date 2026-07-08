@@ -27,6 +27,18 @@ struct CoachAboutView: View {
                     "Coach closes the largest fitness gap first: strength below the 2-day floor vs aerobic below the 150-minute floor. Hard/easy rhythm and recovery are preserved.")
                 row("book.pages", "Conservative defaults",
                     "Recovery times are coach policy (\"Coach's conservative recovery window\"), not claims that every muscle recovers in exactly 48 hours.")
+                VStack(alignment: .leading, spacing: 8) {
+                    row("cross.case", "Safety-first guardrails",
+                        "Coach references published evidence on exercise-based injury prevention to inform its pain/illness gates, warm-up recommendations, and progressive-overload pacing. It never claims any single exercise or modality prevents all injuries — only that the overall approach is grounded in the evidence.")
+                    ForEach(CitationRegistry.injuryPreventionPool.citationIds.compactMap {
+                        CitationRegistry.citation(forId: $0)
+                    }) { citation in
+                        CitationLink(
+                            citation: citation,
+                            context: CitationRegistry.usageReason(forId: citation.id))
+                    }
+                    .padding(.leading, 36)
+                }
             }
 
             Section("When it updates") {

@@ -39,6 +39,36 @@ final class CitationIntegrityTests: XCTestCase {
         }
     }
 
+    // MARK: - Bibliography + usage reasons (2026-07-07)
+
+    func testEveryUsageReasonResolves() {
+        let known = Set(CitationRegistry.all.map(\.id))
+        // Every id in usageReasons maps to a real citation.
+        for id in CitationRegistry.usageReasons.keys {
+            XCTAssertTrue(known.contains(id),
+                          "usageReasons references unknown citation id: \(id)")
+        }
+        // Every citation in the registry has a non-empty usage reason.
+        for c in CitationRegistry.all {
+            let reason = CitationRegistry.usageReason(forId: c.id)
+            XCTAssertNotNil(reason, "Citation \(c.id) has no usage reason")
+            XCTAssertFalse((reason ?? "").isEmpty, "Citation \(c.id) has an empty usage reason")
+        }
+        // No orphan usage reasons and a 1:1 mapping with the registry.
+        XCTAssertEqual(CitationRegistry.usageReasons.count, CitationRegistry.all.count,
+                       "usageReasons and registry must be the same size (1:1 mapping)")
+    }
+
+    func testBibliographySortedByAuthor() {
+        let bib = CitationRegistry.bibliography
+        XCTAssertEqual(bib.count, CitationRegistry.all.count,
+                       "Bibliography must contain every citation")
+        for (a, b) in zip(bib, bib.dropFirst()) {
+            XCTAssertTrue(a.authors.localizedCaseInsensitiveCompare(b.authors) != .orderedDescending,
+                          "Bibliography not sorted by author: \(a.authors) before \(b.authors)")
+        }
+    }
+
     // MARK: - Citation pools
 
     func testAerobicPoolHasAtLeastFiveResearchCitations() {

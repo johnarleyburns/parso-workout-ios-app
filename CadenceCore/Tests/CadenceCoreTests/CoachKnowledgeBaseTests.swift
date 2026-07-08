@@ -30,4 +30,22 @@ final class CoachKnowledgeBaseTests: XCTestCase {
                            "Entry \(entry.version) has unresolved citations")
         }
     }
+
+    func testNewKBEntryLoads() {
+        let kb = CoachKnowledgeBaseLoader.current
+        XCTAssertEqual(kb.version, "2026.4.0",
+                       "Bundled KB should be bumped to the bibliography release")
+        guard let entry = kb.entries.first(where: { $0.version == "2026.4.0" }) else {
+            return XCTFail("Missing v2026.4.0 bibliography changelog entry")
+        }
+        XCTAssertTrue(entry.title.localizedCaseInsensitiveContains("bibliography"),
+                      "v2026.4.0 entry should announce the bibliography")
+        XCTAssertFalse(entry.citationIds.isEmpty)
+        for id in entry.citationIds {
+            XCTAssertNotNil(CitationRegistry.citation(forId: id),
+                            "v2026.4.0 cites unknown \(id)")
+        }
+        // Newest entry drives the displayed version.
+        XCTAssertEqual(kb.changelog.first?.version, "2026.4.0")
+    }
 }

@@ -86,7 +86,8 @@ training.* **Medicine & Science in Sports & Exercise 39(4).**
 <https://doi.org/10.1249/mss.0b013e3180304570>
 
 - **Used by:** the **cardioHIIT prescription** rule (declining VO₂max → Norwegian 4×4
-  intervals, P6).
+  intervals, P6) and `vo2TrainingPool` — broadens the VO₂-interval prescription evidence
+  base alongside `crowleyVO2Intensity2022`, `poonHIIT2024`, and `milanovicHIIT2015`.
 
 ## Maintenance
 
@@ -279,7 +280,9 @@ meta-analyses.* **Scand J Med Sci Sports 34(5).** <https://doi.org/10.1111/sms.1
 Ramos-Campo et al. (2024). *Effects of full-body and split routines on strength and
 hypertrophy.* **Sports Medicine.** <https://pubmed.ncbi.nlm.nih.gov/38595233/>
 
-- **Used by:** split/full-body template selection.
+- **Used by:** split/full-body template selection and `sessionStructurePool` — backs the
+  coach's transparent "why a full-body vs focused session today" explanation surfaced on
+  the decision card (`EvidenceClaimCategory.sessionStructure`).
 - **What it supports:** full-body and split routines produce similar results when volume
   is equated; schedule and preference can decide the split.
 
@@ -340,7 +343,9 @@ Drew & Finch (2016). *The relationship between training load and injury, illness
 soreness: a systematic and literature review.* **Sports Medicine 46(6).**
 <https://link.springer.com/article/10.1007/s40279-015-0459-8>
 
-- **Used by:** recovery/load citation pool — interchangeable with other pool refs.
+- **Used by:** recovery/load citation pool and `recoveryMonitoringPool` — cited on
+  consecutive-hard-day warnings and add-on fatigue-safety warnings alongside
+  `meeusenOvertraining2013`.
 - **What it supports:** rapid increases in training load (spikes) are associated with
   increased injury risk; monitoring load and managing progression reduces risk.
 
@@ -446,10 +451,13 @@ Lauersen, Bertelsen & Andersen (2014). *The effectiveness of exercise interventi
 prevent sports injuries.* **Br J Sports Med 48(11).**
 <https://doi.org/10.1136/bjsports-2013-092538>
 
-- **Used by:** injury-prevention claims for **strength/proprioceptive warm-up programs
-  only** — never to back static stretching alone.
+- **Used by:** `injuryPreventionPool` — the Coach About "Safety-first guardrails" copy
+  cites this for injury-prevention claims about **strength/proprioceptive warm-up
+  programs only**, never to back static stretching alone.
 - **What it supports:** strength training and multi-component programs reduce injury risk;
   stretching alone shows no significant protective effect.
+- **App policy:** deliberately kept out of every `flexibilityROM` claim (guarded by
+  `RecommendationEngineTests`); it never claims any single exercise prevents all injuries.
 
 ### `fieldFitnessReliability2022` — field-test reliability
 Cuenca-Garcia et al. (2022). *Reliability of Field-Based Fitness Tests in Adults: A
@@ -482,13 +490,14 @@ citation pool via `CitationRegistry.citationPool(for:)`. A pool curated for one 
 | `strengthVolume` | strengthVolumePool | volumeDoseResponse, pellandDoseResponse2026 |
 | `strengthIntensity` | strengthIntensityPool | schoenfeld2021, zourdosRIR2016, rpeAutoregulation |
 | `periodization` | periodizationPool | williamsLinearPeriodization, rheaPeriodization |
-| `vo2Training` | vo2TrainingPool | crowleyVO2Intensity2022, poonHIIT2024, milanovicHIIT2015 |
+| `vo2Training` | vo2TrainingPool | crowleyVO2Intensity2022, poonHIIT2024, milanovicHIIT2015, hiitVo2max |
 | `thresholdTraining` | thresholdTrainingPool | kaufmannThreshold2023 |
 | `anaerobicTraining` | anaerobicTrainingPool | wingateTest, slothSIT2013, buchheitLaursenHIIT2013 |
 | `flexibilityROM` | flexibilityROMPool | konradStretchROM2024, behmStretching2016 |
-| `recoveryMonitoring` | recoveryMonitoringPool | halsonRecovery2014, sawMonitoring2016, dupuyFatigue2018, meeusenOvertraining2013 |
+| `recoveryMonitoring` | recoveryMonitoringPool | halsonRecovery2014, sawMonitoring2016, dupuyFatigue2018, meeusenOvertraining2013, drewFinchInjury2016 |
 | `concurrentTraining` | concurrentTrainingPool | schumannConcurrent2022 |
 | `publicHealthGuideline` | publicHealthGuidelinePool | ekelundActivityMortality2016 |
+| `sessionStructure` | sessionStructurePool | ramosCampoSplit2024 |
 | `schedulePreference` | schedulePreferencePool | frequencyMeta, pellandDoseResponse2026, schumannConcurrent2022, sawMonitoring2016, halsonRecovery2014, murlasitsConcurrentSequence2018 |
 | `fieldTestValidity` | fieldTestValidityPool | oneRMEstimation, cooperVo2max, rockportWalk, queensCollegeStep, wingateTest, tongPlank2014, fieldFitnessReliability2022 |
 
@@ -532,3 +541,14 @@ is tappable science:
   `CoachDecisionCardView` warnings, `CoachSchedulePreferencesView` guidance, and each
   `CoachAlternativesView` option. No production UI references the legacy
   `aerobicPool` / `recoveryLoadPool` any longer.
+- **Bibliography** — `CoachResearchUpdatesView` lists every citation in `CitationRegistry`
+  ordered by author (`CitationRegistry.bibliography`), each with its one-line
+  `CitationRegistry.usageReasons[id]` and a tappable `CitationDetailView` ("Read the
+  paper"). `usageReasons` is a 1:1 map with the registry (enforced by tests) and mirrors
+  the "Used by" lines in this file.
+- **Session structure** — `CoachDecisionCardView` surfaces a `sessionStructure`
+  `ObservedFact` (full-body / upper / lower / focused) built by
+  `CoachPlanOptimizer.sessionStructureFact`, cited to `ramosCampoSplit2024`.
+- **Safety-first** — `CoachAboutView` "How it decides" cites `injuryPreventionPool`
+  (`lauersenInjuryPrevention2014`) for the coach's exercise-based injury-prevention
+  philosophy — never for a flexibility/ROM claim.

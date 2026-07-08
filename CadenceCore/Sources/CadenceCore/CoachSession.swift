@@ -290,7 +290,7 @@ extension CoachSession {
                 modality: .run,
                 intensity: .vigorous,
                 trainingLoadTags: ["aerobic", "hard", "highImpact"],
-                citationIds: ["crowleyVO2Intensity2022", "poonHIIT2024"],
+                citationIds: ["crowleyVO2Intensity2022", "poonHIIT2024", "hiitVo2max"],
                 launchPayload: .cardio(type: "hiit", durationMinutes: 35)
             ))
         }

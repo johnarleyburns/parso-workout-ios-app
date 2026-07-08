@@ -13,8 +13,11 @@ final class IntervalRunner {
     /// Time skipped forward via `skipPhase()` (feedback batch 5) — added on top of
     /// the wall-clock elapsed so skipping a phase jumps to the next boundary.
     private(set) var skipped: TimeInterval = 0
-    /// Accumulated extra time added to the current phase (user taps "+1 min").
-    private(set) var phaseExtension: TimeInterval = 0
+    /// Per-phase extra time added by the user (e.g. "+1 min" to warm-up or
+    /// cool-down). Keyed by the plan's phase index so extensions are scoped to
+    /// the specific phase they were applied to and phase boundaries shift
+    /// correctly.
+    private var phaseExtensions: [Int: TimeInterval] = [:]
 
     init(plan: IntervalPlan) {
         self.plan = plan
@@ -22,18 +25,37 @@ final class IntervalRunner {
     }
 
     var elapsed: TimeInterval { clock.elapsed(now: now) + skipped }
-    var isComplete: Bool { clock.isEnded || elapsed >= plan.totalDuration + phaseExtension }
+    var isComplete: Bool { clock.isEnded || current == nil }
     var isPaused: Bool { clock.isPaused }
 
+    /// The total duration of the plan including all per-phase extensions.
+    private var effectiveTotalDuration: TimeInterval {
+        plan.totalDuration + phaseExtensions.values.reduce(0, +)
+    }
+
+    /// Walks the plan's phases manually, applying per-phase extensions to each
+    /// phase's effective duration so both the displayed remaining time and the
+    /// phase-transition boundary reflect added time.
     private var current: (index: Int, phase: IntervalPhase, phaseRemaining: TimeInterval, overallRemaining: TimeInterval)? {
-        plan.state(atElapsed: elapsed)
+        guard elapsed >= 0, !plan.phases.isEmpty else { return nil }
+        var acc: TimeInterval = 0
+        for (i, p) in plan.phases.enumerated() {
+            let ext = phaseExtensions[i] ?? 0
+            let dur = p.duration + ext
+            if elapsed < acc + dur {
+                let phaseRemaining = (acc + dur) - elapsed
+                return (i, p, phaseRemaining, effectiveTotalDuration - elapsed)
+            }
+            acc += dur
+        }
+        return nil
     }
 
     var currentPhaseID: Int? { current?.phase.id }
     var phaseKind: IntervalPhaseKind? { current?.phase.kind }
     var phaseLabel: String { current?.phase.label ?? (isComplete ? "Done" : "") }
-    var phaseRemaining: TimeInterval { (current?.phaseRemaining ?? 0) + phaseExtension }
-    var overallRemaining: TimeInterval { (current?.overallRemaining ?? 0) + phaseExtension }
+    var phaseRemaining: TimeInterval { current?.phaseRemaining ?? 0 }
+    var overallRemaining: TimeInterval { current?.overallRemaining ?? 0 }
 
     var colorState: FullScreenColorState {
         guard let c = current else { return .neutral }
@@ -45,11 +67,22 @@ final class IntervalRunner {
     func end() { clock.end(now: Date()) }
 
     /// Skips the active phase: jumps elapsed forward to the next phase boundary
-    /// (feedback batch 5). Skipping the last phase pushes past `totalDuration`, so
+    /// including any per-phase extensions so the skip respects added time.
+    /// Skipping the last phase pushes past `effectiveTotalDuration`, so
     /// `isComplete` flips true and the view finishes.
     func skipPhase() {
-        let target = plan.elapsedAtNextPhase(after: elapsed)
-        skipped += max(0, target - elapsed)
+        var acc: TimeInterval = 0
+        for (i, p) in plan.phases.enumerated() {
+            let ext = phaseExtensions[i] ?? 0
+            acc += p.duration + ext
+            if acc > elapsed + 0.0001 {
+                skipped += acc - elapsed
+                phaseExtensions.removeAll()
+                return
+            }
+        }
+        skipped += max(0, effectiveTotalDuration - elapsed)
+        phaseExtensions.removeAll()
     }
 
     /// Restarts the clock from now and clears any skip offset — used when the
@@ -57,12 +90,12 @@ final class IntervalRunner {
     func restart() {
         clock = WorkoutClock(startedAt: Date())
         skipped = 0
-        phaseExtension = 0
+        phaseExtensions.removeAll()
     }
 
     /// Adds extra time to the current phase (e.g. +1 min to warm-up or cool-down).
     func addTime(_ seconds: TimeInterval) {
-        guard !isComplete else { return }
-        phaseExtension += max(0, seconds)
+        guard !isComplete, let idx = current?.index else { return }
+        phaseExtensions[idx, default: 0] += max(0, seconds)
     }
 }

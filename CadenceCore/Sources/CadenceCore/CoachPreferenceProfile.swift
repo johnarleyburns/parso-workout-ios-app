@@ -17,6 +17,11 @@ public struct CoachPreferenceProfile: Codable, Equatable, Sendable {
     public var avoidedTags: [String]
     public var selectionEvents: [CoachPreferenceEvent]
 
+    private enum CodingKeys: String, CodingKey {
+        case version, aerobicPreferences, strengthPreferences
+        case avoidedTags, selectionEvents
+    }
+
     public static let empty = CoachPreferenceProfile(
         version: 1,
         aerobicPreferences: [],
@@ -35,6 +40,15 @@ public struct CoachPreferenceProfile: Codable, Equatable, Sendable {
         self.strengthPreferences = strengthPreferences
         self.avoidedTags = avoidedTags
         self.selectionEvents = selectionEvents
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
+        aerobicPreferences = try c.decodeIfPresent([AerobicPreference].self, forKey: .aerobicPreferences) ?? []
+        strengthPreferences = try c.decodeIfPresent([StrengthPreference].self, forKey: .strengthPreferences) ?? []
+        avoidedTags = try c.decodeIfPresent([String].self, forKey: .avoidedTags) ?? []
+        selectionEvents = try c.decodeIfPresent([CoachPreferenceEvent].self, forKey: .selectionEvents) ?? []
     }
 
     public mutating func recordSelection(_ session: CoachSession,

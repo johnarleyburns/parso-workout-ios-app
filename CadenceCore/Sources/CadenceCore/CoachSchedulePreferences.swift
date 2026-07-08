@@ -66,6 +66,12 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public var dailyStepTarget: Int
     public var excludedCoverageParts: Set<BodyPart>
 
+    private enum CodingKeys: String, CodingKey {
+        case strengthDaysPerWeek, cardioDaysPerWeek, restPreference
+        case allowsTwoADays, sameDayCardioTiming, dailyStepTarget
+        case excludedCoverageParts
+    }
+
     public static let `default` = CoachSchedulePreferences(
         strengthDaysPerWeek: 2,
         cardioDaysPerWeek: 3,
@@ -88,6 +94,17 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         self.sameDayCardioTiming = sameDayCardioTiming
         self.dailyStepTarget = min(20_000, max(2_000, dailyStepTarget))
         self.excludedCoverageParts = excludedCoverageParts
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        strengthDaysPerWeek = min(5, max(2, try c.decodeIfPresent(Int.self, forKey: .strengthDaysPerWeek) ?? 2))
+        cardioDaysPerWeek = min(7, max(0, try c.decodeIfPresent(Int.self, forKey: .cardioDaysPerWeek) ?? 3))
+        restPreference = try c.decodeIfPresent(RestPreference.self, forKey: .restPreference) ?? .defaultRolling
+        allowsTwoADays = try c.decodeIfPresent(Bool.self, forKey: .allowsTwoADays) ?? false
+        sameDayCardioTiming = try c.decodeIfPresent(SameDayCardioTiming.self, forKey: .sameDayCardioTiming) ?? .afterStrength
+        dailyStepTarget = min(20_000, max(2_000, try c.decodeIfPresent(Int.self, forKey: .dailyStepTarget) ?? 8_000))
+        excludedCoverageParts = try c.decodeIfPresent(Set<BodyPart>.self, forKey: .excludedCoverageParts) ?? []
     }
 
     // MARK: Constrained setters for use in UI

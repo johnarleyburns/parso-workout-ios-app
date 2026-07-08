@@ -206,6 +206,44 @@ final class DataExportTests: XCTestCase {
         c.sorted { $0.id.uuidString < $1.id.uuidString }
     }
 
+    // MARK: - Legacy schedulePreferences with missing excludedCoverageParts
+
+    func testLegacyExportWithSchedulePreferencesMissingExcludedCoverageParts() throws {
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+        let dateStr = ISO8601DateFormatter.string(from: now, timeZone: .current, formatOptions: .withInternetDateTime)
+        let legacyJSON = """
+        {
+          "version": 4,
+          "exportedAt": "\(dateStr)",
+          "sessions": [],
+          "cardio": [],
+          "assessments": [],
+          "preferences": {
+            "unit": "pounds",
+            "trainingGoal": "hypertrophy",
+            "schedulePreferences": {
+              "strengthDaysPerWeek": 4,
+              "cardioDaysPerWeek": 2,
+              "restPreference": {"fixed": {"days": [2, 4, 6]}},
+              "allowsTwoADays": true,
+              "sameDayCardioTiming": "separateLater",
+              "dailyStepTarget": 10000
+            }
+          }
+        }
+        """
+        let decoded = try DataExport.decodeJSON(Data(legacyJSON.utf8))
+        XCTAssertNotNil(decoded.preferences, "Legacy preferences should decode fully")
+        XCTAssertEqual(decoded.preferences?.unit, "pounds")
+        XCTAssertEqual(decoded.preferences?.schedulePreferences?.strengthDaysPerWeek, 4,
+                       "Schedule preferences should survive legacy blob")
+        XCTAssertEqual(decoded.preferences?.schedulePreferences?.cardioDaysPerWeek, 2)
+        XCTAssertEqual(decoded.preferences?.schedulePreferences?.dailyStepTarget, 10_000)
+        XCTAssertTrue(decoded.preferences?.schedulePreferences?.allowsTwoADays ?? false)
+        XCTAssertEqual(decoded.preferences?.schedulePreferences?.excludedCoverageParts, [],
+                       "Missing excludedCoverageParts should default to empty, not fail decode")
+    }
+
     // MARK: - Legacy stepGoal compatibility
 
     func testLegacyExportWithStepGoalStillDecodes() throws {

@@ -122,6 +122,9 @@ public enum PlanAwareInsightEngine {
             // non-prorated Monday→now weekly window.
             if earlyWeek && completedSets == 0 && plannedSets > 0 {
                 let projectedSets = completedSets + plannedSets
+                let projectedZone = VolumeLandmarks.zone(sets: projectedSets, for: part,
+                                                          experience: facts.experience)
+                guard projectedZone == .belowMEV else { return nil }
                 return projectedLowVolumeInsight(for: part,
                                                   completedSets: completedSets,
                                                   plannedSets: plannedSets,

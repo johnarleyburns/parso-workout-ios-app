@@ -8,6 +8,7 @@ struct IntervalSetupView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
     @State private var selectedID: String = ""
+    @State private var infoPreset: Preset?
 
     // Custom builder params.
     @State private var rounds: Int
@@ -41,17 +42,29 @@ struct IntervalSetupView: View {
         _useHR = State(initialValue: ws.useHRMonitoring)
     }
 
-    private struct Preset: Identifiable { let id: String; let title: String; let subtitle: String; let make: () -> IntervalPlan }
+    private struct Preset: Identifiable { let id: String; let title: String; let subtitle: String; let description: String; let citationIds: [String]; let make: () -> IntervalPlan }
 
     private var presets: [Preset] {
         if type == .boxing { return [] }
         return [
-            Preset(id: "tabata", title: "Tabata", subtitle: "8 × 20s / 10s") { .tabata() },
-            Preset(id: "norwegian", title: "Norwegian 4×4", subtitle: "4 × 4min / 3min") { .norwegian4x4() },
-            Preset(id: "gibala", title: "Gibala", subtitle: "8 × 60s / 60s · ~20 min") { .gibala() },
-            Preset(id: "sit", title: "SIT (Wingate)", subtitle: "4 × 30s all-out / 4 min") { .sit() },
-            Preset(id: "ten", title: "10-20-30", subtitle: "5 × (30/20/10), 3 sets") { .tenTwentyThirty() },
-            Preset(id: "rehit", title: "REHIT", subtitle: "2 × 20s sprint / 3 min") { .rehit() },
+            Preset(id: "tabata", title: "Tabata", subtitle: "8 × 20s / 10s",
+                   description: "Developed by Prof. Izumi Tabata for Olympic speed skaters. 20 s of all-out work alternates with 10 s of rest across 8 rounds — just 4 minutes of high-intensity intervals that improve both anaerobic capacity and VO₂max.",
+                   citationIds: ["tabata1996"]) { .tabata() },
+            Preset(id: "norwegian", title: "Norwegian 4×4", subtitle: "4 × 4min / 3min",
+                   description: "Four 4-minute work intervals at ~90–95 % HRmax separated by 3-minute active recovery periods. This protocol is one of the best-researched methods for improving VO₂max in healthy adults.",
+                   citationIds: ["hiitVo2max"]) { .norwegian4x4() },
+            Preset(id: "gibala", title: "Gibala", subtitle: "8 × 60s / 60s · ~20 min",
+                   description: "Named after Martin Gibala's sprint-interval research. 60 s of hard work alternates with 60 s of recovery for 8 rounds, totalling ~20 min. Produces metabolic adaptations comparable to much longer moderate-intensity training.",
+                   citationIds: ["gibala2006"]) { .gibala() },
+            Preset(id: "sit", title: "SIT (Wingate)", subtitle: "4 × 30s all-out / 4 min",
+                   description: "Four 30 s all-out Wingate sprints with 4-minute passive recovery per round. Sprint-interval training (SIT) is a potent but demanding protocol — best reserved for experienced exercisers comfortable with maximal effort.",
+                   citationIds: ["wingateTest", "slothSIT2013"]) { .sit() },
+            Preset(id: "ten", title: "10-20-30", subtitle: "5 × (30/20/10), 3 sets",
+                   description: "30 s low / 20 s moderate / 10 s sprint — 5 cycles per set across 3 sets with recovery between. This stepping pattern reduced training volume by ~50 % while improving 5 km race performance and cardiovascular health markers.",
+                   citationIds: ["gunnarsson1020302012"]) { .tenTwentyThirty() },
+            Preset(id: "rehit", title: "REHIT", subtitle: "2 × 20s sprint / 3 min",
+                   description: "Reduced-Exertion HIIT — just 2 all-out 20 s sprints in a single 10-minute session. One of the lowest time-commitment protocols shown to improve insulin sensitivity and VO₂max in previously inactive adults.",
+                   citationIds: ["metcalfeREHIT2012"]) { .rehit() },
         ]
     }
 
@@ -126,6 +139,9 @@ struct IntervalSetupView: View {
             }
             .navigationTitle(type.displayName)
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(item: $infoPreset) { preset in
+                presetInfoView(preset)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("interval.cancel")
@@ -185,11 +201,7 @@ struct IntervalSetupView: View {
             .foregroundStyle(.primary)
             .accessibilityIdentifier("interval.preset.\(id)")
     }
-    private func rowLabel(_ id: String, _ title: String, _ subtitle: String) -> some View {
-        Button { selectedID = id } label: { rowContent(id, title, subtitle) }
-            .foregroundStyle(.primary)
-            .accessibilityIdentifier("interval.preset.\(id)")
-    }
+
     private func rowContent(_ id: String, _ title: String, _ subtitle: String) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
@@ -197,9 +209,81 @@ struct IntervalSetupView: View {
                 Text(subtitle).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
+            if let preset = presets.first(where: { $0.id == id }) {
+                Button {
+                    infoPreset = preset
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.body)
+                        .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("About \(preset.title)")
+            }
             Image(systemName: selectedID == id ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(selectedID == id ? Color.accentColor : Color.secondary)
         }
+    }
+
+    @ViewBuilder
+    private func presetInfoView(_ preset: Preset) -> some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(preset.title)
+                        .font(.largeTitle.weight(.bold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text(preset.subtitle)
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+
+                    Text(preset.description)
+                        .font(.body)
+
+                    if !preset.citationIds.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("The science")
+                                .font(.headline)
+                                .padding(.top, 8)
+
+                            ForEach(preset.citationIds.compactMap { CitationRegistry.citation(forId: $0) }) { citation in
+                                CitationLink(
+                                    citation: citation,
+                                    context: CitationRegistry.usageReason(forId: citation.id),
+                                    compact: false
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer()
+                }
+                .padding()
+            }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { infoPreset = nil }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func rowLabel(_ id: String, _ title: String, _ subtitle: String) -> some View {
+        Button { selectedID = id } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.headline)
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: selectedID == id ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(selectedID == id ? Color.accentColor : Color.secondary)
+            }
+        }
+        .foregroundStyle(.primary)
+        .accessibilityIdentifier("interval.preset.\(id)")
     }
 }
 

@@ -520,6 +520,51 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1016/j.ptsp.2013.03.003"
     )
 
+    // MARK: - HIIT protocol citations (2026-07-08)
+
+    /// Original Tabata protocol study — 20 s all-out bouts / 10 s rest, 7–8 sets.
+    public static let tabata1996 = Citation(
+        id: "tabata1996",
+        authors: "Tabata, Nishimura, Kouzaki, Hirai, Ogita, Miyachi & Yamamoto",
+        year: 1996,
+        title: "Effects of moderate-intensity endurance and high-intensity intermittent training on anaerobic capacity and VO2max",
+        source: "Medicine & Science in Sports & Exercise 28(10)",
+        url: "https://doi.org/10.1097/00005768-199610000-00018"
+    )
+
+    /// Landmark short-term sprint interval training (SIT) study — 3 sessions/week of
+    /// 4–6 × 30 s all-out Wingate sprints matched traditional endurance adaptations.
+    public static let gibala2006 = Citation(
+        id: "gibala2006",
+        authors: "Gibala, Little, van Essen, Wilkin, Burgomaster, Safdar, Raha & Tarnopolsky",
+        year: 2006,
+        title: "Short-term sprint interval versus traditional endurance training: similar initial adaptations in human skeletal muscle and exercise performance",
+        source: "Journal of Physiology 575(3)",
+        url: "https://doi.org/10.1113/jphysiol.2006.112094"
+    )
+
+    /// Reduced-exertion high-intensity interval training (REHIT) — 2 × 20 s sprints
+    /// within a 10-min session improved insulin sensitivity and VO₂max.
+    public static let metcalfeREHIT2012 = Citation(
+        id: "metcalfeREHIT2012",
+        authors: "Metcalfe, Babraj, Fawkner & Vollaard",
+        year: 2012,
+        title: "Towards the minimal amount of exercise for improving metabolic health: beneficial effects of reduced-exertion high-intensity interval training",
+        source: "European Journal of Applied Physiology 112(7)",
+        url: "https://doi.org/10.1007/s00421-011-2254-z"
+    )
+
+    /// Original 10-20-30 training concept — 30 s low / 20 s moderate / 10 s sprint,
+    /// 5 cycles per set, 2–4 sets — improved performance and health profile.
+    public static let gunnarsson1020302012 = Citation(
+        id: "gunnarsson1020302012",
+        authors: "Gunnarsson & Bangsbo",
+        year: 2012,
+        title: "The 10-20-30 training concept improves performance and health profile in moderately trained runners",
+        source: "Journal of Applied Physiology 113(1)",
+        url: "https://doi.org/10.1152/japplphysiol.00334.2012"
+    )
+
     // MARK: - All citations registry
 
     public static let all: [Citation] = [
@@ -539,6 +584,7 @@ public enum CitationRegistry {
         slothSIT2013, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
         lauersenInjuryPrevention2014, fieldFitnessReliability2022, tongPlank2014,
         murlasitsConcurrentSequence2018, currierResistancePrescription2023,
+        tabata1996, gibala2006, metcalfeREHIT2012, gunnarsson1020302012,
     ]
 
     public static func citation(forId id: String) -> Citation? {
@@ -598,6 +644,10 @@ public enum CitationRegistry {
         "tongPlank2014": "Sport-specific endurance plank test — backs the plank hold assessment protocol.",
         "murlasitsConcurrentSequence2018": "Concurrent strength-endurance training sequence — backs same-day cardio-timing guidance in schedule preferences.",
         "currierResistancePrescription2023": "Bayesian network meta-analysis of resistance training prescription — backs strength-block engine rules.",
+        "tabata1996": "Original Tabata protocol study (20 s all-out / 10 s rest) — backs the Tabata interval preset.",
+        "gibala2006": "Short-term sprint interval training matching traditional endurance adaptations — backs the Gibala interval preset.",
+        "metcalfeREHIT2012": "Reduced-exertion HIIT with 2 × 20 s sprints in a 10-min session — backs the REHIT interval preset.",
+        "gunnarsson1020302012": "The 10-20-30 training concept (low/mod/sprint stepping) — backs the 10-20-30 interval preset.",
     ]
 
     /// Resolve the user-facing "why we use it" line for a citation id, if present.

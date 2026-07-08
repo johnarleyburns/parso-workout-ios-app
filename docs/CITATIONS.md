@@ -78,6 +78,10 @@ validity.* **Sports Medicine 4(6).**
 
 - **Used by:** the cardio assessment progress insight for the Wingate test, and the
   **SIT prescription** rule (declining Wingate peak power → sprint intervals, P6).
+- **Preset:** SIT (Wingate) — the Wingate test is the standard 30 s all-out cycle
+  ergometer protocol that anchors sprint-interval training (SIT) prescriptions.
+  Cladiron defers to the `slothSIT2013` review for the training rationale on the
+  preset info sheet.
 
 ### `hiitVo2max` — HIIT and VO₂max improvement
 Helgerud, Hoydal, Wang, Karlsen, Berg, Bjerkaas, Simonsen, Helgesen, Hjorth, Bach &
@@ -88,6 +92,56 @@ training.* **Medicine & Science in Sports & Exercise 39(4).**
 - **Used by:** the **cardioHIIT prescription** rule (declining VO₂max → Norwegian 4×4
   intervals, P6) and `vo2TrainingPool` — broadens the VO₂-interval prescription evidence
   base alongside `crowleyVO2Intensity2022`, `poonHIIT2024`, and `milanovicHIIT2015`.
+- **Preset:** Norwegian 4×4 — Helgerud et al. (2007) is the original trial that
+  established the 4 × 4-minute interval protocol for VO₂max improvement.
+
+### `tabata1996` — Tabata protocol _(new in P5)_
+Tabata, Nishimura, Kouzaki, Hirai, Ogita, Miyachi & Yamamoto (1996). *Effects of
+moderate-intensity endurance and high-intensity intermittent training on anaerobic
+capacity and VO₂max.* **Medicine & Science in Sports & Exercise 28(10).**
+<https://doi.org/10.1097/00005768-199610000-00018>
+
+- **Used by:** the **Tabata** interval preset.
+- **Preset:** Tabata — the canonical 7–8 sets of 20 s all-out work / 10 s rest,
+  originally performed 5 days/week by Olympic speed skaters. Demonstrated significant
+  improvements in both anaerobic capacity (+28 %) and VO₂max (+14 %). Cladiron uses 8
+  rounds and adds warm-up/cooldown for safety.
+
+### `gibala2006` — Gibala protocol _(new in P5)_
+Gibala, Little, van Essen, Wilkin, Burgomaster, Safdar, Raha & Tarnopolsky (2006).
+*Short-term sprint interval versus traditional endurance training: similar initial
+adaptations in human skeletal muscle and exercise performance.* **Journal of Physiology
+575(3).**
+<https://doi.org/10.1113/jphysiol.2006.112094>
+
+- **Used by:** the **Gibala** interval preset.
+- **Preset:** Gibala — 4–6 all-out 30 s Wingate sprints with 4 min recovery, repeated
+  3×/week, produced metabolic enzyme adaptations comparable to 90–120 min of moderate
+  cycling. Cladiron adapts this to 8 × 60 s hard / 60 s recover (~20 min total), a
+  protocol commonly referred to as "Gibala-style" SIT.
+
+### `metcalfeREHIT2012` — REHIT minimal-dose protocol _(new in P5)_
+Metcalfe, Babraj, Fawkner & Vollaard (2012). *Towards the minimal amount of exercise
+for improving metabolic health: beneficial effects of reduced-exertion high-intensity
+interval training.* **European Journal of Applied Physiology 112(7).**
+<https://doi.org/10.1007/s00421-011-2254-z>
+
+- **Used by:** the **REHIT** interval preset.
+- **Preset:** REHIT (Reduced-Exertion HIIT) — 2 × 20 s all-out sprints in a single
+  10-min session (3×/week) improved insulin sensitivity (28 %) and VO₂max (12 %),
+  demonstrating that a minimal dose of very intense intermittent exercise can produce
+  meaningful health gains.
+
+### `gunnarsson1020302012` — 10-20-30 concept _(new in P5)_
+Gunnarsson & Bangsbo (2012). *The 10-20-30 training concept improves performance and
+health profile in moderately trained runners.* **Journal of Applied Physiology 113(1).**
+<https://doi.org/10.1152/japplphysiol.00334.2012>
+
+- **Used by:** the **10-20-30** interval preset.
+- **Preset:** 10-20-30 — alternating 30 s low / 20 s moderate / 10 s sprint cycles
+  (5×/set, 2–4 sets) replaced ~50 % of normal running volume, significantly improving
+  1 500 m and 5 km performance while reducing systolic blood pressure and total
+  cholesterol over 7 weeks.
 
 ## Maintenance
 
@@ -417,6 +471,8 @@ and aerobic exercise performance.* **Scand J Med Sci Sports 23(6).**
 <https://doi.org/10.1111/sms.12092>
 
 - **Used by:** `anaerobicTrainingPool` — anaerobic opt-in claims only.
+- **Preset:** SIT (Wingate) — the review provides the overarching training rationale that
+  backs the sprint-interval training preset (4 × 30 s all-out / 4 min recovery).
 - **App policy:** SIT is **never auto-prescribed**; it is an explicit opt-in lane with
   fatigue/safety caveats.
 

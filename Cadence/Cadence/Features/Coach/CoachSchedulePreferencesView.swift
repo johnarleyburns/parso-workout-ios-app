@@ -8,6 +8,34 @@ struct CoachSchedulePreferencesView: View {
         @Bindable var settings = settingsObject
         Form {
             Section {
+                Picker("Training goal", selection: $settings.trainingGoal) {
+                    ForEach(TrainingGoal.allCases) { Text($0.displayName).tag($0) }
+                }
+                .accessibilityIdentifier("settings.coach.goal")
+
+                Picker("Experience", selection: $settings.experienceLevel) {
+                    ForEach(ExperienceLevel.allCases) { Text($0.displayName).tag($0) }
+                }
+                .accessibilityIdentifier("settings.coach.experience")
+
+                Stepper("Daily step target: \(settings.coachSchedulePreferences.dailyStepTarget)",
+                        value: Binding(get: {
+                            settings.coachSchedulePreferences.dailyStepTarget
+                        }, set: { value in
+                            settings.coachSchedulePreferences = settings.coachSchedulePreferences.withDailyStepTarget(value)
+                        }), in: 2_000...20_000, step: 500)
+                    .accessibilityIdentifier("settings.coach.stepTarget")
+
+                if let citation = CitationRegistry.citation(forId: "saintMauriceSteps2020") {
+                    CitationLink(citation: citation, compact: true)
+                }
+            } header: {
+                Text("Coach Settings")
+            } footer: {
+                Text("Your coach uses goal and experience to tailor insights. Steps target is 8,000/day by default; the fixed health floor is 4,000/day.")
+            }
+
+            Section {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text("Strength days/week").font(.subheadline.weight(.medium))
@@ -195,7 +223,7 @@ struct CoachSchedulePreferencesView: View {
                 }
             }
         }
-        .navigationTitle("Coach preferences")
+        .navigationTitle("Coach & Plan")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

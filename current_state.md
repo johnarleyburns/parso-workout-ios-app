@@ -2,6 +2,65 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-07 — Coach preferences reset hotfix + contradictory insight fix + Home redesign._
+
+## What just shipped — Coach preferences hotfix + insight fix + Home redesign
+
+### Part A: Coach preferences reset hotfix
+- **Root cause:** Commit `a63e467` added non-optional `excludedCoverageParts: Set<BodyPart>` to the
+  `Codable` struct `CoachSchedulePreferences`. Swift's synthesized `Decodable` throws
+  `keyNotFound` on missing keys, ignoring `init(...)` defaults. The load site
+  (`AppSettings.swift:82-87`) wrapped the decode in `try?` and fell back to `.default`,
+  silently wiping all user prefs. Same trap existed for `dailyStepTarget` and
+  `CoachPreferenceProfile`.
+- **Fix:** Hand-written `init(from decoder:)` + `CodingKeys` on both `CoachSchedulePreferences`
+  and `CoachPreferenceProfile` using `decodeIfPresent(...) ?? <default>` for every field.
+  Keeps synthesized `Encodable`. Clamping still applies through the decoder.
+- **Recovery bonus:** The original (un-reset) blob is still on disk for users who
+  haven't re-saved since updating. The lenient decoder restores their real settings on
+  next launch.
+
+### Part C: Contradictory "projected low … target met" insight fixed
+- **Root cause:** `PlanAwareInsightEngine` early-week branch emitted
+  `projectedLowVolumeInsight` for parts with 0 completed + N planned sets without
+  checking projected zone. When the plan covered MEV (e.g. Abs 0+6=6 ≥ MEV 6),
+  `Format.progress` rendered "target met" under a "projected low" title.
+- **Fix:** Compute `projectedZone` in the early-week branch and `guard projectedZone ==
+  .belowMEV else { return nil }`, mirroring the normal branch's guard.
+
+### Part B: Home + plan redesign
+- **Week strip on Home:** New `WeekStripView` (Features/Coach/) renders Mon–Sun rail
+  with status glyphs (green check=completed, ring=today, tint outline=future,
+  muted dot=rest) + progress line "N/M strength · N/M cardio this week." Replaces the
+  dual "Planned (rest of week)"/"Planned (next week)" section. Tap → Your Plan.
+- **Your Week rebuilt:** `YourWeekView` now shows full current week day rows (past→
+  today→future continuum with completed/past rendering on `CoachPlanDayRow`), then
+  progress bars, then next week preview, then VO₂max. Removed inline goal/experience/
+  step-target/schedule settings; replaced with "Coach preferences" link.
+- **Dedicated Coach & Plan screen:** `CoachSchedulePreferencesView` absorbs goal,
+  experience, and daily step target alongside existing schedule controls. Reachable
+  from Home coach card (gear button), Your Plan link, AND Settings → Coach section
+  (new "Coach & Plan" row appended at bottom per `settings-append-convention`).
+- **UI test updates:** `HomeSimplificationUITests` + `P3CoachHomeUITests` updated for
+  new/removed identifiers (`home.plannedRestOfWeek` → `home.weekStrip`, Coach & Plan
+  navigation title, goal/experience moved to Coach & Plan).
+
+**Files changed:**
+- CadenceCore: `CoachSchedulePreferences.swift` (defensive `init(from:)`),
+  `CoachPreferenceProfile.swift` (defensive `init(from:)`),
+  `PlanAwareInsightEngine.swift` (early-week zone guard)
+- CadenceCore Tests: new `CoachSchedulePreferencesCodableTests.swift` (7 tests),
+  new `PlanAwareInsightEngineTests.swift` (5 tests), extended `DataExportTests.swift`
+  (+1 legacy schedulePrefs test)
+- App: `HomeView.swift` (weekStripSection replaces plannedRestOfWeekSection, route
+  wiring), `WeekStripView.swift` (new), `YourWeekView.swift` (rebuild with week
+  timeline, CoachPlanDayRow past/completed state), `CoachSchedulePreferencesView.swift`
+  (goal/experience/step target), `SettingsView.swift` (+Coach & Plan link)
+- UI tests: `HomeSimplificationUITests.swift`, `P3CoachHomeUITests.swift`
+
+**Tests:** 654 CadenceCore, 0 failures. iOS build SUCCEEDED.
+
+_Prior entry:_
 _Last updated: 2026-07-07 — Coach whole-body weekly coverage fix._
 
 ## What just shipped — Coach "nags about parts it never plans" bug fixed

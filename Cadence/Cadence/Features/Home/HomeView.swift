@@ -184,7 +184,7 @@ struct HomeView: View {
                     onStart: { launchDecision($0) },
                     onAddOn: { session, status in handleAddOn(session, status) },
                     onSeeInsights: { path.append(HomeRoute.coach) },
-                    onPreferences: { path.append(HomeRoute.yourPlan) },
+                    onPreferences: { path.append(HomeRoute.coachPreferences) },
                     onPickAlternative: { showAlternatives = true })
             }
         case .introducing:
@@ -244,8 +244,8 @@ struct HomeView: View {
 
                     if let s = active.strengthSession { resumeCard(s) }
                     coachTopSurface
+                    weekStripSection
                     quickActionsRow
-                    plannedRestOfWeekSection
                     coachAmbientSurface
                     favoritesSection
                     whatYouDidSection
@@ -587,63 +587,16 @@ struct HomeView: View {
         .accessibilityIdentifier(id)
     }
 
-    private var restOfWeekDays: [WeeklyPlan.DayOutline] {
+    private var weekStripSection: some View {
         _ = historyRefreshToken
-        return coachPlan.remainingCalendarWeekDays.filter { !$0.sessions.isEmpty }
-    }
-
-    /// The near-term schedule is now on Home, so users do not have to open a
-    /// second overview screen just to see what is coming next this week.
-    /// When the rest of the current week is empty, shows planned next week instead.
-    private var plannedRestOfWeekSection: some View {
-        _ = historyRefreshToken
-        let thisWeekDays = restOfWeekDays
-        let nextWeekDays = coachPlan.nextWeekDays.filter { !$0.sessions.isEmpty }
-        let showNextWeek = thisWeekDays.isEmpty && !nextWeekDays.isEmpty
-
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(showNextWeek ? "Planned (next week)" : "Planned (rest of week)").font(.headline)
-                Spacer()
-            }
-
-            if thisWeekDays.isEmpty && nextWeekDays.isEmpty {
-                Text("No more planned sessions.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else if showNextWeek {
-                VStack(spacing: 0) {
-                    ForEach(Array(nextWeekDays.prefix(7).enumerated()), id: \.element.id) { index, day in
-                        if index > 0 { Divider().padding(.leading, 38) }
-                        CoachPlanDayRow(day: day)
-                    }
-                }
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(thisWeekDays.enumerated()), id: \.element.id) { index, day in
-                        if index > 0 { Divider().padding(.leading, 38) }
-                        CoachPlanDayRow(day: day)
-                    }
-                }
-            }
-
-            Button { Haptics.selection(); path.append(HomeRoute.yourPlan) } label: {
-                HStack(spacing: 4) {
-                    Text("Your plan")
-                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
-                }
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.tint)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("home.yourPlan")
-        }
-        .padding()
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
-        // `.contain` keeps this card's identifier from clobbering child identifiers
-        // (e.g. home.yourPlan) — matching CoachDecisionCardView's treatment.
+        return WeekStripView(
+            plan: coachPlan,
+            balance: coachDecision.weeklyBalance,
+            preferences: settings.coachSchedulePreferences,
+            onTap: { Haptics.selection(); path.append(HomeRoute.yourPlan) }
+        )
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home.plannedRestOfWeek")
+        .accessibilityIdentifier("home.weekStrip")
     }
 
     private var homeFavoriteRoutines: [WorkoutPlan] {

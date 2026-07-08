@@ -31,17 +31,24 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         XCTAssertTrue(app.scrollToHittableAndTap("home.yourPlan"), "open Your Plan")
         XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
 
-        // Coach settings live at the bottom of Your Plan — scroll to reveal.
-        let goal = app.buttons["settings.coach.goal"]
-        if !goal.exists || !goal.isHittable {
+        let link = app.buttons["settings.coach.schedulePreferences"]
+        if !link.exists || !link.isHittable {
             for _ in 0..<6 { app.swipeUp() }
         }
+        XCTAssertTrue(link.waitForExistence(timeout: 5))
+        link.tap()
+        XCTAssertTrue(app.navigationBars["Coach & Plan"].waitForExistence(timeout: 5))
+
+        let goal = app.buttons["settings.coach.goal"]
+        if !goal.exists || !goal.isHittable {
+            app.swipeUp()
+        }
         XCTAssertTrue(goal.waitForExistence(timeout: 5),
-                      "Coach training-goal picker")
+                      "Coach training-goal picker in Coach & Plan")
 
         let experience = app.buttons["settings.coach.experience"]
         XCTAssertTrue(experience.waitForExistence(timeout: 3),
-                      "Coach experience picker")
+                      "Coach experience picker in Coach & Plan")
     }
 
     // MARK: Home redesign — quick-actions row, plan card, Coach start button
@@ -142,13 +149,12 @@ final class P3CoachHomeUITests: CadenceUITestCase {
 
     // MARK: - Planned rest of week
 
-    func testHomeShowsPlannedRestOfWeekAndYourPlanLink() {
+    func testHomeShowsWeekStripAndYourPlanLink() {
         let app = XCUIApplication.launched()
-        XCTAssertTrue(app.descendants(matching: .any)["home.plannedRestOfWeek"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.descendants(matching: .any)["home.weekStrip"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["home.yourPlan"].exists)
         app.buttons["home.yourPlan"].tap()
         XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["Planned (rest of week)"].exists)
     }
 
     // MARK: - Your Plan schedule preferences link
@@ -158,7 +164,6 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         XCTAssertTrue(app.scrollToHittableAndTap("home.yourPlan"), "open Your Plan")
         XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
 
-        // Scroll to the Coach settings section at the bottom of Your Plan.
         let link = app.buttons["settings.coach.schedulePreferences"]
         if !link.exists || !link.isHittable {
             app.swipeUp()
@@ -166,6 +171,6 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         }
         XCTAssertTrue(link.waitForExistence(timeout: 5))
         link.tap()
-        XCTAssertTrue(app.navigationBars["Coach preferences"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Coach & Plan"].waitForExistence(timeout: 5))
     }
 }

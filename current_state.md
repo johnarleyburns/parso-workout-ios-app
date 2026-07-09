@@ -2,23 +2,22 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-08 — Export crash fix: background actor + deletedAt filter + fetchLimit._
+_Last updated: 2026-07-09 — Export freeze fix v2: Task.detached replaces @ModelActor._
 
-## What just shipped — Export crash fix
+## What just shipped — Export freeze fix v2
 
 ### Problem
-Export froze the UI and crashed with large datasets. Root cause: `buildExport` ran synchronously on the main actor, fetching ALL sessions/cardio/assessments without filters, faulting all relationships (SetEntry→Exercise→Person, CardioWorkout→HRSample→RouteSample), and encoding with `prettyPrinted`+`sortedKeys` JSON — all blocking the main thread until iOS killed it (~10s watchdog).
+The previous `@ModelActor ExportActor` approach (2026-07-08) still caused the UI to freeze and crash on large datasets. The `@ModelActor` macro's `DefaultSerialModelExecutor` can run fetches on the main actor's queue, and JSON/CSV encoding ran back on `@MainActor` after the `await` returned. Both contributed to watchdog kills.
 
 ### Fixes
-- **Background actor:** `ExportActor` (`@ModelActor`) runs `buildExport` off the main thread so the UI stays responsive. `ExportView` shows a `ProgressView` spinner while building.
-- **`deletedAt` filtering:** `allSessions` and `allCardio` now use `#Predicate { $0.deletedAt == nil }` to exclude soft-deleted records.
-- **`fetchLimit` on recents:** `recentlyUsedExercises` now caps at 2000 records to prevent its own standalone crash risk.
-- **Non-deterministic fix:** `RepPattern.mostCommonLadder` now uses iteration-stable tiebreaking instead of `Dictionary.max(by:)`.
-- **Infrastructure:** Custom `ModelContainerKey` environment key passes the `ModelContainer` to `ExportView`.
+- **`Task.detached` replaces `ExportActor`:** `ExportView.rebuild()` now spawns a `Task.detached(priority: .userInitiated)` that creates a fresh `ModelContext` from the `ModelContainer` _inside_ the detached task, runs `buildExport` AND the JSON/CSV encoding — all truly off the main thread. Only final `@State` updates hop back via `MainActor.run`.
+- **`ExportActor.swift` deleted:** No longer needed.
+- **`weak self` not needed:** `ExportView` is a struct; `@State` uses reference-backed storage so writes from a captured copy still work via `MainActor.run`.
 
 ### Verification
-- `swift test`: **685 CadenceCore tests, 0 failures**.
+- `swift test`: **686 CadenceCore tests, 0 failures** (1 new: `testDetachedExportThenImportThenReExportIsLossless`).
 - `xcodebuild`: iOS scheme **BUILD SUCCEEDED**.
+- New test validates the exact `Task.detached` + `ModelContext(container)` pattern ExportView now uses.
 
 _Prior entry:_
 _Last updated: 2026-07-08 — Gym feedback: Recents tab, machine catalog, per-partner fixes, rep pattern guessing._

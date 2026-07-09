@@ -17,6 +17,7 @@ struct ExportView: View {
     @State private var isLoading = false
     @State private var restoreText = ""
     @State private var restoreMessage: String?
+    @State private var buildTask: Task<Void, Never>?
 
     private let logger = Logger(subsystem: "com.cladiron.cadence", category: "export")
 
@@ -28,7 +29,7 @@ struct ExportView: View {
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("export.format")
-                .onChange(of: format) { _, _ in Task { await rebuild() } }
+                .onChange(of: format) { _, _ in rebuild() }
 
                 if isLoading {
                     HStack {
@@ -89,52 +90,70 @@ struct ExportView: View {
         }
         .navigationTitle("Export")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await rebuildIfNeeded() }
+        .task { rebuildIfNeeded() }
     }
 
-    private func rebuildIfNeeded() async {
+    private func rebuildIfNeeded() {
         guard !isLoading else { return }
-        await rebuild()
+        rebuild()
     }
 
-    private func rebuild() async {
+    private func rebuild() {
         guard let container else {
             exportError = "Database unavailable."
             return
         }
+        buildTask?.cancel()
         isLoading = true
         exportError = nil
-        defer { isLoading = false }
 
-        let actor = ExportActor(modelContainer: container)
-        let export: CadenceExport
-        do {
-            export = try await actor.buildExport(
-                coachPreferences: settings.coachPreferenceProfile.exportDTO,
-                preferences: settings.exportPreferences()
-            )
-        } catch {
-            logger.error("Export build failed: \(error.localizedDescription)")
-            exportError = "Export failed: \(error.localizedDescription)"
-            preview = ""
-            return
-        }
-        if export.sessions.isEmpty && export.cardio.isEmpty && export.assessments.isEmpty {
-            preview = ""
-            return
-        }
-        do {
-            switch format {
-            case .json:
-                let data = try DataExport.encodeJSON(export)
-                preview = String(data: data, encoding: .utf8) ?? ""
-            case .csv:
-                preview = DataExport.encodeCSV(export)
+        let fmt = format
+        let coachDTO = settings.coachPreferenceProfile.exportDTO
+        let prefs = settings.exportPreferences()
+
+        buildTask = Task.detached(priority: .userInitiated) { [self, container] in
+            let ctx = ModelContext(container)
+            let export: CadenceExport
+            do {
+                export = try WorkoutRepository.buildExport(ctx,
+                    coachPreferences: coachDTO,
+                    preferences: prefs)
+            } catch {
+                await MainActor.run {
+                    exportError = "Export failed: \(error.localizedDescription)"
+                    preview = ""
+                    isLoading = false
+                }
+                return
             }
-        } catch {
-            logger.error("Export encode failed: \(error.localizedDescription)")
-            exportError = "Encode failed: \(error.localizedDescription)"
-            preview = ""
+            if export.sessions.isEmpty && export.cardio.isEmpty && export.assessments.isEmpty {
+                await MainActor.run {
+                    preview = ""
+                    isLoading = false
+                }
+                return
+            }
+            let previewText: String
+            do {
+                switch fmt {
+                case .json:
+                    let data = try DataExport.encodeJSON(export)
+                    previewText = String(data: data, encoding: .utf8) ?? ""
+                case .csv:
+                    previewText = DataExport.encodeCSV(export)
+                }
+            } catch {
+                await MainActor.run {
+                    exportError = "Encode failed: \(error.localizedDescription)"
+                    preview = ""
+                    isLoading = false
+                }
+                return
+            }
+            await MainActor.run {
+                preview = previewText
+                isLoading = false
+            }
         }
     }
 
@@ -155,6 +174,6 @@ struct ExportView: View {
         }
         if let prefs = export.preferences { settings.applyImportedPreferences(prefs) }
         restoreMessage = "Restored \(added) workout\(added == 1 ? "" : "s")\(added == 0 && export.sessions.isEmpty && export.cardio.isEmpty && export.assessments.isEmpty ? " (file contained no data)" : "")\(export.preferences != nil ? " and your preferences" : "")."
-        Task { await rebuild() }
+        rebuild()
     }
 }

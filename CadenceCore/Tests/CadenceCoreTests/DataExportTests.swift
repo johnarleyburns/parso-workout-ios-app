@@ -589,4 +589,113 @@ final class DataExportTests: XCTestCase {
         XCTAssertEqual(s.orderedSets.count, 1)
         XCTAssertEqual(s.orderedSets[0].weight, 65)
     }
+
+    // MARK: - Task.detached export (off-main-thread) → import → re-export
+
+    /// Validates the exact pattern ExportView now uses: spawn a detached task with
+    /// the ModelContainer, create a fresh ModelContext inside it, build the export
+    /// AND encode it — all off the main thread — then merge into a fresh store and
+    /// assert the lossless round-trip. This catches any Sendable/isolation issue
+    /// that the prior @ModelActor approach may have masked.
+    func testDetachedExportThenImportThenReExportIsLossless() async throws {
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+        let container = try CadenceStore.makeModelContainer(inMemory: true)
+
+        // Populate store A via its own context.
+        let ctxA = ModelContext(container)
+        // Strength: 2 sessions with multiple sets each — simulates a user with history.
+        let s1 = try WorkoutRepository.createSession(title: "Leg Day", in: ctxA)
+        s1.date = now; s1.endedAt = now.addingTimeInterval(3000); s1.isLogged = true
+        s1.planKey = "preset-531"; s1.warmupSeconds = 300; s1.prescribedLoadKg = 142.5
+        let squat = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctxA)
+        _ = try WorkoutRepository.addSet(to: s1, exercise: squat, weightKg: 140, reps: 5, rpe: 9, completedAt: now, in: ctxA)
+        _ = try WorkoutRepository.addSet(to: s1, exercise: squat, weightKg: 142.5, reps: 3, rpe: 9.5, completedAt: now, in: ctxA)
+
+        let s2 = try WorkoutRepository.createSession(title: "Push Day", in: ctxA)
+        s2.date = now.addingTimeInterval(86400); s2.isLogged = true
+        s2.planKey = "preset-ppl"; s2.plannedExerciseNames = ["Bench Press", "OHP"]
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctxA)
+        _ = try WorkoutRepository.addSet(to: s2, exercise: bench, weightKg: 100, reps: 5, rpe: 8, completedAt: now, in: ctxA)
+        _ = try WorkoutRepository.addSet(to: s2, exercise: bench, weightKg: 105, reps: 3, rpe: 9, completedAt: now, in: ctxA)
+
+        // Cardio with HR + route samples.
+        let cardio = CardioWorkout(type: .run, start: now, end: now.addingTimeInterval(1800),
+                                   distance: 5000, activeEnergy: 320, avgHeartRate: 150,
+                                   maxHeartRate: 178, source: .iphone, notes: "tempo")
+        cardio.laps = 4; cardio.isLogged = true
+        ctxA.insert(cardio)
+        ctxA.insert(HRSample(t: 0, bpm: 120, cardio: cardio))
+        ctxA.insert(HRSample(t: 600, bpm: 165, cardio: cardio))
+        ctxA.insert(RouteSample(t: 0, lat: 37.0, lon: -122.0, elevation: 10, cardio: cardio))
+
+        // Assessment.
+        ctxA.insert(Assessment(date: now, kind: .pushupMax, value: 42, notes: "morning"))
+
+        // Preferences.
+        var profile = CoachPreferenceProfile.empty
+        profile.aerobicPreferences = [
+            AerobicPreference(intent: .moderateAerobic, modality: .cycle, score: 5, updatedAt: now)
+        ]
+        let prefs = ExportPreferences(
+            unit: "kilograms", prRule: "heaviestSet", stepGoal: 10_000,
+            trainingGoal: "strength", experienceLevel: "intermediate",
+            schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 4, cardioDaysPerWeek: 2),
+            coachProfile: profile)
+
+        try ctxA.save()
+
+        // --- Phase 1: build export + encode in a detached task (matching ExportView.rebuild()) ---
+        let coachDTO = profile.exportDTO
+        let encodedJSON = try await Task.detached(priority: .userInitiated) {
+            let ctx = ModelContext(container)
+            let export = try WorkoutRepository.buildExport(ctx,
+                coachPreferences: coachDTO,
+                preferences: prefs)
+            return try DataExport.encodeJSON(export)
+        }.value
+
+        // Phase 2: decode & verify.
+        let decoded = try DataExport.decodeJSON(encodedJSON)
+        XCTAssertEqual(decoded.version, 4)
+        XCTAssertEqual(decoded.sessions.count, 2)
+        XCTAssertEqual(decoded.cardio.count, 1)
+        XCTAssertEqual(decoded.assessments.count, 1)
+        XCTAssertEqual(decoded.preferences?.unit, "kilograms")
+        XCTAssertEqual(decoded.preferences?.prRule, "heaviestSet")
+        XCTAssertEqual(decoded.preferences?.coachProfile?.aerobicPreferences.first?.score, 5)
+
+        // Phase 3: merge into a fresh store, then export again from it — drill into
+        // every facet to prove nothing was lost.
+        let containerB = try CadenceStore.makeModelContainer(inMemory: true)
+        let ctxB = ModelContext(containerB)
+        let added = try WorkoutRepository.merge(decoded, in: ctxB)
+        XCTAssertEqual(added, 4, "2 sessions + 1 cardio + 1 assessment")
+
+        let reExported = try WorkoutRepository.buildExport(ctxB,
+            preferences: ExportPreferences(unit: "kilograms"))
+        XCTAssertEqual(reExported.sessions.count, 2)
+        XCTAssertEqual(reExported.cardio.count, 1)
+        XCTAssertEqual(reExported.assessments.count, 1)
+
+        // Verify strength sessions by title.
+        let titles = Set(reExported.sessions.map(\.title))
+        XCTAssertTrue(titles.contains("Leg Day"))
+        XCTAssertTrue(titles.contains("Push Day"))
+
+        // Verify set-level data survived.
+        let allSets = reExported.sessions.flatMap(\.sets)
+        XCTAssertEqual(allSets.count, 4)
+        XCTAssertTrue(allSets.contains(where: { $0.exerciseName == "Back Squat" && $0.weightKg == 140 }))
+        XCTAssertTrue(allSets.contains(where: { $0.exerciseName == "Bench Press" && $0.weightKg == 105 }))
+
+        // Verify cardio HR/route samples survived the full tour.
+        let reCardio = reExported.cardio.first
+        XCTAssertNotNil(reCardio)
+        XCTAssertEqual(reCardio?.hrSamples?.count, 2)
+        XCTAssertEqual(reCardio?.routeSamples?.count, 1)
+        XCTAssertEqual(reCardio?.notes, "tempo")
+
+        // Verify assessment.
+        XCTAssertEqual(reExported.assessments.first?.value, 42)
+    }
 }

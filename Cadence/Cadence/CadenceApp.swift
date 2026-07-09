@@ -68,6 +68,7 @@ struct CadenceApp: App {
                 .environment(active)
                 .environment(contributions)
                 .environment(store)
+                .environment(\.cadenceModelContainer, container)
                 .task { model.activateWCSession() }
                 .task { contributions.beginSession() }
                 .task { await store.start() }

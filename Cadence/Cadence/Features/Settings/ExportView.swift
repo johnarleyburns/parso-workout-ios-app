@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import UniformTypeIdentifiers
 import os
@@ -6,12 +7,14 @@ import os
 /// Full data export + JSON restore (FR-6.2). Includes Coach preferences.
 struct ExportView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.cadenceModelContainer) private var container
     @Environment(AppSettings.self) private var settings
 
     enum Fmt: String, CaseIterable, Identifiable { case json = "JSON", csv = "CSV"; var id: String { rawValue } }
     @State private var format: Fmt = .json
     @State private var preview = ""
     @State private var exportError: String?
+    @State private var isLoading = false
     @State private var restoreText = ""
     @State private var restoreMessage: String?
 
@@ -25,29 +28,40 @@ struct ExportView: View {
                 }
                 .pickerStyle(.segmented)
                 .accessibilityIdentifier("export.format")
-                .onChange(of: format) { _, _ in rebuild() }
+                .onChange(of: format) { _, _ in Task { await rebuild() } }
 
-                ScrollView {
-                    if let error = exportError {
-                        Text(error)
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.red)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                            .accessibilityIdentifier("export.error")
-                    } else {
-                        Text(preview.isEmpty ? "No data to export." : preview)
-                            .font(.system(.caption, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                            .accessibilityIdentifier("export.preview")
+                if isLoading {
+                    HStack {
+                        Spacer()
+                        ProgressView("Building export...")
+                        Spacer()
                     }
+                    .frame(height: 200)
+                    .accessibilityIdentifier("export.loading")
+                } else {
+                    ScrollView {
+                        if let error = exportError {
+                            Text(error)
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                                .accessibilityIdentifier("export.error")
+                        } else {
+                            Text(preview.isEmpty ? "No data to export." : preview)
+                                .font(.system(.caption, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                                .accessibilityIdentifier("export.preview")
+                        }
+                    }
+                    .frame(height: 200)
                 }
-                .frame(height: 200)
 
                 ShareLink(item: preview.isEmpty ? exportError ?? "" : preview) {
                     Label("Share Export", systemImage: "square.and.arrow.up")
                 }
+                    .disabled(isLoading)
                     .accessibilityIdentifier("export.share")
             } header: {
                 Text("Export")
@@ -75,23 +89,36 @@ struct ExportView: View {
         }
         .navigationTitle("Export")
         .navigationBarTitleDisplayMode(.inline)
-        .task { rebuild() }
+        .task { await rebuildIfNeeded() }
     }
 
-    private func rebuild() {
+    private func rebuildIfNeeded() async {
+        guard !isLoading else { return }
+        await rebuild()
+    }
+
+    private func rebuild() async {
+        guard let container else {
+            exportError = "Database unavailable."
+            return
+        }
+        isLoading = true
         exportError = nil
+        defer { isLoading = false }
+
+        let actor = ExportActor(modelContainer: container)
         let export: CadenceExport
         do {
-            export = try WorkoutRepository.buildExport(context,
-                        coachPreferences: settings.coachPreferenceProfile.exportDTO,
-                        preferences: settings.exportPreferences())
+            export = try await actor.buildExport(
+                coachPreferences: settings.coachPreferenceProfile.exportDTO,
+                preferences: settings.exportPreferences()
+            )
         } catch {
             logger.error("Export build failed: \(error.localizedDescription)")
             exportError = "Export failed: \(error.localizedDescription)"
             preview = ""
             return
         }
-        // True empty: no sessions, no cardio, no assessments.
         if export.sessions.isEmpty && export.cardio.isEmpty && export.assessments.isEmpty {
             preview = ""
             return
@@ -115,7 +142,7 @@ struct ExportView: View {
         let data = restoreText.data(using: .utf8)
         guard let data,
               let export = try? DataExport.decodeJSON(data) else {
-            restoreMessage = "Couldn’t read that JSON."
+            restoreMessage = "Couldn't read that JSON."
             return
         }
         let added: Int
@@ -128,6 +155,6 @@ struct ExportView: View {
         }
         if let prefs = export.preferences { settings.applyImportedPreferences(prefs) }
         restoreMessage = "Restored \(added) workout\(added == 1 ? "" : "s")\(added == 0 && export.sessions.isEmpty && export.cardio.isEmpty && export.assessments.isEmpty ? " (file contained no data)" : "")\(export.preferences != nil ? " and your preferences" : "")."
-        rebuild()
+        Task { await rebuild() }
     }
 }

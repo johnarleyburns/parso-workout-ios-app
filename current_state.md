@@ -2,6 +2,25 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-08 — Export crash fix: background actor + deletedAt filter + fetchLimit._
+
+## What just shipped — Export crash fix
+
+### Problem
+Export froze the UI and crashed with large datasets. Root cause: `buildExport` ran synchronously on the main actor, fetching ALL sessions/cardio/assessments without filters, faulting all relationships (SetEntry→Exercise→Person, CardioWorkout→HRSample→RouteSample), and encoding with `prettyPrinted`+`sortedKeys` JSON — all blocking the main thread until iOS killed it (~10s watchdog).
+
+### Fixes
+- **Background actor:** `ExportActor` (`@ModelActor`) runs `buildExport` off the main thread so the UI stays responsive. `ExportView` shows a `ProgressView` spinner while building.
+- **`deletedAt` filtering:** `allSessions` and `allCardio` now use `#Predicate { $0.deletedAt == nil }` to exclude soft-deleted records.
+- **`fetchLimit` on recents:** `recentlyUsedExercises` now caps at 2000 records to prevent its own standalone crash risk.
+- **Non-deterministic fix:** `RepPattern.mostCommonLadder` now uses iteration-stable tiebreaking instead of `Dictionary.max(by:)`.
+- **Infrastructure:** Custom `ModelContainerKey` environment key passes the `ModelContainer` to `ExportView`.
+
+### Verification
+- `swift test`: **685 CadenceCore tests, 0 failures**.
+- `xcodebuild`: iOS scheme **BUILD SUCCEEDED**.
+
+_Prior entry:_
 _Last updated: 2026-07-08 — Gym feedback: Recents tab, machine catalog, per-partner fixes, rep pattern guessing._
 
 ## What just shipped — Gym feedback improvements (3 phases)

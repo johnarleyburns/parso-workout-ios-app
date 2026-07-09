@@ -88,8 +88,8 @@ public enum RepPattern {
     }
 
     /// Returns the most frequent ladder in `ladders` whose length is at
-    /// least `minLength`. Ties go to the first encountered (arbitrary but
-    /// stable per input ordering).
+    /// least `minLength`. Ties go to the first encountered (stable per input
+    /// ordering — does not use dictionary `max` which is non-deterministic).
     private static func mostCommonLadder(
         in ladders: [[Int]],
         minLength: Int
@@ -98,6 +98,12 @@ public enum RepPattern {
         guard !candidates.isEmpty else { return nil }
         var counts: [[Int]: Int] = [:]
         for l in candidates { counts[l, default: 0] += 1 }
-        return counts.max(by: { $0.value < $1.value })?.key
+        var best: [Int]?
+        var bestCount = 0
+        for l in candidates {
+            let c = counts[l]!
+            if c > bestCount { bestCount = c; best = l }
+        }
+        return best
     }
 }

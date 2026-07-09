@@ -142,10 +142,11 @@ public enum WorkoutRepository {
 
     /// The most recently used distinct exercises from the user's workout history
     /// (Recents tab). Returns up to `limit` exercises ordered by recency.
+    /// Uses a fetchLimit to avoid pulling every set ever logged.
     public static func recentlyUsedExercises(_ context: ModelContext, limit: Int = 25) throws -> [Exercise] {
-        let all = try context.fetch(FetchDescriptor<SetEntry>(
-            sortBy: [SortDescriptor(\.completedAt, order: .reverse)]
-        ))
+        var desc = FetchDescriptor<SetEntry>(sortBy: [SortDescriptor(\.completedAt, order: .reverse)])
+        desc.fetchLimit = 2000
+        let all = try context.fetch(desc)
         var seen = Set<UUID>()
         var result: [Exercise] = []
         for set in all {
@@ -248,7 +249,10 @@ public enum WorkoutRepository {
     }
 
     public static func allSessions(_ context: ModelContext) throws -> [WorkoutSession] {
-        try context.fetch(FetchDescriptor<WorkoutSession>(sortBy: [SortDescriptor(\.date, order: .reverse)]))
+        try context.fetch(FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.deletedAt == nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        ))
     }
 
     /// Appends a set to a session, assigning the next order index. Stamps
@@ -737,7 +741,10 @@ public enum WorkoutRepository {
     }
 
     public static func allCardio(_ context: ModelContext) throws -> [CardioWorkout] {
-        try context.fetch(FetchDescriptor<CardioWorkout>(sortBy: [SortDescriptor(\.start, order: .reverse)]))
+        try context.fetch(FetchDescriptor<CardioWorkout>(
+            predicate: #Predicate { $0.deletedAt == nil },
+            sortBy: [SortDescriptor(\.start, order: .reverse)]
+        ))
     }
 
     /// One-time migration: backfill `importedWorkoutKind` for existing .other

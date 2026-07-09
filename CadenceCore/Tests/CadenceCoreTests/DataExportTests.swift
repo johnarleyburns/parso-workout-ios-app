@@ -267,4 +267,326 @@ final class DataExportTests: XCTestCase {
         XCTAssertEqual(decoded.preferences?.stepGoal, 15000,
                        "Legacy stepGoal field should still decode without error")
     }
+
+    // MARK: - BuildExport edge cases & correctness
+
+    func testBuildExportEmptyStore() throws {
+        let ctx = try makeStore()
+        let export = try WorkoutRepository.buildExport(ctx)
+        XCTAssertEqual(export.sessions.count, 0)
+        XCTAssertEqual(export.cardio.count, 0)
+        XCTAssertEqual(export.assessments.count, 0)
+        XCTAssertEqual(export.version, CadenceExport.currentVersion)
+        // Encoding an empty export must not throw.
+        let json = try DataExport.encodeJSON(export)
+        let decoded = try DataExport.decodeJSON(json)
+        XCTAssertEqual(decoded.sessions.count, 0)
+    }
+
+    func testBuildExportWithStrengthSessions() throws {
+        let ctx = try makeStore()
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+
+        let session = try WorkoutRepository.createSession(title: "Leg Day", in: ctx)
+        session.date = now
+        session.endedAt = now.addingTimeInterval(2700)
+        session.isLogged = true
+        session.planKey = "preset-531"
+        session.templateName = "5/3/1 Squat"
+        session.warmupSeconds = 300
+        session.cooldownSeconds = 300
+        session.prescribedLoadKg = 142.5
+        session.plannedExerciseNames = ["Back Squat", "Romanian Deadlift"]
+        session.plannedRepLadder = [5, 3, 1]
+        session.notes = "Week 3"
+
+        let ex = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 140, reps: 5, rpe: 9, completedAt: now, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 140, reps: 3, isWarmup: false, note: "grinder", completedAt: now, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 60, reps: 5, isWarmup: true, completedAt: now, in: ctx)
+
+        try ctx.save()
+        let export = try WorkoutRepository.buildExport(ctx)
+        XCTAssertEqual(export.sessions.count, 1)
+        XCTAssertEqual(export.cardio.count, 0)
+        XCTAssertEqual(export.assessments.count, 0)
+
+        let es = export.sessions[0]
+        XCTAssertEqual(es.title, "Leg Day")
+        XCTAssertEqual(es.planKey, "preset-531")
+        XCTAssertEqual(es.templateName, "5/3/1 Squat")
+        XCTAssertEqual(es.warmupSeconds, 300)
+        XCTAssertEqual(es.cooldownSeconds, 300)
+        XCTAssertEqual(es.prescribedLoadKg, 142.5)
+        XCTAssertTrue(es.isLogged == true)
+        XCTAssertEqual(es.plannedExerciseNames, ["Back Squat", "Romanian Deadlift"])
+        XCTAssertEqual(es.plannedRepLadder, [5, 3, 1])
+        XCTAssertEqual(es.notes, "Week 3")
+        XCTAssertEqual(es.sets.count, 3)
+        XCTAssertEqual(es.sets[0].exerciseName, "Back Squat")
+        XCTAssertEqual(es.sets[0].weightKg, 140)
+        XCTAssertEqual(es.sets[0].reps, 5)
+        XCTAssertEqual(es.sets[0].rpe, 9)
+        XCTAssertEqual(es.sets[0].isWarmup, false)
+        XCTAssertNil(es.sets[0].performedBy)
+        XCTAssertEqual(es.sets[1].note, "grinder")
+        XCTAssertTrue(es.sets[2].isWarmup)
+
+        // Verify the export encodes to valid JSON.
+        let json = try DataExport.encodeJSON(export)
+        let decoded = try DataExport.decodeJSON(json)
+        XCTAssertEqual(decoded.sessions[0].planKey, "preset-531")
+        XCTAssertEqual(decoded.sessions[0].plannedExerciseNames, ["Back Squat", "Romanian Deadlift"])
+    }
+
+    func testBuildExportWithCardioIncludesHRSamples() throws {
+        let ctx = try makeStore()
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+
+        let cardio = CardioWorkout(type: .run, start: now, end: now.addingTimeInterval(1800),
+                                   distance: 5000, activeEnergy: 320, avgHeartRate: 150,
+                                   maxHeartRate: 178, source: .iphone, notes: "Tempo run")
+        cardio.laps = 4
+        cardio.targetLaps = 4
+        cardio.isLogged = true
+        cardio.customTitle = "Park 5k"
+        ctx.insert(cardio)
+        ctx.insert(HRSample(t: 0, bpm: 120, cardio: cardio))
+        ctx.insert(HRSample(t: 600, bpm: 165, cardio: cardio))
+        ctx.insert(RouteSample(t: 0, lat: 37.0, lon: -122.0, elevation: 10, cardio: cardio))
+        try ctx.save()
+
+        let export = try WorkoutRepository.buildExport(ctx)
+        XCTAssertEqual(export.cardio.count, 1)
+        let ec = export.cardio[0]
+        XCTAssertEqual(ec.type, CardioType.run.rawValue)
+        XCTAssertEqual(ec.distanceMeters, 5000)
+        XCTAssertEqual(ec.avgHeartRate, 150)
+        XCTAssertEqual(ec.maxHeartRate, 178)
+        XCTAssertEqual(ec.laps, 4)
+        XCTAssertEqual(ec.targetLaps, 4)
+        XCTAssertEqual(ec.customTitle, "Park 5k")
+        XCTAssertTrue(ec.isLogged == true)
+        XCTAssertEqual(ec.hrSamples?.count, 2)
+        XCTAssertEqual(ec.hrSamples?.first?.bpm, 120)
+        XCTAssertEqual(ec.hrSamples?.last?.bpm, 165)
+        XCTAssertEqual(ec.routeSamples?.count, 1)
+        XCTAssertEqual(ec.routeSamples?.first?.lat, 37.0)
+
+        // Round-trip verification.
+        let json = try DataExport.encodeJSON(export)
+        let decoded = try DataExport.decodeJSON(json)
+        XCTAssertEqual(decoded.cardio[0].hrSamples?.count, 2)
+        XCTAssertEqual(decoded.cardio[0].routeSamples?.count, 1)
+    }
+
+    func testBuildExportWithAssessments() throws {
+        let ctx = try makeStore()
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+
+        let e1rmID = UUID()
+        let pushupID = UUID()
+        ctx.insert(Assessment(id: e1rmID, date: now, kind: .e1RM, value: 140, inputWeight: 120, inputReps: 3,
+                              exerciseName: "Bench Press"))
+        ctx.insert(Assessment(id: pushupID, date: now.addingTimeInterval(86400), kind: .pushupMax, value: 42))
+        try ctx.save()
+
+        let export = try WorkoutRepository.buildExport(ctx)
+        XCTAssertEqual(export.assessments.count, 2)
+
+        let byID = Dictionary(uniqueKeysWithValues: export.assessments.map { ($0.id, $0) })
+        XCTAssertEqual(byID[e1rmID]?.kind, AssessmentKind.e1RM.rawValue)
+        XCTAssertEqual(byID[e1rmID]?.exerciseName, "Bench Press")
+        XCTAssertEqual(byID[e1rmID]?.inputWeight, 120)
+        XCTAssertEqual(byID[e1rmID]?.inputReps, 3)
+        XCTAssertEqual(byID[pushupID]?.kind, AssessmentKind.pushupMax.rawValue)
+        XCTAssertEqual(byID[pushupID]?.value, 42)
+
+        let json = try DataExport.encodeJSON(export)
+        let decoded = try DataExport.decodeJSON(json)
+        XCTAssertEqual(decoded.assessments.count, 2)
+    }
+
+    func testBuildExportWithPreferencesRoundTrip() throws {
+        let ctx = try makeStore()
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+
+        var profile = CoachPreferenceProfile.empty
+        profile.aerobicPreferences = [
+            AerobicPreference(intent: .moderateAerobic, modality: .cycle, score: 5, updatedAt: now)
+        ]
+        profile.strengthPreferences = [
+            StrengthPreference(pattern: .horizontalPush, exerciseName: "Bench Press", score: 3, updatedAt: now)
+        ]
+        profile.avoidedTags = ["boring"]
+
+        let prefs = ExportPreferences(
+            unit: "pounds", prRule: "heaviestSet",
+            oneRepMaxFormula: "brzycki", stepGoal: 12_000,
+            weeklyCardioMinutesGoal: 200, restSeconds: 120,
+            warmupMinutes: 5, cooldownMinutes: 5,
+            autoStartRest: true, idleTimeoutMinutes: 3,
+            plateRounding: true, autoSaveHealth: false,
+            workoutSounds: true, preWorkoutCountdown: 5,
+            trainingGoal: "strength", experienceLevel: "intermediate",
+            favoriteRoutineIDs: ["preset-531", "preset-5x5"],
+            hasCompletedOnboarding: true,
+            schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 4,
+                                                          cardioDaysPerWeek: 2,
+                                                          allowsTwoADays: false),
+            coachProfile: profile)
+
+        let export = try WorkoutRepository.buildExport(ctx, preferences: prefs)
+        XCTAssertNotNil(export.preferences)
+        XCTAssertEqual(export.preferences?.unit, "pounds")
+        XCTAssertEqual(export.preferences?.prRule, "heaviestSet")
+        XCTAssertEqual(export.preferences?.stepGoal, 12_000)
+        XCTAssertEqual(export.preferences?.schedulePreferences?.strengthDaysPerWeek, 4)
+        XCTAssertEqual(export.preferences?.coachProfile?.aerobicPreferences.first?.score, 5)
+        XCTAssertEqual(export.preferences?.favoriteRoutineIDs, ["preset-531", "preset-5x5"])
+        XCTAssertTrue(export.preferences?.hasCompletedOnboarding == true)
+
+        let json = try DataExport.encodeJSON(export)
+        let decoded = try DataExport.decodeJSON(json)
+        XCTAssertEqual(decoded.preferences?.unit, "pounds")
+        XCTAssertEqual(decoded.preferences?.oneRepMaxFormula, "brzycki")
+        XCTAssertEqual(decoded.preferences?.schedulePreferences?.cardioDaysPerWeek, 2)
+        XCTAssertEqual(decoded.preferences?.coachProfile?.strengthPreferences.first?.exerciseName, "Bench Press")
+        XCTAssertEqual(decoded.preferences?.coachProfile?.avoidedTags, ["boring"])
+    }
+
+    func testFullRoundTripReExportMatches() throws {
+        let ctxA = try makeStore()
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+
+        // Strength with metadata.
+        let session = try WorkoutRepository.createSession(title: "Full Body", in: ctxA)
+        session.date = now
+        session.endedAt = now.addingTimeInterval(3600)
+        session.isLogged = true
+        session.planKey = "preset-ppl"
+        session.warmupSeconds = 300
+        session.plannedExerciseNames = ["Squat", "Bench", "Row"]
+        let squat = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctxA)
+        _ = try WorkoutRepository.addSet(to: session, exercise: squat, weightKg: 100, reps: 5, rpe: 8, completedAt: now, in: ctxA)
+        _ = try WorkoutRepository.addSet(to: session, exercise: squat, weightKg: 102.5, reps: 5, rpe: 8, completedAt: now, in: ctxA)
+
+        // Cardio with HR samples.
+        let cardio = CardioWorkout(type: .run, start: now, end: now.addingTimeInterval(1200),
+                                   distance: 3000, activeEnergy: 210, avgHeartRate: 145,
+                                   source: .iphone)
+        ctxA.insert(cardio)
+        ctxA.insert(HRSample(t: 0, bpm: 130, cardio: cardio))
+        // Assessment.
+        ctxA.insert(Assessment(date: now, kind: .pushupMax, value: 35, notes: "AM"))
+        try ctxA.save()
+
+        // Preferences.
+        let prefs = ExportPreferences(
+            unit: "kilograms", trainingGoal: "hypertrophy",
+            schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 5, cardioDaysPerWeek: 3))
+
+        let exportA = try WorkoutRepository.buildExport(ctxA, preferences: prefs)
+        let json = try DataExport.encodeJSON(exportA)
+        let decoded = try DataExport.decodeJSON(json)
+
+        // Merge into fresh store.
+        let ctxB = try makeStore()
+        let added = try WorkoutRepository.merge(decoded, in: ctxB)
+        XCTAssertEqual(added, 3, "1 session + 1 cardio + 1 assessment")
+
+        var profile = CoachPreferenceProfile.empty
+        profile.aerobicPreferences = [
+            AerobicPreference(intent: .moderateAerobic, modality: .run, score: 2, updatedAt: now)
+        ]
+        let prefsB = ExportPreferences(unit: "pounds", coachProfile: profile)
+        let exportB = try WorkoutRepository.buildExport(ctxB,
+                                                        coachPreferences: profile.exportDTO,
+                                                        preferences: prefsB)
+
+        // Core data must match (ignore exportedAt which differs).
+        XCTAssertEqual(exportB.sessions.count, exportA.sessions.count)
+        XCTAssertEqual(exportB.cardio.count, exportA.cardio.count)
+        XCTAssertEqual(exportB.assessments.count, exportA.assessments.count)
+
+        // Compare sessions by id.
+        let sessionMapA = Dictionary(uniqueKeysWithValues: exportA.sessions.map { ($0.id, $0) })
+        let sessionMapB = Dictionary(uniqueKeysWithValues: exportB.sessions.map { ($0.id, $0) })
+        for (id, a) in sessionMapA {
+            guard let b = sessionMapB[id] else { XCTFail("Session \(id) missing in re-export"); continue }
+            XCTAssertEqual(b.title, a.title)
+            XCTAssertEqual(b.planKey, a.planKey)
+            XCTAssertEqual(b.sets.count, a.sets.count)
+            XCTAssertEqual(b.warmupSeconds, a.warmupSeconds)
+        }
+
+        // Cardio must match.
+        let cardioMapA = Dictionary(uniqueKeysWithValues: exportA.cardio.map { ($0.id, $0) })
+        let cardioMapB = Dictionary(uniqueKeysWithValues: exportB.cardio.map { ($0.id, $0) })
+        for (id, a) in cardioMapA {
+            guard let b = cardioMapB[id] else { XCTFail("Cardio \(id) missing in re-export"); continue }
+            XCTAssertEqual(b.hrSamples?.count, a.hrSamples?.count)
+            XCTAssertEqual(b.distanceMeters, a.distanceMeters)
+        }
+
+        // Assessments must match.
+        XCTAssertEqual(exportB.assessments, exportA.assessments)
+    }
+
+    func testEmptyExportEncodesToValidJSON() throws {
+        let empty = CadenceExport(sessions: [])
+        let json = try DataExport.encodeJSON(empty)
+        let str = String(data: json, encoding: .utf8)!
+        XCTAssertTrue(str.contains("\"sessions\""))
+        XCTAssertTrue(str.contains("\"cardio\""))
+        XCTAssertTrue(str.contains("\"version\""))
+        // Must be parseable back.
+        let decoded = try DataExport.decodeJSON(json)
+        XCTAssertEqual(decoded.sessions.count, 0)
+        XCTAssertEqual(decoded.version, CadenceExport.currentVersion)
+    }
+
+    func testMergeDoesNotLoseSessionMetadata() throws {
+        let ctxA = try makeStore()
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+
+        let session = try WorkoutRepository.createSession(title: "Upper", in: ctxA)
+        session.date = now
+        session.endedAt = now.addingTimeInterval(2400)
+        session.isLogged = true
+        session.planKey = "preset-531"
+        session.templateName = "5/3/1 OHP"
+        session.warmupSeconds = 300
+        session.cooldownSeconds = 300
+        session.prescribedLoadKg = 67.5
+        session.plannedExerciseNames = ["Overhead Press"]
+        session.plannedRepLadder = [5, 3, 1]
+        session.notes = "Deload"
+
+        let ohp = try WorkoutRepository.findOrCreateExercise(named: "Overhead Press", category: .push, in: ctxA)
+        _ = try WorkoutRepository.addSet(to: session, exercise: ohp, weightKg: 65, reps: 5, rpe: 7, completedAt: now, in: ctxA)
+        session.activePartnerIDs = ["partner-uuid-1"]
+        try ctxA.save()
+
+        let export = try WorkoutRepository.buildExport(ctxA)
+        let ctxB = try makeStore()
+        try WorkoutRepository.merge(export, in: ctxB)
+
+        let sessions = try WorkoutRepository.allSessions(ctxB)
+        XCTAssertEqual(sessions.count, 1)
+        let s = sessions[0]
+        XCTAssertEqual(s.title, "Upper")
+        XCTAssertEqual(s.planKey, "preset-531")
+        XCTAssertEqual(s.templateName, "5/3/1 OHP")
+        XCTAssertEqual(s.warmupSeconds, 300)
+        XCTAssertEqual(s.cooldownSeconds, 300)
+        XCTAssertEqual(s.prescribedLoadKg, 67.5)
+        XCTAssertEqual(s.plannedExerciseNames, ["Overhead Press"])
+        XCTAssertEqual(s.plannedRepLadder, [5, 3, 1])
+        XCTAssertEqual(s.notes, "Deload")
+        XCTAssertTrue(s.isLogged)
+        XCTAssertEqual(s.activePartnerIDs, ["partner-uuid-1"])
+        XCTAssertEqual(s.orderedSets.count, 1)
+        XCTAssertEqual(s.orderedSets[0].weight, 65)
+    }
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import UniformTypeIdentifiers
+import os
 
 /// Full data export + JSON restore (FR-6.2). Includes Coach preferences.
 struct ExportView: View {
@@ -10,8 +11,11 @@ struct ExportView: View {
     enum Fmt: String, CaseIterable, Identifiable { case json = "JSON", csv = "CSV"; var id: String { rawValue } }
     @State private var format: Fmt = .json
     @State private var preview = ""
+    @State private var exportError: String?
     @State private var restoreText = ""
     @State private var restoreMessage: String?
+
+    private let logger = Logger(subsystem: "com.cladiron.cadence", category: "export")
 
     var body: some View {
         Form {
@@ -24,15 +28,26 @@ struct ExportView: View {
                 .onChange(of: format) { _, _ in rebuild() }
 
                 ScrollView {
-                    Text(preview.isEmpty ? "No data to export." : preview)
-                        .font(.system(.caption, design: .monospaced))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
-                        .accessibilityIdentifier("export.preview")
+                    if let error = exportError {
+                        Text(error)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                            .accessibilityIdentifier("export.error")
+                    } else {
+                        Text(preview.isEmpty ? "No data to export." : preview)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .textSelection(.enabled)
+                            .accessibilityIdentifier("export.preview")
+                    }
                 }
                 .frame(height: 200)
 
-                ShareLink(item: preview) { Label("Share Export", systemImage: "square.and.arrow.up") }
+                ShareLink(item: preview.isEmpty ? exportError ?? "" : preview) {
+                    Label("Share Export", systemImage: "square.and.arrow.up")
+                }
                     .accessibilityIdentifier("export.share")
             } header: {
                 Text("Export")
@@ -64,27 +79,55 @@ struct ExportView: View {
     }
 
     private func rebuild() {
-        guard let export = try? WorkoutRepository.buildExport(context,
-                    coachPreferences: settings.coachPreferenceProfile.exportDTO,
-                    preferences: settings.exportPreferences())
-        else { preview = ""; return }
-        switch format {
-        case .json:
-            preview = (try? DataExport.encodeJSON(export)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
-        case .csv:
-            preview = DataExport.encodeCSV(export)
+        exportError = nil
+        let export: CadenceExport
+        do {
+            export = try WorkoutRepository.buildExport(context,
+                        coachPreferences: settings.coachPreferenceProfile.exportDTO,
+                        preferences: settings.exportPreferences())
+        } catch {
+            logger.error("Export build failed: \(error.localizedDescription)")
+            exportError = "Export failed: \(error.localizedDescription)"
+            preview = ""
+            return
+        }
+        // True empty: no sessions, no cardio, no assessments.
+        if export.sessions.isEmpty && export.cardio.isEmpty && export.assessments.isEmpty {
+            preview = ""
+            return
+        }
+        do {
+            switch format {
+            case .json:
+                let data = try DataExport.encodeJSON(export)
+                preview = String(data: data, encoding: .utf8) ?? ""
+            case .csv:
+                preview = DataExport.encodeCSV(export)
+            }
+        } catch {
+            logger.error("Export encode failed: \(error.localizedDescription)")
+            exportError = "Encode failed: \(error.localizedDescription)"
+            preview = ""
         }
     }
 
     private func restore() {
-        guard let data = restoreText.data(using: .utf8),
+        let data = restoreText.data(using: .utf8)
+        guard let data,
               let export = try? DataExport.decodeJSON(data) else {
             restoreMessage = "Couldn’t read that JSON."
             return
         }
-        let added = (try? WorkoutRepository.merge(export, in: context)) ?? 0
+        let added: Int
+        do {
+            added = try WorkoutRepository.merge(export, in: context)
+        } catch {
+            logger.error("Merge failed: \(error.localizedDescription)")
+            restoreMessage = "Import failed: \(error.localizedDescription)"
+            return
+        }
         if let prefs = export.preferences { settings.applyImportedPreferences(prefs) }
-        restoreMessage = "Restored \(added) workout\(added == 1 ? "" : "s")\(export.preferences != nil ? " and your preferences" : "")."
+        restoreMessage = "Restored \(added) workout\(added == 1 ? "" : "s")\(added == 0 && export.sessions.isEmpty && export.cardio.isEmpty && export.assessments.isEmpty ? " (file contained no data)" : "")\(export.preferences != nil ? " and your preferences" : "")."
         rebuild()
     }
 }

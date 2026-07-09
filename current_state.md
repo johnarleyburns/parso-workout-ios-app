@@ -2,6 +2,35 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-08 — Export error handling fix + comprehensive export/import tests._
+
+## What just shipped — Export error handling fix + comprehensive export/import tests
+
+### Bug fix: "No data to export" when data exists
+- **Root cause:** `ExportView.rebuild()` used `try?` which silently swallowed ALL errors from `buildExport()` and `encodeJSON()`. Any SwiftData fetch failure, relationship fault, or JSON encoding error set preview to `""` and the UI misleadingly displayed "No data to export." Same pattern in `restore()`.
+- **Fix:** Proper `do/catch` with `os.Logger` diagnostic logging. Errors now show `"Export failed: <reason>"` in red. Empty-state detection is now only when `sessions + cardio + assessments` are ALL empty. Merge errors from `restore()` are surfaced instead of defaulting to 0.
+
+### New unit tests (DataExportTests — 11 new, 19 total)
+- `testBuildExportEmptyStore` — empty store produces valid export, not throw
+- `testBuildExportWithStrengthSessions` — all session metadata fields survive (plan key, template, warm/cool, prescribed load, planned names/ladder, notes, RPE, warmup flag)
+- `testBuildExportWithCardioIncludesHRSamples` — cardio with HR + route samples + laps + targets + customTitle survive round-trip
+- `testBuildExportWithAssessments` — e1RM + pushupMax assessments with all input fields survive
+- `testBuildExportWithPreferencesRoundTrip` — full preferences (unit, PR rule, formula, step goal, warmup/cooldown, schedule prefs, learned coach profile with aerobic + strength + avoidedTags, favorite routines)
+- `testFullRoundTripReExportMatches` — export A → JSON → decode → merge → re-export B → sessions/cardio/assessments match by ID
+- `testEmptyExportEncodesToValidJSON` — empty CadenceExport produces valid parseable JSON
+- `testMergeDoesNotLoseSessionMetadata` — all 14 session-level fields survive merge (plan key, template, warm/cool, prescribed load, partners, notes, isLogged, rep ladder)
+
+### New e2e UI tests (FR6MigrationUITests — +4 new, 6 total)
+- `testExportShowsActualDataWhenHistorySeeded` — with "history" seed, preview is NOT "No data to export" and contains `"sessions"`
+- `testExportShowsEmptyStateWhenNoData` — with no seed, empty-state message appears
+- `testCSVFormatShowsDataRows` — CSV format with history seed contains "Bench Press" data rows
+- `testExportIncludesBothStrengthAndCardioWhenMixedSeeded` — mixed seed export contains both `"sessions"` and `"cardio"` keys
+
+### Verification
+- `swift test`: **670 CadenceCore tests, 0 failures**.
+- `xcodebuild`: iOS scheme **BUILD SUCCEEDED**.
+
+_Prior entry:_
 _Last updated: 2026-07-07 — Coach bibliography + four unused-citation integrations._
 
 ## What just shipped — Bibliography + unused-citation integration

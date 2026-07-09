@@ -2,6 +2,29 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-08 — Gym feedback: Recents tab, machine catalog, per-partner fixes, rep pattern guessing._
+
+## What just shipped — Gym feedback improvements (3 phases)
+
+### Phase 1: Recents tab, machine catalog, equipment-first browsing
+- **Recents tab** in `ExercisePickerView`: segmented tabs (Recents / Popular / Browse). Recents shows last ~25 distinct exercises from workout history, sorted by most-recently-used via new `WorkoutRepository.recentlyUsedExercises()`.
+- **16 new machine exercises** added to the curated catalog: Machine Fly, Chest-Supported Machine Row, Machine Lat Pulldown, Machine Shoulder Press, Machine Lateral Raise, Machine Reverse Fly, Machine Bicep Curl, Machine Triceps Extension, Seated Dip Machine, Hip Adduction Machine, Hip Abduction Machine, Machine Crunch, plus detailed instructions for all. `seedVersion` bumped from 7 → 8.
+- **Equipment-first browsing** in Browse tab: toggle between "By Body Part" (existing chips) and "By Equipment" (equipment chips with body-part sub-filter). `ExerciseFacetIndex` extended with `byEquipment` and `bodyPartsByEquipment` indices.
+
+### Phase 2: Per-partner set copying fix
+- **Repeat button** now scopes to the next performer's last set for that exercise, not the absolute last set regardless of who performed it. When solo, falls back to last owner set.
+- **`plannedReps`** now accepts a `performerID` parameter so the rep default in the inline editor is performer-aware.
+
+### Phase 3: Pattern-based rep guessing
+- **New `RepPattern` engine** in CadenceCore (16 headless tests): detects flat (20-20-20), arithmetic (12-10-8), and prior-session-consensus rep patterns. Runs between the ladder override and last-logged fallback.
+- **`WorkoutRepository.repLadderHistory(for:performedBy:excluding:)`** returns `[[Int]]` — one rep array per prior session, oldest-first.
+- Wired into `SessionView.plannedReps()` so clicking "Add set" auto-fills the predicted rep count.
+
+### Verification
+- `swift test`: **685 CadenceCore tests, 0 failures** (16 new RepPattern tests).
+- `xcodebuild`: iOS scheme **BUILD SUCCEEDED**.
+
+_Prior entry:_
 _Last updated: 2026-07-08 — Export error handling fix + comprehensive export/import tests._
 
 ## What just shipped — Export error handling fix + comprehensive export/import tests

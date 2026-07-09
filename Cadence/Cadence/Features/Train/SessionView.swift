@@ -155,12 +155,33 @@ struct SessionView: View {
     }
     /// Default reps for the set at `setIndex`: the ladder value at that rung if any,
     /// else the last logged set of this exercise, else 5 (feedback batch 6 item 1).
-    private func plannedReps(for exercise: Exercise, setIndex: Int) -> Int {
+    /// Pattern-based rep guessing runs between the ladder and the last-logged
+    /// fallback so set 3 of an 12-10-8 pattern auto-fills 8.
+    private func plannedReps(for exercise: Exercise, setIndex: Int, performerID: UUID? = nil) -> Int {
         if let ladder = effectiveLadder(for: exercise.name),
            setIndex < ladder.count, ladder[setIndex] > 0 {
             return ladder[setIndex]
         }
-        if let last = session.orderedSets.last(where: { $0.exercise?.id == exercise.id }) {
+        // Pattern guess: if we have prior history for this exercise+performer,
+        // try to predict the rep count from recurring patterns.
+        if setIndex > 0 {
+            let performer = people(for: performerID)
+            let currentReps = session.orderedSets
+                .filter { $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID) }
+                .sorted { $0.order < $1.order }
+                .map { $0.reps }
+            let prior = WorkoutRepository.repLadderHistory(for: exercise,
+                                                            performedBy: performer,
+                                                            excluding: session)
+            if let guess = RepPattern.guess(setIndex: setIndex,
+                                             currentSessionReps: currentReps,
+                                             priorSessionLadders: prior) {
+                return guess
+            }
+        }
+        if let last = session.orderedSets.last(where: {
+            $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID)
+        }) {
             return last.reps
         }
         return 5
@@ -181,7 +202,7 @@ struct SessionView: View {
             inlineRPE = editing.rpe.map { Int($0.rounded()) }
         } else {
             let loggedCount = session.orderedSets.filter { $0.exercise?.id == exercise.id }.count
-            inlineReps = repsOverride ?? plannedReps(for: exercise, setIndex: loggedCount)
+            inlineReps = repsOverride ?? plannedReps(for: exercise, setIndex: loggedCount, performerID: inlinePerformedByID)
             inlineBodyweight = isBodyweight(exercise)
             inlinePerformedByID = nextPerson().flatMap { $0.isMe ? nil : $0.id }
             inlineRPE = nil
@@ -894,7 +915,10 @@ struct SessionView: View {
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("set.add.\(exercise.name)")
 
-                    if let last = sets.last {
+                    if let last = sets.last(where: {
+                        if let next = nextPerson() { return setPerformedBy($0, person: next) }
+                        return $0.isOwnerSet
+                    }) ?? sets.last {
                         Button {
                             addSet(to: exercise, weightKg: last.weight, reps: last.reps, rpe: last.rpe,
                                    isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight, note: nil,

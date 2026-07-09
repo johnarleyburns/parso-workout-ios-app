@@ -2,18 +2,15 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
-/// Searchable exercise library picker (FR-1.1, expanded feedback batch 8). To keep a
-/// large catalog usable it leads with a curated **Popular** shortlist and hides the
-/// long tail behind **Browse all** + search; a row of **body-part filter chips** and
-/// muscle subtitles make movements discoverable ("show me lats"). Each row's info
-/// button opens an in-app **ExerciseDetailView** with the public-domain image,
-/// muscles, and instructions (P2 — no external links). An inline "Create '<query>'"
-/// row adds a custom exercise.
+/// Searchable exercise library picker with three tabs:
+/// - **Recents**: last ~25 exercises from workout history
+/// - **Popular**: curated shortlist (Browse all → full catalog)
+/// - **Browse**: full catalog with body-part / equipment filter chips
+/// Each row navigates to ExerciseDetailView with public-domain image, muscles,
+/// and instructions. An inline "Create '<query>'" row adds a custom exercise.
 struct ExercisePickerView: View {
     enum PickAction {
-        case add
-        case swap
-        case use
+        case add, swap, use
 
         var navigationTitle: String {
             switch self {
@@ -32,24 +29,24 @@ struct ExercisePickerView: View {
         }
     }
 
+    enum PickerTab: String, CaseIterable { case recents, popular, browse }
+
+    enum BrowseMode: String, CaseIterable { case byBodyPart, byEquipment }
+
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var query = ""
-    /// Debounced mirror of `query`; the expensive ranking keys off this so typing
-    /// stays smooth (the ranking never runs on every keystroke).
     @State private var debouncedQuery = ""
-    /// Normalization is precomputed once here, so per-keystroke ranking is cheap.
     @State private var searchIndex = ExerciseSearchIndex<Exercise>([])
-    /// Body-part → exercises / equipment, precomputed once so the equipment
-    /// sub-filter is an instant lookup (not an O(catalog) scan per render).
     @State private var facetIndex = ExerciseFacetIndex<Exercise>([])
     @State private var indexedCount = -1
+    @State private var selectedTab: PickerTab = .recents
     @State private var selectedPart: BodyPart?
-    /// Second-level filter under the selected body part (feedback: hundreds of
-    /// movements per part). nil ⇒ all equipment for that part.
     @State private var selectedEquipment: Equipment?
+    @State private var browseMode: BrowseMode = .byBodyPart
     @State private var browseAll = false
+    @State private var recents: [Exercise] = []
     let action: PickAction
     let onPick: (Exercise) -> Void
 
@@ -60,28 +57,48 @@ struct ExercisePickerView: View {
 
     private var trimmedQuery: String { debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines) }
 
-    /// The popular shortlist, resolved against the seeded store (in catalog order).
     private var popular: [Exercise] {
         let byName = Dictionary(exercises.map { ($0.name.lowercased(), $0) }, uniquingKeysWith: { a, _ in a })
         return ExerciseLibrary.popularNames.compactMap { byName[$0.lowercased()] }
     }
 
-    /// What to show: a search beats everything; then a body-part filter; else the
-    /// popular shortlist (until "Browse all" reveals the full grouped catalog).
     private var filtered: [Exercise] {
         if !trimmedQuery.isEmpty { return searchIndex.rank(trimmedQuery) }
-        if let part = selectedPart { return facetIndex.exercises(for: part, equipment: selectedEquipment) }
-        return browseAll ? exercises : popular
+        switch selectedTab {
+        case .recents: return recents
+        case .popular: return browseAll ? exercises : popular
+        case .browse:
+            switch browseMode {
+            case .byBodyPart:
+                if let part = selectedPart { return facetIndex.exercises(for: part, equipment: selectedEquipment) }
+                return exercises
+            case .byEquipment:
+                if let eq = selectedEquipment { return facetIndex.exercises(forEquipment: eq, bodyPart: selectedPart) }
+                return exercises
+            }
+        }
     }
 
-    /// Equipment types available for the selected body part, in canonical order.
     private var availableEquipment: [Equipment] {
-        guard let part = selectedPart else { return [] }
-        return facetIndex.equipment(for: part)
+        switch browseMode {
+        case .byBodyPart:
+            guard let part = selectedPart else { return [] }
+            return facetIndex.equipment(for: part)
+        case .byEquipment:
+            return Equipment.allCases.filter { !facetIndex.exercises(forEquipment: $0).isEmpty }
+        }
     }
 
-    /// Rebuilds the normalized search index when the catalog size changes (first
-    /// load, custom exercise added). Cheap-guarded so it never runs per keystroke.
+    private var availableParts: [BodyPart] {
+        switch browseMode {
+        case .byBodyPart:
+            return BodyPart.allCases
+        case .byEquipment:
+            guard let eq = selectedEquipment else { return [] }
+            return facetIndex.bodyParts(forEquipment: eq)
+        }
+    }
+
     private func rebuildIndexIfNeeded() {
         guard exercises.count != indexedCount else { return }
         searchIndex = ExerciseSearchIndex(exercises)
@@ -101,40 +118,99 @@ struct ExercisePickerView: View {
         exercises.contains { $0.name.compare(trimmedQuery, options: .caseInsensitive) == .orderedSame }
     }
 
-    /// Group the flat list (search/filter/popular) into categories only when browsing
-    /// the whole catalog; otherwise show one flat, ranked section.
-    private var showsGrouped: Bool { browseAll && trimmedQuery.isEmpty && selectedPart == nil }
+    private var showsGrouped: Bool {
+        selectedTab == .browse && trimmedQuery.isEmpty && selectedPart == nil && selectedEquipment == nil
+    }
+
+    private var showsFilterChips: Bool {
+        selectedTab == .browse && trimmedQuery.isEmpty
+    }
+
+    private var showsSubFilter: Bool {
+        showsFilterChips && browseMode == .byBodyPart
+            && selectedPart != nil && availableEquipment.count > 1
+    }
+
+    private var showsSubFilterInverted: Bool {
+        showsFilterChips && browseMode == .byEquipment
+            && selectedEquipment != nil && availableParts.count > 0
+    }
+
+    private var sectionTitle: String {
+        if !trimmedQuery.isEmpty { return "Results" }
+        switch selectedTab {
+        case .recents: return "Recent"
+        case .popular: return browseAll ? "All" : "Popular"
+        case .browse:
+            switch browseMode {
+            case .byBodyPart:
+                if let part = selectedPart {
+                    if let eq = selectedEquipment { return "\(part.displayName)  \(eq.displayName)" }
+                    return part.displayName
+                }
+                return "All"
+            case .byEquipment:
+                if let eq = selectedEquipment {
+                    if let part = selectedPart { return "\(eq.displayName)  \(part.displayName)" }
+                    return eq.displayName
+                }
+                return "All"
+            }
+        }
+    }
 
     var body: some View {
         NavigationStack {
-            List {
-                filterChips
-                if showsEquipmentFilter { equipmentChips }
-
-                if !trimmedQuery.isEmpty && !exactMatchExists {
-                    Section {
-                        Button { create() } label: {
-                            Label("Create “\(query)”", systemImage: "plus.circle.fill")
-                        }
-                        .accessibilityIdentifier("picker.create")
-                    }
+            VStack(spacing: 0) {
+                Picker("Tab", selection: $selectedTab) {
+                    Text("Recents").tag(PickerTab.recents)
+                    Text("Popular").tag(PickerTab.popular)
+                    Text("Browse").tag(PickerTab.browse)
                 }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
 
-                if showsGrouped {
-                    ForEach(grouped, id: \.0) { cat, items in
-                        Section(cat.displayName) { ForEach(items) { exerciseRow($0) } }
+                List {
+                    if showsFilterChips {
+                        browseModePicker
+                        filterChips
+                        if showsSubFilter { equipmentChips }
+                        if showsSubFilterInverted { bodyPartSubChips }
                     }
-                } else {
-                    Section(sectionTitle) { ForEach(filtered) { exerciseRow($0) } }
-                    if !browseAll && trimmedQuery.isEmpty && selectedPart == nil {
+
+                    if !trimmedQuery.isEmpty && !exactMatchExists {
                         Section {
-                            Button { browseAll = true } label: {
-                                Label("Browse all exercises", systemImage: "square.grid.2x2")
+                            Button { create() } label: {
+                                Label("Create \(query)", systemImage: "plus.circle.fill")
                             }
-                            .accessibilityIdentifier("picker.browseAll")
+                            .accessibilityIdentifier("picker.create")
+                        }
+                    }
+
+                    if selectedTab == .recents, trimmedQuery.isEmpty, recents.isEmpty {
+                        Section {
+                            ContentUnavailableView("No recent exercises",
+                                                   systemImage: "clock.arrow.circlepath",
+                                                   description: Text("Log a workout to see exercises here."))
+                        }
+                    } else if showsGrouped {
+                        ForEach(grouped, id: \.0) { cat, items in
+                            Section(cat.displayName) { ForEach(items) { exerciseRow($0) } }
+                        }
+                    } else {
+                        Section(sectionTitle) { ForEach(filtered) { exerciseRow($0) } }
+                        if selectedTab == .popular, !browseAll, trimmedQuery.isEmpty {
+                            Section {
+                                Button { browseAll = true } label: {
+                                    Label("Browse all exercises", systemImage: "square.grid.2x2")
+                                }
+                                .accessibilityIdentifier("picker.browseAll")
+                            }
                         }
                     }
                 }
+                .listStyle(.insetGrouped)
             }
             .navigationTitle(action.navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -153,13 +229,15 @@ struct ExercisePickerView: View {
             }
         }
         .accessibilityIdentifier("picker.search")
-        .onAppear { rebuildIndexIfNeeded() }
+        .onAppear { rebuildIndexIfNeeded(); loadRecents() }
         .onChange(of: exercises.count) { _, _ in rebuildIndexIfNeeded() }
-        // Changing body part invalidates the equipment sub-filter (each part offers
-        // a different equipment set), so reset it.
         .onChange(of: selectedPart) { _, _ in selectedEquipment = nil }
-        // Debounce: coalesce keystrokes so ranking runs after a brief pause, not
-        // on every character. A cleared query updates immediately.
+        .onChange(of: selectedTab) { _, newTab in
+            if newTab == .browse { selectedEquipment = nil; selectedPart = nil }
+            if newTab != .browse { selectedPart = nil; selectedEquipment = nil }
+            if newTab == .recents { loadRecents() }
+        }
+        .onChange(of: browseMode) { _, _ in selectedEquipment = nil; selectedPart = nil }
         .task(id: query) {
             if query.isEmpty { debouncedQuery = ""; return }
             try? await Task.sleep(nanoseconds: 120_000_000)
@@ -168,18 +246,29 @@ struct ExercisePickerView: View {
         }
     }
 
-    private var sectionTitle: String {
-        if !trimmedQuery.isEmpty { return "Results" }
-        if let part = selectedPart {
-            if let eq = selectedEquipment { return "\(part.displayName) · \(eq.displayName)" }
-            return part.displayName
+    // MARK: Browse mode picker
+
+    private var browseModePicker: some View {
+        Picker("Browse by", selection: $browseMode) {
+            Text("By Body Part").tag(BrowseMode.byBodyPart)
+            Text("By Equipment").tag(BrowseMode.byEquipment)
         }
-        return "Popular"
+        .pickerStyle(.segmented)
+        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
     }
 
-    // MARK: Body-part filter chips
+    // MARK: Filter chips
 
     private var filterChips: some View {
+        Group {
+            switch browseMode {
+            case .byBodyPart: bodyPartFilterChips
+            case .byEquipment: equipmentFilterChips
+            }
+        }
+    }
+
+    private var bodyPartFilterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 chip("All", active: selectedPart == nil) { selectedPart = nil }
@@ -196,13 +285,24 @@ struct ExercisePickerView: View {
         .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 0))
     }
 
-    // MARK: Equipment sub-filter chips
-
-    /// The second chip row only earns its space when a body part is selected, no
-    /// search is active, and the part actually offers more than one equipment type.
-    private var showsEquipmentFilter: Bool {
-        trimmedQuery.isEmpty && selectedPart != nil && availableEquipment.count > 1
+    private var equipmentFilterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip("All", active: selectedEquipment == nil) { selectedEquipment = nil }
+                    .accessibilityIdentifier("picker.equip.all")
+                ForEach(availableEquipment) { eq in
+                    chip(eq.displayName, active: selectedEquipment == eq) {
+                        selectedEquipment = (selectedEquipment == eq) ? nil : eq
+                    }
+                    .accessibilityIdentifier("picker.equip.\(eq.rawValue)")
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 0))
     }
+
+    // MARK: Sub-filter chips (byBodyPart: equipment, byEquipment: body part)
 
     private var equipmentChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -214,6 +314,23 @@ struct ExercisePickerView: View {
                         selectedEquipment = (selectedEquipment == eq) ? nil : eq
                     }
                     .accessibilityIdentifier("picker.equip.\(eq.rawValue)")
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 6, trailing: 0))
+    }
+
+    private var bodyPartSubChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip("All", active: selectedPart == nil) { selectedPart = nil }
+                    .accessibilityIdentifier("picker.filter.all")
+                ForEach(availableParts) { part in
+                    chip(part.displayName, active: selectedPart == part) {
+                        selectedPart = (selectedPart == part) ? nil : part
+                    }
+                    .accessibilityIdentifier("picker.filter.\(part.rawValue)")
                 }
             }
             .padding(.vertical, 2)
@@ -235,10 +352,6 @@ struct ExercisePickerView: View {
 
     // MARK: Rows
 
-    /// A single `NavigationLink` per row. Making the whole row the tap target (vs a
-    /// `Button` inside a `.searchable` `List`) fixes the "tap does nothing" bug: a
-    /// button's first tap was being consumed by the keyboard dismissal, whereas a
-    /// List `NavigationLink` registers on the first tap with the keyboard up.
     private func exerciseRow(_ ex: Exercise) -> some View {
         NavigationLink(value: ex) {
             HStack {
@@ -264,8 +377,6 @@ struct ExercisePickerView: View {
         .accessibilityIdentifier("picker.row.\(ex.name)")
     }
 
-    /// Friendly muscle list from the exercise's primary muscles ("upper-chest" →
-    /// "Upper Chest"), so a glance shows what it trains (batch 8).
     private func muscleSubtitle(_ ex: Exercise) -> String? {
         let ids = ex.primaryMuscles.isEmpty ? ex.muscleGroups : ex.primaryMuscles
         guard !ids.isEmpty else { return nil }
@@ -279,6 +390,12 @@ struct ExercisePickerView: View {
         guard !name.isEmpty else { return }
         if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
             onPick(ex); dismiss()
+        }
+    }
+
+    private func loadRecents() {
+        if let r = try? WorkoutRepository.recentlyUsedExercises(context) {
+            recents = r
         }
     }
 }

@@ -140,6 +140,22 @@ public enum WorkoutRepository {
         ExerciseSearch.rank(query, over: try allExercises(context))
     }
 
+    /// The most recently used distinct exercises from the user's workout history
+    /// (Recents tab). Returns up to `limit` exercises ordered by recency.
+    public static func recentlyUsedExercises(_ context: ModelContext, limit: Int = 25) throws -> [Exercise] {
+        let all = try context.fetch(FetchDescriptor<SetEntry>(
+            sortBy: [SortDescriptor(\.completedAt, order: .reverse)]
+        ))
+        var seen = Set<UUID>()
+        var result: [Exercise] = []
+        for set in all {
+            guard let exercise = set.exercise, seen.insert(exercise.id).inserted,
+                  result.count < limit else { continue }
+            result.append(exercise)
+        }
+        return result
+    }
+
     /// Finds an existing exercise by case-insensitive name or creates a custom
     /// one. New customs carry any provided facets and derived search keywords
     /// (field-testing §03).
@@ -468,6 +484,22 @@ public enum WorkoutRepository {
     private static func set(_ set: SetEntry, wasPerformedBy person: Person?) -> Bool {
         guard let person, !person.isMe else { return set.isOwnerSet }
         return set.performedBy?.id == person.id
+    }
+
+    /// Rep ladders (one `[Int]` per prior session) for an exercise, scoped to a
+    /// performer. Ordered oldest first so the last element is the most recent.
+    public static func repLadderHistory(for exercise: Exercise,
+                                        performedBy person: Person?,
+                                        excluding session: WorkoutSession?) -> [[Int]] {
+        let sets = (exercise.sets ?? []).filter {
+            $0.session?.id != session?.id && set($0, wasPerformedBy: person)
+        }
+        let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
+        let sessions = Array(grouped.values)
+            .sorted { ($0.first?.session?.date ?? .distantPast) < ($1.first?.session?.date ?? .distantPast) }
+        return sessions.map { sessionSets in
+            sessionSets.sorted { $0.order < $1.order }.map { $0.reps }
+        }
     }
 
     /// Current PR value for an exercise under the rule, optionally excluding a

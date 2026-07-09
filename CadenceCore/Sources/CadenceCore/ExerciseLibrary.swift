@@ -53,7 +53,7 @@ public enum ExerciseLibrary {
 
     /// Built-in catalog seeded on first launch and version-upgraded thereafter.
     /// Bump `seedVersion` when entries are added so existing stores backfill.
-    public static let seedVersion = 7
+    public static let seedVersion = 8
 
     /// Our hand-curated catalog — the authoritative facet source (our muscle ids,
     /// movement-split categories, the "popular" shortlist all reference these).
@@ -213,6 +213,11 @@ public enum ExerciseLibrary {
         .init("Cable Crossover", .push, .cable, .push, .isolation, primary: ["chest"]),
         .init("Machine Chest Press", .push, .machine, .push, .compound, primary: ["chest"], secondary: ["triceps"]),
         .init("Pec Deck", .push, .machine, .push, .isolation, primary: ["chest"]),
+        .init("Machine Fly", .push, .machine, .push, .isolation, primary: ["chest"],
+              instructions: ["Sit in the fly machine with back flat against the pad.",
+                             "Grasp the handles with arms extended to the sides.",
+                             "Squeeze chest to bring handles together in front of you.",
+                             "Slowly return to starting position."]),
         .init("Smith Machine Bench Press", .push, .smith, .push, .compound, primary: ["chest"], secondary: ["triceps"]),
         .init("Push-Up", .push, .bodyweight, .push, .compound, primary: ["chest"], secondary: ["triceps", "front-delts"]),
         .init("Incline Push-Up", .push, .bodyweight, .push, .compound, primary: ["chest"], secondary: ["triceps"]),
@@ -233,6 +238,16 @@ public enum ExerciseLibrary {
         .init("Inverted Row", .pull, .bodyweight, .pull, .compound, primary: ["rhomboids", "lats"], secondary: ["biceps"]),
         .init("Back Extension", .pull, .bodyweight, .pull, .isolation, primary: ["lower-back"], secondary: ["glutes", "hamstrings"]),
         .init("Rack Pull", .pull, .barbell, .pull, .compound, primary: ["lower-back", "traps"], secondary: ["lats", "glutes"]),
+        .init("Chest-Supported Machine Row", .pull, .machine, .pull, .compound, primary: ["rhomboids", "lats"], secondary: ["biceps", "rear-delts"],
+              instructions: ["Adjust chest pad so arms are fully extended in starting position.",
+                             "Grasp handles with palms facing in or down.",
+                             "Pull handles toward you, squeezing shoulder blades together.",
+                             "Slowly return to full extension."]),
+        .init("Machine Lat Pulldown", .pull, .machine, .pull, .compound, primary: ["lats"], secondary: ["biceps"],
+              instructions: ["Sit at the machine with thighs secured under the pad.",
+                             "Grasp the handles above you with a wide grip.",
+                             "Pull the handles down to your upper chest, squeezing lats.",
+                             "Control the return to the start position."]),
     ]
 
     // MARK: Shoulders
@@ -247,6 +262,21 @@ public enum ExerciseLibrary {
         .init("Face Pull", .pull, .cable, .pull, .isolation, primary: ["rear-delts"], secondary: ["traps"]),
         .init("Barbell Shrug", .pull, .barbell, .pull, .isolation, primary: ["traps"]),
         .init("Dumbbell Shrug", .pull, .dumbbell, .pull, .isolation, primary: ["traps"]),
+        .init("Machine Shoulder Press", .push, .machine, .push, .compound, primary: ["delts", "front-delts"], secondary: ["triceps"],
+              instructions: ["Sit in the shoulder press machine with back flat against the pad.",
+                             "Grasp handles at shoulder height with palms facing forward.",
+                             "Press handles overhead until arms are fully extended.",
+                             "Lower handles back to shoulder level with control."]),
+        .init("Machine Lateral Raise", .push, .machine, .push, .isolation, primary: ["delts"],
+              instructions: ["Sit in the lateral raise machine with arms resting on the pads.",
+                             "Position elbows at roughly 90 degrees against the pads.",
+                             "Raise arms out to the sides until they reach shoulder height.",
+                             "Slowly lower back to the starting position."]),
+        .init("Machine Reverse Fly", .pull, .machine, .pull, .isolation, primary: ["rear-delts"],
+              instructions: ["Sit facing the machine with chest against the pad.",
+                             "Grasp the handles with arms extended forward.",
+                             "Pull the handles outward and back, squeezing rear delts.",
+                             "Slowly return to the starting position."]),
     ]
 
     // MARK: Arms
@@ -259,6 +289,21 @@ public enum ExerciseLibrary {
         .init("Concentration Curl", .pull, .dumbbell, .pull, .isolation, primary: ["biceps"], lateral: true),
         .init("Cable Curl", .pull, .cable, .pull, .isolation, primary: ["biceps"]),
         .init("Preacher Curl", .pull, .machine, .pull, .isolation, primary: ["biceps"]),
+        .init("Machine Bicep Curl", .pull, .machine, .pull, .isolation, primary: ["biceps"],
+              instructions: ["Sit at the bicep curl machine with elbows resting on the pad.",
+                             "Grasp the handles with palms facing up.",
+                             "Curl handles toward your shoulders, squeezing biceps at the top.",
+                             "Slowly lower back to the starting position."]),
+        .init("Machine Triceps Extension", .push, .machine, .push, .isolation, primary: ["triceps"],
+              instructions: ["Sit in the triceps machine with back flat against the pad.",
+                             "Grasp handles with arms bent at 90 degrees.",
+                             "Push handles down until arms are fully extended.",
+                             "Slowly return to the starting position."]),
+        .init("Seated Dip Machine", .push, .machine, .push, .compound, primary: ["triceps"], secondary: ["chest"],
+              instructions: ["Sit in the dip machine with back against the pad.",
+                             "Grasp the parallel handles at your sides.",
+                             "Press down until arms are fully extended.",
+                             "Slowly return to the starting position."]),
         .init("Triceps Pushdown", .push, .cable, .push, .isolation, primary: ["triceps"]),
         .init("Skull Crusher", .push, .barbell, .push, .isolation, primary: ["triceps"]),
         .init("Close-Grip Bench Press", .push, .barbell, .push, .compound, primary: ["triceps"], secondary: ["chest"]),
@@ -278,6 +323,16 @@ public enum ExerciseLibrary {
         .init("Bulgarian Split Squat", .legs, .dumbbell, .push, .compound, primary: ["quads", "glutes"], lateral: true),
         .init("Walking Lunge", .legs, .dumbbell, .push, .compound, primary: ["quads", "glutes"], lateral: true),
         .init("Leg Extension", .legs, .machine, .push, .isolation, primary: ["quads"]),
+        .init("Hip Adduction Machine", .legs, .machine, .push, .isolation, primary: ["adductors"],
+              instructions: ["Sit in the adduction machine and adjust the thigh pads.",
+                             "Position the pads against your inner thighs.",
+                             "Squeeze your thighs together against the resistance.",
+                             "Slowly return to the starting position."]),
+        .init("Hip Abduction Machine", .legs, .machine, .push, .isolation, primary: ["glutes", "abductors"],
+              instructions: ["Sit in the abduction machine and adjust the thigh pads.",
+                             "Position the pads against your outer thighs.",
+                             "Push legs outward against the resistance.",
+                             "Slowly return to the starting position."]),
         .init("Romanian Deadlift", .legs, .barbell, .pull, .compound, primary: ["hamstrings", "glutes"], secondary: ["lower-back"]),
         .init("Stiff-Leg Deadlift", .legs, .barbell, .pull, .compound, primary: ["hamstrings"], secondary: ["glutes", "lower-back"]),
         .init("Lying Leg Curl", .legs, .machine, .pull, .isolation, primary: ["hamstrings"]),
@@ -304,6 +359,11 @@ public enum ExerciseLibrary {
         .init("Russian Twist", .core, .bodyweight, .pull, .isolation, primary: ["obliques"], secondary: ["abs"]),
         .init("Ab Wheel Rollout", .core, .bodyweight, .pull, .compound, primary: ["abs"], secondary: ["lower-back"]),
         .init("Mountain Climber", .core, .bodyweight, .push, .compound, primary: ["abs", "hip-flexors"]),
+        .init("Machine Crunch", .core, .machine, .pull, .isolation, primary: ["abs"],
+              instructions: ["Sit in the abdominal crunch machine with chest against pad.",
+                             "Grasp the handles at chest level.",
+                             "Crunch forward, contracting your abs.",
+                             "Slowly return to the starting position."]),
     ]
 
     // MARK: Olympic / carries / full-body

@@ -36,7 +36,7 @@ Requires Xcode 16+, Swift 6. Real-device testing needed for HealthKit/CoreBlueto
 
 ```sh
 cd CadenceCore && swift build        # core package
-cd CadenceCore && swift test         # 250+ tests
+cd CadenceCore && swift test         # 718 tests (including 21 coach scientific validations)
 open Cadence/Cadence.xcodeproj       # iOS app (watchOS target in-repo, not in the current release)
 # CLI build:
 xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence \
@@ -46,6 +46,8 @@ xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence \
 ## Status
 
 Active development. The app ships a full recovery-aware coaching engine with 30+ peer-reviewed citations, 1,000+ exercises, and 28+ preset routines. See `PLAN_STATUS.md` for detailed phase tracking and `docs/CITATIONS.md` for the evidence base.
+
+**Coach scientific validation:** A 21-test black-box suite (`CoachScientificValidationTests`) verifies every coaching rule against published exercise science — recovery gates, balance priorities, preference learning, assessment prompts, and edge cases. Each test carries a `CitationRegistry` reference. The full list of validated rules is accessible in-app under Settings → Coach → Coach Methodology. Run with `swift test --filter CoachScientificValidationTests`.
 
 App Store launch materials live in `docs/app-store/metadata.md` and `docs/app-store/release-checklist.md`.
 

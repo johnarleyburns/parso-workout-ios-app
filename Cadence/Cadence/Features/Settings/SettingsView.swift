@@ -109,6 +109,13 @@ struct SettingsView: View {
                 }
 
                 NavigationLink {
+                    CoachMethodologyView()
+                } label: {
+                    Label("Coach Methodology", systemImage: "text.book.closed")
+                }
+                .accessibilityIdentifier("settings.coach.methodology")
+
+                NavigationLink {
                     CoachSchedulePreferencesView()
                 } label: {
                     Label("Coach & Plan", systemImage: "gearshape")

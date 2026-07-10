@@ -369,7 +369,11 @@ public enum DataExport {
     private static func jsonEncoder() -> JSONEncoder {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
-        e.outputFormatting = [.prettyPrinted, .sortedKeys]
+        // Compact (no pretty-print): the payload is never rendered as text, it is
+        // written to a file and gzipped. Sorted keys keep output deterministic;
+        // withoutEscapingSlashes shrinks ISO dates. Round-trip is byte-agnostic —
+        // tests compare decoded structs, not formatting.
+        e.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         return e
     }
 
@@ -385,8 +389,25 @@ public enum DataExport {
         try jsonEncoder().encode(export)
     }
 
+    /// Compact JSON compressed as a standard gzip (`.json.gz`) container — the
+    /// default share/backup format. HR/route-heavy payloads compress ~15–20×.
+    public static func encodeJSONGzipped(_ export: CadenceExport) throws -> Data {
+        try DataCompression.gzip(encodeJSON(export))
+    }
+
     public static func decodeJSON(_ data: Data) throws -> CadenceExport {
         try jsonDecoder().decode(CadenceExport.self, from: data)
+    }
+
+    /// Decodes an exported file regardless of container, sniffing magic bytes so
+    /// every historical export stays importable forever:
+    /// - `1F 8B` → gzip: inflate, then decode JSON.
+    /// - otherwise → plain JSON (all v1–v4 exports), decode directly.
+    public static func decodeAny(_ data: Data) throws -> CadenceExport {
+        if data.count >= 2, data[data.startIndex] == 0x1f, data[data.startIndex + 1] == 0x8b {
+            return try decodeJSON(DataCompression.gunzip(data))
+        }
+        return try decodeJSON(data)
     }
 
     // MARK: CSV (sets, one row per set — the most portable strength format)

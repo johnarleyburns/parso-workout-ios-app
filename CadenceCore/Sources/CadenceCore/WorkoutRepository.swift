@@ -924,8 +924,58 @@ public enum WorkoutRepository {
     public static func merge(_ export: CadenceExport, in context: ModelContext) throws -> Int {
         var added = 0
 
-        // Sessions
-        let existingSessionIDs = Set(try allSessions(context).map(\.id))
+        // Case-folded exercise + person caches, built once, so import is O(sets)
+        // instead of O(sets × exercises) (a full `allExercises` fetch per set).
+        var exerciseByName: [String: Exercise] = [:]
+        for ex in try allExercises(context) { exerciseByName[ex.name.lowercased()] = ex }
+        var personByName: [String: Person] = [:]
+        for p in try allPeople(context) { personByName[p.name.lowercased()] = p }
+
+        func resolveExercise(named name: String, category: ExerciseCategory?) throws -> Exercise {
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let key = trimmed.lowercased()
+            if let hit = exerciseByName[key] { return hit }
+            let template = ExerciseLibrary.byName[key]
+            let resolvedCategory = category ?? template?.category
+            let keywords = ExerciseSearch.keywords(
+                name: trimmed, equipment: template?.equipment, isLateral: template?.isLateral ?? false,
+                force: template?.force, mechanics: template?.mechanics,
+                primaryMuscles: template?.primaryMuscles ?? [], secondaryMuscles: template?.secondaryMuscles ?? [])
+            let ex = Exercise(name: trimmed, category: resolvedCategory,
+                              muscleGroups: (template?.primaryMuscles ?? []) + (template?.secondaryMuscles ?? []),
+                              isCustom: template == nil, equipment: template?.equipment,
+                              isLateral: template?.isLateral ?? false, mechanics: template?.mechanics,
+                              force: template?.force, primaryMuscles: template?.primaryMuscles ?? [],
+                              secondaryMuscles: template?.secondaryMuscles ?? [], searchKeywords: keywords)
+            context.insert(ex)
+            exerciseByName[key] = ex
+            return ex
+        }
+
+        func resolvePerson(named name: String) -> Person {
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let key = trimmed.lowercased()
+            if let hit = personByName[key] { return hit }
+            let p = Person(name: trimmed, isMe: false)
+            context.insert(p)
+            personByName[key] = p
+            return p
+        }
+
+        // Batch saves to bound peak memory on large imports (year-plus of HR/route
+        // samples). Save every ~25 cardio workouts / ~50k sample inserts.
+        var pendingSamples = 0
+        func maybeSave(force: Bool = false) throws {
+            if force || pendingSamples >= 50_000 {
+                try context.save()
+                pendingSamples = 0
+            }
+        }
+
+        // Sessions. Dedup IDs via a lightweight id-only fetch (no full model faults).
+        var sessionDesc = FetchDescriptor<WorkoutSession>()
+        sessionDesc.propertiesToFetch = [\.id]
+        let existingSessionIDs = Set(try context.fetch(sessionDesc).map(\.id))
         for es in export.sessions where !existingSessionIDs.contains(es.id) {
             let session = WorkoutSession(id: es.id, title: es.title, date: es.date, notes: es.notes)
             session.endedAt = es.endedAt
@@ -941,8 +991,8 @@ public enum WorkoutRepository {
             context.insert(session)
             for set in es.sets {
                 let cat = set.category.flatMap(ExerciseCategory.init(rawValue:))
-                let ex = try findOrCreateExercise(named: set.exerciseName, category: cat, in: context)
-                let person = try set.performedBy.map { try findOrCreatePerson(named: $0, in: context) }
+                let ex = try resolveExercise(named: set.exerciseName, category: cat)
+                let person = set.performedBy.map { resolvePerson(named: $0) }
                 let s = SetEntry(id: set.id, weight: set.weightKg, reps: set.reps, order: set.order,
                                  isWarmup: set.isWarmup, usesBodyweight: set.usesBodyweight ?? false,
                                  rpe: set.rpe, note: set.note,
@@ -952,12 +1002,17 @@ public enum WorkoutRepository {
                                  loadMultiplier: set.loadMultiplier ?? 1.0,
                                  loadAccountingMode: set.loadAccountingMode)
                 context.insert(s)
+                pendingSamples += 1
             }
             added += 1
+            try maybeSave()
         }
 
         // Cardio (was previously dropped on import — the big data-loss bug)
-        let existingCardioIDs = Set(try allCardio(context).map(\.id))
+        var cardioDesc = FetchDescriptor<CardioWorkout>()
+        cardioDesc.propertiesToFetch = [\.id]
+        let existingCardioIDs = Set(try context.fetch(cardioDesc).map(\.id))
+        var cardioSinceSave = 0
         for ec in export.cardio where !existingCardioIDs.contains(ec.id) {
             let type = CardioType(rawValue: ec.type) ?? .other
             let source = CardioSource(rawValue: ec.source) ?? .iphone
@@ -973,15 +1028,22 @@ public enum WorkoutRepository {
             context.insert(cardio)
             for hr in ec.hrSamples ?? [] {
                 context.insert(HRSample(t: hr.t, bpm: hr.bpm, cardio: cardio))
+                pendingSamples += 1
             }
             for r in ec.routeSamples ?? [] {
                 context.insert(RouteSample(t: r.t, lat: r.lat, lon: r.lon, elevation: r.elevation, cardio: cardio))
+                pendingSamples += 1
             }
             added += 1
+            cardioSinceSave += 1
+            if cardioSinceSave >= 25 { try maybeSave(force: true); cardioSinceSave = 0 }
+            else { try maybeSave() }
         }
 
         // Assessments (were never exported/imported before)
-        let existingAssessmentIDs = Set(try context.fetch(FetchDescriptor<Assessment>()).map(\.id))
+        var assessmentDesc = FetchDescriptor<Assessment>()
+        assessmentDesc.propertiesToFetch = [\.id]
+        let existingAssessmentIDs = Set(try context.fetch(assessmentDesc).map(\.id))
         for ea in export.assessments where !existingAssessmentIDs.contains(ea.id) {
             let kind = AssessmentKind(rawValue: ea.kind) ?? .pushupMax
             let a = Assessment(id: ea.id, date: ea.date, kind: kind, value: ea.value,

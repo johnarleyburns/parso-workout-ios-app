@@ -66,7 +66,7 @@ final class HomeSimplificationUITests: CadenceUITestCase {
         if exportLink.waitForExistence(timeout: 5), exportLink.isHittable {
             exportLink.tap()
             if app.navigationBars["Export"].waitForExistence(timeout: 5) {
-                XCTAssertTrue(app.textViews["export.preview"].waitForExistence(timeout: 5))
+                XCTAssertTrue(app.descendants(matching: .any)["export.summary"].waitForExistence(timeout: 5))
             }
         }
     }

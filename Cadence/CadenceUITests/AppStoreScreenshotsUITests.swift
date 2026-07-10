@@ -67,7 +67,7 @@ final class AppStoreScreenshotsUITests: CadenceUITestCase {
         XCTAssertTrue(settingsApp.scrollToHittableAndTap("settings.export"), "open Export")
         XCTAssertTrue(settingsApp.navigationBars["Export"].waitForExistence(timeout: 10),
                       "Export screen")
-        _ = settingsApp.descendants(matching: .any)["export.preview"].waitForExistence(timeout: 3)
+        _ = settingsApp.descendants(matching: .any)["export.summary"].waitForExistence(timeout: 3)
         try capture("08-backup-export", app: settingsApp)
 
         settingsApp.popToHome()

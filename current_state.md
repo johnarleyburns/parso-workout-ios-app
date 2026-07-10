@@ -2,9 +2,52 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-09 — Export freeze fix v3: summary card + gzip file share (no payload in SwiftUI)._
+
+## What just shipped — Export freeze fix v3 (root cause: monolithic `Text` layout)
+
+### Problem
+Task.detached (v2) moved the *build/encode* off-main but the freeze/watchdog kill
+(0x8badf00d) persisted because the **actual** blocker was rendering the entire
+multi-MB export payload in a SwiftUI `Text` (`.textSelection(.enabled)`) — a
+monolithic CoreText layout on the main thread after `preview = previewText`.
+`ShareLink(item: preview)` and the `TextEditor` restore path had the same class
+of problem. Simulator tests passed only because seeded data is tiny and the
+simulator has no watchdog.
+
+### Fixes
+- **No payload string ever touches SwiftUI.** `ExportView` now shows an
+  `ExportSummary` card (counts, per-cardio-type breakdown, HR/route sample totals,
+  assessment count, date span, preference/coach-profile counts, raw+compressed
+  size). `accessibilityIdentifier` retired `export.preview` → `export.summary`.
+- **Export writes a file; share is a URL.** The detached task writes
+  `Cladiron-Export-<date>.json.gz` (or `.csv`) to the temp dir (clearing stale
+  ones) and `ShareLink(item: url)` streams it. Honors `Task.isCancelled` so a
+  JSON↔CSV toggle mid-build never runs two builds.
+- **gzip compression (`DataCompression.swift`).** First-party zlib deflate via
+  Apple's `Compression` framework + a gzip header/CRC32 wrapper (zero deps,
+  NFR-6). HR/route-heavy payloads compress ≫5×. `DataExport.encodeJSONGzipped`.
+- **Import via `.fileImporter`, off-main, magic-byte sniff.** `DataExport.decodeAny`
+  inflates gzip (`1F 8B`) or decodes plain JSON (`{`) — every v1–v4 export stays
+  importable forever. Merge runs in a detached task with a fresh `ModelContext`.
+- **Compact JSON.** Dropped `.prettyPrinted`; added `.withoutEscapingSlashes`.
+- **`merge()` perf.** Name→entity dict caches (was O(sets×exercises)), id-only
+  `propertiesToFetch` dedup fetches, and batched saves (~25 cardio / ~50k samples)
+  to bound peak memory on large imports.
+- **`ExportRoundTripFixture`** (CadenceCore): one seeder covering every cardio
+  type, every HIIT preset, all 8 strength structural variations, every assessment
+  kind, and full preferences — shared by unit + UI tests.
+
+### Verification
+- `swift test`: **697 CadenceCore tests, 0 failures** (+11: compression, summary,
+  fixture lossless round-trip, coach determinism at pinned `referenceDate`, scale).
+- `xcodebuild`: iOS scheme **BUILD SUCCEEDED**; the 4 `FR6MigrationUITests` export
+  cases pass against the new summary card.
+
+_Prior entry:_
 _Last updated: 2026-07-09 — Export freeze fix v2: Task.detached replaces @ModelActor._
 
-## What just shipped — Export freeze fix v2
+## What shipped earlier — Export freeze fix v2
 
 ### Problem
 The previous `@ModelActor ExportActor` approach (2026-07-08) still caused the UI to freeze and crash on large datasets. The `@ModelActor` macro's `DefaultSerialModelExecutor` can run fetches on the main actor's queue, and JSON/CSV encoding ran back on `@MainActor` after the `await` returned. Both contributed to watchdog kills.

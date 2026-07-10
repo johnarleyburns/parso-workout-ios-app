@@ -21,7 +21,7 @@ A free, open-source, science-based **strength coach** for iPhone. v1 is iPhone-f
 - **BLE chest strap** — CoreBluetooth `0x180D` with exponential-backoff reconnection, battery monitoring, and cold-launch auto-reconnect.
 - **HealthKit** — reads steps, ingests Watch-recorded workouts + HR; writes strength/cardio/interval summaries, HR samples, and GPS routes back to Health.
 - **History & trends** — unified strength + cardio history, per-exercise trend charts, PR timeline, consistency heatmap, workout summary with full per-set detail.
-- **Privacy-first** — fully local (SwiftData), no cloud sync, no accounts, no server, no ads. A complete JSON export/import lets you back up and move your data (full history + preferences) to a fresh install.
+- **Privacy-first** — fully local (SwiftData), no cloud sync, no accounts, no server, no ads. A complete, compressed JSON backup (`.json.gz`) export/import lets you back up and move your data (full history + preferences) to a fresh install; imports also accept plain `.json`.
 
 ## Architecture
 

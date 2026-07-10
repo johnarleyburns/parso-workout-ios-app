@@ -10,6 +10,7 @@ struct CoachDecisionCardView: View {
     var onSeeInsights: () -> Void
     var onPreferences: () -> Void
     var onPickAlternative: () -> Void = {}
+    var onFixCustomExercises: () -> Void = {}
 
     @State private var warningsExpanded = false
     @State private var addOnsExpanded = false
@@ -251,6 +252,14 @@ struct CoachDecisionCardView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("coach.card.insights")
+
+                    if topInsight.kind == .exerciseDefinition {
+                        Button { onFixCustomExercises() } label: {
+                            Label("Fix in Settings", systemImage: "gearshape")
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.caption)
+                    }
                 }
             }
         }

@@ -2,7 +2,52 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-09 — Export freeze fix v3: summary card + gzip file share (no payload in SwiftUI)._
+_Last updated: 2026-07-10 — Custom exercise completeness: category-to-muscle fallback, export round-trip, settings list, picker improvements, coach insight._
+
+## What just shipped — Custom exercise completeness (5 phases)
+
+### Problem
+Custom exercises with empty `primaryMuscles` were invisible to the coach's volume accounting, causing phantom deficits and naggy "planned volume needs attention" insights.
+
+### Phase 1 — Category-to-Muscle & Category-to-BodyPart fallback
+- Added `BodyPart.parts(forCategory:)`, `defaultMuscles(forCategory:)`, `guessCategory(from:)` — category-to-muscle/bodypart fallback + name-to-category guessing from common fitness naming conventions
+- `TrainingFacts.make()`: category fallback when primary muscles are empty but category is known
+- `CoachPlanOptimizer.muscleIDs(for:)` and `partsCovered(by:)`: category fallback via exercise name guessing
+- `PlanAwareInsightEngine.muscleIDs(for:)`: category fallback
+- `WorkoutRepository.findOrCreateExercise`: pre-fill muscles from category when template and caller don't provide them
+- Added 3 tests to `BodyPartTests.swift` (partsForCategory, defaultMusclesForCategory, guessCategory)
+
+### Phase 5 — Export/import round-trip for custom exercises
+- Added `ExportExercise` struct (v5) — carries all exercise facets for round-trip
+- `CadenceExport.currentVersion` bumped to 5, with `exercises: [ExportExercise]` field (defaults to `[]` for v4 backward compat)
+- `WorkoutRepository.buildExport()` exports all custom exercises with full facet data
+- `WorkoutRepository.merge()` imports custom exercises before resolving session exercises
+- Added `testCustomExerciseRoundTrip` and `testV4BackwardCompat` to `DataExportTests.swift`
+
+### Phase 3 — Settings: Custom Exercise List with edit + delete & reassign
+- New `CustomExerciseListView.swift` — lists custom exercises with category/bodypart chips, incomplete badge, edit sheet, and delete & reassign flow
+- Added `WorkoutRepository.reassignAndDeleteExercise(from:into:)` — reassigns all sets to a built-in exercise and deletes the custom one
+- Added `SettingsView` → "Exercises" section with link to Custom Exercises
+- Added `testReassignAndDeleteExercise` to `WorkoutRepositoryTests.swift`
+
+### Phase 2 — Exercise picker: match suggestion + creation pills
+- Added `bestLibraryMatch` computed property to `ExercisePickerView`
+- When search has ≥3 chars, shows "Found a good match" card with "Use this exercise" button
+- "Create" button now opens a creation sheet with category picker (auto-guessed from name), showing auto-filled body parts and muscles
+- Category change updates pre-selected muscles via `BodyPart.defaultMuscles(forCategory:)`
+
+### Phase 4 — Coach insight: "Custom exercises need muscle definitions"
+- Added `exerciseDefinition` case to `InsightKind`
+- Added `incompleteCustomExerciseNames` field to `TrainingFacts`
+- Added `incompleteCustomExercises` rule to `InsightRule.p3Rules` (priority 35)
+- Added `brennanExerciseClassification2025` citation + `exerciseDefinitionPool`
+- Added "Fix in Settings" button on `CoachDecisionCardView` when insight kind is `.exerciseDefinition`
+- Added `HomeRoute.customExercises` with navigation destination
+- Added symbol for `exerciseDefinition` insight kind
+
+### Test results
+- `swift test`: 724 tests pass (0 failures)
+- `xcodebuild`: BUILD SUCCEEDED
 
 ## What just shipped — Export freeze fix v3 (root cause: monolithic `Text` layout)
 

@@ -47,6 +47,11 @@ struct ExercisePickerView: View {
     @State private var browseMode: BrowseMode = .byBodyPart
     @State private var browseAll = false
     @State private var recents: [Exercise] = []
+    @State private var showCreationSheet = false
+    @State private var selectedCreationCategory: ExerciseCategory = .other
+    @State private var selectedCreationMuscles: Set<String> = []
+    @State private var selectedCreationSecondary: Set<String> = []
+    @State private var selectedCreationParts: Set<BodyPart> = []
     let action: PickAction
     let onPick: (Exercise) -> Void
 
@@ -118,6 +123,22 @@ struct ExercisePickerView: View {
         exercises.contains { $0.name.compare(trimmedQuery, options: .caseInsensitive) == .orderedSame }
     }
 
+    private var bestLibraryMatch: Exercise? {
+        guard trimmedQuery.count >= 3 else { return nil }
+        let normalized = ExerciseSearch.normalize(trimmedQuery)
+        let builtIns = exercises.filter { !$0.isCustom }
+        let matches = builtIns.filter { ex in
+            let exName = ExerciseSearch.normalize(ex.name)
+            guard exName != normalized else { return false }
+            return exName.contains(normalized) || normalized.contains(exName)
+        }
+        if matches.count == 1 { return matches[0] }
+        if matches.count > 1 {
+            return ExerciseSearchIndex(matches).rank(trimmedQuery).first
+        }
+        return nil
+    }
+
     private var showsGrouped: Bool {
         selectedTab == .browse && trimmedQuery.isEmpty && selectedPart == nil && selectedEquipment == nil
     }
@@ -181,10 +202,32 @@ struct ExercisePickerView: View {
 
                     if !trimmedQuery.isEmpty && !exactMatchExists {
                         Section {
-                            Button { create() } label: {
+                            Button { showCreationSheet = true } label: {
                                 Label("Create \(query)", systemImage: "plus.circle.fill")
                             }
                             .accessibilityIdentifier("picker.create")
+                        }
+                    }
+
+                    if !trimmedQuery.isEmpty, let match = bestLibraryMatch {
+                        Section {
+                            HStack {
+                                Image(systemName: "sparkle.magnifyingglass")
+                                    .foregroundStyle(.blue)
+                                VStack(alignment: .leading) {
+                                    Text("Found a good match")
+                                        .font(.subheadline.weight(.medium))
+                                    Text(match.name)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button("Use this exercise") {
+                                    onPick(match)
+                                    dismiss()
+                                }
+                                .buttonStyle(.bordered).controlSize(.small)
+                            }
                         }
                     }
 
@@ -244,6 +287,7 @@ struct ExercisePickerView: View {
             guard !Task.isCancelled else { return }
             debouncedQuery = query
         }
+        .sheet(isPresented: $showCreationSheet) { creationSheet }
     }
 
     // MARK: Browse mode picker
@@ -390,6 +434,89 @@ struct ExercisePickerView: View {
         guard !name.isEmpty else { return }
         if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
             onPick(ex); dismiss()
+        }
+    }
+
+    private func createConfirmed() {
+        let name = trimmedQuery
+        guard !name.isEmpty else { return }
+        if let ex = try? WorkoutRepository.findOrCreateExercise(
+            named: name,
+            category: selectedCreationCategory,
+            primaryMuscles: Array(selectedCreationMuscles),
+            secondaryMuscles: Array(selectedCreationSecondary),
+            in: context) {
+            onPick(ex)
+            showCreationSheet = false
+            dismiss()
+        }
+    }
+
+    private var creationSheet: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        Text("Name").foregroundStyle(.secondary)
+                        Spacer()
+                        Text(trimmedQuery).bold()
+                    }
+                }
+
+                Section("Category") {
+                    Picker("Category", selection: $selectedCreationCategory) {
+                        ForEach(ExerciseCategory.allCases.filter { $0 != .cardio && $0 != .plyometrics }) { cat in
+                            Text(cat.displayName).tag(cat)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: selectedCreationCategory) { _, cat in
+                        let muscles = BodyPart.defaultMuscles(forCategory: cat)
+                        selectedCreationMuscles = Set(muscles)
+                        selectedCreationParts = BodyPart.parts(forCategory: cat)
+                    }
+                }
+
+                if !selectedCreationParts.isEmpty {
+                    Section("Body Parts (auto-filled from category)") {
+                        Text(selectedCreationParts.sorted { $0.rawValue < $1.rawValue }
+                            .map(\.displayName).joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if !selectedCreationMuscles.isEmpty {
+                    Section("Muscles (auto-filled from category)") {
+                        Text(selectedCreationMuscles.sorted().map { id in
+                            id.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
+                        }.joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .navigationTitle("New Exercise")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showCreationSheet = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Create & Add") { createConfirmed() }
+                }
+            }
+            .onAppear {
+                if let cat = BodyPart.guessCategory(from: trimmedQuery) {
+                    selectedCreationCategory = cat
+                    selectedCreationMuscles = Set(BodyPart.defaultMuscles(forCategory: cat))
+                    selectedCreationParts = BodyPart.parts(forCategory: cat)
+                } else {
+                    selectedCreationCategory = .other
+                    selectedCreationMuscles = []
+                    selectedCreationParts = []
+                }
+            }
         }
     }
 

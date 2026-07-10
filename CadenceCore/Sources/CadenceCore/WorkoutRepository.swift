@@ -186,8 +186,24 @@ public enum WorkoutRepository {
         let resolvedLateral = isLateral || (template?.isLateral ?? false)
         let resolvedMechanics = mechanics ?? template?.mechanics
         let resolvedForce = force ?? template?.force
-        let resolvedPrimary = primaryMuscles.isEmpty ? (template?.primaryMuscles ?? []) : primaryMuscles
-        let resolvedSecondary = secondaryMuscles.isEmpty ? (template?.secondaryMuscles ?? []) : secondaryMuscles
+        let resolvedPrimary: [String]
+        if !primaryMuscles.isEmpty {
+            resolvedPrimary = primaryMuscles
+        } else if let tp = template?.primaryMuscles, !tp.isEmpty {
+            resolvedPrimary = tp
+        } else if let cat = resolvedCategory {
+            resolvedPrimary = BodyPart.defaultMuscles(forCategory: cat)
+        } else {
+            resolvedPrimary = []
+        }
+        let resolvedSecondary: [String]
+        if !secondaryMuscles.isEmpty {
+            resolvedSecondary = secondaryMuscles
+        } else if let tp = template?.secondaryMuscles, !tp.isEmpty {
+            resolvedSecondary = tp
+        } else {
+            resolvedSecondary = []
+        }
         let keywords = ExerciseSearch.keywords(name: trimmed, equipment: resolvedEquipment, isLateral: resolvedLateral,
                                                force: resolvedForce, mechanics: resolvedMechanics,
                                                primaryMuscles: resolvedPrimary, secondaryMuscles: resolvedSecondary)
@@ -423,6 +439,33 @@ public enum WorkoutRepository {
         set.session?.updatedAt = Date()
         context.delete(set)
         try context.save()
+    }
+
+    @discardableResult
+    public static func reassignAndDeleteExercise(from custom: Exercise,
+                                                  into builtIn: Exercise,
+                                                  in context: ModelContext) throws -> Int {
+        let allSessions = try context.fetch(FetchDescriptor<WorkoutSession>())
+        var moved = 0
+        for session in allSessions {
+            guard let sets = session.sets else { continue }
+            for set in sets where set.exercise?.id == custom.id {
+                set.exercise = builtIn
+                set.updatedAt = Date()
+                moved += 1
+            }
+            var names = session.plannedExerciseNames
+            if let idx = names.firstIndex(of: custom.name) {
+                names[idx] = builtIn.name
+                var seen = Set<String>()
+                names = names.filter { seen.insert($0).inserted }
+                session.plannedExerciseNames = names
+            }
+            session.updatedAt = Date()
+        }
+        context.delete(custom)
+        try context.save()
+        return moved
     }
 
     public static func deleteSession(_ session: WorkoutSession, in context: ModelContext) throws {
@@ -890,7 +933,27 @@ public enum WorkoutRepository {
                              inputDistance: a.inputDistance, inputTime: a.inputTime,
                              inputEndingHR: a.inputEndingHR, inputAge: a.inputAge, inputSex: a.inputSex)
         }
+        let allEx = try allExercises(context)
+        let customExercises: [ExportExercise] = allEx
+            .filter { $0.isCustom }
+            .map { ex in
+                ExportExercise(
+                    id: ex.id,
+                    name: ex.name,
+                    category: ex.category,
+                    primaryMuscles: ex.primaryMuscles,
+                    secondaryMuscles: ex.secondaryMuscles,
+                    equipment: ex.equipment,
+                    isLateral: ex.isLateral,
+                    mechanics: ex.mechanics,
+                    force: ex.force,
+                    level: ex.level,
+                    instructions: ex.instructions,
+                    defaultBarWeightKg: ex.defaultBarWeightKg,
+                    loadAccountingMode: ex.loadAccountingMode)
+            }
         return CadenceExport(sessions: sessions, cardio: cardio, assessments: assessments,
+                             exercises: customExercises,
                              coachPreferences: coachPreferences, preferences: preferences)
     }
 
@@ -927,6 +990,30 @@ public enum WorkoutRepository {
         // Case-folded exercise + person caches, built once, so import is O(sets)
         // instead of O(sets × exercises) (a full `allExercises` fetch per set).
         var exerciseByName: [String: Exercise] = [:]
+        // Pre-load custom exercises from export (v5+)
+        for exportEx in export.exercises {
+            let key = exportEx.name.lowercased()
+            if exerciseByName[key] != nil { continue }
+            let allLocal = try allExercises(context)
+            if allLocal.contains(where: { $0.id == exportEx.id || $0.name.lowercased() == key }) { continue }
+            let ex = Exercise(
+                id: exportEx.id,
+                name: exportEx.name,
+                category: exportEx.category.flatMap(ExerciseCategory.init(rawValue:)),
+                isCustom: true,
+                equipment: exportEx.equipment.flatMap(Equipment.init(rawValue:)),
+                isLateral: exportEx.isLateral,
+                mechanics: exportEx.mechanics.flatMap(Mechanics.init(rawValue:)),
+                force: exportEx.force.flatMap(Force.init(rawValue:)),
+                primaryMuscles: exportEx.primaryMuscles,
+                secondaryMuscles: exportEx.secondaryMuscles,
+                instructions: exportEx.instructions,
+                level: exportEx.level,
+                loadAccountingMode: exportEx.loadAccountingMode.flatMap(LoadAccountingMode.init(rawValue:)),
+                defaultBarWeightKg: exportEx.defaultBarWeightKg)
+            context.insert(ex)
+            exerciseByName[key] = ex
+        }
         for ex in try allExercises(context) { exerciseByName[ex.name.lowercased()] = ex }
         var personByName: [String: Person] = [:]
         for p in try allPeople(context) { personByName[p.name.lowercased()] = p }

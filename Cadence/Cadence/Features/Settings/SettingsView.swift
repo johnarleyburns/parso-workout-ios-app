@@ -127,6 +127,14 @@ struct SettingsView: View {
                 Text("The coaching engine updates quarterly with new research. Everything else in Cladiron is free forever.")
             }
 
+            Section("Exercises") {
+                NavigationLink {
+                    CustomExerciseListView()
+                } label: {
+                    Label("Custom Exercises", systemImage: "figure.strengthtraining.traditional")
+                }
+            }
+
             Section("Data") {
                 NavigationLink {
                     ImportView()

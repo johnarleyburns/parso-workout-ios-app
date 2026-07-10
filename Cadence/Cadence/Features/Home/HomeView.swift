@@ -185,7 +185,8 @@ struct HomeView: View {
                     onAddOn: { session, status in handleAddOn(session, status) },
                     onSeeInsights: { path.append(HomeRoute.coach) },
                     onPreferences: { path.append(HomeRoute.coachPreferences) },
-                    onPickAlternative: { showAlternatives = true })
+                    onPickAlternative: { showAlternatives = true },
+                    onFixCustomExercises: { path.append(HomeRoute.customExercises) })
             }
         case .introducing:
             CoachPreviewView(
@@ -304,6 +305,8 @@ struct HomeView: View {
                         handleEditorStart(plan)
                         path = NavigationPath()
                     })
+                case .customExercises:
+                    CustomExerciseListView()
                 }
             }
             .task {
@@ -982,4 +985,5 @@ enum HomeRoute: Hashable {
     case history, settings, coach, coachPreview, coachPreferences, planning
     case yourPlan
     case workoutEditor(EditablePlan)
+    case customExercises
 }

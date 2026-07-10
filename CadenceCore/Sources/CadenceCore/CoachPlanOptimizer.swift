@@ -791,8 +791,18 @@ public enum CoachPlanOptimizer {
 
     private static func partsCovered(by exercise: CoachSession.RecommendedExercise) -> Set<BodyPart> {
         let muscles = muscleIDs(for: exercise)
-        return BodyPart.parts(forMuscleIDs: muscles.primary)
+        let primary = BodyPart.parts(forMuscleIDs: muscles.primary)
             .union(BodyPart.parts(forMuscleIDs: muscles.secondary))
+        if primary.isEmpty, !exercise.name.isEmpty {
+            if let template = ExerciseLibrary.byName[exercise.name.lowercased()] {
+                return BodyPart.parts(forMuscleIDs: template.primaryMuscles)
+                    .union(BodyPart.parts(forMuscleIDs: template.secondaryMuscles))
+            }
+            if let cat = BodyPart.guessCategory(from: exercise.name) {
+                return BodyPart.parts(forCategory: cat)
+            }
+        }
+        return primary
     }
 
     private static func primarySortPart(for exercise: CoachSession.RecommendedExercise) -> BodyPart {
@@ -808,6 +818,9 @@ public enum CoachPlanOptimizer {
         }
         if let template = ExerciseLibrary.byName[exercise.name.lowercased()] {
             return (template.primaryMuscles, template.secondaryMuscles)
+        }
+        if let cat = BodyPart.guessCategory(from: exercise.name) {
+            return (BodyPart.defaultMuscles(forCategory: cat), [])
         }
         return ([], [])
     }

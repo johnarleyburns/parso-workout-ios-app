@@ -333,4 +333,28 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertEqual(sessions[0].orderedSets.count, 3)
         XCTAssertEqual(sessions[0].title, "Push")
     }
+
+    func testReassignAndDeleteExercise() throws {
+        let ctx = try makeContext()
+        let custom = Exercise(name: "rotary torso", category: .core, isCustom: true)
+        let builtIn = Exercise(name: "Torso Rotation", isCustom: false, primaryMuscles: ["abs"])
+        ctx.insert(custom); ctx.insert(builtIn)
+        let session = try WorkoutRepository.createSession(title: "Core Day", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: custom, weightKg: 0, reps: 15,
+                                         completedAt: Date(timeIntervalSince1970: 1_750_000_000), in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: custom, weightKg: 0, reps: 12,
+                                         completedAt: Date(timeIntervalSince1970: 1_750_000_000), in: ctx)
+        session.plannedExerciseNames = ["rotary torso"]
+        try ctx.save()
+
+        let moved = try WorkoutRepository.reassignAndDeleteExercise(from: custom, into: builtIn, in: ctx)
+        XCTAssertEqual(moved, 2)
+        let sessions = try WorkoutRepository.allSessions(ctx)
+        XCTAssertEqual(sessions.count, 1)
+        for set in sessions[0].orderedSets {
+            XCTAssertEqual(set.exercise?.name, "Torso Rotation")
+        }
+        let remaining = try WorkoutRepository.allExercises(ctx)
+        XCTAssertNil(remaining.first { $0.name == "rotary torso" })
+    }
 }

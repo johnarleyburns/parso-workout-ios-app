@@ -154,7 +154,7 @@ final class DataExportTests: XCTestCase {
         let exportA = try WorkoutRepository.buildExport(ctxA, preferences: prefs)
         let json = try DataExport.encodeJSON(exportA)
         let decoded = try DataExport.decodeJSON(json)
-        XCTAssertEqual(decoded.version, 4)
+        XCTAssertEqual(decoded.version, 5)
 
         // Merge into a brand-new store, then re-export.
         let ctxB = try makeStore()
@@ -266,6 +266,51 @@ final class DataExportTests: XCTestCase {
         let decoded = try DataExport.decodeJSON(Data(legacyJSON.utf8))
         XCTAssertEqual(decoded.preferences?.stepGoal, 15000,
                        "Legacy stepGoal field should still decode without error")
+    }
+
+    // MARK: - Custom exercise round-trip (v5)
+
+    func testCustomExerciseRoundTrip() throws {
+        let ctx = try makeStore()
+        let ex = Exercise(name: "rotary torso", category: .core,
+                           isCustom: true,
+                           primaryMuscles: ["abs"], secondaryMuscles: [])
+        ctx.insert(ex)
+        let session = try WorkoutRepository.createSession(title: "Core Day", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 0, reps: 15,
+                                         completedAt: Date(timeIntervalSince1970: 1_750_000_000), in: ctx)
+        try ctx.save()
+
+        let export = try WorkoutRepository.buildExport(ctx)
+        XCTAssertEqual(export.version, 5)
+        XCTAssertEqual(export.exercises.count, 1)
+        XCTAssertEqual(export.exercises.first?.name, "rotary torso")
+        XCTAssertEqual(export.exercises.first?.primaryMuscles, ["abs"])
+
+        let data = try DataExport.encodeJSON(export)
+        let decoded = try DataExport.decodeJSON(data)
+        XCTAssertEqual(decoded.exercises.count, 1)
+
+        let newCtx = try makeStore()
+        try WorkoutRepository.merge(decoded, in: newCtx)
+        let imported = try WorkoutRepository.allExercises(newCtx)
+        let rotary = imported.first { $0.name == "rotary torso" }
+        XCTAssertNotNil(rotary)
+        XCTAssertEqual(rotary?.primaryMuscles, ["abs"])
+        XCTAssertTrue(rotary?.isCustom ?? false)
+
+        let reexport = try WorkoutRepository.buildExport(newCtx)
+        XCTAssertEqual(reexport.exercises.count, 1)
+        XCTAssertEqual(reexport.exercises.first?.primaryMuscles, ["abs"])
+    }
+
+    func testV4BackwardCompat() throws {
+        let v4JSON = """
+        {"version":4,"exportedAt":"2026-01-01T00:00:00Z","sessions":[],"cardio":[],"assessments":[]}
+        """
+        let decoded = try DataExport.decodeJSON(Data(v4JSON.utf8))
+        XCTAssertEqual(decoded.version, 4)
+        XCTAssertTrue(decoded.exercises.isEmpty)
     }
 
     // MARK: - BuildExport edge cases & correctness
@@ -656,7 +701,7 @@ final class DataExportTests: XCTestCase {
 
         // Phase 2: decode & verify.
         let decoded = try DataExport.decodeJSON(encodedJSON)
-        XCTAssertEqual(decoded.version, 4)
+        XCTAssertEqual(decoded.version, 5)
         XCTAssertEqual(decoded.sessions.count, 2)
         XCTAssertEqual(decoded.cardio.count, 1)
         XCTAssertEqual(decoded.assessments.count, 1)

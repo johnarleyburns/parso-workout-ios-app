@@ -565,6 +565,15 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1152/japplphysiol.00334.2012"
     )
 
+    public static let brennanExerciseClassification2025 = Citation(
+        id: "brennanExerciseClassification2025",
+        authors: "Brennan, Weakley, Johnston & Creaby",
+        year: 2025,
+        title: "Exercise Classification in Resistance Training: A Systematic Review of Technological Approaches",
+        source: "Sports Medicine 55(10)",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12513948/"
+    )
+
     // MARK: - All citations registry
 
     public static let all: [Citation] = [
@@ -585,6 +594,7 @@ public enum CitationRegistry {
         lauersenInjuryPrevention2014, fieldFitnessReliability2022, tongPlank2014,
         murlasitsConcurrentSequence2018, currierResistancePrescription2023,
         tabata1996, gibala2006, metcalfeREHIT2012, gunnarsson1020302012,
+        brennanExerciseClassification2025,
     ]
 
     public static func citation(forId id: String) -> Citation? {
@@ -648,6 +658,7 @@ public enum CitationRegistry {
         "gibala2006": "Short-term sprint interval training matching traditional endurance adaptations — backs the Gibala interval preset.",
         "metcalfeREHIT2012": "Reduced-exertion HIIT with 2 × 20 s sprints in a 10-min session — backs the REHIT interval preset.",
         "gunnarsson1020302012": "The 10-20-30 training concept (low/mod/sprint stepping) — backs the 10-20-30 interval preset.",
+        "brennanExerciseClassification2025": "Exercise classification in resistance training — backs the \"custom exercises need muscle definitions\" insight.",
     ]
 
     /// Resolve the user-facing "why we use it" line for a citation id, if present.
@@ -798,6 +809,12 @@ public enum CitationRegistry {
     /// explanation of *why* it built a full-body or focused session for a given day.
     public static let sessionStructurePool = CitationPool(id: "sessionStructure", citationIds: [
         "ramosCampoSplit2024",
+    ])
+
+    /// Exercise classification citations — backs the "custom exercises need muscle
+    /// definitions" insight.
+    public static let exerciseDefinitionPool = CitationPool(id: "exerciseDefinition", citationIds: [
+        "brennanExerciseClassification2025",
     ])
 
     /// Exercise-based injury-prevention evidence. Backs the coach's safety-first

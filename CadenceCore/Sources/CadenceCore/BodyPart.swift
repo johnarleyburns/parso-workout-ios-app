@@ -54,4 +54,53 @@ public enum BodyPart: String, CaseIterable, Sendable, Identifiable, Codable {
         let missing = allCases.filter { !hit.contains($0) }
         return (hit, missing)
     }
+
+    /// Body parts implied by an exercise category. Used as a fallback when
+    /// primaryMuscles is empty but the category is known.
+    public static func parts(forCategory cat: ExerciseCategory) -> Set<BodyPart> {
+        switch cat {
+        case .push: return [.chest, .shoulders, .triceps]
+        case .pull: return [.back, .biceps]
+        case .legs: return [.legs, .calves]
+        case .core: return [.abs]
+        case .cardio, .plyometrics, .other: return []
+        }
+    }
+
+    /// Default primary muscle IDs for an exercise category. Used when creating
+    /// a custom exercise where no template exists but a category is provided.
+    public static func defaultMuscles(forCategory cat: ExerciseCategory) -> [String] {
+        switch cat {
+        case .push: return ["chest", "delts", "triceps"]
+        case .pull: return ["lats", "biceps"]
+        case .legs: return ["quads", "hamstrings", "glutes"]
+        case .core: return ["abs"]
+        case .cardio, .plyometrics, .other: return []
+        }
+    }
+
+    /// Guess an ExerciseCategory from a raw name using common fitness naming
+    /// conventions observed across ExerciseLibrary + free-exercise-db.
+    public static func guessCategory(from name: String) -> ExerciseCategory? {
+        let lower = name.lowercased()
+        if lower.contains("press") || lower.contains("push") || lower.contains("extension")
+            || lower.contains("fly") || lower.contains("raise") || lower.contains("overhead") {
+            return .push
+        }
+        if lower.contains("curl") || lower.contains("row") || lower.contains("pulldown")
+            || lower.contains("pull") || lower.contains("snatch") || lower.contains("clean") {
+            return .pull
+        }
+        if lower.contains("squat") || lower.contains("deadlift") || lower.contains("lunge")
+            || lower.contains("leg") || lower.contains("calf") || lower.contains("step")
+            || lower.contains("hip thrust") || lower.contains("glute") {
+            return .legs
+        }
+        if lower.contains("crunch") || lower.contains("abs") || lower.contains("core")
+            || lower.contains("plank") || lower.contains("sit-up") || lower.contains("torso")
+            || lower.contains("russian twist") || lower.contains("leg raise") {
+            return .core
+        }
+        return nil
+    }
 }

@@ -18,6 +18,7 @@ public enum InsightKind: String, Sendable, Equatable {
     case intensity
     case assessment
     case coldStart
+    case exerciseDefinition
 }
 
 /// A single read-only coaching observation derived from `TrainingFacts`. This is

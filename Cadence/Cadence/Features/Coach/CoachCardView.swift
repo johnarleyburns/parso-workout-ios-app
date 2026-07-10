@@ -104,6 +104,7 @@ extension InsightKind {
         case .intensity: return "scalemass"
         case .assessment: return "checklist"
         case .coldStart: return "sparkles"
+        case .exerciseDefinition: return "exclamationmark.triangle.fill"
         }
     }
 }

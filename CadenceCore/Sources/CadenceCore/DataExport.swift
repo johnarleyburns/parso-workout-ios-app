@@ -11,6 +11,7 @@ public struct CadenceExport: Codable, Equatable, Sendable {
     public var sessions: [ExportSession]
     public var cardio: [ExportCardio]
     public var assessments: [ExportAssessment]
+    public var exercises: [ExportExercise]
     public var coachPreferences: ExportCoachPreferences?
     /// All app/user preferences (settings + schedule) so a fresh install round-trips
     /// completely (v4). nil for legacy exports.
@@ -21,6 +22,7 @@ public struct CadenceExport: Codable, Equatable, Sendable {
                 sessions: [ExportSession],
                 cardio: [ExportCardio] = [],
                 assessments: [ExportAssessment] = [],
+                exercises: [ExportExercise] = [],
                 coachPreferences: ExportCoachPreferences? = nil,
                 preferences: ExportPreferences? = nil) {
         self.version = version
@@ -28,15 +30,16 @@ public struct CadenceExport: Codable, Equatable, Sendable {
         self.sessions = sessions
         self.cardio = cardio
         self.assessments = assessments
+        self.exercises = exercises
         self.coachPreferences = coachPreferences
         self.preferences = preferences
     }
 
     enum CodingKeys: String, CodingKey {
-        case version, exportedAt, sessions, cardio, assessments, coachPreferences, preferences
+        case version, exportedAt, sessions, cardio, assessments, exercises, coachPreferences, preferences
     }
 
-    // Custom decode so older exports (v1–v3) that lack `cardio`/`assessments`/
+    // Custom decode so older exports (v1–v4) that lack `exercises`/
     // `preferences` still decode cleanly.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -45,13 +48,44 @@ public struct CadenceExport: Codable, Equatable, Sendable {
         sessions = try c.decodeIfPresent([ExportSession].self, forKey: .sessions) ?? []
         cardio = try c.decodeIfPresent([ExportCardio].self, forKey: .cardio) ?? []
         assessments = try c.decodeIfPresent([ExportAssessment].self, forKey: .assessments) ?? []
+        exercises = try c.decodeIfPresent([ExportExercise].self, forKey: .exercises) ?? []
         coachPreferences = try c.decodeIfPresent(ExportCoachPreferences.self, forKey: .coachPreferences)
         preferences = try c.decodeIfPresent(ExportPreferences.self, forKey: .preferences)
     }
 
-    /// v4 adds full cardio (incl. HR/route samples), assessments, session/set
-    /// metadata, and all user preferences — a fully lossless round-trip.
-    public static let currentVersion = 4
+    /// v5 adds full custom exercise catalog export (primary/secondary muscles,
+    /// category, equipment, etc.) — a fully lossless round-trip.
+    public static let currentVersion = 5
+}
+
+public struct ExportExercise: Codable, Equatable, Sendable {
+    public var id: UUID
+    public var name: String
+    public var category: String?
+    public var primaryMuscles: [String]
+    public var secondaryMuscles: [String]
+    public var equipment: String?
+    public var isLateral: Bool
+    public var mechanics: String?
+    public var force: String?
+    public var level: String?
+    public var instructions: [String]
+    public var defaultBarWeightKg: Double
+    public var loadAccountingMode: String?
+
+    public init(id: UUID, name: String, category: String? = nil,
+                primaryMuscles: [String] = [], secondaryMuscles: [String] = [],
+                equipment: String? = nil, isLateral: Bool = false,
+                mechanics: String? = nil, force: String? = nil,
+                level: String? = nil, instructions: [String] = [],
+                defaultBarWeightKg: Double = 0, loadAccountingMode: String? = nil) {
+        self.id = id; self.name = name; self.category = category
+        self.primaryMuscles = primaryMuscles; self.secondaryMuscles = secondaryMuscles
+        self.equipment = equipment; self.isLateral = isLateral
+        self.mechanics = mechanics; self.force = force
+        self.level = level; self.instructions = instructions
+        self.defaultBarWeightKg = defaultBarWeightKg; self.loadAccountingMode = loadAccountingMode
+    }
 }
 
 public struct ExportSession: Codable, Equatable, Sendable {

@@ -89,6 +89,7 @@ public struct TrainingFacts: Sendable {
     public let liftSnapshots: [String: LiftSnapshot]
     public let goal: TrainingGoal
     public let experience: ExperienceLevel
+    public let incompleteCustomExerciseNames: [String]
 
     // MARK: Phase 2 multi-system strength deltas (additive; engine behavior unchanged).
     /// Per lift: count of consecutive week-over-week e1RM declines ending this week.
@@ -135,9 +136,10 @@ public struct TrainingFacts: Sendable {
                 liftSnapshots: [String: LiftSnapshot] = [:],
                 repeatedDeclineByExercise: [String: Int] = [:],
                 sessionsSinceDeloadByExercise: [String: Int] = [:],
-                volumeTrendByPart: [BodyPart: TrendDirection] = [:],
-                goal: TrainingGoal,
-                experience: ExperienceLevel) {
+                 volumeTrendByPart: [BodyPart: TrendDirection] = [:],
+                 goal: TrainingGoal,
+                 experience: ExperienceLevel,
+                 incompleteCustomExerciseNames: [String] = []) {
         self.weeklySetsByPart = weeklySetsByPart
         self.frequencyByPart = frequencyByPart
         self.e1RMTrendByExercise = e1RMTrendByExercise
@@ -154,6 +156,7 @@ public struct TrainingFacts: Sendable {
         self.volumeTrendByPart = volumeTrendByPart
         self.goal = goal
         self.experience = experience
+        self.incompleteCustomExerciseNames = incompleteCustomExerciseNames
     }
 }
 
@@ -185,7 +188,10 @@ public extension TrainingFacts {
         var setsByPart: [BodyPart: Double] = [:]
         var daysByPart: [BodyPart: Set<Date>] = [:]
         for ws in weekSets {
-            let primary = BodyPart.parts(forMuscleIDs: ws.exercise.primaryMuscles)
+            var primary = BodyPart.parts(forMuscleIDs: ws.exercise.primaryMuscles)
+            if primary.isEmpty, let cat = ws.exercise.categoryValue {
+                primary = BodyPart.parts(forCategory: cat)
+            }
             let secondary = BodyPart.parts(forMuscleIDs: ws.exercise.secondaryMuscles).subtracting(primary)
             let day = cal.startOfDay(for: ws.date)
             for p in primary {
@@ -350,6 +356,12 @@ public extension TrainingFacts {
             count + session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }.count
         }
 
+        var incompleteCustom: Set<String> = []
+        for ws in weekSets where ws.exercise.isCustom && ws.exercise.primaryMuscles.isEmpty {
+            incompleteCustom.insert(ws.exercise.name)
+        }
+        let incompleteCustomExerciseNames = incompleteCustom.sorted()
+
         return TrainingFacts(weeklySetsByPart: setsByPart,
                              frequencyByPart: frequencyByPart,
                              e1RMTrendByExercise: trends,
@@ -365,6 +377,7 @@ public extension TrainingFacts {
                              sessionsSinceDeloadByExercise: sessionsSinceDeload,
                              volumeTrendByPart: volumeTrendByPart,
                              goal: goal,
-                             experience: experience)
+                             experience: experience,
+                             incompleteCustomExerciseNames: incompleteCustomExerciseNames)
     }
 }

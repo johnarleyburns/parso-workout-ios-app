@@ -44,6 +44,9 @@ public struct PlanAwareWeeklyAccounting: Sendable, Equatable {
         if let template = ExerciseLibrary.byName[exercise.name.lowercased()] {
             return (template.primaryMuscles, template.secondaryMuscles)
         }
+        if let cat = BodyPart.guessCategory(from: exercise.name) {
+            return (BodyPart.defaultMuscles(forCategory: cat), [])
+        }
         return ([], [])
     }
 }

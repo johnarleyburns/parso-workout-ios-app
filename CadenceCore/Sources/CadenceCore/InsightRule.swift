@@ -25,6 +25,7 @@ public enum KnowledgeBase {
         e1RMTrend,
         frequency,
         intensityVsGoal,
+        incompleteCustomExercises,
     ]
 
     /// P4 assessment rules — they reason over `TrainingFacts.assessments`.
@@ -210,6 +211,30 @@ public enum KnowledgeBase {
                 severity: .info)]
         }
     }
+
+    // MARK: - Rule 5: incomplete custom exercises
+
+    static let incompleteCustomExercises = InsightRule(
+        id: "incompleteCustomExercises",
+        priority: 35,
+        produce: { facts in
+            guard !facts.incompleteCustomExerciseNames.isEmpty else { return [] }
+            let names = facts.incompleteCustomExerciseNames
+            let count = names.count
+            let examples = names.prefix(3).map { "'\($0)'" }.joined(separator: ", ")
+            let message = count == 1
+                ? "\(examples) is missing muscle data — the coach can't track volume for it."
+                : "\(count) exercises (\(examples)) are missing muscle data — the coach can't track volume for them."
+            return [Insight(
+                id: "exerciseDefinition.incomplete",
+                kind: .exerciseDefinition,
+                title: "Custom exercises need muscle definitions",
+                message: message,
+                detail: "Accurate exercise classification is essential for quantifying training loads and informing programming decisions (Brennan et al., 2025). Tap to open Custom Exercises in Settings to edit or merge them.",
+                citation: CitationRegistry.citation(forId: "brennanExerciseClassification2025") ?? CitationRegistry.schoenfeld2021,
+                severity: .attention)]
+        }
+    )
 
     // MARK: - Rule 5: assessment progress (longitudinal test deltas)
 

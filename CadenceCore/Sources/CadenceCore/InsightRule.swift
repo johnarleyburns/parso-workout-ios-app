@@ -216,7 +216,7 @@ public enum KnowledgeBase {
 
     static let incompleteCustomExercises = InsightRule(
         id: "incompleteCustomExercises",
-        priority: 35,
+        priority: 105,
         produce: { facts in
             guard !facts.incompleteCustomExerciseNames.isEmpty else { return [] }
             let names = facts.incompleteCustomExerciseNames

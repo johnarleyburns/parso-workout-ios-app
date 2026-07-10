@@ -356,9 +356,13 @@ public extension TrainingFacts {
             count + session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }.count
         }
 
+        // Scan ALL sessions for incomplete custom exercises, not just this week's.
         var incompleteCustom: Set<String> = []
-        for ws in weekSets where ws.exercise.isCustom && ws.exercise.primaryMuscles.isEmpty {
-            incompleteCustom.insert(ws.exercise.name)
+        for session in sessions {
+            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 {
+                guard let ex = set.exercise, ex.isCustom, ex.primaryMuscles.isEmpty else { continue }
+                incompleteCustom.insert(ex.name)
+            }
         }
         let incompleteCustomExerciseNames = incompleteCustom.sorted()
 

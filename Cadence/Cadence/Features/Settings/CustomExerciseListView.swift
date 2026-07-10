@@ -5,31 +5,56 @@ import CadenceCore
 struct CustomExerciseListView: View {
     @Environment(\.modelContext) private var context
     @Query(filter: #Predicate<Exercise> { $0.isCustom }, sort: \Exercise.name) private var customExercises: [Exercise]
+    @Query(filter: #Predicate<Exercise> { !$0.isCustom }, sort: \Exercise.name) private var builtIns: [Exercise]
 
     @State private var editExercise: Exercise?
     @State private var deleteTarget: Exercise?
     @State private var reassignSheet = false
 
+    private var incomplete: [Exercise] {
+        customExercises.filter { $0.primaryMuscles.isEmpty }
+    }
+
+    private var complete: [Exercise] {
+        customExercises.filter { !$0.primaryMuscles.isEmpty }
+    }
+
+    private func bestMatch(for custom: Exercise) -> Exercise? {
+        let normalized = ExerciseSearch.normalize(custom.name)
+        let candidates = builtIns.filter { ex in
+            let exName = ExerciseSearch.normalize(ex.name)
+            guard exName != normalized else { return false }
+            return exName.contains(normalized) || normalized.contains(exName)
+        }
+        if candidates.count == 1 { return candidates[0] }
+        if candidates.count > 1 {
+            return ExerciseSearchIndex(candidates).rank(custom.name).first
+        }
+        return nil
+    }
+
     var body: some View {
         List {
+            if !incomplete.isEmpty {
+                Section("Needs Definition — \(incomplete.count) exercise\(incomplete.count == 1 ? "" : "s")") {
+                    ForEach(incomplete) { ex in
+                        incompleteRow(for: ex)
+                    }
+                }
+            }
+
+            if !complete.isEmpty {
+                Section("Defined — \(complete.count) exercise\(complete.count == 1 ? "" : "s")") {
+                    ForEach(complete) { ex in
+                        row(for: ex)
+                    }
+                }
+            }
+
             if customExercises.isEmpty {
                 ContentUnavailableView("No Custom Exercises",
                                         systemImage: "figure.strengthtraining.traditional",
                                         description: Text("Create custom exercises from the workout picker."))
-            }
-            ForEach(customExercises) { ex in
-                row(for: ex)
-                    .contextMenu {
-                        Button { editExercise = ex } label: {
-                            Label("Edit", systemImage: "pencil")
-                        }
-                        Button(role: .destructive) {
-                            deleteTarget = ex
-                            reassignSheet = true
-                        } label: {
-                            Label("Delete & reassign", systemImage: "arrow.triangle.swap")
-                        }
-                    }
             }
         }
         .navigationTitle("Custom Exercises")
@@ -47,6 +72,62 @@ struct CustomExerciseListView: View {
         }
     }
 
+    private func incompleteRow(for ex: Exercise) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(ex.name).font(.body.weight(.medium))
+                    Text("No muscles set")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+                Spacer()
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+
+            if let match = bestMatch(for: ex) {
+                HStack {
+                    Image(systemName: "sparkle.magnifyingglass")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                    Text("Matches: ")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(match.name)
+                        .font(.caption.weight(.medium))
+                    Spacer()
+                    Button("Reassign") {
+                        deleteTarget = ex
+                        reassignSheet = true
+                    }
+                    .buttonStyle(.bordered).controlSize(.small)
+                }
+                .padding(.top, 2)
+            }
+
+            HStack(spacing: 8) {
+                Button { editExercise = ex } label: {
+                    Label("Define", systemImage: "pencil")
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.bordered).controlSize(.small)
+
+                Button(role: .destructive) {
+                    deleteTarget = ex
+                    reassignSheet = true
+                } label: {
+                    Label("Delete & reassign", systemImage: "arrow.triangle.swap")
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+
     private func row(for ex: Exercise) -> some View {
         Button { editExercise = ex } label: {
             HStack {
@@ -62,19 +143,10 @@ struct CustomExerciseListView: View {
                                 .foregroundStyle(categoryColor(cat))
                         }
 
-                        let parts = BodyPart.parts(forMuscleIDs: ex.primaryMuscles)
-                        if parts.isEmpty {
-                            Text("Incomplete")
-                                .font(.caption2.weight(.medium))
-                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Color.orange.opacity(0.15), in: Capsule())
-                                .foregroundStyle(.orange)
-                        } else {
-                            ForEach(Array(parts.sorted { $0.rawValue < $1.rawValue }.prefix(3)), id: \.self) { part in
-                                Text(part.displayName)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
+                        ForEach(Array(BodyPart.parts(forMuscleIDs: ex.primaryMuscles).sorted { $0.rawValue < $1.rawValue }.prefix(3)), id: \.self) { part in
+                            Text(part.displayName)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }

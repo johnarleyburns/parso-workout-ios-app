@@ -6,6 +6,23 @@ struct RootTabView: View {
     @State private var selection: Tab = .workout
     @State private var showSplash = true
 
+    init() {
+        // Normalize tab-bar item layout so icons + titles sit vertically centered
+        // (issue 5). Applied via appearance so it holds across iOS versions; a
+        // pure SwiftUI TabView otherwise inherits the system default which read as
+        // "too high" on some devices. Best-effort per the P8 decision.
+        let appearance = UITabBarAppearance()
+        appearance.configureWithDefaultBackground()
+        for item in [appearance.stackedLayoutAppearance,
+                     appearance.inlineLayoutAppearance,
+                     appearance.compactInlineLayoutAppearance] {
+            item.normal.titlePositionAdjustment = .zero
+            item.selected.titlePositionAdjustment = .zero
+        }
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
+
     var body: some View {
         ZStack {
             TabView(selection: $selection) {

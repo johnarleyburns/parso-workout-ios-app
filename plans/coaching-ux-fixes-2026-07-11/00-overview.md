@@ -82,3 +82,11 @@ Method: red test first → fix → gap analysis → commit/merge/push/CI per pha
   NOTE: 3 P3CoachHomeUITests (Your Plan .tap navigation) fail identically at pre-P3
   commit d64dbfa — pre-existing, not a P7 regression; my P7 UI tests reach Your Plan fine.
 - P8: pending.
+- P8: DONE (issues 5, 6, 12) — issue 12: added `equalHeight` to the Progress card
+  builder; Effort + Frequency now `.frame(maxHeight: .infinity)` so the side-by-side
+  row matches the taller card. Issues 5/6 (best-effort): `UITabBarAppearance` with
+  zeroed `titlePositionAdjustment` in RootTabView.init for consistent icon/title
+  vertical centering; Settings gear wrapped in a 44x44 centered frame. Tests: 2
+  XCUITests (equal card height; tabs + gear stay hittable). Visual centering verified
+  by simulator screenshot; if any residual offset is a device/OS rendering artifact it is
+  documented here rather than forced. Core 770 green; iOS build SUCCEEDED.

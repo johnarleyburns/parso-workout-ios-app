@@ -59,7 +59,7 @@ struct TrainingProgressView: View {
     @ViewBuilder
     private func card<Content: View>(title: String, subtitle: String? = nil,
                                      citation: Citation? = nil, compact: Bool = false,
-                                     tint: Color? = nil,
+                                     tint: Color? = nil, equalHeight: Bool = false,
                                      @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title).font(compact ? .subheadline.weight(.semibold) : .headline)
@@ -75,7 +75,9 @@ struct TrainingProgressView: View {
             }
         }
         .padding(compact ? 13 : 16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        // `equalHeight` fills the row so side-by-side cards match the taller one
+        // (issue 12 — Frequency was shorter than Effort).
+        .frame(maxWidth: .infinity, maxHeight: equalHeight ? .infinity : nil, alignment: .leading)
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: tint)
     }
 
@@ -246,7 +248,7 @@ struct TrainingProgressView: View {
     // MARK: - §5 Effort + Frequency
 
     @ViewBuilder private var effortCard: some View {
-        card(title: "Effort", citation: CitationRegistry.rpeAutoregulation, compact: true, tint: .orange) {
+        card(title: "Effort", citation: CitationRegistry.rpeAutoregulation, compact: true, tint: .orange, equalHeight: true) {
             if let rir = facts.avgRIR {
                 Text(String(format: "%.1f", rir)).font(.title2.weight(.semibold))
                 + Text(" RIR").font(.caption).foregroundStyle(.secondary)
@@ -256,12 +258,13 @@ struct TrainingProgressView: View {
                 emptyNote("Log RPE on your sets to track how close to failure you train.")
             }
         }
+        .accessibilityIdentifier("progress.effortCard")
     }
 
     @ViewBuilder private var frequencyCard: some View {
         let hits = BodyPart.allCases.filter { (facts.frequencyByPart[$0] ?? 0) >= 2 }
         let lows = BodyPart.allCases.filter { (facts.frequencyByPart[$0] ?? 0) == 1 }
-        card(title: "Frequency", citation: CitationRegistry.frequencyMeta, compact: true, tint: .orange) {
+        card(title: "Frequency", citation: CitationRegistry.frequencyMeta, compact: true, tint: .orange, equalHeight: true) {
             if facts.frequencyByPart.isEmpty {
                 emptyNote("Train each muscle \u{2265}2\u{00d7}/week to get more from the same weekly sets.")
             } else {
@@ -275,6 +278,7 @@ struct TrainingProgressView: View {
                 }
             }
         }
+        .accessibilityIdentifier("progress.frequencyCard")
     }
 
     private func effortRead(_ rir: Double, goal: TrainingGoal) -> String {

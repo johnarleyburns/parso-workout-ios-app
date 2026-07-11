@@ -331,8 +331,13 @@ struct HomeView: View {
             .navigationTitle("Today")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { Haptics.selection(); path.append(HomeRoute.settings) } label: { Image(systemName: "gearshape") }
-                        .accessibilityIdentifier("home.settings").accessibilityLabel("Settings")
+                    Button { Haptics.selection(); path.append(HomeRoute.settings) } label: {
+                        Image(systemName: "gearshape")
+                            .imageScale(.large)
+                            .frame(width: 44, height: 44, alignment: .center)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityIdentifier("home.settings").accessibilityLabel("Settings")
                 }
             }
             .navigationDestination(for: WorkoutSession.self) { SessionView(session: $0) }

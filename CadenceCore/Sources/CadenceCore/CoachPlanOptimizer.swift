@@ -167,7 +167,10 @@ public enum CoachPlanOptimizer {
 
         var projected = trainingFacts.weeklySetsByPart
         var planned: [CoachSession] = []
-        var deficits = lowDeficits(for: lowParts, projected: projected, experience: trainingFacts.experience)
+        // Plan toward the *productive* midpoint (issue 1), not the bare MEV floor,
+        // so small muscles (abs, calves, arms) get a genuinely productive dose.
+        var deficits = lowDeficits(for: lowParts, projected: projected,
+                                   experience: trainingFacts.experience, target: .productive)
 
         plan(slots: slots,
              into: &planned,
@@ -202,7 +205,16 @@ public enum CoachPlanOptimizer {
                  diagnostics: &diagnostics)
         }
 
-        for (part, value) in deficits.sorted(by: partDeficitSort) {
+        // Planning chases the productive midpoint (issue 1), but a *genuine*
+        // shortfall — the thing the coach nags about — is only a part still below
+        // its minimum effective volume (MEV) after all safe planned work. Reporting
+        // against MEV (not the aspirational productive target) reconciles the old
+        // "under-dose AND nag" contradiction: a part trained to a productive dose is
+        // above MEV, so it never surfaces as an unresolved deficit or a user nag.
+        let reportedDeficits = lowDeficits(for: lowParts, projected: projected,
+                                           experience: trainingFacts.experience, target: .mev)
+
+        for (part, value) in reportedDeficits.sorted(by: partDeficitSort) {
             diagnostics.append(PlanningDiagnostic(
                 id: "unresolved.\(part.rawValue)",
                 kind: .unresolvedDeficit,
@@ -213,7 +225,7 @@ public enum CoachPlanOptimizer {
 
         return OptimizedCoachPlan(
             plannedStrengthSessions: planned,
-            unresolvedDeficits: deficits,
+            unresolvedDeficits: reportedDeficits,
             diagnostics: diagnostics)
     }
 
@@ -447,13 +459,18 @@ public enum CoachPlanOptimizer {
                 return a.name < b.name
             }
 
+        // Pass 1 (coverage): allocate each exercise enough sets to reach the MEV
+        // floor for the parts it covers. Targeting MEV first guarantees whole-body
+        // breadth fits inside the session budget — a productive top-up (pass 3)
+        // then raises the dose toward the midpoint with whatever budget is left.
         for exercise in usefulBase {
             guard selected.count < policy.maxExercisesPerSession else { break }
             guard isExerciseEligible(exercise, on: slot.date, facts: coachFacts, policy: policy) else { continue }
             let sets = plannedSets(for: exercise,
                                    deficits: lowDeficits(for: Set(deficits.keys),
                                                          projected: runningProjected,
-                                                         experience: trainingFacts.experience),
+                                                         experience: trainingFacts.experience,
+                                                         target: .mev),
                                    projected: runningProjected,
                                    experience: trainingFacts.experience,
                                    policy: policy)
@@ -465,9 +482,12 @@ public enum CoachPlanOptimizer {
                 PlanAwareWeeklyAccounting.plannedSetsByPart(from: [planned])) { $0 + $1 }
         }
 
+        // Pass 2 (breadth): add movements for any part still below MEV that the
+        // base candidate didn't cover, so the coach hits every weekly target.
         var remaining = lowDeficits(for: Set(deficits.keys),
                                     projected: runningProjected,
-                                    experience: trainingFacts.experience)
+                                    experience: trainingFacts.experience,
+                                    target: .mev)
         while !remaining.isEmpty,
               selected.count < policy.maxExercisesPerSession,
               sessionSets < policy.maxTotalSetsPerSession {
@@ -496,7 +516,44 @@ public enum CoachPlanOptimizer {
                 PlanAwareWeeklyAccounting.plannedSetsByPart(from: [planned])) { $0 + $1 }
             remaining = lowDeficits(for: Set(deficits.keys),
                                     projected: runningProjected,
-                                    experience: trainingFacts.experience)
+                                    experience: trainingFacts.experience,
+                                    target: .mev)
+        }
+
+        // Pass 3 (productive top-up): with every below-MEV part now covered, spend
+        // any remaining session budget raising set counts toward the productive
+        // midpoint (issue 1). Never exceeds per-exercise / total-set caps or MRV.
+        if !selected.isEmpty {
+            var madeProgress = true
+            while madeProgress, sessionSets < policy.maxTotalSetsPerSession {
+                madeProgress = false
+                for index in selected.indices {
+                    guard sessionSets < policy.maxTotalSetsPerSession else { break }
+                    let exercise = selected[index]
+                    let currentSets = exercise.sets ?? 0
+                    guard currentSets < policy.maxSetsPerExercise else { continue }
+                    // Only top up while a covered part is still short of productive.
+                    let perSet = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [copy(exercise, sets: 1, goal: trainingFacts.goal)])
+                    let productiveDeficits = lowDeficits(for: Set(perSet.keys),
+                                                         projected: runningProjected,
+                                                         experience: trainingFacts.experience,
+                                                         target: .productive)
+                    guard perSet.contains(where: { productiveDeficits[$0.key] != nil && $0.value > 0 }) else { continue }
+                    // Respect the MRV ceiling per covered part.
+                    if policy.respectsMRVCeiling {
+                        let wouldExceedMRV = perSet.contains { part, contribution in
+                            guard contribution > 0 else { return false }
+                            let mrv = VolumeLandmarks.bands(for: part, experience: trainingFacts.experience).mrv
+                            return (runningProjected[part] ?? 0) + contribution > mrv
+                        }
+                        if wouldExceedMRV { continue }
+                    }
+                    selected[index] = copy(exercise, sets: currentSets + 1, goal: trainingFacts.goal)
+                    sessionSets += 1
+                    runningProjected = runningProjected.merging(perSet) { $0 + $1 }
+                    madeProgress = true
+                }
+            }
         }
 
         if selected.isEmpty {
@@ -526,7 +583,6 @@ public enum CoachPlanOptimizer {
         guard !deficits.isEmpty else { return min(policy.maxSetsPerExercise, max(2, exercise.sets ?? 3)) }
         let perSet = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [copy(exercise, sets: 1)])
         guard perSet.contains(where: { deficits[$0.key] != nil && $0.value > 0 }) else { return 0 }
-
         var needed = 1
         for (part, amount) in deficits {
             guard let contribution = perSet[part], contribution > 0 else { continue }
@@ -753,15 +809,35 @@ public enum CoachPlanOptimizer {
         })
     }
 
+    /// Which volume landmark the planner aims a part at.
+    /// - `.productive`: the MEV→MAV midpoint — the dose the coach *plans toward*
+    ///   (issue 1) so small muscles get a productive, not minimum, prescription.
+    /// - `.mev`: the minimum effective floor — the threshold used to *report* a
+    ///   genuine shortfall (`unresolvedDeficits`) and drive the user-facing nag,
+    ///   so the coach only flags a part when it is below the effective minimum,
+    ///   never merely short of the aspirational midpoint.
+    private enum PlanningTarget {
+        case productive
+        case mev
+
+        func value(for part: BodyPart, experience: ExperienceLevel) -> Double {
+            switch self {
+            case .productive: return VolumeLandmarks.productiveTarget(for: part, experience: experience)
+            case .mev:        return VolumeLandmarks.bands(for: part, experience: experience).mev
+            }
+        }
+    }
+
     private static func lowDeficits(for parts: Set<BodyPart>,
                                     projected: [BodyPart: Double],
-                                    experience: ExperienceLevel) -> [BodyPart: Double] {
+                                    experience: ExperienceLevel,
+                                    target: PlanningTarget = .productive) -> [BodyPart: Double] {
         var result: [BodyPart: Double] = [:]
         for part in parts {
-            let target = VolumeLandmarks.bands(for: part, experience: experience).mev
+            let goal = target.value(for: part, experience: experience)
             let sets = projected[part] ?? 0
-            if sets < target {
-                result[part] = target - sets
+            if sets < goal {
+                result[part] = goal - sets
             }
         }
         return result

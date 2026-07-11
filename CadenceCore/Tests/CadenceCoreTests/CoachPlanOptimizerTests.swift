@@ -399,6 +399,126 @@ final class CoachPlanOptimizerTests: XCTestCase {
         }
     }
 
+    // MARK: - P2 (issue 1): productive-midpoint volume targeting
+
+    /// The optimizer must prescribe abs toward the *productive* dose (midpoint of
+    /// MEV→MAV), not stop at the MEV floor. For an intermediate, abs MEV=6, MAV=12,
+    /// so the productive target is 9 sets/week. Given ample slots + capacity, planned
+    /// abs sets should reach ~9, not 6.
+    func testAbsPlannedTowardProductiveTargetNotMEVFloor() {
+        let now = fixedWednesday()
+        // Every large part is already at/above MEV so abs is the ONLY deficit —
+        // isolates the productive-target behaviour from whole-body coverage noise.
+        // Abs at 3 completed sets (below MEV 6); productive target is 9.
+        let facts = trainingFacts([
+            .legs: 16, .back: 16, .chest: 16, .shoulders: 16,
+            .biceps: 14, .triceps: 14, .calves: 12,
+            .abs: 3,
+        ])
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1)
+        // Two strength slots so the optimizer has room to prescribe a productive dose.
+        let plan = weeklyPlan(now: now, days: [
+            (1, [.strength]),
+            (3, [.strength]),
+        ])
+        let absCandidate = CoachSession(
+            id: "strength.abs",
+            kind: .strength,
+            title: "Core",
+            durationMinutes: 30,
+            exercises: [.init(name: "Cable Crunch", primaryMuscles: ["abdominals"], sets: 3)],
+            trainingLoadTags: ["strength"],
+            citationIds: ["schoenfeld2021"],
+            launchPayload: .strengthPlan("abs"),
+            systemsTrained: [.hypertrophy],
+            evidenceCategory: .strengthIntensity)
+
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: plan,
+            schedulePreferences: preferences(twoADays: true),
+            candidates: [absCandidate])
+
+        let plannedAbsSets = PlanAwareWeeklyAccounting
+            .plannedSetsByPart(from: optimized.plannedStrengthSessions)[.abs] ?? 0
+        let projectedAbs = 3 + plannedAbsSets
+        let productive = VolumeLandmarks.productiveTarget(for: .abs, experience: .intermediate)
+        XCTAssertEqual(productive, 9, "intermediate abs productive target is the MEV/MAV midpoint (6+12)/2 = 9")
+        XCTAssertGreaterThanOrEqual(projectedAbs, productive,
+            "Abs should be planned toward the productive dose (\(productive)), not the MEV floor — got projected \(projectedAbs)")
+        // And there should be no residual below-MEV deficit for abs.
+        XCTAssertNil(optimized.unresolvedDeficits[.abs],
+                     "Abs trained to a productive dose leaves no below-MEV residual")
+    }
+
+    /// Guard: the productive target must never push a part above MRV.
+    func testProductiveTargetNeverExceedsMRV() {        let now = fixedWednesday()
+        let facts = trainingFacts([.abs: 3, .calves: 3])
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 0)
+        let plan = weeklyPlan(now: now, days: [
+            (1, [.strength]), (2, [.strength]), (3, [.strength]), (4, [.strength]),
+        ])
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: plan,
+            schedulePreferences: preferences(twoADays: true),
+            candidates: [genericStrengthSession()])
+
+        let projected = PlanAwareWeeklyAccounting
+            .plannedSetsByPart(from: optimized.plannedStrengthSessions)
+        for part in BodyPart.allCases {
+            let total = (facts.weeklySetsByPart[part] ?? 0) + (projected[part] ?? 0)
+            let mrv = VolumeLandmarks.bands(for: part, experience: .intermediate).mrv
+            XCTAssertLessThanOrEqual(total, mrv,
+                "\(part) projected \(total) must not exceed MRV \(mrv)")
+        }
+    }
+
+    // MARK: - P2 (issue 1): reconcile the under-dose + nag contradiction
+
+    /// Reproduces the reporter's contradiction: abs prescribed at a low dose AND a
+    /// "still needs attention" nag fires. With productive-midpoint planning +
+    /// MEV-based reporting, when abs is planned to a productive dose there is no
+    /// residual below-MEV deficit, so the per-part nag and the aggregate both stay
+    /// silent for abs.
+    func testProductivelyPlannedAbsProducesNoNag() {
+        let now = fixedWednesday()
+        // Abs is the only deficit; everything else is already covered.
+        let facts = trainingFacts([
+            .legs: 16, .back: 16, .chest: 16, .shoulders: 16,
+            .biceps: 14, .triceps: 14, .calves: 12,
+            .abs: 2,
+        ])
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1)
+        let plan = weeklyPlan(now: now, days: [(1, [.strength]), (3, [.strength])])
+        let absCandidate = CoachSession(
+            id: "strength.abs", kind: .strength, title: "Core", durationMinutes: 30,
+            exercises: [.init(name: "Cable Crunch", primaryMuscles: ["abdominals"], sets: 3)],
+            trainingLoadTags: ["strength"], citationIds: ["schoenfeld2021"],
+            launchPayload: .strengthPlan("abs"),
+            systemsTrained: [.hypertrophy], evidenceCategory: .strengthIntensity)
+
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts, coachFacts: coach, weeklyPlan: plan,
+            schedulePreferences: preferences(twoADays: true),
+            candidates: [absCandidate])
+
+        let insights = PlanAwareInsightEngine.run(
+            completed: facts, plan: plan,
+            plannedStrengthSessions: optimized.plannedStrengthSessions,
+            unresolvedDeficits: optimized.unresolvedDeficits,
+            diagnostics: optimized.diagnostics, now: now)
+
+        XCTAssertNil(optimized.unresolvedDeficits[.abs],
+                     "Abs planned to a productive dose leaves no below-MEV residual")
+        XCTAssertNil(lowVolumeInsight(.abs, in: insights),
+                     "No per-part abs nag when abs is productively covered")
+        XCTAssertNil(insights.first { $0.id == "planning.unresolvedVolume" },
+                     "No aggregate 'needs attention' nag when the only deficit is productively covered")
+    }
+
     // MARK: - Session-structure classification (evidence: ramosCampoSplit2024)
 
     func testSessionStructureFactSurfaced() {

@@ -29,6 +29,12 @@ Method: red test first → fix → gap analysis → commit/merge/push/CI per pha
   Added `RecommendedExercise.repLadder` (additive/optional). SessionView already
   renders `plannedRepLadder` as "12-10-8 reps". Tests: RepLadderTests (12) +
   5 new prescription cases. Full suite 741 green; iOS build SUCCEEDED.
-- P2: pending (stacks on P1).
+- P2: DONE (stacks on P1) — `VolumeLandmarks.productiveTarget(for:experience:)`
+  = MEV/MAV midpoint. Optimizer now plans toward productive (3-pass reshaping:
+  MEV coverage -> breadth -> productive top-up, all MRV-bounded) while
+  `unresolvedDeficits` are REPORTED against MEV so a productively-dosed part
+  never both under-doses and nags. Tests: +3 optimizer (productive target, MRV
+  guard, nag reconciliation). Full suite 744 green; iOS build SUCCEEDED.
+- P3: pending (independent, off main).
 </content>
 </invoke>

@@ -67,6 +67,17 @@ public enum VolumeLandmarks {
         if sets < b.mrv { return .approachingMRV }
         return .overMRV
     }
+
+    /// The **productive planning target** — a point in the middle of the adaptive
+    /// (MEV→MAV) band that the coach prescribes toward, rather than the bare MEV
+    /// floor (issue 1). Prescribing to the midpoint gives small muscles (abs,
+    /// calves, arms) a genuinely productive dose instead of the minimum effective
+    /// one, while staying well under MRV. Cited to the volume dose-response work
+    /// (`volumeDoseResponse`) that the coach already surfaces for volume claims.
+    public static func productiveTarget(for part: BodyPart, experience: ExperienceLevel) -> Double {
+        let b = bands(for: part, experience: experience)
+        return ((b.mev + b.mav) / 2).rounded()
+    }
 }
 
 /// Replaces the fixed MEV/MAV/MRV bands with evidence-informed starting ranges

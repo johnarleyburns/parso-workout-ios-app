@@ -966,6 +966,16 @@ struct HomeView: View {
         case .strengthPlan:
             if let plan = EditablePlan.from(coach: session) {
                 path.append(HomeRoute.workoutEditor(plan))
+            } else {
+                // Defensive: a strength session with no exercises should never
+                // dead-end back to Home (issue 3). Open an empty editor titled from
+                // the session so the user can build/log the workout.
+                let fallback = EditablePlan(
+                    title: session.title,
+                    warmupMinutes: settings.warmupMinutes,
+                    cooldownMinutes: settings.cooldownMinutes,
+                    exercises: [])
+                path.append(HomeRoute.workoutEditor(fallback))
             }
         case .cardio(let cardioTypeStr, let durationMinutes):
             switch cardioTypeStr {

@@ -44,5 +44,11 @@ Method: red test first → fix → gap analysis → commit/merge/push/CI per pha
   + 3 XCUITests. Core 754 green; iOS build SUCCEEDED; coach UI suites green.
   NOTE: added the two new settings keys to the UI-test clear list (stale
   lastTestRecommendationAt was gating the card in tests).
-- P4: pending.</content>
+- P4: DONE (independent, off main) — root cause: addon `.hardStrengthWarn` session
+  had no `exercises` so `EditablePlan.from(coach:)` returned nil -> dead-end. Fix:
+  `CoachSession.fullBodyStrengthExercises(facts:)` public wrapper populates the
+  addon session (reusing P1 ladders); `launchDecision` falls back to an empty
+  editor rather than silently returning. Tests: 2 CadenceCore + 1 XCUITest
+  (Start anyway -> editor). Core 756 green; iOS build SUCCEEDED.
+- P5: pending.</content>
 </invoke>

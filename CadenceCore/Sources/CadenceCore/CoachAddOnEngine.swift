@@ -101,6 +101,7 @@ public enum CoachAddOnEngine {
                 kind: .strength,
                 title: "Additional strength",
                 subtitle: "This is more load than planned today.",
+                exercises: CoachSession.fullBodyStrengthExercises(facts: facts),
                 launchPayload: .strengthPlan("fullBody")
             )
             secondary.append(CoachAddOnOption(

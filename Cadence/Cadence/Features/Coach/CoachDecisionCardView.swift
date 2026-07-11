@@ -549,6 +549,7 @@ struct CoachDecisionCardView: View {
             interactive: true,
             fallback: AnyShapeStyle(addOnStatusColor(option.status).opacity(0.10)))
         .buttonStyle(.plain)
+        .accessibilityIdentifier("coach.addon.\(option.session.id)")
     }
 
     private func addOnIcon(_ status: CoachAddOnStatus) -> String {

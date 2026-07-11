@@ -483,6 +483,13 @@ extension CoachSession {
             systemsTrained: systems, evidenceCategory: category)
     }
 
+    /// Public entry point so other engines (e.g. `CoachAddOnEngine`) can build a
+    /// coach-quality full-body strength session carrying the goal's rep ladders
+    /// (issue 3 — "Additional strength → Start anyway" must produce a real session).
+    public static func fullBodyStrengthExercises(facts: CoachFacts) -> [RecommendedExercise] {
+        buildStrengthExercises(facts: facts)
+    }
+
     private static func buildStrengthExercises(facts: CoachFacts) -> [RecommendedExercise] {
         let goal = facts.goal
         let range = goal.repRange
@@ -540,8 +547,7 @@ extension CoachSession {
         ]
     }
 
-    public static func mostTrainedExercises(facts: CoachFacts) -> [MovementPattern: String] {
-        var counts: [String: (count: Int, pattern: MovementPattern)] = [:]
+    public static func mostTrainedExercises(facts: CoachFacts) -> [MovementPattern: String] {        var counts: [String: (count: Int, pattern: MovementPattern)] = [:]
         for event in facts.rolling28dCompletedEvents {
             guard case .strength(let details) = event.kind, let d = details else { continue }
             for ex in d.exercises {

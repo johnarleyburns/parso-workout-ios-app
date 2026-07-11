@@ -21,6 +21,7 @@ struct CoachPreviewView: View {
     /// Called once when the prominent CTA is actually displayed, so its cadence
     /// can be recorded. No-op when the CTA is suppressed.
     var onCTADisplayed: () -> Void = {}
+    var onFixCustomExercises: (() -> Void)? = nil
 
     /// Captured once at creation from the rate-limit policy so recording the
     /// impression (which flips the policy) can't make the CTA blink out from under
@@ -33,12 +34,14 @@ struct CoachPreviewView: View {
          prescription: Recommendation?,
          showUnlockCTA: Bool,
          onUnlock: @escaping () -> Void,
-         onCTADisplayed: @escaping () -> Void = {}) {
+         onCTADisplayed: @escaping () -> Void = {},
+         onFixCustomExercises: (() -> Void)? = nil) {
         self.plan = plan
         self.topInsight = topInsight
         self.prescription = prescription
         self.onUnlock = onUnlock
         self.onCTADisplayed = onCTADisplayed
+        self.onFixCustomExercises = onFixCustomExercises
         _showCTA = State(initialValue: showUnlockCTA)
     }
 
@@ -119,7 +122,7 @@ struct CoachPreviewView: View {
                 Text("WHAT THE COACH NOTICED")
                     .font(.caption.bold()).tracking(1.1)
                     .foregroundStyle(.secondary)
-                InsightContentView(insight: topInsight)
+                InsightContentView(insight: topInsight, onFixCustomExercises: onFixCustomExercises)
             }
             .accessibilityIdentifier("coach.preview.insight")
         } else {

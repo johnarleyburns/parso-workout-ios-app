@@ -6,12 +6,13 @@ import CadenceCore
 /// why + citation expander (D3).
 struct CoachInsightsView: View {
     let insights: [Insight]
+    var onFixCustomExercises: (() -> Void)? = nil
 
     var body: some View {
         List {
             Section {
                 ForEach(insights) { insight in
-                    InsightContentView(insight: insight)
+                    InsightContentView(insight: insight, onFixCustomExercises: onFixCustomExercises)
                         .padding(.vertical, 4)
                 }
             } footer: {

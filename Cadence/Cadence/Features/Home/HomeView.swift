@@ -195,7 +195,8 @@ struct HomeView: View {
                 prescription: coachRecommendation,
                 showUnlockCTA: coachShowsUnlockCTA,
                 onUnlock: { showPaywall = true },
-                onCTADisplayed: { settings.lastCoachUpsellShown = Date() })
+                onCTADisplayed: { settings.lastCoachUpsellShown = Date() },
+                onFixCustomExercises: { path.append(HomeRoute.customExercises) })
                 .onAppear { settings.coachIntroImpressions += 1 }
         case .ambient, .insight, .hidden:
             EmptyView()
@@ -279,7 +280,8 @@ struct HomeView: View {
                     // Observations are free and continuous for everyone; only the
                     // prescription behind them is Pro. Free users still get the
                     // full, live insights list here.
-                    CoachInsightsView(insights: coachInsights)
+                    CoachInsightsView(insights: coachInsights,
+                                      onFixCustomExercises: { path.append(HomeRoute.customExercises) })
                 case .coachPreview:
                     CoachPreviewScreen(
                         topInsight: coachInsights.first,
@@ -290,7 +292,8 @@ struct HomeView: View {
                         onHide: {
                             settings.coachHidden = true
                             if !path.isEmpty { path.removeLast() }
-                        })
+                        },
+                        onFixCustomExercises: { path.append(HomeRoute.customExercises) })
                 case .coachPreferences: CoachSchedulePreferencesView()
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() },
                                              onOpenCoach: { path.append(HomeRoute.coachPreview) })

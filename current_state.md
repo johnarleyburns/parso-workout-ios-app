@@ -2,7 +2,20 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-10 — Custom exercise completeness: category-to-muscle fallback, export round-trip, settings list, picker improvements, coach insight._
+_Last updated: 2026-07-10 — Coach: always offer strength when weekly target not met (recovery override); Custom Exercise list UX cleanup._
+
+## What just shipped — Coach recovery override + Custom Exercise UX
+
+### Coach: strength override when all candidates blocked by recovery
+- **Problem:** When a full-body workout covered most body parts, SessionEligibilityPolicy blocked all strength candidates despite the user being behind on their weekly target. Coach fell back to rest, leaving zero scheduling options.
+- **Fix:** In `CoachDecisionEngine`, when no candidates are eligible but `strengthNeeded` is true (weekly target not met), the best deferred strength session is promoted as primary with an override warning. The warning explains some muscles are recovering but encourages the user to prioritize exercises that feel recovered.
+- Added `strengthOverride` warning with citation for transparency.
+
+### Custom Exercise list UX cleanup
+- Removed "Delete & reassign" button from incomplete exercise rows
+- Moved "Reassign" button from match-display row to the button row alongside "Define"
+- `InsightContentView` now shows a "Fix in Settings" button for `.exerciseDefinition` insights
+- Threaded `onFixCustomExercises` through `CoachInsightsView`, `CoachPreviewView`, `CoachPreviewScreen`
 
 ## What just shipped — Custom exercise completeness (5 phases)
 

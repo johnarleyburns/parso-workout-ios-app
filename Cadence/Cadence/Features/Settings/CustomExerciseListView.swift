@@ -98,11 +98,6 @@ struct CustomExerciseListView: View {
                     Text(match.name)
                         .font(.caption.weight(.medium))
                     Spacer()
-                    Button("Reassign") {
-                        deleteTarget = ex
-                        reassignSheet = true
-                    }
-                    .buttonStyle(.bordered).controlSize(.small)
                 }
                 .padding(.top, 2)
             }
@@ -114,15 +109,13 @@ struct CustomExerciseListView: View {
                 }
                 .buttonStyle(.bordered).controlSize(.small)
 
-                Button(role: .destructive) {
-                    deleteTarget = ex
-                    reassignSheet = true
-                } label: {
-                    Label("Delete & reassign", systemImage: "arrow.triangle.swap")
-                        .font(.caption.weight(.medium))
+                if bestMatch(for: ex) != nil {
+                    Button("Reassign") {
+                        deleteTarget = ex
+                        reassignSheet = true
+                    }
+                    .buttonStyle(.bordered).controlSize(.small)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.red)
             }
         }
         .contentShape(Rectangle())

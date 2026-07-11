@@ -6,6 +6,7 @@ import CadenceCore
 struct InsightContentView: View {
     let insight: Insight
     var headline: Bool = false
+    var onFixCustomExercises: (() -> Void)? = nil
     @State private var expanded = false
 
     var body: some View {
@@ -52,6 +53,15 @@ struct InsightContentView: View {
                 }
                 .padding(.top, 2)
                 .transition(.opacity)
+            }
+
+            if insight.kind == .exerciseDefinition, let onFix = onFixCustomExercises {
+                Button(action: onFix) {
+                    Label("Fix in Settings", systemImage: "gearshape")
+                        .font(.caption.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .padding(.top, 4)
             }
         }
     }

@@ -196,13 +196,23 @@ public enum CoachDecisionEngine {
                            schedulePreferences: schedulePreferences,
                            todayCompleted: todayCompleted)
 
+        var strengthOverrideWarning: CoachWarning?
         let primary: CoachSession
         if let top = scored.first {
             primary = top.session
         } else {
-            primary = candidates.first { $0.kind == .rest } ?? CoachSession(
-                id: "rest.fallback", kind: .rest, title: "Rest day",
-                subtitle: "No eligible training candidates right now.", launchPayload: .rest)
+            let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
+            if strengthNeeded, let deferredStrength = deferred.first(where: { $0.session.kind == .strength }) {
+                primary = deferredStrength.session
+                strengthOverrideWarning = CoachWarning(
+                    id: "strengthOverride",
+                    message: "Coach is recommending strength despite some muscle groups still recovering. Prioritize the exercises that feel recovered.",
+                    citationIds: ["schoenfeld2021"])
+            } else {
+                primary = candidates.first { $0.kind == .rest } ?? CoachSession(
+                    id: "rest.fallback", kind: .rest, title: "Rest day",
+                    subtitle: "No eligible training candidates right now.", launchPayload: .rest)
+            }
         }
 
         let alternatives = Array(scored.dropFirst().prefix(3)).map(\.session)
@@ -241,6 +251,9 @@ public enum CoachDecisionEngine {
 
         // Generate warnings
         var warnings = generateWarnings(facts: facts)
+        if let override = strengthOverrideWarning {
+            warnings.append(override)
+        }
 
         // Generate observed facts
         var factsList: [ObservedFact] = []

@@ -52,8 +52,9 @@ struct EditablePlan: Hashable {
     }
 
     static func from(recommendation: Recommendation,
+                     goal: TrainingGoal = .hypertrophy,
                      warmupMinutes: Int = 0, cooldownMinutes: Int = 0) -> EditablePlan {
-        let prescribed = recommendation.prescribedSession()
+        let prescribed = recommendation.prescribedSession(goal: goal)
         let ladder = prescribed.repLadder
         let names = prescribed.exerciseNames
         let exercises = names.map { name -> EditableExercise in
@@ -77,11 +78,13 @@ struct EditablePlan: Hashable {
             warmupMinutes: 5,
             cooldownMinutes: 0,
             exercises: exercises.map { ex in
-                EditableExercise(
+                let setCount = ex.sets ?? 3
+                let ladder = ex.repLadder ?? []
+                return EditableExercise(
                     name: ex.name,
-                    sets: (0..<(ex.sets ?? 3)).map { _ in
+                    sets: (0..<setCount).map { i in
                         EditableSet(
-                            targetReps: ex.repsLow ?? 8,
+                            targetReps: i < ladder.count ? ladder[i] : (ex.repsLow ?? 8),
                             targetWeight: ex.loadKg
                         )
                     },

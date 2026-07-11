@@ -96,6 +96,45 @@ final class RecommendationPrescriptionTests: XCTestCase {
         XCTAssertEqual(rec.prescribedSession(defaultSets: 5).repLadder.count, 5)
     }
 
+    // MARK: P1 (issue 2) — goal-specific descending rep ladders
+
+    func testHypertrophyStarterPrescribesDescendingLadder() {
+        // A hypertrophy goal-level rec spanning 6…12 must descend, not flatten to 6.
+        let p = KnowledgeBase.starter(goal: .hypertrophy, experience: .intermediate)
+            .prescribedSession(goal: .hypertrophy)
+        XCTAssertEqual(p.repLadder, [12, 10, 8], "hypertrophy 3-set should be a 12-10-8 pyramid, not 6-6-6")
+    }
+
+    func testHypertrophyFourSetLadder() {
+        // With a 4-set target the ladder extends the pyramid one more rung.
+        let p = KnowledgeBase.starter(goal: .hypertrophy, experience: .intermediate)
+            .prescribedSession(defaultSets: 4, goal: .hypertrophy)
+        // The starter pins sets:3, so defaultSets is ignored — a 3-set 12-10-8.
+        XCTAssertEqual(p.repLadder, [12, 10, 8])
+    }
+
+    func testStrengthStarterPrescribesTopHeavyHold() {
+        let p = KnowledgeBase.starter(goal: .strength, experience: .intermediate)
+            .prescribedSession(goal: .strength)
+        XCTAssertEqual(p.repLadder, [5, 5, 3], "strength 3-set should ramp 5-5-3, not flatten to 3")
+    }
+
+    func testAddVolumeHypertrophyProducesLadderNotFlatFloor() throws {
+        let f = facts(weeklySets: [.biceps: 1], goal: .hypertrophy)
+        let rec = try XCTUnwrap(RecommendationEngine.run(f).first { $0.id == "addVolume.biceps" })
+        let ladder = rec.prescribedSession(goal: .hypertrophy).repLadder
+        XCTAssertFalse(ladder.allSatisfy { $0 == ladder.first }, "ladder must not be flat for a hypertrophy range")
+        XCTAssertEqual(ladder.first, 12, "starts at the top of the hypertrophy range")
+    }
+
+    func testExplicitSingleRepTargetStillFlattens() throws {
+        // Progression pins an exact rep (add a rep at the same load) — the ladder
+        // must NOT override a deliberate single-rep prescription.
+        let f = facts(snapshots: [snapshot("Squat", weight: 100, reps: 4, trend: .flat)], goal: .strength)
+        let p = try XCTUnwrap(RecommendationEngine.run(f).first { $0.id == "progression.Squat" }).prescribedSession(goal: .strength)
+        XCTAssertTrue(p.repLadder.allSatisfy { $0 == 5 }, "explicit rep target flattens")
+    }
+
     // MARK: materialization into the store
 
     func testStartSessionFromPrescriptionSeedsPlannedFields() throws {

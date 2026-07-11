@@ -19,6 +19,7 @@ struct WeightsStartView: View {
                 Section {
                     NavigationLink {
                         WorkoutPlanEditor(plan: .from(recommendation: rec,
+                                                          goal: settings.trainingGoal,
                                                           warmupMinutes: settings.warmupMinutes,
                                                           cooldownMinutes: settings.cooldownMinutes), onStart: onEditorStart)
                     } label: {

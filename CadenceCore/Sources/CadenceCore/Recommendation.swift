@@ -122,7 +122,7 @@ public extension Recommendation {
     /// they choose. CardioHIIT recs (P6) return an empty-session stub — the UI routes
     /// to the interval picker instead. `defaultSets` fills in when the target leaves
     /// the set count open (e.g. double-progression "keep your current sets").
-    func prescribedSession(defaultSets: Int = 3) -> PrescribedSession {
+    func prescribedSession(defaultSets: Int = 3, goal: TrainingGoal = .hypertrophy) -> PrescribedSession {
         guard kind != .cardioHIIT else {
             return PrescribedSession(title: cardioPrescription ?? "Interval session",
                                      exerciseNames: [],
@@ -130,8 +130,22 @@ public extension Recommendation {
                                      loadKg: nil)
         }
         let sets = max(1, target?.sets ?? defaultSets)
-        let seedReps = target?.repsLow ?? 5
-        let ladder = Array(repeating: seedReps, count: sets)
+        // When a rule pins an explicit single rep target (e.g. progression "hit
+        // exactly N reps") that fixed target flattens across the sets — the ladder
+        // never overrides a deliberate prescription. When the target carries a rep
+        // *range* (e.g. deload 3–5), or no target at all, the coach prescribes a
+        // productive descending pyramid across that range (issue 2), not a flat
+        // low-bound dose.
+        let ladder: [Int]
+        if let t = target {
+            if t.repsLow == t.repsHigh {
+                ladder = Array(repeating: t.repsLow, count: sets)
+            } else {
+                ladder = RepLadder.ladder(low: t.repsLow, high: t.repsHigh, sets: sets)
+            }
+        } else {
+            ladder = RepLadder.ladder(for: goal, sets: sets)
+        }
         let names = exercise.map { [$0] } ?? defaultExerciseNames
         return PrescribedSession(title: prescribedTitle,
                                  exerciseNames: names,

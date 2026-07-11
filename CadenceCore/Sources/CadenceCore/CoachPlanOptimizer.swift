@@ -829,14 +829,25 @@ public enum CoachPlanOptimizer {
                              sets: Int? = nil,
                              goal: TrainingGoal? = nil) -> CoachSession.RecommendedExercise {
         let range = goal?.repRange
+        let resolvedSets = sets ?? exercise.sets
+        // Regenerate the descending rep ladder for the resolved set count so the
+        // planner's reshaping keeps a productive pyramid (issue 2). Falls back to
+        // the exercise's existing ladder when no goal is known.
+        let ladder: [Int]?
+        if let goal, let count = resolvedSets, count > 0 {
+            ladder = RepLadder.ladder(for: goal, sets: count)
+        } else {
+            ladder = exercise.repLadder
+        }
         return CoachSession.RecommendedExercise(
             name: exercise.name,
             primaryMuscles: exercise.primaryMuscles,
-            sets: sets ?? exercise.sets,
+            sets: resolvedSets,
             repsLow: exercise.repsLow ?? range?.lowerBound,
             repsHigh: exercise.repsHigh ?? range?.upperBound,
             loadKg: exercise.loadKg,
-            rir: exercise.rir ?? goal?.targetRIR)
+            rir: exercise.rir ?? goal?.targetRIR,
+            repLadder: ladder)
     }
 
     private static func defaultExerciseNames(for part: BodyPart) -> [String] {

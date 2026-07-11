@@ -33,12 +33,17 @@ public struct CoachSession: Sendable, Equatable, Identifiable {
         public let repsHigh: Int?
         public let loadKg: Double?
         public let rir: Int?
+        /// Optional per-set descending rep ladder (issue 2). When present its length
+        /// equals `sets` and it seeds each planned set index-wise; when nil the UI
+        /// falls back to `repsLow`. Additive/defaulted — older callers pass nil.
+        public let repLadder: [Int]?
 
         public init(name: String, primaryMuscles: [String] = [], sets: Int? = nil,
-                    repsLow: Int? = nil, repsHigh: Int? = nil, loadKg: Double? = nil, rir: Int? = nil) {
+                    repsLow: Int? = nil, repsHigh: Int? = nil, loadKg: Double? = nil, rir: Int? = nil,
+                    repLadder: [Int]? = nil) {
             self.name = name; self.primaryMuscles = primaryMuscles
             self.sets = sets; self.repsLow = repsLow; self.repsHigh = repsHigh
-            self.loadKg = loadKg; self.rir = rir
+            self.loadKg = loadKg; self.rir = rir; self.repLadder = repLadder
         }
     }
 
@@ -507,7 +512,8 @@ extension CoachSession {
             exercises.append(RecommendedExercise(
                 name: name, sets: setCount,
                 repsLow: range.lowerBound, repsHigh: range.upperBound,
-                loadKg: nil, rir: goal.targetRIR
+                loadKg: nil, rir: goal.targetRIR,
+                repLadder: RepLadder.ladder(for: goal, sets: setCount ?? 3)
             ))
         }
 

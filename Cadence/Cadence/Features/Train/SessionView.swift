@@ -22,6 +22,7 @@ struct SessionView: View {
     @Environment(ActiveWorkoutModel.self) private var active
 
     @State private var rest = RestTimerModel()
+    @State private var timers = WorkoutTimersModel()
     @State private var pickerPresented = false
     @State private var inlineExerciseID: UUID?
     @State private var inlineExercise: Exercise?
@@ -455,7 +456,7 @@ struct SessionView: View {
                 .safeAreaInset(edge: .top, spacing: 0) {
                     if active.strengthSession?.id == session.id {
                         VStack(spacing: 0) {
-                            WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused)
+                            WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused, timers: $timers)
                             if model.hrm.currentBPM != nil {
                                 liveHRBand
                             }
@@ -818,6 +819,16 @@ struct SessionView: View {
                 Text(name).font(.headline)
                     .accessibilityIdentifier("exerciseCard.\(name)")
                 Spacer()
+                if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
+                    NavigationLink {
+                        ExerciseDetailView(exercise: ex)
+                    } label: {
+                        Image(systemName: "info.circle").font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .accessibilityIdentifier("exercise.info.\(name)")
+                    .accessibilityLabel("\(name) details")
+                }
                 Button {
                     swappingPlannedName = name
                 } label: {
@@ -866,6 +877,14 @@ struct SessionView: View {
                 Text(exercise.name).font(.headline)
                     .accessibilityIdentifier("exerciseCard.\(exercise.name)")
                 Spacer()
+                NavigationLink {
+                    ExerciseDetailView(exercise: exercise)
+                } label: {
+                    Image(systemName: "info.circle").font(.headline)
+                        .foregroundStyle(.secondary).frame(width: 44, height: 44)
+                }
+                .accessibilityIdentifier("exercise.info.\(exercise.name)")
+                .accessibilityLabel("\(exercise.name) details")
                 Menu {
                     Button { changingExerciseFor = exercise } label: {
                         Label("Change exercise", systemImage: "arrow.triangle.2.circlepath")
@@ -1208,8 +1227,21 @@ struct SessionView: View {
                 .accessibilityLabel("Weight entry help")
                 HStack(spacing: 3) {
                     Text("RPE").font(.caption2).foregroundStyle(.secondary)
-                    if let rpe = inlineRPE {
-                        Text("\(rpe)").font(.caption.monospacedDigit()).foregroundStyle(.primary)
+                    TextField("—", value: Binding(
+                        get: { inlineRPE },
+                        set: { newValue in
+                            guard let v = newValue else { inlineRPE = nil; return }
+                            inlineRPE = min(10, max(1, v))
+                        }
+                    ), format: .number)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 34)
+                    .font(.caption.monospacedDigit())
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("inline.rpeField")
+                    .accessibilityLabel("RPE, 1 to 10")
+                    if inlineRPE != nil {
                         Button {
                             inlineRPE = nil
                         } label: {
@@ -1218,22 +1250,14 @@ struct SessionView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Clear RPE")
-                    } else {
-                        Text("none").font(.caption).foregroundStyle(.tertiary)
                     }
-                    Stepper("RPE", value: Binding(
-                        get: { inlineRPE ?? 5 },
-                        set: { inlineRPE = $0 }
-                    ), in: 1...10)
-                    .labelsHidden()
-                    .scaleEffect(0.8)
                     Button { showRPEInfo = true } label: {
                         Image(systemName: "info.circle").font(.caption2).foregroundStyle(.tint)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("RPE help")
                 }
-                .accessibilityIdentifier("inline.rpe")
+                .accessibilityElement(children: .contain)
                 if wouldBePR {
                     Label("PR", systemImage: "trophy.fill")
                         .font(.caption2.bold()).foregroundStyle(.orange)
@@ -1252,9 +1276,13 @@ struct SessionView: View {
                     .accessibilityIdentifier("inline.delete")
                     .accessibilityLabel("Delete set")
                 }
-                Button("Cancel") { closeInlineEditor() }
-                    .font(.caption)
-                    .accessibilityIdentifier("inline.cancel")
+                Button { closeInlineEditor() } label: {
+                    Image(systemName: "xmark").font(.subheadline)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("inline.cancel")
+                .accessibilityLabel("Cancel")
             }
             .padding(.leading, whoColumnWidth + SetCol.gap)
 

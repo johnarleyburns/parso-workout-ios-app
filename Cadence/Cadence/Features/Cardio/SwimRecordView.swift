@@ -78,6 +78,7 @@ struct SwimRecordView: View {
 
     private var liveScreen: some View {
         VStack(spacing: 28) {
+            HStack { WallClockLabel(); Spacer() }
             Text(Format.duration(now.timeIntervalSince(startDate)))
                 .scaledSystemFont(56, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit()
                 .accessibilityIdentifier("swim.elapsed")

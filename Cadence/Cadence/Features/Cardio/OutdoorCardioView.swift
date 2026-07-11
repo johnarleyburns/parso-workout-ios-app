@@ -59,6 +59,7 @@ struct OutdoorCardioView: View {
     private var liveView: some View {
         NavigationStack {
             VStack(spacing: 16) {
+                HStack { WallClockLabel(); Spacer() }
                 liveMap
                     .frame(maxWidth: .infinity, minHeight: 200)
                     .clipShape(RoundedRectangle(cornerRadius: 16))

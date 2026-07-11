@@ -63,6 +63,11 @@ struct IntervalView: View {
 
             VStack(spacing: 16) {
                 // The chosen protocol's name stays visible the whole workout.
+                HStack {
+                    WallClockLabel()
+                    Spacer()
+                }
+                .padding(.horizontal)
                 planNamePill
                     .padding(.top, 8)
                     .accessibilityIdentifier("interval.planName")

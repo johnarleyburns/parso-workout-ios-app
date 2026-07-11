@@ -91,6 +91,7 @@ struct RecordCardioView: View {
 
     private func liveScreen(_ recorder: CardioRecorder) -> some View {
         VStack(spacing: 20) {
+            HStack { WallClockLabel(); Spacer() }
             Text(recorder.type.displayName)
                 .font(.title3.weight(.semibold))
 

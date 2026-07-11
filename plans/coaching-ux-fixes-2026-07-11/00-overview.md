@@ -60,3 +60,13 @@ Method: red test first → fix → gap analysis → commit/merge/push/CI per pha
   `customExerciseNeedsReassign` seed. Tests: 2 XCUITests; WorkoutRepositoryTests
   (24) still green. iOS build SUCCEEDED.
 - P6: pending.
+- P6: DONE (issues 9 & 10) — pure `WorkoutTimersModel` (work/rest stopwatch, banks
+  spans on switch; 6 unit tests). `WorkoutElapsedHeader` gains a wall clock
+  (top-left) + Work/Rest segmented stopwatch (right). New reusable `WallClockLabel`
+  added to strength + outdoor + timer-cardio + interval + swim headers. Per-exercise
+  info button (i) -> ExerciseDetailView on both exerciseCard & plannedCard. Inline
+  editor Cancel -> "X" (xmark, a11y "Cancel"); RPE stepper -> numeric keypad field.
+  Tests: 6 CadenceCore + 3 XCUITests. Core 762 green; iOS build SUCCEEDED.
+  NOTE: FR7 testSessionElapsedTimerRunsAndFreezesOnPause fails identically on
+  pristine main (pre-existing picker-Recents-tab + degraded-sim flake), not a P6 regression.
+- P7: pending.

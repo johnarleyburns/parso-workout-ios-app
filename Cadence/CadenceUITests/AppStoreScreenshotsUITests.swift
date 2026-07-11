@@ -45,8 +45,7 @@ final class AppStoreScreenshotsUITests: CadenceUITestCase {
 
         let strengthApp = launchSeededApp(["priorBench"])
         XCTAssertTrue(strengthApp.startEmptyStrengthWorkout(), "strength session screen")
-        strengthApp.buttons["session.addExercise"].tap()
-        XCTAssertTrue(strengthApp.buttons["picker.row.Bench Press"].waitTap(), "pick Bench Press")
+        XCTAssertTrue(strengthApp.pickExercise("Bench Press"), "pick Bench Press")
         _ = strengthApp.textFields["inline.weight"].waitForExistence(timeout: 10)
         try capture("05-strength-logging", app: strengthApp)
 

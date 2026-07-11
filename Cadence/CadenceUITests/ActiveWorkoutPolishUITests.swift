@@ -23,10 +23,8 @@ final class ActiveWorkoutPolishUITests: CadenceUITestCase {
 
         let info = app.buttons["exercise.info.Bench Press"]
         XCTAssertTrue(info.waitForExistence(timeout: 10), "Each exercise should have an info button")
-        info.tap()
-        // ExerciseDetailView shows the exercise name as its title.
-        XCTAssertTrue(app.navigationBars["Bench Press"].waitForExistence(timeout: 10)
-                      || app.staticTexts["Bench Press"].waitForExistence(timeout: 5),
+        // ExerciseDetailView shows the exercise name as its title (nav bar or heading).
+        XCTAssertTrue(app.tapToReveal("exercise.info.Bench Press", "Bench Press"),
                       "Info opens the exercise definition page")
     }
 

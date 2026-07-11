@@ -8,8 +8,7 @@ final class FR1PartnersUnitsUITests: CadenceUITestCase {
     }
 
     private func openSetEditor(_ app: XCUIApplication) {
-        app.buttons["session.addExercise"].tap()
-        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "pick Bench Press")
+        XCTAssertTrue(app.pickExercise("Bench Press"), "pick Bench Press")
         XCTAssertTrue(app.staticTexts["set.weight"].waitForExistence(timeout: 25), "weight keypad")
     }
 

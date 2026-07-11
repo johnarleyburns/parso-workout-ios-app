@@ -34,7 +34,7 @@ final class FR2CardioUITests: CadenceUITestCase {
         waitForExpectations(timeout: 20)
 
         app.buttons["outdoor.end"].tap()
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
         // A3 — the run summary appears (with distance/route); Done returns Home.
         XCTAssertTrue(app.staticTexts["summary.metric.distance"].waitForExistence(timeout: 25),
                       "outdoor run summary should show distance")

@@ -1,0 +1,32 @@
+{
+  "configurations" : [
+    {
+      "id" : "74782FF9-E645-469C-A89D-8F808DC61D1A",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "maximumTestRepetitions" : 3,
+    "testRepetitionMode" : "retryOnFailure"
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Cadence.xcodeproj",
+        "identifier" : "8D78A5042FD282B700AE7C2F",
+        "name" : "CadenceTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Cadence.xcodeproj",
+        "identifier" : "8D78A50E2FD282B700AE7C2F",
+        "name" : "CadenceUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

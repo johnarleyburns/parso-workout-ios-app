@@ -94,7 +94,7 @@ final class FR10Feedback3UITests: CadenceUITestCase {
         let repsField = app.textFields["inline.reps"]
         if repsField.exists { repsField.tap(); repsField.clearAndType("8") }
         app.buttons["inline.save"].tap()
-        if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
+        app.dismissRestBar()
 
         let bwRow = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "BW")).firstMatch
         XCTAssertTrue(bwRow.waitForExistence(timeout: 25),
@@ -119,10 +119,9 @@ final class FR10Feedback3UITests: CadenceUITestCase {
                       "Sam in the partner bar")
 
         // Log one set for me (Bench Press).
-        app.buttons["session.addExercise"].tap()
-        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "pick Bench Press")
+        XCTAssertTrue(app.pickExercise("Bench Press"), "pick Bench Press")
         app.recordKeypadSet("100")
-        if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
+        app.dismissRestBar()
 
         // The owner's set is tagged "Me" once a partner is present.
         XCTAssertTrue(app.staticTexts["set.performer.Me"].waitForExistence(timeout: 25),
@@ -136,13 +135,13 @@ final class FR10Feedback3UITests: CadenceUITestCase {
         picker.tap()
         XCTAssertTrue(app.buttons["Sam"].waitTap(), "select Sam")
         app.buttons["set.save"].tap()
-        if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
+        app.dismissRestBar()
         XCTAssertTrue(app.staticTexts["set.performer.Sam"].waitForExistence(timeout: 25),
                       "Sam's set should carry her tag")
 
         // End → confirm → the summary shows a Partners section for Sam.
         XCTAssertTrue(app.buttons["workout.end"].waitTap(), "End")
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
         XCTAssertTrue(app.staticTexts["summary.partner.Sam"].waitForExistence(timeout: 25),
                       "the summary should surface the partner's section")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "Done")

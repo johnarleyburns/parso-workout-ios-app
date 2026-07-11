@@ -31,8 +31,6 @@ final class LayoutPolishUITests: CadenceUITestCase {
         let gear = app.buttons["home.settings"]
         XCTAssertTrue(gear.waitForExistence(timeout: 10))
         XCTAssertTrue(gear.isHittable, "Settings gear should stay hittable")
-        gear.tap()
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10),
-                      "gear opens Settings")
+        XCTAssertTrue(app.tapToReveal("home.settings", "Settings"), "gear opens Settings")
     }
 }

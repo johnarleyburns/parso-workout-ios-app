@@ -36,8 +36,8 @@ final class P3CoachHomeUITests: CadenceUITestCase {
             for _ in 0..<6 { app.swipeUp() }
         }
         XCTAssertTrue(link.waitForExistence(timeout: 5))
-        link.tap()
-        XCTAssertTrue(app.navigationBars["Coach & Plan"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tapToReveal("settings.coach.schedulePreferences", "Coach & Plan"),
+                      "Coach & Plan")
 
         let goal = app.buttons["settings.coach.goal"]
         if !goal.exists || !goal.isHittable {
@@ -153,8 +153,7 @@ final class P3CoachHomeUITests: CadenceUITestCase {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.descendants(matching: .any)["home.weekStrip"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["home.yourPlan"].exists)
-        app.buttons["home.yourPlan"].tap()
-        XCTAssertTrue(app.navigationBars["Your Plan"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tapToReveal("home.yourPlan", "Your Plan"), "Your Plan")
     }
 
     // MARK: - Your Plan schedule preferences link
@@ -170,7 +169,7 @@ final class P3CoachHomeUITests: CadenceUITestCase {
             app.swipeUp()
         }
         XCTAssertTrue(link.waitForExistence(timeout: 5))
-        link.tap()
-        XCTAssertTrue(app.navigationBars["Coach & Plan"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tapToReveal("settings.coach.schedulePreferences", "Coach & Plan"),
+                      "Coach & Plan")
     }
 }

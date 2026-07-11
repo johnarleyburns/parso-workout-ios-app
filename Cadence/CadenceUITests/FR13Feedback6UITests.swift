@@ -46,8 +46,7 @@ final class FR13Feedback6UITests: CadenceUITestCase {
 
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 25),
                       "manual-log session screen")
-        app.buttons["session.addExercise"].tap()
-        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "Bench Press row")
+        XCTAssertTrue(app.pickExercise("Bench Press"), "Bench Press row")
         app.recordKeypadSet("100")
 
         XCTAssertTrue(app.buttons["log.done"].waitTap(), "Done")

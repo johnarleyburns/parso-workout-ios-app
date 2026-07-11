@@ -12,12 +12,12 @@ final class FR7LifecycleUITests: CadenceUITestCase {
 
     // Helper: log one Bench Press set so the session is non-empty.
     private func logBenchSet(_ app: XCUIApplication, weight: String = "100") {
-        app.buttons["session.addExercise"].tap()
-        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "picker row Bench Press")
+        XCTAssertTrue(app.pickExercise("Bench Press"), "picker row Bench Press")
         app.recordKeypadSet(weight)
-        // A rest timer may auto-start; skip it so the 1 Hz animation doesn't stall
-        // the accessibility tree on a slow simulator.
-        if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
+        // A rest timer auto-starts after saving a set; its bar overlays the bottom
+        // control bar (End/Pause), so dismiss it fully before continuing. Poll-skip
+        // until it's gone — a single tap can race the bar's 1 Hz (re)appearance.
+        app.dismissRestBar()
     }
 
     // A1 — the pre-workout countdown can be paused (freezes the count) and resumed,
@@ -86,7 +86,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
 
         // End → confirm dialog. Keep going cancels (still on the session).
         XCTAssertTrue(app.buttons["workout.end"].waitTap(), "End")
-        XCTAssertTrue(app.buttons["workout.endCancel"].waitTap(), "Keep going cancels")
+        XCTAssertTrue(app.dialogButton("workout.endCancel").waitTap(), "Keep going cancels")
         XCTAssertTrue(app.buttons["session.addExercise"].waitForExistence(timeout: 10),
                       "cancelling End keeps us on the session")
 
@@ -94,7 +94,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         // leaving the session. Started from Home, so Done returns to Home and the
         // saved workout updates the compact training summary.
         XCTAssertTrue(app.buttons["workout.end"].waitTap(), "End again")
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "summary Done")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
                       "confirming End finishes the workout and leaves the session")
@@ -114,7 +114,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
         logBenchSet(app, weight: "100")
 
         XCTAssertTrue(app.buttons["workout.end"].waitTap(), "End")
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
 
         XCTAssertTrue(app.staticTexts["summary.exercise.Bench Press"].waitForExistence(timeout: 25),
                       "summary should list the logged exercise")
@@ -141,7 +141,7 @@ final class FR7LifecycleUITests: CadenceUITestCase {
 
         XCTAssertTrue(app.staticTexts["record.elapsed"].waitForExistence(timeout: 25), "recording")
         XCTAssertTrue(app.buttons["record.end"].waitTap(), "End")
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
 
         XCTAssertTrue(app.staticTexts["summary.duration"].waitForExistence(timeout: 25),
                       "cardio summary should show duration")

@@ -25,3 +25,6 @@ build/
 # Secrets / local config (never commit signing or keys)
 *.xcconfig.local
 secrets.plist
+
+# Local data exports (personal workout history — never commit)
+Cladiron-Export-*.json.gz

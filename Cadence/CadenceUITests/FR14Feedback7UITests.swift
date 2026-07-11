@@ -11,17 +11,16 @@ final class FR14Feedback7UITests: CadenceUITestCase {
     func testLogZeroKgSet() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
-        app.buttons["session.addExercise"].tap()
-        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "Bench Press")
+        XCTAssertTrue(app.pickExercise("Bench Press"), "Bench Press")
 
         app.keypadEnter("0", clear: true)
         XCTAssertTrue(app.buttons["set.save"].isEnabled, "0 kg should be recordable (item 5)")
         app.buttons["set.save"].tap()
-        if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
+        app.dismissRestBar()
 
         // End → the summary lists Bench Press, proving the 0 kg set was saved.
         XCTAssertTrue(app.buttons["workout.end"].waitTap(), "End")
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
         XCTAssertTrue(app.staticTexts["summary.exercise.Bench Press"].waitForExistence(timeout: 25),
                       "the 0 kg set is saved to the workout")
     }

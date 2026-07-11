@@ -35,8 +35,7 @@ final class StrengthEditingUITests: CadenceUITestCase {
     /// addExercise → pick → type a weight into the inline editor → save, and
     /// confirm a logged row appears.
     private func logSet(_ app: XCUIApplication, exercise: String = "Bench Press", weight: String) {
-        XCTAssertTrue(app.buttons["session.addExercise"].waitTap(), "add exercise")
-        XCTAssertTrue(app.buttons["picker.row.\(exercise)"].waitTap(), "pick \(exercise)")
+        XCTAssertTrue(app.pickExercise(exercise), "pick \(exercise)")
         let field = app.textFields["inline.weight"]
         XCTAssertTrue(field.waitForExistence(timeout: 25), "inline weight field")
         field.tap()

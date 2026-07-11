@@ -77,10 +77,9 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
 
         // Log a Bench set so the summary has content.
-        app.buttons["session.addExercise"].tap()
-        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "pick Bench Press")
+        XCTAssertTrue(app.pickExercise("Bench Press"), "pick Bench Press")
         app.recordKeypadSet("100")
-        if app.buttons["rest.skip"].waitForExistence(timeout: 3) { app.buttons["rest.skip"].tap() }
+        app.dismissRestBar()
 
         XCTAssertTrue(app.scrollToAndTapButton("workout.coolDown"), "Cool Down")
         // Cool Down now confirms first (batch 7 item 6) so an accidental tap can't
@@ -105,7 +104,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["interval.countdown"].waitForExistence(timeout: 25),
                       "interval runner")
         app.buttons["interval.end"].tap()
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
 
         XCTAssertTrue(app.staticTexts["summary.interval.protocol"].waitForExistence(timeout: 25),
                       "the interval summary should list the protocol")
@@ -121,8 +120,7 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
 
         // Log a set so the session has content
-        app.buttons["session.addExercise"].tap()
-        XCTAssertTrue(app.buttons["picker.row.Bench Press"].waitTap(), "pick Bench Press")
+        XCTAssertTrue(app.pickExercise("Bench Press"), "pick Bench Press")
         app.recordKeypadSet("80")
 
         // End — should confirm with three options
@@ -131,13 +129,13 @@ final class FR11Feedback4UITests: CadenceUITestCase {
         } else {
             app.buttons["workout.end"].firstMatch.tap()
         }
-        XCTAssertTrue(app.buttons["workout.endCoolDown"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.dialogButton("workout.endCoolDown").waitForExistence(timeout: 10),
                       "End confirmation should show 'Cool down, then finish'")
-        XCTAssertTrue(app.buttons["workout.endConfirm"].exists,
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").exists,
                       "End confirmation should show 'End'")
-        XCTAssertTrue(app.buttons["workout.endCancel"].exists,
+        XCTAssertTrue(app.dialogButton("workout.endCancel").exists,
                       "End confirmation should show 'Keep going'")
         // Dismiss
-        app.buttons["workout.endCancel"].tap()
+        app.dialogButton("workout.endCancel").tap()
     }
 }

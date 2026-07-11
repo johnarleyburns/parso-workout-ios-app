@@ -272,7 +272,11 @@ struct ExercisePickerView: View {
             }
         }
         .accessibilityIdentifier("picker.search")
-        .onAppear { rebuildIndexIfNeeded(); loadRecents() }
+        .onAppear {
+            rebuildIndexIfNeeded()
+            loadRecents()
+            if recents.isEmpty { selectedTab = .popular }
+        }
         .onChange(of: exercises.count) { _, _ in rebuildIndexIfNeeded() }
         .onChange(of: selectedPart) { _, _ in selectedEquipment = nil }
         .onChange(of: selectedTab) { _, newTab in

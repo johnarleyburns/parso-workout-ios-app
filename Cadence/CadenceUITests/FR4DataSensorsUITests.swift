@@ -36,8 +36,7 @@ final class FR4DataSensorsUITests: CadenceUITestCase {
     func testSaveStrengthToHealth() {
         let app = XCUIApplication.launched()
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "session screen")
-        app.buttons["session.addExercise"].waitTap()
-        app.buttons["picker.row.Bench Press"].waitTap()
+        XCTAssertTrue(app.pickExercise("Bench Press"), "pick Bench Press")
         app.recordKeypadSet("100")
 
         app.buttons["session.saveHealth"].waitTap()

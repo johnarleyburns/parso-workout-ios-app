@@ -20,7 +20,7 @@ final class FR2IntervalsUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["interval.planName"].exists, "protocol name persists")
         app.buttons["interval.pause"].tap()
         app.buttons["interval.end"].tap()
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
         // A3 — the interval summary appears; Done returns Home.
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "summary Done")
 
@@ -45,7 +45,7 @@ final class FR2IntervalsUITests: CadenceUITestCase {
         XCTAssertTrue(app.staticTexts["interval.countdown"].waitForExistence(timeout: 25),
                       "runner should start")
         app.buttons["interval.end"].tap()
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
         // A3 — the summary appears after End.
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "summary Done")
     }

@@ -56,19 +56,28 @@ extension XCUIApplication {
     /// resulting sheet/overlay never opens). Re-taps only while the source is
     /// still hittable, so it never taps *through* the surface it just opened —
     /// once the destination is presenting, the source is covered and we simply
-    /// wait. Returns whether `destID` appeared.
+    /// wait. `destID` is matched as either a generic descendant (sheets, overlays,
+    /// buttons) OR a navigation bar title, since a pushed NavigationStack
+    /// destination surfaces its title on the nav bar (not as a plain descendant
+    /// identifier). Returns whether `destID` appeared.
     @discardableResult
     func tapToReveal(_ sourceID: String, _ destID: String,
                      attempts: Int = 5, perAttempt: TimeInterval = 5) -> Bool {
         let source = buttons[sourceID]
         let dest = descendants(matching: .any)[destID]
+        let navDest = navigationBars[destID]
+        func revealed() -> Bool { dest.exists || navDest.exists }
         guard source.waitForExistence(timeout: 15) else { return false }
         for _ in 0..<attempts {
-            if dest.exists { return true }
+            if revealed() { return true }
             if source.isHittable { source.tap() }
-            if dest.waitForExistence(timeout: perAttempt) { return true }
+            let deadline = Date().addingTimeInterval(perAttempt)
+            while Date() < deadline {
+                if revealed() { return true }
+                Thread.sleep(forTimeInterval: 0.3)
+            }
         }
-        return dest.exists
+        return revealed()
     }
 
     /// Navigates from anywhere back to the Home launchpad, then into the
@@ -99,6 +108,61 @@ extension XCUIApplication {
         guard buttons["weights.quickStart"].waitTap() else { return false }
         guard buttons["editor.start"].waitTap() else { return false }
         return buttons["session.addExercise"].waitForExistence(timeout: 25)
+    }
+
+    /// Opens the exercise picker from a live session and picks `name`
+    /// deterministically by typing into search — independent of which tab the
+    /// picker defaults to (Recents can be empty in a fresh -uiTest store). Picker
+    /// rows are NavigationLinks into the exercise detail, so we confirm via the
+    /// detail page's Add action when it appears.
+    @discardableResult
+    func pickExercise(_ name: String) -> Bool {
+        guard buttons["session.addExercise"].waitTap() else { return false }
+        let field = searchFields.firstMatch
+        guard field.waitForExistence(timeout: 10) else { return false }
+        field.tap(); field.typeText(name)
+        guard buttons["picker.row.\(name)"].waitTap() else { return false }
+        // The row pushes the exercise detail; its Add action plans the exercise
+        // back on the session and dismisses the picker.
+        if buttons["detail.add"].waitForExistence(timeout: 10) {
+            buttons["detail.add"].tap()
+        }
+        return true
+    }
+
+    /// Resolves a `.confirmationDialog`/alert button by identifier via `firstMatch`.
+    /// On iOS 26 the accessibility tree surfaces confirmation-dialog buttons TWICE
+    /// (same identifier + frame), so `buttons[id]` throws "Multiple matching
+    /// elements". `firstMatch` is stable and hittable, so route dialog taps here.
+    func dialogButton(_ id: String) -> XCUIElement {
+        buttons.matching(identifier: id).firstMatch
+    }
+
+    /// Skips the auto-started rest-timer bar and confirms it's gone. The bar sits
+    /// at the bottom of the session, overlapping the End/Pause control bar, so a
+    /// stray running rest timer (or its "Skip rest?" confirm dialog) makes
+    /// `workout.end` un-hittable. Tapping `rest.skip` opens a confirmation dialog
+    /// ("Skip rest?" → destructive "Skip"); dismiss both so the control bar clears.
+    func dismissRestBar(attempts: Int = 4) {
+        let skip = buttons["rest.skip"]
+        guard skip.waitForExistence(timeout: 5) else { return }
+        for _ in 0..<attempts {
+            guard skip.exists else { return }
+            if skip.isHittable { skip.tap() }
+            // Tapping Skip opens a "Skip rest?" confirm dialog; confirm it.
+            let confirm = confirmSkipRestButton
+            if confirm.waitForExistence(timeout: 2) { confirm.tap() }
+            if !skip.waitForExistence(timeout: 2) { return }
+        }
+    }
+
+    /// The destructive "Skip" button inside the rest-timer "Skip rest?" confirm
+    /// dialog. It carries no accessibility id (it's a plain dialog button), so
+    /// resolve it by label via `firstMatch` (iOS 26 duplicates dialog buttons in
+    /// the a11y tree), preferring the presented sheet/dialog scope.
+    private var confirmSkipRestButton: XCUIElement {
+        let inSheet = sheets.buttons.matching(identifier: "Skip").firstMatch
+        return inSheet.exists ? inSheet : buttons.matching(identifier: "Skip").firstMatch
     }
 
     /// Enters a weight on the custom numeric keypad popup (feedback batch 6 item 2,

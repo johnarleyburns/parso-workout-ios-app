@@ -33,9 +33,7 @@ final class HomeSimplificationUITests: CadenceUITestCase {
     func testCoachCardPreferencesButtonOpensCoachPreferences() {
         let app = XCUIApplication.launched(seeds: ["coachWhyMixedHistory"])
         XCTAssertTrue(app.buttons["coach.card.preferences"].waitForExistence(timeout: 10))
-        app.buttons["coach.card.preferences"].tap()
-
-        XCTAssertTrue(app.navigationBars["Coach & Plan"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tapToReveal("coach.card.preferences", "Coach & Plan"), "Coach & Plan")
         let goal = app.buttons["settings.coach.goal"]
         if !goal.exists || !goal.isHittable {
             for _ in 0..<6 { app.swipeUp() }
@@ -48,9 +46,7 @@ final class HomeSimplificationUITests: CadenceUITestCase {
         let app = XCUIApplication.launched(seeds: ["coachWhyMixedHistory"])
         let insights = app.buttons["coach.card.insights"]
         XCTAssertTrue(insights.waitForExistence(timeout: 10), "Coach card should link to insights")
-        insights.tap()
-
-        XCTAssertTrue(app.navigationBars["Coach insights"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tapToReveal("coach.card.insights", "Coach insights"), "Coach insights")
         XCTAssertTrue(app.descendants(matching: .any)["coach.insights.list"].waitForExistence(timeout: 5))
     }
 

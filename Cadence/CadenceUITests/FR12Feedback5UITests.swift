@@ -52,7 +52,7 @@ final class FR12Feedback5UITests: CadenceUITestCase {
                       "the interval screen should show a live HR readout")
 
         app.buttons["interval.end"].tap()
-        XCTAssertTrue(app.buttons["workout.endConfirm"].waitTap(), "confirm End")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(), "confirm End")
         XCTAssertTrue(app.otherElements["summary.hrChart"].waitForExistence(timeout: 25),
                       "the summary should show the captured HR chart")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(), "Done")

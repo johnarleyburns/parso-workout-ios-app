@@ -181,9 +181,30 @@ final class DataExportTests: XCTestCase {
         XCTAssertEqual(decoded.preferences?.coachProfile?.aerobicPreferences.first?.score, 4)
     }
 
+    // P3 (issue 11) — test-recommendation persistence round-trips.
+    func testTestRecommendationStateRoundTrips() throws {
+        let last = Date(timeIntervalSince1970: 1_750_000_000)
+        let snoozeUntil = Date(timeIntervalSince1970: 1_750_600_000)
+        let prefs = ExportPreferences(
+            lastTestRecommendationAt: last,
+            testRecommendationSnoozes: [AssessmentKind.e1RM.rawValue: snoozeUntil])
+        let json = try DataExport.encodeJSON(CadenceExport(sessions: [], preferences: prefs))
+        let decoded = try DataExport.decodeJSON(json)
+        XCTAssertEqual(decoded.preferences?.lastTestRecommendationAt, last)
+        XCTAssertEqual(decoded.preferences?.testRecommendationSnoozes?[AssessmentKind.e1RM.rawValue], snoozeUntil)
+    }
+
+    /// A v4/older export with no test-recommendation fields still decodes cleanly.
+    func testTestRecommendationFieldsDefaultNilOnLegacyExport() throws {
+        let prefs = ExportPreferences(unit: "pounds")
+        let json = try DataExport.encodeJSON(CadenceExport(sessions: [], preferences: prefs))
+        let decoded = try DataExport.decodeJSON(json)
+        XCTAssertNil(decoded.preferences?.lastTestRecommendationAt)
+        XCTAssertNil(decoded.preferences?.testRecommendationSnoozes)
+    }
+
     /// Re-importing the same export is idempotent (dedup by id), not duplicated.
-    func testMergeIsIdempotent() throws {
-        let now = Date(timeIntervalSince1970: 1_750_000_000)
+    func testMergeIsIdempotent() throws {        let now = Date(timeIntervalSince1970: 1_750_000_000)
         let ctxA = try makeStore()
         let s = try WorkoutRepository.createSession(title: "Day", in: ctxA)
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Squat", in: ctxA)

@@ -29,7 +29,9 @@ final class AppSettings {
                         "settings.coachSchedulePreferences",
                         "settings.lastCoachUpsellShown",
                         "settings.coachHidden",
-                        "settings.coachIntroImpressions"] {
+                        "settings.coachIntroImpressions",
+                        "settings.lastTestRecommendationAt",
+                        "settings.testRecommendationSnoozes"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -70,6 +72,13 @@ final class AppSettings {
         self.lastCoachUpsellShown = defaults.object(forKey: "settings.lastCoachUpsellShown") as? Date
         self.coachHidden = defaults.bool(forKey: "settings.coachHidden")
         self.coachIntroImpressions = defaults.object(forKey: "settings.coachIntroImpressions") as? Int ?? 0
+        self.lastTestRecommendationAt = defaults.object(forKey: "settings.lastTestRecommendationAt") as? Date
+        if let data = defaults.data(forKey: "settings.testRecommendationSnoozes"),
+           let map = try? JSONDecoder().decode([String: Date].self, from: data) {
+            self.testRecommendationSnoozes = map
+        } else {
+            self.testRecommendationSnoozes = [:]
+        }
         self.favoriteRoutineIDs = Set(defaults.stringArray(forKey: "settings.favoriteRoutineIDs") ?? [])
         // Coach preferences are stored properties (not computed) so @Observable
         // tracks mutations and SwiftUI re-renders when they change.
@@ -174,6 +183,18 @@ final class AppSettings {
     /// How many times the full introducing coach card has been shown on Home. After
     /// `CoachSurfacePresenter.introImpressionCap` it demotes to the compact row.
     var coachIntroImpressions: Int { didSet { defaults.set(coachIntroImpressions, forKey: "settings.coachIntroImpressions") } }
+    /// When the coach last surfaced a fitness-test recommendation card (issue 11).
+    /// Gates the card to at most once per week.
+    var lastTestRecommendationAt: Date? { didSet { defaults.set(lastTestRecommendationAt, forKey: "settings.lastTestRecommendationAt") } }
+    /// Per-`AssessmentKind` snooze expiry for test recommendations ("not right now"
+    /// dismissals), keyed by `AssessmentKind.rawValue`.
+    var testRecommendationSnoozes: [String: Date] {
+        didSet {
+            if let data = try? JSONEncoder().encode(testRecommendationSnoozes) {
+                defaults.set(data, forKey: "settings.testRecommendationSnoozes")
+            }
+        }
+    }
     /// Whether the user has completed the new-user onboarding flow.
     var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
     var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }
@@ -261,7 +282,9 @@ extension AppSettings {
             experienceLevel: experienceLevel.rawValue, useHRMonitoring: useHRMonitoring,
             recoveryAwareCoachV2: recoveryAwareCoachV2, favoriteRoutineIDs: Array(favoriteRoutineIDs),
             hasCompletedOnboarding: hasCompletedOnboarding,
-            schedulePreferences: coachSchedulePreferences, coachProfile: coachPreferenceProfile)
+            schedulePreferences: coachSchedulePreferences, coachProfile: coachPreferenceProfile,
+            lastTestRecommendationAt: lastTestRecommendationAt,
+            testRecommendationSnoozes: testRecommendationSnoozes.isEmpty ? nil : testRecommendationSnoozes)
     }
 
     /// Restores preferences from an imported export. Only non-nil fields are applied
@@ -294,5 +317,7 @@ extension AppSettings {
         if let v = p.hasCompletedOnboarding { hasCompletedOnboarding = v }
         if let v = p.schedulePreferences { coachSchedulePreferences = v }
         if let v = p.coachProfile { coachPreferenceProfile = v }
+        if let v = p.lastTestRecommendationAt { lastTestRecommendationAt = v }
+        if let v = p.testRecommendationSnoozes { testRecommendationSnoozes = v }
     }
 }

@@ -95,6 +95,31 @@ struct HomeView: View {
     private var coachPlan: WeeklyPlan { coachSnapshot.plan }
     private var coachInsightsBehindPlan: Bool { coachSnapshot.behindPlan }
 
+    /// The current fitness-test recommendation (issue 11), gated to ≤1/week and
+    /// honoring per-kind "not right now" snoozes. Computed directly (cheap) from the
+    /// assessment `@Query` + persisted state so it renders on first frame without
+    /// waiting on the heavy coach pipeline. `testCardOverride` lets "pick a different
+    /// test" advance within a shown card; `testCardDismissed` hides it after "not
+    /// right now" until the view/state refreshes.
+    @State private var testCardOverride: TestRecommendation?
+    @State private var testCardDismissed = false
+
+    private var testRecommendation: TestRecommendation? {
+        if testCardDismissed { return nil }
+        if let override = testCardOverride { return override }
+        return computeTestRecommendation()
+    }
+
+    private func computeTestRecommendation() -> TestRecommendation? {
+        guard !settings.coachHidden else { return nil }
+        let summaries = AssessmentMath.summaries(from: assessments)
+        let inputs = CoachTestRecommendationEngine.Inputs(
+            summaries: summaries,
+            lastRecommendedAt: settings.lastTestRecommendationAt,
+            snoozedUntil: settings.testRecommendationSnoozes)
+        return CoachTestRecommendationEngine.recommendation(inputs)
+    }
+
     /// Gates coach recomputation. Deliberately keyed on coarse history counts + the
     /// refresh token + coach-relevant settings — NOT per-set session churn — so
     /// logging a set never re-runs the pipeline. The token is bumped when a workout
@@ -214,6 +239,53 @@ struct HomeView: View {
         }
     }
 
+    /// The once-per-week "run this fitness test" suggestion (issue 11).
+    @ViewBuilder
+    private var testRecommendationCard: some View {
+        if let rec = testRecommendation {
+            CoachTestRecommendationCard(
+                recommendation: rec,
+                onStart: { kind in
+                    settings.lastTestRecommendationAt = Date()
+                    testCardDismissed = true
+                    path.append(HomeRoute.runAssessment(kind))
+                },
+                onPickDifferent: { pickDifferentTest() },
+                onSnooze: { kind in snoozeTest(kind) })
+        }
+    }
+
+    /// Advances to the next-priority test candidate, skipping the current one.
+    private func pickDifferentTest() {
+        let summaries = AssessmentMath.summaries(from: assessments)
+        let inputs = CoachTestRecommendationEngine.Inputs(
+            summaries: summaries,
+            lastRecommendedAt: nil,   // ignore the weekly gate while cycling
+            snoozedUntil: settings.testRecommendationSnoozes)
+        let candidates = CoachTestRecommendationEngine.candidates(inputs)
+        guard let current = testRecommendation else {
+            testCardOverride = candidates.first
+            return
+        }
+        if let idx = candidates.firstIndex(where: { $0.kind == current.kind }),
+           idx + 1 < candidates.count {
+            testCardOverride = candidates[idx + 1]
+        } else {
+            testCardOverride = candidates.first { $0.kind != current.kind } ?? current
+        }
+    }
+
+    /// "Not right now" — snoozes this kind for ~1 week and dismisses the card.
+    private func snoozeTest(_ kind: AssessmentKind) {
+        let until = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+        var snoozes = settings.testRecommendationSnoozes
+        snoozes[kind.rawValue] = until
+        settings.testRecommendationSnoozes = snoozes
+        settings.lastTestRecommendationAt = Date()
+        testCardOverride = nil
+        testCardDismissed = true
+    }
+
     private var addOnRecommendation: CoachAddOnRecommendation { coachSnapshot.addOn }
 
     private func buildTrainingEvents() -> [TrainingEvent] {
@@ -246,6 +318,7 @@ struct HomeView: View {
 
                     if let s = active.strengthSession { resumeCard(s) }
                     coachTopSurface
+                    testRecommendationCard
                     weekStripSection
                     quickActionsRow
                     coachAmbientSurface
@@ -310,6 +383,8 @@ struct HomeView: View {
                     })
                 case .customExercises:
                     CustomExerciseListView()
+                case .runAssessment(let kind):
+                    AssessmentDetailView(kind: kind)
                 }
             }
             .task {
@@ -989,4 +1064,5 @@ enum HomeRoute: Hashable {
     case yourPlan
     case workoutEditor(EditablePlan)
     case customExercises
+    case runAssessment(AssessmentKind)
 }

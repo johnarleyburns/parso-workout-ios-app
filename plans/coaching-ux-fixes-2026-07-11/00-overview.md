@@ -35,6 +35,14 @@ Method: red test first → fix → gap analysis → commit/merge/push/CI per pha
   `unresolvedDeficits` are REPORTED against MEV so a productively-dosed part
   never both under-doses and nags. Tests: +3 optimizer (productive target, MRV
   guard, nag reconciliation). Full suite 744 green; iOS build SUCCEEDED.
-- P3: pending (independent, off main).
-</content>
+- P3: DONE (independent, off main) — pure `CoachTestRecommendationEngine` (<=1/week
+  gate, never-tested-first then most-stale, per-kind snooze, "pick a different"
+  cycling). `CoachTestRecommendationCard` on Home (Start test / Pick a different /
+  Not right now) routing into `AssessmentDetailView` via `HomeRoute.runAssessment`.
+  Persisted `lastTestRecommendationAt` + `testRecommendationSnoozes` in AppSettings,
+  exported via ExportPreferences (additive). Tests: 8 engine + 2 export round-trip
+  + 3 XCUITests. Core 754 green; iOS build SUCCEEDED; coach UI suites green.
+  NOTE: added the two new settings keys to the UI-test clear list (stale
+  lastTestRecommendationAt was gating the card in tests).
+- P4: pending.</content>
 </invoke>

@@ -269,6 +269,10 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
     /// The coach's learned preference profile, carried losslessly as its own
     /// Codable type (the top-level `coachPreferences` DTO stays for back-compat).
     public var coachProfile: CoachPreferenceProfile?
+    /// When the coach last surfaced a fitness-test recommendation (issue 11).
+    public var lastTestRecommendationAt: Date?
+    /// Per-`AssessmentKind` test-recommendation snooze expiry (rawValue → date).
+    public var testRecommendationSnoozes: [String: Date]?
     public init(unit: String? = nil, prRule: String? = nil, oneRepMaxFormula: String? = nil,
                 stepGoal: Int? = nil, weeklyCardioMinutesGoal: Int? = nil, restSeconds: Int? = nil,
                 warmupMinutes: Int? = nil, cooldownMinutes: Int? = nil, autoStartRest: Bool? = nil,
@@ -279,7 +283,9 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
                 useHRMonitoring: Bool? = nil, recoveryAwareCoachV2: Bool? = nil,
                 favoriteRoutineIDs: [String]? = nil, hasCompletedOnboarding: Bool? = nil,
                 schedulePreferences: CoachSchedulePreferences? = nil,
-                coachProfile: CoachPreferenceProfile? = nil) {
+                coachProfile: CoachPreferenceProfile? = nil,
+                lastTestRecommendationAt: Date? = nil,
+                testRecommendationSnoozes: [String: Date]? = nil) {
         self.unit = unit; self.prRule = prRule; self.oneRepMaxFormula = oneRepMaxFormula
         self.stepGoal = stepGoal; self.weeklyCardioMinutesGoal = weeklyCardioMinutesGoal
         self.restSeconds = restSeconds; self.warmupMinutes = warmupMinutes; self.cooldownMinutes = cooldownMinutes
@@ -292,6 +298,8 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
         self.recoveryAwareCoachV2 = recoveryAwareCoachV2; self.favoriteRoutineIDs = favoriteRoutineIDs
         self.hasCompletedOnboarding = hasCompletedOnboarding; self.schedulePreferences = schedulePreferences
         self.coachProfile = coachProfile
+        self.lastTestRecommendationAt = lastTestRecommendationAt
+        self.testRecommendationSnoozes = testRecommendationSnoozes
     }
 }
 

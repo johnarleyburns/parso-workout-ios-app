@@ -133,6 +133,7 @@ struct SettingsView: View {
                 } label: {
                     Label("Custom Exercises", systemImage: "figure.strengthtraining.traditional")
                 }
+                .accessibilityIdentifier("settings.customExercises")
             }
 
             Section("Data") {

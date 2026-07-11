@@ -52,3 +52,11 @@ Method: red test first → fix → gap analysis → commit/merge/push/CI per pha
   (Start anyway -> editor). Core 756 green; iOS build SUCCEEDED.
 - P5: pending.</content>
 </invoke>
+- P5: DONE (independent, off main) — Reassign now uses a `.confirmationDialog`
+  ("Reassigning to <match>, proceed?") -> Reassign to <match> (direct) / Pick a
+  different exercise (opens the rich `ExercisePickerView` with search + body-part
+  pills, constrained to built-ins) / Cancel. Retired the plain
+  `ReassignExercisePickerView`. Added `settings.customExercises` a11y id +
+  `customExerciseNeedsReassign` seed. Tests: 2 XCUITests; WorkoutRepositoryTests
+  (24) still green. iOS build SUCCEEDED.
+- P6: pending.

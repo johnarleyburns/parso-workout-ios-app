@@ -25,6 +25,7 @@ enum UITestSeed {
         if seeds.contains("coachRunPrimary") { seedCoachAerobicGap(ctx); UserDefaults.standard.set(runPreferenceJSON(), forKey: "settings.coachPreferenceProfile") }
         if seeds.contains("coachStrengthPrimary") { seedCoachStrengthPrimary(ctx) }
         if seeds.contains("coachWednesdayComplete") { seedCoachWednesdayComplete(ctx) }
+        if seeds.contains("customExerciseNeedsReassign") { seedCustomExerciseNeedsReassign(ctx) }
         if seeds.contains("historyPartnerSession") { seedHistoryPartnerSession(ctx) }
         // Generic "-seed person.<Name>" creates a selectable training partner.
         for seed in seeds where seed.hasPrefix("person.") {
@@ -45,6 +46,18 @@ enum UITestSeed {
         ctx.insert(SetEntry(weight: 100, reps: 5, order: 0, completedAt: s.date, session: s, exercise: bench))
         ctx.insert(SetEntry(weight: 100, reps: 5, order: 1, completedAt: s.date, session: s, exercise: bench))
         ctx.insert(SetEntry(weight: 90, reps: 5, order: 2, completedAt: s.date, session: s, exercise: bench, performedBy: sam))
+        try? ctx.save()
+    }
+
+    /// An incomplete custom exercise whose name matches a built-in ("Bench Press
+    /// Machine" → "Bench Press"), so the Custom Exercises list shows a Reassign
+    /// button and the confirm-then-pick flow can be exercised (issue 4).
+    private static func seedCustomExerciseNeedsReassign(_ ctx: ModelContext) {
+        // Ensure the built-in target exists so bestMatch can resolve.
+        _ = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        let custom = Exercise(name: "Bench Press Machine", isCustom: true)
+        custom.primaryMuscles = []   // incomplete → appears in the "Needs Definition" section
+        ctx.insert(custom)
         try? ctx.save()
     }
 

@@ -9,7 +9,8 @@ struct CustomExerciseListView: View {
 
     @State private var editExercise: Exercise?
     @State private var deleteTarget: Exercise?
-    @State private var reassignSheet = false
+    @State private var reassignConfirm = false
+    @State private var reassignPicker = false
 
     private var incomplete: [Exercise] {
         customExercises.filter { $0.primaryMuscles.isEmpty }
@@ -61,15 +62,51 @@ struct CustomExerciseListView: View {
         .sheet(item: $editExercise) { exercise in
             CustomExerciseEditView(exercise: exercise) { editExercise = nil }
         }
-        .sheet(isPresented: $reassignSheet) {
-            if let target = deleteTarget {
-                ReassignExercisePickerView(customExercise: target) { builtIn in
-                    _ = try? WorkoutRepository.reassignAndDeleteExercise(from: target, into: builtIn, in: context)
-                    reassignSheet = false
+        // Reassign is a two-step flow (issue 4): first confirm the auto-match, then
+        // — only if the user wants a different target — open the full rich picker
+        // (search + body-part pills) reused from the workout logger.
+        .confirmationDialog(
+            reassignConfirmTitle,
+            isPresented: $reassignConfirm,
+            titleVisibility: .visible,
+            presenting: deleteTarget
+        ) { target in
+            if let match = bestMatch(for: target) {
+                Button("Reassign to \(match.name)") {
+                    _ = try? WorkoutRepository.reassignAndDeleteExercise(from: target, into: match, in: context)
                     deleteTarget = nil
+                }
+                .accessibilityIdentifier("reassign.confirm.yes")
+            }
+            Button("Pick a different exercise") {
+                reassignPicker = true
+            }
+            .accessibilityIdentifier("reassign.confirm.pickDifferent")
+            Button("Cancel", role: .cancel) { deleteTarget = nil }
+        } message: { target in
+            Text("All logged sets of \(target.name) will move to the matched exercise, and \(target.name) will be deleted.")
+        }
+        .sheet(isPresented: $reassignPicker, onDismiss: { deleteTarget = nil }) {
+            if let target = deleteTarget {
+                NavigationStack {
+                    ExercisePickerView(action: .use) { picked in
+                        // Constrain the reassignment target to built-ins — never
+                        // reassign one custom exercise into another.
+                        guard !picked.isCustom, picked.id != target.id else { return }
+                        _ = try? WorkoutRepository.reassignAndDeleteExercise(from: target, into: picked, in: context)
+                        reassignPicker = false
+                        deleteTarget = nil
+                    }
                 }
             }
         }
+    }
+
+    private var reassignConfirmTitle: String {
+        guard let target = deleteTarget, let match = bestMatch(for: target) else {
+            return "Reassign exercise"
+        }
+        return "Reassigning to \(match.name), proceed?"
     }
 
     private func incompleteRow(for ex: Exercise) -> some View {
@@ -112,9 +149,10 @@ struct CustomExerciseListView: View {
                 if bestMatch(for: ex) != nil {
                     Button("Reassign") {
                         deleteTarget = ex
-                        reassignSheet = true
+                        reassignConfirm = true
                     }
                     .buttonStyle(.bordered).controlSize(.small)
+                    .accessibilityIdentifier("reassign.button")
                 }
             }
         }
@@ -160,79 +198,6 @@ struct CustomExerciseListView: View {
         case .legs: return .orange
         case .core: return .purple
         default: return .secondary
-        }
-    }
-}
-
-private struct ReassignExercisePickerView: View {
-    let customExercise: Exercise
-    let onPick: (Exercise) -> Void
-
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @Query(filter: #Predicate<Exercise> { !$0.isCustom }, sort: \Exercise.name) private var builtIns: [Exercise]
-
-    private var suggestedCategory: ExerciseCategory? {
-        customExercise.categoryValue ?? BodyPart.guessCategory(from: customExercise.name)
-    }
-
-    private var suggestions: [Exercise] {
-        guard let cat = suggestedCategory else { return Array(builtIns.prefix(20)) }
-        return builtIns.filter { $0.categoryValue == cat }
-    }
-
-    private var others: [Exercise] {
-        let suggestionIDs = Set(suggestions.map(\.id))
-        return builtIns.filter { !suggestionIDs.contains($0.id) }
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if !suggestions.isEmpty {
-                    Section("Suggested") {
-                        ForEach(suggestions) { ex in
-                            Button { onPick(ex); dismiss() } label: {
-                                HStack {
-                                    Text(ex.name)
-                                    Spacer()
-                                    if let cat = ex.categoryValue {
-                                        Text(cat.displayName)
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                if !others.isEmpty {
-                    Section("All Built-In") {
-                        ForEach(others) { ex in
-                            Button { onPick(ex); dismiss() } label: {
-                                HStack {
-                                    Text(ex.name)
-                                    Spacer()
-                                    if let cat = ex.categoryValue {
-                                        Text(cat.displayName)
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Reassign to")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
         }
     }
 }

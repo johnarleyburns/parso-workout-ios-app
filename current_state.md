@@ -2,6 +2,61 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-11 — Coaching & UX fixes: 13-issue batch (P1–P8) shipped._
+
+## What just shipped — Coaching & UX fixes (P1–P8, 2026-07-11)
+
+Plan + gap analysis: `plans/coaching-ux-fixes-2026-07-11/`. Eight phases, one PR each,
+red-test-first. CadenceCore **770 tests, 0 failures**; iOS **BUILD SUCCEEDED**; CI green.
+
+- **P1 — Goal-specific rep ladders (issue 2).** New pure `RepLadder` generates
+  descending pyramids: hypertrophy 12-10-8 / 12-10-8-6, strength 5-5-3 / 5-5-3-3,
+  endurance 20-18-16. Threaded through `Recommendation.prescribedSession(goal:)`,
+  `CoachSession.buildStrengthExercises`, `CoachPlanOptimizer.copy`, and the plan
+  editor. Added additive `RecommendedExercise.repLadder`. (+12 RepLadder, +5 prescription tests.)
+- **P2 — Productive-midpoint volume targeting (issue 1).** `VolumeLandmarks.productiveTarget`
+  = MEV/MAV midpoint. Optimizer now plans toward productive via a 3-pass reshape
+  (MEV coverage → breadth → productive top-up, MRV-bounded), while `unresolvedDeficits`
+  are reported against MEV — so a productively-dosed part never both under-doses AND
+  nags. (+3 optimizer tests.)
+- **P3 — Weekly fitness-test recommendation (issue 11).** Pure
+  `CoachTestRecommendationEngine` (≤1/week, never-tested-first then most-stale,
+  per-kind snooze, "pick a different" cycling). `CoachTestRecommendationCard` on Home
+  (Start test / Pick a different / Not right now) routes into `AssessmentDetailView`
+  via `HomeRoute.runAssessment`. Persisted `lastTestRecommendationAt` +
+  `testRecommendationSnoozes`, exported additively. (+8 engine, +2 export, +3 XCUITests.)
+  Added the two new keys to the UI-test clear list.
+- **P4 — Additional strength → Start anyway (issue 3).** Root cause: the addon
+  `.hardStrengthWarn` session had no exercises → `EditablePlan.from(coach:)` nil →
+  dead-end. Fix: `CoachSession.fullBodyStrengthExercises` populates it (reusing P1
+  ladders); `launchDecision` falls back to an empty editor. (+2 core, +1 XCUITest.)
+- **P5 — Custom-exercise Reassign confirmation (issue 4).** `.confirmationDialog`
+  ("Reassigning to <match>, proceed?") → direct reassign / Pick a different exercise
+  (rich `ExercisePickerView`, search + pills, built-ins only) / Cancel. Retired the
+  plain list. (+2 XCUITests; WorkoutRepositoryTests unchanged.)
+- **P6 — Active-workout polish (issues 9 & 10).** Pure `WorkoutTimersModel`
+  (work/rest stopwatch). `WorkoutElapsedHeader` gains a wall clock + Work/Rest
+  control; new reusable `WallClockLabel` in all 5 workout headers. Per-exercise info
+  button → `ExerciseDetailView`. Inline editor: Cancel → "X"; RPE stepper → numeric
+  keypad field. (+6 core, +3 XCUITests.)
+- **P7 — Your Plan redesign (issue 7).** Fixed the "Thu" label (completed
+  strength+cardio day describes its sessions). TODAY-first section; completed days
+  tap → history summary; planned days → read-only `PlannedDayPreviewView` (no Start);
+  strength tonnage (unit-aware) + cardio HR-zone breakdown (`CardioZoneAggregator`,
+  cited tanakaMaxHR2001). Optional age in onboarding + Coach preferences;
+  `AppSettings.userAge` exported. Test-rec card moved below the week strip.
+  (+7 core, +1 export, +3 XCUITests.)
+- **P8 — Layout (issues 5, 6, 12).** Progress Effort/Frequency cards equal height
+  (`equalHeight` on the card builder). Best-effort centering: `UITabBarAppearance`
+  + Settings gear in a centered 44×44 frame. (+2 XCUITests.)
+
+### Known pre-existing failures (NOT introduced here — confirmed at pre-P3 commit d64dbfa)
+- 3 `P3CoachHomeUITests` (Your Plan `.tap()` navigation) + `FR7 …ElapsedTimer…` fail
+  identically before this work (default picker Recents tab / NavigationStack `.tap`
+  timing / degraded-simulator launches). The new P7 Your-Plan UI tests reach the
+  screen fine via `scrollToHittableAndTap`.
+
+_Prior entry:_
 _Last updated: 2026-07-10 — Coach: always offer strength when weekly target not met (recovery override); Custom Exercise list UX cleanup._
 
 ## What just shipped — Coach recovery override + Custom Exercise UX

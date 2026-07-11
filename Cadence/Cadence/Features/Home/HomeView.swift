@@ -318,10 +318,10 @@ struct HomeView: View {
 
                     if let s = active.strengthSession { resumeCard(s) }
                     coachTopSurface
-                    testRecommendationCard
                     weekStripSection
                     quickActionsRow
                     coachAmbientSurface
+                    testRecommendationCard
                     favoritesSection
                     whatYouDidSection
                 }
@@ -375,7 +375,10 @@ struct HomeView: View {
                         from: buildTrainingEvents(), goal: settings.trainingGoal,
                         experience: settings.experienceLevel, formula: settings.formula,
                         activityTrend: activityTrend)
-                    YourWeekView(decision: coachDecision, facts: facts)
+                    YourWeekView(decision: coachDecision, facts: facts,
+                                 sessions: sessions.filter { $0.deletedAt == nil },
+                                 cardio: cardio.filter { $0.deletedAt == nil },
+                                 path: $path)
                 case .workoutEditor(let plan):
                     WorkoutPlanEditor(plan: plan, onStart: { plan in
                         handleEditorStart(plan)

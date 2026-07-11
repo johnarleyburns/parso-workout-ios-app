@@ -60,6 +60,20 @@ public enum WorkoutMath {
         case .pounds: return lbToKg(value)
         }
     }
+
+    /// Total tonnage (volume load) rendered in the user's unit (issue 7): metric
+    /// tonnes for kg, US (short) tons for pounds. `volumeKg` is Σ(weight×reps) in
+    /// canonical kg. Returns e.g. "12.4 t" / "13.7 tn".
+    public static func tonnageLabel(volumeKg: Double, unit: MeasurementUnitPreference) -> String {
+        switch unit {
+        case .kilograms:
+            let tonnes = volumeKg / 1000
+            return "\(SetTarget.trimmed((tonnes * 10).rounded() / 10)) t"
+        case .pounds:
+            let tons = kgToLb(volumeKg) / 2000
+            return "\(SetTarget.trimmed((tons * 10).rounded() / 10)) tn"
+        }
+    }
 }
 
 /// Which formula to use for estimated 1RM (REQUIREMENTS §9 open question).

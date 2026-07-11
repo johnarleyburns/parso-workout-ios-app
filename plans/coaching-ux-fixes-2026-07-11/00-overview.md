@@ -70,3 +70,15 @@ Method: red test first → fix → gap analysis → commit/merge/push/CI per pha
   NOTE: FR7 testSessionElapsedTimerRunsAndFreezesOnPause fails identically on
   pristine main (pre-existing picker-Recents-tab + degraded-sim flake), not a P6 regression.
 - P7: pending.
+- P7: DONE (stacks on P1/P2) — Your Plan redesign. WeeklyPlan completed strength+cardio
+  day no longer collapses to a weekday name ("Thu") — describes the sessions. New pure
+  `CardioZoneAggregator.weeklyZoneMinutes` (HR-sample distribution or modality estimate)
+  + `WorkoutMath.tonnageLabel` (unit-aware t/tn) + public `CardioMath.defaultMaxHR`.
+  YourWeekView: TODAY-first section, tappable completed days -> HistorySummaryRoute,
+  planned future days -> read-only `PlannedDayPreviewView` (no Start), strength tonnage,
+  cardio HR-zone breakdown cited to tanakaMaxHR2001. Optional age in onboarding +
+  Coach preferences; AppSettings.userAge exported (additive). Tests: 7 CadenceCore
+  (zones/tonnage/HRmax/label) + 1 age export + 3 XCUITests. Core 770 green; iOS build SUCCEEDED.
+  NOTE: 3 P3CoachHomeUITests (Your Plan .tap navigation) fail identically at pre-P3
+  commit d64dbfa — pre-existing, not a P7 regression; my P7 UI tests reach Your Plan fine.
+- P8: pending.

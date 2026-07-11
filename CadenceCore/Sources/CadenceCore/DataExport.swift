@@ -273,6 +273,8 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
     public var lastTestRecommendationAt: Date?
     /// Per-`AssessmentKind` test-recommendation snooze expiry (rawValue → date).
     public var testRecommendationSnoozes: [String: Date]?
+    /// Optional user age for HR-zone estimation (issue 7).
+    public var userAge: Int?
     public init(unit: String? = nil, prRule: String? = nil, oneRepMaxFormula: String? = nil,
                 stepGoal: Int? = nil, weeklyCardioMinutesGoal: Int? = nil, restSeconds: Int? = nil,
                 warmupMinutes: Int? = nil, cooldownMinutes: Int? = nil, autoStartRest: Bool? = nil,
@@ -285,7 +287,8 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
                 schedulePreferences: CoachSchedulePreferences? = nil,
                 coachProfile: CoachPreferenceProfile? = nil,
                 lastTestRecommendationAt: Date? = nil,
-                testRecommendationSnoozes: [String: Date]? = nil) {
+                testRecommendationSnoozes: [String: Date]? = nil,
+                userAge: Int? = nil) {
         self.unit = unit; self.prRule = prRule; self.oneRepMaxFormula = oneRepMaxFormula
         self.stepGoal = stepGoal; self.weeklyCardioMinutesGoal = weeklyCardioMinutesGoal
         self.restSeconds = restSeconds; self.warmupMinutes = warmupMinutes; self.cooldownMinutes = cooldownMinutes
@@ -300,6 +303,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
         self.coachProfile = coachProfile
         self.lastTestRecommendationAt = lastTestRecommendationAt
         self.testRecommendationSnoozes = testRecommendationSnoozes
+        self.userAge = userAge
     }
 }
 

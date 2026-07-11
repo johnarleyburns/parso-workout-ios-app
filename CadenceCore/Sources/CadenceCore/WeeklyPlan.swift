@@ -163,7 +163,11 @@ public struct WeeklyPlan: Sendable, Equatable {
             }
 
             let label: String
-            if wasStrength && cardioInfo != nil { label = dayLabel(for: date, calendar: cal) }
+            if wasStrength && cardioInfo != nil {
+                // A strength+cardio day describes both sessions (issue 7); it must
+                // never collapse to a bare weekday name like "Thu".
+                label = dayLabel(forSessions: sessions)
+            }
             else if wasStrength { label = "Strength" }
             else if cardioInfo != nil { label = cardioLabel(cardioInfo!.kind) }
             else { label = "—" }
@@ -391,12 +395,6 @@ public struct WeeklyPlan: Sendable, Equatable {
         case .vo2Intervals: return "VO₂ intervals"
         default: return "Cardio"
         }
-    }
-
-    private static func dayLabel(for date: Date, calendar: Calendar) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "EEE"
-        return f.string(from: date)
     }
 
     private static func dayLabel(forSessions sessions: [PlannedSession]) -> String {

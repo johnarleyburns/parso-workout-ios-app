@@ -18,6 +18,18 @@ struct CoachSchedulePreferencesView: View {
                 }
                 .accessibilityIdentifier("settings.coach.experience")
 
+                Stepper(value: Binding(get: { settings.userAge ?? 40 },
+                                       set: { settings.userAge = $0 }),
+                        in: 13...100) {
+                    HStack {
+                        Text("Age")
+                        Spacer()
+                        Text(settings.userAge.map(String.init) ?? "not set")
+                            .foregroundStyle(.secondary).monospacedDigit()
+                    }
+                }
+                .accessibilityIdentifier("settings.coach.age")
+
                 Stepper("Daily step target: \(settings.coachSchedulePreferences.dailyStepTarget)",
                         value: Binding(get: {
                             settings.coachSchedulePreferences.dailyStepTarget

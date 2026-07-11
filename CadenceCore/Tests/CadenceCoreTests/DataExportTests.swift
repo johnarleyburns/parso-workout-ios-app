@@ -201,6 +201,15 @@ final class DataExportTests: XCTestCase {
         let decoded = try DataExport.decodeJSON(json)
         XCTAssertNil(decoded.preferences?.lastTestRecommendationAt)
         XCTAssertNil(decoded.preferences?.testRecommendationSnoozes)
+        XCTAssertNil(decoded.preferences?.userAge)
+    }
+
+    // P7 (issue 7) — user age round-trips (default nil on legacy exports).
+    func testUserAgeRoundTrips() throws {
+        let prefs = ExportPreferences(userAge: 34)
+        let json = try DataExport.encodeJSON(CadenceExport(sessions: [], preferences: prefs))
+        let decoded = try DataExport.decodeJSON(json)
+        XCTAssertEqual(decoded.preferences?.userAge, 34)
     }
 
     /// Re-importing the same export is idempotent (dedup by id), not duplicated.

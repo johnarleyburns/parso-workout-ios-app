@@ -65,6 +65,7 @@ final class AppSettings {
         // goal/experience onboarding intake comes in P7; sensible defaults until then.
         self.trainingGoal = Self.read(defaults, "settings.trainingGoal", TrainingGoal.self) ?? .hypertrophy
         self.experienceLevel = Self.read(defaults, "settings.experienceLevel", ExperienceLevel.self) ?? .intermediate
+        self.userAge = defaults.object(forKey: "settings.userAge") as? Int
         self.useHRMonitoring = defaults.object(forKey: "settings.useHRMonitoring") as? Bool ?? false
         self.recoveryAwareCoachV2 = defaults.object(forKey: "settings.recoveryAwareCoachV2") as? Bool ?? true
         self.lastCoachComputeDay = defaults.string(forKey: "settings.lastCoachComputeDay") ?? ""
@@ -164,6 +165,9 @@ final class AppSettings {
     var trainingGoal: TrainingGoal { didSet { defaults.set(trainingGoal.rawValue, forKey: "settings.trainingGoal") } }
     /// Training experience, scaling the engine's volume landmarks (P3).
     var experienceLevel: ExperienceLevel { didSet { defaults.set(experienceLevel.rawValue, forKey: "settings.experienceLevel") } }
+    /// Optional user age (issue 7) for HR-zone estimation (Tanaka HRmax). nil until
+    /// collected in onboarding; the HR-zone estimator defaults to 40 (US median).
+    var userAge: Int? { didSet { defaults.set(userAge, forKey: "settings.userAge") } }
     var useHRMonitoring: Bool { didSet { defaults.set(useHRMonitoring, forKey: "settings.useHRMonitoring") } }
     /// Recovery-aware Coach v2: new eligibility-gated decision engine. Enable by default
     /// in debug builds; can be toggled in Settings for rollback testing.
@@ -284,7 +288,8 @@ extension AppSettings {
             hasCompletedOnboarding: hasCompletedOnboarding,
             schedulePreferences: coachSchedulePreferences, coachProfile: coachPreferenceProfile,
             lastTestRecommendationAt: lastTestRecommendationAt,
-            testRecommendationSnoozes: testRecommendationSnoozes.isEmpty ? nil : testRecommendationSnoozes)
+            testRecommendationSnoozes: testRecommendationSnoozes.isEmpty ? nil : testRecommendationSnoozes,
+            userAge: userAge)
     }
 
     /// Restores preferences from an imported export. Only non-nil fields are applied
@@ -319,5 +324,6 @@ extension AppSettings {
         if let v = p.coachProfile { coachPreferenceProfile = v }
         if let v = p.lastTestRecommendationAt { lastTestRecommendationAt = v }
         if let v = p.testRecommendationSnoozes { testRecommendationSnoozes = v }
+        if let v = p.userAge { userAge = v }
     }
 }

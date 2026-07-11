@@ -17,6 +17,8 @@ struct OnboardingView: View {
     @State private var healthRequested = false
     @State private var strengthDays: Int = 2
     @State private var cardioDays: Int = 3
+    @State private var age: Int = 40
+    @State private var ageProvided = false
     @State private var showPaywall = false
 
     private let lastStep = 6
@@ -205,6 +207,21 @@ struct OnboardingView: View {
             .pickerStyle(.segmented)
             .accessibilityIdentifier("onboarding.units")
 
+            // Optional age for HR-zone estimation (issue 7). Skippable → defaults 40.
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Age (optional)").font(.subheadline.weight(.medium))
+                Stepper(value: $age, in: 13...100, onEditingChanged: { _ in ageProvided = true }) {
+                    HStack {
+                        Text("Used to estimate heart-rate zones")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Text(ageProvided ? "\(age)" : "—").monospacedDigit()
+                    }
+                }
+                .accessibilityIdentifier("onboarding.age")
+            }
+            .padding(.top, 8)
+
             Button {
                 Task { _ = await model.health.requestAuthorization(); healthRequested = true }
             } label: {
@@ -358,6 +375,9 @@ struct OnboardingView: View {
             sameDayCardioTiming: .afterStrength
         )
         settings.hasCompletedOnboarding = true
+        // Persist age only if the user set it; otherwise leave nil so the HR-zone
+        // estimator uses its 40-year default (US median).
+        if ageProvided { settings.userAge = age }
         dismiss()
     }
 }

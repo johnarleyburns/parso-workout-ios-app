@@ -490,6 +490,45 @@ extension CoachSession {
         buildStrengthExercises(facts: facts)
     }
 
+    /// Build a concrete strength prescription for a specific movement-pattern set
+    /// (issue 6/7 — a planned split day renders its real exercises). Prefers the
+    /// user's actual lifts per pattern (`mostTrainedExercises`), falling back to the
+    /// canonical compound; carries the goal's descending rep ladder.
+    public static func strengthExercises(facts: CoachFacts,
+                                         patterns: [MovementPattern],
+                                         maxExercises: Int = 6) -> [RecommendedExercise] {
+        let goal = facts.goal
+        let range = goal.repRange
+        let preferred = mostTrainedExercises(facts: facts)
+        let fallbacks: [MovementPattern: (String, Int?)] = [
+            .squat: ("Back Squat", 3),
+            .horizontalPush: ("Bench Press", 3),
+            .horizontalPull: ("Barbell Row", 3),
+            .hinge: ("Romanian Deadlift", 3),
+            .verticalPush: ("Overhead Press", 3),
+            .verticalPull: ("Pull-Up", 3),
+            .core: ("Plank", 2),
+            .locomotion: ("Standing Calf Raise", 2),
+            .carry: ("Farmer Carry", 2),
+        ]
+        var exercises: [RecommendedExercise] = []
+        var used = Set<MovementPattern>()
+        for pattern in patterns {
+            guard exercises.count < maxExercises else { break }
+            guard !used.contains(pattern) else { continue }
+            used.insert(pattern)
+            let (fallback, setCount) = fallbacks[pattern] ?? ("Back Squat", 3)
+            let name = preferred[pattern] ?? fallback
+            exercises.append(RecommendedExercise(
+                name: name, sets: setCount,
+                repsLow: range.lowerBound, repsHigh: range.upperBound,
+                loadKg: nil, rir: goal.targetRIR,
+                repLadder: RepLadder.ladder(for: goal, sets: setCount ?? 3)
+            ))
+        }
+        return exercises
+    }
+
     private static func buildStrengthExercises(facts: CoachFacts) -> [RecommendedExercise] {
         let goal = facts.goal
         let range = goal.repRange

@@ -1,5 +1,46 @@
 import Foundation
 
+/// The muscle-group split a planned strength day trains. Used to (a) rotate
+/// consecutive strength days across different muscles (splits — ramosCampoSplit2024)
+/// so per-muscle recovery is respected, and (b) generate a focus-specific exercise
+/// list. `.fullBody` is the low-frequency default (≤3 strength days/week).
+public enum StrengthFocus: String, Sendable, Equatable {
+    case fullBody
+    case upper
+    case lower
+
+    public var label: String {
+        switch self {
+        case .fullBody: return "Full body"
+        case .upper: return "Upper body"
+        case .lower: return "Lower body"
+        }
+    }
+
+    /// Movement patterns this focus programs (a subset of the full-body list).
+    var patterns: [MovementPattern] {
+        switch self {
+        case .fullBody:
+            return [.squat, .horizontalPush, .horizontalPull, .hinge,
+                    .verticalPush, .verticalPull, .core, .locomotion]
+        case .upper:
+            return [.horizontalPush, .horizontalPull, .verticalPush, .verticalPull, .core]
+        case .lower:
+            return [.squat, .hinge, .locomotion, .core]
+        }
+    }
+
+    /// Body parts this focus loads — consulted against per-body-part recovery windows
+    /// so a focus can't be scheduled while its muscles are still recovering.
+    var bodyParts: Set<BodyPart> {
+        switch self {
+        case .fullBody: return Set(BodyPart.allCases)
+        case .upper: return [.chest, .back, .shoulders, .biceps, .triceps]
+        case .lower: return [.legs, .calves]
+        }
+    }
+}
+
 /// A session planned for a specific day.
 public struct PlannedSession: Sendable, Equatable, Identifiable {
     public let id: String
@@ -8,16 +49,28 @@ public struct PlannedSession: Sendable, Equatable, Identifiable {
     public let isHard: Bool
     public let isRest: Bool
     public let timingNote: String?
+    /// Concrete strength prescription for a planned strength day (issue 6). When
+    /// present, the planned-day preview renders the full per-exercise list
+    /// (sets × rep ladder + RIR) instead of a single generic line. Additive/nil-default
+    /// so existing callers and any decoded data keep working.
+    public let exercises: [CoachSession.RecommendedExercise]?
+    /// The muscle-group focus of a planned strength day (issue 7). `nil` for
+    /// non-strength days or when no split is in effect (full-body default).
+    public let focus: StrengthFocus?
 
     public init(id: String, kind: CoachSessionKind, label: String,
                 isHard: Bool = false, isRest: Bool = true,
-                timingNote: String? = nil) {
+                timingNote: String? = nil,
+                exercises: [CoachSession.RecommendedExercise]? = nil,
+                focus: StrengthFocus? = nil) {
         self.id = id
         self.kind = kind
         self.label = label
         self.isHard = isHard
         self.isRest = isRest
         self.timingNote = timingNote
+        self.exercises = exercises
+        self.focus = focus
     }
 }
 
@@ -186,7 +239,17 @@ public struct WeeklyPlan: Sendable, Equatable {
         let planningEnd = cal.date(byAdding: .day, value: 14, to: currentWeekStart) ?? currentWeekStart
 
         // Accumulate projected state: strength days left for current week, etc.
-        let strengthFloor = schedulePreferences.strengthDaysPerWeek
+        // Effective strength floor (issue 7): honor the stored preference AND infer
+        // the user's real cadence from history — a 5×/week lifter with a stale
+        // preference of 2 should still see ~5 planned strength days. The observed
+        // count is the distinct strength days in the trailing 7 days. Inference only
+        // *raises* the floor; the stored preference stays authoritative as a minimum.
+        let observedWeeklyStrengthDays = Set(
+            facts.rolling7dCompletedEvents
+                .filter(\.isStrength)
+                .map { cal.startOfDay(for: $0.start) }
+        ).count
+        let strengthFloor = min(6, max(schedulePreferences.strengthDaysPerWeek, observedWeeklyStrengthDays))
         let cardioDayTarget = schedulePreferences.cardioDaysPerWeek
         let aerobicMinutesTarget = 150.0
 
@@ -213,6 +276,13 @@ public struct WeeklyPlan: Sendable, Equatable {
 
         var weekResetOffset = nextWeekStart
 
+        // Split mode (issue 7): at ≥4 strength days/week the coach rotates
+        // upper/lower focuses so consecutive strength days train different muscles
+        // (ramosCampoSplit2024) while per-muscle recovery is respected
+        // (parejaBlancoRecovery2020). Below that it keeps whole-body sessions.
+        let useSplit = strengthFloor >= 4
+        var nextFocus: StrengthFocus = .upper
+
         // Future days: current week remainder + full next week
         var futureOffset = 1
         while true {
@@ -228,6 +298,7 @@ public struct WeeklyPlan: Sendable, Equatable {
                 weekResetOffset = cal.date(byAdding: .day, value: 7, to: weekResetOffset) ?? weekResetOffset
             }
 
+            let plannedFocus: StrengthFocus = useSplit ? nextFocus : .fullBody
             let sessions = futureSessions(
                 on: date,
                 projectedStrengthDays: projectedStrengthDays,
@@ -242,6 +313,8 @@ public struct WeeklyPlan: Sendable, Equatable {
                 allowsTwoADays: schedulePreferences.allowsTwoADays,
                 sameDayCardioTiming: schedulePreferences.sameDayCardioTiming,
                 restPreference: schedulePreferences.restPreference,
+                useSplit: useSplit,
+                focus: plannedFocus,
                 facts: facts,
                 calendar: cal
             )
@@ -258,6 +331,9 @@ public struct WeeklyPlan: Sendable, Equatable {
                 if s.kind == .strength {
                     projectedStrengthDays += 1
                     lastStrengthDate = date
+                    // Rotate the split focus only after a strength day is actually
+                    // scheduled, so upper/lower alternate across consecutive days.
+                    if useSplit { nextFocus = (nextFocus == .upper) ? .lower : .upper }
                 }
                 if s.isHard || s.kind == .moderateAerobic || s.kind == .vo2Intervals {
                     projectedHardDays.insert(date)
@@ -288,6 +364,8 @@ public struct WeeklyPlan: Sendable, Equatable {
         allowsTwoADays: Bool,
         sameDayCardioTiming: SameDayCardioTiming,
         restPreference: RestPreference,
+        useSplit: Bool,
+        focus: StrengthFocus,
         facts: CoachFacts,
         calendar: Calendar
     ) -> [PlannedSession] {
@@ -307,26 +385,47 @@ public struct WeeklyPlan: Sendable, Equatable {
                                      to: calendar.startOfDay(for: facts.referenceDate)) ?? date
         let poorReadinessApplies = facts.readiness?.isPoor == true
             && calendar.isDate(date, inSameDayAs: tomorrow)
-        let recoveryNeeded = poorReadinessApplies || priorHardStreak >= 3
+        // In split mode, consecutive strength days train different muscles, so the
+        // blanket "recover after 3 hard days" gate is raised — per-muscle recovery
+        // (focusRecoveryEligible) plus the user's rolling/fixed rest days provide the
+        // real spacing. Whole-body plans keep the conservative 3-day cap.
+        let hardStreakRecoveryLimit = useSplit ? 5 : 3
+        let recoveryNeeded = poorReadinessApplies || priorHardStreak >= hardStreakRecoveryLimit
 
         if recoveryNeeded {
             return [PlannedSession(id: "f-\(date)-recovery", kind: .recovery, label: "Recovery",
                                     isHard: false, isRest: false)]
         }
 
-        // Check strength eligibility: recovery window, need, spacing
-        let canStrength = strengthNeeded
-            && priorHardStreak == 0
-            && strengthRecoveryEligible(on: date, facts: facts, calendar: calendar)
-            && (lastStrengthDate == nil || calendar.dateComponents([.day], from: lastStrengthDate!, to: date).day! >= 1)
-
-        // Avoid hard lower-body strength adjacent to hard lower-body cardio
-        // (enforced by recovery gates above)
+        // Strength eligibility. Whole-body (low-frequency) plans keep the original
+        // "no consecutive hard days" gate (priorHardStreak == 0 + whole-body recovery
+        // window). Split (high-frequency) plans instead allow consecutive strength
+        // days as long as *this day's focus* trains muscles that are recovered
+        // (parejaBlancoRecovery2020) — enabling a 5×/week upper/lower rotation.
+        let canStrength: Bool
+        if useSplit {
+            // Split mode allows consecutive strength days as long as this day's focus
+            // trains recovered muscles; the `recoveryNeeded` gate above still forces a
+            // recovery day after 3 straight hard days (meeusenOvertraining2013), and
+            // the upper/lower rotation keeps consecutive days off the same muscles.
+            canStrength = strengthNeeded
+                && focusRecoveryEligible(focus, on: date, facts: facts, calendar: calendar)
+        } else {
+            canStrength = strengthNeeded
+                && priorHardStreak == 0
+                && strengthRecoveryEligible(on: date, facts: facts, calendar: calendar)
+                && (lastStrengthDate == nil || calendar.dateComponents([.day], from: lastStrengthDate!, to: date).day! >= 1)
+        }
 
         if canStrength {
+            let planFocus: StrengthFocus = useSplit ? focus : .fullBody
+            let exercises = CoachSession.strengthExercises(facts: facts, patterns: planFocus.patterns)
             sessions.append(PlannedSession(id: "f-\(date)-strength",
-                                            kind: .strength, label: "Strength",
-                                            isHard: true, isRest: false))
+                                            kind: .strength,
+                                            label: useSplit ? "Strength · \(planFocus.label)" : "Strength",
+                                            isHard: true, isRest: false,
+                                            exercises: exercises.isEmpty ? nil : exercises,
+                                            focus: planFocus))
         }
 
         // Cardio session
@@ -365,6 +464,21 @@ public struct WeeklyPlan: Sendable, Equatable {
         }
 
         return sessions
+    }
+
+    /// A split focus is eligible on a date when none of the body parts it trains are
+    /// still inside their per-part recovery window (parejaBlancoRecovery2020). This
+    /// lets an upper day follow a lower day (different muscles) while still blocking a
+    /// same-muscle repeat before it has recovered.
+    private static func focusRecoveryEligible(_ focus: StrengthFocus, on date: Date,
+                                              facts: CoachFacts, calendar: Calendar) -> Bool {
+        let plannedMidday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+        for part in focus.bodyParts {
+            if let window = facts.recovery.byBodyPart[part], plannedMidday < window.hardEligibleAt {
+                return false
+            }
+        }
+        return true
     }
 
     private static func strengthRecoveryEligible(on date: Date,

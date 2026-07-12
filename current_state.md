@@ -2,6 +2,67 @@
 
 Live handoff/progress tracker.
 
+_Last updated: 2026-07-12 — Home / Your Plan bug-fix batch (Fixes 1,2,3,5,6,7,8; Fix 4 skipped)._
+
+## What just shipped — Home / Your Plan bug-fix batch (2026-07-12)
+
+Plan: `plans/home-yourplan-fixes/2026-07-12/plan.md`. Phased A→E, one branch/PR each.
+CadenceCore **797 tests, 0 failures**; iOS `xcodebuild` BUILD SUCCEEDED. UI-test runs
+were blocked by a degraded simulator (ballooning launches / `server died`); `swift test`
+is the reliable gate per CLAUDE.md. Phase-B UI tests (rest-timer + tap-to-open) did pass
+before the simulator degraded.
+
+- **Fix 1 (phase A) — "What you did" uses the workout's date.** `CoachDecisionEngine`
+  now formats the last-strength / last-cardio relative time and `occurredAt` sort key
+  from the event's `start` (`session.date`), not `end` (`endedAt`/finalize time). +1 test.
+- **Fix 5 (phase A) — "This Week" refreshes after a date edit.** Editing a past
+  workout's date in `SessionView` posts `.workoutHistoryChanged`; `HomeView` observes it
+  and bumps `historyRefreshToken` (the `CoachSignature` keys on counts + token, not
+  per-session dates), so the strip recomputes without relaunch.
+- **Fix 2 (phase B) — edit-mode rest timer suppressed.** The rest timer now starts only
+  for the *live* active session (`active.strengthSession?.id == session.id`), so
+  editing/correcting a past workout never fires a countdown. +1 XCUITest.
+- **Fix 3 (phase B) — tap "What you did" opens the workout.** Added additive
+  `ObservedFact.sourceId`; `CoachDecisionEngine` threads the source workout id onto the
+  last-strength/last-cardio facts. `HomeView` resolves it to the live
+  `WorkoutSession`/`CardioWorkout` and pushes the existing detail destination; the whole
+  row is a `Button` + `.contentShape` with a chevron. +1 core test, +1 XCUITest.
+- **Fix 4 (phase C) — SKIPPED (user decision).** The plan's `imageInsets` tab-bar nudge
+  reproducibly breaks the tab bar's accessibility tree (fails the existing
+  `testTabItemsAndSettingsGearHittable` + a VoiceOver/NFR-2 regression). The safe
+  `titlePositionAdjustment` alternative only moves the label, not the icon. User chose to
+  skip the fix entirely; `RootTabView` is unchanged.
+- **Fix 8 (phase D) — cardio HR-zone stacked bar + zone-training citation.**
+  `YourWeekView` renders weekly time-in-zone as a horizontal stacked colored bar
+  (Z1→Z5, blue→red) above the per-zone legend (with color swatches), reading the existing
+  `CardioZoneAggregator` `[Int: Double]`. VoiceOver reads each zone's minutes + % (NFR-2).
+  Swapped the science link from `tanakaMaxHR2001` to a **new** `seilerPolarized2010`
+  (Seiler 2010, intensity distribution) — added to `CitationRegistry` (`all` +
+  `usageReasons`, `CitationIntegrityTests` green) and `docs/CITATIONS.md`. +1 XCUITest.
+- **Fixes 6 + 7 (phase E) — planned exercise list + split-frequency inference.**
+  - **Fix 6:** additive `PlannedSession.exercises` + `.focus`. `WeeklyPlan.generate`
+    populates a concrete prescription per planned strength day via the new reusable
+    `CoachSession.strengthExercises(facts:patterns:)` (prefers the user's actual lifts,
+    carries goal rep ladders). `PlannedDayPreviewView` renders the full per-exercise list
+    (name · sets×rep-ladder · RIR).
+  - **Fix 7:** `WeeklyPlan.generate` computes an **effective strength floor** =
+    `min(6, max(schedulePreferences.strengthDaysPerWeek, observed trailing-7-day strength
+    days))`, so a 5×/week lifter with a stale preference of 2 gets ~5 planned strength
+    days (verified: exactly 5). At floor ≥ 4 it switches to a **split** — rotating
+    upper/lower focuses across consecutive days, gated by per-body-part recovery windows
+    (`focusRecoveryEligible` → `recovery.byBodyPart`) instead of the blanket "no
+    consecutive hard days" rule. Whole-body (< 4) plans keep the original 48h/no-back-to-back
+    gate. Split days cite `frequencyMeta` + `ramosCampoSplit2024` +
+    `parejaBlancoRecovery2020` in the preview's "The science" (HARD RULE). +6 core tests.
+  - **Source-of-truth reconciliation (plan Fix 6 note):** `WeeklyPlan.generate` is the
+    single source of truth for the **planned-week preview** (it already drives
+    `PlannedDayPreviewView` via `DayOutline.sessions`, is date-anchored, now carries
+    per-focus exercises). `CoachPlanOptimizer.optimize` remains scoped to **today's**
+    exercise selection + weekly volume-insight routing (`CoachSnapshotBuilder`) and was
+    intentionally NOT re-used to populate future days — it isn't day-of-week anchored
+    across next week. No behavior change to the optimizer path.
+
+_Prior entry:_
 _Last updated: 2026-07-12 — Coach test suite: fix 6 optimizer failures + flaky RecencyTest, gate two-a-days, add CI unit-test job._
 
 ## What just shipped — Coach test fixes + CI gate (2026-07-12)

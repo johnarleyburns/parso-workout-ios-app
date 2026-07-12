@@ -446,6 +446,17 @@ Tanaka, Monahan & Seals (2001). *Age-predicted maximal heart rate revisited.*
 - **What it supports:** 208 − 0.7·age estimates HRmax at a population level with a large
   individual SD (~±10 bpm) — so HR-zone prescriptions built on it are low-confidence.
 
+### `seilerPolarized2010` — training intensity distribution
+Seiler (2010). *What is best practice for training intensity and duration distribution in
+endurance athletes?* **Int J Sports Physiol Perform 5(3).**
+<https://doi.org/10.1123/ijspp.5.3.276>
+
+- **Used by:** the "Cardio HR zones (this week)" stacked bar on Your Plan (THIS WEEK) —
+  the science link explaining how weekly cardio time is read across HR zones.
+- **What it supports:** endurance adaptation is best served by a specific *intensity
+  distribution* (a large share of easy/low-zone work plus some high-intensity work),
+  which is exactly what the per-zone weekly minutes bar visualizes.
+
 ### `kaufmannThreshold2023` — threshold-method agreement
 Kaufmann, Gronwald, Herold & Hoos (2023). *Heart Rate Variability-Derived Thresholds for
 Exercise Intensity Prescription in Endurance Sports.* **Sports Med - Open 9(1).**

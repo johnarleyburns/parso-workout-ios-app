@@ -405,6 +405,17 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1016/s0735-1097(00)01054-8"
     )
 
+    /// Intensity-distribution / polarized training — backs how weekly cardio time
+    /// is spread across HR zones (mostly easy, some hard) for endurance adaptation.
+    public static let seilerPolarized2010 = Citation(
+        id: "seilerPolarized2010",
+        authors: "Seiler",
+        year: 2010,
+        title: "What is best practice for training intensity and duration distribution in endurance athletes?",
+        source: "International Journal of Sports Physiology and Performance 5(3)",
+        url: "https://doi.org/10.1123/ijspp.5.3.276"
+    )
+
     /// Threshold-method agreement / uncertainty — used for threshold/lactate claims.
     public static let kaufmannThreshold2023 = Citation(
         id: "kaufmannThreshold2023",
@@ -595,6 +606,7 @@ public enum CitationRegistry {
         murlasitsConcurrentSequence2018, currierResistancePrescription2023,
         tabata1996, gibala2006, metcalfeREHIT2012, gunnarsson1020302012,
         brennanExerciseClassification2025,
+        seilerPolarized2010,
     ]
 
     public static func citation(forId id: String) -> Citation? {
@@ -643,6 +655,7 @@ public enum CitationRegistry {
         "dupuyFatigue2018": "Evidence-based post-exercise recovery techniques — supplementary evidence for recovery-readiness insights.",
         "zourdosRIR2016": "Novel RPE scale measuring repetitions in reserve — backs the strength-intensity prescription pool.",
         "tanakaMaxHR2001": "Age-predicted maximal heart rate — backs threshold/tempo training when HR zones are estimated rather than tested.",
+        "seilerPolarized2010": "Training intensity distribution in endurance athletes — backs how the coach reads weekly cardio time spread across HR zones (mostly easy, some hard).",
         "kaufmannThreshold2023": "HRV-derived thresholds for exercise intensity prescription — backs threshold/tempo training prescriptions.",
         "milanovicHIIT2015": "HIIT vs continuous endurance training for VO₂max — supplementary evidence for VO₂-interval prescriptions.",
         "slothSIT2013": "Sprint interval training effects on VO₂max — backs the anaerobic/SIT opt-in prescription.",

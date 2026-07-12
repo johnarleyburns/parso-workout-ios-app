@@ -142,11 +142,19 @@ struct YourWeekView: View {
                 }
             }
 
-            // Cardio HR-zone breakdown this week (issue 7).
+            // Cardio HR-zone breakdown this week (issue 7). A stacked colored bar
+            // (Z1→Z5, cool→warm) segments the total weekly minutes by zone, with a
+            // per-zone minute legend beneath it.
             if !zoneMinutes.isEmpty {
                 Section("Cardio HR zones (this week)") {
+                    ZoneBar(minutes: zoneMinutes)
+                        .accessibilityIdentifier("yourPlan.zoneBar")
                     ForEach(zoneRows(zoneMinutes), id: \.zone) { row in
                         HStack {
+                            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                .fill(Self.zoneColor(row.zone))
+                                .frame(width: 12, height: 12)
+                                .accessibilityHidden(true)
                             Text("Z\(row.zone)").font(.subheadline.bold()).monospacedDigit()
                                 .frame(width: 32, alignment: .leading)
                             Text(CardioMath.zoneName(row.zone)).font(.subheadline)
@@ -154,13 +162,14 @@ struct YourWeekView: View {
                             Text("\(Int(row.minutes.rounded())) min")
                                 .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
                         }
+                        .accessibilityElement(children: .combine)
                         .accessibilityIdentifier("yourPlan.zone.\(row.zone)")
                     }
                     if settings.userAge == nil {
                         Text("Estimated from workout type — add your age in onboarding or Coach preferences for HR-based zones.")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
-                    if let citation = CitationRegistry.citation(forId: "tanakaMaxHR2001") {
+                    if let citation = CitationRegistry.citation(forId: "seilerPolarized2010") {
                         CitationLink(citation: citation, compact: true)
                     }
                 }
@@ -247,6 +256,57 @@ struct YourWeekView: View {
     }
 
     private struct ZoneRow { let zone: Int; let minutes: Double }
+
+    /// Zone color scale Z1→Z5 (cool→warm), matching the HR-zone intensity ramp.
+    static func zoneColor(_ zone: Int) -> Color {
+        switch zone {
+        case 1: return .blue
+        case 2: return .green
+        case 3: return .yellow
+        case 4: return .orange
+        default: return .red
+        }
+    }
+
+    /// A horizontal stacked bar segmenting the total weekly cardio minutes by zone
+    /// (Z1..Z5), each segment proportional to its share. VoiceOver reads each zone's
+    /// minutes and % (NFR-2). Dynamic Type unaffected — the bar is a fixed-height rail.
+    private struct ZoneBar: View {
+        let minutes: [Int: Double]
+
+        private var segments: [(zone: Int, minutes: Double)] {
+            (1...5).compactMap { z in
+                guard let m = minutes[z], m > 0.5 else { return nil }
+                return (z, m)
+            }
+        }
+        private var total: Double { segments.reduce(0) { $0 + $1.minutes } }
+
+        var body: some View {
+            GeometryReader { geo in
+                HStack(spacing: 0) {
+                    ForEach(segments, id: \.zone) { seg in
+                        YourWeekView.zoneColor(seg.zone)
+                            .frame(width: total > 0 ? geo.size.width * (seg.minutes / total) : 0)
+                    }
+                }
+            }
+            .frame(height: 14)
+            .clipShape(Capsule())
+            .padding(.vertical, 4)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Weekly cardio heart-rate zone distribution")
+            .accessibilityValue(accessibilitySummary)
+        }
+
+        private var accessibilitySummary: String {
+            guard total > 0 else { return "No cardio this week" }
+            return segments.map { seg in
+                let pct = Int((seg.minutes / total * 100).rounded())
+                return "Zone \(seg.zone), \(CardioMath.zoneName(seg.zone)): \(Int(seg.minutes.rounded())) minutes, \(pct) percent"
+            }.joined(separator: ". ")
+        }
+    }
 
     private func zoneRows(_ minutes: [Int: Double]) -> [ZoneRow] {
         (1...5).compactMap { z in

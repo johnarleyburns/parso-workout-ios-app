@@ -1716,8 +1716,10 @@ struct SessionView: View {
                                           usesBodyweight: usesBodyweight, note: note,
                                           completedAt: when, performedBy: person, in: context)
         if isPR { Haptics.prAchieved() } else { Haptics.setLogged() }
-        // No rest timer when filing a past workout — there's nothing to rest from.
-        if settings.autoStartRest && !isWarmup && !isManualLog {
+        // No rest timer when filing/editing a past workout — there's nothing to rest
+        // from. Only the live active session should start the rest timer (this also
+        // covers back-dated logged sessions without a separate flag).
+        if settings.autoStartRest && !isWarmup && !isManualLog && active.strengthSession?.id == session.id {
             rest.start(seconds: settings.restSeconds)
         }
     }

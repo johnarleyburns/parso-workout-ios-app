@@ -788,7 +788,8 @@ struct HomeView: View {
     }
 
     private func whatYouDidFactRow(_ fact: ObservedFact) -> some View {
-        HStack(spacing: 8) {
+        let hasDestination = whatYouDidTarget(fact) != nil
+        let rowContent = HStack(spacing: 8) {
             Image(systemName: fact.kind == .lastStrength ? "dumbbell.fill" : "heart.fill")
                 .font(.caption)
                 .foregroundStyle(fact.kind == .lastStrength ? .green : .teal)
@@ -807,10 +808,52 @@ struct HomeView: View {
             Text(fact.value)
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
+            if hasDestination {
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(.vertical, 8)
+        .contentShape(Rectangle())
+
+        return Group {
+            if hasDestination {
+                Button { Haptics.selection(); openWhatYouDid(fact) } label: { rowContent }
+                    .buttonStyle(.plain)
+            } else {
+                rowContent
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("home.fact.\(fact.id)")
+    }
+
+    /// The concrete workout a "What you did" fact describes, or nil if it can't be
+    /// resolved back to a live model (decision #3: the whole card opens the workout).
+    private enum WhatYouDidTarget { case strength(WorkoutSession), cardio(CardioWorkout) }
+
+    private func whatYouDidTarget(_ fact: ObservedFact) -> WhatYouDidTarget? {
+        guard let sourceId = fact.sourceId else { return nil }
+        switch fact.kind {
+        case .lastStrength:
+            if let s = sessions.first(where: { $0.id == sourceId }) { return .strength(s) }
+        case .lastCardio:
+            if let c = cardio.first(where: { $0.id == sourceId }) { return .cardio(c) }
+        default:
+            break
+        }
+        return nil
+    }
+
+    /// Pushes the tapped workout onto the stack: strength → editable `SessionView`,
+    /// cardio → `CardioDetailView` (both destinations already registered).
+    private func openWhatYouDid(_ fact: ObservedFact) {
+        switch whatYouDidTarget(fact) {
+        case .strength(let s): path.append(s)
+        case .cardio(let c): path.append(c)
+        case .none: break
+        }
     }
 
     private func resumeCard(_ session: WorkoutSession) -> some View {

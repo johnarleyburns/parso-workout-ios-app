@@ -267,6 +267,28 @@ final class CoachDecisionEngineTests: XCTestCase {
                        "occurredAt sort key should match the displayed start time")
     }
 
+    /// Fix 3: the "What you did" facts must carry the source workout id so the Home
+    /// card can navigate to that workout. Aggregate facts must not.
+    func testObservedFactsCarrySourceWorkoutId() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let strength = try makeStrengthEvent(context: ctx, name: "Back Squat",
+                                             primaryMuscles: ["quadriceps"],
+                                             date: now.addingTimeInterval(-1 * 86400))
+        let run = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-3600),
+                                  duration: 1800, avgHR: 135)
+        let facts = CoachFacts.make(from: [strength, run], goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+        let strengthFact = decision.observedFacts.first { $0.kind == .lastStrength }
+        let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
+        XCTAssertEqual(strengthFact?.sourceId, strength.id,
+                       "last strength fact should carry its source session id")
+        XCTAssertEqual(cardioFact?.sourceId, run.id,
+                       "last cardio fact should carry its source cardio id")
+        let strengthDaysFact = decision.observedFacts.first { $0.kind == .weeklyStrengthDays }
+        XCTAssertNil(strengthDaysFact?.sourceId, "aggregate facts should not carry a source id")
+    }
+
     func testObservedFactsUseStaticSummaryValues() throws {
         let ctx = try makeContext()
         let now = testNow

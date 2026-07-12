@@ -106,18 +106,23 @@ public struct ObservedFact: Sendable, Equatable, Identifiable {
     public let value: String
     public let detail: String?
     public let occurredAt: Date?
+    /// The source workout's stable id when this fact describes a concrete session
+    /// (last strength / last cardio), so the UI can navigate to that workout. `nil`
+    /// for purely aggregate facts (weekly days, minutes, steps).
+    public let sourceId: UUID?
     /// Science backing this fact (HARD RULE): resolved + rendered wherever the fact
     /// surfaces. Empty for purely descriptive facts (e.g. "last strength was 2d ago").
     public let citationIds: [String]
 
     public init(kind: Kind, title: String, value: String, detail: String? = nil,
-                occurredAt: Date? = nil, citationIds: [String] = []) {
+                occurredAt: Date? = nil, sourceId: UUID? = nil, citationIds: [String] = []) {
         self.id = kind.rawValue
         self.kind = kind
         self.title = title
         self.value = value
         self.detail = detail
         self.occurredAt = occurredAt
+        self.sourceId = sourceId
         self.citationIds = citationIds
     }
 }
@@ -268,7 +273,8 @@ public enum CoachDecisionEngine {
                 title: "Last strength",
                 value: formatRelative(lastStrength.start, now),
                 detail: exerciseDetails.isEmpty ? nil : exerciseDetails.joined(separator: ", "),
-                occurredAt: lastStrength.start
+                occurredAt: lastStrength.start,
+                sourceId: lastStrength.id
             ))
         }
 
@@ -284,7 +290,8 @@ public enum CoachDecisionEngine {
                 title: "Last cardio",
                 value: formatRelative(lastCardio.start, now),
                 detail: cardioDetail.isEmpty ? nil : cardioDetail,
-                occurredAt: lastCardio.start
+                occurredAt: lastCardio.start,
+                sourceId: lastCardio.id
             ))
         }
 

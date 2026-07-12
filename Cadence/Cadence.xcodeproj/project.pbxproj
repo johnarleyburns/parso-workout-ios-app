@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		8D78A55C2FD28A6200AE7C2F /* CadenceCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8D78A55B2FD28A6200AE7C2F /* CadenceCore */; };
 		8D78A55F2FD28A7C00AE7C2F /* CadenceCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8D78A55E2FD28A7C00AE7C2F /* CadenceCore */; };
+		CAFEFEA70000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = CAFEFEA70000000000000000 /* CadenceFeatures */; };
+		CAFEF1180000000000000001 /* CadenceFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = CAFEF1180000000000000000 /* CadenceFixtures */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -113,6 +115,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				8D78A55C2FD28A6200AE7C2F /* CadenceCore in Frameworks */,
+				CAFEFEA70000000000000001 /* CadenceFeatures in Frameworks */,
+				CAFEF1180000000000000001 /* CadenceFixtures in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -210,6 +214,8 @@
 			name = Cadence;
 			packageProductDependencies = (
 				8D78A55B2FD28A6200AE7C2F /* CadenceCore */,
+				CAFEFEA70000000000000000 /* CadenceFeatures */,
+				CAFEF1180000000000000000 /* CadenceFixtures */,
 			);
 			productName = Cadence;
 			productReference = 8D78A4F52FD282B500AE7C2F /* Cadence.app */;
@@ -989,6 +995,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
 			productName = CadenceCore;
+		};
+		CAFEFEA70000000000000000 /* CadenceFeatures */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadenceFeatures;
+		};
+		CAFEF1180000000000000000 /* CadenceFixtures */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadenceFixtures;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

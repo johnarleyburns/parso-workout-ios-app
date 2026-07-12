@@ -9,7 +9,12 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .library(name: "CadenceCore", targets: ["CadenceCore"])
+        .library(name: "CadenceCore", targets: ["CadenceCore"]),
+        // Headless app logic lifted out of SwiftUI Views so `swift test` can
+        // exercise it without a simulator (test-pyramid plan, 2026-07-12).
+        .library(name: "CadenceFeatures", targets: ["CadenceFeatures"]),
+        // Shared deterministic seed catalog for previews + tests.
+        .library(name: "CadenceFixtures", targets: ["CadenceFixtures"])
     ],
     targets: [
         .target(
@@ -24,6 +29,14 @@ let package = Package(
                 .copy("Resources/coach-kb-version.json"),
             ]
         ),
-        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore"])
+        // Foundation + SwiftData + Observation ONLY. No SwiftUI, no HealthKit,
+        // no StoreKit, no UIKit — that is what keeps it testable on macOS.
+        .target(name: "CadenceFeatures", dependencies: ["CadenceCore"]),
+        .target(name: "CadenceFixtures", dependencies: ["CadenceCore"]),
+        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore"]),
+        .testTarget(
+            name: "CadenceFeaturesTests",
+            dependencies: ["CadenceFeatures", "CadenceFixtures"]
+        )
     ]
 )

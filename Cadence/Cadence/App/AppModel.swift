@@ -3,6 +3,9 @@ import SwiftUI
 import Observation
 import WatchConnectivity
 import CadenceCore
+#if DEBUG
+import CadenceFixtures
+#endif
 
 /// Central dependency container injected through the environment. Chooses real
 /// platform services or deterministic fakes based on launch arguments so the

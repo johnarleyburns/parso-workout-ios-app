@@ -1,0 +1,325 @@
+import Foundation
+import SwiftData
+import CadenceCore
+
+/// Deterministic SwiftData seed catalog, lifted verbatim out of the app target's
+/// `App/UITestSeed.swift` (test-pyramid plan, 2026-07-12). These are the most
+/// valuable asset in the old UI suite — realistic training graphs — and they were
+/// trapped in the app target where only XCUITest could reach them. Living here in
+/// `CadenceFixtures`, the *same* fixture a UI test seeded can now seed a headless
+/// `swift test`. Behavior is preserved exactly; these are moves, not rewrites.
+///
+/// Each builder takes an already-created `ModelContext` (typically
+/// `CadenceStore.makeModelContainer(inMemory: true)`) and saves before returning.
+public enum Fixtures {
+
+    // MARK: History / partners
+
+    /// A past Bench Press session (3 days ago) with a scoped partner "Sam" and one
+    /// Sam-attributed set, for history-edit partner tests.
+    public static func historyPartnerSession(into ctx: ModelContext) {
+        guard let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx) else { return }
+        let sam = try? WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        let s = WorkoutSession(title: "Push Day", date: Date(timeIntervalSinceNow: -3 * 86_400))
+        s.endedAt = s.date.addingTimeInterval(1800)
+        if let sam { s.activePartnerIDs = [sam.id.uuidString] }
+        ctx.insert(s)
+        ctx.insert(SetEntry(weight: 100, reps: 5, order: 0, completedAt: s.date, session: s, exercise: bench))
+        ctx.insert(SetEntry(weight: 100, reps: 5, order: 1, completedAt: s.date, session: s, exercise: bench))
+        ctx.insert(SetEntry(weight: 90, reps: 5, order: 2, completedAt: s.date, session: s, exercise: bench, performedBy: sam))
+        try? ctx.save()
+    }
+
+    /// An incomplete custom exercise whose name matches a built-in ("Bench Press
+    /// Machine" → "Bench Press"), so the Custom Exercises list shows a Reassign
+    /// button and the confirm-then-pick flow can be exercised (issue 4).
+    public static func customExerciseNeedsReassign(into ctx: ModelContext) {
+        // Ensure the built-in target exists so bestMatch can resolve.
+        _ = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        let custom = Exercise(name: "Bench Press Machine", isCustom: true)
+        custom.primaryMuscles = []   // incomplete → appears in the "Needs Definition" section
+        ctx.insert(custom)
+        try? ctx.save()
+    }
+
+    /// A prior Bench Press session at 100 kg × 5 (for last-time / PR tests).
+    public static func priorBench(into ctx: ModelContext) {
+        let bench = (try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx))
+        guard let bench else { return }
+        let prior = WorkoutSession(title: "Push Day", date: Date(timeIntervalSinceNow: -3 * 86_400))
+        ctx.insert(prior)
+        for (i, reps) in [5, 5, 4].enumerated() {
+            ctx.insert(SetEntry(weight: 100, reps: reps, order: i,
+                                completedAt: prior.date, session: prior, exercise: bench))
+        }
+        try? ctx.save()
+    }
+
+    /// A few weeks of varied sessions for Trends/History UI tests.
+    public static func history(into ctx: ModelContext) {
+        let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        let squat = try? WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx)
+        guard let bench, let squat else { return }
+        let weeks: [(Int, Double, Double)] = [(28, 90, 120), (21, 92.5, 125), (14, 95, 130), (7, 97.5, 135), (1, 100, 140)]
+        for (daysAgo, benchKg, squatKg) in weeks {
+            let s = WorkoutSession(title: "Session", date: Date(timeIntervalSinceNow: -Double(daysAgo) * 86_400))
+            ctx.insert(s)
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: benchKg, reps: 5, order: i, completedAt: s.date, session: s, exercise: bench))
+            }
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: squatKg, reps: 5, order: 3 + i, completedAt: s.date, session: s, exercise: squat))
+            }
+        }
+        try? ctx.save()
+    }
+
+    /// One finished walk (10 days ago — between two seeded sessions) with HR
+    /// samples, so the unified history list has both kinds and a cardio summary
+    /// can render its HR chart.
+    public static func cardioWalk(into ctx: ModelContext) {
+        let start = Date(timeIntervalSinceNow: -10 * 86_400)
+        let c = CardioWorkout(type: .walk, start: start, end: start.addingTimeInterval(1800),
+                               distance: 2200, activeEnergy: 140, avgHeartRate: 118,
+                               maxHeartRate: 135, source: .iphone)
+        ctx.insert(c)
+        for (t, bpm) in [(0.0, 100.0), (300.0, 115.0), (600.0, 120.0), (1200.0, 125.0), (1800.0, 118.0)] {
+            ctx.insert(HRSample(t: t, bpm: bpm, cardio: c))
+        }
+        try? ctx.save()
+    }
+
+    /// Unified strength + cardio history (field-testing Round 4 A4).
+    public static func historyMixed(into ctx: ModelContext) {
+        history(into: ctx)
+        cardioWalk(into: ctx)
+    }
+
+    // MARK: Coach scenarios
+
+    /// One completed strength session this week + one completed cardio worth 18
+    /// moderate-equivalent minutes. Coach should select aerobic because the target
+    /// is behind.
+    public static func coachWhyMixedHistory(into ctx: ModelContext) {
+        let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        guard let bench else { return }
+        // Completed strength session 2 hours ago
+        let now = Date()
+        let strengthDate = now.addingTimeInterval(-2 * 3600)
+        let s = WorkoutSession(title: "Push Day", date: strengthDate)
+        s.endedAt = strengthDate.addingTimeInterval(1800)
+        ctx.insert(s)
+        for i in 0..<3 {
+            ctx.insert(SetEntry(weight: 80, reps: 8, order: i, rpe: 8,
+                                completedAt: strengthDate, session: s, exercise: bench))
+        }
+        // Completed cardio yesterday worth 18 mod-eq minutes
+        let cardioStart = now.addingTimeInterval(-26 * 3600)
+        let c = CardioWorkout(type: .run, start: cardioStart,
+                               end: cardioStart.addingTimeInterval(18 * 60),
+                               avgHeartRate: 135, source: .iphone)
+        ctx.insert(c)
+        try? ctx.save()
+    }
+
+    /// Strength floor met, aerobic minutes behind, no lower-body collision.
+    public static func coachAerobicGap(into ctx: ModelContext) {
+        let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        let row = try? WorkoutRepository.findOrCreateExercise(named: "Barbell Row", category: .pull, in: ctx)
+        guard let bench, let row else { return }
+        let now = Date()
+        // Two strength sessions this week (floor met)
+        let s1 = WorkoutSession(title: "Upper 1", date: now.addingTimeInterval(-4 * 86400))
+        s1.endedAt = s1.date.addingTimeInterval(1800)
+        ctx.insert(s1)
+        for i in 0..<3 {
+            ctx.insert(SetEntry(weight: 80, reps: 8, order: i, rpe: 8,
+                                completedAt: s1.date, session: s1, exercise: bench))
+        }
+        let s2 = WorkoutSession(title: "Upper 2", date: now.addingTimeInterval(-6 * 86400))
+        s2.endedAt = s2.date.addingTimeInterval(1800)
+        ctx.insert(s2)
+        for i in 0..<3 {
+            ctx.insert(SetEntry(weight: 60, reps: 10, order: i, rpe: 8,
+                                completedAt: s2.date, session: s2, exercise: row))
+        }
+        try? ctx.save()
+    }
+
+    /// Recent hard lower-body strength (squat within 24h), aerobic target behind.
+    /// Verifies that hard/moderate run is not primary.
+    public static func coachLowerBodyRecovery(into ctx: ModelContext) {
+        let squat = try? WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx)
+        guard let squat else { return }
+        let now = Date()
+        let s = WorkoutSession(title: "Leg Day", date: now.addingTimeInterval(-6 * 3600))
+        s.endedAt = s.date.addingTimeInterval(3600)
+        ctx.insert(s)
+        for i in 0..<5 {
+            ctx.insert(SetEntry(weight: 120, reps: 5, order: i, rpe: 9,
+                                completedAt: s.date, session: s, exercise: squat))
+        }
+        try? ctx.save()
+    }
+
+    /// Two-a-day enabled, today's strength is done, cardio is still due. This
+    /// catches the Home card copy path after the engine correctly leaves one
+    /// planned workout remaining. Sets `settings.coachSchedulePreferences` and
+    /// `settings.coachPreferenceProfile` in the given defaults (UserDefaults.standard
+    /// by default) to match the original UI-test seed.
+    public static func coachTwoADayStrengthDone(into ctx: ModelContext, defaults: UserDefaults = .standard) {
+        defaults.set(twoADaySchedulePreferencesJSON(), forKey: "settings.coachSchedulePreferences")
+        defaults.set(runPreferenceJSON, forKey: "settings.coachPreferenceProfile")
+
+        let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        guard let bench else { return }
+
+        let now = Date()
+        let todayStart = Calendar.current.startOfDay(for: now)
+        let sessionEnd = now.addingTimeInterval(-60)
+        let proposedStart = sessionEnd.addingTimeInterval(-1800)
+        let sessionStart = proposedStart > todayStart ? proposedStart : todayStart.addingTimeInterval(60)
+
+        let s = WorkoutSession(title: "Morning Strength", date: sessionStart)
+        s.endedAt = sessionEnd
+        ctx.insert(s)
+        for i in 0..<3 {
+            ctx.insert(SetEntry(weight: 80, reps: 8, order: i, rpe: 8,
+                                completedAt: sessionStart, session: s, exercise: bench))
+        }
+        try? ctx.save()
+    }
+
+    /// Mixed history with the most recent strength + cardio both *yesterday*, and
+    /// older strength + cardio the previous week. Verifies "Why this today" surfaces
+    /// the yesterday events as last-strength / last-cardio (not last week's).
+    public static func coachYesterdayMixedHistory(into ctx: ModelContext) {
+        let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        let squat = try? WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx)
+        guard let bench, let squat else { return }
+        let now = Date()
+        // Older strength (previous week).
+        let oldS = WorkoutSession(title: "Leg Day", date: now.addingTimeInterval(-8 * 86400))
+        oldS.endedAt = oldS.date.addingTimeInterval(1800)
+        ctx.insert(oldS)
+        for i in 0..<3 {
+            ctx.insert(SetEntry(weight: 100, reps: 5, order: i, rpe: 8,
+                                completedAt: oldS.date, session: oldS, exercise: squat))
+        }
+        // Older cardio (previous week).
+        let oldCStart = now.addingTimeInterval(-9 * 86400)
+        ctx.insert(CardioWorkout(type: .walk, start: oldCStart, end: oldCStart.addingTimeInterval(1800),
+                                 avgHeartRate: 110, source: .iphone))
+        // Strength yesterday (Bench).
+        let yS = WorkoutSession(title: "Push Day", date: now.addingTimeInterval(-26 * 3600))
+        yS.endedAt = yS.date.addingTimeInterval(1800)
+        ctx.insert(yS)
+        for i in 0..<3 {
+            ctx.insert(SetEntry(weight: 80, reps: 8, order: i, rpe: 8,
+                                completedAt: yS.date, session: yS, exercise: bench))
+        }
+        // Cardio yesterday (Run), 30 min moderate.
+        let yCStart = now.addingTimeInterval(-25 * 3600)
+        ctx.insert(CardioWorkout(type: .run, start: yCStart, end: yCStart.addingTimeInterval(1800),
+                                 avgHeartRate: 135, source: .iphone))
+        try? ctx.save()
+    }
+
+    /// "Today is complete" scenario: earlier this week a full-body strength + short
+    /// run, and TODAY both a completed strength session and a 44-min boxing workout.
+    /// With both modalities logged today the coach shows the complete/on-plan state.
+    /// Anchored to `now` (not a fixed weekday) so it is deterministic on any run day.
+    public static func coachWednesdayComplete(into ctx: ModelContext) {
+        let now = Date()
+        let cal = Calendar.current
+        let todayStart = cal.startOfDay(for: now)
+
+        // Earlier this week (2 days ago): full-body strength + 18-min run for context.
+        let earlier = cal.date(byAdding: .day, value: -2, to: now) ?? now.addingTimeInterval(-2 * 86400)
+        let squat = try? WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx)
+        let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        let row = try? WorkoutRepository.findOrCreateExercise(named: "Barbell Row", category: .pull, in: ctx)
+        if let squat, let bench, let row {
+            let s = WorkoutSession(title: "Full-body", date: earlier)
+            s.endedAt = earlier.addingTimeInterval(3600)
+            ctx.insert(s)
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 100, reps: 5, order: i, rpe: 8,
+                                    completedAt: earlier, session: s, exercise: squat))
+            }
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 80, reps: 8, order: 3 + i, rpe: 8,
+                                    completedAt: earlier, session: s, exercise: bench))
+            }
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 60, reps: 10, order: 6 + i, rpe: 8,
+                                    completedAt: earlier, session: s, exercise: row))
+            }
+        }
+        let earlierRunStart = earlier.addingTimeInterval(3600 + 1800)
+        ctx.insert(CardioWorkout(type: .run, start: earlierRunStart, end: earlierRunStart.addingTimeInterval(18 * 60),
+                                 avgHeartRate: 140, source: .iphone))
+
+        // TODAY: a completed strength session + a 44-min boxing workout. With both
+        // strength and cardio in the books today, the day is complete under the
+        // current adherence rules (both-modalities-done → planComplete), regardless
+        // of remaining weekly targets. Placed a few hours before `now` but clamped
+        // to after midnight so both events always fall on the current day.
+        let strengthStart = max(todayStart.addingTimeInterval(60), now.addingTimeInterval(-7 * 3600))
+        if let squat = try? WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx),
+           let bench = try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx) {
+            let ws = WorkoutSession(title: "Today Strength", date: strengthStart)
+            ws.endedAt = strengthStart.addingTimeInterval(2400)
+            ctx.insert(ws)
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 100, reps: 5, order: i, rpe: 8,
+                                    completedAt: strengthStart, session: ws, exercise: squat))
+            }
+            for i in 0..<3 {
+                ctx.insert(SetEntry(weight: 80, reps: 8, order: 3 + i, rpe: 8,
+                                    completedAt: strengthStart, session: ws, exercise: bench))
+            }
+        }
+        let boxingStart = max(todayStart.addingTimeInterval(120), now.addingTimeInterval(-4 * 3600))
+        ctx.insert(CardioWorkout(type: .boxing, start: boxingStart, end: boxingStart.addingTimeInterval(44 * 60),
+                                 avgHeartRate: 135, source: .iphone))
+
+        try? ctx.save()
+    }
+
+    /// Aerobic floor met (≥150 mod-eq today), no strength this week → Coach picks
+    /// strength. All cardio is dated today so the week boundary can't move it out.
+    public static func coachStrengthPrimary(into ctx: ModelContext) {
+        let now = Date()
+        for hoursAgo in [2.0, 4.0, 6.0] {
+            let start = now.addingTimeInterval(-hoursAgo * 3600 - 3600)
+            ctx.insert(CardioWorkout(type: .run, start: start, end: start.addingTimeInterval(3600),
+                                     avgHeartRate: 135, source: .iphone))  // 60 min moderate = 60 mod-eq
+        }
+        try? ctx.save()
+    }
+
+    // MARK: Preference JSON blobs
+
+    /// `updatedAt` is encoded as a Double (JSONDecoder's default `.deferredToDate`
+    /// strategy — seconds since 2001), NOT an ISO8601 string, or decoding fails
+    /// silently and the preference is dropped.
+    public static let runPreferenceJSON: Data = {
+        let json = """
+        {"version":1,"aerobicPreferences":[{"intent":"moderateAerobic","modality":"run","score":3,"updatedAt":772600000}],"strengthPreferences":[],"avoidedTags":[],"selectionEvents":[]}
+        """
+        return json.data(using: .utf8)!
+    }()
+
+    public static let cyclePreferenceJSON: Data = {
+        let json = """
+        {"version":1,"aerobicPreferences":[{"intent":"moderateAerobic","modality":"cycle","score":3,"updatedAt":"2026-06-23T14:00:00Z"}],"strengthPreferences":[],"avoidedTags":[],"selectionEvents":[]}
+        """
+        return json.data(using: .utf8)!
+    }()
+
+    public static func twoADaySchedulePreferencesJSON() -> Data {
+        let prefs = CoachSchedulePreferences.default.withTwoADays(true)
+        return (try? JSONEncoder().encode(prefs)) ?? Data()
+    }
+}

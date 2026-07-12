@@ -241,6 +241,32 @@ final class CoachDecisionEngineTests: XCTestCase {
         XCTAssertEqual(cardioFact?.title, "Last cardio")
     }
 
+    /// Fix 1: "What you did" must read from the workout's date (start), not the
+    /// finalize/entry time (endedAt). A session started 12h ago but finalized 2h ago
+    /// must surface "12h ago".
+    func testLastStrengthValueUsesWorkoutDateNotEndedAt() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let started = now.addingTimeInterval(-12 * 3600)
+        let finalized = now.addingTimeInterval(-2 * 3600)
+        let session = try WorkoutRepository.createSession(date: started, in: ctx)
+        let ex = try WorkoutRepository.findOrCreateExercise(
+            named: "Back Squat", primaryMuscles: ["quadriceps"], in: ctx)
+        for _ in 0..<3 {
+            _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 100, reps: 5,
+                                             rpe: 8, completedAt: started, in: ctx)
+        }
+        session.endedAt = finalized
+        let event = TrainingEvent.from(session: session)!
+        let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate, now: now)
+        let decision = CoachDecisionEngine.run(facts)
+        let strengthFact = decision.observedFacts.first { $0.kind == .lastStrength }
+        XCTAssertEqual(strengthFact?.value, "12h ago",
+                       "Should format from session.date (12h ago), not endedAt (2h ago). Got: \(strengthFact?.value ?? "nil")")
+        XCTAssertEqual(strengthFact?.occurredAt, event.start,
+                       "occurredAt sort key should match the displayed start time")
+    }
+
     func testObservedFactsUseStaticSummaryValues() throws {
         let ctx = try makeContext()
         let now = testNow

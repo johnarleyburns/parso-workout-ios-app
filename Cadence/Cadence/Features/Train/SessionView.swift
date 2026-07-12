@@ -654,7 +654,8 @@ struct SessionView: View {
             NavigationStack {
                 DatePicker("Workout date", selection: Binding(
                     get: { session.date },
-                    set: { session.date = $0; try? context.save() }
+                    set: { session.date = $0; try? context.save()
+                           NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil) }
                 ))
                 .datePickerStyle(.graphical)
                 .padding()

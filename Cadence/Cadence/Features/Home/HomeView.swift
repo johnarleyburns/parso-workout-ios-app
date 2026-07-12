@@ -571,6 +571,12 @@ struct HomeView: View {
             }
             if contributionPromptAllowed { contributions.evaluate() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .workoutHistoryChanged)) { _ in
+            // A past workout's date was edited (SessionView). The coach signature
+            // keys on counts + token, not per-session dates, so bump the token to
+            // recompute the snapshot / "This Week" strip without an app relaunch.
+            markWorkoutHistoryChanged()
+        }
         .onChange(of: active.finishedSummary != nil) { _, shown in
             if shown {
                 ContributionCoordinator.recordWorkoutCompleted()

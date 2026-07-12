@@ -266,9 +266,9 @@ public enum CoachDecisionEngine {
             factsList.append(ObservedFact(
                 kind: .lastStrength,
                 title: "Last strength",
-                value: formatRelative(lastStrength.end, now),
+                value: formatRelative(lastStrength.start, now),
                 detail: exerciseDetails.isEmpty ? nil : exerciseDetails.joined(separator: ", "),
-                occurredAt: lastStrength.end
+                occurredAt: lastStrength.start
             ))
         }
 
@@ -282,9 +282,9 @@ public enum CoachDecisionEngine {
             factsList.append(ObservedFact(
                 kind: .lastCardio,
                 title: "Last cardio",
-                value: formatRelative(lastCardio.end, now),
+                value: formatRelative(lastCardio.start, now),
                 detail: cardioDetail.isEmpty ? nil : cardioDetail,
-                occurredAt: lastCardio.end
+                occurredAt: lastCardio.start
             ))
         }
 

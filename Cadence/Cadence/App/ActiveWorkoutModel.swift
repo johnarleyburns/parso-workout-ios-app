@@ -2,6 +2,14 @@ import Foundation
 import Observation
 import CadenceCore
 
+extension Notification.Name {
+    /// Posted when a past workout's date is edited from history (SessionView). Home
+    /// observes it to bump `historyRefreshToken` so the coach snapshot / "This Week"
+    /// strip recompute immediately — the `CoachSignature` keys on counts + token, not
+    /// individual session dates, so a pure date edit would otherwise go unnoticed.
+    static let workoutHistoryChanged = Notification.Name("cadence.workoutHistoryChanged")
+}
+
 /// Tracks the one in-progress workout so Home can surface a Resume card and the
 /// session can be finalized cleanly (field-testing §02, decision #8: a single
 /// active session at a time). The full idle-watchdog UI integration lands with

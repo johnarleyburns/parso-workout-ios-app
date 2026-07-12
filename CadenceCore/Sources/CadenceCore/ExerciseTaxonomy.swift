@@ -109,4 +109,36 @@ public enum MuscleCatalog {
         guard let m = byID[id] else { return [id.lowercased()] }
         return m.searchTerms + [m.region.rawValue.lowercased()]
     }
+
+    /// Canonicalize an exercise name for matching purposes. Strips equipment,
+    /// grip, and laterality qualifiers so "Double Kettlebell Snatch" and
+    /// "Snatch" resolve to the same matching key. Does NOT mutate stored
+    /// exerciseName — this is a matching key only.
+    public static func canonicalName(_ name: String) -> String {
+        let lower = name.lowercased()
+
+        let qualifiers: [String] = [
+            "double kettlebell", "single kettlebell",
+            "double dumbbell", "single dumbbell",
+            "double", "single",
+            "kettlebell", "dumbbell", "barbell",
+            "standing", "seated",
+            "alternate", "alternating",
+            "machine", "cable",
+            "smith",
+            "- pronated grip", "- supinated grip",
+            "pronated grip", "supinated grip",
+            "banded",
+        ]
+
+        var result = lower
+        for qualifier in qualifiers {
+            result = result.replacingOccurrences(of: qualifier, with: "")
+        }
+
+        result = result.replacingOccurrences(of: "  ", with: " ")
+        result = result.trimmingCharacters(in: .whitespaces)
+
+        return result.isEmpty ? lower : result
+    }
 }

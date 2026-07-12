@@ -165,6 +165,18 @@ public enum CoachPlanOptimizer {
                 message: "No eligible remaining strength slots were available in this week's plan."))
         }
 
+        // When no remaining slots exist at all but today is a valid training day,
+        // add an ad-hoc slot so residual volume can be routed into a self-scheduled
+        // session (Phase 3: volume routing fix).
+        let todayStart = Calendar.current.startOfDay(for: coachFacts.referenceDate)
+        let hasTodaySlot = slots.contains { Calendar.current.isDate($0.date, inSameDayAs: todayStart) }
+        if !hasTodaySlot, slots.isEmpty,
+           hardStrengthAllowed(on: todayStart, facts: coachFacts,
+                               schedulePreferences: schedulePreferences,
+                               policy: constraintPolicy) {
+            slots.append(PlanningSlot(id: "today.adhoc", date: todayStart, isExtra: false))
+        }
+
         var projected = trainingFacts.weeklySetsByPart
         var planned: [CoachSession] = []
         // Plan toward the *productive* midpoint (issue 1), not the bare MEV floor,
@@ -603,15 +615,22 @@ public enum CoachPlanOptimizer {
     }
 
     private static func bestExercise(for part: BodyPart,
-                                     existing: [CoachSession.RecommendedExercise],
-                                     facts: TrainingFacts,
-                                     coachFacts: CoachFacts,
-                                     slot: PlanningSlot,
-                                     policy: PlanningConstraintPolicy) -> CoachSession.RecommendedExercise? {
+                                      existing: [CoachSession.RecommendedExercise],
+                                      facts: TrainingFacts,
+                                      coachFacts: CoachFacts,
+                                      slot: PlanningSlot,
+                                      policy: PlanningConstraintPolicy) -> CoachSession.RecommendedExercise? {
         let existingOptions = existing
             .filter { partsCovered(by: $0).contains(part) }
             .filter { isExerciseEligible($0, on: slot.date, facts: coachFacts, policy: policy) }
-            .sorted { $0.name < $1.name }
+            .sorted { a, b in
+                if coachFacts.recoveryAwareCoachV2 {
+                    let pa = coachFacts.recovery.softPenalty(forExerciseNamed: a.name)
+                    let pb = coachFacts.recovery.softPenalty(forExerciseNamed: b.name)
+                    if pa != pb { return pa < pb }
+                }
+                return a.name < b.name
+            }
         if let first = existingOptions.first {
             return copy(first, sets: nil, goal: facts.goal)
         }

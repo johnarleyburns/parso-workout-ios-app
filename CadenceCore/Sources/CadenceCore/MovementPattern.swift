@@ -63,6 +63,9 @@ public enum MovementPattern: String, CaseIterable, Sendable, Codable {
         let locomotionKeywords = ["run", "walk", "jog", "sprint", "cycle", "swim", "row", "rowing"]
         let coreKeywords = ["crunch", "sit-up", "sit up", "plank", "leg raise", "ab", "russian twist",
                             "pallof", "wood chop", "hanging knee"]
+        let olympicKeywords = ["snatch", "clean", "jerk", "muscle snatch", "power snatch",
+                               "power clean", "hang snatch", "hang clean",
+                               "clean & press", "clean & jerk"]
 
         for kw in squatKeywords where lower.contains(kw) { patterns.insert(.squat) }
         for kw in hingeKeywords where lower.contains(kw) { patterns.insert(.hinge) }
@@ -73,6 +76,10 @@ public enum MovementPattern: String, CaseIterable, Sendable, Codable {
         for kw in carryKeywords where lower.contains(kw) { patterns.insert(.carry) }
         for kw in locomotionKeywords where lower.contains(kw) { patterns.insert(.locomotion) }
         for kw in coreKeywords where lower.contains(kw) { patterns.insert(.core) }
+        for kw in olympicKeywords where lower.contains(kw) {
+            patterns.insert(.hinge)
+            patterns.insert(.verticalPush)
+        }
 
         if patterns.isEmpty {
             let legMuscles: Set<String> = ["quadriceps", "hamstrings", "glutes", "adductors", "abductors", "hip-flexors"]

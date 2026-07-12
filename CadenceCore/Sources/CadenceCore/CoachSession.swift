@@ -561,14 +561,17 @@ extension CoachSession {
             }
         }
 
-        var best: [MovementPattern: (name: String, count: Int)] = [:]
+        var best: [MovementPattern: (name: String, count: Double)] = [:]
         for (name, info) in counts {
+            let penalty = facts.recoveryAwareCoachV2
+                ? facts.recovery.softPenalty(forExerciseNamed: name) : 0
+            let effectiveScore = Double(info.count) - penalty * 0.5
             if let existing = best[info.pattern] {
-                if info.count > existing.count {
-                    best[info.pattern] = (name, info.count)
+                if effectiveScore > existing.count {
+                    best[info.pattern] = (name, effectiveScore)
                 }
             } else {
-                best[info.pattern] = (name, info.count)
+                best[info.pattern] = (name, effectiveScore)
             }
         }
 

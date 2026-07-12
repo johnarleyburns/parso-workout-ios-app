@@ -28,15 +28,28 @@ public struct RecoveryState: Sendable, Equatable {
     public let byPattern: [MovementPattern: RecoveryWindow]
     public let byBodyPart: [BodyPart: RecoveryWindow]
     public let wholeBody: RecoveryWindow?
+    /// Soft recency penalty (0.0 = fully recovered, 1.0 = just trained). Keyed
+    /// by canonical exercise name, movement family, and body part. Penalty decays
+    /// linearly from 1.0 at 0h to 0.0 at 48h.
+    public let softByExercise: [String: Double]
+    public let softByFamily: [MovementFamily: Double]
+    public let softByBodyPart: [BodyPart: Double]
 
-    public static let empty = RecoveryState(byExercise: [:], byPattern: [:], byBodyPart: [:], wholeBody: nil)
+    public static let empty = RecoveryState(byExercise: [:], byPattern: [:], byBodyPart: [:],
+                                             wholeBody: nil,
+                                             softByExercise: [:], softByFamily: [:], softByBodyPart: [:])
 
     public init(byExercise: [String: RecoveryWindow], byPattern: [MovementPattern: RecoveryWindow],
-                byBodyPart: [BodyPart: RecoveryWindow], wholeBody: RecoveryWindow?) {
+                byBodyPart: [BodyPart: RecoveryWindow], wholeBody: RecoveryWindow?,
+                softByExercise: [String: Double] = [:], softByFamily: [MovementFamily: Double] = [:],
+                softByBodyPart: [BodyPart: Double] = [:]) {
         self.byExercise = byExercise
         self.byPattern = byPattern
         self.byBodyPart = byBodyPart
         self.wholeBody = wholeBody
+        self.softByExercise = softByExercise
+        self.softByFamily = softByFamily
+        self.softByBodyPart = softByBodyPart
     }
 
     public func isHardEligible(exercise: String, patterns: Set<MovementPattern>,
@@ -58,6 +71,17 @@ public struct RecoveryState: Sendable, Equatable {
         for p in patterns { if let w = byPattern[p] { candidates.append(w.hardEligibleAt) } }
         for p in bodyParts { if let w = byBodyPart[p] { candidates.append(w.hardEligibleAt) } }
         return candidates.max() ?? now
+    }
+
+    public func softPenalty(forExerciseNamed name: String,
+                             primaryMuscles: [String] = [],
+                             bodyParts: Set<BodyPart> = []) -> Double {
+        let canonical = MuscleCatalog.canonicalName(name)
+        let namePenalty = softByExercise[canonical] ?? 0
+        let family = MovementFamily.family(forExerciseNamed: name, primaryMuscles: primaryMuscles)
+        let familyPenalty = softByFamily[family] ?? 0
+        let maxPartPenalty = bodyParts.map { softByBodyPart[$0] ?? 0 }.max() ?? 0
+        return max(namePenalty, familyPenalty, maxPartPenalty)
     }
 }
 
@@ -109,6 +133,7 @@ public struct CoachFacts: Sendable {
     public let aerobicMinutesByBucket: [AerobicIntensityBucket: Double]
 
     public let stepSummary: StepActivitySummary?
+    public let recoveryAwareCoachV2: Bool
 
     public init(events: [TrainingEvent],
                 recovery: RecoveryState,
@@ -125,7 +150,8 @@ public struct CoachFacts: Sendable {
                 loadSpikeFlags: [LoadSpikeFlag] = [],
                 zoneSource: CardioZoneSource = .unknown,
                 aerobicMinutesByBucket: [AerobicIntensityBucket: Double] = [:],
-                stepSummary: StepActivitySummary? = nil) {
+                stepSummary: StepActivitySummary? = nil,
+                recoveryAwareCoachV2: Bool = true) {
         self.events = events
         self.recovery = recovery
         self.weeklyBalance = weeklyBalance
@@ -142,6 +168,7 @@ public struct CoachFacts: Sendable {
         self.zoneSource = zoneSource
         self.aerobicMinutesByBucket = aerobicMinutesByBucket
         self.stepSummary = stepSummary
+        self.recoveryAwareCoachV2 = recoveryAwareCoachV2
     }
 
     /// Systems with no exposure this week (or never), most-stale first. The basis for
@@ -175,6 +202,19 @@ public extension CoachFacts {
                      readinessEntry: ReadinessEntry? = nil,
                      formula: OneRepMaxFormula = .epley,
                      now: Date = Date()) -> CoachFacts {
+        return make(from: events, goal: goal, experience: experience,
+                    assessments: assessments, readinessEntry: readinessEntry,
+                    formula: formula, now: now, recoveryAwareCoachV2: true)
+    }
+
+    static func make(from events: [TrainingEvent],
+                     goal: TrainingGoal,
+                     experience: ExperienceLevel,
+                     assessments: [AssessmentSummary] = [],
+                     readinessEntry: ReadinessEntry? = nil,
+                     formula: OneRepMaxFormula = .epley,
+                     now: Date = Date(),
+                     recoveryAwareCoachV2: Bool) -> CoachFacts {
 
         // Completed events only, in the past, sorted chronologically (newest last).
         // Sorting here makes every downstream "last X" lookup and rolling window
@@ -218,7 +258,8 @@ public extension CoachFacts {
             assessmentCoverage: coverage,
             loadSpikeFlags: spikeFlags,
             zoneSource: zoneSrc,
-            aerobicMinutesByBucket: aerobicBuckets
+            aerobicMinutesByBucket: aerobicBuckets,
+            recoveryAwareCoachV2: recoveryAwareCoachV2
         )
     }
 
@@ -250,7 +291,8 @@ public extension CoachFacts {
             loadSpikeFlags: base.loadSpikeFlags,
             zoneSource: base.zoneSource,
             aerobicMinutesByBucket: base.aerobicMinutesByBucket,
-            stepSummary: summary
+            stepSummary: summary,
+            recoveryAwareCoachV2: base.recoveryAwareCoachV2
         )
     }
 
@@ -329,7 +371,35 @@ public extension CoachFacts {
             wholeBody = nil
         }
 
-        return RecoveryState(byExercise: byExercise, byPattern: byPattern, byBodyPart: byBodyPart, wholeBody: wholeBody)
+        // Soft tier: all working sets (no isHard filter), penalty decays 1→0 over 48h
+        var softByExercise: [String: Double] = [:]
+        var softByFamily: [MovementFamily: Double] = [:]
+        var softByBodyPart: [BodyPart: Double] = [:]
+
+        for event in completed {
+            guard case .strength(let details) = event.kind, let d = details else { continue }
+            for ex in d.exercises {
+                let hoursSince = now.timeIntervalSince(ex.lastWorkingSetAt) / 3600.0
+                let penalty = max(0.0, 1.0 - hoursSince / 48.0)
+                guard penalty > 0 else { continue }
+
+                let canonical = MuscleCatalog.canonicalName(ex.exerciseName)
+                softByExercise[canonical] = max(softByExercise[canonical] ?? 0, penalty)
+
+                let family = MovementFamily.family(forExerciseNamed: ex.exerciseName,
+                                                    primaryMuscles: [])
+                softByFamily[family] = max(softByFamily[family] ?? 0, penalty)
+
+                for part in ex.bodyParts {
+                    softByBodyPart[part] = max(softByBodyPart[part] ?? 0, penalty)
+                }
+            }
+        }
+
+        return RecoveryState(byExercise: byExercise, byPattern: byPattern, byBodyPart: byBodyPart,
+                              wholeBody: wholeBody,
+                              softByExercise: softByExercise, softByFamily: softByFamily,
+                              softByBodyPart: softByBodyPart)
     }
 
     private static func maxWindow(_ a: RecoveryWindow, _ b: RecoveryWindow) -> RecoveryWindow {

@@ -151,9 +151,25 @@ public enum PlanAwareInsightEngine {
 
         let behind = behindPlanInsights(facts: facts, accounting: accounting,
                                         isBehindPlan: isBehindPlan, plan: plan, now: now)
+
+        let resolved: Set<BodyPart>
+        let resolvedSets: [BodyPart: Double]
+        if unresolvedDeficits.isEmpty {
+            resolved = Set(accounting.plannedRemainingSetsByPart.keys)
+            resolvedSets = accounting.plannedRemainingSetsByPart
+        } else {
+            let plannedKeys = Set(accounting.plannedRemainingSetsByPart.keys)
+            let unresolvedKeys = Set(unresolvedDeficits.keys)
+            resolved = plannedKeys.subtracting(unresolvedKeys)
+                .intersection(Set(BodyPart.allCases))
+            resolvedSets = resolved.reduce(into: [:]) { $0[$1] = accounting.plannedRemainingSetsByPart[$1] ?? 0 }
+        }
+
         let unresolved = unresolvedPlanningInsights(deficits: unresolvedDeficits,
-                                                    diagnostics: diagnostics,
-                                                    experience: facts.experience)
+                                                     diagnostics: diagnostics,
+                                                     experience: facts.experience,
+                                                     resolvedParts: resolved,
+                                                     resolvedSets: resolvedSets)
         return ranked(filtered + behind + unresolved)
     }
 
@@ -205,27 +221,64 @@ public enum PlanAwareInsightEngine {
     }
 
     private static func unresolvedPlanningInsights(deficits: [BodyPart: Double],
-                                                   diagnostics: [PlanningDiagnostic],
-                                                   experience: ExperienceLevel) -> [Insight] {
-        guard !deficits.isEmpty else { return [] }
+                                                    diagnostics: [PlanningDiagnostic],
+                                                    experience: ExperienceLevel,
+                                                    resolvedParts: Set<BodyPart> = [],
+                                                    resolvedSets: [BodyPart: Double] = [:]) -> [Insight] {
+        if deficits.isEmpty && resolvedParts.isEmpty { return [] }
+
+        // Fully resolved — positive insight
+        if deficits.isEmpty && !resolvedParts.isEmpty {
+            let added = resolvedParts.sorted { partIdx($0) < partIdx($1) }
+                .map { "\($0.displayName) +\(Format.sets(resolvedSets[$0] ?? 0))" }
+                .joined(separator: ", ")
+            return [Insight(
+                id: "planning.volumeResolved",
+                kind: .volume,
+                title: "Volume gaps closed",
+                message: "Added to tonight: \(added).",
+                detail: "Coach routed residual weekly volume into today's session. All targets are now on track.",
+                citation: CitationRegistry.frequencyMeta,
+                severity: .info)]
+        }
+
+        // Partially resolved — note what was added AND what's still short
+        if !deficits.isEmpty && !resolvedParts.isEmpty {
+            let added = resolvedParts.sorted { partIdx($0) < partIdx($1) }
+                .map { "\($0.displayName) +\(Format.sets(resolvedSets[$0] ?? 0))" }
+                .joined(separator: ", ")
+            let ordered = deficits.sorted { a, b in
+                if a.value != b.value { return a.value > b.value }
+                return partIdx(a.key) < partIdx(b.key)
+            }
+            let short = ordered
+                .map { "\($0.key.displayName) \(Format.sets($0.value))" }
+                .joined(separator: ", ")
+            let reason = diagnosticReason(diagnostics)
+            let ranges = ordered.map { part, _ -> String in
+                let bands = VolumeLandmarks.bands(for: part, experience: experience)
+                return "\(part.displayName) starts around \(Format.sets(bands.mev)) sets/week"
+            }.joined(separator: "; ")
+
+            return [Insight(
+                id: "planning.partialResolved",
+                kind: .volume,
+                title: "Some volume gaps closed",
+                message: "Added to tonight: \(added). Still short: \(short) sets to go.",
+                detail: "\(reason) \(ranges). Coach added what fits safely; the remaining gap needs another eligible slot or a schedule adjustment.",
+                citation: CitationRegistry.volumeDoseResponse,
+                severity: .attention)]
+        }
+
+        // None resolved — keep existing nag
         let ordered = deficits.sorted { a, b in
             if a.value != b.value { return a.value > b.value }
-            let ai = BodyPart.allCases.firstIndex(of: a.key) ?? Int.max
-            let bi = BodyPart.allCases.firstIndex(of: b.key) ?? Int.max
-            return ai < bi
+            return partIdx(a.key) < partIdx(b.key)
         }
         let summary = ordered
             .map { "\($0.key.displayName) \(Format.sets($0.value))" }
             .joined(separator: ", ")
-        let reason: String
-        if diagnostics.contains(where: { $0.kind == .recoveryBlocked }) {
-            reason = "Some remaining hard work is blocked by recovery eligibility."
-        } else if diagnostics.contains(where: { $0.kind == .noStrengthSlots }) {
-            reason = "There are no eligible remaining strength slots in the current week."
-        } else {
-            reason = "The remaining scheduled strength work cannot close every target without exceeding conservative session volume."
-        }
-
+        let reason = diagnosticReason(diagnostics)
         let ranges = ordered.map { part, _ -> String in
             let bands = VolumeLandmarks.bands(for: part, experience: experience)
             return "\(part.displayName) starts around \(Format.sets(bands.mev)) sets/week"
@@ -239,6 +292,20 @@ public enum PlanAwareInsightEngine {
             detail: "\(reason) \(ranges). Keep the planned work as the priority, then adjust the schedule or add another eligible strength slot if recovery allows.",
             citation: CitationRegistry.volumeDoseResponse,
             severity: .attention)]
+    }
+
+    private static func partIdx(_ part: BodyPart) -> Int {
+        BodyPart.allCases.firstIndex(of: part) ?? Int.max
+    }
+
+    private static func diagnosticReason(_ diagnostics: [PlanningDiagnostic]) -> String {
+        if diagnostics.contains(where: { $0.kind == .recoveryBlocked }) {
+            return "Some remaining hard work is blocked by recovery eligibility."
+        } else if diagnostics.contains(where: { $0.kind == .noStrengthSlots }) {
+            return "There are no eligible remaining strength slots in the current week."
+        } else {
+            return "The remaining scheduled strength work cannot close every target without exceeding conservative session volume."
+        }
     }
 
     private static func lateEnoughForBehindPlan(plan: WeeklyPlan, now: Date) -> Bool {

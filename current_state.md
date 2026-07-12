@@ -2,7 +2,35 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-11 — Coaching & UX fixes: 13-issue batch (P1–P8) shipped._
+_Last updated: 2026-07-12 — Coach test suite: fix 6 optimizer failures + flaky RecencyTest, gate two-a-days, add CI unit-test job._
+
+## What just shipped — Coach test fixes + CI gate (2026-07-12)
+
+Follow-up to the Phase 1-3 "coach recency + volume-routing" work (343949a). CadenceCore
+**789 tests, 0 failures** (green across 3+ consecutive full runs, verifying determinism).
+
+- **Insight triage tests (4 assertions).** Phase 3 split the aggregate volume-shortfall
+  insight into `planning.partialResolved` (some gaps closed) and `planning.unresolvedVolume`
+  (none closed). Updated `CoachPlanOptimizerTests` to assert on the aggregate *family*
+  (new `aggregatePlanningShortfall` helper) instead of the retired single ID.
+- **Ad-hoc "today" slot guardrails (source, `CoachPlanOptimizer`).** Phase 3's self-scheduled
+  today slot now only fires to close a genuine weekly strength shortfall (`!lowParts.isEmpty`)
+  and never manufactures a two-a-day the user disallowed (if today already holds a non-rest
+  session and two-a-days are off, defer to the aggregate nag). Updated the two schedule-constraint
+  assertions to the intended Phase 3 behavior; added `testAdHocTodaySlotRespectsTwoADayPreference`
+  and `testAdHocTodaySlotSkippedWhenNoWeeklyShortfall`.
+- **Flaky `RecencyTests.testMostTrainedExercisesRotatesByRecency` (pre-existing).** Root cause:
+  test fixtures never passed `completedAt` to `addSet`, so `lastWorkingSetAt` defaulted to real
+  wall-clock time — recency was time-of-run dependent and same-family lifts tied on `softPenalty`,
+  so the winner depended on randomized Dictionary iteration order. Fix: backdate the fixtures'
+  `completedAt`, and make `CoachSession.mostTrainedExercises` deterministic — break `effectiveScore`
+  ties by the per-exercise (name-level) recency (new `RecoveryState.softNamePenalty`), then a stable
+  alphabetical fallback. This also makes within-family rotation actually work (family penalty alone
+  can't distinguish two hinge lifts).
+- **CI unit-test gate (`.github/workflows/ios.yml`).** New `core-tests` job runs
+  `swift build && swift test` on CadenceCore; the TestFlight `testflight-build` job now `needs`
+  it. Previously CI only archived for TestFlight and never ran the package tests, so these unit
+  regressions were invisible to CI.
 
 ## What just shipped — Coaching & UX fixes (P1–P8, 2026-07-11)
 

@@ -49,9 +49,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
         XCTAssertNil(lowVolumeInsight(.shoulders, in: insights))
         XCTAssertNil(lowVolumeInsight(.triceps, in: insights))
 
-        // Genuinely unresolved deficits surface via the aggregate only.
+        // Genuinely unresolved deficits surface via the aggregate triage only
+        // (partial when planned work closed some parts, unresolved when none).
         if !optimized.unresolvedDeficits.isEmpty {
-            XCTAssertNotNil(insights.first { $0.id == "planning.unresolvedVolume" })
+            XCTAssertNotNil(aggregatePlanningShortfall(in: insights))
         }
     }
 
@@ -122,7 +123,9 @@ final class CoachPlanOptimizerTests: XCTestCase {
             diagnostics: optimized.diagnostics,
             now: now)
 
-        XCTAssertEqual(insights.filter { $0.id == "planning.unresolvedVolume" }.count, 1)
+        XCTAssertEqual(insights.filter {
+            $0.id == "planning.partialResolved" || $0.id == "planning.unresolvedVolume"
+        }.count, 1)
         let individualLowVolume = insights.filter {
             $0.kind == .volume
                 && $0.severity == .attention
@@ -232,10 +235,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
         XCTAssertTrue(untrainedPartsWithAlerts.isEmpty,
                       "Should not show individual low-volume alerts for untrained parts (0 completed sets), but got: \(untrainedPartsWithAlerts.map { $0.part?.rawValue ?? "nil" })")
 
-        // For any genuine unresolved deficits, the aggregate insight exists.
+        // For any genuine unresolved deficits, the aggregate triage insight exists.
         if !optimized.unresolvedDeficits.isEmpty {
-            let unresolvedInsight = insights.first { $0.id == "planning.unresolvedVolume" }
-            XCTAssertNotNil(unresolvedInsight, "Expected an unresolved planning insight when deficits exist")
+            XCTAssertNotNil(aggregatePlanningShortfall(in: insights),
+                            "Expected an aggregate planning insight when deficits exist")
         }
     }
 
@@ -276,13 +279,19 @@ final class CoachPlanOptimizerTests: XCTestCase {
             (1, [.moderateAerobic]),
         ])
 
+        // Phase 3: the plan has no eligible strength slot, but today (Wednesday) is
+        // a free, non-rest, recovery-eligible day with a genuine weekly strength
+        // shortfall — so the coach self-schedules a single ad-hoc session today. The
+        // cardio sits on Thursday, so this is NOT a two-a-day even with two-a-days off.
         let noTwoADays = CoachPlanOptimizer.optimize(
             trainingFacts: facts,
             coachFacts: coach,
             weeklyPlan: cardioOnlyPlan,
             schedulePreferences: preferences(twoADays: false),
             candidates: [genericStrengthSession()])
-        XCTAssertTrue(noTwoADays.plannedStrengthSessions.isEmpty)
+        XCTAssertEqual(noTwoADays.plannedStrengthSessions.count, 1)
+        XCTAssertTrue(noTwoADays.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" },
+                      "Coach self-schedules the free day today rather than doubling up on the cardio day")
 
         let fixedRestPlan = weeklyPlan(now: now, days: [
             (1, [.strength]),
@@ -295,7 +304,14 @@ final class CoachPlanOptimizerTests: XCTestCase {
                 restPreference: .fixed(days: [.thursday]),
                 allowsTwoADays: true),
             candidates: [genericStrengthSession()])
-        XCTAssertTrue(fixedRest.plannedStrengthSessions.isEmpty)
+        // The only planned strength slot lands on the user's fixed rest day (Thursday),
+        // so the coach must skip it — but it may self-schedule today (not a rest day)
+        // to close the weekly shortfall.
+        XCTAssertTrue(fixedRest.diagnostics.contains { $0.kind == .recoveryBlocked },
+                      "Coach must skip the strength slot that falls on the fixed rest day")
+        XCTAssertEqual(fixedRest.plannedStrengthSessions.count, 1)
+        XCTAssertTrue(fixedRest.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" },
+                      "Coach self-schedules today rather than training the fixed rest day")
 
         let recoveryEnd = Calendar.current.date(byAdding: .day, value: 2, to: now) ?? now
         let recovery = RecoveryState(
@@ -316,6 +332,62 @@ final class CoachPlanOptimizerTests: XCTestCase {
             candidates: [genericStrengthSession()])
         XCTAssertTrue(recoveryBlocked.plannedStrengthSessions.isEmpty)
         XCTAssertTrue(recoveryBlocked.diagnostics.contains { $0.kind == .recoveryBlocked })
+    }
+
+    /// Guard for the ad-hoc "route residual volume into today" slot (Phase 3): it
+    /// closes a genuine weekly strength shortfall on a free day, but must never
+    /// manufacture a two-a-day the user disallowed. When today already holds a
+    /// (cardio) session and two-a-days are off, the coach defers to the aggregate
+    /// nag instead of stacking a second session; with two-a-days on, it may add it.
+    func testAdHocTodaySlotRespectsTwoADayPreference() {
+        let now = fixedWednesday()
+        let facts = trainingFacts([.chest: 2, .shoulders: 2, .triceps: 1])
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart,
+                               strengthDays: 0, cardioDays: 1)
+        // Today (Wednesday) already holds a cardio session; no strength slots exist.
+        let cardioTodayPlan = weeklyPlan(now: now, days: [
+            (0, [.moderateAerobic]),
+        ])
+
+        let noTwoADays = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: cardioTodayPlan,
+            schedulePreferences: preferences(twoADays: false),
+            candidates: [genericStrengthSession()])
+        XCTAssertTrue(noTwoADays.plannedStrengthSessions.isEmpty,
+                      "Ad-hoc today slot must not create a two-a-day when the user disallows them")
+
+        let twoADays = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: cardioTodayPlan,
+            schedulePreferences: preferences(twoADays: true),
+            candidates: [genericStrengthSession()])
+        XCTAssertTrue(twoADays.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" },
+                      "With two-a-days allowed the coach may self-schedule strength today")
+    }
+
+    /// The ad-hoc today slot only fires to close a genuine weekly shortfall. When
+    /// every part is already at/above MEV there is nothing to route, so the coach
+    /// plans nothing rather than inventing a session on a free day.
+    func testAdHocTodaySlotSkippedWhenNoWeeklyShortfall() {
+        let now = fixedWednesday()
+        let facts = trainingFacts([
+            .legs: 16, .back: 16, .chest: 16, .shoulders: 16,
+            .biceps: 14, .triceps: 14, .calves: 12, .abs: 12,
+        ])
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 3)
+        let emptyPlan = weeklyPlan(now: now, days: [])
+
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: emptyPlan,
+            schedulePreferences: preferences(twoADays: true),
+            candidates: [genericStrengthSession()])
+        XCTAssertTrue(optimized.plannedStrengthSessions.isEmpty,
+                      "No ad-hoc session should be self-scheduled when there is no weekly shortfall")
     }
 
     func testTuesdayNoNagForAbsCalvesWhenPlanCoversWholeBody() {
@@ -383,12 +455,11 @@ final class CoachPlanOptimizerTests: XCTestCase {
         XCTAssertTrue(hasCalfWork,
                       "Planned sessions should include a calf movement so coach covers whole body")
 
-        // If capacity truly can't reach MEV, we should see an aggregate
-        // planning.unresolvedVolume, never per-part "low" nags.
+        // If capacity truly can't reach MEV, we should see the aggregate shortfall
+        // triage (partial or unresolved), never per-part "low" nags.
         if !optimized.unresolvedDeficits.isEmpty {
-            let unresolvedInsight = insights.first { $0.id == "planning.unresolvedVolume" }
-            XCTAssertNotNil(unresolvedInsight,
-                            "Expected aggregate planning.unresolvedVolume when deficits remain")
+            XCTAssertNotNil(aggregatePlanningShortfall(in: insights),
+                            "Expected the aggregate planning shortfall insight when deficits remain")
             let untrainedPartsWithAlerts = insights.filter {
                 $0.kind == .volume && $0.severity == .attention
                     && $0.title.localizedCaseInsensitiveContains("low")
@@ -549,6 +620,15 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let rest = CoachSession(id: "rest.full", kind: .rest, title: "Rest", launchPayload: .rest)
         XCTAssertNil(CoachPlanOptimizer.classifyStructure(of: rest))
         XCTAssertNil(CoachPlanOptimizer.sessionStructureFact(for: rest, now: now))
+    }
+
+    /// The aggregate "weekly volume shortfall" triage insight. Phase 3 split the old
+    /// single `planning.unresolvedVolume` into `planning.partialResolved` (some gaps
+    /// closed by planned work, some still short) and `planning.unresolvedVolume`
+    /// (nothing could be closed). Both are the `.attention`-level aggregate the coach
+    /// surfaces in place of per-part nags, so tests assert on the family.
+    private func aggregatePlanningShortfall(in insights: [Insight]) -> Insight? {
+        insights.first { $0.id == "planning.partialResolved" || $0.id == "planning.unresolvedVolume" }
     }
 
     private func lowVolumeInsight(_ part: BodyPart, in insights: [Insight]) -> Insight? {

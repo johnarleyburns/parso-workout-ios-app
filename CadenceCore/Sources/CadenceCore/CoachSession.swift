@@ -561,17 +561,32 @@ extension CoachSession {
             }
         }
 
-        var best: [MovementPattern: (name: String, count: Double)] = [:]
+        var best: [MovementPattern: (name: String, count: Double, namePenalty: Double)] = [:]
         for (name, info) in counts {
             let penalty = facts.recoveryAwareCoachV2
                 ? facts.recovery.softPenalty(forExerciseNamed: name) : 0
             let effectiveScore = Double(info.count) - penalty * 0.5
-            if let existing = best[info.pattern] {
-                if effectiveScore > existing.count {
-                    best[info.pattern] = (name, effectiveScore)
-                }
+            // Per-exercise recency breaks ties deterministically: two lifts in the
+            // same movement family share the family penalty (so `effectiveScore`
+            // ties), and Dictionary iteration order is randomized per process — so
+            // prefer the less-recently-trained lift (lower name penalty), then fall
+            // back to a stable alphabetical order. This keeps rotation deterministic.
+            let namePenalty = facts.recoveryAwareCoachV2
+                ? facts.recovery.softNamePenalty(forExerciseNamed: name) : 0
+            guard let existing = best[info.pattern] else {
+                best[info.pattern] = (name, effectiveScore, namePenalty)
+                continue
+            }
+            let wins: Bool
+            if effectiveScore != existing.count {
+                wins = effectiveScore > existing.count
+            } else if namePenalty != existing.namePenalty {
+                wins = namePenalty < existing.namePenalty
             } else {
-                best[info.pattern] = (name, effectiveScore)
+                wins = name < existing.name
+            }
+            if wins {
+                best[info.pattern] = (name, effectiveScore, namePenalty)
             }
         }
 

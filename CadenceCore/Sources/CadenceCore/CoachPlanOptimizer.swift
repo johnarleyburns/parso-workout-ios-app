@@ -167,10 +167,21 @@ public enum CoachPlanOptimizer {
 
         // When no remaining slots exist at all but today is a valid training day,
         // add an ad-hoc slot so residual volume can be routed into a self-scheduled
-        // session (Phase 3: volume routing fix).
+        // session (Phase 3: volume routing fix). Guardrails: only self-schedule to
+        // close a genuine weekly strength shortfall (at least one part below MEV),
+        // and never manufacture a two-a-day the user disallowed — if today already
+        // holds a non-rest session and two-a-days are off, defer to the aggregate
+        // nag rather than stacking a second session on the day.
         let todayStart = Calendar.current.startOfDay(for: coachFacts.referenceDate)
         let hasTodaySlot = slots.contains { Calendar.current.isDate($0.date, inSameDayAs: todayStart) }
-        if !hasTodaySlot, slots.isEmpty,
+        let todayHasOtherSession = weeklyPlan.days.contains { day in
+            Calendar.current.isDate(day.date, inSameDayAs: todayStart)
+                && day.sessions.contains { !$0.isRest }
+        }
+        let adhocWouldForceTwoADay = constraintPolicy.requiresTwoADayPreferenceForExtraSlots
+            && !schedulePreferences.allowsTwoADays
+            && todayHasOtherSession
+        if !hasTodaySlot, slots.isEmpty, !lowParts.isEmpty, !adhocWouldForceTwoADay,
            hardStrengthAllowed(on: todayStart, facts: coachFacts,
                                schedulePreferences: schedulePreferences,
                                policy: constraintPolicy) {

@@ -163,10 +163,10 @@ final class RecencyTests: XCTestCase {
             named: "Deadlift", primaryMuscles: ["hamstrings", "lower-back"],
             secondaryMuscles: ["glutes"], in: context)
         for _ in 0..<3 {
-            _ = try WorkoutRepository.addSet(to: session, exercise: kbSnatch, weightKg: 24, reps: 8, in: context)
+            _ = try WorkoutRepository.addSet(to: session, exercise: kbSnatch, weightKg: 24, reps: 8, completedAt: date, in: context)
         }
         for _ in 0..<3 {
-            _ = try WorkoutRepository.addSet(to: session, exercise: deadlift, weightKg: 140, reps: 5, in: context)
+            _ = try WorkoutRepository.addSet(to: session, exercise: deadlift, weightKg: 140, reps: 5, completedAt: date, in: context)
         }
         session.endedAt = date.addingTimeInterval(3600)
         try context.save()
@@ -179,7 +179,7 @@ final class RecencyTests: XCTestCase {
             named: "Deadlift", primaryMuscles: ["hamstrings", "lower-back"],
             secondaryMuscles: ["glutes"], in: context)
         for _ in 0..<3 {
-            _ = try WorkoutRepository.addSet(to: session, exercise: deadlift, weightKg: 140, reps: 5, rpe: rpe, in: context)
+            _ = try WorkoutRepository.addSet(to: session, exercise: deadlift, weightKg: 140, reps: 5, rpe: rpe, completedAt: date, in: context)
         }
         session.endedAt = date.addingTimeInterval(3600)
         try context.save()
@@ -192,7 +192,7 @@ final class RecencyTests: XCTestCase {
             named: "Romanian Deadlift", primaryMuscles: ["hamstrings", "lower-back"],
             secondaryMuscles: ["glutes"], in: context)
         for _ in 0..<3 {
-            _ = try WorkoutRepository.addSet(to: session, exercise: rdl, weightKg: 100, reps: 8, in: context)
+            _ = try WorkoutRepository.addSet(to: session, exercise: rdl, weightKg: 100, reps: 8, completedAt: date, in: context)
         }
         session.endedAt = date.addingTimeInterval(3600)
         try context.save()

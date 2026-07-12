@@ -83,6 +83,14 @@ public struct RecoveryState: Sendable, Equatable {
         let maxPartPenalty = bodyParts.map { softByBodyPart[$0] ?? 0 }.max() ?? 0
         return max(namePenalty, familyPenalty, maxPartPenalty)
     }
+
+    /// The per-exercise (canonical-name) recency penalty only, excluding the
+    /// coarser family/body-part components. Two lifts in the same movement family
+    /// share the family penalty, so this finer signal is what distinguishes them
+    /// when rotating within a pattern (see `CoachSession.mostTrainedExercises`).
+    public func softNamePenalty(forExerciseNamed name: String) -> Double {
+        softByExercise[MuscleCatalog.canonicalName(name)] ?? 0
+    }
 }
 
 public struct WeeklyBalance: Sendable, Equatable {

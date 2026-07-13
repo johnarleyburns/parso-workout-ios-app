@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 struct WeightsStartView: View {
     let onEditorStart: (EditablePlan) -> Void

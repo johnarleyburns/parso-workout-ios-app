@@ -1,16 +1,20 @@
 import Foundation
-import SwiftUI
 import Observation
 import CadenceCore
 
 /// User preferences (REQUIREMENTS §9 decisions), persisted in UserDefaults and
 /// observable for SwiftUI. Resolves the open questions with sensible defaults:
 /// PR = best estimated 1RM, Epley formula, kg, 10k step goal, 90s rest, sync off.
+///
+/// Moved into CadenceFeatures (test-pyramid Phase 2 — the "SettingsStore" lift).
+/// It already took an injected `UserDefaults`, so the persistence round-trip is
+/// now headlessly testable under `swift test`. The dead `import SwiftUI` is gone;
+/// nothing here uses SwiftUI (the `@Observable` macro comes from Observation).
 @Observable
-final class AppSettings {
+public final class AppSettings {
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard) {
+    public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         // In UI-test mode, start from a clean, deterministic preference set so
         // test order can never bleed through persisted UserDefaults.
@@ -135,64 +139,64 @@ final class AppSettings {
         }
     }
 
-    var unit: MeasurementUnitPreference { didSet { defaults.set(unit.rawValue, forKey: SettingsKey.unit) } }
-    var prRule: PRRule { didSet { defaults.set(prRule.rawValue, forKey: SettingsKey.prRule) } }
-    var formula: OneRepMaxFormula { didSet { defaults.set(formula.rawValue, forKey: SettingsKey.oneRepMaxFormula) } }
-    var stepGoal: Int { didSet { defaults.set(stepGoal, forKey: SettingsKey.stepGoal) } }
+    public var unit: MeasurementUnitPreference { didSet { defaults.set(unit.rawValue, forKey: SettingsKey.unit) } }
+    public var prRule: PRRule { didSet { defaults.set(prRule.rawValue, forKey: SettingsKey.prRule) } }
+    public var formula: OneRepMaxFormula { didSet { defaults.set(formula.rawValue, forKey: SettingsKey.oneRepMaxFormula) } }
+    public var stepGoal: Int { didSet { defaults.set(stepGoal, forKey: SettingsKey.stepGoal) } }
     /// Weekly cardio-minutes goal shown on the Home cardio tile (feedback batch 4).
-    var weeklyCardioMinutesGoal: Int { didSet { defaults.set(weeklyCardioMinutesGoal, forKey: SettingsKey.weeklyCardioMinutesGoal) } }
-    var restSeconds: Int { didSet { defaults.set(restSeconds, forKey: SettingsKey.restSeconds) } }
+    public var weeklyCardioMinutesGoal: Int { didSet { defaults.set(weeklyCardioMinutesGoal, forKey: SettingsKey.weeklyCardioMinutesGoal) } }
+    public var restSeconds: Int { didSet { defaults.set(restSeconds, forKey: SettingsKey.restSeconds) } }
     /// Warm-up / cool-down countdown length for strength workouts (minutes).
-    var warmupMinutes: Int { didSet { defaults.set(warmupMinutes, forKey: SettingsKey.warmupMinutes) } }
-    var cooldownMinutes: Int { didSet { defaults.set(cooldownMinutes, forKey: SettingsKey.cooldownMinutes) } }
-    var autoStartRest: Bool { didSet { defaults.set(autoStartRest, forKey: "settings.autoRest") } }
+    public var warmupMinutes: Int { didSet { defaults.set(warmupMinutes, forKey: SettingsKey.warmupMinutes) } }
+    public var cooldownMinutes: Int { didSet { defaults.set(cooldownMinutes, forKey: SettingsKey.cooldownMinutes) } }
+    public var autoStartRest: Bool { didSet { defaults.set(autoStartRest, forKey: "settings.autoRest") } }
     // Field-testing §06 polish settings.
-    var idleTimeoutMinutes: Int { didSet { defaults.set(idleTimeoutMinutes, forKey: "settings.idleTimeout") } }
-    var gpsHighAccuracy: Bool { didSet { defaults.set(gpsHighAccuracy, forKey: "settings.gpsHighAccuracy") } }
-    var autoPause: Bool { didSet { defaults.set(autoPause, forKey: "settings.autoPause") } }
-    var intervalColorBlind: Bool { didSet { defaults.set(intervalColorBlind, forKey: "settings.intervalColorBlind") } }
-    var spokenCues: Bool { didSet { defaults.set(spokenCues, forKey: "settings.spokenCues") } }
-    var plateRounding: Bool { didSet { defaults.set(plateRounding, forKey: "settings.plateRounding") } }
+    public var idleTimeoutMinutes: Int { didSet { defaults.set(idleTimeoutMinutes, forKey: "settings.idleTimeout") } }
+    public var gpsHighAccuracy: Bool { didSet { defaults.set(gpsHighAccuracy, forKey: "settings.gpsHighAccuracy") } }
+    public var autoPause: Bool { didSet { defaults.set(autoPause, forKey: "settings.autoPause") } }
+    public var intervalColorBlind: Bool { didSet { defaults.set(intervalColorBlind, forKey: "settings.intervalColorBlind") } }
+    public var spokenCues: Bool { didSet { defaults.set(spokenCues, forKey: "settings.spokenCues") } }
+    public var plateRounding: Bool { didSet { defaults.set(plateRounding, forKey: "settings.plateRounding") } }
     /// Write a workout summary to Apple Health automatically when a workout ends.
-    var autoSaveHealth: Bool { didSet { defaults.set(autoSaveHealth, forKey: "settings.autoSaveHealth") } }
+    public var autoSaveHealth: Bool { didSet { defaults.set(autoSaveHealth, forKey: "settings.autoSaveHealth") } }
     /// Auto-end a strength workout after the idle timeout (batch 7 item 8; opt-out).
-    var autoEndOnIdle: Bool { didSet { defaults.set(autoEndOnIdle, forKey: "settings.autoEndOnIdle") } }
+    public var autoEndOnIdle: Bool { didSet { defaults.set(autoEndOnIdle, forKey: "settings.autoEndOnIdle") } }
     /// Play a bell at workout/phase transitions (batch 7 item 9; opt-out).
-    var workoutSounds: Bool { didSet { defaults.set(workoutSounds, forKey: "settings.workoutSounds") } }
+    public var workoutSounds: Bool { didSet { defaults.set(workoutSounds, forKey: "settings.workoutSounds") } }
     /// Get-ready countdown before a workout starts (seconds; 0 disables).
-    var preWorkoutCountdown: Int { didSet { defaults.set(preWorkoutCountdown, forKey: "settings.preWorkoutCountdown") } }
+    public var preWorkoutCountdown: Int { didSet { defaults.set(preWorkoutCountdown, forKey: "settings.preWorkoutCountdown") } }
     /// Primary training goal driving the Coach engine's insights (P3, D4).
-    var trainingGoal: TrainingGoal { didSet { defaults.set(trainingGoal.rawValue, forKey: "settings.trainingGoal") } }
+    public var trainingGoal: TrainingGoal { didSet { defaults.set(trainingGoal.rawValue, forKey: "settings.trainingGoal") } }
     /// Training experience, scaling the engine's volume landmarks (P3).
-    var experienceLevel: ExperienceLevel { didSet { defaults.set(experienceLevel.rawValue, forKey: "settings.experienceLevel") } }
+    public var experienceLevel: ExperienceLevel { didSet { defaults.set(experienceLevel.rawValue, forKey: "settings.experienceLevel") } }
     /// Optional user age (issue 7) for HR-zone estimation (Tanaka HRmax). nil until
     /// collected in onboarding; the HR-zone estimator defaults to 40 (US median).
-    var userAge: Int? { didSet { defaults.set(userAge, forKey: "settings.userAge") } }
-    var useHRMonitoring: Bool { didSet { defaults.set(useHRMonitoring, forKey: "settings.useHRMonitoring") } }
+    public var userAge: Int? { didSet { defaults.set(userAge, forKey: "settings.userAge") } }
+    public var useHRMonitoring: Bool { didSet { defaults.set(useHRMonitoring, forKey: "settings.useHRMonitoring") } }
     /// Recovery-aware Coach v2: new eligibility-gated decision engine. Enable by default
     /// in debug builds; can be toggled in Settings for rollback testing.
-    var recoveryAwareCoachV2: Bool { didSet { defaults.set(recoveryAwareCoachV2, forKey: "settings.recoveryAwareCoachV2") } }
-    var lastCoachComputeDay: String { didSet { defaults.set(lastCoachComputeDay, forKey: "settings.lastCoachComputeDay") } }
+    public var recoveryAwareCoachV2: Bool { didSet { defaults.set(recoveryAwareCoachV2, forKey: "settings.recoveryAwareCoachV2") } }
+    public var lastCoachComputeDay: String { didSet { defaults.set(lastCoachComputeDay, forKey: "settings.lastCoachComputeDay") } }
     /// Last Coach knowledge-base version the user has viewed in "Coach research
     /// updates" — drives the "new pack" badge when an app update bumps the KB.
-    var lastSeenCoachKBVersion: String { didSet { defaults.set(lastSeenCoachKBVersion, forKey: "settings.lastSeenCoachKBVersion") } }
+    public var lastSeenCoachKBVersion: String { didSet { defaults.set(lastSeenCoachKBVersion, forKey: "settings.lastSeenCoachKBVersion") } }
     /// When the prominent "Unlock the Coach" CTA was last shown on the free Coach
     /// card. Insights update continuously regardless; this only paces the upsell
     /// billboard so free Home never feels like a running ad (`CoachUpsellPolicy`).
-    var lastCoachUpsellShown: Date? { didSet { defaults.set(lastCoachUpsellShown, forKey: "settings.lastCoachUpsellShown") } }
+    public var lastCoachUpsellShown: Date? { didSet { defaults.set(lastCoachUpsellShown, forKey: "settings.lastCoachUpsellShown") } }
     /// User opted out of coach offers on Home ("Hide Coach offers"). The coach is
     /// still reachable from the Programs tab and Settings; insights are never shown
     /// on Home in this state (coach-surface-design.md §2 `hidden`).
-    var coachHidden: Bool { didSet { defaults.set(coachHidden, forKey: "settings.coachHidden") } }
+    public var coachHidden: Bool { didSet { defaults.set(coachHidden, forKey: "settings.coachHidden") } }
     /// How many times the full introducing coach card has been shown on Home. After
     /// `CoachSurfacePresenter.introImpressionCap` it demotes to the compact row.
-    var coachIntroImpressions: Int { didSet { defaults.set(coachIntroImpressions, forKey: "settings.coachIntroImpressions") } }
+    public var coachIntroImpressions: Int { didSet { defaults.set(coachIntroImpressions, forKey: "settings.coachIntroImpressions") } }
     /// When the coach last surfaced a fitness-test recommendation card (issue 11).
     /// Gates the card to at most once per week.
-    var lastTestRecommendationAt: Date? { didSet { defaults.set(lastTestRecommendationAt, forKey: "settings.lastTestRecommendationAt") } }
+    public var lastTestRecommendationAt: Date? { didSet { defaults.set(lastTestRecommendationAt, forKey: "settings.lastTestRecommendationAt") } }
     /// Per-`AssessmentKind` snooze expiry for test recommendations ("not right now"
     /// dismissals), keyed by `AssessmentKind.rawValue`.
-    var testRecommendationSnoozes: [String: Date] {
+    public var testRecommendationSnoozes: [String: Date] {
         didSet {
             if let data = try? JSONEncoder().encode(testRecommendationSnoozes) {
                 defaults.set(data, forKey: "settings.testRecommendationSnoozes")
@@ -200,12 +204,12 @@ final class AppSettings {
         }
     }
     /// Whether the user has completed the new-user onboarding flow.
-    var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
-    var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }
+    public var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
+    public var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }
 
     /// Learned Coach preferences from alternative selections. Stored as JSON in
     /// UserDefaults because it is compact and gets exported transparently.
-    var coachPreferenceProfile: CoachPreferenceProfile {
+    public var coachPreferenceProfile: CoachPreferenceProfile {
         didSet {
             if let data = try? JSONEncoder().encode(coachPreferenceProfile) {
                 defaults.set(data, forKey: "settings.coachPreferenceProfile")
@@ -215,7 +219,7 @@ final class AppSettings {
 
     /// User-selected weekly schedule preferences, replacing hard-coded defaults.
     /// Persisted as JSON in UserDefaults; defaults conservatively.
-    var coachSchedulePreferences: CoachSchedulePreferences {
+    public var coachSchedulePreferences: CoachSchedulePreferences {
         didSet {
             if let data = try? JSONEncoder().encode(coachSchedulePreferences) {
                 defaults.set(data, forKey: "settings.coachSchedulePreferences")
@@ -223,15 +227,15 @@ final class AppSettings {
         }
     }
 
-    var lastStrengthSettings: WorkoutSettings {
+    public var lastStrengthSettings: WorkoutSettings {
         didSet { Self.writeWorkoutSettings(defaults, "settings.lastStrengthSettings", lastStrengthSettings) }
     }
 
-    var lastCardioSettings: WorkoutSettings {
+    public var lastCardioSettings: WorkoutSettings {
         didSet { Self.writeWorkoutSettings(defaults, "settings.lastCardioSettings", lastCardioSettings) }
     }
 
-    var lastIntervalSettings: WorkoutSettings {
+    public var lastIntervalSettings: WorkoutSettings {
         didSet { Self.writeWorkoutSettings(defaults, "settings.lastIntervalSettings", lastIntervalSettings) }
     }
 
@@ -249,16 +253,16 @@ final class AppSettings {
     }
 
     @discardableResult
-    func recordCoachSelection(_ session: CoachSession, alternatives: [CoachSession],
-                               at date: Date = Date()) -> CoachPreferenceProfile {
+    public func recordCoachSelection(_ session: CoachSession, alternatives: [CoachSession],
+                                     at date: Date = Date()) -> CoachPreferenceProfile {
         var profile = coachPreferenceProfile
         profile.recordSelection(session, from: alternatives, at: date)
         coachPreferenceProfile = profile
         return profile
     }
 
-    func isRoutineFavorite(_ id: String) -> Bool { favoriteRoutineIDs.contains(id) }
-    func toggleFavoriteRoutine(_ id: String) {
+    public func isRoutineFavorite(_ id: String) -> Bool { favoriteRoutineIDs.contains(id) }
+    public func toggleFavoriteRoutine(_ id: String) {
         if favoriteRoutineIDs.contains(id) { favoriteRoutineIDs.remove(id) }
         else { favoriteRoutineIDs.insert(id) }
     }
@@ -271,7 +275,7 @@ final class AppSettings {
 
 // MARK: - Lossless preferences export/import (FR-6.2)
 
-extension AppSettings {
+public extension AppSettings {
     /// A complete snapshot of all preferences (settings + schedule + learned coach
     /// profile) so a fresh install round-trips exactly.
     func exportPreferences() -> ExportPreferences {

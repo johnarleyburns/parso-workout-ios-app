@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 struct CoachSchedulePreferencesView: View {
     @Environment(AppSettings.self) private var settingsObject

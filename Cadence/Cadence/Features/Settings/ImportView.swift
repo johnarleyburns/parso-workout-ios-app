@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 /// One-time Gmail-draft importer (FR-6.1, UC-7).
 struct ImportView: View {

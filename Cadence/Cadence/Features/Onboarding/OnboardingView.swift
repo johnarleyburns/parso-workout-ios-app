@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 /// First-run flow: states the privacy stance, then captures the three things the
 /// Coach engine needs (goal, experience, units) so the very first Home view is

@@ -1,5 +1,6 @@
 import Foundation
 import CadenceCore
+import CadenceFeatures
 
 /// Drives interval audio/haptic cues from wall-clock phase boundaries instead of
 /// SwiftUI view ticks, so cues fire reliably in the background when `audio`
@@ -13,8 +14,7 @@ final class IntervalCueScheduler {
     private let cues: IntervalCues
 
     private var timer: Timer?
-    private var lastWarnedPhase: Int?
-    private var lastTickSecond = -1
+    private var decider = IntervalCueDecider()
 
     init(runner: IntervalRunner, cues: IntervalCues) {
         self.runner = runner
@@ -37,36 +37,29 @@ final class IntervalCueScheduler {
     func stop() {
         timer?.invalidate()
         timer = nil
-        lastWarnedPhase = nil
-        lastTickSecond = -1
+        decider.reset()
     }
 
     /// Re-arm trackers (called after a phase skip so warnings/ticks fire for the
     /// new phase).
     func resetForNewPhase() {
-        lastWarnedPhase = nil
-        lastTickSecond = -1
+        decider.reset()
     }
 
     // MARK: - Internal tick
 
     private func tick() {
-        guard !runner.isPaused, !runner.isComplete else { return }
-
-        let secs = Int(runner.phaseRemaining.rounded(.up))
-
-        // 30-second warning (once per work phase)
-        if runner.phaseKind == .work, secs == 30, runner.currentPhaseID != lastWarnedPhase {
-            cues.warning()
-            lastWarnedPhase = runner.currentPhaseID
-        }
-
-        // Countdown ticks on the final 3 whole seconds of a work phase
-        if runner.phaseKind == .work, (1...3).contains(secs), secs != lastTickSecond {
-            cues.countdownTick()
-            lastTickSecond = secs
-        } else if secs > 3 {
-            lastTickSecond = -1
+        let cuesToFire = decider.cues(
+            phaseKind: runner.phaseKind,
+            currentPhaseID: runner.currentPhaseID,
+            phaseRemaining: runner.phaseRemaining,
+            isPaused: runner.isPaused,
+            isComplete: runner.isComplete)
+        for cue in cuesToFire {
+            switch cue {
+            case .warning: cues.warning()
+            case .countdownTick: cues.countdownTick()
+            }
         }
     }
 }

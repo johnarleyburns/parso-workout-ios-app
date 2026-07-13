@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 struct IntervalSetupView: View {
     let type: WorkoutType

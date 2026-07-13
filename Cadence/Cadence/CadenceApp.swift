@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import AVFoundation
 import CadenceCore
+import CadenceFeatures
 
 @main
 struct CadenceApp: App {

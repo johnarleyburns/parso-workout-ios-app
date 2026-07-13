@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 struct TimerCardioSetup: Identifiable {
     let id = UUID()

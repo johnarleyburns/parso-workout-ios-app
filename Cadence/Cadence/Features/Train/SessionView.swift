@@ -1728,11 +1728,6 @@ struct SessionView: View {
 
 /// Identifiable wrapper so the post-workout `WorkoutSummaryData` (a pure value
 /// type, deliberately not `Identifiable`) can drive a `fullScreenCover(item:)`.
-struct FinishedSummary: Identifiable {
-    let id = UUID()
-    let data: WorkoutSummaryData
-}
-
 /// Pick a past workout to copy into the current session (field-test round 2).
 struct PreviousWorkoutPicker: View {
     let excluding: WorkoutSession

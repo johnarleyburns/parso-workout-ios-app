@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import CadenceCore
+import CadenceFeatures
 import CoreBluetooth
 
 /// Observable heart-rate monitor for the iPhone (FR-2.3, FR-4.4). Connects to a
@@ -303,24 +304,10 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
         guard let data = characteristic.value else { return }
         if characteristic.uuid == Self.heartRateMeasurement {
-            currentBPM = Self.parseHeartRate(data) // setter clears any active buffer
+            currentBPM = HeartRateParser.parse(data) // setter clears any active buffer
         } else if characteristic.uuid == Self.batteryLevel, let first = data.first {
             battery = Int(first)
             criticalBattery = Int(first) <= criticalBatteryThreshold
-        }
-    }
-
-    /// Parses a 0x2A37 Heart Rate Measurement payload (8- or 16-bit format).
-    static func parseHeartRate(_ data: Data) -> Double? {
-        guard let flags = data.first else { return nil }
-        let is16Bit = (flags & 0x01) != 0
-        if is16Bit {
-            guard data.count >= 3 else { return nil }
-            let value = UInt16(data[1]) | (UInt16(data[2]) << 8)
-            return Double(value)
-        } else {
-            guard data.count >= 2 else { return nil }
-            return Double(data[1])
         }
     }
 }

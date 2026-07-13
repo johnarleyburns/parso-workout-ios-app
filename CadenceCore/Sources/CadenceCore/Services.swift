@@ -239,6 +239,8 @@ public protocol HeartRateMonitoring: AnyObject {
     var battery: Int? { get }
     var connectionError: String? { get }
     var criticalBattery: Bool { get }
+    /// Straps discovered while scanning (0x180D advertisers).
+    var discovered: [DiscoveredHRM] { get }
     func startScanning()
     func stopScanning()
     func connect(_ id: UUID)
@@ -265,6 +267,12 @@ public protocol LocationTracking: AnyObject {
     var fixes: [LocationFix] { get }
     func start()
     func stop()
+}
+
+public extension LocationTracking {
+    /// Total path length of the recorded fixes, in meters. A default so callers
+    /// depending only on the protocol (e.g. `CardioRecorder`) get distance for free.
+    var distanceMeters: Double { GeoMath.pathDistance(fixes) }
 }
 
 // MARK: - Distance helper

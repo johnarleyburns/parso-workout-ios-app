@@ -4,21 +4,25 @@ import CadenceCore
 
 /// Drives a live iPhone-recorded cardio workout (FR-2.2–2.4): elapsed time,
 /// GPS distance/pace, live HR + zone, and a calorie estimate. Pulls from the
-/// injected `LocationTracker` and `HeartRateMonitor` (real or simulated).
+/// injected `LocationTracking` and `HeartRateMonitoring` services (real or fake).
+///
+/// Moved into CadenceFeatures (test-pyramid Phase 2). It now depends on the
+/// CadenceCore service *protocols* rather than the app's concrete adapters, so it
+/// is exercisable headlessly with fakes.
 @Observable
-final class CardioRecorder {
-    private let location: LocationTracker
-    private let hrm: HeartRateMonitor
-    let maxHR: Double
+public final class CardioRecorder {
+    private let location: LocationTracking
+    private let hrm: HeartRateMonitoring
+    public let maxHR: Double
 
-    private(set) var type: CardioType = .run
-    private(set) var isRecording = false
-    private(set) var isPaused = false
-    private(set) var elapsed: Int = 0
-    private(set) var startDate = Date()
-    private(set) var hrSamples: [HRSamplePoint] = []
+    public private(set) var type: CardioType = .run
+    public private(set) var isRecording = false
+    public private(set) var isPaused = false
+    public private(set) var elapsed: Int = 0
+    public private(set) var startDate = Date()
+    public private(set) var hrSamples: [HRSamplePoint] = []
 
-    init(location: LocationTracker, hrm: HeartRateMonitor, maxHR: Double = 190) {
+    public init(location: LocationTracking, hrm: HeartRateMonitoring, maxHR: Double = 190) {
         self.location = location
         self.hrm = hrm
         self.maxHR = maxHR
@@ -26,7 +30,7 @@ final class CardioRecorder {
 
     // MARK: Control
 
-    func start(type: CardioType) {
+    public func start(type: CardioType) {
         self.type = type
         elapsed = 0
         hrSamples = []
@@ -36,7 +40,7 @@ final class CardioRecorder {
         if type.usesGPS { location.start() }
     }
 
-    func tick() {
+    public func tick() {
         guard isRecording, !isPaused else { return }
         elapsed += 1
         if let bpm = hrm.currentBPM, bpm > 0 {
@@ -44,16 +48,16 @@ final class CardioRecorder {
         }
     }
 
-    func pause() { isPaused = true }
-    func resume() { isPaused = false }
+    public func pause() { isPaused = true }
+    public func resume() { isPaused = false }
 
-    func connectStrap() {
+    public func connectStrap() {
         hrm.startScanning()
         if let first = hrm.discovered.first { hrm.connect(first.id) }
     }
 
     /// Ends recording and returns a summary ready to persist (FR-2.5).
-    func end() -> CardioWorkoutSummary {
+    public func end() -> CardioWorkoutSummary {
         isRecording = false
         if type.usesGPS { location.stop() }
         let summary = CardioWorkoutSummary(
@@ -67,18 +71,18 @@ final class CardioRecorder {
 
     // MARK: Derived metrics
 
-    var currentBPM: Double? { hrm.currentBPM }
-    var distanceMeters: Double { type.usesGPS ? location.distanceMeters : 0 }
-    var pace: Double? { CardioMath.paceSecPerKm(distanceMeters: distanceMeters, seconds: TimeInterval(elapsed)) }
-    var avgHR: Double? {
+    public var currentBPM: Double? { hrm.currentBPM }
+    public var distanceMeters: Double { type.usesGPS ? location.distanceMeters : 0 }
+    public var pace: Double? { CardioMath.paceSecPerKm(distanceMeters: distanceMeters, seconds: TimeInterval(elapsed)) }
+    public var avgHR: Double? {
         let v = hrSamples.map(\.bpm).filter { $0 > 0 }
         return v.isEmpty ? nil : v.reduce(0, +) / Double(v.count)
     }
-    var zone: Int { CardioMath.hrZone(bpm: currentBPM ?? 0, maxHR: maxHR) }
-    var calories: Double {
+    public var zone: Int { CardioMath.hrZone(bpm: currentBPM ?? 0, maxHR: maxHR) }
+    public var calories: Double {
         CardioMath.estimateCalories(type: type, seconds: TimeInterval(elapsed), avgHR: avgHR)
     }
-    var strapConnected: Bool {
+    public var strapConnected: Bool {
         if case .connected = hrm.state { return true }
         return false
     }

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 /// Home dashboard (field-test round 3): a simple step count + workouts-this-week,
 /// the Start Workout hero, and trends / cardio history / workout history surfaced

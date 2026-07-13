@@ -2,6 +2,7 @@ import Foundation
 import StoreKit
 import Observation
 import CadenceCore
+import CadenceFeatures
 
 /// The outcome of a purchase attempt, surfaced to the paywall UI.
 enum PurchaseOutcome: Equatable {
@@ -35,9 +36,8 @@ final class StoreService {
 
     /// Whole days remaining in the trial, or nil when not on a trial.
     var trialDaysRemaining: Int? {
-        guard entitlement.source == .trial, let end = trialEndDate else { return nil }
-        let days = Calendar.current.dateComponents([.day], from: Date(), to: end).day ?? 0
-        return max(0, days)
+        guard entitlement.source == .trial else { return nil }
+        return TrialState.daysRemaining(until: trialEndDate)
     }
 
     var annual: Product? { products.first { $0.id == ProProductID.annual } }
@@ -152,10 +152,7 @@ final class StoreService {
             TrialNotifier.cancel()
             return
         }
-        let end = records
-            .filter { $0.isIntroductoryOffer && $0.revocationDate == nil }
-            .compactMap(\.expirationDate)
-            .min()
+        let end = TrialState.endDate(from: records)
         trialEndDate = end
         if let end { TrialNotifier.scheduleReminder(trialEnd: end) }
     }

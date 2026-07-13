@@ -1,4 +1,5 @@
 import SwiftUI
+import CadenceFeatures
 
 struct RootTabView: View {
     enum Tab: Hashable { case workout, tests, progress }

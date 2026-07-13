@@ -2,44 +2,6 @@ import SwiftUI
 import Observation
 import CadenceFeatures
 
-/// Rest-timer state (FR-1.5). Decrement logic is in `tick()` (not wall-clock) so
-/// it is deterministic and unit-testable; the view drives `tick()` on a 1s timer.
-@Observable
-final class RestTimerModel {
-    private(set) var remaining: Int = 0
-    private(set) var total: Int = 0
-    private(set) var isRunning = false
-
-    func start(seconds: Int) {
-        total = seconds
-        remaining = seconds
-        isRunning = seconds > 0
-    }
-
-    func tick() {
-        guard isRunning else { return }
-        remaining = max(0, remaining - 1)
-        if remaining == 0 { isRunning = false }
-    }
-
-    func add(_ seconds: Int) {
-        guard isRunning || remaining > 0 else { return }
-        remaining += seconds
-        total = max(total, remaining)
-        if remaining > 0 { isRunning = true }
-    }
-
-    func skip() {
-        remaining = 0
-        isRunning = false
-    }
-
-    var progress: Double {
-        guard total > 0 else { return 0 }
-        return Double(total - remaining) / Double(total)
-    }
-}
-
 /// The "Rest · 0:47" pill at the top of the session screen.
 struct RestTimerBar: View {
     @Bindable var model: RestTimerModel

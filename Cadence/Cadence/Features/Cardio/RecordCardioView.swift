@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 /// Live iPhone workout recording (FR-2.2–2.5).
 ///

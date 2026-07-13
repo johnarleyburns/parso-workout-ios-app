@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 /// A history row's read-only summary destination (field-testing Round 4 A5).
 /// Wraps the `@Model` row (already `Hashable`) so the big `WorkoutSummaryData`
@@ -22,15 +23,11 @@ struct HistoryView: View {
     @State private var cardioToDelete: CardioWorkout?
     @State private var showDeleted = false
 
-    private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
     private var deletedSessions: [WorkoutSession] { sessions.filter { $0.deletedAt != nil } }
-    private var activeCardio: [CardioWorkout] { cardio.filter { $0.deletedAt == nil } }
     private var deletedCardio: [CardioWorkout] { cardio.filter { $0.deletedAt != nil } }
 
     private var entries: [WorkoutHistoryEntry] {
-        let s = (showDeleted ? deletedSessions : activeSessions).map(WorkoutHistoryEntry.strength)
-        let c = (showDeleted ? deletedCardio : activeCardio).map(WorkoutHistoryEntry.cardio)
-        return (s + c).sorted { $0.date > $1.date }
+        HistoryPresenter.entries(sessions: sessions, cardio: cardio, showDeleted: showDeleted)
     }
 
     var body: some View {

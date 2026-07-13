@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 struct RoutineDetailView: View {
     let plan: WorkoutPlan

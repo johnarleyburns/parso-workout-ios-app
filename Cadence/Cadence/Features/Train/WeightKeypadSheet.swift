@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 /// Large-button numeric keypad popup for logging a set's weight (feedback batch 6
 /// item 2). Replaces the cramped Form-style `SetEditorView` in the live logging

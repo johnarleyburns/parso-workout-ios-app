@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 struct YourWeekView: View {
     let decision: CoachDecision
@@ -36,7 +37,7 @@ struct YourWeekView: View {
 
         let weekStart = WeeklyStats.weekStart(now: Date())
         let tonnageKg = WeeklyStats.volumeKg(sessions, since: weekStart)
-        let zoneMinutes = weeklyZoneMinutes(since: weekStart)
+        let zoneMinutes = YourWeekPresenter.weeklyZoneMinutes(cardio: cardio, since: weekStart, age: settingsObject.userAge)
 
         List {
             // TODAY-first (issue 7): today's planned-or-completed work up top.
@@ -149,7 +150,7 @@ struct YourWeekView: View {
                 Section("Cardio HR zones (this week)") {
                     ZoneBar(minutes: zoneMinutes)
                         .accessibilityIdentifier("yourPlan.zoneBar")
-                    ForEach(zoneRows(zoneMinutes), id: \.zone) { row in
+                    ForEach(YourWeekPresenter.zoneRows(zoneMinutes), id: \.zone) { row in
                         HStack {
                             RoundedRectangle(cornerRadius: 3, style: .continuous)
                                 .fill(Self.zoneColor(row.zone))
@@ -255,8 +256,6 @@ struct YourWeekView: View {
         return nil
     }
 
-    private struct ZoneRow { let zone: Int; let minutes: Double }
-
     /// Zone color scale Z1→Z5 (cool→warm), matching the HR-zone intensity ramp.
     static func zoneColor(_ zone: Int) -> Color {
         switch zone {
@@ -305,54 +304,6 @@ struct YourWeekView: View {
                 let pct = Int((seg.minutes / total * 100).rounded())
                 return "Zone \(seg.zone), \(CardioMath.zoneName(seg.zone)): \(Int(seg.minutes.rounded())) minutes, \(pct) percent"
             }.joined(separator: ". ")
-        }
-    }
-
-    private func zoneRows(_ minutes: [Int: Double]) -> [ZoneRow] {
-        (1...5).compactMap { z in
-            guard let m = minutes[z], m > 0.5 else { return nil }
-            return ZoneRow(zone: z, minutes: m)
-        }
-    }
-
-    private func weeklyZoneMinutes(since: Date) -> [Int: Double] {
-        let weekCardio = cardio.filter { $0.start >= since }
-        let sessionsForZones: [CardioZoneAggregator.Session] = weekCardio.map { c in
-            CardioZoneAggregator.Session(
-                modality: modality(for: c.typeValue),
-                intensity: intensity(for: c),
-                durationMinutes: c.duration / 60,
-                hrSamples: (c.hrSamples ?? []).map { CardioZoneAggregator.HRPoint(t: $0.t, bpm: $0.bpm) })
-        }
-        return CardioZoneAggregator.weeklyZoneMinutes(sessions: sessionsForZones, age: settingsObject.userAge)
-    }
-
-    private func modality(for type: CardioType) -> CoachSession.AerobicModality {
-        switch type {
-        case .walk: return .walk
-        case .run: return .run
-        case .cycle: return .cycle
-        case .swim: return .swim
-        case .rowing: return .row
-        case .boxing: return .boxing
-        default: return .other
-        }
-    }
-
-    private func intensity(for c: CardioWorkout) -> CoachSession.AerobicIntensity {
-        // Rough classification from average HR against an age-based HRmax when
-        // present; else infer from modality (boxing/run lean harder than walk).
-        if let avg = c.avgHeartRate, avg > 0 {
-            let maxHR = CardioMath.defaultMaxHR(age: settingsObject.userAge)
-            let pct = avg / maxHR
-            if pct >= 0.80 { return .vigorous }
-            if pct >= 0.65 { return .moderate }
-            return .easy
-        }
-        switch c.typeValue {
-        case .boxing: return .vigorous
-        case .run, .rowing: return .moderate
-        default: return .easy
         }
     }
 

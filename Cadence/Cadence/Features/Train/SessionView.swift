@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 /// The strength-logging screen for one session (FR-1.2–1.5, 1.7). Shows each
 /// exercise with inline last-time + PR context, its logged sets, and a rest

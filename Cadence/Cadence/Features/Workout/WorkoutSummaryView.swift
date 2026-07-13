@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 import MapKit
 import CadenceCore
+import CadenceFeatures
 
 /// The always-on post-workout summary (field-testing Round 4 A3). Renders a pure
 /// `WorkoutSummaryData` — strength rolls up exercises + total volume; cardio shows
@@ -193,10 +194,7 @@ struct WorkoutSummaryView: View {
 
     /// "100 kg" (the heaviest set), or for bodyweight: "BW" / "BW + 10 kg".
     private func topLabel(_ topKg: Double, bodyweight: Bool) -> String {
-        if bodyweight {
-            return topKg > 0 ? "BW + \(Format.weight(topKg, unit: settings.unit, decimals: 0))" : "BW"
-        }
-        return Format.weight(topKg, unit: settings.unit, decimals: 0)
+        WorkoutSummaryPresenter.topLabel(topKg: topKg, bodyweight: bodyweight, unit: settings.unit)
     }
 
     // MARK: Strength warm-up / cool-down (feedback batch 6)
@@ -282,12 +280,7 @@ struct WorkoutSummaryView: View {
 
     /// Spoken summary of an HR series for VoiceOver (the chart itself is opaque).
     private func hrChartAXSummary(_ bpms: [Double]) -> String {
-        let valid = bpms.filter { $0 > 0 }
-        guard !valid.isEmpty else { return "No heart rate samples" }
-        let lo = Int(valid.min() ?? 0)
-        let hi = Int(valid.max() ?? 0)
-        let avg = Int(valid.reduce(0, +) / Double(valid.count))
-        return "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples"
+        WorkoutSummaryPresenter.hrChartAXSummary(bpms)
     }
 
     private var routeMap: some View {

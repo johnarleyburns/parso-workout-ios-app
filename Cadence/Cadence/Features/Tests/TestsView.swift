@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 struct TestsView: View {
     @Environment(AppSettings.self) private var settings

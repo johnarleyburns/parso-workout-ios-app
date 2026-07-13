@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import Charts
 import CadenceCore
+import CadenceFeatures
 
 enum ProgressRoute: Hashable { case history }
 
@@ -21,7 +22,7 @@ struct TrainingProgressView: View {
                            formula: settings.formula)
     }
     private var strengthSeries: [E1RMSeries] {
-        StrengthProgress.series(from: activeSessions, formula: settings.formula)
+        ProgressPresenter.strengthSeries(sessions: activeSessions, formula: settings.formula)
     }
 
     var body: some View {
@@ -144,18 +145,11 @@ struct TrainingProgressView: View {
 
     /// One-line VoiceOver summary of the (visually hidden) e1RM chart.
     private var strengthTrendSummary: String {
-        let tracked = strengthSeries.filter { $0.points.count >= 2 }
-        guard !tracked.isEmpty else { return "No lifts tracked yet." }
-        let parts = tracked.map { "\($0.exercise) \(trendLabel($0.trend, delta: $0.delta))" }
-        return "\(tracked.count) lifts tracked. " + parts.joined(separator: ", ")
+        ProgressPresenter.strengthTrendSummary(series: strengthSeries, unit: settings.unit)
     }
 
     private func trendLabel(_ t: TrendDirection, delta: Double) -> String {
-        switch t {
-        case .rising: return "up \(Format.weight(abs(delta), unit: settings.unit, decimals: 0))"
-        case .declining: return "down \(Format.weight(abs(delta), unit: settings.unit, decimals: 0))"
-        case .flat: return "no change"
-        }
+        ProgressPresenter.trendLabel(t, delta: delta, unit: settings.unit)
     }
 
     @ViewBuilder private func trendTag(_ t: TrendDirection, delta: Double) -> some View {
@@ -232,17 +226,7 @@ struct TrainingProgressView: View {
     private func pct(_ f: Double) -> String { "\(Int((f * 100).rounded()))%" }
 
     private func intensityRead(_ i: IntensityDistribution, goal: TrainingGoal) -> String {
-        switch goal {
-        case .strength:
-            return i.heavy >= 0.5 ? "Skewed to heavy loads \u{2014} aligned with a strength goal."
-                                  : "Lighter than a strength goal usually calls for."
-        case .hypertrophy:
-            return i.moderate >= 0.5 ? "Mostly moderate-load work \u{2014} matched to the hypertrophy rep range."
-                                     : "Spread across loads \u{2014} hypertrophy favors more moderate-rep work."
-        case .endurance:
-            return i.light >= 0.4 ? "Plenty of higher-rep work \u{2014} aligned with an endurance goal."
-                                  : "Heavier than an endurance goal usually calls for."
-        }
+        ProgressPresenter.intensityRead(i, goal: goal)
     }
 
     // MARK: - §5 Effort + Frequency
@@ -282,10 +266,7 @@ struct TrainingProgressView: View {
     }
 
     private func effortRead(_ rir: Double, goal: TrainingGoal) -> String {
-        let target = Double(goal.targetRIR)
-        if rir <= target + 0.5 && rir >= target - 0.5 { return "In the effective range for \(goal.displayName.lowercased())." }
-        return rir > target ? "A little further from failure than \(goal.displayName.lowercased()) calls for."
-                            : "Closer to failure than \(goal.displayName.lowercased()) usually needs."
+        ProgressPresenter.effortRead(rir, goal: goal)
     }
 
     // MARK: - §6 Test results

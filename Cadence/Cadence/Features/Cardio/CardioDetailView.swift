@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 import MapKit
 import CadenceCore
+import CadenceFeatures
 import SwiftData
 
 /// Cardio workout detail (FR-5.3): summary, HR overlay, and route map.

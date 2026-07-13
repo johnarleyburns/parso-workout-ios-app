@@ -1,5 +1,6 @@
 import SwiftUI
 import Observation
+import CadenceFeatures
 
 /// Rest-timer state (FR-1.5). Decrement logic is in `tick()` (not wall-clock) so
 /// it is deterministic and unit-testable; the view drives `tick()` on a 1s timer.

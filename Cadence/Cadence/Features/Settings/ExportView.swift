@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 import UniformTypeIdentifiers
 import os
 
@@ -161,28 +162,15 @@ struct ExportView: View {
     }
 
     private func cardioBreakdown(_ byType: [String: Int]) -> String {
-        byType.sorted { $0.key < $1.key }
-            .map { key, count in
-                let name = CardioType(rawValue: key)?.displayName ?? key.capitalized
-                return "\(name) \(count)"
-            }
-            .joined(separator: " · ")
+        ExportPresenter.cardioBreakdown(byType)
     }
 
     private func dateSpan(_ s: ExportSummary) -> String? {
-        guard let first = s.firstWorkoutDate, let last = s.lastWorkoutDate else { return nil }
-        let df = DateFormatter(); df.dateStyle = .medium
-        if s.daysCovered <= 1 { return df.string(from: first) }
-        return "\(df.string(from: first)) – \(df.string(from: last)) · \(s.daysCovered) days"
+        ExportPresenter.dateSpan(s)
     }
 
     private func sizeText(_ s: ExportSummary) -> String {
-        let fmt = ByteCountFormatter()
-        fmt.countStyle = .file
-        if format == .csv || s.compressedByteCount == 0 {
-            return fmt.string(fromByteCount: Int64(s.rawByteCount))
-        }
-        return "\(fmt.string(fromByteCount: Int64(s.compressedByteCount))) (\(fmt.string(fromByteCount: Int64(s.rawByteCount))) raw)"
+        ExportPresenter.sizeText(s, isCSV: format == .csv)
     }
 
     private func rebuildIfNeeded() {

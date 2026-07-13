@@ -112,65 +112,44 @@ struct HomeView: View {
     }
 
     private func computeTestRecommendation() -> TestRecommendation? {
-        guard !settings.coachHidden else { return nil }
-        let summaries = AssessmentMath.summaries(from: assessments)
-        let inputs = CoachTestRecommendationEngine.Inputs(
-            summaries: summaries,
+        HomeCoachModel.testRecommendation(
+            coachHidden: settings.coachHidden,
+            assessments: assessments,
             lastRecommendedAt: settings.lastTestRecommendationAt,
             snoozedUntil: settings.testRecommendationSnoozes)
-        return CoachTestRecommendationEngine.recommendation(inputs)
     }
 
     /// Gates coach recomputation. Deliberately keyed on coarse history counts + the
     /// refresh token + coach-relevant settings — NOT per-set session churn — so
     /// logging a set never re-runs the pipeline. The token is bumped when a workout
     /// completes (and on log / ingest / delete / day-change); counts catch
-    /// create/delete; settings catch preference edits.
-    private struct CoachSignature: Equatable {
-        var token: UUID
-        var sessionCount: Int
-        var cardioCount: Int
-        var assessmentCount: Int
-        var goal: TrainingGoal
-        var experience: ExperienceLevel
-        var formula: OneRepMaxFormula
-        var schedule: CoachSchedulePreferences
-        var profile: CoachPreferenceProfile
-        var painToday: Bool
-    }
-    private var coachSignature: CoachSignature {
-        let todayDate = Calendar.current.startOfDay(for: Date())
-        let painToday = readinessEntries
-            .first { Calendar.current.startOfDay(for: $0.date) == todayDate }?
-            .hasPainOrIllnessConcern ?? false
-        return CoachSignature(
+    /// create/delete; settings catch preference edits. The signature type + rule
+    /// now live in `HomeCoachModel` where they are unit-tested.
+    private var coachSignature: HomeCoachModel.Signature {
+        HomeCoachModel.signature(
             token: historyRefreshToken,
-            sessionCount: sessions.count,
-            cardioCount: cardio.count,
-            assessmentCount: assessments.count,
+            sessions: sessions,
+            cardio: cardio,
+            assessments: assessments,
+            readiness: readinessEntries,
             goal: settings.trainingGoal,
             experience: settings.experienceLevel,
             formula: settings.formula,
             schedule: settings.coachSchedulePreferences,
-            profile: settings.coachPreferenceProfile,
-            painToday: painToday)
+            profile: settings.coachPreferenceProfile)
     }
 
     /// Builds the full coach snapshot ONCE via the pure CadenceCore builder.
     private func buildCoachSnapshot() -> HomeCoachSnapshot {
-        let todayDate = Calendar.current.startOfDay(for: Date())
-        let hasPain = readinessEntries
-            .first { Calendar.current.startOfDay(for: $0.date) == todayDate }?
-            .hasPainOrIllnessConcern ?? false
-        return HomeCoachSnapshot(CoachSnapshotBuilder.build(
+        HomeCoachSnapshot(HomeCoachModel.snapshot(
             sessions: sessions,
             cardio: cardio,
             assessments: assessments,
-            hasPainToday: hasPain,
+            readiness: readinessEntries,
             goal: settings.trainingGoal,
             experience: settings.experienceLevel,
             formula: settings.formula,
-            schedulePreferences: settings.coachSchedulePreferences,
+            schedule: settings.coachSchedulePreferences,
             profile: settings.coachPreferenceProfile))
     }
 

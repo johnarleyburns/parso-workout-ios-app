@@ -103,16 +103,15 @@ struct SessionView: View {
     }
     /// Whether the set editor should default to a bodyweight set for an exercise.
     private func isBodyweight(_ exercise: Exercise) -> Bool {
-        exercise.equipmentValue == .bodyweight
+        SessionViewModel.isBodyweight(exercise)
     }
     /// Planned exercise names from a reused workout that have no sets yet.
     private var plannedOnlyNames: [String] {
-        let logged = Set(session.exercisesInOrder.map(\.name))
-        return session.plannedExerciseNames.filter { !logged.contains($0) }
+        SessionViewModel.plannedOnlyNames(session: session)
     }
     /// Nothing logged or planned yet → offer "Use Previous Workout".
     private var isEmptySession: Bool {
-        session.exercisesInOrder.isEmpty && plannedOnlyNames.isEmpty
+        SessionViewModel.isEmptySession(session: session)
     }
     /// The strength preset that launched this session, if any (round4b §B-1).
     private var plan: WorkoutPlan? {
@@ -122,71 +121,47 @@ struct SessionView: View {
     /// flexible template launched with a chosen rep scheme (feedback batch 3)
     /// shows that ladder, applied to every movement.
     private func prescription(for name: String) -> String? {
-        let chosen = session.plannedRepLadder
-        if let item = plan?.items.first(where: { $0.movement == name }) {
-            let ladder = chosen.isEmpty ? nil : chosen
-            let line = Format.prescription(item, ladder: ladder, unit: settings.unit)
-            return line.isEmpty ? nil : line
-        }
-        // No catalog item (e.g. a reused or coach-prescribed session) but a chosen
-        // scheme is present. A coach prescription (P5.3) also carries a working load.
-        guard !chosen.isEmpty else { return nil }
-        var line = chosen.map(String.init).joined(separator: "-") + " reps"
-        if isPrescribedMovement(name), session.prescribedLoadKg > 0 {
-            line += " @ \(Format.weight(session.prescribedLoadKg, unit: settings.unit))"
-        }
-        return line
+        SessionViewModel.prescription(for: name, session: session, plan: plan, unit: settings.unit)
     }
 
     /// Whether `name` is a movement the coach prescribed for this session (P5.3) —
     /// the one the prescribed load pre-fills the keypad for.
     private func isPrescribedMovement(_ name: String) -> Bool {
-        session.prescribedLoadKg > 0 && session.plannedExerciseNames.contains(name)
+        SessionViewModel.isPrescribedMovement(name, session: session)
     }
 
     /// The effective rep-ladder for an exercise: the chosen scheme if the session
     /// carries one, else none. Drives the pre-seeded planned set rows and the
     /// default reps for each new set (feedback batch 6, items 1/2).
     private func effectiveLadder(for name: String) -> [Int]? {
-        let chosen = session.plannedRepLadder
-        return chosen.isEmpty ? nil : chosen
+        SessionViewModel.effectiveLadder(session: session)
     }
     /// How many planned set rows an exercise should pre-seed (ladder length).
     private func plannedSetCount(for name: String) -> Int {
-        effectiveLadder(for: name)?.count ?? 0
+        SessionViewModel.plannedSetCount(session: session)
     }
     /// Default reps for the set at `setIndex`: the ladder value at that rung if any,
     /// else the last logged set of this exercise, else 5 (feedback batch 6 item 1).
     /// Pattern-based rep guessing runs between the ladder and the last-logged
     /// fallback so set 3 of an 12-10-8 pattern auto-fills 8.
     private func plannedReps(for exercise: Exercise, setIndex: Int, performerID: UUID? = nil) -> Int {
-        if let ladder = effectiveLadder(for: exercise.name),
-           setIndex < ladder.count, ladder[setIndex] > 0 {
-            return ladder[setIndex]
-        }
-        // Pattern guess: if we have prior history for this exercise+performer,
-        // try to predict the rep count from recurring patterns.
-        if setIndex > 0 {
-            let performer = people(for: performerID)
-            let currentReps = session.orderedSets
-                .filter { $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID) }
-                .sorted { $0.order < $1.order }
-                .map { $0.reps }
-            let prior = WorkoutRepository.repLadderHistory(for: exercise,
-                                                            performedBy: performer,
-                                                            excluding: session)
-            if let guess = RepPattern.guess(setIndex: setIndex,
-                                             currentSessionReps: currentReps,
-                                             priorSessionLadders: prior) {
-                return guess
-            }
-        }
-        if let last = session.orderedSets.last(where: {
+        let performer = people(for: performerID)
+        let currentReps = session.orderedSets
+            .filter { $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID) }
+            .sorted { $0.order < $1.order }
+            .map { $0.reps }
+        let prior = WorkoutRepository.repLadderHistory(for: exercise,
+                                                        performedBy: performer,
+                                                        excluding: session)
+        let lastLogged = session.orderedSets.last(where: {
             $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID)
-        }) {
-            return last.reps
-        }
-        return 5
+        })?.reps
+        return SessionViewModel.plannedReps(
+            ladder: effectiveLadder(for: exercise.name),
+            setIndex: setIndex,
+            currentSessionReps: currentReps,
+            priorSessionLadders: prior,
+            lastLoggedReps: lastLogged)
     }
 
     /// Opens the weight keypad for a new or existing set of `exercise`. `repsOverride`
@@ -246,9 +221,7 @@ struct SessionView: View {
     }
 
     private func lastSessionWeight(for exercise: Exercise, performerID: UUID?) -> Double? {
-        session.orderedSets.reversed().first {
-            $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID)
-        }?.weight
+        SessionViewModel.lastSessionWeight(session: session, exercise: exercise, performerID: performerID)
     }
 
     private func closeInlineEditor() {
@@ -259,9 +232,8 @@ struct SessionView: View {
     }
 
     private func recordInlineSet(for exercise: Exercise) {
-        let parsed = Double(inlineWeight) ?? 0
-        var kg = WorkoutMath.canonical(parsed, from: inlineUnit)
-        if settings.plateRounding { kg = UnitEntry.plateRounded(kg: kg, unit: inlineUnit) }
+        let kg = SessionViewModel.canonicalKg(input: inlineWeight, unit: inlineUnit,
+                                              plateRounding: settings.plateRounding)
         let rpe = inlineRPE.map(Double.init)
         if let editing = inlineEditingSet {
             // Omit isWarmup/note so a weight/reps edit never silently flips a
@@ -1573,8 +1545,7 @@ struct SessionView: View {
     }
 
     private func setPerformedBy(_ set: SetEntry, performerID: UUID?) -> Bool {
-        guard let performerID else { return set.isOwnerSet }
-        return set.performedBy?.id == performerID
+        SessionViewModel.setPerformedBy(set, performerID: performerID)
     }
 
     private func explicitRosterIDs() -> [String] {

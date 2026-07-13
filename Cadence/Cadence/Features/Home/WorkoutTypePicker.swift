@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 struct WorkoutTypePicker: View {
     let onSelect: (WorkoutType) -> Void

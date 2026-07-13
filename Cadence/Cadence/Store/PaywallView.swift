@@ -226,7 +226,7 @@ struct PaywallView: View {
     }
 
     private func foundingBadge(_ lifetime: Product) -> String? {
-        lifetime.price < Decimal(69.99) ? "Founding price" : nil
+        PricingPolicy.isFoundingPrice(lifetime.price) ? "Founding price" : nil
     }
 
     private func periodSuffix(_ option: ProProductID.Selection) -> String {

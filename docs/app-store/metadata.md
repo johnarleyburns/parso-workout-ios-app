@@ -33,8 +33,9 @@ Monetization boundary (binding — keep copy aligned):
   (observations about the user's training).
 - Cladiron Pro (paid): program generation, today's exact set/rep/load
   prescription, RIR autoregulation, deload/adaptation, and quarterly research
-  updates. Products: annual ($34.99/yr, 1-month free trial), monthly ($4.99/mo),
-  lifetime (one-time). Optional one-time tips also exist and unlock nothing.
+  updates. Products: annual ($79.99/yr, 1-month free trial), monthly ($12.99/mo),
+  lifetime (founding $99.99 → full $149.99). Optional one-time tips also exist and
+  unlock nothing.
 
 Avoid:
 
@@ -88,9 +89,9 @@ Free (with Cladiron Pro in-app subscription + one-time tips)
 In-app purchases:
 
 ```text
-Cladiron Pro — Annual ($34.99/yr, 1-month free trial)
-Cladiron Pro — Monthly ($4.99/mo)
-Cladiron Pro — Lifetime (one-time; founding $49.99 → $69.99)
+Cladiron Pro — Annual ($79.99/yr, 1-month free trial)
+Cladiron Pro — Monthly ($12.99/mo)
+Cladiron Pro — Lifetime (one-time; founding $99.99 → $149.99)
 Small / Supporter / Patron tips (optional; unlock nothing)
 ```
 
@@ -145,8 +146,8 @@ Cladiron's fitness tests and training recommendations are general educational co
 
 —
 Cladiron Pro subscription options:
-- Annual — $34.99/year, with a 1-month free trial
-- Monthly — $4.99/month
+- Annual — $79.99/year, with a 1-month free trial
+- Monthly — $12.99/month
 - Lifetime — one-time purchase (no subscription)
 Payment is charged to your Apple ID. Subscriptions renew automatically unless cancelled at least 24 hours before the period ends; manage or cancel in Settings > Apple ID > Subscriptions.
 Privacy Policy: https://parso.guru/cladiron_privacy
@@ -198,7 +199,7 @@ Cladiron is an open-source strength app for iPhone. It has no accounts, no ads, 
 
 The tracker is free: logging, history, PRs, analytics, assessments, routines, Apple Health import/write, and JSON export/import. Free users also see the coach's live insights (observations about their training).
 
-Cladiron Pro is the only paid layer — it unlocks the coach: program generation, today's exact set/rep/load prescription, RIR autoregulation, and deload/adaptation guidance. Products are Cladiron Pro Annual ($34.99/yr with a 1-month free trial), Monthly ($4.99/mo), and Lifetime (one-time). Separately, optional one-time tips support development and unlock nothing. To reach the paywall: complete onboarding, view the generated program, then tap "Unlock the Coach" (also available from the Coach card on Home). Restore Purchases is on the paywall. A full log → history → export loop works with zero paywall interruptions.
+Cladiron Pro is the only paid layer — it unlocks the coach: program generation, today's exact set/rep/load prescription, RIR autoregulation, and deload/adaptation guidance. Products are Cladiron Pro Annual ($79.99/yr with a 1-month free trial), Monthly ($12.99/mo), and Lifetime (founding $99.99, one-time). Separately, optional one-time tips support development and unlock nothing. To reach the paywall: complete onboarding, view the generated program, then tap "Unlock the Coach" (also available from the Coach card on Home). Restore Purchases is on the paywall. A full log → history → export loop works with zero paywall interruptions.
 
 HealthKit is used to read steps, heart rate, and workouts recorded by Apple Watch or other apps, and to save summary workouts back to Apple Health. Detailed set/reps/weight history is stored locally because HealthKit has no structured schema for it.
 

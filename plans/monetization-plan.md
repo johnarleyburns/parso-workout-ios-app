@@ -9,10 +9,10 @@ Audience: coding agent (§4–§7) + founder manual steps (§8)
 | # | Decision | Value |
 |---|---|---|
 | 1 | License | Relicense MIT → GPLv3 |
-| 2 | Lifetime price | $69.99, launch intro $49.99 (first 60 days) |
+| 2 | Lifetime price | $149.99, founding launch price $99.99 (first 60 days) |
 | 3 | Trial | 30 days (1-month intro offer), annual plan only |
 | 4 | Tier boundary | **Everything free except the coach.** Partner workouts, tracker, analytics history — all free. App must be 100% usable forever without the coach. Coach = the sole upsell, with quarterly updates from current strength/fitness research |
-| 5 | Annual / monthly | $34.99/yr (default-selected) / $4.99/mo (no trial) |
+| 5 | Annual / monthly | $79.99/yr (default-selected) / $12.99/mo (no trial) |
 
 ---
 
@@ -29,16 +29,16 @@ Audience: coding agent (§4–§7) + founder manual steps (§8)
 
 | Product | Type | Product ID | Price | Offer |
 |---|---|---|---|---|
-| Pro Annual | Auto-renewable | `cladiron.pro.annual` | $34.99/yr | Intro offer: 1 month free trial |
-| Pro Monthly | Auto-renewable | `cladiron.pro.monthly` | $4.99/mo | none |
-| Pro Lifetime | Non-consumable | `cladiron.pro.lifetime` | $49.99 launch → $69.99 (scheduled price change at day 60) | — |
+| Pro Annual | Auto-renewable | `cladiron.pro.annual` | $79.99/yr | Intro offer: 1 month free trial |
+| Pro Monthly | Auto-renewable | `cladiron.pro.monthly` | $12.99/mo | none |
+| Pro Lifetime | Non-consumable | `cladiron.pro.lifetime` | $99.99 founding launch → $149.99 (scheduled price change at day 60) | — |
 
 Prefix product IDs with the app's bundle ID convention if the repo already uses reverse-DNS IDs elsewhere; otherwise use exactly the IDs above. Both subscriptions live in one subscription group ("Cladiron Pro") at the same service level (they unlock identical entitlements; group exists so users can crossgrade annual↔monthly).
 
-Competitive positioning check (do not change without founder sign-off): annual undercuts Fitbod (~$96/yr) ~3x; lifetime undercuts Hevy ($74.99) and Strong ($99.99); intro lifetime $49.99 is the cheapest lifetime of any serious app in the category.
+Competitive positioning (locked, decision D1 — see `plans/revenue/2026-07-13/decisions.md` and `docs/COMPETITIVE-ANALYSIS.md` §3): Cladiron is the value option **within the coaching tier**, not the discount option in the tracker tier. RP Hypertrophy charges $299/yr for one coach's opinion; Cladiron charges $79.99 and shows you the paper behind every prescription. In evidence-based fitness price is a credibility signal — the cheapest serious annual in the category is not a position of strength when the product's whole claim is rigor. You can always discount later, but you cannot un-anchor a cheap price; launch high and run a founding-member promotion.
 
 Notes:
-- Non-consumables cannot have App Store "introductory offers" — the $49.99 intro is implemented as the launch price with a **scheduled price change** to $69.99 (manual step §8.4). In-app copy may say "Founding price — $49.99 (goes to $69.99 soon)"; do not hardcode a countdown, read the display price from StoreKit.
+- Non-consumables cannot have App Store "introductory offers" — the $99.99 founding price is implemented as the launch price with a **scheduled price change** to $149.99 (manual step §8.4). In-app copy may say "Founding price — $99.99 (goes to $149.99 soon)"; do not hardcode a countdown, read the display price from StoreKit.
 - Trial abuse is handled by Apple: one intro offer per Apple ID per subscription group. No code needed.
 - Family Sharing: enable for `pro.lifetime` and `pro.annual` (manual step; code must honor `Transaction.ownershipType == .familyShared`).
 - If a user with an active subscription buys lifetime: allowed; show a post-purchase notice "You can cancel your subscription in Settings → Apple ID → Subscriptions — Lifetime now covers you." Do not attempt programmatic cancellation (impossible).
@@ -95,7 +95,7 @@ enum ProEntitlement: Equatable {
 ### 4.4 Paywall
 `Store/PaywallView.swift`, presented as a sheet from CoachPreviewView and post-onboarding:
 
-- Three options; **annual pre-selected** with "30 days free" badge; lifetime shows StoreKit displayPrice with "Founding price" tag while price < $69.99 (compare against a constant, or just always show displayPrice + static founding copy until the day-60 update removes it).
+- Three options; **annual pre-selected** with "30 days free" badge; lifetime shows StoreKit displayPrice with "Founding price" tag while price < $149.99 (driven by `PricingPolicy.isFoundingPrice`, not a literal in the view; or just always show displayPrice + static founding copy until the day-60 update removes it).
 - Copy hierarchy: (1) what the Coach does — generates your program, adjusts every set to your logged performance, cites the research; (2) quarterly research updates included; (3) "Everything else in Cladiron is free forever. No ads. No account. No tracking. Open source."
 - Required elements: price + renewal terms per Apple guidelines, Restore Purchases, links to Privacy Policy and Terms of Use (Apple standard EULA link is acceptable), all reachable pre-purchase.
 - Trial UX: after trial starts, Coach header shows "Trial — X days left" quietly; one local notification 3 days before trial end summarizing what the coach adjusted for them (value receipt, not a nag). No other trial nagging.
@@ -166,10 +166,10 @@ Do these in order. §8.1–8.2 before PR2 sandbox testing; §8.3–8.6 before re
 ### 8.2 Create the in-app purchases
 1. ASC → your app → **Monetization → Subscriptions** → Create Subscription Group: name `Cladiron Pro`.
 2. Inside the group, create:
-   - `cladiron.pro.annual` — Auto-Renewable, duration 1 year, price $34.99 (USD base; accept Apple's automatic worldwide equalization — do not hand-tune regions at launch).
-     - Add **Introductory Offer**: type Free Trial, duration **1 month**, all countries, no end date.
-   - `cladiron.pro.monthly` — Auto-Renewable, duration 1 month, price $4.99. No intro offer.
-3. ASC → **Monetization → In-App Purchases** → create `cladiron.pro.lifetime` — Non-Consumable, price **$49.99**.
+   - `cladiron.pro.annual` — Auto-Renewable, duration 1 year, price $79.99 (USD base; accept Apple's automatic worldwide equalization — do not hand-tune regions at launch).
+      - Add **Introductory Offer**: type Free Trial, duration **1 month**, all countries, no end date.
+    - `cladiron.pro.monthly` — Auto-Renewable, duration 1 month, price $12.99. No intro offer.
+3. ASC → **Monetization → In-App Purchases** → create `cladiron.pro.lifetime` — Non-Consumable, price **$99.99** (founding).
 4. For each of the three: add localization (display name + description; en-US minimum — display names: "Cladiron Pro — Annual", "Cladiron Pro — Monthly", "Cladiron Pro — Lifetime"), and upload a **review screenshot** (screenshot of the paywall; can be from simulator; required before IAP review).
 5. Enable **Family Sharing** on `cladiron.pro.lifetime` and `cladiron.pro.annual` (product page toggle — irreversible, this is intended).
 6. Subscription group localization: group display name "Cladiron Pro".
@@ -179,8 +179,8 @@ Do these in order. §8.1–8.2 before PR2 sandbox testing; §8.3–8.6 before re
 2. On a test device: Settings → Developer → Sandbox Apple Account (iOS 18+ path may differ slightly) → sign in with a sandbox tester.
 3. Run the manual test matrix from PR6 (purchase each product, cancel trial, refund via sandbox subscription management, Ask to Buy).
 
-### 8.4 Schedule the lifetime price change ($49.99 → $69.99)
-1. After launch date is known: ASC → `cladiron.pro.lifetime` → Pricing → **Plan a Price Change** → new price $69.99, start date = launch + 60 days, all countries.
+### 8.4 Schedule the lifetime price change ($99.99 → $149.99)
+1. After launch date is known: ASC → `cladiron.pro.lifetime` → Pricing → **Plan a Price Change** → new price $149.99, start date = launch + 60 days, all countries.
 2. Calendar reminder for launch+55d: verify the change is still scheduled and ship the app update that removes "Founding price" copy (agent follow-up task).
 
 ### 8.5 App submission metadata

@@ -59,7 +59,7 @@
         }
       ],
       "productID" : "guru.parso.cladiron.pro.lifetime",
-      "price" : 49.99,
+      "price" : 99.99,
       "referenceName" : "Cladiron Pro Lifetime",
       "type" : "NonConsumable"
     }
@@ -111,7 +111,7 @@
           "subscriptionGroupID" : "203EA32D-DF1B-47B9-81F6-DA759F5EDB68",
           "type" : "RecurringSubscription",
           "winbackOffers" : [],
-          "displayPrice" : "34.99"
+          "displayPrice" : "79.99"
         },
         {
           "adHocOffers" : [],
@@ -133,7 +133,7 @@
           "subscriptionGroupID" : "203EA32D-DF1B-47B9-81F6-DA759F5EDB68",
           "type" : "RecurringSubscription",
           "winbackOffers" : [],
-          "displayPrice" : "4.99"
+          "displayPrice" : "12.99"
         }
       ]
     }

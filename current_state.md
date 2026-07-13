@@ -6,6 +6,15 @@ _Last updated: 2026-07-13 — revenue plan Phase 0 (docs & positioning)._
 
 ## Revenue plan (`plans/revenue/2026-07-13/`)
 
+- **Phase 1 — reprice to the coaching tier (shipped 2026-07-13).** Decision D1.
+  New `CadenceCore/PricingPolicy.swift` holds `lifetimeFullPrice = 149.99` and
+  `isFoundingPrice(_:)`; `PaywallView.foundingBadge` now calls it (no price literal
+  remains in any View). `Cadence.storekit` repriced: annual $34.99→**$79.99** (keeps
+  1-month free trial), monthly $4.99→**$12.99**, lifetime $49.99→**$99.99** founding.
+  `docs/app-store/metadata.md` and `plans/monetization-plan.md` §2 updated and the
+  positioning reversed (value option *within the coaching tier*, not the discount
+  tracker). New `PricingPolicyTests` (4). `swift test` **945 → 949**; xcodebuild +
+  guardrail green.
 - **Phase 0 — docs & positioning (shipped 2026-07-13).** One honest monetization
   story across the repo. Added a **Monetization** section to `CLAUDE.md`; reframed
   `README.md` / `docs/REQUIREMENTS.md` from "free strength coach" to "free tracker +

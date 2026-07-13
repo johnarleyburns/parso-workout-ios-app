@@ -6,6 +6,17 @@ _Last updated: 2026-07-13 — revenue plan Phase 0 (docs & positioning)._
 
 ## Revenue plan (`plans/revenue/2026-07-13/`)
 
+- **Phase 2 — launch-blocking correctness (shipped 2026-07-13).** Fixed the bug
+  where **paying subscribers were shown the "Unlock the Coach" upsell**:
+  `HomeView` passed `isPro: false` as a literal into `CoachUpsellPolicy`, making its
+  `guard !isPro` early-return unreachable. Lifted the decision into
+  `HomeCoachModel.upsellCTAVisible(entitlement:lastShown:)` (headlessly tested) and
+  changed the Home call site to thread `store.entitlement` — no boolean literal at
+  the call site. Deleted dead `Cadence/Cadence/Features/Coach/CoachGate.swift`
+  (`CoachGate`/`CoachLockedView` were never instantiated; the real gate is
+  `CoachSurfacePresenter`). New `HomeCoachModelTests` cases (6), including the
+  regression test `test_proUserWithNoPriorImpression_neverSeesUpsell`. `swift test`
+  **949 → 955**; xcodebuild + guardrail green.
 - **Phase 1 — reprice to the coaching tier (shipped 2026-07-13).** Decision D1.
   New `CadenceCore/PricingPolicy.swift` holds `lifetimeFullPrice = 149.99` and
   `isFoundingPrice(_:)`; `PaywallView.foundingBadge` now calls it (no price literal

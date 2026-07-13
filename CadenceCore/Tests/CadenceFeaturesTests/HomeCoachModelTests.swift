@@ -119,4 +119,44 @@ final class HomeCoachModelTests: XCTestCase {
         XCTAssertNil(HomeCoachModel.testRecommendation(
             coachHidden: true, assessments: [], lastRecommendedAt: nil, snoozedUntil: [:]))
     }
+
+    // MARK: Upsell CTA visibility (revenue Phase 2)
+    //
+    // Regression guard for the bug where HomeView passed `isPro: false` as a
+    // literal, making `CoachUpsellPolicy`'s `guard !isPro` unreachable and showing
+    // paying subscribers an "Unlock the Coach" advertisement.
+
+    private let now = Date(timeIntervalSince1970: 1_800_000_000)
+    private func daysAgo(_ days: Double) -> Date { now.addingTimeInterval(-days * 24 * 60 * 60) }
+
+    func test_proUserWithNoPriorImpression_neverSeesUpsell() {
+        // The exact case the hardcoded `false` broke.
+        XCTAssertFalse(HomeCoachModel.upsellCTAVisible(
+            entitlement: .pro(source: .subscription), lastShown: nil, now: now))
+    }
+
+    func testTrialUserNeverSeesUpsell() {
+        XCTAssertFalse(HomeCoachModel.upsellCTAVisible(
+            entitlement: .pro(source: .trial), lastShown: nil, now: now))
+    }
+
+    func testLifetimeUserNeverSeesUpsell() {
+        XCTAssertFalse(HomeCoachModel.upsellCTAVisible(
+            entitlement: .pro(source: .lifetime), lastShown: nil, now: now))
+    }
+
+    func testFreeUserWithNoPriorImpressionSeesUpsell() {
+        XCTAssertTrue(HomeCoachModel.upsellCTAVisible(
+            entitlement: .free, lastShown: nil, now: now))
+    }
+
+    func testFreeUserWithinIntervalDoesNotSeeUpsell() {
+        XCTAssertFalse(HomeCoachModel.upsellCTAVisible(
+            entitlement: .free, lastShown: daysAgo(13), now: now))
+    }
+
+    func testFreeUserAfterIntervalSeesUpsell() {
+        XCTAssertTrue(HomeCoachModel.upsellCTAVisible(
+            entitlement: .free, lastShown: daysAgo(15), now: now))
+    }
 }

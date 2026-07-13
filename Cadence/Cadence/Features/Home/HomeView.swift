@@ -168,7 +168,8 @@ struct HomeView: View {
     }
 
     private var coachShowsUnlockCTA: Bool {
-        CoachUpsellPolicy.shouldShowCTA(isPro: false, lastShown: settings.lastCoachUpsellShown)
+        HomeCoachModel.upsellCTAVisible(entitlement: store.entitlement,
+                                        lastShown: settings.lastCoachUpsellShown)
     }
 
     /// Top-of-Home coach surface: the functional card for entitled users, the full

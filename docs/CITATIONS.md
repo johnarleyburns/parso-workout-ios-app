@@ -230,7 +230,7 @@ Williams et al. (2017). *Comparison of Periodized and Non-Periodized Resistance 
 on Maximal Strength: A Meta-Analysis.* **Sports Med 47(10).**
 <https://doi.org/10.1007/s40279-017-0734-y>
 
-- **Used by:** linear periodization program citations (5/3/1, nSuns).
+- **Used by:** linear periodization program citations (5/3/1).
 - **What it supports:** periodized resistance training is more effective for maximal
   strength than non-periodized training.
 

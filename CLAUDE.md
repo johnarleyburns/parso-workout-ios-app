@@ -8,12 +8,25 @@ Project memory for Claude Code. Read `docs/REQUIREMENTS.md` for the full spec; t
 - **Internal codename:** Cadence — repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, type names. Do NOT rename these.
 
 ## What this is
-Cladiron: a free, open-source, privacy-first, iPhone-native **strength coach**. Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no server, no telemetry.
+Cladiron: an open-source, privacy-first, iPhone-native **strength coach**. The tracker is free forever; the Coach is a paid product (see Monetization below). Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no server, no telemetry.
+
+## Monetization
+
+The tracker is **free forever** — logging, history, Progress, Tests, and export
+are never gated. **Cladiron Pro** gates the Coach's *prescription* (what to do);
+the Coach's *insight* (what it noticed) stays free.
+
+Products: `guru.parso.cladiron.pro.annual` / `.monthly` / `.lifetime`, plus
+tip-jar consumables that unlock nothing. StoreKit 2 only — no RevenueCat, no
+server, no third-party SDKs (this is a privacy requirement, not a shortcut).
+Entitlement resolution lives in `CadenceCore/ProEntitlement.swift`; the gate is
+`CoachSurfacePresenter`, **not** `CoachGate` (which is dead code — Phase 2
+deletes it).
 
 ## Information Architecture (3 tabs)
 - **Workout** (Home) — strength-first hero, secondary cardio, coach cards/insights, **Programs & Routines** entry (planning surface lives here).
 - **Tests** — no-lab fitness assessment battery, "Your Fitness" baseline card, protocol instructions, cited sources.
-- **Progress** — training history, PR timeline, per-exercise trends, assessment trends, consistency heatmap.
+- **Progress** — training history, per-exercise trends, assessment trends.
 
 ## Current release (v1) — iPhone-only
 The watch app is **deferred** (hardware-blocked for now) but stays in the repo; do **not** prioritize it. v1 ships on iPhone:
@@ -21,12 +34,12 @@ The watch app is **deferred** (hardware-blocked for now) but stays in the repo; 
 - Run a **no-lab fitness test battery** whose baselines feed the coach.
 - Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**.
 - Review history, PRs, trends, and assessment results.
-- Follow **built-in programs** (5/3/1, GZCLP, nSuns, PPL, 5x5, splits, calisthenics, Olympic).
+- Follow **built-in programs** (5/3/1, PPL, 5x5, splits, calisthenics, Olympic).
 Cladiron is **fully local — no cloud sync**. Data portability is handled by a complete JSON **export/import** (full workout history + assessments + all preferences), so a user can back up and move to a fresh install losslessly.
 
 ## Stack
 - Swift + SwiftUI, **SwiftData** for the local store
-- **HealthKit** (steps, workouts, HR, routes, bodyweight)
+- **HealthKit** (steps, workouts, HR, routes)
 - **No cloud component** — fully local; data portability is JSON export/import (no CloudKit, no server)
 - **CoreBluetooth** (chest-strap HRM `0x180D`; cardio-machine FTMS `0x1826`)
 - **CoreLocation** (geofence + iPhone GPS), **CoreMotion** (activity class), **Swift Charts** (trends)

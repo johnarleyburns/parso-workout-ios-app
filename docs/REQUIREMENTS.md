@@ -10,7 +10,7 @@
 
 ## 1. Vision & Goals
 
-Cladiron is a free, open-source, privacy-first, iPhone-native **strength coach**. It occupies an unserved quadrant in the fitness-app landscape: the only open-source, no-account, on-device coaching app whose prescriptions are driven by field-testable fitness assessments the user administers themselves, and whose every recommendation cites readable, published science.
+Cladiron is an open-source, privacy-first, iPhone-native **strength coach**. The tracker is free forever and open source; the Coach is a paid product (**Cladiron Pro**). It occupies an unserved quadrant in the fitness-app landscape: the only open-source, no-account, on-device coaching app whose prescriptions are driven by field-testable fitness assessments the user administers themselves, and whose every recommendation cites readable, published science.
 
 **The competitive wedge:**
 
@@ -24,7 +24,7 @@ Cladiron is a free, open-source, privacy-first, iPhone-native **strength coach**
 - **Science-based strength coach:** a deterministic, on-device expert engine that reads training history and field-test baselines to produce cited, concrete prescriptions. Not AI — a rule engine grounded in published exercise-science research.
 - **Field-testable fitness:** a no-lab assessment battery (requiring only an ordinary gym, a field/track, the app's stopwatch, and optionally a BLE chest strap) whose results feed the coaching engine. No wearable or lab gear required for the core battery.
 - **Auditable science:** every prescription and every test cites its published source via the built-in CitationRegistry. The user can always see *why*.
-- **Built-in established programs:** 5/3/1, GZCLP, nSuns, PPL, 5x5, and more for self-directed users who prefer a published program over coach-generated prescriptions.
+- **Built-in established programs:** 5/3/1, PPL, 5x5, splits, calisthenics, Olympic lifting, and more for self-directed users who prefer a published program over coach-generated prescriptions.
 - **Strength-first, cardio secondary:** strength logging and coaching is the core loop. Cardio is capture-only (ingest Watch workouts from HealthKit, record with iPhone GPS or chest strap) — not coached in v1.
 - **Privacy by design:** no accounts, no server, no telemetry, no third-party SDKs. Works in airplane mode. Fully local — no cloud sync; portability is via JSON export/import.
 - **Apple Design Award polish:** HIG-native, fully accessible (VoiceOver, Dynamic Type, Reduce Motion), restrained motion, inclusive design.
@@ -160,7 +160,7 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - FR-12.4 Coach confidence level (low/moderate/high) reflects data availability.
 
 ### FR-13 Built-in programs
-- FR-13.1 StrengthPresets catalog includes: 5x5, 5/3/1, GZCLP, nSuns, PPL, splits, calisthenics, Olympic lifting.
+- FR-13.1 StrengthPresets catalog includes: 5x5, 5/3/1, PPL, splits, calisthenics, Olympic lifting.
 - FR-13.2 All programs reachable from the in-Workout planning surface.
 - FR-13.3 Unified exercise browser available for substitutions within programs.
 - FR-13.4 Percentage-based programs display computed loads from e1RM when available.
@@ -252,7 +252,7 @@ Schema changes are **additive only** — optional fields, no unique constraints,
   - P2: Information architecture (Workout/Tests/Progress tabs, Library relocation, exercise browser unification)
   - P3: Tests engine (on-device VO2max, no-lab battery, fitness baseline card)
   - P4: Coach wiring (test baselines feed recommendations, citations UI)
-  - P5: Built-in programs (5/3/1, GZCLP, nSuns, PPL + planning surface integration)
+  - P5: Built-in programs (5/3/1, PPL + planning surface integration)
 - **v2 — watch-first (when hardware allows):** FR-8 (wrist logging + live cardio), FR-7 (Smart Start).
 - **v3 — sensors & enhancements:** FR-7 enhancements (FTMS/NFC/beacon), advanced assessments.
 

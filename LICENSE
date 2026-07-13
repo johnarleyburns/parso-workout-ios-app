@@ -672,3 +672,11 @@ may consider it more useful to permit linking proprietary applications with
 the library.  If this is what you want to do, use the GNU Lesser General
 Public License instead of this License.  But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
+
+---
+
+**App Store exception.** As the sole copyright holder, John Arley Burns
+additionally grants permission to distribute this software through the Apple App
+Store under Apple's standard terms, notwithstanding any conflict between those
+terms and sections 6 and 12 of the GNU General Public License. This exception
+applies only to distribution by the copyright holder.

@@ -635,7 +635,7 @@ public enum CitationRegistry {
         "channellOlympic": "Olympic lifting for explosive power — backs the Olympic weightlifting program routine.",
         "zourdosDUP": "Daily undulating periodization — backs the DUP program routine.",
         "amirthalingamGVT": "German Volume Training effectiveness — backs the GVT routine and per-session volume warnings.",
-        "williamsLinearPeriodization": "Linear periodization effectiveness — backs linear programs (5/3/1, nSuns) and periodization claims.",
+        "williamsLinearPeriodization": "Linear periodization effectiveness — backs linear programs (5/3/1) and periodization claims.",
         "tufanoCluster": "Cluster set training — backs the cluster-set program routine.",
         "ekelundActivityMortality2016": "Physical activity attenuates sitting-time mortality risk — backs aerobic-base recommendations and the 150-min floor.",
         "pellandDoseResponse2026": "Resistance training dose-response meta-regression — backs volume personalization and over-MRV trim warnings.",

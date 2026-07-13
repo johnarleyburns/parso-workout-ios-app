@@ -27,3 +27,11 @@ Cladiron is open source so anyone can verify there is no tracking, no telemetry,
 and no account/server — the privacy claims are auditable. Purchasing Cladiron Pro
 on the App Store funds continued development; the trademark ensures that funding
 reaches the project that earns it.
+
+## App Store exception
+
+As the sole copyright holder, John Arley Burns grants an explicit **App Store
+exception** in [LICENSE](LICENSE), permitting distribution of this software
+through the Apple App Store under Apple's standard terms notwithstanding any
+conflict with sections 6 and 12 of the GPLv3. This exception applies only to
+distribution by the copyright holder.

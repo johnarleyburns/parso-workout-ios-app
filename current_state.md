@@ -2,7 +2,22 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-12 — test-pyramid rebuild (Phases 0–6)._
+_Last updated: 2026-07-13 — revenue plan Phase 0 (docs & positioning)._
+
+## Revenue plan (`plans/revenue/2026-07-13/`)
+
+- **Phase 0 — docs & positioning (shipped 2026-07-13).** One honest monetization
+  story across the repo. Added a **Monetization** section to `CLAUDE.md`; reframed
+  `README.md` / `docs/REQUIREMENTS.md` from "free strength coach" to "free tracker +
+  paid Coach"; removed stale claims that do not ship (GZCLP, nSuns, HealthKit
+  bodyweight, PR timeline, consistency heatmap) from `CLAUDE.md`, `README.md`,
+  `docs/REQUIREMENTS.md`, `docs/CITATIONS.md`, and the `williamsLinearPeriodization`
+  registry annotation. Reconciled `docs/app-store/release-checklist.md` with
+  `metadata.md` (deleted "purchases unlock no features"; added the three Pro IAPs +
+  the free/Pro boundary + the App-Review paywall route). Added a GPLv3 **App Store
+  exception** to `LICENSE`, referenced from `README.md` and `TRADEMARKS.md`.
+  `docs/COMPETITIVE-ANALYSIS.md` present and linked. Docs-only; `swift test` = **945**
+  (unchanged), citation integrity green.
 
 ## What just shipped — test-pyramid rebuild (2026-07-12)
 

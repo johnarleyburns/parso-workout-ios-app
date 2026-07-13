@@ -1,6 +1,6 @@
 # Cladiron
 
-A free, open-source, science-based **strength coach** for iPhone. v1 is iPhone-first: log strength workouts with per-set tracking, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported as a secondary capability. **There is no companion Apple Watch app at this time** — the iPhone imports Watch-recorded workouts and heart rate from Apple Health, and a native watchOS app is only a possible future addition. Your data stays entirely on-device, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
+A private, open-source, science-based **strength app** for iPhone. The tracker is **free forever** and open source — logging, history, Progress, Tests, and export are never gated. The **Coach** is a paid product (**Cladiron Pro**). The source is open so you can verify we never track you. v1 is iPhone-first: log strength workouts with per-set tracking, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported as a secondary capability. **There is no companion Apple Watch app at this time** — the iPhone imports Watch-recorded workouts and heart rate from Apple Health, and a native watchOS app is only a possible future addition. Your data stays entirely on-device, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
 
 **Every single coaching output cites published, user-navigable science.** Cladiron never makes a recommendation, insight, warning, or deferred decision without a tappable "The science >" link to the study behind it.
 
@@ -20,7 +20,7 @@ A free, open-source, science-based **strength coach** for iPhone. v1 is iPhone-f
 - **No companion Apple Watch app (yet)** — the current release is iPhone-only. Apple Watch workouts and heart rate are imported from Apple Health after the session. A native watchOS app (live HR relay + on-watch logging) is a potential future direction, not part of this release.
 - **BLE chest strap** — CoreBluetooth `0x180D` with exponential-backoff reconnection, battery monitoring, and cold-launch auto-reconnect.
 - **HealthKit** — reads steps, ingests Watch-recorded workouts + HR; writes strength/cardio/interval summaries, HR samples, and GPS routes back to Health.
-- **History & trends** — unified strength + cardio history, per-exercise trend charts, PR timeline, consistency heatmap, workout summary with full per-set detail.
+- **History & trends** — unified strength + cardio history, per-exercise trend charts, workout summary with full per-set detail.
 - **Privacy-first** — fully local (SwiftData), no cloud sync, no accounts, no server, no ads. A complete, compressed JSON backup (`.json.gz`) export/import lets you back up and move your data (full history + preferences) to a fresh install; imports also accept plain `.json`.
 
 ## Architecture
@@ -49,7 +49,7 @@ Active development. The app ships a full recovery-aware coaching engine with 30+
 
 **Coach scientific validation:** A 21-test black-box suite (`CoachScientificValidationTests`) verifies every coaching rule against published exercise science — recovery gates, balance priorities, preference learning, assessment prompts, and edge cases. Each test carries a `CitationRegistry` reference. The full list of validated rules is accessible in-app under Settings → Coach → Coach Methodology. Run with `swift test --filter CoachScientificValidationTests`.
 
-App Store launch materials live in `docs/app-store/metadata.md` and `docs/app-store/release-checklist.md`.
+App Store launch materials live in `docs/app-store/metadata.md` and `docs/app-store/release-checklist.md`. The market positioning and revenue strategy are analyzed in `docs/COMPETITIVE-ANALYSIS.md`.
 
 Built supervised with Claude Code / opencode — see `CLAUDE.md`.
 
@@ -61,6 +61,12 @@ under the GNU General Public License v3.0.
 The **"Cladiron" name, app icon, and brand assets are trademarks** and are *not*
 covered by the GPL — see [TRADEMARKS.md](TRADEMARKS.md). Forks must use their own
 name and icon.
+
+As the sole copyright holder, John Arley Burns grants an **App Store exception**
+(see [LICENSE](LICENSE)) permitting distribution of this software through the
+Apple App Store under Apple's standard terms, notwithstanding any conflict with
+sections 6 and 12 of the GPL. This exception applies only to distribution by the
+copyright holder.
 
 Cladiron is open source so users can independently verify there is no tracking,
 no telemetry, and no account or server — the privacy claims are auditable.

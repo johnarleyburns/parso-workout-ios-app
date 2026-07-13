@@ -15,8 +15,11 @@ Use this checklist for the first public App Store v1 submission.
   coaching.
 - Confirm `PrivacyInfo.xcprivacy` remains Data Not Collected.
 - Confirm tip jar copy says "tip" or "support", never "donation".
-- Confirm purchases unlock no features and product-load failure leaves the app
-  fully usable.
+- Confirm the free/Pro boundary matches `docs/app-store/metadata.md`: the tracker
+  (logging, history, Progress, Tests, export) and the coach's *insights* are free
+  forever; **Cladiron Pro** gates only the coach's *prescription*.
+- Confirm the three Pro IAPs load and that tip-jar consumables unlock nothing.
+- Confirm product-load failure leaves the free app fully usable.
 
 ## Verification
 
@@ -54,14 +57,33 @@ Use this checklist for the first public App Store v1 submission.
 ## In-App Purchases
 
 - Ensure the Paid Applications agreement, banking, and tax forms are active.
-- Create three consumable IAP products:
+- Create three auto-renewable / non-consumable Cladiron Pro products (the paid
+  coach tier):
+  - `guru.parso.cladiron.pro.annual` - Cladiron Pro Annual - $79.99/yr, 1-month
+    free trial
+  - `guru.parso.cladiron.pro.monthly` - Cladiron Pro Monthly - $12.99/mo, no trial
+  - `guru.parso.cladiron.pro.lifetime` - Cladiron Pro Lifetime - founding $99.99
+    (full price $149.99)
+- Create three consumable tip IAP products (unlock nothing):
   - `guru.parso.cladiron.tip.small` - Buy us a coffee - about $1.99
   - `guru.parso.cladiron.tip.medium` - Supporter - about $4.99
   - `guru.parso.cladiron.tip.generous` - Patron - about $9.99
 - Add English localizations matching `Cadence/Cadence.storekit`.
-- Add a review screenshot for each IAP showing the Support Cladiron screen.
-- Add IAP review notes: optional tips unlock no features or content.
-- Attach all three IAPs to the first app version before submission.
+- Add a review screenshot for each IAP: the paywall for the Pro products, the
+  Support Cladiron screen for the tips.
+- Add IAP review notes: Cladiron Pro unlocks the coach's prescription; the tracker
+  and the coach's insights stay free. Optional tips unlock nothing.
+- Attach all IAPs to the first app version before submission.
+
+### App Review note — how to reach the paywall
+
+The free/Pro boundary: the tracker (logging, history, Progress, Tests, JSON
+export/import) and the coach's live *insights* are free forever. **Cladiron Pro**
+gates only the coach's *prescription* (program generation, today's exact
+set/rep/load, autoregulation, deloads). To reach the paywall: complete onboarding
+→ view the generated program preview → tap **"Start training with the Coach"**
+(also reachable from the Coach card on Home). Restore Purchases is on the paywall.
+A full log → history → export loop works with zero paywall interruptions.
 
 ## Screenshot Data
 

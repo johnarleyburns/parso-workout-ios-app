@@ -6,6 +6,21 @@ _Last updated: 2026-07-13 — revenue plan Phase 0 (docs & positioning)._
 
 ## Revenue plan (`plans/revenue/2026-07-13/`)
 
+- **Phase 3 — bundle exercise imagery, NFR-3 now enforced (shipped 2026-07-13).**
+  Decision D3. Exercise photos were fetched from `raw.githubusercontent.com` at
+  runtime (`AsyncImage`) — no images offline, and a request per exercise view in an
+  app whose pitch is "we never phone home." New `scripts/build-exercise-images.sh`
+  (one-shot, macOS `sips`, pinned to free-exercise-db commit `b0eed06`) downloaded
+  all **1,746 images (873 × 2)**, downscaled to ≤400px HEIC q70, committed to
+  `Resources/ExerciseImages/<id>/{0,1}.heic` — **30 MB** (under the 50 MB stop
+  threshold). `Package.swift` copies the dir; new `ExerciseImageCatalog` resolves
+  from `Bundle.module`; `ImportedExerciseLibrary` lost the `raw.githubusercontent`
+  URL builder (`imageURLs(forImageName:)` is now file-based); `ExerciseDetailView`
+  replaced `AsyncImage` with `UIImage(contentsOfFile:)` + placeholder. New
+  `scripts/check-no-network.sh` bans fetching APIs (URLSession/AsyncImage/etc — not
+  URLs) and is wired into CI next to the pyramid guardrail. New
+  `ExerciseImageCatalogTests` (7). `swift test` **955 → 962**; xcodebuild + both
+  guardrails green.
 - **Phase 2 — launch-blocking correctness (shipped 2026-07-13).** Fixed the bug
   where **paying subscribers were shown the "Unlock the Coach" upsell**:
   `HomeView` passed `isPro: false` as a literal into `CoachUpsellPolicy`, making its

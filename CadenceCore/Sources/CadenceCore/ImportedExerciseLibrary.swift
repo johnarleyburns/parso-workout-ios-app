@@ -132,17 +132,15 @@ public enum ImportedExerciseLibrary {
 }
 
 public extension ExerciseLibrary {
-    static let exerciseImageBaseURL = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/"
-    static let exercisePageBaseURL = "https://github.com/yuhonas/free-exercise-db/tree/main/exercises/"
+    /// The upstream repository, shown as a tappable attribution link and opened in
+    /// Safari on tap. This is displayed, never fetched by the app (NFR-3).
     static let exerciseRepoURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!
 
-    static func imageURL(forImageName name: String?, position: Int = 0) -> URL? {
-        guard let name, !name.isEmpty else { return nil }
-        return URL(string: "\(exerciseImageBaseURL)\(name)/\(position).jpg")
-    }
-
-    static func exercisePageURL(forImageName name: String?) -> URL? {
-        guard let name, !name.isEmpty else { return nil }
-        return URL(string: "\(exercisePageBaseURL)\(name)")
+    /// Local file URLs for an exercise's bundled images, in display order.
+    /// Resolves from `Bundle.module` via `ExerciseImageCatalog` — there is no
+    /// runtime network path. Empty when the exercise has no bundled photography.
+    static func imageURLs(forImageName name: String?) -> [URL] {
+        guard let name, !name.isEmpty else { return [] }
+        return ExerciseImageCatalog.imageURLs(forImageName: name)
     }
 }

@@ -43,6 +43,9 @@ jobs:
       - name: Test-pyramid guardrail
         run: bash scripts/check-test-pyramid.sh
 
+      - name: No-network guardrail
+        run: bash scripts/check-no-network.sh
+
   ui-smoke:
     needs: core-tests
     runs-on: macos-latest

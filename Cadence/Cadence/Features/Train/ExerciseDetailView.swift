@@ -11,13 +11,12 @@ struct ExerciseDetailView: View {
 
     @State private var showEditSheet = false
 
-    private var startImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 0) }
-    private var endImageURL: URL? { ExerciseLibrary.imageURL(forImageName: exercise.imageName, position: 1) }
+    private var imageURLs: [URL] { ExerciseLibrary.imageURLs(forImageName: exercise.imageName) }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if startImageURL != nil || endImageURL != nil {
+                if !imageURLs.isEmpty {
                     imageRow
                 }
 
@@ -89,35 +88,40 @@ struct ExerciseDetailView: View {
 
     private var imageRow: some View {
         HStack(spacing: 8) {
-            if let url = startImageURL { exerciseImage(url: url) }
-            if let url = endImageURL { exerciseImage(url: url) }
+            ForEach(imageURLs, id: \.self) { url in
+                exerciseImage(url: url)
+            }
         }
         .accessibilityLabel("\(exercise.name) demonstration")
     }
 
+    @ViewBuilder
     private func exerciseImage(url: URL) -> some View {
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().scaledToFit()
-            case .failure:
-                Color(.secondarySystemBackground)
-                    .overlay {
-                        VStack(spacing: 4) {
-                            Image(systemName: "photo.slash")
-                                .font(.title3).foregroundStyle(.secondary)
-                            Text("Image not available")
-                                .font(.caption2).foregroundStyle(.tertiary)
-                        }
-                    }
-            default:
-                Color(.secondarySystemBackground)
-                    .overlay(ProgressView())
-            }
+        if let image = UIImage(contentsOfFile: url.path) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 160)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        } else {
+            imagePlaceholder
         }
-        .frame(maxWidth: .infinity)
-        .frame(minHeight: 160)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var imagePlaceholder: some View {
+        Color(.secondarySystemBackground)
+            .overlay {
+                VStack(spacing: 4) {
+                    Image(systemName: "photo.slash")
+                        .font(.title3).foregroundStyle(.secondary)
+                    Text("Image not available")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 160)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private var facets: some View {

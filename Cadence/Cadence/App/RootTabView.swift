@@ -1,11 +1,15 @@
 import SwiftUI
+import CadenceCore
 import CadenceFeatures
 
 struct RootTabView: View {
     enum Tab: Hashable { case workout, tests, progress }
     @Environment(AppSettings.self) private var settings
+    @Environment(CloudBackupService.self) private var backup
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selection: Tab = .workout
     @State private var showSplash = true
+    @State private var offerRestore: RemoteBackupMeta?
 
     init() {
         // Normalize tab-bar item layout so icons + titles sit vertically centered
@@ -59,6 +63,45 @@ struct RootTabView: View {
                 SplashView(isPresented: $showSplash)
                     .zIndex(10)
                     .transition(.opacity)
+            }
+        }
+        .task {
+            // On launch: if the local store is empty and a remote backup exists,
+            // auto-restore (fresh install). If local data is present, ask first —
+            // never silently clobber. Guarded by BackupPolicy in the service.
+            guard settings.iCloudBackupEnabled else { return }
+            switch await backup.restoreDecision() {
+            case .autoRestore:
+                try? await backup.restore(settings: settings)
+            case .offerRestore(let meta):
+                offerRestore = meta
+            case .none:
+                break
+            }
+            // Opportunistic backup (no-ops when not due).
+            await backup.backUpIfNeeded(settings: settings)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, settings.iCloudBackupEnabled else { return }
+            Task { await backup.backUpIfNeeded(settings: settings) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .workoutHistoryChanged)) { _ in
+            // Mark the store dirty so BackupPolicy schedules the next backup.
+            settings.lastLocalChangeAt = Date()
+        }
+        .alert("Restore from iCloud?", isPresented: Binding(
+            get: { offerRestore != nil },
+            set: { if !$0 { offerRestore = nil } }
+        )) {
+            Button("Restore") {
+                let s = settings
+                offerRestore = nil
+                Task { try? await backup.restore(settings: s) }
+            }
+            Button("Not Now", role: .cancel) { offerRestore = nil }
+        } message: {
+            if let meta = offerRestore {
+                Text("An iCloud backup from \(meta.createdAt.formatted(date: .abbreviated, time: .shortened)) with \(meta.sessionCount) workout\(meta.sessionCount == 1 ? "" : "s") is available. Restoring merges it into your current data — nothing is deleted.")
             }
         }
     }

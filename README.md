@@ -21,7 +21,7 @@ A private, open-source, science-based **strength app** for iPhone. The tracker i
 - **BLE chest strap** — CoreBluetooth `0x180D` with exponential-backoff reconnection, battery monitoring, and cold-launch auto-reconnect.
 - **HealthKit** — reads steps, ingests Watch-recorded workouts + HR, and reads HRV, resting heart rate, sleep, and body weight (on-device only) as a passive-readiness prior the coach fuses with your self-report; writes strength/cardio/interval summaries, HR samples, and GPS routes back to Health.
 - **History & trends** — unified strength + cardio history, per-exercise trend charts, workout summary with full per-set detail.
-- **Privacy-first** — fully local (SwiftData), no cloud sync, no accounts, no server, no ads. A complete, compressed JSON backup (`.json.gz`) export/import lets you back up and move your data (full history + preferences) to a fresh install; imports also accept plain `.json`.
+- **Privacy-first** — local-first (SwiftData), no accounts, no third-party server, no ads. A complete, compressed JSON backup (`.json.gz`) export/import lets you back up and move your data (full history + preferences) to a fresh install; imports also accept plain `.json`. That same backup is optionally kept in **your own private iCloud** (never a Cladiron server, never seen by us) and restores automatically on a fresh install — so a lost or replaced phone no longer means a lost training log. This is backup, not live multi-device sync, and it keeps the App Store **Data Not Collected** label.
 
 ## Architecture
 

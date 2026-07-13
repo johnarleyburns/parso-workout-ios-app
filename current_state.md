@@ -2,10 +2,32 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-13 — revenue plan Phase 4 (passive readiness fusion)._
+_Last updated: 2026-07-13 — revenue plan Phase 5 (data durability / iCloud backup)._
 
 ## Revenue plan (`plans/revenue/2026-07-13/`)
 
+- **Phase 5 — automatic iCloud backup + restore, kills the data-loss 1-star (shipped 2026-07-13).**
+  Decision D5. Local-only storage + a *manual* JSON export meant the first user to
+  lose/replace a phone writes "it deleted my entire training log." Ships the low-risk
+  half: **automatic backup of the existing `CadenceExport` v5 `.json.gz` blob to the
+  user's private CloudKit** — NOT live SwiftData↔CloudKit sync. Reuses
+  `DataExport`/`WorkoutRepository.merge` wholesale, leaves the SwiftData schema
+  untouched (no migration risk), keeps the **Data Not Collected** label (data lives
+  in the *user's own* iCloud; Apple is the processor; Cladiron never sees it). New
+  pure `BackupPolicy.swift` holds all decision logic (`shouldBackUp` ≤1/day + only
+  when the store changed; `restoreDecision` → `.autoRestore` only when local is
+  empty, else `.offerRestore` — never silently clobbers). New app-layer
+  `CloudBackupService` (`@Observable @MainActor`) does the `CKContainer`/`CKAsset`
+  I/O it's told to; never blocks a workout. `AppSettings` gained additive
+  `iCloudBackupEnabled` (default on), `lastBackupAt`, `lastLocalChangeAt`.
+  `RootTabView` auto-restores on a fresh install, offers restore (alert) when local
+  data exists, backs up opportunistically on launch + scene-active, and marks the
+  store dirty on `.workoutHistoryChanged`. Settings gained an "iCloud Backup"
+  section (toggle + last-backed-up + Back Up Now + Restore) with privacy-explicit
+  copy. iCloud/CloudKit container added to `Cadence.entitlements` (no
+  `aps-environment`/remote-notification — deliberately kept off). New
+  `BackupPolicyTests` (10, incl. `test_nonEmptyLocalNeverSilentlyClobbered`).
+  `swift test` **995 → 1005**; xcodebuild + both guardrails green.
 - **Phase 4 — passive readiness fusion, the $79.99/yr wedge (shipped 2026-07-13).**
   Decision D4. The coach's readiness input was a self-report survey that never got
   filled out, while the Watch was already writing HRV/sleep/RHR to HealthKit that

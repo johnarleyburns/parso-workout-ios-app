@@ -11,6 +11,7 @@ struct CadenceApp: App {
     @State private var active = ActiveWorkoutModel()
     @State private var contributions = ContributionCoordinator()
     @State private var store = StoreService()
+    @State private var backup: CloudBackupService
     let container: ModelContainer
 
     /// Bump when an incompatible on-disk schema change ships, so the local
@@ -51,6 +52,7 @@ struct CadenceApp: App {
                 fatalError("Failed to create ModelContainer after reset: \(error)")
             }
         }
+        _backup = State(initialValue: CloudBackupService(container: container))
         // Seed starter library and (in UI-test mode) deterministic fixtures.
         let ctx = ModelContext(container)
         _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
@@ -69,6 +71,7 @@ struct CadenceApp: App {
                 .environment(active)
                 .environment(contributions)
                 .environment(store)
+                .environment(backup)
                 .environment(\.cadenceModelContainer, container)
                 .task { model.activateWCSession() }
                 .task { contributions.beginSession() }

@@ -35,7 +35,10 @@ public final class AppSettings {
                         "settings.coachHidden",
                         "settings.coachIntroImpressions",
                         "settings.lastTestRecommendationAt",
-                        "settings.testRecommendationSnoozes"] {
+                        "settings.testRecommendationSnoozes",
+                        "settings.iCloudBackupEnabled",
+                        "settings.lastBackupAt",
+                        "settings.lastLocalChangeAt"] {
                 defaults.removeObject(forKey: key)
             }
         }
@@ -85,6 +88,12 @@ public final class AppSettings {
             self.testRecommendationSnoozes = [:]
         }
         self.favoriteRoutineIDs = Set(defaults.stringArray(forKey: "settings.favoriteRoutineIDs") ?? [])
+        // iCloud backup (revenue Phase 5, D5). Default ON — the backup goes to the
+        // user's OWN private iCloud, never a Cladiron server, so the Data Not
+        // Collected label is unaffected. `lastBackupAt` paces backups to ≤1/day.
+        self.iCloudBackupEnabled = defaults.object(forKey: "settings.iCloudBackupEnabled") as? Bool ?? true
+        self.lastBackupAt = defaults.object(forKey: "settings.lastBackupAt") as? Date
+        self.lastLocalChangeAt = defaults.object(forKey: "settings.lastLocalChangeAt") as? Date
         // Coach preferences are stored properties (not computed) so @Observable
         // tracks mutations and SwiftUI re-renders when they change.
         if let data = defaults.data(forKey: "settings.coachPreferenceProfile"),
@@ -206,6 +215,17 @@ public final class AppSettings {
     /// Whether the user has completed the new-user onboarding flow.
     public var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
     public var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }
+
+    /// Automatic iCloud backup of the export blob to the user's private CloudKit
+    /// database (D5). Default on; the copy makes clear the data goes to the user's
+    /// own iCloud, not a Cladiron server.
+    public var iCloudBackupEnabled: Bool { didSet { defaults.set(iCloudBackupEnabled, forKey: "settings.iCloudBackupEnabled") } }
+    /// When the last successful iCloud backup completed. Paces backups to ≤1/day
+    /// (`BackupPolicy.minimumInterval`) and drives the "Last backed up …" line.
+    public var lastBackupAt: Date? { didSet { defaults.set(lastBackupAt, forKey: "settings.lastBackupAt") } }
+    /// When the local store last changed (workout saved/logged/ingested/deleted).
+    /// `BackupPolicy.shouldBackUp` uses it so we never re-upload an unchanged store.
+    public var lastLocalChangeAt: Date? { didSet { defaults.set(lastLocalChangeAt, forKey: "settings.lastLocalChangeAt") } }
 
     /// Learned Coach preferences from alternative selections. Stored as JSON in
     /// UserDefaults because it is compact and gets exported transparently.

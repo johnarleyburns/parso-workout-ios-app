@@ -7,9 +7,11 @@ struct SettingsView: View {
     @Environment(AppSettings.self) private var settingsObject
     @Environment(ContributionCoordinator.self) private var contributions
     @Environment(StoreService.self) private var store
+    @Environment(CloudBackupService.self) private var backup
 
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false
+    @State private var restoreResult: String?
 
     var body: some View {
         @Bindable var settings = settingsObject
@@ -158,6 +160,59 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("iCloud Backup", isOn: $settings.iCloudBackupEnabled)
+                    .accessibilityIdentifier("settings.iCloudBackup")
+                if settings.iCloudBackupEnabled {
+                    HStack {
+                        Label("Last backed up", systemImage: "clock.arrow.2.circlepath")
+                        Spacer()
+                        Text(lastBackupText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("settings.backup.lastBackedUp")
+                    }
+                    Button {
+                        Task { await backup.backUpIfNeeded(settings: settingsObject, force: true) }
+                    } label: {
+                        if case .backingUp = backup.status {
+                            HStack { ProgressView(); Text("Backing up…") }
+                        } else {
+                            Label("Back Up Now", systemImage: "icloud.and.arrow.up")
+                        }
+                    }
+                    .disabled(isBackupBusy)
+                    .accessibilityIdentifier("settings.backup.now")
+                    Button {
+                        Task {
+                            restoreResult = nil
+                            do {
+                                let added = try await backup.restore(settings: settingsObject)
+                                restoreResult = "Restored \(added) workout\(added == 1 ? "" : "s")."
+                            } catch {
+                                restoreResult = error.localizedDescription
+                            }
+                        }
+                    } label: {
+                        if case .restoring = backup.status {
+                            HStack { ProgressView(); Text("Restoring…") }
+                        } else {
+                            Label("Restore from iCloud", systemImage: "icloud.and.arrow.down")
+                        }
+                    }
+                    .disabled(isBackupBusy)
+                    .accessibilityIdentifier("settings.backup.restore")
+                    if let restoreResult {
+                        Text(restoreResult).font(.caption).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("settings.backup.result")
+                    }
+                }
+            } header: {
+                Text("iCloud Backup")
+            } footer: {
+                Text("A compressed backup of your training log is kept in your own private iCloud — not on a Cladiron server, and never seen by us. If you lose or replace your phone, your history restores automatically on a fresh install.")
+            }
+
+            Section {
                 NavigationLink {
                     AboutView()
                 } label: {
@@ -182,6 +237,18 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .sheet(isPresented: $primingPresented) {
             HealthPrimingView { status in healthStatus = status }
+        }
+    }
+
+    private var lastBackupText: String {
+        guard let date = settingsObject.lastBackupAt else { return "Never" }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    private var isBackupBusy: Bool {
+        switch backup.status {
+        case .backingUp, .restoring: return true
+        default: return false
         }
     }
 

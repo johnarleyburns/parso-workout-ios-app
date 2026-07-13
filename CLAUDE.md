@@ -35,12 +35,12 @@ The watch app is **deferred** (hardware-blocked for now) but stays in the repo; 
 - Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**. The coach also reads **HRV, resting HR, sleep, and bodyweight** (read-only, on-device) as a passive-readiness prior fused with self-report.
 - Review history, PRs, trends, and assessment results.
 - Follow **built-in programs** (5/3/1, PPL, 5x5, splits, calisthenics, Olympic).
-Cladiron is **fully local — no cloud sync**. Data portability is handled by a complete JSON **export/import** (full workout history + assessments + all preferences), so a user can back up and move to a fresh install losslessly.
+Cladiron is **local-first — no live cloud sync**. Data portability is handled by a complete JSON **export/import** (full workout history + assessments + all preferences), so a user can back up and move to a fresh install losslessly. As insurance against a lost/replaced phone, that same export blob is **automatically backed up to the user's *own* private CloudKit database** (D5) and restored on a fresh install — Apple is the processor, Cladiron never sees it, so the **Data Not Collected** label is unaffected.
 
 ## Stack
 - Swift + SwiftUI, **SwiftData** for the local store
 - **HealthKit** (steps, workouts, HR, routes; HRV, resting HR, sleep, bodyweight for passive readiness — read-only, on-device)
-- **No cloud component** — fully local; data portability is JSON export/import (no CloudKit, no server)
+- **No live cloud sync** — local-first; data portability is JSON export/import, plus an automatic backup of that export blob to the user's own private CloudKit (D5). No third-party server.
 - **CoreBluetooth** (chest-strap HRM `0x180D`; cardio-machine FTMS `0x1826`)
 - **CoreLocation** (geofence + iPhone GPS), **CoreMotion** (activity class), **Swift Charts** (trends)
 - Targets: watchOS 10+, iOS 17+
@@ -49,7 +49,7 @@ Cladiron is **fully local — no cloud sync**. Data portability is handled by a 
 - **`CadenceCore` Swift package** holds the data model, Smart Start ranking, PR logic, and the export/import layer. Both app targets depend on it. Write logging logic ONCE here; it's headlessly testable with `swift test`.
 - HealthKit has **no schema for sets/reps/weight** — the rich strength model lives in SwiftData locally. Only a *summary* `HKWorkout` is written back to HealthKit.
 - **Live HR from the Watch requires an `HKWorkoutSession` on watchOS** (relayed to phone). The iPhone cannot stream the Watch's HR. The chest strap streams to the phone directly over BLE, no watch needed.
-- **No cloud sync.** Data portability is JSON export/import: every entity carries a stable `UUID` so import merges idempotently by id. WatchConnectivity is only for live handoff, never a system of record.
+- **No live cloud sync.** Data portability is JSON export/import: every entity carries a stable `UUID` so import merges idempotently by id. The export blob is additionally auto-backed-up to the user's private CloudKit and restored on a fresh install (D5) — this is *not* live multi-device sync. WatchConnectivity is only for live handoff, never a system of record.
 
 ## Commands
 - Core package: `cd CadenceCore && swift build` / `swift test`

@@ -74,9 +74,12 @@ jobs:
       - name: UI smoke suite
         run: |
           set -eo pipefail
-          DEVICE_ID=$(xcrun simctl list devices available | grep -m1 "iPhone 16 " | grep -oE '[0-9A-F-]{36}')
+          DEVICE_ID=$(xcrun simctl list devices available --json \
+            | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; ids=[x['udid'] for rt in d for x in d[rt] if x.get('isAvailable') and x['name'].startswith('iPhone')]; print(ids[0] if ids else '')")
+          if [ -z "$DEVICE_ID" ]; then echo "No available iPhone simulator"; xcrun simctl list devices available; exit 1; fi
+          echo "Using simulator $DEVICE_ID"
           xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme Cadence \
-            -testPlan Cadence -derivedDataPath .build/dd -destination "id=$DEVICE_ID" -quiet
+            -testPlan Cadence -derivedDataPath .build/dd -destination "id=$DEVICE_ID"
           xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme Cadence \
             -testPlan Cadence -derivedDataPath .build/dd -destination "id=$DEVICE_ID" \
             -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1

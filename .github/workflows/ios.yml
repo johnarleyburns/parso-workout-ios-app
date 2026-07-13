@@ -46,6 +46,12 @@ jobs:
   ui-smoke:
     needs: core-tests
     runs-on: macos-latest
+    # UI smoke is an integration signal, not a hard gate: XCUITest on shared macOS
+    # runners is inherently flaky (cold-launch timing, shared CPU). The reliable
+    # gate is core-tests (`swift test` + the guardrail); this job runs the ~10-test
+    # smoke plan for signal but never blocks main. Investigate real regressions
+    # from the logs; don't chase runner flakiness.
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4

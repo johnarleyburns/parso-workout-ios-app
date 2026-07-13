@@ -85,8 +85,21 @@ public struct ReadinessSnapshot: Sendable, Equatable {
     public let capturedAt: Date?
     public var confidence: FactConfidence
 
+    // MARK: Passive fusion (revenue Phase 4, D4). Additive — optional/defaulted so
+    // every existing `ReadinessSnapshot(...)` call site stays source-compatible.
+    //
+    // Self-report ABOVE remains authoritative wherever present (`sawMonitoring2016`:
+    // self-reported measures trump objective monitoring). These passive fields are a
+    // zero-friction prior that fills the (common) gap where no check-in exists.
+    public var passive: PassiveReadinessSignal?
+    /// Set when passive signals are strongly suppressed and there is no recent
+    /// self-report — the app should *ask* the user for a check-in rather than assume.
+    public var promptCheckIn: Bool
+
     public init(soreness: Int?, sleepQuality: Int?, stress: Int?, motivation: Int?,
-                painConcern: Bool, capturedAt: Date?, confidence: FactConfidence) {
+                painConcern: Bool, capturedAt: Date?, confidence: FactConfidence,
+                passive: PassiveReadinessSignal? = nil,
+                promptCheckIn: Bool = false) {
         self.soreness = soreness
         self.sleepQuality = sleepQuality
         self.stress = stress
@@ -94,6 +107,8 @@ public struct ReadinessSnapshot: Sendable, Equatable {
         self.painConcern = painConcern
         self.capturedAt = capturedAt
         self.confidence = confidence
+        self.passive = passive
+        self.promptCheckIn = promptCheckIn
     }
 
     /// True when any logged score is poor (≤2) — a conservative "downgrade hard work"

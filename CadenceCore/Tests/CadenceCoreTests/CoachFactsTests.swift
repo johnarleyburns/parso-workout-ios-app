@@ -373,4 +373,61 @@ final class CoachFactsTests: XCTestCase {
         XCTAssertNotNil(facts2.stepSummary)
         XCTAssertNil(facts1.stepSummary)
     }
+
+    // MARK: - Passive readiness fusion (revenue Phase 4, D4)
+
+    private func passiveWindow(recentHRV: Double, baselineHRV: Double, now: Date) -> [PassiveReadinessSample] {
+        let cal = Calendar.current
+        return (1...40).map { ago in
+            let date = cal.date(byAdding: .day, value: -ago, to: cal.startOfDay(for: now))!
+            return PassiveReadinessSample(date: date,
+                                          hrvSDNN: ago <= 7 ? recentHRV : baselineHRV)
+        }
+    }
+
+    func testNoSelfReportNoPassiveLeavesReadinessNil() {
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: testNow)
+        XCTAssertNil(facts.readiness, "no check-in and no passive data → no readiness claim")
+    }
+
+    func testSuppressedPassiveWithoutCheckInProducesPoorReadiness() {
+        let now = testNow
+        let samples = passiveWindow(recentHRV: 45, baselineHRV: 60, now: now)  // ~ -25% → strong
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    now: now, passiveSamples: samples)
+        XCTAssertNotNil(facts.readiness)
+        XCTAssertEqual(facts.readiness?.isPoor, true)
+        XCTAssertEqual(facts.readiness?.confidence, .low, "passive-only readiness is low confidence")
+    }
+
+    func testFreshSelfReportBeatsPassiveInFacts() {
+        let now = testNow
+        // Good, fresh self-report...
+        let entry = ReadinessEntry(date: now.addingTimeInterval(-3600),
+                                   muscleSoreness: 5, fatigueEnergy: 5, sleepQuality: 5, stressMood: 5,
+                                   hasPainOrIllnessConcern: false)
+        // ...contradicted by strongly-suppressed passive HRV.
+        let samples = passiveWindow(recentHRV: 40, baselineHRV: 60, now: now)
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    readinessEntry: entry, now: now, passiveSamples: samples)
+        XCTAssertEqual(facts.readiness?.isPoor, false,
+                       "fresh self-report must win over passive HRV (sawMonitoring2016)")
+    }
+
+    /// Suppressed passive readiness (no check-in) must propagate into the existing
+    /// engine behavior — the reduced-load "lighter strength" candidate appears.
+    func testSuppressedReadinessSurfacesLighterSessionCandidate() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        // Some recent training so `!facts.events.isEmpty` and a lighter session is offered.
+        let event = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                          weight: 100, reps: 5, rpe: 8, date: now.addingTimeInterval(-2 * 86400))
+        let samples = passiveWindow(recentHRV: 44, baselineHRV: 60, now: now)
+        let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate,
+                                    now: now, passiveSamples: samples)
+        XCTAssertEqual(facts.readiness?.isPoor, true)
+        let candidates = CoachSession.candidates(for: facts)
+        XCTAssertTrue(candidates.contains { $0.id == "strength.reducedLoad" },
+                      "poor passive readiness should surface the lighter-strength candidate")
+    }
 }

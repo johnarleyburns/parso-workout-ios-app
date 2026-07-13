@@ -585,6 +585,52 @@ public enum CitationRegistry {
         url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12513948/"
     )
 
+    // MARK: Passive readiness (revenue Phase 4, D4)
+
+    /// HRV-guided training prescription outperforms a predefined block in cyclists —
+    /// but the guidance rests on a *rolling mean vs baseline*, not a single day.
+    public static let javaloyesHRVGuided2019 = Citation(
+        id: "javaloyesHRVGuided2019",
+        authors: "Javaloyes, Sarabia, Lamberts & Moya-Ramon",
+        year: 2019,
+        title: "Training Prescription Guided by Heart Rate Variability in Cycling",
+        source: "International Journal of Sports Physiology and Performance 14(1)",
+        url: "https://pubmed.ncbi.nlm.nih.gov/29809080/"
+    )
+
+    /// Individualized endurance training prescription guided by weekly HRV improved
+    /// outcomes over predefined training — anchors the HRV-baseline fusion rule.
+    public static let vesterinenHRVGuided2016 = Citation(
+        id: "vesterinenHRVGuided2016",
+        authors: "Vesterinen, Nummela, Heikura, Laine, Hynynen, Botella & Häkkinen",
+        year: 2016,
+        title: "Individual Endurance Training Prescription with Heart Rate Variability",
+        source: "Medicine & Science in Sports & Exercise 48(7)",
+        url: "https://pubmed.ncbi.nlm.nih.gov/26909534/"
+    )
+
+    /// Review of monitoring training status with HR measures — cautions that resting
+    /// HR / HRV are noisy day-to-day and should be read as trends, not single points.
+    public static let buchheitMonitoring2014 = Citation(
+        id: "buchheitMonitoring2014",
+        authors: "Buchheit",
+        year: 2014,
+        title: "Monitoring training status with HR measures: do all roads lead to Rome?",
+        source: "Frontiers in Physiology 5:73",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC3936188/"
+    )
+
+    /// Systematic review + meta-analysis: acute sleep loss impairs physical
+    /// performance — backs the sleep-debt contribution to the passive signal.
+    public static let cravenSleep2022 = Citation(
+        id: "cravenSleep2022",
+        authors: "Craven, McCartney, Desbrow, Sabapathy, Bellinger, Roberts & Irwin",
+        year: 2022,
+        title: "Effects of Acute Sleep Loss on Physical Performance: A Systematic and Meta-Analytical Review",
+        source: "Sports Medicine 52(11)",
+        url: "https://pubmed.ncbi.nlm.nih.gov/35708888/"
+    )
+
     // MARK: - All citations registry
 
     public static let all: [Citation] = [
@@ -607,6 +653,8 @@ public enum CitationRegistry {
         tabata1996, gibala2006, metcalfeREHIT2012, gunnarsson1020302012,
         brennanExerciseClassification2025,
         seilerPolarized2010,
+        javaloyesHRVGuided2019, vesterinenHRVGuided2016, buchheitMonitoring2014,
+        cravenSleep2022,
     ]
 
     public static func citation(forId id: String) -> Citation? {
@@ -641,7 +689,7 @@ public enum CitationRegistry {
         "pellandDoseResponse2026": "Resistance training dose-response meta-regression — backs volume personalization and over-MRV trim warnings.",
         "ramosCampoSplit2024": "Full-body vs split routine effects on strength and hypertrophy — backs session-structure choices in the weekly plan.",
         "parejaBlancoRecovery2020": "48-hour same-lift recovery window after training to failure — backs the session eligibility deferral gates.",
-        "sawMonitoring2016": "Self-reported measures trump objective monitoring — backs the readiness check-in system and recovery recommendations.",
+        "sawMonitoring2016": "Self-reported measures trump objective monitoring — backs the readiness check-in system, recovery recommendations, and the passive-readiness FUSION rule (self-report wins wherever present; passive signals only fill the gap).",
         "meeusenOvertraining2013": "Overtraining prevention consensus — backs pain/illness safety gates, hard-day streak warnings, and rest-day prescriptions.",
         "schumannConcurrent2022": "Concurrent aerobic + strength compatibility — backs lower-body collision gates and two-a-day timing guidance.",
         "crowleyVO2Intensity2022": "Exercise intensity and VO₂max improvement — backs VO₂-interval session prescriptions.",
@@ -672,6 +720,10 @@ public enum CitationRegistry {
         "metcalfeREHIT2012": "Reduced-exertion HIIT with 2 × 20 s sprints in a 10-min session — backs the REHIT interval preset.",
         "gunnarsson1020302012": "The 10-20-30 training concept (low/mod/sprint stepping) — backs the 10-20-30 interval preset.",
         "brennanExerciseClassification2025": "Exercise classification in resistance training — backs the \"custom exercises need muscle definitions\" insight.",
+        "javaloyesHRVGuided2019": "HRV-guided training prescription — backs reading passive HRV as a rolling-mean-vs-baseline trend, never a single day.",
+        "vesterinenHRVGuided2016": "Individualized HRV-guided endurance prescription — backs the passive-readiness baseline fusion with self-report.",
+        "buchheitMonitoring2014": "Monitoring training status with HR measures — backs the caution that resting HR / HRV are read as trends, not single points.",
+        "cravenSleep2022": "Acute sleep loss impairs physical performance — backs the sleep-debt contribution to the passive readiness signal.",
     ]
 
     /// Resolve the user-facing "why we use it" line for a citation id, if present.
@@ -784,6 +836,10 @@ public enum CitationRegistry {
         "dupuyFatigue2018",
         "meeusenOvertraining2013",
         "drewFinchInjury2016",
+        "javaloyesHRVGuided2019",
+        "vesterinenHRVGuided2016",
+        "buchheitMonitoring2014",
+        "cravenSleep2022",
     ])
 
     public static let concurrentTrainingPool = CitationPool(id: "concurrentTraining", citationIds: [

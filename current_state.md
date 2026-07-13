@@ -2,10 +2,38 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-13 — revenue plan Phase 0 (docs & positioning)._
+_Last updated: 2026-07-13 — revenue plan Phase 4 (passive readiness fusion)._
 
 ## Revenue plan (`plans/revenue/2026-07-13/`)
 
+- **Phase 4 — passive readiness fusion, the $79.99/yr wedge (shipped 2026-07-13).**
+  Decision D4. The coach's readiness input was a self-report survey that never got
+  filled out, while the Watch was already writing HRV/sleep/RHR to HealthKit that
+  `HealthKitProvider` read *none* of. New pure `PassiveReadiness.swift`
+  (`PassiveReadinessAnalyzer`) turns a window of HealthKit samples into a
+  conservative, citation-backed signal: **≥14 days of HRV required** or
+  `.insufficientData` (the DEFAULT — a two-day-old install makes NO claim); 7-day
+  rolling mean vs 28–60d baseline; HRV < −10%/−20%, RHR ≥ +5bpm, sleep debt ≥ 2h or
+  < 6h absolute contribute. New `ReadinessFusion.swift` encodes **D4**: a fresh (≤24h)
+  self-report is authoritative (`sawMonitoring2016` — self-report trumps objective
+  monitoring), passive fills the gap at *lower* confidence, and
+  `.stronglySuppressed` + no check-in raises `promptCheckIn` (asks, never assumes).
+  `ReadinessSnapshot` gained additive `passive`/`promptCheckIn`; `CoachFacts.make`
+  and `CoachSnapshotBuilder.build` thread `passiveSamples` + fuse; the existing
+  deferral/deload gates consume `readiness` unchanged. `HealthKitProvider` reads
+  HRV SDNN / resting HR / body weight / sleep analysis (on-device, **Data Not
+  Collected label unaffected**), Info.plist purpose string updated. Headless
+  `PassiveReadinessPresenter.display(for:)` returns nil when `citationIds` are empty
+  (mechanically enforces the HARD RULE); `PassiveReadinessCard` renders the line +
+  `CitationLink`. 4 new citations (`javaloyesHRVGuided2019`, `vesterinenHRVGuided2016`,
+  `buchheitMonitoring2014`, `cravenSleep2022`) added to registry + `recoveryMonitoringPool`
+  + usageReasons + `docs/CITATIONS.md`; `sawMonitoring2016` now also cites the fusion
+  rule. `coach-kb-version.json` **2026.4.0 → 2026.5.0**. `HomeCoachSnapshot` extracted
+  from HomeView into its own file (carries `readiness`); Home reads samples off the
+  render path and rebuilds on `.onChange(of: passiveSamples)`. New tests:
+  `PassiveReadinessAnalyzerTests` (14), `ReadinessFusionTests` (7),
+  `PassiveReadinessPresenterTests` (7), +CoachFacts/Citation/KB additions. `swift test`
+  **962 → 995**; xcodebuild + both guardrails green.
 - **Phase 3 — bundle exercise imagery, NFR-3 now enforced (shipped 2026-07-13).**
   Decision D3. Exercise photos were fetched from `raw.githubusercontent.com` at
   runtime (`AsyncImage`) — no images offline, and a request per exercise view in an

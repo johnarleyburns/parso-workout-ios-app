@@ -33,19 +33,23 @@ final class CoachKnowledgeBaseTests: XCTestCase {
 
     func testNewKBEntryLoads() {
         let kb = CoachKnowledgeBaseLoader.current
-        XCTAssertEqual(kb.version, "2026.4.0",
-                       "Bundled KB should be bumped to the bibliography release")
-        guard let entry = kb.entries.first(where: { $0.version == "2026.4.0" }) else {
-            return XCTFail("Missing v2026.4.0 bibliography changelog entry")
+        XCTAssertEqual(kb.version, "2026.5.0",
+                       "Bundled KB should be bumped to the passive-readiness release")
+        guard let entry = kb.entries.first(where: { $0.version == "2026.5.0" }) else {
+            return XCTFail("Missing v2026.5.0 passive-readiness changelog entry")
         }
-        XCTAssertTrue(entry.title.localizedCaseInsensitiveContains("bibliography"),
-                      "v2026.4.0 entry should announce the bibliography")
+        XCTAssertTrue(entry.title.localizedCaseInsensitiveContains("readiness"),
+                      "v2026.5.0 entry should announce passive readiness")
         XCTAssertFalse(entry.citationIds.isEmpty)
         for id in entry.citationIds {
             XCTAssertNotNil(CitationRegistry.citation(forId: id),
-                            "v2026.4.0 cites unknown \(id)")
+                            "v2026.5.0 cites unknown \(id)")
         }
         // Newest entry drives the displayed version.
-        XCTAssertEqual(kb.changelog.first?.version, "2026.4.0")
+        XCTAssertEqual(kb.changelog.first?.version, "2026.5.0")
+
+        // The prior bibliography pack must still be present.
+        XCTAssertNotNil(kb.entries.first(where: { $0.version == "2026.4.0" }),
+                        "v2026.4.0 bibliography entry should remain in the changelog")
     }
 }

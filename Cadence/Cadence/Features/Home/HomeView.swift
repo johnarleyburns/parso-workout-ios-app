@@ -38,6 +38,9 @@ struct HomeView: View {
     @State private var warmupActive = false
     @State private var today: DayActivity?
     @State private var activityTrend: [DayActivity] = []
+    // Passive readiness samples (HRV/RHR/sleep) read from HealthKit off the render
+    // path; folded into the coach signature so a change re-runs the pipeline.
+    @State private var passiveSamples: [PassiveReadinessSample] = []
     /// Bumped after any workout-history mutation (save, log, ingest, delete) so the
     /// computed Coach / This Week / recent surfaces recompute immediately — without
     /// waiting for `scenePhase == .active` (the old "only fixed after re-entry" bug).
@@ -56,37 +59,6 @@ struct HomeView: View {
     @State private var showSupport = false
     @State private var showPaywall = false
 
-    // Coach engine (strength-pivot P3/P5). The whole pipeline (facts + decision +
-    // plan optimization + insights over ALL history) is expensive. It used to be a
-    // set of plain computed properties that re-ran ~8–10× on every SwiftUI body
-    // evaluation — including on every logged set, because a set save mutates the
-    // session `@Query`, which invalidated this (still-alive) Home view even while
-    // SessionView was pushed. That caused the 1–2s stalls when logging. It is now
-    // computed ONCE into `coachSnapshot` by a `.task(id:)` that only refires when
-    // history or coach-relevant settings actually change — never on per-set churn.
-    struct HomeCoachSnapshot {
-        var facts: TrainingFacts
-        var insights: [Insight]
-        var recommendation: Recommendation
-        var decision: CoachDecision
-        var plan: WeeklyPlan
-        var behindPlan: Bool
-        var addOn: CoachAddOnRecommendation
-
-        init(_ s: CoachSnapshot) {
-            facts = s.facts; insights = s.insights; recommendation = s.recommendation
-            decision = s.decision; plan = s.plan; behindPlan = s.behindPlan; addOn = s.addOn
-        }
-
-        /// Cheap cold-start value shown for the first frame before `.task` computes
-        /// the real snapshot (empty inputs → cold-start decision/recommendation).
-        static let placeholder = HomeCoachSnapshot(
-            CoachSnapshotBuilder.build(
-                sessions: [], cardio: [], assessments: [], hasPainToday: false,
-                goal: .strength, experience: .intermediate, formula: .epley,
-                schedulePreferences: CoachSchedulePreferences(), profile: .empty))
-    }
-
     @State private var coachSnapshot: HomeCoachSnapshot = .placeholder
 
     private var coachFacts: TrainingFacts { coachSnapshot.facts }
@@ -95,6 +67,12 @@ struct HomeView: View {
     private var coachDecision: CoachDecision { coachSnapshot.decision }
     private var coachPlan: WeeklyPlan { coachSnapshot.plan }
     private var coachInsightsBehindPlan: Bool { coachSnapshot.behindPlan }
+
+    /// The passive-readiness line (HRV/sleep/RHR), prepared headlessly. `nil` when
+    /// there is nothing honest to say. This is coach *insight*, so it is free.
+    private var passiveReadinessDisplay: PassiveReadinessPresenter.Display? {
+        PassiveReadinessPresenter.display(for: coachSnapshot.readiness)
+    }
 
     /// The current fitness-test recommendation (issue 11), gated to ≤1/week and
     /// honoring per-kind "not right now" snoozes. Computed directly (cheap) from the
@@ -150,7 +128,8 @@ struct HomeView: View {
             experience: settings.experienceLevel,
             formula: settings.formula,
             schedule: settings.coachSchedulePreferences,
-            profile: settings.coachPreferenceProfile))
+            profile: settings.coachPreferenceProfile,
+            passiveSamples: passiveSamples))
     }
 
     // MARK: Coach presence (coach-surface-design.md §2, as amended)
@@ -183,6 +162,9 @@ struct HomeView: View {
                 if let days = store.trialDaysRemaining {
                     trialBanner(daysLeft: days)
                 }
+                if let passive = passiveReadinessDisplay {
+                    PassiveReadinessCard(display: passive)
+                }
                 CoachDecisionCardView(
                     decision: coachDecision,
                     addOnRecommendation: addOnRecommendation,
@@ -195,15 +177,20 @@ struct HomeView: View {
                     onFixCustomExercises: { path.append(HomeRoute.customExercises) })
             }
         case .introducing:
-            CoachPreviewView(
-                plan: coachPlan,
-                topInsight: coachInsights.first,
-                prescription: coachRecommendation,
-                showUnlockCTA: coachShowsUnlockCTA,
-                onUnlock: { showPaywall = true },
-                onCTADisplayed: { settings.lastCoachUpsellShown = Date() },
-                onFixCustomExercises: { path.append(HomeRoute.customExercises) })
-                .onAppear { settings.coachIntroImpressions += 1 }
+            VStack(alignment: .leading, spacing: 8) {
+                if let passive = passiveReadinessDisplay {
+                    PassiveReadinessCard(display: passive)
+                }
+                CoachPreviewView(
+                    plan: coachPlan,
+                    topInsight: coachInsights.first,
+                    prescription: coachRecommendation,
+                    showUnlockCTA: coachShowsUnlockCTA,
+                    onUnlock: { showPaywall = true },
+                    onCTADisplayed: { settings.lastCoachUpsellShown = Date() },
+                    onFixCustomExercises: { path.append(HomeRoute.customExercises) })
+                    .onAppear { settings.coachIntroImpressions += 1 }
+            }
         case .ambient, .insight, .hidden:
             EmptyView()
         }
@@ -379,11 +366,13 @@ struct HomeView: View {
             .task {
                 today = await model.health.todayActivity()
                 activityTrend = await model.health.activityTrend(days: 7)
+                passiveSamples = await model.health.passiveReadinessSamples(days: 60)
                 await syncCardioFromHealth()
             }
             .refreshable {
                 today = await model.health.todayActivity()
                 activityTrend = await model.health.activityTrend(days: 7)
+                passiveSamples = await model.health.passiveReadinessSamples(days: 60)
                 await syncCardioFromHealth()
             }
             .sheet(isPresented: $logPickerPresented) {
@@ -570,6 +559,11 @@ struct HomeView: View {
         // coach-relevant settings actually change (see `coachSignature`). This keeps
         // set logging instant — the pipeline no longer runs on every set save.
         .task(id: coachSignature) {
+            coachSnapshot = buildCoachSnapshot()
+        }
+        // Passive HealthKit samples arrive asynchronously after the initial pipeline
+        // run; rebuild the snapshot once they land (and whenever they change).
+        .onChange(of: passiveSamples) {
             coachSnapshot = buildCoachSnapshot()
         }
     }

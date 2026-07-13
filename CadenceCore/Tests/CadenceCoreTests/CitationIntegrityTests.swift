@@ -15,6 +15,10 @@ final class CitationIntegrityTests: XCTestCase {
             "mooreLeisureActivity2012", "aremDoseResponse2015", "saintMauriceSteps2020",
             "leeAccelerometer2019",
             "halsonRecovery2014", "drewFinchInjury2016", "dupuyFatigue2018",
+            // Passive readiness (revenue Phase 4, D4) — a science claim with any of
+            // these missing must fail CI (HARD RULE, mechanically enforced).
+            "javaloyesHRVGuided2019", "vesterinenHRVGuided2016",
+            "buchheitMonitoring2014", "cravenSleep2022",
         ]
         for id in required {
             XCTAssertTrue(known.contains(id), "Missing required citation: \(id)")
@@ -24,6 +28,22 @@ final class CitationIntegrityTests: XCTestCase {
     func testEveryCitationHasUrl() {
         for c in CitationRegistry.all {
             XCTAssertFalse(c.url.isEmpty, "Citation \(c.id) has no URL")
+        }
+    }
+
+    func testPassiveReadinessClaimCitationsResolve() {
+        XCTAssertFalse(PassiveReadinessAnalyzer.claimCitationIds.isEmpty)
+        for id in PassiveReadinessAnalyzer.claimCitationIds {
+            XCTAssertNotNil(CitationRegistry.citation(forId: id),
+                            "passive-readiness claim cites unknown \(id)")
+        }
+        // The fusion rule itself must remain backed by sawMonitoring2016.
+        XCTAssertNotNil(CitationRegistry.citation(forId: "sawMonitoring2016"))
+        // And the recovery-monitoring pool must include the new evidence.
+        let pool = Set(CitationRegistry.recoveryMonitoringPool.citationIds)
+        for id in PassiveReadinessAnalyzer.claimCitationIds {
+            XCTAssertTrue(pool.contains(id),
+                          "recoveryMonitoringPool should include passive-readiness citation \(id)")
         }
     }
 

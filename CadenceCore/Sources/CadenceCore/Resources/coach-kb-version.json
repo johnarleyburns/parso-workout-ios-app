@@ -1,7 +1,20 @@
 {
-  "version": "2026.4.0",
-  "releaseDate": "2026-07-07",
+  "version": "2026.5.0",
+  "releaseDate": "2026-07-13",
   "entries": [
+    {
+      "version": "2026.5.0",
+      "date": "2026-07-13",
+      "title": "Passive readiness — HRV, sleep, and resting HR",
+      "summary": "The Coach now reads HRV, sleep, and resting heart rate from Apple Health as a zero-friction recovery prior. Your self-reported check-in still wins wherever you've logged one (self-reported measures outperform objective monitoring); passive signals fill the gap and, when strongly suppressed, prompt a quick check-in. Every passive claim is read as a rolling trend versus your own baseline, never a single noisy day.",
+      "citationIds": [
+        "sawMonitoring2016",
+        "javaloyesHRVGuided2019",
+        "vesterinenHRVGuided2016",
+        "buchheitMonitoring2014",
+        "cravenSleep2022"
+      ]
+    },
     {
       "version": "2026.4.0",
       "date": "2026-07-07",

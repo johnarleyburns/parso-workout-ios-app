@@ -13,10 +13,12 @@ public struct CoachSnapshot: Sendable {
     public let plan: WeeklyPlan
     public let behindPlan: Bool
     public let addOn: CoachAddOnRecommendation
+    /// The fused readiness (self-report + passive HealthKit), when present.
+    public let readiness: ReadinessSnapshot?
 
     public init(facts: TrainingFacts, insights: [Insight], recommendation: Recommendation,
                 decision: CoachDecision, plan: WeeklyPlan, behindPlan: Bool,
-                addOn: CoachAddOnRecommendation) {
+                addOn: CoachAddOnRecommendation, readiness: ReadinessSnapshot? = nil) {
         self.facts = facts
         self.insights = insights
         self.recommendation = recommendation
@@ -24,6 +26,7 @@ public struct CoachSnapshot: Sendable {
         self.plan = plan
         self.behindPlan = behindPlan
         self.addOn = addOn
+        self.readiness = readiness
     }
 }
 
@@ -40,6 +43,8 @@ public enum CoachSnapshotBuilder {
                              formula: OneRepMaxFormula,
                              schedulePreferences: CoachSchedulePreferences,
                              profile: CoachPreferenceProfile,
+                             readinessEntry: ReadinessEntry? = nil,
+                             passiveSamples: [PassiveReadinessSample] = [],
                              now: Date = Date()) -> CoachSnapshot {
         let liveSessions = sessions.filter { $0.deletedAt == nil }
         let trainingFacts = TrainingFacts.make(sessions: liveSessions,
@@ -51,7 +56,9 @@ public enum CoachSnapshotBuilder {
         let events = trainingEvents(sessions: liveSessions, cardio: cardio,
                                     assessments: assessments, formula: formula)
         let coachFacts = CoachFacts.make(from: events, goal: goal, experience: experience,
-                                         formula: formula, now: now)
+                                         readinessEntry: readinessEntry,
+                                         formula: formula, now: now,
+                                         passiveSamples: passiveSamples)
         let plan = WeeklyPlan.generate(from: coachFacts, schedulePreferences: schedulePreferences)
 
         let base = CoachDecisionEngine.run(coachFacts,
@@ -102,7 +109,8 @@ public enum CoachSnapshotBuilder {
 
         return CoachSnapshot(facts: trainingFacts, insights: insights,
                              recommendation: recommendation, decision: decision,
-                             plan: plan, behindPlan: behindPlan, addOn: addOn)
+                             plan: plan, behindPlan: behindPlan, addOn: addOn,
+                             readiness: coachFacts.readiness)
     }
 
     // MARK: - Helpers (ported verbatim from HomeView so behavior is unchanged)

@@ -15,8 +15,14 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
     private var readTypes: Set<HKObjectType> {
         var types: Set<HKObjectType> = [HKObjectType.workoutType()]
         let ids: [HKQuantityTypeIdentifier] = [.stepCount, .distanceWalkingRunning,
-                                               .flightsClimbed, .activeEnergyBurned, .heartRate]
+                                               .flightsClimbed, .activeEnergyBurned, .heartRate,
+                                               // Passive readiness (revenue Phase 4): read-only,
+                                               // on-device, does not change the Data Not Collected
+                                               // privacy label. bodyMass also makes the CLAUDE.md
+                                               // HealthKit line true.
+                                               .heartRateVariabilitySDNN, .restingHeartRate, .bodyMass]
         for id in ids { if let t = HKObjectType.quantityType(forIdentifier: id) { types.insert(t) } }
+        if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { types.insert(sleep) }
         return types
     }
 
@@ -85,6 +91,89 @@ final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
             }
             store.execute(q)
         }
+    }
+
+    // MARK: Passive readiness (revenue Phase 4)
+
+    /// Trailing daily HRV (SDNN, ms), resting HR (bpm), and sleep (hours). One
+    /// `PassiveReadinessSample` per day where any metric exists. On-device reads.
+    func passiveReadinessSamples(days: Int) async -> [PassiveReadinessSample] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        guard let windowStart = cal.date(byAdding: .day, value: -days, to: today) else { return [] }
+
+        async let hrv = dailyAverage(.heartRateVariabilitySDNN,
+                                     unit: HKUnit.secondUnit(with: .milli),
+                                     start: windowStart, end: Date())
+        async let rhr = dailyAverage(.restingHeartRate,
+                                     unit: HKUnit.count().unitDivided(by: .minute()),
+                                     start: windowStart, end: Date())
+        async let sleep = dailySleepHours(start: windowStart, end: Date())
+
+        let hrvByDay = await hrv
+        let rhrByDay = await rhr
+        let sleepByDay = await sleep
+
+        let allDays = Set(hrvByDay.keys).union(rhrByDay.keys).union(sleepByDay.keys)
+        return allDays.sorted().map { day in
+            PassiveReadinessSample(date: day,
+                                   hrvSDNN: hrvByDay[day],
+                                   restingHR: rhrByDay[day],
+                                   sleepHours: sleepByDay[day])
+        }
+    }
+
+    /// Per-day discrete average of a quantity type, keyed by start-of-day.
+    private func dailyAverage(_ id: HKQuantityTypeIdentifier, unit: HKUnit,
+                              start: Date, end: Date) async -> [Date: Double] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: id) else { return [:] }
+        let cal = Calendar.current
+        return await withCheckedContinuation { cont in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+            let anchor = cal.startOfDay(for: start)
+            let interval = DateComponents(day: 1)
+            let q = HKStatisticsCollectionQuery(quantityType: type,
+                                                quantitySamplePredicate: predicate,
+                                                options: .discreteAverage,
+                                                anchorDate: anchor,
+                                                intervalComponents: interval)
+            q.initialResultsHandler = { _, collection, _ in
+                var out: [Date: Double] = [:]
+                collection?.enumerateStatistics(from: start, to: end) { stats, _ in
+                    if let avg = stats.averageQuantity()?.doubleValue(for: unit) {
+                        out[cal.startOfDay(for: stats.startDate)] = avg
+                    }
+                }
+                cont.resume(returning: out)
+            }
+            store.execute(q)
+        }
+    }
+
+    /// Per-day asleep hours, keyed by start-of-day of the sample's start.
+    private func dailySleepHours(start: Date, end: Date) async -> [Date: Double] {
+        guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return [:] }
+        let cal = Calendar.current
+        let samples: [HKCategorySample] = await withCheckedContinuation { cont in
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+            let q = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit,
+                                  sortDescriptors: nil) { _, samples, _ in
+                cont.resume(returning: (samples as? [HKCategorySample]) ?? [])
+            }
+            store.execute(q)
+        }
+        let asleepValues: Set<Int> = [
+            HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+            HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+            HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+            HKCategoryValueSleepAnalysis.asleepREM.rawValue,
+        ]
+        var out: [Date: Double] = [:]
+        for s in samples where asleepValues.contains(s.value) {
+            let hours = s.endDate.timeIntervalSince(s.startDate) / 3600
+            out[cal.startOfDay(for: s.startDate), default: 0] += hours
+        }
+        return out
     }
 
     // MARK: Workout ingest (FR-2.1)

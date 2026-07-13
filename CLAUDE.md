@@ -32,14 +32,14 @@ deletes it).
 The watch app is **deferred** (hardware-blocked for now) but stays in the repo; do **not** prioritize it. v1 ships on iPhone:
 - Log **strength** workouts on the phone with **coaching** — the core loop.
 - Run a **no-lab fitness test battery** whose baselines feed the coach.
-- Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**.
+- Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**. The coach also reads **HRV, resting HR, sleep, and bodyweight** (read-only, on-device) as a passive-readiness prior fused with self-report.
 - Review history, PRs, trends, and assessment results.
 - Follow **built-in programs** (5/3/1, PPL, 5x5, splits, calisthenics, Olympic).
 Cladiron is **fully local — no cloud sync**. Data portability is handled by a complete JSON **export/import** (full workout history + assessments + all preferences), so a user can back up and move to a fresh install losslessly.
 
 ## Stack
 - Swift + SwiftUI, **SwiftData** for the local store
-- **HealthKit** (steps, workouts, HR, routes)
+- **HealthKit** (steps, workouts, HR, routes; HRV, resting HR, sleep, bodyweight for passive readiness — read-only, on-device)
 - **No cloud component** — fully local; data portability is JSON export/import (no CloudKit, no server)
 - **CoreBluetooth** (chest-strap HRM `0x180D`; cardio-machine FTMS `0x1826`)
 - **CoreLocation** (geofence + iPhone GPS), **CoreMotion** (activity class), **Swift Charts** (trends)

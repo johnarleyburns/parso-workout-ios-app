@@ -88,6 +88,7 @@ public enum HomeCoachModel {
                                 formula: OneRepMaxFormula,
                                 schedule: CoachSchedulePreferences,
                                 profile: CoachPreferenceProfile,
+                                passiveSamples: [PassiveReadinessSample] = [],
                                 now: Date = Date()) -> CoachSnapshot {
         CoachSnapshotBuilder.build(
             sessions: sessions,
@@ -99,7 +100,15 @@ public enum HomeCoachModel {
             formula: formula,
             schedulePreferences: schedule,
             profile: profile,
+            readinessEntry: latestReadiness(readiness, now: now),
+            passiveSamples: passiveSamples,
             now: now)
+    }
+
+    /// The most recent readiness check-in on or before `now`, if any — the one the
+    /// coach fuses with passive signals.
+    static func latestReadiness(_ entries: [ReadinessEntry], now: Date) -> ReadinessEntry? {
+        entries.filter { $0.date <= now }.max { $0.date < $1.date }
     }
 
     /// The current fitness-test recommendation (issue 11), gated to ≤1/week and

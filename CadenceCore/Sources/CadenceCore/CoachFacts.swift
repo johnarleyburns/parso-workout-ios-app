@@ -209,10 +209,12 @@ public extension CoachFacts {
                      assessments: [AssessmentSummary] = [],
                      readinessEntry: ReadinessEntry? = nil,
                      formula: OneRepMaxFormula = .epley,
-                     now: Date = Date()) -> CoachFacts {
+                     now: Date = Date(),
+                     passiveSamples: [PassiveReadinessSample] = []) -> CoachFacts {
         return make(from: events, goal: goal, experience: experience,
                     assessments: assessments, readinessEntry: readinessEntry,
-                    formula: formula, now: now, recoveryAwareCoachV2: true)
+                    formula: formula, now: now, passiveSamples: passiveSamples,
+                    recoveryAwareCoachV2: true)
     }
 
     static func make(from events: [TrainingEvent],
@@ -222,6 +224,7 @@ public extension CoachFacts {
                      readinessEntry: ReadinessEntry? = nil,
                      formula: OneRepMaxFormula = .epley,
                      now: Date = Date(),
+                     passiveSamples: [PassiveReadinessSample] = [],
                      recoveryAwareCoachV2: Bool) -> CoachFacts {
 
         // Completed events only, in the past, sorted chronologically (newest last).
@@ -249,7 +252,21 @@ public extension CoachFacts {
         let spikeFlags = SystemLoadComputer.loadSpikeFlags(systemLoads)
         let zoneSrc = SystemLoadComputer.zoneSource(rolling28d: rolling28d)
         let coverage = SystemLoadComputer.assessmentCoverage(assessments, now: now)
-        let readiness = readinessEntry.map { ReadinessSnapshot.from($0, now: now) }
+        let selfReport = readinessEntry.map { ReadinessSnapshot.from($0, now: now) }
+
+        // Passive readiness fusion (revenue Phase 4, D4). Self-report stays
+        // authoritative where present; passive HealthKit signals fill the gap and
+        // can prompt a check-in. When there is neither a check-in nor enough passive
+        // data, `readiness` stays exactly what it was before (nil / self-report).
+        let passiveSignal = passiveSamples.isEmpty
+            ? PassiveReadinessSignal.insufficient
+            : PassiveReadinessAnalyzer.signal(samples: passiveSamples, now: now)
+        let readiness: ReadinessSnapshot?
+        if selfReport == nil && !passiveSignal.makesClaim {
+            readiness = nil
+        } else {
+            readiness = ReadinessFusion.fuse(selfReport: selfReport, passive: passiveSignal, now: now)
+        }
 
         return CoachFacts(
             events: events,

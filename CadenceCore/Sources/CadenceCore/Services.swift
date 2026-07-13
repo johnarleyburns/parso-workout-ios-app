@@ -208,6 +208,15 @@ public protocol HealthDataProviding: AnyObject, Sendable {
     func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID?
     /// Write a recorded cardio workout with HR + route (FR-2.5).
     func saveCardioWorkout(_ summary: CardioWorkoutSummary) async -> UUID?
+    /// Passive recovery samples (HRV SDNN, resting HR, sleep hours) for the trailing
+    /// `days`, one per calendar day where data exists (revenue Phase 4). On-device
+    /// reads only — never egresses, so the Data Not Collected label is unaffected.
+    func passiveReadinessSamples(days: Int) async -> [PassiveReadinessSample]
+}
+
+public extension HealthDataProviding {
+    /// Default: no passive data (keeps fakes/mocks and older conformers compiling).
+    func passiveReadinessSamples(days: Int) async -> [PassiveReadinessSample] { [] }
 }
 
 // MARK: - Heart-rate monitor (FR-2.3, FR-4.4)

@@ -542,6 +542,43 @@ muscle function.* **Phys Ther Sport 15(1).** <https://doi.org/10.1016/j.ptsp.201
 - **Used by:** `fieldTestValidityPool`; the `plankHold` assessment.
 - **What it supports:** a validated, reliable plank protocol for global core endurance.
 
+### `javaloyesHRVGuided2019` — HRV-guided training prescription
+Javaloyes, Sarabia, Lamberts & Moya-Ramon (2019). *Training Prescription Guided by Heart
+Rate Variability in Cycling.* **Int J Sports Physiol Perform 14(1).**
+<https://pubmed.ncbi.nlm.nih.gov/29809080/>
+
+- **Used by:** `recoveryMonitoringPool`; the passive-readiness signal.
+- **What it supports:** prescribing from HRV improves outcomes over a fixed block — but the
+  signal is a **rolling mean vs a personal baseline**, never a single day. This is exactly
+  why `PassiveReadinessAnalyzer` requires ≥14 days of HRV and compares a 7-day rolling mean.
+
+### `vesterinenHRVGuided2016` — individualized HRV-guided endurance training
+Vesterinen, Nummela, Heikura, Laine, Hynynen, Botella & Häkkinen (2016). *Individual
+Endurance Training Prescription with Heart Rate Variability.* **Med Sci Sports Exerc 48(7).**
+<https://pubmed.ncbi.nlm.nih.gov/26909534/>
+
+- **Used by:** `recoveryMonitoringPool`; the passive-readiness signal.
+- **What it supports:** weekly-HRV-guided prescription individualizes load better than a
+  predefined plan — grounds the fusion of the passive HRV prior with self-report.
+
+### `buchheitMonitoring2014` — monitoring training status with HR measures
+Buchheit (2014). *Monitoring training status with HR measures: do all roads lead to Rome?*
+**Front Physiol 5:73.** <https://pmc.ncbi.nlm.nih.gov/articles/PMC3936188/>
+
+- **Used by:** `recoveryMonitoringPool`; the passive-readiness signal.
+- **What it supports:** resting HR and HRV are noisy day-to-day and must be read as trends,
+  not single points — backs the conservative rolling-mean thresholds and the
+  `.insufficientData` default.
+
+### `cravenSleep2022` — acute sleep loss and physical performance
+Craven, McCartney, Desbrow, Sabapathy, Bellinger, Roberts & Irwin (2022). *Effects of Acute
+Sleep Loss on Physical Performance: A Systematic and Meta-Analytical Review.* **Sports Med 52(11).**
+<https://pubmed.ncbi.nlm.nih.gov/35708888/>
+
+- **Used by:** `recoveryMonitoringPool`; the passive-readiness signal.
+- **What it supports:** acute sleep loss impairs physical performance — backs the sleep-debt
+  (and absolute short-night) contribution to the passive readiness level.
+
 ## Claim classes — which citations may back which claims
 
 Coach claims are typed by `EvidenceClaimCategory`; each category resolves to exactly one

@@ -11,7 +11,7 @@
 		<string>bluetooth-central</string>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Cladiron reads your steps, workouts, and heart rate so your activity and Watch-recorded sessions appear here. Your health data never leaves your device.</string>
+	<string>Cladiron reads your steps, workouts, heart rate, and — for recovery-aware coaching — your heart-rate variability, resting heart rate, sleep, and body weight, so your activity, Watch-recorded sessions, and readiness appear here. Your health data never leaves your device.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Cladiron saves summaries of your workouts (strength, cardio, intervals, and swim) to Apple Health so they appear system-wide and close your Activity rings.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

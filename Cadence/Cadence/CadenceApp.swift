@@ -3,6 +3,9 @@ import SwiftData
 import AVFoundation
 import CadenceCore
 import CadenceFeatures
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @main
 struct CadenceApp: App {
@@ -24,6 +27,13 @@ struct CadenceApp: App {
     init() {
         let args = ProcessInfo.processInfo.arguments
         let uiTest = args.contains("-uiTest")
+
+        // Disable UIKit animations under UI test: the single biggest wall-clock
+        // and flakiness win for the smoke suite (test-pyramid Phase 5) — animations
+        // are what make taps race sheet/overlay presentation.
+        #if canImport(UIKit)
+        if uiTest { UIView.setAnimationsEnabled(false) }
+        #endif
 
         // Put the audio session in non-interrupting mix mode before any audio
         // object initializes, so workout cues never pause the user's background

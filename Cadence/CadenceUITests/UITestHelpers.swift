@@ -62,7 +62,7 @@ extension XCUIApplication {
     /// identifier). Returns whether `destID` appeared.
     @discardableResult
     func tapToReveal(_ sourceID: String, _ destID: String,
-                     attempts: Int = 5, perAttempt: TimeInterval = 5) -> Bool {
+                     attempts: Int = 2, perAttempt: TimeInterval = 5) -> Bool {
         let source = buttons[sourceID]
         let dest = descendants(matching: .any)[destID]
         let navDest = navigationBars[destID]
@@ -199,7 +199,7 @@ extension XCUIApplication {
 
 extension XCUIElement {
     @discardableResult
-    func waitTap(timeout: TimeInterval = 25) -> Bool {
+    func waitTap(timeout: TimeInterval = 5) -> Bool {
         guard waitForExistence(timeout: timeout) else { return false }
         tap()
         return true

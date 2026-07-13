@@ -986,8 +986,8 @@ struct HomeView: View {
     /// Handles an add-on selection from the post-completion coach card. Encouraged
     /// and neutral options launch directly; warn options show a confirmation dialog.
     private func handleAddOn(_ session: CoachSession, _ status: CoachAddOnStatus) {
-        switch status {
-        case .encouraged, .neutral:
+        switch CoachRouter.addOnAction(status: status) {
+        case .launch:
             launchDecision(session)
         case .warn:
             warnAddOn = (session, status)
@@ -997,37 +997,30 @@ struct HomeView: View {
     /// Launch from the CoachDecision engine. Every trainable recommendation lands
     /// on that workout's setup/settings surface first — never directly into an
     /// active recorder (audio/coach routing plan §D). The recorder begins only
-    /// after the user confirms from the setup screen.
+    /// after the user confirms from the setup screen. The pure routing decision
+    /// lives in `CoachRouter` (unit-tested); this only performs the UI action.
     private func launchDecision(_ session: CoachSession) {
-        switch session.launchPayload {
-        case .strengthPlan:
-            if let plan = EditablePlan.from(coach: session) {
-                path.append(HomeRoute.workoutEditor(plan))
-            } else {
-                // Defensive: a strength session with no exercises should never
-                // dead-end back to Home (issue 3). Open an empty editor titled from
-                // the session so the user can build/log the workout.
-                let fallback = EditablePlan(
-                    title: session.title,
-                    warmupMinutes: settings.warmupMinutes,
-                    cooldownMinutes: settings.cooldownMinutes,
-                    exercises: [])
-                path.append(HomeRoute.workoutEditor(fallback))
-            }
-        case .cardio(let cardioTypeStr, let durationMinutes):
-            switch cardioTypeStr {
-            case "walk": startOutdoorWithGoal(.walk)     // → CardioGoalSheet → HR gate → recorder
-            case "run": startOutdoorWithGoal(.run)
-            case "cycle": startOutdoorWithGoal(.cycle)
-            case "swim": swimPresented = true            // SwimRecordView opens to its setup screen
-            case "hiit": intervalType = .hiit            // → IntervalSetupView (protocol picker)
-            case "boxing": intervalType = .boxing        // → IntervalSetupView (boxing rounds)
-            case "rowing":
-                timerCardioSetup = TimerCardioSetup(type: .rowing, suggestedMinutes: durationMinutes)
-            default:
-                timerCardioSetup = TimerCardioSetup(type: .other, suggestedMinutes: durationMinutes)
-            }
-        case .recovery, .rest, .assessment:
+        switch CoachRouter.destination(for: session) {
+        case .planEditor(let plan):
+            path.append(HomeRoute.workoutEditor(plan))
+        case .emptyEditor(let title):
+            // Defensive: a strength session with no exercises should never dead-end
+            // back to Home (issue 3). Open an empty editor titled from the session.
+            let fallback = EditablePlan(
+                title: title,
+                warmupMinutes: settings.warmupMinutes,
+                cooldownMinutes: settings.cooldownMinutes,
+                exercises: [])
+            path.append(HomeRoute.workoutEditor(fallback))
+        case .outdoorCardio(let type):
+            startOutdoorWithGoal(type)             // → CardioGoalSheet → HR gate → recorder
+        case .swim:
+            swimPresented = true                   // SwimRecordView opens to its setup screen
+        case .interval(let workoutType):
+            intervalType = workoutType             // → IntervalSetupView (protocol picker)
+        case .timerCardio(let type, let suggestedMinutes):
+            timerCardioSetup = TimerCardioSetup(type: type, suggestedMinutes: suggestedMinutes)
+        case .none:
             break
         }
     }

@@ -11,23 +11,15 @@ struct OnboardingView: View {
     @Environment(StoreService.self) private var store
     @Environment(\.dismiss) private var dismiss
 
-    @State private var step = 0
-    @State private var goal: TrainingGoal = .strength
-    @State private var experience: ExperienceLevel = .intermediate
-    @State private var unit: MeasurementUnitPreference = .pounds
+    @State private var flow = OnboardingModel()
     @State private var healthRequested = false
-    @State private var strengthDays: Int = 2
-    @State private var cardioDays: Int = 3
-    @State private var age: Int = 40
-    @State private var ageProvided = false
     @State private var showPaywall = false
 
-    private let lastStep = 6
-
     var body: some View {
-        VStack(spacing: 0) {
+        @Bindable var flow = flow
+        return VStack(spacing: 0) {
             header
-            TabView(selection: $step) {
+            TabView(selection: $flow.step) {
                 welcomePage.tag(0)
                 goalPage.tag(1)
                 experiencePage.tag(2)
@@ -37,7 +29,7 @@ struct OnboardingView: View {
                 programPage.tag(6)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.easeInOut, value: step)
+            .animation(.easeInOut, value: flow.step)
             footer
         }
         .interactiveDismissDisabled()
@@ -46,9 +38,9 @@ struct OnboardingView: View {
                         subheadline: "Start training with the Coach — it adapts every set to what you log and cites the research.")
         }
         .onAppear {
-            goal = settings.trainingGoal
-            experience = settings.experienceLevel
-            unit = settings.unit
+            flow.goal = settings.trainingGoal
+            flow.experience = settings.experienceLevel
+            flow.unit = settings.unit
         }
     }
 
@@ -56,8 +48,8 @@ struct OnboardingView: View {
 
     private var header: some View {
         HStack {
-            if step > 0 {
-                Button { Haptics.selection(); withAnimation { step -= 1 } } label: {
+            if flow.canGoBack {
+                Button { Haptics.selection(); withAnimation { flow.back() } } label: {
                     Image(systemName: "chevron.left").font(.headline)
                 }
                 .buttonStyle(.plain)
@@ -76,38 +68,31 @@ struct OnboardingView: View {
         VStack(spacing: 14) {
             Button {
                 Haptics.selection()
-                if step == lastStep {
+                switch flow.primaryAction {
+                case .complete:
                     showPaywall = true
-                } else {
-                    withAnimation { step += 1 }
+                case .advance:
+                    withAnimation { flow.advance() }
                 }
             } label: {
-                Text(footerTitle)
+                Text(flow.footerTitle)
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 15)
                     .foregroundStyle(.white)
-                    .background(step == 5 || step == lastStep ? AnyShapeStyle(.green) : AnyShapeStyle(.tint),
+                    .background(flow.step == 5 || flow.isLastStep ? AnyShapeStyle(.green) : AnyShapeStyle(.tint),
                                 in: RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("onboarding.primary")
 
-            if step == lastStep {
+            if flow.isLastStep {
                 Button("Maybe later — explore the free app") { Haptics.selection(); finish() }
                     .font(.subheadline).foregroundStyle(.secondary)
                     .accessibilityIdentifier("onboarding.exploreFree")
             }
 
-            PageDots(count: lastStep + 1, index: step)
+            PageDots(count: flow.lastStep + 1, index: flow.step)
         }
         .padding(.horizontal).padding(.bottom, 12)
-    }
-
-    private var footerTitle: String {
-        switch step {
-        case lastStep: return "Start training with the Coach"
-        case 5: return "I understand"
-        default: return "Continue"
-        }
     }
 
     // MARK: Pages
@@ -152,7 +137,7 @@ struct OnboardingView: View {
                      subtitle: "This shapes your rep ranges and loads.") {
             ForEach(TrainingGoal.allCases) { g in
                 selectCard(title: g.displayName, subtitle: g.summary,
-                           systemImage: goalSymbol(g), selected: goal == g) { goal = g }
+                           systemImage: goalSymbol(g), selected: flow.goal == g) { flow.goal = g }
             }
         }
     }
@@ -162,17 +147,18 @@ struct OnboardingView: View {
                      subtitle: "Sets your starting weekly volume.") {
             ForEach(ExperienceLevel.allCases) { e in
                 selectCard(title: e.displayName, subtitle: e.summary,
-                           systemImage: experienceSymbol(e), selected: experience == e) { experience = e }
+                           systemImage: experienceSymbol(e), selected: flow.experience == e) { flow.experience = e }
             }
         }
     }
 
     private var schedulePage: some View {
-        pageScaffold(title: "How often do you train?",
+        @Bindable var flow = flow
+        return pageScaffold(title: "How often do you train?",
                      subtitle: "You can fine-tune rest days and two-a-days in preferences.") {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Strength days per week").font(.subheadline.weight(.medium))
-                Picker("Strength days", selection: $strengthDays) {
+                Picker("Strength days", selection: $flow.strengthDays) {
                     Text("2").tag(2)
                     Text("3").tag(3)
                     Text("4").tag(4)
@@ -182,7 +168,7 @@ struct OnboardingView: View {
                 .accessibilityIdentifier("onboarding.strengthDays")
 
                 Text("Cardio days per week").font(.subheadline.weight(.medium))
-                Picker("Cardio days", selection: $cardioDays) {
+                Picker("Cardio days", selection: $flow.cardioDays) {
                     Text("0").tag(0)
                     Text("1").tag(1)
                     Text("2").tag(2)
@@ -198,10 +184,11 @@ struct OnboardingView: View {
     }
 
     private var unitsPage: some View {
-        pageScaffold(title: "One last thing",
+        @Bindable var flow = flow
+        return pageScaffold(title: "One last thing",
                      subtitle: "You can change these anytime in Settings.") {
             Text("Units").font(.subheadline.weight(.medium))
-            Picker("Units", selection: $unit) {
+            Picker("Units", selection: $flow.unit) {
                 Text("Pounds (lb)").tag(MeasurementUnitPreference.pounds)
                 Text("Kilograms (kg)").tag(MeasurementUnitPreference.kilograms)
             }
@@ -211,12 +198,12 @@ struct OnboardingView: View {
             // Optional age for HR-zone estimation (issue 7). Skippable → defaults 40.
             VStack(alignment: .leading, spacing: 6) {
                 Text("Age (optional)").font(.subheadline.weight(.medium))
-                Stepper(value: $age, in: 13...100, onEditingChanged: { _ in ageProvided = true }) {
+                Stepper(value: $flow.age, in: 13...100, onEditingChanged: { _ in flow.ageProvided = true }) {
                     HStack {
                         Text("Used to estimate heart-rate zones")
                             .font(.caption).foregroundStyle(.secondary)
                         Spacer()
-                        Text(ageProvided ? "\(age)" : "—").monospacedDigit()
+                        Text(flow.ageProvided ? "\(flow.age)" : "—").monospacedDigit()
                     }
                 }
                 .accessibilityIdentifier("onboarding.age")
@@ -265,19 +252,8 @@ struct OnboardingView: View {
         .padding(.horizontal, 24)
     }
 
-    private var previewPlan: WeeklyPlan {
-        let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: strengthDays,
-            cardioDaysPerWeek: cardioDays,
-            restPreference: .defaultRolling,
-            allowsTwoADays: false,
-            sameDayCardioTiming: .afterStrength)
-        let facts = CoachFacts.make(from: [], goal: goal, experience: experience, formula: settings.formula)
-        return WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
-    }
-
     private var programPage: some View {
-        let days = previewPlan.days.filter { !$0.sessions.isEmpty }
+        let days = flow.previewPlan(formula: settings.formula).days.filter { !$0.sessions.isEmpty }
         return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Your program is ready").font(.title.bold()).padding(.top, 4)
@@ -286,7 +262,7 @@ struct OnboardingView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 if days.isEmpty {
-                    Text("A balanced week tuned to your \(goal.displayName.lowercased()) goal.")
+                    Text("A balanced week tuned to your \(flow.goal.displayName.lowercased()) goal.")
                         .font(.subheadline)
                         .padding().frame(maxWidth: .infinity, alignment: .leading)
                         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
@@ -365,20 +341,14 @@ struct OnboardingView: View {
     }
 
     private func finish() {
-        settings.trainingGoal = goal
-        settings.experienceLevel = experience
-        settings.unit = unit
-        settings.coachSchedulePreferences = CoachSchedulePreferences(
-            strengthDaysPerWeek: strengthDays,
-            cardioDaysPerWeek: cardioDays,
-            restPreference: .defaultRolling,
-            allowsTwoADays: false,
-            sameDayCardioTiming: .afterStrength
-        )
+        settings.trainingGoal = flow.goal
+        settings.experienceLevel = flow.experience
+        settings.unit = flow.unit
+        settings.coachSchedulePreferences = flow.schedulePreferences
         settings.hasCompletedOnboarding = true
         // Persist age only if the user set it; otherwise leave nil so the HR-zone
         // estimator uses its 40-year default (US median).
-        if ageProvided { settings.userAge = age }
+        if let age = flow.persistedAge { settings.userAge = age }
         dismiss()
     }
 }

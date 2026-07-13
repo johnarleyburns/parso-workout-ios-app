@@ -40,6 +40,47 @@ jobs:
           swift build
           swift test
 
+      - name: Test-pyramid guardrail
+        run: bash scripts/check-test-pyramid.sh
+
+  ui-smoke:
+    needs: core-tests
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: |
+          XCODE=$(ls /Applications/ | grep "^Xcode_" | sort -V | tail -1)
+          sudo xcode-select -s /Applications/$XCODE
+          xcodebuild -version
+
+      - name: Accept Xcode License
+        run: sudo xcodebuild -license accept
+
+      - name: Cache SPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.swiftpm
+            ~/Library/Developer/Xcode/DerivedData/*/SourcePackages
+          key: spm-smoke-${{ hashFiles('CadenceCore/Package.resolved') }}
+          restore-keys: spm-smoke-
+
+      # The ~10-test smoke plan on the GitHub runner so the laptop never has to.
+      # Build once, then run serially with no parallel clones and no retries —
+      # that (plus cold launches) is what pins the CPU (test-pyramid Phase 5).
+      - name: UI smoke suite
+        run: |
+          set -eo pipefail
+          DEVICE_ID=$(xcrun simctl list devices available | grep -m1 "iPhone 16 " | grep -oE '[0-9A-F-]{36}')
+          xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme Cadence \
+            -testPlan Cadence -derivedDataPath .build/dd -destination "id=$DEVICE_ID" -quiet
+          xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme Cadence \
+            -testPlan Cadence -derivedDataPath .build/dd -destination "id=$DEVICE_ID" \
+            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1
+
   testflight-build:
     needs: core-tests
     runs-on: macos-latest

@@ -49,6 +49,15 @@ Cladiron is **fully local — no cloud sync**. Data portability is handled by a 
 - Reference spec IDs in commits/PRs (e.g. "FR-1 strength logging", "FR-3 steps").
 - Follow the phasing in `docs/REQUIREMENTS.md` §8. Build the `CadenceCore` package first.
 - Accessibility is not optional: VoiceOver labels + Dynamic Type on every new view (NFR-2).
+- **Logic goes in `CadenceFeatures`, not in a `View`.** Views take a prepared
+  state struct / view-model and render it; the logic is unit-tested in
+  `CadenceFeaturesTests` (headless `swift test`). `CadenceFeatures` imports only
+  Foundation + SwiftData + Observation — if an extraction wants a `Color`/`View`,
+  return a semantic enum and let the view map it. The XCUITest suite is a fixed
+  ~10-test smoke gate and **does not grow** — new coverage is a `swift test`.
+  `scripts/check-test-pyramid.sh` (CI) enforces all three: the import ban, the
+  ≤12 UI-test cap, and the 400-LOC-per-Features-file budget (grandfathered large
+  views may only shrink).
 
 ## HARD RULE: Every coaching output MUST cite science
 Cladiron never makes a single recommendation, insight, warning, deferred decision, or

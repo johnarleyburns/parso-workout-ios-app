@@ -51,6 +51,7 @@ struct YourWeekView: View {
             Section("This Week") {
                 ForEach(plan.currentWeekDays) { day in
                     dayRow(day)
+                        .listRowBackground(day.isToday ? Color.blue.opacity(0.12) : nil)
                 }
             }
 
@@ -336,9 +337,6 @@ private struct TodayPlanRow: View {
                             .fill(session.isHard ? Color.green : session.kind == .recovery || session.kind == .rest ? Color.gray.opacity(0.3) : Color.teal)
                             .frame(width: 8, height: 8)
                         Text(session.label).font(.subheadline)
-                        if let note = session.timingNote {
-                            Text(note).font(.caption2).foregroundStyle(.secondary)
-                        }
                         Spacer()
                     }
                 }
@@ -354,7 +352,7 @@ struct CoachPlanDayRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(weekdayLabel(for: day.date)).font(.caption.weight(.semibold)).frame(width: 32, alignment: .leading)
+                Text(weekdayLabel(for: day.date)).font(.caption.weight(.semibold)).lineLimit(1).frame(width: 44, alignment: .leading)
                 if day.isPast {
                     if day.isCompleted {
                         HStack(spacing: 4) {
@@ -382,9 +380,6 @@ struct CoachPlanDayRow: View {
                                 .fill(session.isHard ? Color.green : session.kind == .recovery || session.kind == .rest ? Color.gray.opacity(0.3) : Color.teal)
                                 .frame(width: 8, height: 8)
                             Text(session.label).font(.subheadline)
-                            if let note = session.timingNote {
-                                Text(note).font(.caption2).foregroundStyle(.secondary)
-                            }
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 3)

@@ -435,25 +435,12 @@ public struct WeeklyPlan: Sendable, Equatable {
 
         if canCardio || (cardioNeeded && allowsTwoADays) {
             let cardioKind: CoachSessionKind = priorHardStreak >= 2 ? .easyAerobic : .moderateAerobic
-            var timingNote: String? = nil
-            if !sessions.isEmpty && allowsTwoADays {
-                switch sameDayCardioTiming {
-                case .afterStrength:
-                    timingNote = "after lifting"
-                case .separateLater:
-                    timingNote = "later in the day"
-                }
-            } else if sessions.isEmpty && !canStrength && strengthNeeded {
-                // Strength needed but can't do it; cardio fills the gap
-                timingNote = nil
-            }
 
             // If a strength session was scheduled, only add cardio if two-a-days allowed or no strength
             if sessions.isEmpty || allowsTwoADays {
             sessions.append(PlannedSession(id: "f-\(date)-cardio",
                                             kind: cardioKind, label: cardioLabel(cardioKind),
-                                            isHard: false, isRest: false,
-                                            timingNote: timingNote))
+                                            isHard: false, isRest: false))
             }
         }
 

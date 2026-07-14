@@ -2,10 +2,23 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-13 — revenue plan Phase 6 (acquisition loop: PR timeline, consistency heatmap, shareable PR card)._
+_Last updated: 2026-07-13 — "Your Plan" row polish (today highlight, wider weekday column, timing notes removed)._
 
 ## Revenue plan (`plans/revenue/2026-07-13/`)
 
+- **"Your Plan" row polish (2026-07-13).** `YourWeekView` day rows (shared
+  `CoachPlanDayRow`, so both **This Week** and **Planned (next week)** get it):
+  today's row in This Week now has a light-blue `.listRowBackground(Color.blue.opacity(0.12))`
+  as an orientation aid, and the weekday-abbreviation column widened `32 → 44pt`
+  with `.lineLimit(1)` so "Mon"/"Wed" never wrap at larger Dynamic Type. The
+  same-day-cardio **timing note** ("later in the day" / "after lifting") is gone —
+  removed at the source in `WeeklyPlan.futureSessions` (no longer populated; the
+  `sameDayCardioTiming` *preference* stays for schedule setup) and from all three
+  displays (`CoachPlanDayRow`, `TodayPlanRow`, `PlannedDayPreviewView`). Core test
+  `testTwoADayCardioTimingNote` → `testSameDayCardioHasNoTimingNote` (asserts notes
+  are now always nil, two-a-days still pair strength+cardio). `YourWeekView`
+  406 → 401 LOC (under grandfathered ceiling). `swift test` unchanged at **1037**;
+  xcodebuild + both guardrails green.
 - **UI polish follow-up (2026-07-13).** Phase-6 Progress "Personal records" card: removed
   the per-row leading trophy/sparkles icon, and pinned the Swift Charts legend to the
   bottom of the plot (`.chartPlotStyle` fixed height + `.chartLegend(position: .bottom)`)

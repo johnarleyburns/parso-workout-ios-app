@@ -31,9 +31,6 @@ struct PlannedDayPreviewView: View {
                                     .font(.subheadline).foregroundStyle(.secondary)
                             }
                         }
-                        if let note = session.timingNote {
-                            Text(note).font(.caption).foregroundStyle(.secondary)
-                        }
                     }
                     .padding(.vertical, 2)
                     .accessibilityElement(children: .contain)

@@ -263,26 +263,32 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     // MARK: - Cardio timing note
 
-    func testTwoADayCardioTimingNote() throws {
+    func testSameDayCardioHasNoTimingNote() throws {
+        // Timing notes ("after lifting" / "later in the day") were removed from the
+        // plan: the user decides when to slot cardio, so the plan no longer dictates
+        // ordering. The sameDayCardioTiming preference still exists (schedule setup)
+        // but never produces a display string.
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: Date())
 
-        let afterStrength = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 5,
-                                                      allowsTwoADays: true,
-                                                      sameDayCardioTiming: .afterStrength)
-        let planAS = WeeklyPlan.generate(from: facts, schedulePreferences: afterStrength)
-        let cardioWithNote = planAS.futureDays.flatMap(\.sessions).filter {
-            ($0.kind == .moderateAerobic || $0.kind == .easyAerobic) && $0.timingNote != nil
-        }
-        XCTAssertFalse(cardioWithNote.isEmpty, "Should have timing notes on same-day cardio")
-
-        let separate = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 5,
+        for timing in [SameDayCardioTiming.afterStrength, .separateLater] {
+            let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 5,
                                                  allowsTwoADays: true,
-                                                 sameDayCardioTiming: .separateLater)
-        let planSep = WeeklyPlan.generate(from: facts, schedulePreferences: separate)
-        let separateNotes = planSep.futureDays.flatMap(\.sessions).filter {
-            ($0.kind == .moderateAerobic || $0.kind == .easyAerobic) && $0.timingNote == "later in the day"
+                                                 sameDayCardioTiming: timing)
+            let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
+            let notes = plan.futureDays.flatMap(\.sessions).compactMap(\.timingNote)
+            XCTAssertTrue(notes.isEmpty, "No session should carry a timing note (timing: \(timing))")
         }
-        XCTAssertFalse(separateNotes.isEmpty, "Should have 'later in the day' notes")
+
+        // Two-a-days still schedule strength + cardio on the same day.
+        let twoADay = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 5,
+                                               allowsTwoADays: true,
+                                               sameDayCardioTiming: .afterStrength)
+        let plan = WeeklyPlan.generate(from: facts, schedulePreferences: twoADay)
+        let hasSameDayBoth = plan.futureDays.contains { day in
+            day.sessions.contains { $0.kind == .strength }
+                && day.sessions.contains { $0.kind == .moderateAerobic || $0.kind == .easyAerobic }
+        }
+        XCTAssertTrue(hasSameDayBoth, "Two-a-days should still pair strength and cardio on a day")
     }
 
     // MARK: - Fixed rest days

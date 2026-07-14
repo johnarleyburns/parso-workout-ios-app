@@ -62,7 +62,8 @@ struct PRTimelineView: View {
             }
         }
         .chartYScale(domain: .automatic(includesZero: false))
-        .frame(height: 160)
+        .chartPlotStyle { $0.frame(height: 160) }
+        .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
         .accessibilityElement()
         .accessibilityLabel("Personal-record progression")
         .accessibilityValue("\(rows.count) records across \(Set(events.map(\.exerciseName)).count) lifts")
@@ -70,9 +71,6 @@ struct PRTimelineView: View {
 
     @ViewBuilder private func prRow(_ row: PRTimelinePresenter.Row, event: PREvent?) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: row.accent == .firstEver ? "sparkles" : "trophy.fill")
-                .foregroundStyle(row.accent == .firstEver ? .blue : .yellow)
-                .frame(width: 24)
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.exerciseName).font(.subheadline)
                 Text(row.deltaLabel ?? "first-ever record")

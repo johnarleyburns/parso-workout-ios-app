@@ -6,6 +6,14 @@ _Last updated: 2026-07-13 — revenue plan Phase 6 (acquisition loop: PR timelin
 
 ## Revenue plan (`plans/revenue/2026-07-13/`)
 
+- **UI polish follow-up (2026-07-13).** Phase-6 Progress "Personal records" card: removed
+  the per-row leading trophy/sparkles icon, and pinned the Swift Charts legend to the
+  bottom of the plot (`.chartPlotStyle` fixed height + `.chartLegend(position: .bottom)`)
+  so the multi-lift exercise-name legend no longer overflowed the fixed frame and
+  overlapped the PR list below. Home "This Week" strip (`WeekStripView`): a blue
+  rounded-rectangle stroke now surrounds today's cell (day letter + circle) as an
+  orientation aid; uniform vertical padding on every cell means no layout shift. UI-only;
+  `swift test` unchanged at **1037**; xcodebuild + both guardrails green.
 - **Phase 6 — acquisition loop: PR timeline, consistency heatmap, shareable PR card (shipped 2026-07-13).**
   Decision D6. Cladiron had no growth loop — every install earned from scratch — but
   a social feed needs accounts + a server and would destroy the positioning. Ships the

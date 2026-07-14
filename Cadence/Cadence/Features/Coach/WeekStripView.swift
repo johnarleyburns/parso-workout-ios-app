@@ -50,7 +50,14 @@ struct WeekStripView: View {
             dayGlyph(day)
                 .frame(width: 24, height: 24)
         }
+        .padding(.vertical, 4)
         .frame(maxWidth: .infinity)
+        .background {
+            if day.isToday {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.blue, lineWidth: 2)
+            }
+        }
         .accessibilityLabel(dayAccessibilityLabel(day))
     }
 

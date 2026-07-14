@@ -656,6 +656,29 @@ public enum WorkoutRepository {
         return Set(sessions.map { calendar.startOfDay(for: $0.date) })
     }
 
+    /// Flatten live sessions into pure `ExerciseSetSample`s for `PRTimeline`
+    /// (FR-5.2). Only the owner's non-deleted, working sets are considered — the
+    /// exact same filter the in-session PR badge uses (`isOwnerSet`), so the
+    /// timeline can never claim a PR the badge wouldn't.
+    public static func prSetSamples(from sessions: [WorkoutSession]) -> [ExerciseSetSample] {
+        var out: [ExerciseSetSample] = []
+        for session in sessions where session.deletedAt == nil {
+            for set in session.orderedSets where set.isOwnerSet {
+                guard let name = set.exercise?.name, !name.isEmpty else { continue }
+                out.append(ExerciseSetSample(exerciseName: name, sample: SetSample.from(set)))
+            }
+        }
+        return out
+    }
+
+    /// Every all-time PR event across the given sessions, ascending by date
+    /// (FR-5.2). Thin bridge over `PRTimeline.events` for the Progress tab.
+    public static func prEvents(from sessions: [WorkoutSession],
+                                rule: PRRule,
+                                formula: OneRepMaxFormula) -> [PREvent] {
+        PRTimeline.events(sets: prSetSamples(from: sessions), rule: rule, formula: formula)
+    }
+
     // MARK: Templates (FR-1.6)
 
     @discardableResult

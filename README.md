@@ -12,7 +12,7 @@ A private, open-source, science-based **strength app** for iPhone. The tracker i
 - **Strength logging** — per-set weight/reps with inline last-time recall, auto PR detection, rest timer, partner rotation.
 - **Prescriptive recommendations** — the coach prescribes concrete next-session targets (double progression, deload, volume adjustment) based on your training goal (strength / hypertrophy / endurance), experience level, and recovery state.
 - **Assessments** — strength (e1RM, rep-max, push-up, pull-up, plank, hollow hold) and cardio (VO2max field test, Wingate) battery with longitudinal tracking and retest cadence.
-- **Progress dashboard** — science-backed adaptation dashboard: e1RM trends, weekly volume vs landmarks, load intensity vs goal, effort/frequency, test results — every interpretation cites its source with tappable "The science >" links.
+- **Progress dashboard** — science-backed adaptation dashboard: e1RM trends, a PR timeline, a training-consistency heatmap, weekly volume vs landmarks, load intensity vs goal, effort/frequency, test results — every interpretation cites its source with tappable "The science >" links.
 - **Exercise library** — 1,000+ exercises from a vendored CC0 database (free-exercise-db) with images, instructions, muscles, and level. Searchable with body-part filters.
 - **Workout routines** — Full Body A/B, PHUL (4-day), Arnold Split, StrongLifts 5x5, Push/Pull/Legs, Upper/Lower, Calisthenics, Olympic Lifting, plus user-created templates. Every preset cites the relevant evidence.
 - **Cardio recording** — GPS outdoor (run/walk/cycle), indoor recording, swim laps, with live HR from a BLE chest strap (Apple Watch workouts are imported from Health afterward).

@@ -31,6 +31,8 @@ struct TrainingProgressView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     scienceBanner
                     strengthCard
+                    PRTimelineView(sessions: activeSessions)
+                    ConsistencyHeatmapView(sessions: activeSessions)
                     volumeCard
                     intensityCard
                     HStack(alignment: .top, spacing: 12) { effortCard; frequencyCard }

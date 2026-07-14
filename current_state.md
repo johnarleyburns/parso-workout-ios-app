@@ -2,10 +2,34 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-13 — revenue plan Phase 5 (data durability / iCloud backup)._
+_Last updated: 2026-07-13 — revenue plan Phase 6 (acquisition loop: PR timeline, consistency heatmap, shareable PR card)._
 
 ## Revenue plan (`plans/revenue/2026-07-13/`)
 
+- **Phase 6 — acquisition loop: PR timeline, consistency heatmap, shareable PR card (shipped 2026-07-13).**
+  Decision D6. Cladiron had no growth loop — every install earned from scratch — but
+  a social feed needs accounts + a server and would destroy the positioning. Ships the
+  10% that captures the value: something worth sharing and a way to share it, **at zero
+  privacy cost**. Also makes two long-standing `CLAUDE.md` Progress-IA claims true (PR
+  timeline + consistency heatmap never existed; PR logic lived inline in `SessionView` /
+  `WorkoutRepository.currentPR`). New pure `PRTimeline.swift` (`PREvent`/`PRKind`,
+  `events`/`latestPerExercise`) lifts PR-detection onto `PRCalculator` + `PRRule` so the
+  timeline and the in-session PR badge can never disagree; `WorkoutRepository.prSetSamples`/
+  `prEvents` bridge live sessions (owner-only, same `isOwnerSet` filter as the badge). New
+  pure `ConsistencyHeatmap.swift` (`HeatmapDay`, `days`/`currentStreak`/`longestStreak`)
+  takes `Calendar` as a parameter and walks day-by-day via the calendar (not fixed 86 400 s)
+  so DST/timezone bucketing is correct. `CadenceFeatures` presenters `PRTimelinePresenter`
+  (semantic `Accent`: firstEver/improvement) + `ConsistencyHeatmapPresenter` (semantic
+  `Shade` ramp 0…4) — **no `Color` in Features** (guardrail-enforced). UI: `PRTimelineView`
+  (Swift Charts stepped progression + trophy-shelf rows), `ConsistencyHeatmapView`
+  (GitHub-style week grid + streak headline), both cited (`oneRMEstimation`/`frequencyMeta`),
+  linked into the Progress tab. The loop: `Features/Share/ShareCardRenderer.swift` renders a
+  branded `PRCard` through `ImageRenderer` → PNG in the temp dir → `ShareLink` — **no account,
+  no server, nothing leaves the device but an image the user chose to post.** `CLAUDE.md`
+  Progress IA + README restored (PR timeline + consistency heatmap now true). New tests:
+  `PRTimelineTests` (12), `ConsistencyHeatmapTests` (11, incl. DST spring/fall + timezone),
+  `PRTimelinePresenterTests` (6), `ConsistencyHeatmapPresenterTests` (6). `swift test`
+  **1005 → 1037**; xcodebuild + both guardrails green (no new UI tests, uitests 11/12).
 - **Phase 5 — automatic iCloud backup + restore, kills the data-loss 1-star (shipped 2026-07-13).**
   Decision D5. Local-only storage + a *manual* JSON export meant the first user to
   lose/replace a phone writes "it deleted my entire training log." Ships the low-risk
@@ -27,7 +51,12 @@ _Last updated: 2026-07-13 — revenue plan Phase 5 (data durability / iCloud bac
   copy. iCloud/CloudKit container added to `Cadence.entitlements` (no
   `aps-environment`/remote-notification — deliberately kept off). New
   `BackupPolicyTests` (10, incl. `test_nonEmptyLocalNeverSilentlyClobbered`).
-  `swift test` **995 → 1005**; xcodebuild + both guardrails green.
+  `swift test` **995 → 1005**; xcodebuild + both guardrails green. **CI note:** the new
+  iCloud container entitlement (`iCloud.guru.parso.ios-workout-app`) failed the
+  TestFlight `Archive` on the first push (the App Store provisioning profile lacked the
+  iCloud capability). Resolved by regenerating the profile with the iCloud container in
+  the Apple Developer portal and updating the `PROVISIONING_PROFILE_BASE64` CI secret;
+  re-dispatched `main` build is fully green (core-tests ✓, testflight-build ✓).
 - **Phase 4 — passive readiness fusion, the $79.99/yr wedge (shipped 2026-07-13).**
   Decision D4. The coach's readiness input was a self-report survey that never got
   filled out, while the Watch was already writing HRV/sleep/RHR to HealthKit that

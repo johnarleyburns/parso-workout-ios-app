@@ -26,7 +26,7 @@ deletes it).
 ## Information Architecture (3 tabs)
 - **Workout** (Home) — strength-first hero, secondary cardio, coach cards/insights, **Programs & Routines** entry (planning surface lives here).
 - **Tests** — no-lab fitness assessment battery, "Your Fitness" baseline card, protocol instructions, cited sources.
-- **Progress** — training history, per-exercise trends, assessment trends.
+- **Progress** — training history, PR timeline, per-exercise trends, assessment trends, consistency heatmap.
 
 ## Current release (v1) — iPhone-only
 The watch app is **deferred** (hardware-blocked for now) but stays in the repo; do **not** prioritize it. v1 ships on iPhone:

@@ -212,7 +212,7 @@ struct YourWeekView: View {
     /// day → its summary) or a future planned day (read-only preview).
     @ViewBuilder
     private func dayRow(_ day: WeeklyPlan.DayOutline) -> some View {
-        if day.isPast, day.isCompleted, let route = completedRoute(for: day) {
+        if day.isCompleted, let route = completedRoute(for: day) {
             Button {
                 path.append(route)
             } label: {

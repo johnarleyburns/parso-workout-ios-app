@@ -346,6 +346,39 @@ public struct WeeklyPlan: Sendable, Equatable {
             }
         }
 
+        // Augment today with coach-planned sessions when nothing was completed
+        // yet today — the history loop only records completed work, and the future
+        // loop starts at offset 1 (tomorrow), so today can land with an empty "—"
+        // label even though the coach has a prescription for it.
+        if let todayIdx = days.firstIndex(where: { $0.isToday }),
+           days[todayIdx].sessions.isEmpty {
+            let planned = futureSessions(
+                on: days[todayIdx].date,
+                projectedStrengthDays: currentWeekStrengthDone,
+                projectedCardioDays: currentWeekCardioDaysDone,
+                projectedAerobicMinutes: currentWeekAerobicMinutes,
+                projectedHardDays: hardDays,
+                lastStrengthDate: lastStrengthDate,
+                lastLowerBodyCardioDate: lastLowerBodyCardioDate,
+                strengthFloor: strengthFloor,
+                cardioDayTarget: cardioDayTarget,
+                aerobicMinutesTarget: aerobicMinutesTarget,
+                allowsTwoADays: schedulePreferences.allowsTwoADays,
+                sameDayCardioTiming: schedulePreferences.sameDayCardioTiming,
+                restPreference: schedulePreferences.restPreference,
+                useSplit: useSplit,
+                focus: useSplit ? .upper : .fullBody,
+                facts: facts,
+                calendar: cal
+            )
+            let label = dayLabel(forSessions: planned)
+            days[todayIdx] = DayOutline(
+                date: days[todayIdx].date, label: label, sessions: planned,
+                isToday: true, isCompleted: days[todayIdx].isCompleted,
+                isFuture: false, isPast: false
+            )
+        }
+
         return WeeklyPlan(days: days, generatedAt: facts.referenceDate)
     }
 

@@ -157,8 +157,8 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         XCTAssertEqual(plan.historyDays.count, 7)
         XCTAssertTrue(plan.historyDays.allSatisfy { !$0.isFuture })
-        XCTAssertTrue(plan.historyDays.filter { !$0.isCompleted }.allSatisfy { $0.sessions.isEmpty },
-                      "Blank history days must not become planned sessions")
+        XCTAssertTrue(plan.historyDays.filter { !$0.isCompleted && $0.isPast }.allSatisfy { $0.sessions.isEmpty },
+                      "Blank past history days must not become planned sessions")
     }
 
     func testWeeklyPlanRemainingCalendarWeekIsFutureOnlyAndChronological() throws {

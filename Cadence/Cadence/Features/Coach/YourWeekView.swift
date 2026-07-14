@@ -40,18 +40,9 @@ struct YourWeekView: View {
         let zoneMinutes = YourWeekPresenter.weeklyZoneMinutes(cardio: cardio, since: weekStart, age: settingsObject.userAge)
 
         List {
-            // TODAY-first (issue 7): today's planned-or-completed work up top.
-            if let today = plan.today {
-                Section("Today") {
-                    TodayPlanRow(day: today)
-                        .accessibilityIdentifier("yourPlan.today")
-                }
-            }
-
             Section("This Week") {
                 ForEach(plan.currentWeekDays) { day in
                     dayRow(day)
-                        .listRowBackground(day.isToday ? Color.blue.opacity(0.12) : nil)
                 }
             }
 
@@ -317,35 +308,6 @@ struct YourWeekView: View {
     }
 }
 
-/// TODAY's planned-or-completed work, shown with a little more detail than a row.
-private struct TodayPlanRow: View {
-    let day: WeeklyPlan.DayOutline
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if day.isCompleted {
-                Label("Today's plan is complete", systemImage: "checkmark.circle.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.green)
-            }
-            if day.sessions.isEmpty {
-                Text(day.label).font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                ForEach(day.sessions) { session in
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(session.isHard ? Color.green : session.kind == .recovery || session.kind == .rest ? Color.gray.opacity(0.3) : Color.teal)
-                            .frame(width: 8, height: 8)
-                        Text(session.label).font(.subheadline)
-                        Spacer()
-                    }
-                }
-            }
-        }
-        .padding(.vertical, 2)
-    }
-}
-
 struct CoachPlanDayRow: View {
     let day: WeeklyPlan.DayOutline
 
@@ -353,6 +315,13 @@ struct CoachPlanDayRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(weekdayLabel(for: day.date)).font(.caption.weight(.semibold)).lineLimit(1).frame(width: 44, alignment: .leading)
+                    .padding(.horizontal, 6).padding(.vertical, 3)
+                    .background {
+                        if day.isToday {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(Color.blue, lineWidth: 2)
+                        }
+                    }
                 if day.isPast {
                     if day.isCompleted {
                         HStack(spacing: 4) {
@@ -374,19 +343,26 @@ struct CoachPlanDayRow: View {
                             .padding(.vertical, 3)
                     }
                 } else {
-                    ForEach(day.sessions) { session in
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(session.isHard ? Color.green : session.kind == .recovery || session.kind == .rest ? Color.gray.opacity(0.3) : Color.teal)
-                                .frame(width: 8, height: 8)
-                            Text(session.label).font(.subheadline)
+                    if day.sessions.isEmpty {
+                        Text(day.label)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                    } else {
+                        ForEach(day.sessions) { session in
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(session.isHard ? Color.green : session.kind == .recovery || session.kind == .rest ? Color.gray.opacity(0.3) : Color.teal)
+                                    .frame(width: 8, height: 8)
+                                Text(session.label).font(.subheadline)
+                            }
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 6))
                         }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 6))
                     }
                 }
-                if day.isToday { Text("Today").font(.caption.bold()).foregroundStyle(.tint) }
                 Spacer()
             }
             .padding(.vertical, 2)

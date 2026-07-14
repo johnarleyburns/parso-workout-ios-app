@@ -178,10 +178,12 @@ struct SessionView: View {
             inlinePerformedByID = editing.performedBy.flatMap { $0.isMe ? nil : $0.id }
             inlineRPE = editing.rpe.map { Int($0.rounded()) }
         } else {
-            let loggedCount = session.orderedSets.filter { $0.exercise?.id == exercise.id }.count
+            inlinePerformedByID = nextPerson().flatMap { $0.isMe ? nil : $0.id }
+            let loggedCount = session.orderedSets.filter {
+                $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: inlinePerformedByID)
+            }.count
             inlineReps = repsOverride ?? plannedReps(for: exercise, setIndex: loggedCount, performerID: inlinePerformedByID)
             inlineBodyweight = isBodyweight(exercise)
-            inlinePerformedByID = nextPerson().flatMap { $0.isMe ? nil : $0.id }
             inlineRPE = nil
 
             // Weight defaulting is performer-specific: current-session work by

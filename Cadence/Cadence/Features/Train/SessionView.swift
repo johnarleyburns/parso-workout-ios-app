@@ -101,6 +101,24 @@ struct SessionView: View {
                                    allPeople: allPeople,
                                    attributedIDs: attributedPartnerIDs)
     }
+    /// Recent non-Me partners from past sessions, deduplicated and ordered by recency.
+    /// Partners already scoped to the current session are excluded.
+    private var recentPartners: [Person] {
+        let sessions = (try? WorkoutRepository.allSessions(context)) ?? []
+        var seen = Set<String>()
+        var result: [Person] = []
+        let scoped = Set(session.activePartnerIDs)
+        for s in sessions.sorted(by: { $0.date > $1.date }) where s.id != session.id {
+            for pid in s.activePartnerIDs {
+                guard !seen.contains(pid), !scoped.contains(pid),
+                      let p = allPeople.first(where: { $0.id.uuidString == pid }),
+                      !p.isMe else { continue }
+                seen.insert(pid)
+                result.append(p)
+            }
+        }
+        return result
+    }
     /// Whether the set editor should default to a bodyweight set for an exercise.
     private func isBodyweight(_ exercise: Exercise) -> Bool {
         SessionViewModel.isBodyweight(exercise)
@@ -524,6 +542,7 @@ struct SessionView: View {
             }
         }
         .sheet(isPresented: $managePartnersPresented) { managePartnersSheet }
+        .sheet(isPresented: $addPartnerPresented) { addPartnerSheet }
         .sheet(isPresented: $usePreviousPresented) {
             PreviousWorkoutPicker(excluding: session) { past in
                 _ = try? WorkoutRepository.copyWorkout(from: past, into: session, in: context)
@@ -581,27 +600,6 @@ struct SessionView: View {
             Button("Save now", role: .destructive) { endWorkout() }
         } message: {
             Text("No activity for \(settings.idleTimeoutMinutes) min. This workout saves automatically soon.")
-        }
-        .alert("Add training partner", isPresented: $addPartnerPresented) {
-            TextField("Name", text: $newPartnerName)
-                .accessibilityIdentifier("partner.nameField")
-            Button("Add") {
-                let name = newPartnerName.trimmingCharacters(in: .whitespaces)
-                if !name.isEmpty {
-                    if let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) {
-                        var ids = explicitRosterIDs()
-                        if !ids.contains(p.id.uuidString) {
-                            ids.append(p.id.uuidString)
-                            session.activePartnerIDs = normalizedRosterIDs(ids)
-                            try? context.save()
-                        }
-                    }
-                }
-                newPartnerName = ""
-            }
-            Button("Cancel", role: .cancel) { newPartnerName = "" }
-        } message: {
-            Text("Their sets are recorded separately and kept out of your PRs and Apple Health.")
         }
         .alert("Rename workout", isPresented: $renamePresented) {
             TextField("Title", text: $editedTitle)
@@ -1419,6 +1417,73 @@ struct SessionView: View {
         _ = try? WorkoutRepository.findOrCreateExercise(named: newName, in: context)
         try? context.save()
         poke()
+    }
+
+    // MARK: Quick-add partner (recent + list + new name)
+
+    /// Quick-add sheet opened from the + button in the partner bar. Shows the
+    /// most recent partner at the top, a scrollable list of all previous partners,
+    /// and a text field for entering a custom name.
+    private var addPartnerSheet: some View {
+        NavigationStack {
+            List {
+                if !recentPartners.isEmpty {
+                    Section {
+                        ForEach(recentPartners.prefix(3)) { p in
+                            Button {
+                                togglePartnerScope(p)
+                            } label: {
+                                HStack {
+                                    performerChip(p)
+                                    Text(p.name).foregroundStyle(.primary)
+                                    Spacer()
+                                    Image(systemName: "plus.circle").foregroundStyle(.tint)
+                                }
+                            }
+                            .accessibilityIdentifier("partner.quick.add.\(p.name)")
+                            .accessibilityLabel("Add \(p.name) to session")
+                        }
+                    } header: {
+                        Text("Recent")
+                    }
+                }
+
+                Section {
+                    ForEach(allPeople.filter { !$0.isMe }) { p in
+                        Button { togglePartnerScope(p) } label: {
+                            HStack {
+                                Text(p.name).foregroundStyle(.primary)
+                                Spacer()
+                                if session.activePartnerIDs.contains(p.id.uuidString) {
+                                    Image(systemName: "checkmark").foregroundStyle(.tint)
+                                }
+                            }
+                        }
+                        .accessibilityIdentifier("partner.quick.row.\(p.name)")
+                    }
+                    HStack {
+                        TextField("New partner name", text: $newPartnerName)
+                            .accessibilityIdentifier("partner.quick.nameField")
+                        Button("Add") { addAndScopePartner() }
+                            .disabled(newPartnerName.trimmingCharacters(in: .whitespaces).isEmpty)
+                            .accessibilityIdentifier("partner.quick.add")
+                    }
+                } header: {
+                    Text("Training partners")
+                } footer: {
+                    Text("Partners are optional. Their sets are recorded separately and kept out of your PRs and Apple Health.")
+                }
+            }
+            .navigationTitle("Add Partner")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { addPartnerPresented = false }
+                        .accessibilityIdentifier("partner.quick.done")
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 
     // MARK: Manage partners (opt-in roster, field-testing §04 bug fix)

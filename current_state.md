@@ -2,7 +2,50 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-13 — "Your Plan" row polish (today highlight, wider weekday column, timing notes removed)._
+_Last updated: 2026-07-14 — three coach-recommendation fixes from the 2026-07-14 export analysis (exercise variety, bodyweight reps, plan modality labels)._
+
+## Coach fixes — 2026-07-14 export analysis (`plans/…/examine-cladiron-export-2026-07-14…`)
+
+- **Fix 1 — cross-day exercise variety (shipped 2026-07-14, `a339c64`).** The plan
+  optimizer pinned one exercise per movement pattern (most-trained in 28d), so a
+  chronically below-MEV part (abs) resolved to "rotary torso" on every planned day.
+  `CoachSession.trainedExerciseCandidates(facts:)` now exposes the *ranked*
+  per-pattern list (`mostTrainedExercises` = its `.first`); `CoachPlanOptimizer`
+  threads the running set of already-assigned exercises through
+  `plan → chooseSession → optimizedVersion → reshapedExercises`, and
+  `rotatedForVariety` swaps an already-used identity for an equivalent alternative
+  (exact same covered body parts → coverage/MRV math unchanged; recovery-eligible;
+  user's own trained lifts preferred, then catalog defaults). Compounds with unique
+  coverage stay put; interchangeable isolation rotates. New
+  `CoachExerciseVarietyTests` (2).
+- **Fix 2 — bodyweight-aware rep prescription (shipped 2026-07-14, `9e0b7d4`).**
+  Reps came entirely from `TrainingGoal.repRange` (hypertrophy → 12/10/8 ladder)
+  regardless of movement type — wrong for a user logging 40/30/20/10 crunches.
+  `PrescriptionMath.repRange(forExerciseNamed:goal:recentTopReps:)`: bodyweight
+  moves track the user's real logged top set (upper = recent top reps, lower ≈60%);
+  clearly high-rep moves (unloaded core, air squats) default to **15–25** absent
+  history; time holds (plank) and weighted lifts keep the goal range. Threaded
+  through `strengthExercises`/`buildStrengthExercises`, `CoachPlanOptimizer.copy`
+  (+ `bestExercise` fallbacks) and the variety rotation.
+  **Intentional deviation from the plan:** the `progression`/`deload`
+  `topSetWeightKg > 0` gates were left alone — `LiftSnapshot`s are only built from
+  loaded sets, so weight-0 movements never reach those rules; the visible bad
+  prescription originates in the session builders, which is where the fix landed.
+  New `CoachBodyweightPrescriptionTests` (6).
+- **Fix 3 — past plan days carry the real cardio modality (shipped 2026-07-14, `ecaf702`).**
+  `WeeklyPlan.generate` flattened logged aerobic events into generic buckets, so a
+  logged Boxing session (no HR → non-vigorous) read "Easy aerobic".
+  `cardioEventsByDay` now captures `AerobicEventDetails.Modality.displayName`
+  (in-memory, additive; `.other` falls back to generic); past-day labels prefer it,
+  future prescribed days keep the generic bucket. `WeekStripView`/`YourWeekView`
+  render labels verbatim — no view changes. Also fixed a latent nondeterminism:
+  multi-pattern movements are now attributed to a pattern in stable sorted order
+  (Set iteration is hash-seeded per process). New `WeeklyPlanModalityLabelTests` (3).
+- **Follow-up (`f975e4f`):** pre-existing app-target build break from `74d8e28`
+  (`allPeople` still `private` while `SessionView+Partners.swift` uses it) fixed —
+  unrelated to the coach work but blocked the integration build.
+- `swift test` **1037 → 1048**, verified stable across repeated runs; app-target
+  `xcodebuild` green; test-pyramid guardrail green (uitests 11/12, no growth).
 
 ## Revenue plan (`plans/revenue/2026-07-13/`)
 

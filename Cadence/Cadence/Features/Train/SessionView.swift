@@ -45,15 +45,15 @@ struct SessionView: View {
     @FocusState private var weightFocused: Bool
     @State private var healthSaved = false
     @Query(sort: \Person.name) private var allPeople: [Person]
-    @State private var addPartnerPresented = false
-    @State private var newPartnerName = ""
+    @State var addPartnerPresented = false
+    @State var newPartnerName = ""
     @State private var renamePresented = false
     @State private var editedTitle = ""
     @State private var datePickerPresented = false
     @State private var endDatePickerPresented = false
     @State private var exerciseToRemove: Exercise?
     @State private var changingExerciseFor: Exercise?
-    @State private var managePartnersPresented = false
+    @State var managePartnersPresented = false
     // Idle auto-terminate (field-testing §02/§04, decisions #6/#7).
     @State private var lastActivity = Date()
     @State private var idlePromptShown = false
@@ -84,7 +84,7 @@ struct SessionView: View {
         SessionRoster.scopedPartners(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
     }
     /// Configured performer order. Solo ⇒ just the owner.
-    private var roster: [Person] {
+    var roster: [Person] {
         SessionRoster.roster(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
     }
     /// People that may be attributed a set: scoped partners + anyone already
@@ -96,14 +96,14 @@ struct SessionView: View {
     }
     /// Whether sets can be attributed to a partner — drives the WHO column and the
     /// performer pickers (true when a partner is scoped OR a set is already attributed).
-    private var hasPartners: Bool {
+    var hasPartners: Bool {
         SessionRoster.canAttribute(activePartnerIDs: session.activePartnerIDs,
                                    allPeople: allPeople,
                                    attributedIDs: attributedPartnerIDs)
     }
     /// Recent non-Me partners from past sessions, deduplicated and ordered by recency.
     /// Partners already scoped to the current session are excluded.
-    private var recentPartners: [Person] {
+    var recentPartners: [Person] {
         let sessions = (try? WorkoutRepository.allSessions(context)) ?? []
         var seen = Set<String>()
         var result: [Person] = []
@@ -324,7 +324,7 @@ struct SessionView: View {
         return palette[abs(p.id.hashValue) % palette.count]
     }
 
-    private func performerChip(_ p: Person?) -> some View {
+    func performerChip(_ p: Person?) -> some View {
         let label = (p?.isMe ?? true) ? "M" : String((p?.name ?? "?").prefix(1)).uppercased()
         return Text(label)
             .font(.caption2.weight(.semibold)).foregroundStyle(.white)
@@ -1417,7 +1417,7 @@ struct SessionView: View {
     }
 
     // MARK: Partner roster helpers
-    private func togglePartnerScope(_ p: Person) {
+    func togglePartnerScope(_ p: Person) {
         var ids = explicitRosterIDs()
         if let idx = ids.firstIndex(of: p.id.uuidString) {
             ids.remove(at: idx)
@@ -1429,7 +1429,7 @@ struct SessionView: View {
     }
 
     /// Creates a partner (if new) and scopes them to this session.
-    private func addAndScopePartner() {
+    func addAndScopePartner() {
         let name = newPartnerName.trimmingCharacters(in: .whitespaces)
         defer { newPartnerName = "" }
         guard !name.isEmpty,
@@ -1478,7 +1478,7 @@ struct SessionView: View {
         return cleaned.contains(where: { partnerIDs.contains($0) }) ? cleaned : []
     }
 
-    private func moveRosterMember(from index: Int, by offset: Int) {
+    func moveRosterMember(from index: Int, by offset: Int) {
         var ids = explicitRosterIDs()
         let target = index + offset
         guard ids.indices.contains(index), ids.indices.contains(target) else { return }

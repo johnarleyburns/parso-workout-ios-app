@@ -46,52 +46,11 @@ jobs:
       - name: No-network guardrail
         run: bash scripts/check-no-network.sh
 
-  ui-smoke:
-    needs: core-tests
-    runs-on: macos-latest
-    # UI smoke is an integration signal, not a hard gate: XCUITest on shared macOS
-    # runners is inherently flaky (cold-launch timing, shared CPU). The reliable
-    # gate is core-tests (`swift test` + the guardrail); this job runs the ~10-test
-    # smoke plan for signal but never blocks main. Investigate real regressions
-    # from the logs; don't chase runner flakiness.
-    continue-on-error: true
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Select latest Xcode
-        run: |
-          XCODE=$(ls /Applications/ | grep "^Xcode_" | sort -V | tail -1)
-          sudo xcode-select -s /Applications/$XCODE
-          xcodebuild -version
-
-      - name: Accept Xcode License
-        run: sudo xcodebuild -license accept
-
-      - name: Cache SPM
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.swiftpm
-            ~/Library/Developer/Xcode/DerivedData/*/SourcePackages
-          key: spm-smoke-${{ hashFiles('CadenceCore/Package.resolved') }}
-          restore-keys: spm-smoke-
-
-      # The ~10-test smoke plan on the GitHub runner so the laptop never has to.
-      # Build once, then run serially with no parallel clones and no retries —
-      # that (plus cold launches) is what pins the CPU (test-pyramid Phase 5).
-      - name: UI smoke suite
-        run: |
-          set -eo pipefail
-          DEVICE_ID=$(xcrun simctl list devices available --json \
-            | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; ids=[x['udid'] for rt in d for x in d[rt] if x.get('isAvailable') and x['name'].startswith('iPhone')]; print(ids[0] if ids else '')")
-          if [ -z "$DEVICE_ID" ]; then echo "No available iPhone simulator"; xcrun simctl list devices available; exit 1; fi
-          echo "Using simulator $DEVICE_ID"
-          xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme Cadence \
-            -testPlan Cadence -derivedDataPath .build/dd -destination "id=$DEVICE_ID"
-          xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme Cadence \
-            -testPlan Cadence -derivedDataPath .build/dd -destination "id=$DEVICE_ID" \
-            -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1
+  # The XCUITest UI smoke suite is intentionally NOT run in CI: simulator-based
+  # UI tests are unreliable on shared GitHub Actions runners (cold-launch timing,
+  # shared CPU). The reliable CI gate is core-tests (host `swift test` + the
+  # guardrail). The UI smoke plan is run locally on the pinned iPhone 16
+  # simulator via `make smoke` (see Makefile SMOKE_DEST).
 
   testflight-build:
     needs: core-tests

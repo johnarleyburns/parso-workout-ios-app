@@ -15,7 +15,9 @@ build:
 # parallel clones and no retries — parallel testing + 148 cold launches is what
 # pins the CPU. The smoke plan itself is culled to ~10 tests in Phase 5.
 SMOKE_SCHEME ?= Cadence
-SMOKE_DEST ?= platform=iOS Simulator,id=14922B94-6522-49EB-B135-A9CFEDD2932E
+# Bind by name to the one simulator installed on disk (iPhone 16) so every run
+# uses the same device and xcodebuild never resolves to — or downloads — another.
+SMOKE_DEST ?= platform=iOS Simulator,name=iPhone 16
 smoke:
 	xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme "$(SMOKE_SCHEME)" \
 	  -testPlan Cadence -derivedDataPath .build/dd -destination '$(SMOKE_DEST)' -quiet

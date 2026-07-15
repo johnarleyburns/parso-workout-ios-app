@@ -22,9 +22,9 @@ final class SmokeStrengthLoopTests: CadenceUITestCase {
         app.recordKeypadSet("105")
         app.dismissRestBar()
 
-        XCTAssertTrue(app.descendants(matching: .any)["set.row.Bench Press.0"].waitForExistence(timeout: 25),
-                      "the first logged set row should appear")
         XCTAssertTrue(app.descendants(matching: .any)["set.row.Bench Press.1"].waitForExistence(timeout: 25),
+                      "the first logged set row should appear")
+        XCTAssertTrue(app.descendants(matching: .any)["set.row.Bench Press.2"].waitForExistence(timeout: 25),
                       "the second logged set row should appear")
     }
 }

@@ -178,7 +178,9 @@ public struct WeeklyPlan: Sendable, Equatable {
         var completedDays = Set<Date>()
         var hardDays = Set<Date>()
         var strengthDays = Set<Date>()
-        var cardioEventsByDay: [Date: (hasHard: Bool, kind: CoachSessionKind)] = [:]
+        // Past cardio days keep the *real* logged modality (issue: a logged Boxing
+        // session must read "Boxing", not the generic "Easy aerobic" bucket).
+        var cardioEventsByDay: [Date: (hasHard: Bool, kind: CoachSessionKind, modalityLabel: String?)] = [:]
 
         for event in facts.rolling7dCompletedEvents {
             let d = cal.startOfDay(for: event.start)
@@ -189,8 +191,16 @@ public struct WeeklyPlan: Sendable, Equatable {
                 let cur = cardioEventsByDay[d]
                 let isHard = event.isHard
                 let kind: CoachSessionKind = isHard ? .moderateAerobic : .easyAerobic
+                let modalityLabel: String?
+                switch event.kind {
+                case .aerobic(let details), .intervals(let details):
+                    modalityLabel = details.modality == .other ? nil : details.modality.displayName
+                default:
+                    modalityLabel = nil
+                }
                 if cur == nil || isHard {
-                    cardioEventsByDay[d] = (hasHard: isHard, kind: kind)
+                    cardioEventsByDay[d] = (hasHard: isHard, kind: kind,
+                                            modalityLabel: modalityLabel ?? cur?.modalityLabel)
                 }
             }
         }
@@ -211,7 +221,8 @@ public struct WeeklyPlan: Sendable, Equatable {
             }
             if let cardio = cardioInfo {
                 sessions.append(PlannedSession(id: "h-\(date)-cardio",
-                                                kind: cardio.kind, label: cardioLabel(cardio.kind),
+                                                kind: cardio.kind,
+                                                label: cardio.modalityLabel ?? cardioLabel(cardio.kind),
                                                 isHard: cardio.kind == .moderateAerobic, isRest: false))
             }
 
@@ -222,7 +233,7 @@ public struct WeeklyPlan: Sendable, Equatable {
                 label = dayLabel(forSessions: sessions)
             }
             else if wasStrength { label = "Strength" }
-            else if cardioInfo != nil { label = cardioLabel(cardioInfo!.kind) }
+            else if let cardio = cardioInfo { label = cardio.modalityLabel ?? cardioLabel(cardio.kind) }
             else { label = "—" }
 
             days.append(DayOutline(

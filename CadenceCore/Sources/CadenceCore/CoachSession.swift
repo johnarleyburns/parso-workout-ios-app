@@ -629,7 +629,11 @@ extension CoachSession {
             guard case .strength(let details) = event.kind, let d = details else { continue }
             for ex in d.exercises {
                 let name = ex.exerciseName
-                for p in ex.patterns {
+                // A multi-pattern movement is attributed to ONE pattern. Iterate in
+                // a stable order — `Set` order is hash-seeded per process, which
+                // made the attribution (and thus the whole preferred-exercise map)
+                // nondeterministic across launches.
+                for p in ex.patterns.sorted(by: { $0.rawValue < $1.rawValue }) {
                     let current = counts[name]
                     if current == nil || ex.hardSetCount > current!.count {
                         counts[name] = (ex.hardSetCount, p)

@@ -44,7 +44,7 @@ struct SessionView: View {
     @State private var showDeleteConfirm = false
     @FocusState private var weightFocused: Bool
     @State private var healthSaved = false
-    @Query(sort: \Person.name) private var allPeople: [Person]
+    @Query(sort: \Person.name) var allPeople: [Person]
     @State var addPartnerPresented = false
     @State var newPartnerName = ""
     @State private var renamePresented = false

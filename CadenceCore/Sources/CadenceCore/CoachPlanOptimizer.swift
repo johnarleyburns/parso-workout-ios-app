@@ -335,6 +335,11 @@ public enum CoachPlanOptimizer {
         for (i, slot) in slots.enumerated() {
             let slotsLeft = slots.count - i
             let slotDeficits: [BodyPart: Double] = deficits.mapValues { ceil($0 / Double(slotsLeft)) }
+            // Exercises already assigned to earlier days in this generation pass, so
+            // per-day selection can rotate a movement pattern's exercise *identity*
+            // across days (issue: "rotary torso" every day) instead of repeating one
+            // historical favorite.
+            let usedThisWeek = Set(planned.flatMap { ($0.exercises ?? []).map(\.name) })
             let choice = chooseSession(
                 for: slot,
                 deficits: slotsLeft > 1 ? slotDeficits : deficits,
@@ -342,6 +347,7 @@ public enum CoachPlanOptimizer {
                 trainingFacts: trainingFacts,
                 coachFacts: coachFacts,
                 strengthCandidates: strengthCandidates,
+                usedThisWeek: usedThisWeek,
                 policy: policy)
             planned.append(choice.session)
             let added = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [choice.session])
@@ -374,6 +380,7 @@ public enum CoachPlanOptimizer {
                                       trainingFacts: TrainingFacts,
                                       coachFacts: CoachFacts,
                                       strengthCandidates: [CoachSession],
+                                      usedThisWeek: Set<String>,
                                       policy: PlanningConstraintPolicy) -> CandidatePlan {
         let candidatePool = strengthCandidates.isEmpty ? [syntheticBaseSession()] : strengthCandidates
         let options = candidatePool.map {
@@ -383,6 +390,7 @@ public enum CoachPlanOptimizer {
                              projected: projected,
                              trainingFacts: trainingFacts,
                              coachFacts: coachFacts,
+                             usedThisWeek: usedThisWeek,
                              policy: policy)
         } + [
             optimizedVersion(of: syntheticBaseSession(),
@@ -391,6 +399,7 @@ public enum CoachPlanOptimizer {
                              projected: projected,
                              trainingFacts: trainingFacts,
                              coachFacts: coachFacts,
+                             usedThisWeek: usedThisWeek,
                              policy: policy)
         ]
 
@@ -417,6 +426,7 @@ public enum CoachPlanOptimizer {
                                          projected: [BodyPart: Double],
                                          trainingFacts: TrainingFacts,
                                          coachFacts: CoachFacts,
+                                         usedThisWeek: Set<String>,
                                          policy: PlanningConstraintPolicy) -> CandidatePlan {
         let originalNames = Set((base.exercises ?? []).map(\.name))
         let exercises = reshapedExercises(from: base.exercises ?? [],
@@ -425,6 +435,7 @@ public enum CoachPlanOptimizer {
                                           trainingFacts: trainingFacts,
                                           coachFacts: coachFacts,
                                           slot: slot,
+                                          usedThisWeek: usedThisWeek,
                                           policy: policy)
         let added = PlanAwareWeeklyAccounting.plannedSetsByPart(from: exercises)
         let nextProjected = projected.merging(added) { $0 + $1 }
@@ -454,6 +465,7 @@ public enum CoachPlanOptimizer {
                                           trainingFacts: TrainingFacts,
                                           coachFacts: CoachFacts,
                                           slot: PlanningSlot,
+                                          usedThisWeek: Set<String>,
                                           policy: PlanningConstraintPolicy) -> [CoachSession.RecommendedExercise] {
         guard !deficits.isEmpty else {
             let preserved = baseExercises
@@ -464,7 +476,11 @@ public enum CoachPlanOptimizer {
                          sets: min(policy.maxSetsPerExercise, max(1, exercise.sets ?? 3)),
                          goal: trainingFacts.goal)
                 }
-            if !preserved.isEmpty { return Array(preserved) }
+            if !preserved.isEmpty {
+                return rotatedForVariety(Array(preserved), usedThisWeek: usedThisWeek,
+                                         trainingFacts: trainingFacts, coachFacts: coachFacts,
+                                         slot: slot, policy: policy)
+            }
             return ["Back Squat", "Bench Press", "Barbell Row", "Romanian Deadlift"]
                 .map { CoachSession.RecommendedExercise(name: $0, sets: 3) }
         }
@@ -590,12 +606,99 @@ public enum CoachPlanOptimizer {
             selected = Array(fallback)
         }
 
+        selected = rotatedForVariety(selected, usedThisWeek: usedThisWeek,
+                                     trainingFacts: trainingFacts, coachFacts: coachFacts,
+                                     slot: slot, policy: policy)
+
         return selected.sorted { a, b in
             let apart = primarySortPart(for: a)
             let bpart = primarySortPart(for: b)
             if apart != bpart { return partIndex(apart) < partIndex(bpart) }
             return a.name < b.name
         }
+    }
+
+    // MARK: - Cross-day exercise variety (anti-repeat rotation)
+
+    /// Rotate exercise *identity* across the days of one planning pass: when a
+    /// selected exercise was already assigned to an earlier day this week, swap it
+    /// for an equivalent alternative — same covered body parts, recovery-eligible,
+    /// not yet used — preferring the user's own trained lifts for the movement
+    /// pattern (ranked by `CoachSession.trainedExerciseCandidates`), then catalog
+    /// defaults. The exact part-set match keeps the coverage/MRV accounting and the
+    /// prescription (sets, reps, RIR, ladder) identical, so only the identity
+    /// varies. Interchangeable movements (mostly isolation, e.g. every core slot
+    /// resolving to "rotary torso") rotate; compounds with unique coverage stay put.
+    private static func rotatedForVariety(_ selected: [CoachSession.RecommendedExercise],
+                                          usedThisWeek: Set<String>,
+                                          trainingFacts: TrainingFacts,
+                                          coachFacts: CoachFacts,
+                                          slot: PlanningSlot,
+                                          policy: PlanningConstraintPolicy) -> [CoachSession.RecommendedExercise] {
+        guard !usedThisWeek.isEmpty else { return selected }
+        var used = usedThisWeek
+        var result: [CoachSession.RecommendedExercise] = []
+        for exercise in selected {
+            if used.contains(exercise.name),
+               let alternative = varietyAlternative(for: exercise,
+                                                    avoiding: used.union(result.map(\.name)),
+                                                    coachFacts: coachFacts,
+                                                    slot: slot,
+                                                    policy: policy) {
+                result.append(alternative)
+            } else {
+                result.append(exercise)
+            }
+            used.insert(result[result.count - 1].name)
+        }
+        return result
+    }
+
+    /// An equivalent, not-yet-used replacement for `exercise`: covers exactly the
+    /// same body parts (so coverage and MRV math are unchanged) and passes the
+    /// recovery-eligibility gate. Candidates come from the user's ranked trained
+    /// lifts — the exercise's own movement patterns first, then any other trained
+    /// lift that covers the same parts (pattern keyword inference can misfile a
+    /// movement, e.g. "crunch" contains "run") — then the catalog defaults for its
+    /// primary part. Returns nil when no equivalent exists — the original is kept
+    /// rather than degrading coverage.
+    private static func varietyAlternative(for exercise: CoachSession.RecommendedExercise,
+                                           avoiding used: Set<String>,
+                                           coachFacts: CoachFacts,
+                                           slot: PlanningSlot,
+                                           policy: PlanningConstraintPolicy) -> CoachSession.RecommendedExercise? {
+        let originalParts = partsCovered(by: exercise)
+        guard !originalParts.isEmpty else { return nil }
+
+        let muscles = muscleIDs(for: exercise)
+        let ownPatterns = MovementPattern.patterns(forExerciseNamed: exercise.name,
+                                                   primaryMuscles: muscles.primary)
+        let trained = CoachSession.trainedExerciseCandidates(facts: coachFacts)
+        var pool: [String] = []
+        for pattern in ownPatterns.sorted(by: { $0.rawValue < $1.rawValue }) {
+            pool.append(contentsOf: trained[pattern] ?? [])
+        }
+        for pattern in trained.keys.sorted(by: { $0.rawValue < $1.rawValue }) where !ownPatterns.contains(pattern) {
+            pool.append(contentsOf: trained[pattern] ?? [])
+        }
+        pool.append(contentsOf: defaultExerciseNames(for: primarySortPart(for: exercise)))
+
+        var seen = Set<String>()
+        for name in pool where seen.insert(name).inserted {
+            guard name != exercise.name, !used.contains(name) else { continue }
+            let candidate = CoachSession.RecommendedExercise(name: name)
+            guard partsCovered(by: candidate) == originalParts else { continue }
+            guard isExerciseEligible(candidate, on: slot.date, facts: coachFacts, policy: policy) else { continue }
+            return CoachSession.RecommendedExercise(
+                name: name,
+                sets: exercise.sets,
+                repsLow: exercise.repsLow,
+                repsHigh: exercise.repsHigh,
+                loadKg: nil,
+                rir: exercise.rir,
+                repLadder: exercise.repLadder)
+        }
+        return nil
     }
 
     private static func plannedSets(for exercise: CoachSession.RecommendedExercise,

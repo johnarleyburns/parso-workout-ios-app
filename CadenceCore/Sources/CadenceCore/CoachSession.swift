@@ -586,7 +586,19 @@ extension CoachSession {
         ]
     }
 
-    public static func mostTrainedExercises(facts: CoachFacts) -> [MovementPattern: String] {        var counts: [String: (count: Int, pattern: MovementPattern)] = [:]
+    public static func mostTrainedExercises(facts: CoachFacts) -> [MovementPattern: String] {
+        trainedExerciseCandidates(facts: facts).compactMapValues { $0.first }
+    }
+
+    /// The user's actual lifts per movement pattern, **ranked** most-trained first
+    /// (issue: exercise variety). `mostTrainedExercises` is the `.first` of each
+    /// list; exposing the full ranking lets the planner rotate a pattern's exercise
+    /// *identity* across days instead of pinning one historical favorite (e.g.
+    /// "rotary torso" every core slot). Ranking is deterministic: hard-set count
+    /// (softened by movement-family recency) descending, then per-exercise recency
+    /// ascending, then alphabetical.
+    public static func trainedExerciseCandidates(facts: CoachFacts) -> [MovementPattern: [String]] {
+        var counts: [String: (count: Int, pattern: MovementPattern)] = [:]
         for event in facts.rolling28dCompletedEvents {
             guard case .strength(let details) = event.kind, let d = details else { continue }
             for ex in d.exercises {
@@ -600,7 +612,8 @@ extension CoachSession {
             }
         }
 
-        var best: [MovementPattern: (name: String, count: Double, namePenalty: Double)] = [:]
+        struct Ranked { let name: String; let score: Double; let namePenalty: Double }
+        var byPattern: [MovementPattern: [Ranked]] = [:]
         for (name, info) in counts {
             let penalty = facts.recoveryAwareCoachV2
                 ? facts.recovery.softPenalty(forExerciseNamed: name) : 0
@@ -609,27 +622,20 @@ extension CoachSession {
             // same movement family share the family penalty (so `effectiveScore`
             // ties), and Dictionary iteration order is randomized per process — so
             // prefer the less-recently-trained lift (lower name penalty), then fall
-            // back to a stable alphabetical order. This keeps rotation deterministic.
+            // back to a stable alphabetical order. This keeps ranking deterministic.
             let namePenalty = facts.recoveryAwareCoachV2
                 ? facts.recovery.softNamePenalty(forExerciseNamed: name) : 0
-            guard let existing = best[info.pattern] else {
-                best[info.pattern] = (name, effectiveScore, namePenalty)
-                continue
-            }
-            let wins: Bool
-            if effectiveScore != existing.count {
-                wins = effectiveScore > existing.count
-            } else if namePenalty != existing.namePenalty {
-                wins = namePenalty < existing.namePenalty
-            } else {
-                wins = name < existing.name
-            }
-            if wins {
-                best[info.pattern] = (name, effectiveScore, namePenalty)
-            }
+            byPattern[info.pattern, default: []].append(
+                Ranked(name: name, score: effectiveScore, namePenalty: namePenalty))
         }
 
-        return best.mapValues { $0.name }
+        return byPattern.mapValues { ranked in
+            ranked.sorted { a, b in
+                if a.score != b.score { return a.score > b.score }
+                if a.namePenalty != b.namePenalty { return a.namePenalty < b.namePenalty }
+                return a.name < b.name
+            }.map(\.name)
+        }
     }
 
     public var isHard: Bool {

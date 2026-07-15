@@ -264,4 +264,69 @@ enum PrescriptionMath {
         if rounded == rounded.rounded() { return String(Int(rounded)) }
         return String(format: "%.1f", rounded)
     }
+
+    // MARK: - Bodyweight-aware rep ranges
+
+    /// The working rep range for a single exercise. Weighted lifts use the goal's
+    /// range from the load/rep continuum (Schoenfeld et al. 2021 — cited on
+    /// `TrainingGoal`). Bodyweight movements can't be loaded to a target %1RM, so
+    /// reps are the progression variable instead:
+    /// - with logged history, the range tracks the user's real recent top set —
+    ///   prescribing 6–12 reps to someone logging 40-rep crunches is wrong;
+    /// - with no history, clearly high-rep movements (core work, air squats)
+    ///   default to a 15–25 endurance-biased range;
+    /// - time holds (plank) and everything else keep the goal's range, preserving
+    ///   the builders' existing hold/carry special-casing.
+    static func repRange(forExerciseNamed name: String,
+                         goal: TrainingGoal,
+                         recentTopReps: Int? = nil) -> ClosedRange<Int> {
+        guard isBodyweightMovement(named: name), !isTimeHold(named: name) else {
+            return goal.repRange
+        }
+        if let reps = recentTopReps, reps > 0 {
+            let high = reps
+            let low = min(high, max(8, Int((Double(high) * 0.6).rounded())))
+            return low...high
+        }
+        if isHighRepBodyweight(named: name) { return 15...25 }
+        return goal.repRange
+    }
+
+    /// True when the named movement is programmed as a timed hold, not reps.
+    static func isTimeHold(named name: String) -> Bool {
+        let lower = name.lowercased()
+        return ["plank", "hollow hold", "wall sit", "dead hang", "l-sit"]
+            .contains { lower.contains($0) }
+    }
+
+    /// True when the named movement is performed against bodyweight (catalog
+    /// equipment wins; keyword fallback covers user-created movements).
+    static func isBodyweightMovement(named name: String) -> Bool {
+        if let template = ExerciseLibrary.byName[name.lowercased()] {
+            return template.equipment == .bodyweight
+        }
+        let lower = name.lowercased()
+        let keywords = ["push-up", "push up", "pushup", "pull-up", "pull up", "pullup",
+                        "chin-up", "chin up", "dip", "crunch", "sit-up", "sit up", "situp",
+                        "air squat", "bodyweight", "burpee", "mountain climber",
+                        "leg raise", "flutter kick", "russian twist", "superman"]
+        return keywords.contains { lower.contains($0) }
+    }
+
+    /// True for bodyweight movements that are naturally high-rep endurance work
+    /// (unloaded core movements, air squats) — the ones that default to the 15–25
+    /// range when the user has no logged history. Strength-biased bodyweight moves
+    /// (pull-ups, dips) stay on the goal's range absent history.
+    static func isHighRepBodyweight(named name: String) -> Bool {
+        guard isBodyweightMovement(named: name), !isTimeHold(named: name) else { return false }
+        let lower = name.lowercased()
+        let highRepKeywords = ["crunch", "sit-up", "sit up", "situp", "air squat",
+                               "bodyweight squat", "mountain climber", "flutter kick",
+                               "russian twist", "leg raise", "superman"]
+        if highRepKeywords.contains(where: { lower.contains($0) }) { return true }
+        if let template = ExerciseLibrary.byName[lower] {
+            return template.category == .core && template.equipment == .bodyweight
+        }
+        return false
+    }
 }

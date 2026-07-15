@@ -498,7 +498,6 @@ extension CoachSession {
                                          patterns: [MovementPattern],
                                          maxExercises: Int = 6) -> [RecommendedExercise] {
         let goal = facts.goal
-        let range = goal.repRange
         let preferred = mostTrainedExercises(facts: facts)
         let fallbacks: [MovementPattern: (String, Int?)] = [
             .squat: ("Back Squat", 3),
@@ -519,11 +518,13 @@ extension CoachSession {
             used.insert(pattern)
             let (fallback, setCount) = fallbacks[pattern] ?? ("Back Squat", 3)
             let name = preferred[pattern] ?? fallback
+            let range = repRange(forExerciseNamed: name, facts: facts)
             exercises.append(RecommendedExercise(
                 name: name, sets: setCount,
                 repsLow: range.lowerBound, repsHigh: range.upperBound,
                 loadKg: nil, rir: goal.targetRIR,
-                repLadder: RepLadder.ladder(for: goal, sets: setCount ?? 3)
+                repLadder: RepLadder.ladder(low: range.lowerBound, high: range.upperBound,
+                                            sets: setCount ?? 3)
             ))
         }
         return exercises
@@ -531,7 +532,6 @@ extension CoachSession {
 
     private static func buildStrengthExercises(facts: CoachFacts) -> [RecommendedExercise] {
         let goal = facts.goal
-        let range = goal.repRange
         let compoundSets: Int? = 3
         let isolationSets: Int? = 2
 
@@ -555,15 +555,41 @@ extension CoachSession {
             let name = preferred[pattern] ?? fallback
             guard !used.contains(pattern) else { continue }
             used.insert(pattern)
+            let range = repRange(forExerciseNamed: name, facts: facts)
             exercises.append(RecommendedExercise(
                 name: name, sets: setCount,
                 repsLow: range.lowerBound, repsHigh: range.upperBound,
                 loadKg: nil, rir: goal.targetRIR,
-                repLadder: RepLadder.ladder(for: goal, sets: setCount ?? 3)
+                repLadder: RepLadder.ladder(low: range.lowerBound, high: range.upperBound,
+                                            sets: setCount ?? 3)
             ))
         }
 
         return exercises
+    }
+
+    /// The working rep range for a prescribed movement — bodyweight-aware. For a
+    /// bodyweight/high-rep move it tracks the user's real logged reps (or defaults
+    /// to a high-rep range absent history) instead of the goal's loaded range, so
+    /// the coach never prescribes 6–12 reps to someone doing 40-rep crunches.
+    static func repRange(forExerciseNamed name: String, facts: CoachFacts) -> ClosedRange<Int> {
+        PrescriptionMath.repRange(forExerciseNamed: name, goal: facts.goal,
+                                  recentTopReps: recentTopReps(forExerciseNamed: name, facts: facts))
+    }
+
+    /// The user's best logged top-set reps for a movement across the rolling 28-day
+    /// window (matched by canonical name), or nil when they've never trained it.
+    /// Drives history-aware bodyweight rep prescription.
+    static func recentTopReps(forExerciseNamed name: String, facts: CoachFacts) -> Int? {
+        let target = MuscleCatalog.canonicalName(name)
+        var best: Int?
+        for event in facts.rolling28dCompletedEvents {
+            guard case .strength(let details) = event.kind, let d = details else { continue }
+            for ex in d.exercises where MuscleCatalog.canonicalName(ex.exerciseName) == target {
+                if ex.topSetReps > (best ?? 0) { best = ex.topSetReps }
+            }
+        }
+        return best
     }
 
     private static func generateBeginnerA(facts: CoachFacts) -> [RecommendedExercise] {

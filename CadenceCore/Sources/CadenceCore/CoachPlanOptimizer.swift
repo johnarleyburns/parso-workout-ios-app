@@ -474,7 +474,8 @@ public enum CoachPlanOptimizer {
                 .map { exercise in
                     copy(exercise,
                          sets: min(policy.maxSetsPerExercise, max(1, exercise.sets ?? 3)),
-                         goal: trainingFacts.goal)
+                         goal: trainingFacts.goal,
+                         coachFacts: coachFacts)
                 }
             if !preserved.isEmpty {
                 return rotatedForVariety(Array(preserved), usedThisWeek: usedThisWeek,
@@ -514,7 +515,7 @@ public enum CoachPlanOptimizer {
                                    experience: trainingFacts.experience,
                                    policy: policy)
             guard sets > 0, sessionSets + sets <= policy.maxTotalSetsPerSession else { continue }
-            let planned = copy(exercise, sets: sets, goal: trainingFacts.goal)
+            let planned = copy(exercise, sets: sets, goal: trainingFacts.goal, coachFacts: coachFacts)
             selected.append(planned)
             sessionSets += sets
             runningProjected = runningProjected.merging(
@@ -548,7 +549,7 @@ public enum CoachPlanOptimizer {
                                    experience: trainingFacts.experience,
                                    policy: policy)
             guard sets > 0, sessionSets + sets <= policy.maxTotalSetsPerSession else { break }
-            let planned = copy(next, sets: sets, goal: trainingFacts.goal)
+            let planned = copy(next, sets: sets, goal: trainingFacts.goal, coachFacts: coachFacts)
             selected.append(planned)
             sessionSets += sets
             runningProjected = runningProjected.merging(
@@ -587,7 +588,7 @@ public enum CoachPlanOptimizer {
                         }
                         if wouldExceedMRV { continue }
                     }
-                    selected[index] = copy(exercise, sets: currentSets + 1, goal: trainingFacts.goal)
+                    selected[index] = copy(exercise, sets: currentSets + 1, goal: trainingFacts.goal, coachFacts: coachFacts)
                     sessionSets += 1
                     runningProjected = runningProjected.merging(perSet) { $0 + $1 }
                     madeProgress = true
@@ -689,14 +690,20 @@ public enum CoachPlanOptimizer {
             let candidate = CoachSession.RecommendedExercise(name: name)
             guard partsCovered(by: candidate) == originalParts else { continue }
             guard isExerciseEligible(candidate, on: slot.date, facts: coachFacts, policy: policy) else { continue }
+            // The replacement carries the slot's prescription (sets, RIR) but gets
+            // its own bodyweight-aware working range — its rep history is its own.
+            let range = CoachSession.repRange(forExerciseNamed: name, facts: coachFacts)
+            let ladder = (exercise.sets).map {
+                RepLadder.ladder(low: range.lowerBound, high: range.upperBound, sets: $0)
+            } ?? exercise.repLadder
             return CoachSession.RecommendedExercise(
                 name: name,
                 sets: exercise.sets,
-                repsLow: exercise.repsLow,
-                repsHigh: exercise.repsHigh,
+                repsLow: range.lowerBound,
+                repsHigh: range.upperBound,
                 loadKg: nil,
                 rir: exercise.rir,
-                repLadder: exercise.repLadder)
+                repLadder: ladder)
         }
         return nil
     }
@@ -746,7 +753,7 @@ public enum CoachPlanOptimizer {
                 return a.name < b.name
             }
         if let first = existingOptions.first {
-            return copy(first, sets: nil, goal: facts.goal)
+            return copy(first, sets: nil, goal: facts.goal, coachFacts: coachFacts)
         }
 
         let preferred = CoachSession.mostTrainedExercises(facts: coachFacts)
@@ -755,7 +762,7 @@ public enum CoachPlanOptimizer {
                partsCovered(by: CoachSession.RecommendedExercise(name: name)).contains(part) {
                 let exercise = CoachSession.RecommendedExercise(name: name)
                 if isExerciseEligible(exercise, on: slot.date, facts: coachFacts, policy: policy) {
-                    return copy(exercise, sets: nil, goal: facts.goal)
+                    return copy(exercise, sets: nil, goal: facts.goal, coachFacts: coachFacts)
                 }
             }
         }
@@ -763,7 +770,7 @@ public enum CoachPlanOptimizer {
         return defaultExerciseNames(for: part)
             .map { CoachSession.RecommendedExercise(name: $0) }
             .first { isExerciseEligible($0, on: slot.date, facts: coachFacts, policy: policy) }
-            .map { copy($0, sets: nil, goal: facts.goal) }
+            .map { copy($0, sets: nil, goal: facts.goal, coachFacts: coachFacts) }
     }
 
     private static func defaultExercises(for deficits: [BodyPart: Double],
@@ -1036,15 +1043,27 @@ public enum CoachPlanOptimizer {
 
     private static func copy(_ exercise: CoachSession.RecommendedExercise,
                              sets: Int? = nil,
-                             goal: TrainingGoal? = nil) -> CoachSession.RecommendedExercise {
-        let range = goal?.repRange
+                             goal: TrainingGoal? = nil,
+                             coachFacts: CoachFacts? = nil) -> CoachSession.RecommendedExercise {
         let resolvedSets = sets ?? exercise.sets
+        // Working range is bodyweight-aware (issue: 12/10/8 crunches): for a
+        // bodyweight/high-rep movement it tracks the user's real logged reps —
+        // or a high-rep default absent history — instead of the goal's loaded
+        // range. Weighted lifts keep the goal's range unchanged.
+        let range: ClosedRange<Int>? = goal.map { g in
+            PrescriptionMath.repRange(
+                forExerciseNamed: exercise.name, goal: g,
+                recentTopReps: coachFacts.flatMap {
+                    CoachSession.recentTopReps(forExerciseNamed: exercise.name, facts: $0)
+                })
+        }
+        let bodyweightAdjusted = goal != nil && range != goal?.repRange
         // Regenerate the descending rep ladder for the resolved set count so the
         // planner's reshaping keeps a productive pyramid (issue 2). Falls back to
         // the exercise's existing ladder when no goal is known.
         let ladder: [Int]?
-        if let goal, let count = resolvedSets, count > 0 {
-            ladder = RepLadder.ladder(for: goal, sets: count)
+        if let range, let count = resolvedSets, count > 0 {
+            ladder = RepLadder.ladder(low: range.lowerBound, high: range.upperBound, sets: count)
         } else {
             ladder = exercise.repLadder
         }
@@ -1052,8 +1071,8 @@ public enum CoachPlanOptimizer {
             name: exercise.name,
             primaryMuscles: exercise.primaryMuscles,
             sets: resolvedSets,
-            repsLow: exercise.repsLow ?? range?.lowerBound,
-            repsHigh: exercise.repsHigh ?? range?.upperBound,
+            repsLow: bodyweightAdjusted ? range?.lowerBound : (exercise.repsLow ?? range?.lowerBound),
+            repsHigh: bodyweightAdjusted ? range?.upperBound : (exercise.repsHigh ?? range?.upperBound),
             loadKg: exercise.loadKg,
             rir: exercise.rir ?? goal?.targetRIR,
             repLadder: ladder)

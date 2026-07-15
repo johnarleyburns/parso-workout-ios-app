@@ -281,6 +281,7 @@ struct SessionView: View {
         static let num: CGFloat = 26
         static let prev: CGFloat = 50
         static let reps: CGFloat = 46
+        static let rpe: CGFloat = 26
         static let check: CGFloat = 34
         static let gap: CGFloat = 7
     }
@@ -299,6 +300,8 @@ struct SessionView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             Text("Reps")
                 .frame(width: SetCol.reps, alignment: .center)
+            Text("RPE")
+                .frame(width: SetCol.rpe, alignment: .center)
             Color.clear.frame(width: SetCol.check)
         }
         .font(.caption2).textCase(.uppercase).foregroundStyle(.tertiary)
@@ -998,7 +1001,7 @@ struct SessionView: View {
                     Text("BW").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)
                 } else {
-                    Text(Format.weightValue(set.weight, unit: settings.unit))
+                    Text(Format.weightValue(set.weight, unit: settings.unit, decimals: 0))
                         .monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)
                 }
@@ -1014,14 +1017,17 @@ struct SessionView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.editReps.\(exercise.name).\(number)")
 
-            if let rpe = set.rpe, !set.isWarmup {
-                Text("\(Int(rpe.rounded()))")
-                    .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
-                    .padding(.horizontal, 3).padding(.vertical, 1)
-                    .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 3))
-                    .accessibilityIdentifier("set.rpe.\(exercise.name).\(number)")
-                    .accessibilityLabel("RPE \(Int(rpe.rounded()))")
+            Group {
+                if let rpe = set.rpe, !set.isWarmup {
+                    Text("\(Int(rpe.rounded()))")
+                        .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                        .padding(.horizontal, 3).padding(.vertical, 1)
+                        .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 3))
+                        .accessibilityIdentifier("set.rpe.\(exercise.name).\(number)")
+                        .accessibilityLabel("RPE \(Int(rpe.rounded()))")
+                }
             }
+            .frame(width: SetCol.rpe)
 
             Group {
                 if isAllTimePR(set, exercise: exercise) {
@@ -1178,7 +1184,7 @@ struct SessionView: View {
 
             HStack(spacing: 10) {
                 if parsed > 0 {
-                    Text("\u{2248} \(Format.weightValue(kg, unit: altUnit)) \(altUnit.abbreviation)")
+                    Text("\u{2248} \(Format.weightValue(kg, unit: altUnit, decimals: 0)) \(altUnit.abbreviation)")
                         .font(.caption2).foregroundStyle(.secondary)
                         .accessibilityIdentifier("inline.alt")
                 }

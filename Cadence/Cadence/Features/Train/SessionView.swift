@@ -279,7 +279,6 @@ struct SessionView: View {
 
     private enum SetCol {
         static let num: CGFloat = 26
-        static let prev: CGFloat = 50
         static let reps: CGFloat = 46
         static let rpe: CGFloat = 26
         static let check: CGFloat = 34
@@ -294,8 +293,6 @@ struct SessionView: View {
         HStack(spacing: SetCol.gap) {
             Text(hasPartners ? "WHO" : "Set")
                 .frame(width: whoColumnWidth, alignment: .leading)
-            Text("Prev")
-                .frame(width: SetCol.prev, alignment: .leading)
             Text("Weight (\(settings.unit.abbreviation))")
                 .frame(maxWidth: .infinity, alignment: .center)
             Text("Reps")
@@ -356,21 +353,6 @@ struct SessionView: View {
     private func workingNumber(for exercise: Exercise, extra: Int = 0) -> Int {
         let sets = session.orderedSets.filter { $0.exercise?.id == exercise.id && !$0.isWarmup }
         return sets.count + 1 + extra
-    }
-
-    /// Compact previous-set reference, e.g. "60×8".
-    private func previousReference(for exercise: Exercise, number: String) -> String {
-        guard let ref = previousValues(for: exercise, number: number) else { return "" }
-        return Format.previousShort(ref.weight, reps: ref.reps, unit: settings.unit)
-    }
-
-    /// Previous-set (weightKg, reps) for tap-to-prefill.
-    private func previousValues(for exercise: Exercise, number: String) -> (weight: Double, reps: Int)? {
-        guard let n = Int(number), n > 0 else { return nil }
-        let lastSets = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
-        guard n <= lastSets.count else { return nil }
-        let s = lastSets[n - 1]
-        return (s.weight, s.reps)
     }
 
     private var sessionContent: some View {
@@ -946,9 +928,6 @@ struct SessionView: View {
                 } else {
                     setIndexBadge(number, isWarmup: false)
                 }
-                Text(previousReference(for: exercise, number: number))
-                    .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
-                    .frame(width: SetCol.prev, alignment: .leading)
                 Text("\(reps) reps").font(.subheadline).foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity)
                 Color.clear.frame(width: SetCol.reps)
@@ -965,16 +944,48 @@ struct SessionView: View {
         let last = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
         let pr = WorkoutRepository.currentPR(for: exercise, rule: settings.prRule,
                                              formula: settings.formula, excluding: session)
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 4) {
+            if hasPartners {
+                performerContext(label: "Me", last: last, pr: pr,
+                                 exercise: exercise, performer: nil)
+                ForEach(activePartnerPeople) { partner in
+                    let partnerLast = WorkoutRepository.lastTimeSets(
+                        for: exercise, performedBy: partner, excluding: session
+                    )
+                    if !partnerLast.isEmpty {
+                        performerContext(label: partner.name, last: partnerLast, pr: nil,
+                                        exercise: exercise, performer: partner)
+                    }
+                }
+            } else {
+                if !last.isEmpty {
+                    Text("Last time: " + last.map { Format.setLine($0, unit: settings.unit) }.joined(separator: ", "))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("exercise.lastTime")
+                }
+                if let pr {
+                    Text("PR: \(Format.weight(pr, unit: settings.unit)) · \(settings.prRule.displayName)")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("exercise.pr")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func performerContext(label: String, last: [SetEntry], pr: Double?,
+                                   exercise: Exercise, performer: Person?) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             if !last.isEmpty {
                 Text("Last time: " + last.map { Format.setLine($0, unit: settings.unit) }.joined(separator: ", "))
                     .font(.caption).foregroundStyle(.secondary)
-                    .accessibilityIdentifier("exercise.lastTime")
+                    .accessibilityIdentifier("exercise.lastTime.\(label)")
             }
             if let pr {
                 Text("PR: \(Format.weight(pr, unit: settings.unit)) · \(settings.prRule.displayName)")
                     .font(.caption).foregroundStyle(.secondary)
-                    .accessibilityIdentifier("exercise.pr")
+                    .accessibilityIdentifier("exercise.pr.\(label)")
             }
         }
     }
@@ -989,10 +1000,6 @@ struct SessionView: View {
             } else {
                 setIndexBadge(number, isWarmup: set.isWarmup)
             }
-
-            Text(set.isWarmup ? "" : previousReference(for: exercise, number: number))
-                .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
-                .frame(width: SetCol.prev, alignment: .leading)
 
             Button {
                 openInlineEditor(for: exercise, editing: set)
@@ -1009,14 +1016,6 @@ struct SessionView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.editWeight.\(exercise.name).\(number)")
 
-            Button {
-                openInlineEditor(for: exercise, editing: set)
-            } label: {
-                Text("\(set.reps)").monospacedDigit().frame(width: SetCol.reps)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("set.editReps.\(exercise.name).\(number)")
-
             Group {
                 if let rpe = set.rpe, !set.isWarmup {
                     Text("\(Int(rpe.rounded()))")
@@ -1028,6 +1027,14 @@ struct SessionView: View {
                 }
             }
             .frame(width: SetCol.rpe)
+
+            Button {
+                openInlineEditor(for: exercise, editing: set)
+            } label: {
+                Text("\(set.reps)").monospacedDigit().frame(width: SetCol.reps)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("set.editReps.\(exercise.name).\(number)")
 
             Group {
                 if isAllTimePR(set, exercise: exercise) {
@@ -1044,9 +1051,6 @@ struct SessionView: View {
         .frame(minHeight: 44)
         .contentShape(Rectangle())
         .contextMenu { rowMenu(for: set, exercise: exercise) }
-        // Keep the inner weight/reps/performer controls individually accessible —
-        // a `.contextMenu` otherwise collapses the row into one a11y element,
-        // hiding their identifiers from UI tests (and VoiceOver).
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("set.row.\(exercise.name).\(number)")
     }
@@ -1140,19 +1144,6 @@ struct SessionView: View {
                 } else {
                     setIndexBadge(number, isWarmup: false)
                 }
-
-                Button {
-                    if let (w, r) = previousValues(for: exercise, number: number) {
-                        inlineWeight = Format.weightValue(w, unit: settings.unit)
-                        inlineReps = r
-                    }
-                } label: {
-                    Text(previousReference(for: exercise, number: number))
-                        .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
-                        .frame(width: SetCol.prev, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Use previous set values")
 
                 TextField("0", text: $inlineWeight)
                     .keyboardType(.decimalPad).focused($weightFocused)

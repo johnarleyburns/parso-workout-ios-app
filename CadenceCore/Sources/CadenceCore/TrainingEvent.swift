@@ -231,7 +231,17 @@ extension TrainingEvent {
         )
     }
 
-    public static func from(cardio: CardioWorkout) -> TrainingEvent {
+    /// Converts a logged cardio workout into a coach `TrainingEvent`.
+    ///
+    /// Intensity classification ("coach suggests" plan, Phase 1):
+    /// - **Real age for maxHR** — `userAge` anchors HRmax via Tanaka
+    ///   (`CardioMath.defaultMaxHR`, tanakaMaxHR2001); nil falls back to 190.
+    /// - **Modality floor** — HIIT, boxing, and interval sessions classify at
+    ///   least `.vigorous` regardless of HR (they are intense by construction;
+    ///   averaging rest intervals must not wash them out).
+    /// - **Peak-aware for intervals/combat** — a peak ≥90% HRmax marks the
+    ///     session vigorous even when the average sits below 80%.
+    public static func from(cardio: CardioWorkout, userAge: Int? = nil) -> TrainingEvent {
         let cardioEnd = cardio.end ?? cardio.start.addingTimeInterval(600)
         let completion: EventCompletion = cardioEnd > cardio.start ? .completed : .inProgress
         let duration = max(0, cardioEnd.timeIntervalSince(cardio.start))
@@ -259,15 +269,31 @@ extension TrainingEvent {
         let hrSum = hasHR ? samples.map(\.bpm).reduce(0, +) : 0
         let computedAvgHR = hasHR ? hrSum / Double(samples.count) : nil
         let avgHR = cardio.avgHeartRate ?? computedAvgHR
+        let computedPeakHR = hasHR ? samples.map(\.bpm).max() : nil
+        let peakHR = cardio.maxHeartRate ?? computedPeakHR
+
+        let isInterval = cardioType == .hiit
+        // HIIT/boxing/interval work is intense by construction — HR may raise,
+        // never lower, the classification (user decision #1).
+        let intenseByModality = isInterval || modality == .hiit || modality == .boxing
 
         let intensity: AerobicEventDetails.IntensityClassification
         let intensityConfidence: FactConfidence
+        let maxHR = CardioMath.defaultMaxHR(age: userAge)
         if let hr = avgHR, hr > 0 {
-            let maxHR = 220 - 30
-            let pct = hr / Double(maxHR)
-            if pct >= 0.80 { intensity = .vigorous }
-            else if pct >= 0.60 { intensity = .moderate }
-            else { intensity = .easy }
+            let pct = hr / maxHR
+            let peakPct = (peakHR ?? 0) / maxHR
+            if intenseByModality || pct >= 0.80 || peakPct >= 0.90 {
+                intensity = .vigorous
+            } else if pct >= 0.60 {
+                intensity = .moderate
+            } else {
+                intensity = .easy
+            }
+            intensityConfidence = .moderate
+        } else if intenseByModality {
+            // No HR but the modality itself is intense (e.g. phone-logged HIIT).
+            intensity = .vigorous
             intensityConfidence = .moderate
         } else {
             intensity = .moderate
@@ -285,8 +311,6 @@ extension TrainingEvent {
         case .running, .walking, .cycling, .hiit, .rowing: true
         case .swimming, .boxing, .other: false
         }
-
-        let isInterval = cardioType == .hiit
 
         let details = AerobicEventDetails(
             modality: modality,

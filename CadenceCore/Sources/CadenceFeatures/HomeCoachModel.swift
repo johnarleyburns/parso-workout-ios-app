@@ -26,11 +26,14 @@ public enum HomeCoachModel {
         public var schedule: CoachSchedulePreferences
         public var profile: CoachPreferenceProfile
         public var painToday: Bool
+        /// Cardio intensity classification is age-anchored (Tanaka HRmax), so an
+        /// age edit must invalidate the snapshot. Additive/defaulted.
+        public var userAge: Int?
 
         public init(token: UUID, sessionCount: Int, cardioCount: Int, assessmentCount: Int,
                     goal: TrainingGoal, experience: ExperienceLevel, formula: OneRepMaxFormula,
                     schedule: CoachSchedulePreferences, profile: CoachPreferenceProfile,
-                    painToday: Bool) {
+                    painToday: Bool, userAge: Int? = nil) {
             self.token = token
             self.sessionCount = sessionCount
             self.cardioCount = cardioCount
@@ -41,6 +44,7 @@ public enum HomeCoachModel {
             self.schedule = schedule
             self.profile = profile
             self.painToday = painToday
+            self.userAge = userAge
         }
     }
 
@@ -65,6 +69,7 @@ public enum HomeCoachModel {
                                  formula: OneRepMaxFormula,
                                  schedule: CoachSchedulePreferences,
                                  profile: CoachPreferenceProfile,
+                                 userAge: Int? = nil,
                                  now: Date = Date()) -> Signature {
         Signature(token: token,
                   sessionCount: sessions.count,
@@ -75,7 +80,8 @@ public enum HomeCoachModel {
                   formula: formula,
                   schedule: schedule,
                   profile: profile,
-                  painToday: painToday(readiness: readiness, now: now))
+                  painToday: painToday(readiness: readiness, now: now),
+                  userAge: userAge)
     }
 
     /// Runs the full pure coach pipeline once, deriving `hasPainToday` from readiness.
@@ -89,6 +95,7 @@ public enum HomeCoachModel {
                                 schedule: CoachSchedulePreferences,
                                 profile: CoachPreferenceProfile,
                                 passiveSamples: [PassiveReadinessSample] = [],
+                                userAge: Int? = nil,
                                 now: Date = Date()) -> CoachSnapshot {
         CoachSnapshotBuilder.build(
             sessions: sessions,
@@ -102,6 +109,7 @@ public enum HomeCoachModel {
             profile: profile,
             readinessEntry: latestReadiness(readiness, now: now),
             passiveSamples: passiveSamples,
+            userAge: userAge,
             now: now)
     }
 

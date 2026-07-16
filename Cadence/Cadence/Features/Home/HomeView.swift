@@ -114,7 +114,8 @@ struct HomeView: View {
             experience: settings.experienceLevel,
             formula: settings.formula,
             schedule: settings.coachSchedulePreferences,
-            profile: settings.coachPreferenceProfile)
+            profile: settings.coachPreferenceProfile,
+            userAge: settings.userAge)
     }
 
     /// Builds the full coach snapshot ONCE via the pure CadenceCore builder.
@@ -129,7 +130,8 @@ struct HomeView: View {
             formula: settings.formula,
             schedule: settings.coachSchedulePreferences,
             profile: settings.coachPreferenceProfile,
-            passiveSamples: passiveSamples))
+            passiveSamples: passiveSamples,
+            userAge: settings.userAge))
     }
 
     // MARK: Coach presence (coach-surface-design.md §2, as amended)
@@ -260,7 +262,7 @@ struct HomeView: View {
         _ = historyRefreshToken
         let activeSessions = sessions.filter { $0.deletedAt == nil }
         let strengthEvents = activeSessions.compactMap { TrainingEvent.from(session: $0, formula: settings.formula) }
-        let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { TrainingEvent.from(cardio: $0) }
+        let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { TrainingEvent.from(cardio: $0, userAge: settings.userAge) }
         let assessmentEvents = assessments.map { TrainingEvent.from(assessment: $0) }
         return strengthEvents + cardioEvents + assessmentEvents
     }

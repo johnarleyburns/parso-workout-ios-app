@@ -45,6 +45,7 @@ public enum CoachSnapshotBuilder {
                              profile: CoachPreferenceProfile,
                              readinessEntry: ReadinessEntry? = nil,
                              passiveSamples: [PassiveReadinessSample] = [],
+                             userAge: Int? = nil,
                              now: Date = Date()) -> CoachSnapshot {
         let liveSessions = sessions.filter { $0.deletedAt == nil }
         let trainingFacts = TrainingFacts.make(sessions: liveSessions,
@@ -54,7 +55,8 @@ public enum CoachSnapshotBuilder {
                                                experience: experience,
                                                formula: formula)
         let events = trainingEvents(sessions: liveSessions, cardio: cardio,
-                                    assessments: assessments, formula: formula)
+                                    assessments: assessments, formula: formula,
+                                    userAge: userAge)
         let coachFacts = CoachFacts.make(from: events, goal: goal, experience: experience,
                                          readinessEntry: readinessEntry,
                                          formula: formula, now: now,
@@ -116,9 +118,10 @@ public enum CoachSnapshotBuilder {
     // MARK: - Helpers (ported verbatim from HomeView so behavior is unchanged)
 
     static func trainingEvents(sessions: [WorkoutSession], cardio: [CardioWorkout],
-                               assessments: [Assessment], formula: OneRepMaxFormula) -> [TrainingEvent] {
+                               assessments: [Assessment], formula: OneRepMaxFormula,
+                               userAge: Int? = nil) -> [TrainingEvent] {
         let strength = sessions.compactMap { TrainingEvent.from(session: $0, formula: formula) }
-        let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { TrainingEvent.from(cardio: $0) }
+        let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { TrainingEvent.from(cardio: $0, userAge: userAge) }
         let assessmentEvents = assessments.map { TrainingEvent.from(assessment: $0) }
         return strength + cardioEvents + assessmentEvents
     }

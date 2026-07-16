@@ -130,4 +130,69 @@ final class TrainingEventTests: XCTestCase {
         let event = TrainingEvent.from(cardio: cardio)
         XCTAssertFalse(event.isHard)
     }
+
+    // MARK: - Cardio intensity truth (coach-user-control Phase 1)
+
+    private func intensity(type: CardioType, avgHR: Double? = nil, maxHR: Double? = nil,
+                           age: Int? = nil) throws -> AerobicEventDetails.IntensityClassification {
+        let ctx = try makeContext()
+        let cardio = CardioWorkout(type: type, start: testNow.addingTimeInterval(-3600),
+                                   end: testNow.addingTimeInterval(-1800),
+                                   avgHeartRate: avgHR, maxHeartRate: maxHR, source: .iphone)
+        ctx.insert(cardio)
+        try ctx.save()
+        let event = TrainingEvent.from(cardio: cardio, userAge: age)
+        switch event.kind {
+        case .aerobic(let d), .intervals(let d): return d.intensity
+        default: XCTFail("Expected aerobic/interval event"); return .easy
+        }
+    }
+
+    /// The export's real 7/06–7/13 sessions (age 50) must all classify vigorous:
+    /// HIIT and boxing are intense by construction, HR or not.
+    func testExportWeekIntenseSessionsClassifyVigorous() throws {
+        // 7/06 boxing, no HR
+        XCTAssertEqual(try intensity(type: .boxing, age: 50), .vigorous)
+        // 7/07 HIIT ×3, no HR
+        XCTAssertEqual(try intensity(type: .hiit, age: 50), .vigorous)
+        // 7/08 HIIT, avg 116 / peak 146
+        XCTAssertEqual(try intensity(type: .hiit, avgHR: 116, maxHR: 146, age: 50), .vigorous)
+        // 7/09 boxing, avg 139 / peak 170
+        XCTAssertEqual(try intensity(type: .boxing, avgHR: 139, maxHR: 170, age: 50), .vigorous)
+        // 7/13 boxing, avg 128 / peak 157
+        XCTAssertEqual(try intensity(type: .boxing, avgHR: 128, maxHR: 157, age: 50), .vigorous)
+    }
+
+    /// Age matters: 140 bpm average is vigorous for a 50-year-old (Tanaka HRmax
+    /// ≈ 173) but only moderate for a 30-year-old (≈ 187).
+    func testAgeAnchoredMaxHRChangesClassification() throws {
+        XCTAssertEqual(try intensity(type: .run, avgHR: 140, age: 50), .vigorous)
+        XCTAssertEqual(try intensity(type: .run, avgHR: 140, age: 30), .moderate)
+        // Unknown age falls back to HRmax 190 — same bucket as before the fix.
+        XCTAssertEqual(try intensity(type: .run, avgHR: 140), .moderate)
+    }
+
+    /// Peak-anchored: an interval-style session whose peaks hit ≥90% HRmax is
+    /// vigorous even when rest intervals drag the average below 80%.
+    func testPeakHRMarksVigorousDespiteLowAverage() throws {
+        // Age 50 → HRmax 173; avg 120 (69%) but peak 160 (92%).
+        XCTAssertEqual(try intensity(type: .run, avgHR: 120, maxHR: 160, age: 50), .vigorous)
+    }
+
+    /// A genuine easy walk stays easy, and a no-HR walk keeps the moderate default.
+    func testEasyWalkStaysEasy() throws {
+        XCTAssertEqual(try intensity(type: .walk, avgHR: 96, maxHR: 104, age: 50), .easy)
+        XCTAssertEqual(try intensity(type: .walk, age: 50), .moderate)
+    }
+
+    /// No-HR HIIT/boxing → vigorous AND hard (feeds hardDoneToday / weekly load).
+    func testNoHRIntenseModalitiesAreHard() throws {
+        let ctx = try makeContext()
+        let boxing = CardioWorkout(type: .boxing, start: testNow.addingTimeInterval(-3600),
+                                   end: testNow.addingTimeInterval(-1800), source: .iphone)
+        ctx.insert(boxing)
+        try ctx.save()
+        let event = TrainingEvent.from(cardio: boxing, userAge: 50)
+        XCTAssertTrue(event.isHard)
+    }
 }

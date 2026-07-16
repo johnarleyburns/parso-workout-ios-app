@@ -18,9 +18,12 @@ fail=0
 FEATURES_SRC="$ROOT/CadenceCore/Sources/CadenceFeatures"
 UITEST_DIR="$ROOT/Cadence/CadenceUITests"
 FEATURES_DIR="$ROOT/Cadence/Cadence/Features"
+WATCH_SRC="$ROOT/Cadence/Cadence Watch App Watch App"
+WATCH_UITEST_DIR="$ROOT/Cadence/Cadence Watch App Watch AppUITests"
 
 MAX_LOC=400
 MAX_UITESTS=12
+MAX_WATCH_UITESTS=3
 
 # ── 1. CadenceFeatures import ban ────────────────────────────────────────────
 banned='^[[:space:]]*import[[:space:]]+(SwiftUI|HealthKit|StoreKit|UIKit|CoreBluetooth|CoreLocation)([[:space:]]|$)'
@@ -70,8 +73,28 @@ while IFS= read -r f; do
   fi
 done < <(find "$FEATURES_DIR" -name '*.swift')
 
+# ── 4. Watch UI smoke cap (≤3 tests) ─────────────────────────────────────────
+watch_uitest_count=$(grep -rho "func test" "$WATCH_UITEST_DIR"/*.swift 2>/dev/null | wc -l | tr -d ' ')
+if [ "${watch_uitest_count:-0}" -gt "$MAX_WATCH_UITESTS" ]; then
+  echo "❌ Watch UITests has $watch_uitest_count test functions (max $MAX_WATCH_UITESTS)."
+  echo "   Push new coverage into CadenceFeaturesTests (swift test), not the simulator."
+  fail=1
+fi
+
+# ── 5. Watch view LOC cap ─────────────────────────────────────────────────────
+if [ -d "$WATCH_SRC" ]; then
+  while IFS= read -r f; do
+    rel="${f#"$ROOT"/}"
+    loc=$(wc -l < "$f" | tr -d ' ')
+    if [ "$loc" -gt "$MAX_LOC" ]; then
+      echo "❌ $rel is $loc LOC (max $MAX_LOC). Move logic to CadenceFeatures and split the view."
+      fail=1
+    fi
+  done < <(find "$WATCH_SRC" -name '*.swift')
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo "test-pyramid guardrail: FAILED"
   exit 1
 fi
-echo "test-pyramid guardrail: OK (uitests=$uitest_count/$MAX_UITESTS)"
+echo "test-pyramid guardrail: OK (uitests=$uitest_count/$MAX_UITESTS, watch_uitests=$watch_uitest_count/$MAX_WATCH_UITESTS)"

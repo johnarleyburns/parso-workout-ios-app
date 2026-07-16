@@ -222,9 +222,19 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         let plan = WeeklyPlan.generate(from: facts)
 
-        XCTAssertEqual(plan.futureDays.first?.sessionKind, .recovery)
-        XCTAssertTrue(plan.futureDays.dropFirst().contains { $0.sessionKind == .strength },
-                      "A one-day readiness deferral should not turn the whole future plan into recovery")
+        // Coach suggests, it does not proscribe: poor readiness attaches a
+        // lighter-day recommendation to tomorrow but never converts a scheduled
+        // training day into a forced Recovery day.
+        let tomorrow = try XCTUnwrap(plan.futureDays.first)
+        XCTAssertNotEqual(tomorrow.sessionKind, .recovery,
+                          "Poor readiness must not force a Recovery day")
+        XCTAssertTrue(tomorrow.sessions.contains(where: \.recommendsLighter),
+                      "Poor readiness should attach a non-blocking lighter-day recommendation")
+        XCTAssertTrue(plan.futureDays.contains { day in
+            day.sessions.contains { $0.kind == .strength }
+        }, "A one-day readiness dip should not drop the plan's strength days")
+        XCTAssertFalse(plan.futureDays.dropFirst().flatMap(\.sessions).contains(where: \.recommendsLighter),
+                       "The readiness recommendation applies to tomorrow only")
     }
 
     // MARK: - Observed facts (v2 rich model)

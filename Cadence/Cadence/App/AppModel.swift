@@ -11,15 +11,14 @@ import CadenceFixtures
 /// platform services or deterministic fakes based on launch arguments so the
 /// app is fully UI-testable on the simulator (which has no Health/BLE/GPS data).
 ///
-/// Also contains the deferred phone-side WCSession plumbing for future live
-/// Apple Watch HR. v1 ships without a companion Watch app, so that path stays
-/// disabled in release behavior.
+/// Also contains the phone-side WCSession plumbing for live Apple Watch HR
+/// relay. The watch companion app ships embedded in the phone archive (Phase 0).
 ///
 /// WCSession activation is deferred to `activateWCSession()`, called from
 /// `CadenceApp.task{}` so it never blocks app launch.
 @Observable
 final class AppModel: NSObject {
-    private static let liveWatchHREnabled = false
+    private static let liveWatchHREnabled = true
 
     let health: HealthDataProviding
     let hrm: HeartRateMonitor

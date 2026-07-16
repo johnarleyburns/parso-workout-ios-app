@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cladiron Watch — Screen Mockups</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  :root{
+    --ground:#f4f5f7; --panel:#ffffff; --ink:#14171c; --ink-soft:#565d67;
+    --hair:#e2e5ea; --accent:#12919c; --accent-soft:#e2f4f5;
+    --band:#eceef1;
+    /* signal hues (constant across themes — they live on the black watch face) */
+    --sig-work:#2fd15a; --sig-work-deep:#0f8f3a;
+    --sig-warn:#ffcc00; --sig-imm:#ff8a00;
+    --sig-rest:#ff453a; --sig-rest-deep:#c0271e;
+    --sig-blue:#0a84ff; --sig-purple:#bf5af2;
+    --z1:#7ec8ff; --z2:#2fd15a; --z3:#ffcc00; --z4:#ff8a00; --z5:#ff453a;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ground:#0c0e11; --panel:#15181d; --ink:#e9ecf0; --ink-soft:#9aa2ad;
+      --hair:#262b32; --accent:#2ecad6; --accent-soft:#0f2a2d; --band:#1b1f25;
+    }
+  }
+  :root[data-theme="light"]{
+    --ground:#f4f5f7; --panel:#ffffff; --ink:#14171c; --ink-soft:#565d67;
+    --hair:#e2e5ea; --accent:#12919c; --accent-soft:#e2f4f5; --band:#eceef1;
+  }
+  :root[data-theme="dark"]{
+    --ground:#0c0e11; --panel:#15181d; --ink:#e9ecf0; --ink-soft:#9aa2ad;
+    --hair:#262b32; --accent:#2ecad6; --accent-soft:#0f2a2d; --band:#1b1f25;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:56px 24px 96px;}
+
+  /* ---- page header ---- */
+  header.top{margin-bottom:8px;}
+  .eyebrow{
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--accent); font-weight:700;
+  }
+  h1{
+    font-size:clamp(30px,4.4vw,46px); line-height:1.05; margin:.28em 0 .34em;
+    letter-spacing:-.02em; text-wrap:balance; font-weight:760;
+  }
+  .lede{max-width:66ch; color:var(--ink-soft); font-size:17px; margin:0;}
+  .meta{
+    display:flex; flex-wrap:wrap; gap:10px 8px; margin-top:22px;
+  }
+  .tag{
+    font-size:12.5px; font-weight:600; padding:5px 11px; border-radius:999px;
+    background:var(--panel); border:1px solid var(--hair); color:var(--ink-soft);
+  }
+  .tag b{color:var(--ink); font-weight:700;}
+
+  /* ---- section ---- */
+  .phase{margin-top:58px;}
+  .phase-head{
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+    padding-bottom:12px; border-bottom:1px solid var(--hair); margin-bottom:26px;
+  }
+  .phase-num{
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:13px;
+    font-weight:700; color:var(--accent); padding:3px 9px; border-radius:7px;
+    background:var(--accent-soft); letter-spacing:.02em;
+  }
+  .phase-head h2{font-size:22px; margin:0; letter-spacing:-.01em; font-weight:720;}
+  .phase-head p{margin:0; color:var(--ink-soft); font-size:14.5px; flex:1 1 240px;}
+
+  .grid{
+    display:grid; gap:34px 26px;
+    grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+    justify-items:center;
+  }
+  figure{margin:0; width:100%; max-width:224px; display:flex; flex-direction:column; align-items:center;}
+  figcaption{margin-top:12px; text-align:center;}
+  .cap-t{font-size:14px; font-weight:650; color:var(--ink);}
+  .cap-d{font-size:12.5px; color:var(--ink-soft); margin-top:2px; line-height:1.4;}
+
+  /* ---- the watch ---- */
+  .watch{
+    width:200px; height:244px; border-radius:52px; padding:11px;
+    background:
+      radial-gradient(120% 90% at 50% 0%, #2a2d31 0%, #141517 42%, #050506 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.10) inset,
+      0 20px 34px -18px rgba(0,0,0,.6),
+      0 4px 10px -4px rgba(0,0,0,.4);
+    position:relative;
+  }
+  /* digital crown hint */
+  .watch::after{
+    content:""; position:absolute; right:-3px; top:86px; width:5px; height:34px;
+    border-radius:3px; background:linear-gradient(#3a3d42,#191a1c);
+  }
+  .screen{
+    width:100%; height:100%; border-radius:42px; overflow:hidden;
+    background:#000; color:#fff; position:relative;
+    font-size:13px; display:flex; flex-direction:column;
+  }
+  .screen, .screen *{font-variant-numeric:tabular-nums;}
+
+  /* status row (watch time) */
+  .statusbar{
+    display:flex; justify-content:flex-end; align-items:center;
+    padding:9px 20px 2px; font-size:12px; font-weight:650;
+    color:rgba(255,255,255,.9); letter-spacing:.02em; flex:0 0 auto;
+  }
+  .statusbar .title{margin-right:auto; font-weight:700; letter-spacing:.01em; color:#fff;}
+  .statusbar .amber{color:var(--sig-warn);}
+  .body{flex:1 1 auto; padding:2px 16px 14px; display:flex; flex-direction:column; min-height:0;}
+
+  /* full-bleed signal screens */
+  .signal{align-items:center; justify-content:center; text-align:center; gap:2px; padding-top:0;}
+  .signal .phase-label{
+    font-size:15px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+    display:flex; align-items:center; gap:6px;
+  }
+  .signal .count{
+    font-family:ui-monospace,"SF Mono",Menlo,monospace; font-weight:800;
+    font-size:66px; line-height:.98; letter-spacing:-.03em; margin:2px 0;
+  }
+  .signal .round{font-size:13px; font-weight:700; opacity:.92;}
+  .signal .foot{
+    display:flex; gap:12px; align-items:center; font-size:12px; font-weight:650;
+    opacity:.88; margin-top:4px;
+  }
+  .signal .foot .bpm::before{content:"♥ "; color:#fff;}
+  .fs-work{background:linear-gradient(160deg,var(--sig-work) 0%,var(--sig-work-deep) 100%); color:#04270f;}
+  .fs-warn{background:linear-gradient(160deg,#ffe14d 0%,var(--sig-warn) 100%); color:#3a2f00;}
+  .fs-imm{background:linear-gradient(160deg,var(--sig-warn),var(--sig-imm)); color:#3a1a00; animation:flash 1s steps(1) infinite;}
+  .fs-rest{background:linear-gradient(160deg,var(--sig-rest) 0%,var(--sig-rest-deep) 100%); color:#2e0503;}
+  @keyframes flash{50%{background:linear-gradient(160deg,var(--sig-imm),#ff5e00);}}
+  @media (prefers-reduced-motion: reduce){ .fs-imm{animation:none;} }
+
+  /* progress ring dots for rounds */
+  .pips{display:flex; gap:3px; margin-top:2px;}
+  .pips i{width:5px; height:5px; border-radius:50%; background:rgba(0,0,0,.28);}
+  .pips i.on{background:rgba(0,0,0,.72);}
+
+  /* list rows */
+  .rows{display:flex; flex-direction:column; gap:7px; overflow:hidden;}
+  .row{
+    background:rgba(255,255,255,.09); border-radius:13px; padding:9px 12px;
+    display:flex; align-items:center; gap:9px;
+  }
+  .row .ic{font-size:15px; width:19px; text-align:center;}
+  .row .lab{font-weight:650; font-size:13.5px; flex:1; min-width:0;}
+  .row .sub{font-size:11px; color:rgba(255,255,255,.55); font-weight:550;}
+  .row.hero{background:var(--sig-blue); }
+  .row.hero .sub{color:rgba(255,255,255,.8);}
+  .row .chev{opacity:.4; font-size:13px;}
+  .row.green{background:rgba(47,209,90,.18);}
+  .row .pill{font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; background:rgba(255,255,255,.16);}
+
+  /* big data (HR) */
+  .hr-big{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-weight:800; font-size:58px; line-height:1;}
+  .center{align-items:center; text-align:center; justify-content:center; gap:4px;}
+  .muted{color:rgba(255,255,255,.55);}
+  .lbl{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:rgba(255,255,255,.5); font-weight:700;}
+
+  /* zone bar */
+  .zonebar{display:flex; gap:3px; width:100%; margin-top:3px;}
+  .zonebar i{height:7px; flex:1; border-radius:2px; opacity:.28;}
+  .zonebar i.on{opacity:1;}
+  .z1{background:var(--z1);} .z2{background:var(--z2);} .z3{background:var(--z3);} .z4{background:var(--z4);} .z5{background:var(--z5);}
+
+  /* keypad */
+  .kp-val{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-weight:800; font-size:52px; line-height:1; text-align:center;}
+  .kp-unit{font-size:15px; color:rgba(255,255,255,.6); font-weight:650;}
+  .chips{display:flex; gap:6px; justify-content:center; margin-top:8px; flex-wrap:wrap;}
+  .chip{background:rgba(255,255,255,.14); border-radius:999px; padding:6px 12px; font-size:13px; font-weight:700;}
+  .chip.acc{background:var(--sig-blue);}
+  .crownhint{font-size:10.5px; color:rgba(255,255,255,.42); text-align:right; margin-top:auto; padding-top:6px;}
+  .crownhint::before{content:"⟳ "; }
+
+  /* primary action button */
+  .btn{
+    border-radius:16px; padding:12px; text-align:center; font-weight:750; font-size:15px;
+    background:var(--sig-work); color:#04270f; margin-top:auto;
+  }
+  .btn.blue{background:var(--sig-blue); color:#fff;}
+  .btn.ghost{background:rgba(255,255,255,.12); color:#fff;}
+  .btn.red{background:var(--sig-rest); color:#fff;}
+
+  /* segmented / setup */
+  .field{display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,.08); border-radius:12px; padding:9px 12px;}
+  .field .k{font-size:12px; color:rgba(255,255,255,.6); font-weight:600;}
+  .field .v{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-weight:750; font-size:16px;}
+  .field .step{display:flex; gap:8px; align-items:center;}
+  .field .step b{width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.16); display:grid; place-items:center; font-size:14px; font-weight:800;}
+
+  .science{font-size:10.5px; color:var(--sig-blue); font-weight:650; margin-top:8px;}
+  .science::before{content:"→ ";}
+
+  .avatar{width:20px;height:20px;border-radius:50%;background:linear-gradient(140deg,#0a84ff,#5e5ce6);display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;flex:0 0 auto;}
+  .avatar.p2{background:linear-gradient(140deg,#ff9f0a,#ff375f);}
+  .avatar.me{background:linear-gradient(140deg,#2fd15a,#0f8f3a);}
+
+  .toast{background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.14); border-radius:14px; padding:10px 12px; font-size:12px;}
+  .summ-stat{display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.1); font-size:13px;}
+  .summ-stat:last-child{border-bottom:0;}
+  .summ-stat b{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-weight:750;}
+  .summ-stat span{color:rgba(255,255,255,.6);}
+
+  .legend{
+    display:flex; flex-wrap:wrap; gap:8px 16px; margin-top:20px; padding:14px 16px;
+    background:var(--panel); border:1px solid var(--hair); border-radius:14px; font-size:13px;
+  }
+  .legend span{display:flex; align-items:center; gap:7px; color:var(--ink-soft); font-weight:600;}
+  .sw{width:13px; height:13px; border-radius:4px; display:inline-block;}
+
+  footer.foot{margin-top:70px; padding-top:22px; border-top:1px solid var(--hair); color:var(--ink-soft); font-size:13.5px;}
+  footer.foot b{color:var(--ink);}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Cladiron · watchOS companion</div>
+    <h1>Watch app — screen mockups for review</h1>
+    <p class="lede">The wrist experience: a full-screen, color-coded HIIT &amp; Boxing round
+      timer plus standalone strength logging that keeps partners and smart exercise swaps —
+      all runnable with the phone in a locker. Screens are grouped by build phase; interval
+      colors mirror the phone's signal engine exactly.</p>
+    <div class="meta">
+      <span class="tag"><b>Standalone</b> · own store, WC sync</span>
+      <span class="tag"><b>Live HR</b> · watch-native + BLE strap</span>
+      <span class="tag"><b>Intervals first</b> · then strength → partners/swap</span>
+      <span class="tag">Series 10 · 46mm · watchOS 11</span>
+    </div>
+    <div class="legend" aria-label="Signal color legend">
+      <span><i class="sw" style="background:#2fd15a"></i> Work</span>
+      <span><i class="sw" style="background:#ffcc00"></i> 30s warning</span>
+      <span><i class="sw" style="background:#ff8a00"></i> Final 3s (flashing)</span>
+      <span><i class="sw" style="background:#ff453a"></i> Rest</span>
+      <span><i class="sw" style="background:#0a84ff"></i> Neutral / warm-up</span>
+    </div>
+  </header>
+
+  <!-- ===================== PHASE 2 : INTERVALS ===================== -->
+  <section class="phase">
+    <div class="phase-head">
+      <span class="phase-num">Phase 2</span>
+      <h2>HIIT &amp; Boxing — the color-coded timer</h2>
+      <p>The whole screen is the signal, readable across the room; color + label + icon + haptics carry meaning. Reuses <code>IntervalRunner</code>.</p>
+    </div>
+    <div class="grid">
+
+      <!-- WORK -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">HIIT</span>10:24</div>
+          <div class="body signal fs-work">
+            <div class="phase-label">⚡ Work</div>
+            <div class="count">0:18</div>
+            <div class="round">Round 3 / 8</div>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="foot"><span class="bpm">148</span><span>· 6:20 left</span></div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Work phase</div><div class="cap-d">Green. Big countdown, round pips, live BPM.</div></figcaption>
+      </figure>
+
+      <!-- WARNING -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">HIIT</span>10:24</div>
+          <div class="body signal fs-warn">
+            <div class="phase-label">⚡ Work</div>
+            <div class="count">0:28</div>
+            <div class="round">Round 3 / 8</div>
+            <div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="foot"><span class="bpm">156</span><span>· push!</span></div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">30-second warning</div><div class="cap-d">Yellow + one haptic tap as the phase nears its end.</div></figcaption>
+      </figure>
+
+      <!-- IMMINENT -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">HIIT</span>10:25</div>
+          <div class="body signal fs-imm">
+            <div class="phase-label">⚡ Work</div>
+            <div class="count">0:02</div>
+            <div class="round">Round 3 / 8</div>
+            <div class="foot"><span>rest next</span></div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Final 3 seconds</div><div class="cap-d">Flashes yellow↔orange + tick haptics (solid if Reduce Motion).</div></figcaption>
+      </figure>
+
+      <!-- REST -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">HIIT</span>10:25</div>
+          <div class="body signal fs-rest">
+            <div class="phase-label">⏸ Rest</div>
+            <div class="count">0:09</div>
+            <div class="round">Next: Round 4 / 8</div>
+            <div class="foot"><span class="bpm">139</span><span>· recover</span></div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Rest phase</div><div class="cap-d">Red, with the next round previewed. HR falls back.</div></figcaption>
+      </figure>
+
+      <!-- BOXING ROUND -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">🥊 Boxing</span>18:02</div>
+          <div class="body signal fs-work">
+            <div class="phase-label">🥊 Round 3</div>
+            <div class="count">1:47</div>
+            <div class="round">of 12 · 3:00 rounds</div>
+            <div class="foot"><span class="bpm">161</span><span>· bell in 1:47</span></div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Boxing round</div><div class="cap-d">Bell haptic + tone at each transition; no warm-up/cool-down.</div></figcaption>
+      </figure>
+
+      <!-- HIIT SETUP -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Choose</span>10:20</div>
+          <div class="body">
+            <div class="rows">
+              <div class="row green"><span class="ic">⚡</span><span class="lab">Tabata<div class="sub">8 × 20s / 10s</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">🏔</span><span class="lab">Norwegian 4×4<div class="sub">4 × 4min / 3min</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">🔟</span><span class="lab">10-20-30<div class="sub">easy · mod · sprint</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">✎</span><span class="lab">Custom</span><span class="chev">›</span></div>
+            </div>
+            <div class="science">The science: Tabata 1996</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">HIIT protocol picker</div><div class="cap-d">Cited presets from the shared <code>IntervalPlan</code> factories.</div></figcaption>
+      </figure>
+
+      <!-- BOXING SETUP -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">🥊 Boxing</span>10:21</div>
+          <div class="body" style="gap:8px;">
+            <div class="field"><span class="k">Rounds</span><span class="step"><b>−</b><span class="v">12</span><b>+</b></span></div>
+            <div class="field"><span class="k">Round</span><span class="step"><b>−</b><span class="v">3:00</span><b>+</b></span></div>
+            <div class="field"><span class="k">Rest</span><span class="step"><b>−</b><span class="v">1:00</span><b>+</b></span></div>
+            <div class="btn">Start</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Boxing setup</div><div class="cap-d">Digital Crown or ± steps. Boxing defaults 12 × 3:00 / 1:00.</div></figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ===================== PHASE 1 : HR ===================== -->
+  <section class="phase">
+    <div class="phase-head">
+      <span class="phase-num">Phase 1</span>
+      <h2>Live heart rate — your source, your choice</h2>
+      <p>High-frequency watch-native stream <em>or</em> a Bluetooth chest strap paired to the watch. Never the slow Fitness-app samples.</p>
+    </div>
+    <div class="grid">
+
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Heart Rate</span>10:26</div>
+          <div class="body center">
+            <div class="hr-big" style="color:#ff453a">152</div>
+            <div class="lbl">BPM · Zone 4</div>
+            <div class="zonebar"><i class="z1 on"></i><i class="z2 on"></i><i class="z3 on"></i><i class="z4 on"></i><i class="z5"></i></div>
+            <div class="muted" style="font-size:11px;margin-top:6px;">Hard · 87% max</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Live HR + zones</div><div class="cap-d">Number tints to the zone; five-segment zone bar below.</div></figcaption>
+      </figure>
+
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">HR Source</span>10:26</div>
+          <div class="body">
+            <div class="rows">
+              <div class="row hero"><span class="ic">⌚️</span><span class="lab">Apple Watch<div class="sub">Live stream · default</div></span><span class="ic">✓</span></div>
+              <div class="row"><span class="ic">📡</span><span class="lab">Chest strap<div class="sub">Wahoo TICKR · 84%</div></span><span class="chev">›</span></div>
+            </div>
+            <div class="muted" style="font-size:11px;margin-top:10px;">Your pick is remembered and used next time — change it anytime.</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">HR source picker</div><div class="cap-d">Persisted default; strap pairs directly to the watch (0x180D).</div></figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ===================== PHASE 0/3 : LAUNCH + STRENGTH ===================== -->
+  <section class="phase">
+    <div class="phase-head">
+      <span class="phase-num">Phase 0 · 3</span>
+      <h2>Launch &amp; standalone strength logging</h2>
+      <p>Start from a Smart-Start routine or resume a handoff, then log sets/reps/weight on the wrist. Syncs to the phone by UUID.</p>
+    </div>
+    <div class="grid">
+
+      <!-- LAUNCHER -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Cladiron</span>10:18</div>
+          <div class="body">
+            <div class="rows">
+              <div class="row hero"><span class="ic">▶</span><span class="lab">Resume<div class="sub">Push A · 3 sets in</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">🏋️</span><span class="lab">Lift</span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">⚡</span><span class="lab">HIIT</span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">🥊</span><span class="lab">Boxing</span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">⚙</span><span class="lab">Settings</span><span class="chev">›</span></div>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Launcher</div><div class="cap-d">Glanceable list; Resume floats to the top when a session is live.</div></figcaption>
+      </figure>
+
+      <!-- ROUTINE PICKER -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Start Lift</span>10:18</div>
+          <div class="body">
+            <div class="rows">
+              <div class="row green"><span class="ic">★</span><span class="lab">Push A<div class="sub">Suggested today</div></span><span class="pill">Smart</span></div>
+              <div class="row"><span class="ic">💪</span><span class="lab">Pull B<div class="sub">2 days ago</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">🦵</span><span class="lab">Legs<div class="sub">5 days ago</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">＋</span><span class="lab">Empty workout</span><span class="chev">›</span></div>
+            </div>
+            <div class="science">Why: pickRoutine — recovery + rotation</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Routine picker</div><div class="cap-d">Smart Start ranks the suggestion via <code>RecommendationEngine</code>.</div></figcaption>
+      </figure>
+
+      <!-- EXERCISE CARD -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title amber">● REC</span>10:31</div>
+          <div class="body">
+            <div style="font-size:15px;font-weight:750;">Bench Press</div>
+            <div class="muted" style="font-size:11.5px;margin-bottom:6px;">Set 3 · last: 135 × 8</div>
+            <div class="row" style="background:rgba(255,255,255,.06);justify-content:center;gap:14px;padding:12px;">
+              <div style="text-align:center;"><div class="kp-unit">lb</div><div style="font-family:ui-monospace;font-weight:800;font-size:26px;">135</div></div>
+              <div class="muted" style="font-size:22px;">×</div>
+              <div style="text-align:center;"><div class="kp-unit">reps</div><div style="font-family:ui-monospace;font-weight:800;font-size:26px;">8</div></div>
+            </div>
+            <div class="btn" style="margin-top:8px;">Log set</div>
+            <div class="crownhint">Turn crown to edit</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Exercise card</div><div class="cap-d">Previous set shown; one tap logs. Swipe for menu (swap, notes).</div></figcaption>
+      </figure>
+
+      <!-- WEIGHT KEYPAD -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Weight</span>10:31</div>
+          <div class="body center">
+            <div class="kp-val">140<span class="kp-unit"> lb</span></div>
+            <div class="chips"><span class="chip">−5</span><span class="chip">−2.5</span><span class="chip">+2.5</span><span class="chip acc">+5</span></div>
+            <div class="chips"><span class="chip">bar 45</span><span class="chip">+plate 45</span></div>
+            <div class="crownhint">Fine-tune with crown</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Weight keypad</div><div class="cap-d">Crown for fine, chips for coarse + plate math (barbell accounting).</div></figcaption>
+      </figure>
+
+      <!-- REPS KEYPAD -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Reps</span>10:31</div>
+          <div class="body center">
+            <div class="kp-val">8</div>
+            <div class="chips"><span class="chip">−1</span><span class="chip acc">+1</span><span class="chip">+2</span></div>
+            <div class="chips"><span class="chip">5</span><span class="chip">8</span><span class="chip">10</span><span class="chip">12</span></div>
+            <div class="crownhint">Crown to dial reps</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Reps keypad</div><div class="cap-d">Quick common values + crown. Warm-up toggle via swipe.</div></figcaption>
+      </figure>
+
+      <!-- REST TIMER -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Rest</span>10:32</div>
+          <div class="body center">
+            <div class="hr-big" style="color:#0a84ff;font-size:50px;">1:12</div>
+            <div class="lbl">until next set</div>
+            <div class="chips" style="margin-top:10px;"><span class="chip">+30s</span><span class="chip acc">Skip</span></div>
+            <div class="muted" style="font-size:11px;margin-top:8px;">Bench · next: 140 × 8</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Rest timer</div><div class="cap-d">Auto-starts after a set; haptic at zero. Reuses <code>RestTimerModel</code>.</div></figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ===================== PHASE 4 : PARTNERS + SWAP ===================== -->
+  <section class="phase">
+    <div class="phase-head">
+      <span class="phase-num">Phase 4</span>
+      <h2>Partners &amp; smart swaps — the differentiators</h2>
+      <p>Rotate the logger through a partner roster after each set; swap a broken/occupied machine for a ranked substitute — no keyboard needed.</p>
+    </div>
+    <div class="grid">
+
+      <!-- PARTNER ROTATION -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title amber">● REC</span>10:34</div>
+          <div class="body">
+            <div class="muted" style="font-size:11px;">Logging for</div>
+            <div class="rows" style="margin-top:4px;">
+              <div class="row green"><span class="avatar me">Me</span><span class="lab">Me<div class="sub">up now</div></span><span class="ic">✓</span></div>
+              <div class="row"><span class="avatar">D</span><span class="lab">Diego<div class="sub">next</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="avatar p2">S</span><span class="lab">Sam</span><span class="chev">›</span></div>
+              <div class="row" style="background:rgba(255,255,255,.05);"><span class="ic">＋</span><span class="lab">Add partner</span></div>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Partner rotation</div><div class="cap-d">Auto-advances after each saved set. Partner sets stay out of your PRs.</div></figcaption>
+      </figure>
+
+      <!-- SWAP -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Swap</span>10:36</div>
+          <div class="body">
+            <div class="muted" style="font-size:11px;">Instead of Bench Press</div>
+            <div class="rows" style="margin-top:4px;">
+              <div class="row hero"><span class="ic">↔</span><span class="lab">DB Bench<div class="sub">same pattern</div></span><span class="pill">Best</span></div>
+              <div class="row"><span class="ic">↔</span><span class="lab">Machine Press<div class="sub">chest · avail.</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">↔</span><span class="lab">Push-up<div class="sub">bodyweight</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">🔍</span><span class="lab">All exercises</span></div>
+            </div>
+            <div class="science">Ranked by movement + equipment</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Smart swap</div><div class="cap-d">New <code>ExerciseSubstitution</code> ranker; keeps logged sets via <code>changeExercise</code>.</div></figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ===================== PHASE 5 : HANDOFF + POLISH ===================== -->
+  <section class="phase">
+    <div class="phase-head">
+      <span class="phase-num">Phase 5</span>
+      <h2>Handoff, summary &amp; the Smart Stack</h2>
+      <p>Move a live session between devices, wrap up with a summary, and glance at the current phase from the watch face.</p>
+    </div>
+    <div class="grid">
+
+      <!-- HANDOFF -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Cladiron</span>10:17</div>
+          <div class="body center">
+            <div style="font-size:30px;">📲</div>
+            <div style="font-size:14px;font-weight:700;">Continue on Watch?</div>
+            <div class="muted" style="font-size:11.5px;">Push A · started on iPhone<br>3 sets logged</div>
+            <div class="btn blue" style="margin-top:10px;">Continue</div>
+            <div class="btn ghost" style="margin-top:6px;padding:8px;font-size:13px;">Not now</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Live handoff</div><div class="cap-d">State via <code>updateApplicationContext</code> — works both directions.</div></figcaption>
+      </figure>
+
+      <!-- SUMMARY -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Done</span>11:07</div>
+          <div class="body">
+            <div style="font-size:15px;font-weight:750;margin-bottom:4px;">Push A ✓</div>
+            <div class="summ-stat"><span>Duration</span><b>48:12</b></div>
+            <div class="summ-stat"><span>Sets</span><b>18</b></div>
+            <div class="summ-stat"><span>Volume</span><b>9,240 lb</b></div>
+            <div class="summ-stat"><span>Avg HR</span><b>121</b></div>
+            <div class="summ-stat"><span>PRs</span><b style="color:#2fd15a;">2 🏆</b></div>
+            <div class="btn" style="margin-top:8px;">Save &amp; sync</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Workout summary</div><div class="cap-d">Writes an <code>HKWorkout</code> summary; syncs full detail to phone.</div></figcaption>
+      </figure>
+
+      <!-- SETTINGS -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Settings</span>10:15</div>
+          <div class="body">
+            <div class="rows">
+              <div class="row"><span class="ic">♥</span><span class="lab">HR source<div class="sub">Apple Watch</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">🎨</span><span class="lab">Color-blind mode<div class="sub">Off</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">📳</span><span class="lab">Haptic cues<div class="sub">Strong</div></span><span class="chev">›</span></div>
+              <div class="row"><span class="ic">💧</span><span class="lab">Water lock in runs<div class="sub">On</div></span><span class="chev">›</span></div>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Settings</div><div class="cap-d">HR source, color-blind palette, haptic strength, water-lock. Syncs with phone.</div></figcaption>
+      </figure>
+
+      <!-- SMART STACK -->
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">9:41</span></div>
+          <div class="body" style="justify-content:center;gap:9px;">
+            <div class="toast" style="border-color:rgba(47,209,90,.4);background:rgba(47,209,90,.14);">
+              <div style="display:flex;justify-content:space-between;font-weight:750;font-size:13px;"><span>⚡ Work · R3/8</span><span style="font-family:ui-monospace;">0:18</span></div>
+              <div class="muted" style="font-size:10.5px;margin-top:2px;">Cladiron · tap to open</div>
+            </div>
+            <div class="toast">
+              <div style="display:flex;justify-content:space-between;font-size:12px;"><span class="muted">Next round in</span><b style="font-family:ui-monospace;">0:18</b></div>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Smart Stack / complication</div><div class="cap-d">Current phase + countdown glanceable from the watch face.</div></figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p><b>Reliability, by design.</b> Every screen above runs on shared, <code>swift test</code>-covered logic
+    from <code>CadenceCore</code>/<code>CadenceFeatures</code>. The watch is embedded in the phone archive (the fix
+    for why it never shipped), logs to its own local store, and syncs by UUID — no CloudKit on the wrist.
+    Verified on TestFlight, with a single on-device smoke on one named simulator.</p>
+  </footer>
+</div>
+
+</body>
+</html>

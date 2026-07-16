@@ -619,6 +619,12 @@ public enum CoachDecisionEngine {
                     // Any aerobic already done today → moderate penalty
                     penalty += 15
                 }
+                if event.isHard && session.isAerobic {
+                    // Intense cardio already banked today ("coach suggests" plan,
+                    // Phase 2): more aerobic work is redundant — push it below a
+                    // still-needed strength session. Strength is never damped here.
+                    penalty += 25
+                }
             case .strength:
                 if session.kind == .strength {
                     penalty += 40  // Strength already done today

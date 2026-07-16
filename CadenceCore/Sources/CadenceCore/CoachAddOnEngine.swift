@@ -11,6 +11,13 @@ public enum CoachAddOnEngine {
 
         let strengthDoneToday = todayCompleted.contains(where: \.isStrength)
         let hardDoneToday = todayCompleted.contains(where: \.isHard)
+        // Same-day cardio load ("coach suggests" plan, Phase 2): once intense
+        // cardio — or a second cardio session — is already logged today, pushing
+        // "Add easy cardio" is a nag, not coaching. hardDoneToday already covers
+        // vigorous sessions (Phase 1 classifies HIIT/boxing as hard); the count
+        // guard covers stacked easier sessions.
+        let cardioToday = todayCompleted.filter(\.isAerobic)
+        let redundantCardioToday = cardioToday.contains(where: \.isHard) || cardioToday.count >= 2
 
         let cardioDayTarget = schedulePreferences.cardioDaysPerWeek
         let aerobicTarget = 150.0
@@ -46,7 +53,7 @@ public enum CoachAddOnEngine {
 
         // Encouraged: cardio is below target, and no hard strength already done today
         // that would make extra cardio a second hard session on the same day.
-        if !hardDoneToday && (cardioDaysBelow || minutesBelow) {
+        if !hardDoneToday && !redundantCardioToday && (cardioDaysBelow || minutesBelow) {
             let session = CoachSession(
                 id: "addon.easyCardioEncouraged",
                 kind: .easyAerobic,

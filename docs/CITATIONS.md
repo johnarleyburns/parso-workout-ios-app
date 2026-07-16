@@ -292,10 +292,13 @@ Meeusen et al. (2013). *Prevention, diagnosis and treatment of the overtraining
 syndrome: ECSS/ACSM consensus.* **MSSE.**
 <https://pubmed.ncbi.nlm.nih.gov/23247672/>
 
-- **Used by:** pain/illness safety gate, consecutive hard-day warnings.
+- **Used by:** pain/illness safety gate, consecutive hard-day warnings, and the
+  same-day intense-load insight ("hard work already banked today" — the coach
+  notices HIIT/boxing load instead of pushing more easy cardio).
 - **What it supports:** overtraining syndrome cannot be diagnosed by simple app markers;
   Coach flags persistent poor recovery and suggests reducing load.
-- **App policy:** Coach never labels a user "overtrained."
+- **App policy:** Coach never labels a user "overtrained." The insight observes;
+  it never blocks or downgrades a strength session the user asked for.
 
 ### `sawMonitoring2016` — self-report monitoring
 Saw, Main & Gastin (2016). *Monitoring the athlete training response: subjective

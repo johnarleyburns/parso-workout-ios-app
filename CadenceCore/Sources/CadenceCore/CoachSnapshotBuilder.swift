@@ -88,6 +88,15 @@ public enum CoachSnapshotBuilder {
             diagnostics: optimized.diagnostics,
             isBehindPlan: behindPlan,
             now: now)
+        // "You already trained hard today" is an observation, not a prescription —
+        // surfaced first so the Coach card's top insight acknowledges banked work
+        // instead of nagging (coach-user-control Phase 2).
+        let allInsights: [Insight]
+        if let sameDay = SameDayLoadInsight.insight(facts: coachFacts) {
+            allInsights = [sameDay] + insights
+        } else {
+            allInsights = insights
+        }
 
         let recommendation: Recommendation = {
             if let rec = CoachRecommendationEngine.run(coachFacts, profile: profile)
@@ -109,7 +118,7 @@ public enum CoachSnapshotBuilder {
                                         hasPainConcern: hasPainToday)
         }()
 
-        return CoachSnapshot(facts: trainingFacts, insights: insights,
+        return CoachSnapshot(facts: trainingFacts, insights: allInsights,
                              recommendation: recommendation, decision: decision,
                              plan: plan, behindPlan: behindPlan, addOn: addOn,
                              readiness: coachFacts.readiness)

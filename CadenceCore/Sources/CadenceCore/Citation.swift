@@ -690,7 +690,7 @@ public enum CitationRegistry {
         "ramosCampoSplit2024": "Full-body vs split routine effects on strength and hypertrophy — backs session-structure choices in the weekly plan.",
         "parejaBlancoRecovery2020": "48-hour same-lift recovery window after training to failure — backs the session eligibility deferral gates.",
         "sawMonitoring2016": "Self-reported measures trump objective monitoring — backs the readiness check-in system, recovery recommendations, and the passive-readiness FUSION rule (self-report wins wherever present; passive signals only fill the gap).",
-        "meeusenOvertraining2013": "Overtraining prevention consensus — backs pain/illness safety gates, hard-day streak warnings, and rest-day prescriptions.",
+        "meeusenOvertraining2013": "Overtraining prevention consensus — backs pain/illness safety gates, hard-day streak warnings, rest-day prescriptions, and the same-day intense-load insight.",
         "schumannConcurrent2022": "Concurrent aerobic + strength compatibility — backs lower-body collision gates and two-a-day timing guidance.",
         "crowleyVO2Intensity2022": "Exercise intensity and VO₂max improvement — backs VO₂-interval session prescriptions.",
         "poonHIIT2024": "HIIT and cardiorespiratory fitness umbrella review — backs HIIT session candidates and prescriptions.",

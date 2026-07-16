@@ -206,30 +206,24 @@ public struct WeeklyPlan: Sendable, Equatable {
         var completedDays = Set<Date>()
         var hardDays = Set<Date>()
         var strengthDays = Set<Date>()
-        // Past cardio days keep the *real* logged modality (issue: a logged Boxing
-        // session must read "Boxing", not the generic "Easy aerobic" bucket).
-        var cardioEventsByDay: [Date: (hasHard: Bool, kind: CoachSessionKind, modalityLabel: String?)] = [:]
+        // Every logged workout on a day gets its own chip (coach-user-control
+        // Phase 4): a strength AM + boxing PM day lists both, each linked back to
+        // its real workout via `sourceWorkoutId`. Past cardio keeps the *real*
+        // logged modality (a Boxing session reads "Boxing", never the generic
+        // "Easy aerobic" bucket).
+        var strengthEventsByDay: [Date: [TrainingEvent]] = [:]
+        var cardioEventsByDay: [Date: [TrainingEvent]] = [:]
 
         for event in facts.rolling7dCompletedEvents {
             let d = cal.startOfDay(for: event.start)
             completedDays.insert(d)
             if event.isHard { hardDays.insert(d) }
-            if event.isStrength { strengthDays.insert(d) }
+            if event.isStrength {
+                strengthDays.insert(d)
+                strengthEventsByDay[d, default: []].append(event)
+            }
             if event.isAerobic {
-                let cur = cardioEventsByDay[d]
-                let isHard = event.isHard
-                let kind: CoachSessionKind = isHard ? .moderateAerobic : .easyAerobic
-                let modalityLabel: String?
-                switch event.kind {
-                case .aerobic(let details), .intervals(let details):
-                    modalityLabel = details.modality == .other ? nil : details.modality.displayName
-                default:
-                    modalityLabel = nil
-                }
-                if cur == nil || isHard {
-                    cardioEventsByDay[d] = (hasHard: isHard, kind: kind,
-                                            modalityLabel: modalityLabel ?? cur?.modalityLabel)
-                }
+                cardioEventsByDay[d, default: []].append(event)
             }
         }
 
@@ -238,31 +232,26 @@ public struct WeeklyPlan: Sendable, Equatable {
             let date = cal.date(byAdding: .day, value: offset, to: today) ?? today
             let isToday = offset == 0
             let isCompleted = completedDays.contains(date)
-            let wasStrength = strengthDays.contains(date)
-            let cardioInfo = cardioEventsByDay[date]
 
             var sessions: [PlannedSession] = []
-            if wasStrength {
-                sessions.append(PlannedSession(id: "h-\(date)-strength",
+            for (idx, event) in (strengthEventsByDay[date] ?? []).sorted(by: { $0.start < $1.start }).enumerated() {
+                sessions.append(PlannedSession(id: "h-\(date)-strength-\(idx)",
                                                 kind: .strength, label: "Strength",
-                                                isHard: true, isRest: false))
+                                                isHard: true, isRest: false,
+                                                sourceWorkoutId: event.id))
             }
-            if let cardio = cardioInfo {
-                sessions.append(PlannedSession(id: "h-\(date)-cardio",
-                                                kind: cardio.kind,
-                                                label: cardio.modalityLabel ?? cardioLabel(cardio.kind),
-                                                isHard: cardio.kind == .moderateAerobic, isRest: false))
+            for (idx, event) in (cardioEventsByDay[date] ?? []).sorted(by: { $0.start < $1.start }).enumerated() {
+                let kind: CoachSessionKind = event.isHard ? .moderateAerobic : .easyAerobic
+                sessions.append(PlannedSession(id: "h-\(date)-cardio-\(idx)",
+                                                kind: kind,
+                                                label: historyModalityLabel(for: event) ?? cardioLabel(kind),
+                                                isHard: event.isHard, isRest: false,
+                                                sourceWorkoutId: event.id))
             }
 
-            let label: String
-            if wasStrength && cardioInfo != nil {
-                // A strength+cardio day describes both sessions (issue 7); it must
-                // never collapse to a bare weekday name like "Thu".
-                label = dayLabel(forSessions: sessions)
-            }
-            else if wasStrength { label = "Strength" }
-            else if let cardio = cardioInfo { label = cardio.modalityLabel ?? cardioLabel(cardio.kind) }
-            else { label = "—" }
+            // A multi-session day describes every session (issue 7); it must
+            // never collapse to a bare weekday name like "Thu".
+            let label = sessions.isEmpty ? "—" : dayLabel(forSessions: sessions)
 
             days.append(DayOutline(
                 date: date, label: label, sessions: sessions,
@@ -634,6 +623,15 @@ public struct WeeklyPlan: Sendable, Equatable {
         if sessions.isEmpty { return "—" }
         let names = sessions.map(\.label)
         return names.joined(separator: " · ")
+    }
+
+    private static func historyModalityLabel(for event: TrainingEvent) -> String? {
+        switch event.kind {
+        case .aerobic(let details), .intervals(let details):
+            return details.modality == .other ? nil : details.modality.displayName
+        default:
+            return nil
+        }
     }
 
     private static func plannedModerateEquivalentMinutes(for kind: CoachSessionKind) -> Double {

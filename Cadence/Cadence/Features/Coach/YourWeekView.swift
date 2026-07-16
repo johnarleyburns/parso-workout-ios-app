@@ -10,6 +10,15 @@ struct YourWeekView: View {
     var cardio: [CardioWorkout] = []
     @Binding var path: NavigationPath
     @Environment(AppSettings.self) private var settingsObject
+    @State private var dayChooser: DayRouteChoices?
+
+    /// A completed day with multiple logged workouts: the chooser offering one
+    /// destination per workout (coach-user-control Phase 4).
+    private struct DayRouteChoices: Identifiable {
+        let day: WeeklyPlan.DayOutline
+        let choices: [(label: String, route: HistorySummaryRoute)]
+        var id: String { day.id }
+    }
 
     init(decision: CoachDecision, facts: CoachFacts,
          sessions: [WorkoutSession] = [], cardio: [CardioWorkout] = [],
@@ -206,15 +215,36 @@ struct YourWeekView: View {
         }
         .navigationTitle("Your Plan")
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog("Open workout",
+                            isPresented: Binding(get: { dayChooser != nil },
+                                                 set: { if !$0 { dayChooser = nil } }),
+                            titleVisibility: .visible) {
+            if let chooser = dayChooser {
+                ForEach(Array(chooser.choices.enumerated()), id: \.offset) { _, choice in
+                    Button(choice.label) {
+                        path.append(choice.route)
+                        dayChooser = nil
+                    }
+                }
+            }
+        } message: {
+            Text("This day has more than one logged workout.")
+        }
     }
 
-    /// A day row that is tappable when it maps to a real logged workout (completed
-    /// day → its summary) or a future planned day (read-only preview).
+    /// A day row that is tappable when it maps to real logged workouts (completed
+    /// day → its summary; multiple workouts → a chooser) or a planned day —
+    /// today included — which opens the read-only preview.
     @ViewBuilder
     private func dayRow(_ day: WeeklyPlan.DayOutline) -> some View {
-        if day.isCompleted, let route = completedRoute(for: day) {
+        let routes = completedRoutes(for: day)
+        if day.isCompleted, !routes.isEmpty {
             Button {
-                path.append(route)
+                if routes.count == 1 {
+                    path.append(routes[0].route)
+                } else {
+                    dayChooser = DayRouteChoices(day: day, choices: routes)
+                }
             } label: {
                 HStack {
                     CoachPlanDayRow(day: day)
@@ -223,7 +253,7 @@ struct YourWeekView: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("yourPlan.day.\(day.id)")
-        } else if day.isFuture, !day.sessions.isEmpty {
+        } else if day.isFuture || day.isToday, !day.sessions.isEmpty {
             NavigationLink {
                 PlannedDayPreviewView(day: day, goal: facts.goal)
             } label: {
@@ -235,17 +265,28 @@ struct YourWeekView: View {
         }
     }
 
-    /// Maps a completed day to the first real workout logged that day, preferring
-    /// strength, so tapping opens its history summary.
-    private func completedRoute(for day: WeeklyPlan.DayOutline) -> HistorySummaryRoute? {
-        let cal = Calendar.current
-        if let s = sessions.first(where: { cal.isDate($0.date, inSameDayAs: day.date) && !$0.orderedSets.isEmpty }) {
-            return .strength(s)
+    /// Maps a completed day to every real workout logged that day — one route per
+    /// session chip (coach-user-control Phase 4), matched by `sourceWorkoutId` with
+    /// a same-day fallback for sessions predating the id linkage.
+    private func completedRoutes(for day: WeeklyPlan.DayOutline) -> [(label: String, route: HistorySummaryRoute)] {
+        var routes: [(label: String, route: HistorySummaryRoute)] = []
+        for planned in day.sessions {
+            guard let workoutId = planned.sourceWorkoutId else { continue }
+            if let s = sessions.first(where: { $0.id == workoutId && !$0.orderedSets.isEmpty }) {
+                routes.append((planned.label, .strength(s)))
+            } else if let c = cardio.first(where: { $0.id == workoutId }) {
+                routes.append((planned.label, .cardio(c)))
+            }
         }
-        if let c = cardio.first(where: { cal.isDate($0.start, inSameDayAs: day.date) }) {
-            return .cardio(c)
+        if routes.isEmpty {
+            let cal = Calendar.current
+            if let s = sessions.first(where: { cal.isDate($0.date, inSameDayAs: day.date) && !$0.orderedSets.isEmpty }) {
+                routes.append(("Strength", .strength(s)))
+            } else if let c = cardio.first(where: { cal.isDate($0.start, inSameDayAs: day.date) }) {
+                routes.append((c.typeValue.displayName, .cardio(c)))
+            }
         }
-        return nil
+        return routes
     }
 
     /// Zone color scale Z1→Z5 (cool→warm), matching the HR-zone intensity ramp.
@@ -305,73 +346,5 @@ struct YourWeekView: View {
         case .building: return .blue
         case .onTrack: return .green
         }
-    }
-}
-
-struct CoachPlanDayRow: View {
-    let day: WeeklyPlan.DayOutline
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(weekdayLabel(for: day.date)).font(.caption.weight(.semibold)).lineLimit(1).frame(width: 44, alignment: .leading)
-                    .padding(.horizontal, 6).padding(.vertical, 3)
-                    .background {
-                        if day.isToday {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(Color.blue, lineWidth: 2)
-                        }
-                    }
-                if day.isPast {
-                    if day.isCompleted {
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.green)
-                            Text(day.label)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 6))
-                    } else {
-                        Text(day.label)
-                            .font(.subheadline)
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                    }
-                } else {
-                    if day.sessions.isEmpty {
-                        Text(day.label)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                    } else {
-                        ForEach(day.sessions) { session in
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(session.isHard ? Color.green : session.kind == .recovery || session.kind == .rest ? Color.gray.opacity(0.3) : Color.teal)
-                                    .frame(width: 8, height: 8)
-                                Text(session.label).font(.subheadline)
-                            }
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 6))
-                        }
-                    }
-                }
-                Spacer()
-            }
-            .padding(.vertical, 2)
-        }
-    }
-
-    private func weekdayLabel(for date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "EEE"
-        return f.string(from: date)
     }
 }

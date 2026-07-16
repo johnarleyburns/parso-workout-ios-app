@@ -31,6 +31,16 @@ struct PlannedDayPreviewView: View {
                                     .font(.subheadline).foregroundStyle(.secondary)
                             }
                         }
+                        if let cardioLine = cardioPrescription(session) {
+                            Text(cardioLine)
+                                .font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        if let advice = session.adviceNote {
+                            Label(advice, systemImage: "lightbulb")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .accessibilityIdentifier("plannedDay.advice.\(session.id)")
+                        }
                     }
                     .padding(.vertical, 2)
                     .accessibilityElement(children: .contain)
@@ -42,7 +52,7 @@ struct PlannedDayPreviewView: View {
                 Text("This is a planned day. Start it from the Workout tab when it's today.")
             }
 
-            if day.sessions.contains(where: { $0.kind == .strength }) {
+            if day.sessions.contains(where: { $0.kind == .strength }) || hasPlannedCardio {
                 Section("The science") {
                     ForEach(scienceCitationIds, id: \.self) { id in
                         if let citation = CitationRegistry.citation(forId: id) {
@@ -80,18 +90,39 @@ struct PlannedDayPreviewView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Cited science for the planned strength day. A split (focused) day also cites
+    /// Cited science for the planned day. A split (focused) strength day also cites
     /// the frequency, split-routine, and lift-specific recovery evidence that justify
-    /// consecutive different-muscle strength days (HARD RULE — Fix 7).
+    /// consecutive different-muscle strength days (HARD RULE — Fix 7). A planned
+    /// cardio prescription cites the intensity-distribution and dose evidence.
     private var scienceCitationIds: [String] {
-        var ids = ["schoenfeld2021"]
-        let isSplit = day.sessions.contains { s in
-            s.kind == .strength && (s.focus == .upper || s.focus == .lower)
+        var ids: [String] = []
+        if day.sessions.contains(where: { $0.kind == .strength }) {
+            ids.append("schoenfeld2021")
+            let isSplit = day.sessions.contains { s in
+                s.kind == .strength && (s.focus == .upper || s.focus == .lower)
+            }
+            if isSplit {
+                ids += ["frequencyMeta", "ramosCampoSplit2024", "parejaBlancoRecovery2020"]
+            }
         }
-        if isSplit {
-            ids += ["frequencyMeta", "ramosCampoSplit2024", "parejaBlancoRecovery2020"]
+        if hasPlannedCardio {
+            ids += ["seilerPolarized2010", "ekelundActivityMortality2016"]
         }
         return ids
+    }
+
+    private var hasPlannedCardio: Bool {
+        day.sessions.contains { $0.cardioDurationMinutes != nil || $0.cardioZone != nil }
+    }
+
+    /// "~30 min · Zone 2 (Easy/aerobic base)" for a planned cardio session.
+    private func cardioPrescription(_ session: PlannedSession) -> String? {
+        var parts: [String] = []
+        if let minutes = session.cardioDurationMinutes { parts.append("~\(minutes) min") }
+        if let zone = session.cardioZone {
+            parts.append("Zone \(zone) (\(CardioMath.zoneName(zone)))")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     /// The goal's descending rep ladder rendered compactly, e.g. "12-10-8 reps".

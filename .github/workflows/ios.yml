@@ -134,8 +134,6 @@ jobs:
       - name: Archive
         env:
           TEAM_ID: ${{ secrets.TEAM_ID }}
-          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
-          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
         run: |
           set -eo pipefail
           xcodebuild archive \
@@ -144,9 +142,6 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath ./build/Cadence.xcarchive \
-            -allowProvisioningUpdates \
-            -authenticationKeyID "$APPSTORE_API_KEY_ID" \
-            -authenticationKeyIssuerID "$APPSTORE_API_ISSUER_ID" \
             ARCHS=arm64 \
             MARKETING_VERSION="$MKT_VERSION" \
             IPHONEOS_DEPLOYMENT_TARGET=17.0 \

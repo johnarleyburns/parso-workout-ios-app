@@ -2,7 +2,48 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-14 — three coach-recommendation fixes from the 2026-07-14 export analysis (exercise variety, bodyweight reps, plan modality labels)._
+_Last updated: 2026-07-16 — coach-user-control redesign shipped (6 phases, `plans/coach-user-control/2026-07-16/`)._
+
+## Coach-user-control redesign — 2026-07-16 (`plans/coach-user-control/2026-07-16/`)
+
+Root cause (2026-07-14 export, 50yo, 5 strength + 6 cardio days/wk, two-a-days,
+Sunday rest): HIIT/boxing misclassified as moderate, easy-cardio nagging after
+intense sessions, and the planner silently dropping requested strength days for
+forced "Recovery" days. Principle codified: **the coach suggests, it does not
+proscribe** (now NFR-8).
+
+- **Phase 1 — cardio intensity truth (`c4f71db`).** `TrainingEvent.from(cardio:userAge:)`:
+  modality floor (HIIT/boxing/interval ≥ vigorous), Tanaka age-anchored HRmax
+  (`CardioMath.defaultMaxHR`), peak-aware (≥90% HRmax → vigorous for interval/combat).
+  Age threaded through `CoachSnapshotBuilder`/`HomeCoachModel`/`HomeView`.
+- **Phase 2 — same-day load awareness (`cfecb76`).** `CoachAddOnEngine` suppresses
+  easy-cardio add-ons when intense cardio is already banked (or ≥2 cardio sessions);
+  `CoachDecision.sameDayDamping` +25 penalty; free cited `SameDayLoadInsight`
+  (`meeusenOvertraining2013`).
+- **Phase 3 — planner honors targets (`5857275`).** `WeeklyPlan.futureSessions`: no
+  forced Recovery days (fixed rest only), easy/moderate cardio no longer "hard",
+  two-a-days pair strength+cardio on every non-rest day, `mustScheduleStrength`
+  fallback when remaining days can't absorb the weekly deficit, lighter-day advice
+  is `PlannedSession.adviceNote`/`recommendsLighter` (≥6-day hard streak or poor
+  readiness) — never a day-drop. `PlannedSession` gains 5 additive fields
+  (adviceNote, recommendsLighter, cardioDurationMinutes, cardioZone, sourceWorkoutId).
+  `WeeklyPlanTargetsTests` (4) assert the export profile's exact week.
+- **Phase 4 — Your Plan multi-workout days (`d6caf5c`).** History days list one chip
+  per logged workout (ordered by start), each linked via `sourceWorkoutId`;
+  multi-workout days open a chooser; today's planned row opens the preview; the
+  preview renders the cardio prescription (~min + zone), adviceNote, and cardio
+  citations. `CoachPlanDayRow` extracted (LOC ratchet).
+  `WeeklyPlanHistorySessionsTests` (2).
+- **Phase 5 — home escape hatches (`39255ae`).** "Pick another" for any prescription
+  kind with alternatives; alternatives sheet → full cardio picker row; "Want to
+  lift? Build a strength session" when today has no strength
+  (`EditablePlan.strengthAnyway(facts:)`, unit-tested) → plan editor for perusal;
+  two-a-day rows individually swappable. `CoachCardComponents.swift` +
+  `HomeRouting.swift` extracted (card 570→480 LOC, HomeView 1105→1102).
+- **Phase 6 — docs.** README + REQUIREMENTS (new NFR-8) + CLAUDE.md codify the
+  principle; CITATIONS.md usage lines extended for the planned-day preview.
+- `swift test` **1048 → 1066** green; app-target `xcodebuild` green; pyramid
+  guardrail green (uitests 2/12, no growth).
 
 ## Coach fixes — 2026-07-14 export analysis (`plans/…/examine-cladiron-export-2026-07-14…`)
 

@@ -183,6 +183,13 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - NFR-5 **Reliability/offline:** fully functional with no network; workout recording survives backgrounding.
 - NFR-6 **Open source:** GPLv3-licensed (name/icon/brand are reserved trademarks — see TRADEMARKS.md), documented build, no proprietary dependencies; reproducible from clean checkout.
 - NFR-7 **Battery:** GPS + BLE recording optimized; configurable GPS accuracy.
+- NFR-8 **Coach suggests, never proscribes (user agency):** the coach engine and every
+  coach UI surface must honor the user's stated schedule targets (strength/cardio days,
+  rest days, two-a-days) over its own auto-recovery instincts. Recovery, lighter-day, and
+  deferral outputs are *advice attached to* the user's plan (cited, dismissible), never a
+  silent replacement of a requested session. Every coach surface leaves an escape hatch —
+  pick an alternative, open the full cardio picker, or build a strength session anyway.
+  Applies to the CoachDecision engine, the weekly planner (FR-12), and all coach cards.
 
 ---
 

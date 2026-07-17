@@ -85,6 +85,12 @@ Every screen that surfaces coach output MUST display tappable citations:
 - `CitationRegistry.all` and `docs/CITATIONS.md` must stay in sync — every ID in the registry
   must have a corresponding entry in CITATIONS.md explaining how it's used.
 
+## HARD RULE: The coach suggests, it does not proscribe (NFR-8)
+The user's stated schedule targets always win over auto-recovery. Recovery/lighter-day
+outputs are advice *attached to* the plan (e.g. `PlannedSession.adviceNote`/
+`recommendsLighter`), never a silent replacement of a requested session. Every coach
+surface must leave an escape hatch (alternatives, full cardio picker, strength-anyway).
+
 ## Workflow rules for Claude Code
 - For any non-trivial feature, **propose a plan first** (plan mode), wait for approval, then implement.
 - **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test.

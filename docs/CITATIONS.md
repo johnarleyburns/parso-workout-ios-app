@@ -251,7 +251,8 @@ detrimental association of sitting time with mortality?* **The Lancet 388(10051)
 <https://doi.org/10.1016/S0140-6736(16)30370-1>
 
 - **Used by:** the 150 min/week moderate-equivalent aerobic target, moderate aerobic
-  rule, aerobic session candidates.
+  rule, aerobic session candidates, and the planned-day preview's cardio science
+  section.
 - **What it supports:** a harmonised meta-analysis of over 1 million adults found a
   graded dose-response between physical activity volume and reduced all-cause mortality;
   ~60–75 min/day of moderate activity eliminated the excess risk of prolonged sitting.
@@ -455,7 +456,8 @@ endurance athletes?* **Int J Sports Physiol Perform 5(3).**
 <https://doi.org/10.1123/ijspp.5.3.276>
 
 - **Used by:** the "Cardio HR zones (this week)" stacked bar on Your Plan (THIS WEEK) —
-  the science link explaining how weekly cardio time is read across HR zones.
+  the science link explaining how weekly cardio time is read across HR zones — and the
+  planned-day preview's cardio prescription (duration + target zone).
 - **What it supports:** endurance adaptation is best served by a specific *intensity
   distribution* (a large share of easy/low-zone work plus some high-intensity work),
   which is exactly what the per-zone weekly minutes bar visualizes.

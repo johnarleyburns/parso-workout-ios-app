@@ -4,6 +4,8 @@ A private, open-source, science-based **strength app** for iPhone. The tracker i
 
 **Every single coaching output cites published, user-navigable science.** Cladiron never makes a recommendation, insight, warning, or deferred decision without a tappable "The science >" link to the study behind it.
 
+**The coach suggests; it does not proscribe.** Your stated weekly targets always win over the coach's auto-recovery instincts — a rest recommendation is advice attached to your plan, never a silent replacement of it. Every coach surface leaves an escape hatch: pick an alternative, choose any cardio, or build a strength session anyway.
+
 ## What it does
 
 - **Recovery-aware coaching engine** — a deterministic, on-device rule engine (not AI) that reads strength, cardio, imported HealthKit workouts, passive HealthKit signals (HRV, resting HR, sleep — fused with, never overriding, your self-report), and optional readiness check-ins. It gates every session through hard eligibility checks (same-lift recovery, pattern/body-part windows, high-fatigue deferral, lower-body collision) before scoring candidates against your balanced weekly plan — incorporating preferences learned from alternatives you've chosen. Then explains exactly what was ruled out, why, and which study backs it.

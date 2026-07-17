@@ -2,7 +2,22 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-16 — watch app v2 shipped + CI green (`plans/watch-app/2026-07-16/`)._
+_Last updated: 2026-07-17 — watch app v3 **planned** (`plans/watch-app/2026-07-17/`), awaiting decision-sheet answers._
+
+## Watch app v3 — 2026-07-17 (`plans/watch-app/2026-07-17/`) — PLAN ONLY
+
+Field feedback from the real device on v2: (1) live HR shows nothing, (2) interval
+clock frozen, (3) kg-only lifts with no setting, (4) no save/cancel lifecycle for
+lifts ("Strength" + warm-up/lifts/cool-down expected), (5) no cardio. Root causes
+all confirmed in code (HR-share auth gate aborts every session; `runner.now` never
+advanced; `finishWorkout()` never called so no workout was ever saved to HealthKit).
+
+Plan written (00-overview → 05-rollout + decisions.md + watch-mockups.html, one
+mockup per view; mockups also published as a review artifact). Phases: W1 fixes
+(HR/clock/save), W2 units (lb default + phone sync), W3 strength lifecycle,
+W4 cardio suite (run/walk/cycle indoor+outdoor, swim + laps, other), W5 backlog.
+**No implementation yet** — 8 open decisions (D1–D8) in `decisions.md` need
+answers before W3/W4 start; W1/W2 are decision-free and could start on approval.
 
 ## Watch app v2 — 2026-07-16 (`plans/watch-app/2026-07-16/`)
 

@@ -120,9 +120,22 @@ jobs:
           echo "MKT_VERSION=1.1.$PATCH" >> "$GITHUB_ENV"
           echo "Marketing version: 1.1.$PATCH (build $PATCH)"
 
+      - name: Write App Store Connect API Key
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+        run: |
+          set -eo pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APPSTORE_API_PRIVATE_KEY" \
+            > ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
+
       - name: Archive
         env:
           TEAM_ID: ${{ secrets.TEAM_ID }}
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
         run: |
           set -eo pipefail
           xcodebuild archive \
@@ -131,6 +144,9 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath ./build/Cadence.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyID "$APPSTORE_API_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_API_ISSUER_ID" \
             ARCHS=arm64 \
             MARKETING_VERSION="$MKT_VERSION" \
             IPHONEOS_DEPLOYMENT_TARGET=17.0 \
@@ -149,17 +165,6 @@ jobs:
             -archivePath ./build/Cadence.xcarchive \
             -exportPath ./output \
             -exportOptionsPlist ExportOptions.plist
-
-      - name: Write App Store Connect API Key
-        env:
-          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
-          APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
-        run: |
-          set -eo pipefail
-          mkdir -p ~/.appstoreconnect/private_keys
-          echo "$APPSTORE_API_PRIVATE_KEY" \
-            > ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
-          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
 
       - name: Upload to TestFlight
         env:

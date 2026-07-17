@@ -176,7 +176,9 @@ struct HomeView: View {
                     onSeeInsights: { path.append(HomeRoute.coach) },
                     onPreferences: { path.append(HomeRoute.coachPreferences) },
                     onPickAlternative: { showAlternatives = true },
-                    onFixCustomExercises: { path.append(HomeRoute.customExercises) })
+                    onFixCustomExercises: { path.append(HomeRoute.customExercises) },
+                    onStrengthAnyway: { strengthAnyway() },
+                    onSwapComponent: { swapComponent($0) })
             }
         case .introducing:
             VStack(alignment: .leading, spacing: 8) {
@@ -395,7 +397,8 @@ struct HomeView: View {
             .sheet(isPresented: $showAlternatives) {
                 NavigationStack {
                     CoachAlternativesView(decision: coachDecision,
-                                          onSelect: { chooseAlternative($0) })
+                                          onSelect: { chooseAlternative($0) },
+                                          onOpenCardioPicker: { openFullCardioPicker() })
                 }
             }
             // Contribution prompt — Home only, never during a workout or its
@@ -1037,6 +1040,34 @@ struct HomeView: View {
         }
     }
 
+    /// "Something else?" from the alternatives sheet → the full cardio picker,
+    /// after the sheet finishes dismissing (same one-runloop deferral).
+    private func openFullCardioPicker() {
+        showAlternatives = false
+        Task { @MainActor in
+            await Task.yield()
+            cardioPickerPresented = true
+        }
+    }
+
+    /// "Do a strength workout anyway" (coach-user-control Phase 5): build the
+    /// best-fit full-body session and open it in the plan editor for perusal.
+    private func strengthAnyway() {
+        let facts = CoachFacts.make(
+            from: buildTrainingEvents(), goal: settings.trainingGoal,
+            experience: settings.experienceLevel, formula: settings.formula,
+            activityTrend: activityTrend)
+        guard let plan = EditablePlan.strengthAnyway(facts: facts) else { return }
+        path.append(HomeRoute.workoutEditor(plan))
+    }
+
+    /// Swap one component of a two-a-day plan: strength → the strength start
+    /// surface (Coach's Workout / presets / reuse); cardio → the full picker.
+    private func swapComponent(_ session: CoachSession) {
+        if session.kind == .strength { weightsStartPresented = true }
+        else { cardioPickerPresented = true }
+    }
+
     private func handleEditorStart(_ plan: EditablePlan) {
         pendingPlan = plan
         if plan.warmupMinutes > 0 {
@@ -1068,38 +1099,4 @@ struct HomeView: View {
         try context.save()
         return session
     }
-}
-
-/// What to launch once the countdown finishes.
-struct PendingWorkout: Identifiable {
-    let id = UUID()
-    enum Kind { case strength, plan(WorkoutPlan, [Int]?), reuse(WorkoutSession), outdoor(CardioType), interval(IntervalLaunch), timer(CardioType)
-        var isStrength: Bool {
-            switch self {
-            case .strength, .plan, .reuse: true
-            case .outdoor, .interval, .timer: false
-            }
-        }
-        var cardioType: CardioType? {
-            switch self {
-            case .outdoor(let c), .timer(let c): return c
-            case .interval(let l): return l.saveType
-            case .strength, .plan, .reuse: return nil
-            }
-        }
-    }
-    let kind: Kind
-}
-
-private enum WorkoutStartCue {
-    case countdown, single, none
-}
-
-/// Pushed destinations reachable from Home.
-enum HomeRoute: Hashable {
-    case history, settings, coach, coachPreview, coachPreferences, planning
-    case yourPlan
-    case workoutEditor(EditablePlan)
-    case customExercises
-    case runAssessment(AssessmentKind)
 }

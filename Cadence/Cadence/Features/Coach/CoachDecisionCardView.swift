@@ -11,6 +11,8 @@ struct CoachDecisionCardView: View {
     var onPreferences: () -> Void
     var onPickAlternative: () -> Void = {}
     var onFixCustomExercises: () -> Void = {}
+    var onStrengthAnyway: () -> Void = {}
+    var onSwapComponent: (CoachSession) -> Void = { _ in }
 
     @State private var warningsExpanded = false
     @State private var addOnsExpanded = false
@@ -157,7 +159,7 @@ struct CoachDecisionCardView: View {
 
                     // Encouraged primary add-on
                     if let primary = addOnRecommendation.primaryOption, primary.status == .encouraged {
-                        addOnButton(primary) { onAddOn(primary.session, primary.status) }
+                        CoachAddOnButton(option: primary) { onAddOn(primary.session, primary.status) }
                     }
 
                     // Neutral / warn secondary options
@@ -180,7 +182,7 @@ struct CoachDecisionCardView: View {
 
                     if addOnsExpanded {
                         ForEach(addOnRecommendation.secondaryOptions) { option in
-                            addOnButton(option) { onAddOn(option.session, option.status) }
+                            CoachAddOnButton(option: option) { onAddOn(option.session, option.status) }
                         }
                     }
                 }
@@ -216,6 +218,23 @@ struct CoachDecisionCardView: View {
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("coach.card.pickAlternative")
                         .accessibilityLabel("Pick an alternative workout")
+                    }
+
+                    if showsStrengthAnywayLink {
+                        Button { onStrengthAnyway() } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "dumbbell")
+                                    .font(.caption2.weight(.bold))
+                                Text("Want to lift? Build a strength session")
+                            }
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.green)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("coach.card.strengthAnyway")
+                        .accessibilityLabel("Build a strength session anyway")
                     }
                 }
             }
@@ -429,14 +448,20 @@ struct CoachDecisionCardView: View {
         decision.primary.kind == .rest || decision.primary.kind == .recovery ? "moon.fill" : "play.fill"
     }
 
-    /// "Pick another" is offered only for cardio prescriptions that have scored
-    /// alternatives to swap to (e.g. easy cycle → easy walk/swim/row).
+    /// "Pick another" is offered whenever the coach scored alternatives to swap
+    /// to — the user can always redirect the prescription, whatever its kind
+    /// (coach-user-control Phase 5 relaxed the old cardio-only gate).
     private var showsAlternativesLink: Bool {
-        guard !decision.alternatives.isEmpty else { return false }
-        switch decision.primary.kind {
-        case .easyAerobic, .moderateAerobic, .vo2Intervals: return true
-        default: return false
-        }
+        !decision.alternatives.isEmpty
+    }
+
+    /// "Strength anyway" appears when today's coach output carries no strength
+    /// at all — the coach suggests, it does not proscribe: the user can always
+    /// ask for a strength session and peruse it in the plan editor.
+    private var showsStrengthAnywayLink: Bool {
+        guard !isCompleteState else { return false }
+        let offered = [decision.primary] + decision.alternatives + decision.todayPlannedRecommendations
+        return !offered.contains { $0.kind == .strength }
     }
 
     private var nextEligibleTime: String? {
@@ -448,123 +473,8 @@ struct CoachDecisionCardView: View {
     // MARK: - Two-a-day stack
 
     private var twoADayStack: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Image(systemName: "list.bullet.rectangle")
-                    .font(.caption)
-                Text("Today's plan")
-                    .font(.caption.bold())
-                Spacer()
-            }
-            .foregroundStyle(.secondary)
-
-            ForEach(decision.todayPlannedRecommendations) { session in
-                twoADayRow(session)
-            }
-        }
-    }
-
-    private func twoADayRow(_ session: CoachSession) -> some View {
-        Button { onStart(session) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: sessionIcon(session))
-                    .font(.title3)
-                    .foregroundStyle(sessionColor(session))
-                    .frame(width: 28, height: 28)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(session.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    if !session.subtitle.isEmpty {
-                        Text(session.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                Spacer()
-                Label("Start", systemImage: "play.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(sessionColor(session), in: RoundedRectangle(cornerRadius: 9))
-            }
-            .padding(10)
-            .cadenceGlassBackground(
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous),
-                interactive: true,
-                fallback: AnyShapeStyle(sessionColor(session).opacity(0.08)))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("coach.card.twoADay.\(session.id)")
-    }
-
-    private func sessionIcon(_ session: CoachSession) -> String {
-        switch session.kind {
-        case .strength: return "dumbbell.fill"
-        case .easyAerobic, .moderateAerobic, .vo2Intervals: return "heart.fill"
-        case .recovery: return "moon.zzz.fill"
-        case .rest: return "bed.double.fill"
-        case .assessment: return "checklist"
-        }
-    }
-
-    private func sessionColor(_ session: CoachSession) -> Color {
-        switch session.kind {
-        case .strength: return .green
-        case .easyAerobic, .moderateAerobic, .vo2Intervals: return .teal
-        case .recovery: return .orange
-        case .rest: return .orange
-        case .assessment: return .blue
-        }
-    }
-
-    // MARK: - Add-on button
-
-    private func addOnButton(_ option: CoachAddOnOption, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack {
-                Image(systemName: addOnIcon(option.status))
-                    .font(.caption)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(option.session.title)
-                        .font(.subheadline.weight(.medium))
-                    Text(option.message)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.bold))
-                    .opacity(0.6)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-        }
-        .foregroundStyle(addOnStatusColor(option.status))
-        .cadenceGlassBackground(
-            in: RoundedRectangle(cornerRadius: 10, style: .continuous),
-            interactive: true,
-            fallback: AnyShapeStyle(addOnStatusColor(option.status).opacity(0.10)))
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("coach.addon.\(option.session.id)")
-    }
-
-    private func addOnIcon(_ status: CoachAddOnStatus) -> String {
-        switch status {
-        case .encouraged: return "hand.thumbsup.fill"
-        case .neutral: return "circle"
-        case .warn: return "exclamationmark.triangle.fill"
-        }
-    }
-
-    private func addOnStatusColor(_ status: CoachAddOnStatus) -> Color {
-        switch status {
-        case .encouraged: return .green
-        case .neutral: return .secondary
-        case .warn: return .orange
-        }
+        CoachTwoADayStack(sessions: decision.todayPlannedRecommendations,
+                          onStart: onStart,
+                          onSwap: onSwapComponent)
     }
 }

@@ -72,4 +72,27 @@ final class EditablePlanTests: XCTestCase {
         let result = EditablePlan.normalizedPartnerIDs([owner, a, a, b], ownerID: owner)
         XCTAssertEqual(result, [owner, a, b])
     }
+
+    // Coach-user-control Phase 5 — "do a strength workout anyway" must always
+    // produce a real, editable full-body plan, even with zero history.
+    func testStrengthAnywayProducesEditablePlan() {
+        let facts = CoachFacts.make(from: [], goal: .hypertrophy,
+                                    experience: .intermediate, now: Date())
+        let plan = EditablePlan.strengthAnyway(facts: facts)
+        XCTAssertNotNil(plan, "Strength-anyway must offer a plan even with no history")
+        XCTAssertFalse(plan?.exercises.isEmpty ?? true)
+        XCTAssertEqual(plan?.title, "Strength session")
+        XCTAssertTrue(plan?.exercises.allSatisfy { !$0.sets.isEmpty } ?? false,
+                      "Every exercise carries a concrete set prescription")
+    }
+
+    func testStrengthAnywayUsesGoalRepScheme() {
+        let facts = CoachFacts.make(from: [], goal: .strength,
+                                    experience: .intermediate, now: Date())
+        let plan = EditablePlan.strengthAnyway(facts: facts)
+        let reps = plan?.exercises.first?.sets.map(\.targetReps) ?? []
+        XCTAssertFalse(reps.isEmpty)
+        XCTAssertTrue(reps.allSatisfy { TrainingGoal.strength.repRange.contains($0) },
+                      "Rep targets should honor the strength goal's range, got \(reps)")
+    }
 }

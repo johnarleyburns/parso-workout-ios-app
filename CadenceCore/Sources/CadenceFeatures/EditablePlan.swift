@@ -107,6 +107,27 @@ public struct EditablePlan: Hashable {
         )
     }
 
+    /// "Do a strength workout anyway" (coach-user-control Phase 5): when today's
+    /// coach plan carries no strength, the user can still ask for one. Builds the
+    /// best-fit full-body session from the user's own trained movements and goal
+    /// rep scheme — a suggestion for perusal in the plan editor, never a launch.
+    public static func strengthAnyway(facts: CoachFacts) -> EditablePlan? {
+        let exercises = CoachSession.fullBodyStrengthExercises(facts: facts)
+        guard !exercises.isEmpty else { return nil }
+        let range = facts.goal.repRange
+        let rir = facts.goal.targetRIR
+        return from(coach: CoachSession(
+            id: "strength.userAnyway",
+            kind: .strength,
+            title: "Strength session",
+            subtitle: "\(range.lowerBound)–\(range.upperBound) reps · ≤\(rir) RIR",
+            durationMinutes: 45,
+            exercises: exercises,
+            trainingLoadTags: ["strength"],
+            citationIds: ["schoenfeld2021"],
+            launchPayload: .strengthPlan("fullBody")))
+    }
+
     /// De-dupes partner ids and drops an owner-only list to empty (solo). Pure
     /// version of the editor's roster normalization.
     public static func normalizedPartnerIDs(_ ids: [UUID], ownerID: UUID?) -> [UUID] {

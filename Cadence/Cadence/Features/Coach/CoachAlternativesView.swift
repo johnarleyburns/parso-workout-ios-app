@@ -4,6 +4,7 @@ import CadenceCore
 struct CoachAlternativesView: View {
     let decision: CoachDecision
     var onSelect: (CoachSession) -> Void
+    var onOpenCardioPicker: () -> Void = {}
 
     var body: some View {
         ScrollView {
@@ -20,6 +21,22 @@ struct CoachAlternativesView: View {
                 ForEach(alternativesList) { session in
                     alternativeCard(session)
                 }
+
+                // Coach-user-control Phase 5: the scored list is never the end of
+                // the road — the full cardio picker stays one tap away.
+                Button { onOpenCardioPicker() } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "square.grid.2x2")
+                            .font(.caption.weight(.bold))
+                        Text("Something else? Choose any cardio")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                }
+                .foregroundStyle(.teal)
+                .background(Color.teal.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
+                .accessibilityIdentifier("coach.alternatives.fullPicker")
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("After selection").font(.subheadline.weight(.semibold))

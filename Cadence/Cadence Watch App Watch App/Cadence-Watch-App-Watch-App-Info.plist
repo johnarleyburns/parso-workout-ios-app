@@ -4,8 +4,6 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<key>CFBundleDisplayName</key>
-	<string>Cladiron Watch App</string>
 	<key>CFBundleExecutable</key>
 	<string>Cadence Watch App Watch App</string>
 	<key>CFBundleIdentifier</key>

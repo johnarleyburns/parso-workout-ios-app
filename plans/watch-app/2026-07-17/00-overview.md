@@ -49,15 +49,37 @@ workout landing in HealthKit (rings) and back on the phone (history/coach).
   the richer `transferUserInfo` path (sets/reps/weight have no HK schema).
 - **NFR-2 throughout**: color never alone, VoiceOver labels, Dynamic Type.
 
+## Decisions (settled 2026-07-17 — do not re-litigate)
+
+All eight decision-sheet questions were answered by the user on 2026-07-17; the
+sheet is retired and the answers are recorded verbatim here and folded into the
+sections they affect:
+
+- **D1 Live HR**: "Live HR is just so I can measure it, so (a)" — Start/Stop
+  runs a **discarded** sensor-only session; nothing saved. → 01
+- **D2 Settings sync**: "sync all four now" — unit + color-blind palette +
+  default rest seconds + cool-down minutes in one applicationContext dict. → 02
+- **D3 Warm-up default**: "default off" — keypad toggle defaults OFF, phone parity. → 03
+- **D4 Partners**: "Watch only must include partners from the beginning" —
+  partner rotation ships **in W3**, not backlog. → 03
+- **D5 Swim laps**: "auto with manual fallback, pool defaults BUT let user
+  change to 50m/50yd before workout starts" — auto counting, manual +1 on
+  controls page, lap-length presets 25/50 (+ crown fine-tune) at setup. → 04
+- **D6 Rowing**: "yes include it" — Rowing joins the launcher and cardio suite. → 04
+- **D7 Auto-pause**: "yes add auto-pauses to be consistent with apple workout" —
+  auto-pause for outdoor run/walk/cycle ships **in W4**, not backlog. → 04
+- **D8 Interval setup**: "add compact rounds/work/rest setup to make it actually
+  useful" — HIIT/Boxing get a setup screen (rounds/work/rest via Crown) in W4. → 04
+
 ## Phased rollout (one branch + PR each; detail in 05-rollout.md)
 
 | Phase | Branch | Delivers | Depends on |
 |---|---|---|---|
-| **W1 — Make it live** | `watch/w1-hr-timer-save` | Fix HR auth gate; drive `runner.now` from the timeline; finish/save `HKWorkout`s; Live HR quick-session | — |
-| **W2 — Units** | `watch/w2-units` | lb/kg preference on watch (locale default → **lbs** in US), Settings row, phone→watch sync via `applicationContext` | — |
-| **W3 — Strength flow** | `watch/w3-strength-flow` | "Strength" naming; session home; warm-up sets + cool-down timer; Save/Cancel anywhere; summary; discard sync | W2 |
-| **W4 — Cardio suite** | `watch/w4-cardio` | Run/Walk/Cycle (indoor+outdoor), Swim + lap counter, Other; metrics views; controls page; summary + HK save | W1 |
-| **W5 — Polish (backlog)** | `watch/w5-polish` | Resume, Smart Stack complication, GPS route builder, auto-pause | W3, W4 |
+| **W1 — Make it live** | `watch/w1-hr-timer-save` | Fix HR auth gate; drive `runner.now` from the timeline; finish/save `HKWorkout`s; Live HR quick-session (discarded, D1) | — |
+| **W2 — Units** | `watch/w2-units` | lb/kg preference on watch (locale default → **lbs** in US), Settings row, phone→watch sync of all four settings (D2) | — |
+| **W3 — Strength flow** | `watch/w3-strength-flow` | "Strength" naming; session home; warm-up sets + cool-down timer; Save/Cancel anywhere; summary; discard sync; **partner rotation** (D4) | W2 |
+| **W4 — Cardio suite** | `watch/w4-cardio` | Run/Walk/Cycle (indoor+outdoor) with **auto-pause** (D7), Swim + lap counter w/ 25/50 presets (D5), **Rowing** (D6), Other; HIIT/Boxing **setup screen** (D8); metrics views; controls page; summary + HK save | W1 |
+| **W5 — Polish (backlog)** | `watch/w5-polish` | Resume, Smart Stack complication, GPS route builder, smart exercise swap, segments | W3, W4 |
 
 W1+W2 are independent and can land in either order; W3 stacks on W2, W4 on W1.
 W5 is explicitly backlog — not required for "watch-only".
@@ -65,11 +87,10 @@ W5 is explicitly backlog — not required for "watch-only".
 ## Plan sections
 
 - `01-bugfixes.md` — W1: HR, timer tick, HKWorkout save (+ Live HR quick session)
-- `02-units.md` — W2: lb/kg on the wrist
-- `03-strength-flow.md` — W3: phone-parity strength lifecycle
-- `04-cardio.md` — W4: run/walk/cycle/swim/other
+- `02-units.md` — W2: lb/kg on the wrist + settings sync
+- `03-strength-flow.md` — W3: phone-parity strength lifecycle + partners
+- `04-cardio.md` — W4: run/walk/cycle/swim/rowing/other + auto-pause + interval setup
 - `05-rollout.md` — consolidated schema deltas, migration safety, testing, verification
-- `decisions.md` — open decision sheet (needs user answers before W3/W4 start)
 - `watch-mockups.html` — full set of screen mockups, one per view (open in browser)
 
 ## Verification (every phase)

@@ -1,4 +1,4 @@
-# W3 — Strength flow parity (rename, lifecycle, warm-up/cool-down, save/cancel)
+# W3 — Strength flow parity (rename, lifecycle, warm-up/cool-down, save/cancel, partners)
 
 Fixes user report **4**: "lifts when entered i have no way to save or exit
 normally/cancel like a normal workout, i expect it to say **strength** not lifts
@@ -51,8 +51,8 @@ idle ── Start ──▶ active(warmup) ──▶ active(lifting) ──▶ c
   discarded (`stopWorkout(save: false)` from W1).
 - **Warm-up**: the keypad gets a **Warm-up toggle** (flame icon, same semantics
   as phone `isWarmup`); the session-home shows warm-up sets with the phone's
-  flame badge. Optional "start with warm-up sets" is just the toggle defaulting
-  ON for the first sets of the first exercise (decision D3).
+  flame badge. The toggle **defaults OFF** — phone parity, one tap when needed
+  *(decision D3, settled)*.
 - **Cool-down**: after Finish, an optional cool-down timer screen (default
   `settings.cooldownMinutes`, +1m / skip), writing `session.cooldownSeconds` —
   same field the phone writes. Skippable in one tap.
@@ -67,45 +67,78 @@ idle ── Start ──▶ active(warmup) ──▶ active(lifting) ──▶ c
 - **Summary**: exercises × sets, total volume (in preferred unit, W2), duration,
   avg HR; Save writes the `HKWorkout` (W1 teardown) + `end_session` sync as today.
 
+### Partners *(decision D4, settled: "Watch only must include partners from the beginning")*
+
+Ships in W3, reusing the phone's partner machinery wholesale:
+
+- **Roster**: `SessionRoster` (CadenceCore) scoped to the watch session. The
+  keypad shows a **performer chip** (avatar initial + name) above Log Set;
+  after each saved set the roster **rotates to the next person**, exactly like
+  the phone. Tapping the chip opens the roster to pick out of order.
+- **Adding partners**: a "Partners" row on the session home → recent partners
+  (phone pushes its recent-partner names in the settings applicationContext —
+  additive key `partners.recent`) + "New partner…" via dictation/Scribble →
+  `WorkoutRepository.findOrCreatePerson` in the watch store.
+- **Isolation guarantees carry over unchanged**: partner sets are `isOwnerSet ==
+  false` → excluded from PRs, volume, previous-set hints, and the `HKWorkout`
+  (already enforced in CadenceCore; the summary's volume line counts owner sets
+  only, as specced above).
+- **Sync**: the `log_set` payload gains optional `performed_by` (person name +
+  stable UUID); phone merge resolves via `findOrCreatePerson` by id. Additive —
+  old phones ignore the extra key.
+- **Solo fast-path**: with no partners added, none of this UI appears — the
+  keypad is exactly the solo mockup.
+
+Smart exercise **swap** (the other half of v2's Phase 4) stays in W5 — D4
+covered partners only.
+
 ### Screens (see `watch-mockups.html` §Strength)
-1. **Session home** — exercise list w/ set counts, Add Exercise, Finish & Save,
-   Cancel. This replaces the current "picker" as the hub.
+1. **Session home** — exercise list w/ set counts, Partners row, Add Exercise,
+   Finish & Save, Cancel. This replaces the current "picker" as the hub.
 2. **Add exercise** — recents first (from watch store), then common list; keeps
    dictation via the system keyboard affordance.
-3. **Log set** — weight (unit-aware, W2), reps, Warm-up toggle, Log Set; back
-   chevron to home.
-4. **Rest** — unchanged mechanics (`RestTimerModel`), plus "End rest" back edge
+3. **Log set** — weight (unit-aware, W2), reps, Warm-up toggle, performer chip
+   (when partners exist), Log Set; back chevron to home.
+4. **Partners** — roster with rotation order, recents, "New partner…" dictation.
+5. **Rest** — unchanged mechanics (`RestTimerModel`), plus "End rest" back edge
    and visible next-exercise context.
-5. **Cool-down** — timer with skip.
-6. **Summary** — stats + Done.
-7. **Cancel confirm** — dialog.
+6. **Cool-down** — timer with skip.
+7. **Summary** — stats + Done.
+8. **Cancel confirm** — dialog.
 
 ## Data-model deltas
-- None. (`isWarmup`, `cooldownSeconds`, `endedAt` all exist; discard action is a
-  WC payload, not schema.)
+- None in SwiftData. (`isWarmup`, `cooldownSeconds`, `endedAt`, `Person`,
+  `isOwnerSet` all exist; discard action is a WC payload, not schema.)
 - New WC userInfo action: `discard_session` (additive; phone ignores unknown
   actions today — `AppModel.swift:192` default branch — so old phones are safe).
+- `log_set` payload gains optional `performed_by` (additive).
+- applicationContext gains `partners.recent` (additive; rides the W2 dict).
 
 ## Implementation steps
 1. `WatchStrengthFlowModel` in CadenceFeatures: states, transitions, lazy-create
-   rule, cancel semantics, summary aggregation (volume via `effectiveLoadKg`,
-   owner sets only). Headless tests are the bulk of this phase.
+   rule, cancel semantics, roster rotation (wrapping `SessionRoster`), summary
+   aggregation (volume via `effectiveLoadKg`, owner sets only). Headless tests
+   are the bulk of this phase.
 2. Split `WatchStrengthView` (314 LOC, near the 400 budget) into
-   `WatchStrengthHomeView` / `WatchSetKeypadView` / `WatchRestView` /
-   `WatchStrengthSummaryView`, each a thin render of the flow model.
-3. Phone: handle `discard_session` in `AppModel` (delete-by-UUID via repository).
+   `WatchStrengthHomeView` / `WatchSetKeypadView` / `WatchPartnersView` /
+   `WatchRestView` / `WatchStrengthSummaryView`, each a thin render of the flow model.
+3. Phone: handle `discard_session` + `performed_by` merge in `AppModel`
+   (delete/find-or-create by UUID via repository); push `partners.recent` in the
+   applicationContext dict.
 4. Launcher: "Start Lift" → **Strength**, icon unchanged (`dumbbell.fill`).
 5. Wire cool-down timer (reuse `RestTimerModel` with cooldown default).
 
 ## Testing
 - `swift test`: full transition table incl. cancel-before-create (no session
   persisted), cancel-after-sync (emits discard payload), finish-with-zero-sets
-  (auto-discard like phone `:1391`), warm-up sets excluded from volume/previous.
+  (auto-discard like phone `:1391`), warm-up sets excluded from volume/previous;
+  roster rotation after each set, out-of-order pick, partner sets excluded from
+  volume/PR/HK aggregation, `performed_by` payload round-trip.
 - Watch smoke: unchanged cap; the existing start→stop smoke now exercises
   Finish & Save.
-- Device: full workout with warm-up sets + cool-down; confirm it appears on the
-  phone merged correctly; cancel a workout and confirm nothing appears.
+- Device: full workout with warm-up sets, a partner rotation, + cool-down;
+  confirm phone merge attributes sets to the right people; cancel a workout and
+  confirm nothing appears.
 
 ## Open questions
-→ `decisions.md` D3 (warm-up default), D4 (partner sets on watch — v2 Phase 4
-was never built; is it still wanted, or does watch-only mean solo?).
+None — D3 (warm-up default OFF) and D4 (partners in from the beginning) settled.

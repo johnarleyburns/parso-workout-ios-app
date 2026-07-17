@@ -1,8 +1,10 @@
-# W4 — Cardio suite: Run · Walk · Cycle (indoor/outdoor) · Swim + laps · Other
+# W4 — Cardio suite: Run · Walk · Cycle (indoor/outdoor) · Swim + laps · Rowing · Other
 
 Fixes user report **5**: the watch must cover typical cardio so the phone can
 stay home — Run, Walk, Cycling (outdoor **and** indoor), Swim with a simple lap
-counter, and Other, alongside the existing HIIT and Boxing.
+counter, Rowing (D6), and Other, alongside the existing HIIT and Boxing (which
+gain a rounds/work/rest setup screen, D8). Outdoor run/walk/cycle auto-pause
+like Apple Workout (D7).
 
 ## What the code does today
 
@@ -28,7 +30,14 @@ counter, and Other, alongside the existing HIIT and Boxing.
   swims get **automatic lap/length events** from HealthKit — the honest "simple
   lap counter" is *display* of auto-counted lengths, with a manual +1 available
   when paused/unlocked (and the primary counter for open water… which has no laps
-  — it shows distance instead). → decision D5 confirms pool default 25 m/yd.
+  — it shows distance instead). *(Decision D5, settled: auto with manual
+  fallback; pool default 25 m/yd with a one-tap **50 m/yd preset** — plus Crown
+  fine-tune — before the workout starts.)*
+- Apple Workout auto-pauses outdoor runs when the runner stops; there is **no
+  HealthKit API for this** — apps detect it themselves (pace collapse from
+  distance deltas + CoreMotion activity) and call `session.pause()/resume()`.
+  *(Decision D7, settled: ship it in W4 for outdoor run/walk/cycle, with haptic
+  + on-screen "Auto-paused" state and a Settings toggle to disable.)*
 - Distance/pace/energy come event-driven from `HKLiveWorkoutBuilder.statistics`
   for `distanceWalkingRunning` / `distanceCycling` / `distanceSwimming` /
   `activeEnergyBurned` — same callback we already use for HR.
@@ -39,8 +48,8 @@ counter, and Other, alongside the existing HIIT and Boxing.
 ## Design
 
 ### Launcher (reworked — see mockups §Launcher)
-Order: **Strength** (hero) · Run · Walk · Cycle · Swim · HIIT · Boxing · Other ·
-Live HR · Settings. All rows reuse `CardioType.displayName/symbol`.
+Order: **Strength** (hero) · Run · Walk · Cycle · Swim · HIIT · Boxing · Rowing ·
+Other · Live HR · Settings. All rows reuse `CardioType.displayName/symbol`.
 
 ### Setup screens
 - **Run / Walk / Cycle**: one compact setup screen — segmented
@@ -48,12 +57,19 @@ Live HR · Settings. All rows reuse `CardioType.displayName/symbol`.
   outdoor is the first-run default) → big Start. Maps to
   `config.locationType = .outdoor/.indoor` and the right activity type
   (`.running/.walking/.cycling`; indoor keeps the same activity type, location
-  `.indoor` — HealthKit labels it "Indoor Cycle" etc. automatically).
-- **Swim**: segmented **Pool | Open Water**; Pool shows a lap-length field
-  (Crown-adjustable, default 25 m / 25 yd by unit pref, remembered) →
-  `swimmingLocationType` + `lapLength`. Open Water hides laps, shows distance.
+  `.indoor` — HealthKit labels it "Indoor Cycle" etc. automatically). Outdoor
+  setup notes auto-pause (D7).
+- **Swim**: segmented **Pool | Open Water**; Pool shows lap-length **preset
+  chips 25 | 50** (m/yd by unit pref) + Crown fine-tune for odd pools;
+  remembered → `swimmingLocationType` + `lapLength` (D5). Open Water hides
+  laps, shows distance.
+- **Rowing**: no setup — straight in (`.rowing`, indoor) (D6).
 - **Other**: no setup — straight in (`.other`, indoor).
-- **HIIT / Boxing**: unchanged entries into `WatchIntervalView` (fixed by W1).
+- **HIIT / Boxing**: compact **setup screen** before the timer (D8): rounds ·
+  work · rest fields, Crown-steppable, seeded from `hiitDefault()` (8×30/30) /
+  `boxingDefault()` (8×180/60), last-used values remembered per kind; big Start.
+  Builds the `IntervalPlan` via the existing `IntervalPlan.custom` factory path
+  used by the phone. The interval timer itself is unchanged (fixed in W1).
 
 ### Live metrics view — `WatchCardioView` (one view, type-parameterized)
 Center page, top-to-bottom (mockups §Cardio):
@@ -63,7 +79,15 @@ Center page, top-to-bottom (mockups §Cardio):
   - Cycle: distance · speed (mph/km-h) · HR+zone · kcal
   - Swim (pool): **lengths** (big) + distance · HR (optical HR is unreliable in
     water — show `--` gracefully) · kcal
+  - Rowing: distance (where `distanceRowing` is available; availability-guarded)
+    · **/500 m split** · HR+zone · kcal
   - Other: elapsed · HR+zone · kcal
+- Outdoor run/walk/cycle: **auto-pause** — pace collapse + CoreMotion stillness
+  → `session.pause()` + haptic + full-screen "Auto-paused" state; movement
+  resumes automatically. Settings toggle (default ON, synced like other
+  settings). Detection lives in a pure `AutoPauseDetector` (CadenceFeatures):
+  inputs are timestamped distance samples + activity states, outputs
+  pause/resume edges — fully headless-testable.
 - Always-On: ≤1 Hz, seconds dimmed (same `isLuminanceReduced` handling as W1).
 
 A new pure `CardioMetricsModel` (CadenceFeatures) owns formatting + pace/speed
@@ -92,35 +116,41 @@ stats, not just HR. Swim sessions route lap events
 ## Data-model deltas
 - **None in SwiftData.** Cardio history reaches the phone through the existing
   HealthKit ingest (FR-3). The watch does not grow a cardio session model.
-- New UserDefaults keys: `watch.cardio.location.<type>`, `watch.swim.lapLength`.
+- New UserDefaults keys: `watch.cardio.location.<type>`, `watch.swim.lapLength`,
+  `watch.cardio.autoPause` (default true), `watch.interval.<kind>.rounds/work/rest`
+  (last-used setup values).
 - `HKWorkout` metadata: manual-lap count key (additive, namespaced
   `guru.parso.cladiron.manualLaps`).
 
 ## Implementation steps
-1. `WorkoutConfigurationSpec` + `CardioMetricsModel` in CadenceFeatures
-   (pure; pace/speed/units/zones/lap accumulation) — headless tests first.
+1. `WorkoutConfigurationSpec` + `CardioMetricsModel` + `AutoPauseDetector` +
+   `IntervalSetupModel` (rounds/work/rest → `IntervalPlan.custom`, clamps,
+   last-used persistence contract) in CadenceFeatures — headless tests first.
 2. Extend `WatchWorkoutManager`: spec-driven config, distance/energy/lap
-   collection, pause/resume (`session.pause()/resume()`), water lock
-   (`WKInterfaceDevice.current().enableWaterLock()`).
-3. `WatchCardioSetupView` (run/walk/cycle/swim variants), `WatchCardioView`,
-   `WatchCardioControlsView` (`TabView` horizontal pages), `WatchCardioSummaryView`.
-   Each file under the 400-LOC budget.
-4. Launcher rework per mockups.
-5. Device verification matrix: outdoor walk (distance sane vs. phone), indoor
-   cycle (no GPS, kcal/HR flowing), pool swim (auto lengths at a real pool —
-   or manual-lap fallback exercised), Other (elapsed+HR only), each landing in
-   Activity rings and phone history.
+   collection, pause/resume (`session.pause()/resume()`), auto-pause wiring,
+   water lock (`WKInterfaceDevice.current().enableWaterLock()`).
+3. `WatchCardioSetupView` (run/walk/cycle/swim variants), `WatchIntervalSetupView`
+   (HIIT/Boxing, D8), `WatchCardioView`, `WatchCardioControlsView` (`TabView`
+   horizontal pages), `WatchCardioSummaryView`. Each file under the 400-LOC budget.
+4. Launcher rework per mockups (incl. Rowing row).
+5. Device verification matrix: outdoor walk (distance sane vs. phone; auto-pause
+   at a stop light), indoor cycle (no GPS, kcal/HR flowing), pool swim (auto
+   lengths at a real pool — or manual-lap fallback exercised), rowing (erg
+   session), Other (elapsed+HR only), custom 3×120/45 boxing plan — each landing
+   in Activity rings and phone history.
 
 ## Testing
 - `swift test`: `CardioMetricsModel` (pace math incl. div-by-zero early samples,
   unit formatting both systems, zone mapping, lap accumulation auto+manual,
-  open-water hides laps), `WorkoutConfigurationSpec` (type→activity/location
-  matrix, swim configs).
+  open-water hides laps, /500 m split), `WorkoutConfigurationSpec`
+  (type→activity/location matrix, swim configs incl. 25/50 presets),
+  `AutoPauseDetector` (stop→pause edge, jitter debounce, resume edge, disabled
+  flag), `IntervalSetupModel` (clamps, plan construction, last-used seeding).
 - Watch smoke: still capped; extend the one start/stop smoke to start a Run
   instead of relying only on intervals *(only if it stays within the ≤3 cap —
   otherwise leave as-is; simulators can't do real distance anyway)*.
-- Real device is the only meaningful gate for GPS/water/HR-in-water behavior.
+- Real device is the only meaningful gate for GPS/water/HR-in-water/auto-pause.
 
 ## Open questions
-→ `decisions.md` D5 (pool default + manual-lap placement), D6 (rowing row?),
-D7 (auto-pause, W5?).
+None — D5 (25/50 presets + manual fallback), D6 (Rowing in), D7 (auto-pause in
+W4), D8 (interval setup in W4) all settled.

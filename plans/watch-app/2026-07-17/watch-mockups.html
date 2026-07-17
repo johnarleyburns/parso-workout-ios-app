@@ -160,6 +160,10 @@
   .ctl .c.end{background:rgba(255,69,58,.28); color:#ffb3ae;}
   .ctl .c.pause{background:rgba(255,204,0,.24); color:#ffe68a;}
 
+  .avatar{width:20px;height:20px;border-radius:50%;background:linear-gradient(140deg,#0a84ff,#5e5ce6);display:grid;place-items:center;font-size:10px;font-weight:800;color:#fff;flex:0 0 auto;}
+  .avatar.p2{background:linear-gradient(140deg,#ff9f0a,#ff375f);}
+  .avatar.me{background:linear-gradient(140deg,#2fd15a,#0f8f3a);}
+
   /* dialog */
   .dialogwrap{position:relative; flex:1; display:flex; flex-direction:column;}
   .dialog-behind{filter:blur(2px) brightness(.45); display:flex; flex-direction:column; gap:6px; flex:1;}
@@ -189,12 +193,14 @@
     <h1>Watch-only fitness — screen mockups</h1>
     <p class="lede">Every screen for the v3 watch app: the four field-reported fixes (live HR,
       frozen interval clock, kg-only lifts, no save/cancel) plus the full cardio suite —
-      Run, Walk, Cycle indoor &amp; outdoor, Swim with laps, and Other — so a week of training
-      needs no phone. Grouped by build phase; <b>FIX</b> marks repaired v2 screens,
-      <b>NEW</b> marks screens that don't exist yet.</p>
+      Run, Walk, Cycle indoor &amp; outdoor, Swim with laps, Rowing, and Other — with partner
+      rotation, auto-pause, and configurable HIIT/Boxing rounds, so a week of training needs
+      no phone. All decisions settled 2026-07-17. Grouped by build phase; <b>FIX</b> marks
+      repaired v2 screens, <b>NEW</b> marks screens that don't exist yet.</p>
     <div class="meta">
       <span class="tag"><b>Plan</b> · plans/watch-app/2026-07-17/</span>
       <span class="tag"><b>Units</b> · lb default (US locale), phone-synced</span>
+      <span class="tag"><b>Partners</b> · rotation from day one</span>
       <span class="tag"><b>Cardio sync</b> · via HealthKit ingest, no new WC schema</span>
       <span class="tag">Series 10 · 46mm · watchOS 11</span>
     </div>
@@ -220,12 +226,12 @@
               <div class="row"><span class="ic">🚶</span><span class="lab">Walk</span><span class="chev">›</span></div>
               <div class="row"><span class="ic">🚴</span><span class="lab">Cycle</span><span class="chev">›</span></div>
               <div class="row"><span class="ic">🏊</span><span class="lab">Swim</span><span class="chev">›</span></div>
-              <div class="row dim"><span class="ic">🔥</span><span class="lab">HIIT · Boxing · Other…</span></div>
+              <div class="row dim"><span class="ic">🔥</span><span class="lab">HIIT · Boxing · Rowing…</span></div>
             </div>
           </div>
         </div></div>
         <figcaption><div class="cap-t">Launcher <span class="badge new">NEW</span></div>
-        <div class="cap-d">Strength hero + full cardio list (scrolls to HIIT, Boxing, Other, Live HR, Settings). “Start Lift” is gone.</div></figcaption>
+        <div class="cap-d">Strength hero + full cardio list (scrolls to HIIT, Boxing, Rowing, Other, Live HR, Settings). “Start Lift” is gone.</div></figcaption>
       </figure>
 
       <figure>
@@ -358,9 +364,10 @@
   <section class="phase">
     <div class="phase-head">
       <span class="phase-num">W3</span>
-      <h2>Strength — the normal workout lifecycle</h2>
+      <h2>Strength — the normal workout lifecycle, with partners</h2>
       <p>Renamed from “Lift”. Session home hub with Finish &amp; Save and Cancel always reachable;
-         warm-up sets, cool-down timer, and a summary — mirroring the iPhone flow's semantics.</p>
+         warm-up sets, cool-down timer, partner rotation (settled D4), and a summary —
+         mirroring the iPhone flow's semantics.</p>
     </div>
     <div class="grid">
 
@@ -370,8 +377,8 @@
           <div class="body">
             <div class="rows">
               <div class="row"><div><div class="lab">Bench Press</div><div class="sub">3 sets · last 185 lb × 8</div></div><span class="chev">›</span></div>
-              <div class="row"><div><div class="lab">Overhead Press</div><div class="sub">1 set</div></div><span class="chev">›</span></div>
               <div class="row dim"><span class="ic">＋</span><span class="lab">Add exercise</span></div>
+              <div class="row dim"><span class="ic">👥</span><span class="lab">Partners</span><span class="pill">You + Jo</span></div>
             </div>
             <div style="display:flex; gap:6px; margin-top:auto;">
               <div class="btn sm" style="flex:1;">Finish</div>
@@ -380,7 +387,7 @@
           </div>
         </div></div>
         <figcaption><div class="cap-t">Session home <span class="badge fix">FIX</span></div>
-        <div class="cap-d">The hub. Finish &amp; Save and Cancel are always visible — v2's only exit was a “Done” button on one step. Titled <b>Strength</b>.</div></figcaption>
+        <div class="cap-d">The hub (list scrolls). Finish &amp; Save and Cancel are always visible — v2's only exit was a “Done” button on one step. Titled <b>Strength</b>; Partners row shows the active roster.</div></figcaption>
       </figure>
 
       <figure>
@@ -417,7 +424,23 @@
           </div>
         </div></div>
         <figcaption><div class="cap-t">Log set <span class="badge fix">FIX</span></div>
-        <div class="cap-d">Weight in the preferred unit (W2) — lb chips ±5, crown 2.5. Warm-up toggle = phone's per-set flag (excluded from PRs). Back chevron returns to home.</div></figcaption>
+        <div class="cap-d">Weight in the preferred unit (W2) — lb chips ±5, crown 2.5. Warm-up toggle defaults OFF (settled D3, phone parity). With partners, a performer chip appears here and rotates after each set. Back chevron returns to home.</div></figcaption>
+      </figure>
+
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Partners</span>10:13</div>
+          <div class="body">
+            <div class="rows">
+              <div class="row"><span class="avatar me">Y</span><span class="lab">You</span><span class="pill">Lifting</span></div>
+              <div class="row"><span class="avatar">J</span><span class="lab">Jo</span><span class="pill">Up next</span></div>
+              <div class="row dim"><span class="avatar p2">S</span><span class="lab">Sam</span><span class="sub">recent</span></div>
+              <div class="row dim"><span class="ic">🎤</span><span class="lab">New partner…</span></div>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Partners <span class="badge new">NEW</span></div>
+        <div class="cap-d">Settled D4: partners from day one. Roster rotates after each saved set (tap to pick out of order); recents come from the phone, new names by dictation. Partner sets never touch your PRs, volume, or Health.</div></figcaption>
       </figure>
 
       <figure>
@@ -493,10 +516,11 @@
   <section class="phase">
     <div class="phase-head">
       <span class="phase-num">W4</span>
-      <h2>Cardio — run, walk, cycle, swim, other</h2>
+      <h2>Cardio — run, walk, cycle, swim, rowing, other</h2>
       <p>Apple-Workout grammar: setup → metrics page, swipe left for controls. Distance, pace and
-         energy stream from the live workout builder; workouts save to HealthKit and reach the
-         phone through the existing ingest.</p>
+         energy stream from the live workout builder; outdoor sessions auto-pause (settled D7);
+         HIIT/Boxing gain a rounds/work/rest setup (settled D8). Workouts save to HealthKit and
+         reach the phone through the existing ingest.</p>
     </div>
     <div class="grid">
 
@@ -505,12 +529,12 @@
           <div class="statusbar"><span class="title">Run</span>7:02</div>
           <div class="body">
             <div class="seg"><b class="on">Outdoor</b><b>Indoor</b></div>
-            <div class="toast">GPS + pedometer distance.<br>Choice is remembered per activity.</div>
+            <div class="toast">GPS + pedometer distance.<br>Auto-pauses when you stop.</div>
             <div class="btn" style="margin-top:auto;">Start run</div>
           </div>
         </div></div>
         <figcaption><div class="cap-t">Cardio setup — Run <span class="badge new">NEW</span></div>
-        <div class="cap-d">Same screen for Walk and Cycle (Outdoor | Indoor, remembered per type). “Other” skips setup entirely.</div></figcaption>
+        <div class="cap-d">Same screen for Walk and Cycle (Outdoor | Indoor, remembered per type). Outdoor auto-pauses like Apple Workout (settled D7; toggle in Settings). Rowing and “Other” skip setup entirely.</div></figcaption>
       </figure>
 
       <figure>
@@ -518,13 +542,29 @@
           <div class="statusbar"><span class="title">Swim</span>7:02</div>
           <div class="body">
             <div class="seg"><b class="on">Pool</b><b>Open water</b></div>
-            <div class="field"><span class="k">Lap length</span><span class="v">25 yd</span></div>
+            <div class="chips"><span class="chip acc">25 yd</span><span class="chip">50 yd</span></div>
             <div class="toast">Laps count automatically.<br>Water Lock turns on at start.</div>
             <div class="btn" style="margin-top:auto;">Start swim</div>
+            <div class="crownhint">crown fine-tune length</div>
           </div>
         </div></div>
         <figcaption><div class="cap-t">Swim setup <span class="badge new">NEW</span></div>
-        <div class="cap-d">Pool: crown-adjustable lap length (default 25 yd/m by unit pref) drives HealthKit's automatic length counting (D5). Open water: distance, no laps.</div></figcaption>
+        <div class="cap-d">Settled D5: 25/50 yd·m presets (unit-pref aware) switchable before start, crown fine-tune for odd pools; drives HealthKit's automatic length counting. Open water: distance, no laps.</div></figcaption>
+      </figure>
+
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Boxing setup</span>6:58</div>
+          <div class="body">
+            <div class="field"><span class="k">Rounds</span><span class="v">8</span></div>
+            <div class="field"><span class="k">Work</span><span class="v">3:00</span></div>
+            <div class="field"><span class="k">Rest</span><span class="v">1:00</span></div>
+            <div class="btn" style="margin-top:auto;">Start boxing</div>
+            <div class="crownhint">crown adjusts selected field</div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">HIIT / Boxing setup <span class="badge new">NEW</span></div>
+        <div class="cap-d">Settled D8: compact rounds · work · rest, crown-steppable, seeded from the defaults (HIIT 8×30/30, Boxing 8×3:00/1:00) and remembered per kind. Builds the same <code>IntervalPlan.custom</code> the phone uses.</div></figcaption>
       </figure>
 
       <figure>
@@ -538,7 +578,7 @@
           </div>
         </div></div>
         <figcaption><div class="cap-t">Live metrics — run/walk <span class="badge new">NEW</span></div>
-        <div class="cap-d">Elapsed, distance, pace (unit-pref aware), HR + zone, kcal below the fold. Always-On drops to 1 Hz with seconds dimmed.</div></figcaption>
+        <div class="cap-d">Elapsed, distance, pace (unit-pref aware), HR + zone, kcal below the fold. Stops auto-pause with a haptic and an “Auto-paused” banner; walking off resumes. Always-On drops to 1 Hz with seconds dimmed.</div></figcaption>
       </figure>
 
       <figure>
@@ -553,6 +593,20 @@
         </div></div>
         <figcaption><div class="cap-t">Live metrics — cycle <span class="badge new">NEW</span></div>
         <div class="cap-d">Speed instead of pace. Indoor uses sensor-fused estimates (or a paired FTMS machine later); no GPS started.</div></figcaption>
+      </figure>
+
+      <figure>
+        <div class="watch"><div class="screen">
+          <div class="statusbar"><span class="title">Rowing</span>6:12</div>
+          <div class="body" style="gap:7px;">
+            <div class="mx"><div class="v big">15:47</div></div>
+            <div class="mx"><div class="v">3,120 <small>m</small></div><div class="k">Distance</div></div>
+            <div class="mx"><div class="v">2:31 <small>/500m</small></div><div class="k">Split</div></div>
+            <div class="mx"><div class="v"><span class="zc4">♥ 152</span> <small>Z4</small></div><div class="k">Heart rate</div></div>
+          </div>
+        </div></div>
+        <figcaption><div class="cap-t">Live metrics — rowing <span class="badge new">NEW</span></div>
+        <div class="cap-d">Settled D6: Rowing joins the suite. Distance + /500 m split where the OS provides rowing distance (availability-guarded); otherwise elapsed + HR + kcal.</div></figcaption>
       </figure>
 
       <figure>
@@ -579,7 +633,7 @@
           </div>
         </div></div>
         <figcaption><div class="cap-t">Live metrics — Other <span class="badge new">NEW</span></div>
-        <div class="cap-d">The catch-all: elapsed + HR + energy. Rowing (decision D6) would reuse this with distance added.</div></figcaption>
+        <div class="cap-d">The catch-all: elapsed + HR + energy, straight in with no setup.</div></figcaption>
       </figure>
 
       <figure>
@@ -631,10 +685,11 @@
 
   <footer class="foot">
     <b>Reading order:</b> W1 fixes what shipped broken (HR, clock, saving), W2 makes the wrist
-    speak pounds, W3 gives strength the normal start-finish-cancel lifecycle, W4 adds the cardio
-    suite. Colorblind palette (blue/purple) and Reduce-Motion variants apply to every signal
-    screen exactly as on the phone. Full engineering detail:
-    <code>plans/watch-app/2026-07-17/00-overview.md</code> → <code>05-rollout.md</code>,
-    open decisions in <code>decisions.md</code>.
+    speak pounds, W3 gives strength the normal start-finish-cancel lifecycle with partners,
+    W4 adds the cardio suite, auto-pause, and interval setup. Colorblind palette (blue/purple)
+    and Reduce-Motion variants apply to every signal screen exactly as on the phone. All eight
+    design decisions were settled 2026-07-17 and are recorded in
+    <code>plans/watch-app/2026-07-17/00-overview.md</code>; full engineering detail in
+    <code>01-bugfixes.md</code> → <code>05-rollout.md</code>.
   </footer>
 </div>

@@ -32,9 +32,10 @@ to the phone so the two never disagree.
 - **Watch Settings → Units row**: "Pounds (lb)" / "Kilograms (kg)" picker
   (reuses `MeasurementUnitPreference.displayName`).
 - **Phone → watch**: phone calls `updateApplicationContext(["settings.unit": …,
-  "settings.colorBlind": …, "settings.restSeconds": …])` on every settings change
-  and on WC activation (context is latest-value, delivered even if the watch was
-  asleep). Watch applies it in `didReceiveApplicationContext`.
+  "settings.colorBlind": …, "settings.restSeconds": …, "settings.cooldownMinutes": …])`
+  on every settings change and on WC activation (context is latest-value,
+  delivered even if the watch was asleep). Watch applies it in
+  `didReceiveApplicationContext`. *(Decision D2, settled: sync all four now.)*
 - **Watch → phone**: watch edit sends `transferUserInfo(["action": "set_unit", …])`
   (guaranteed delivery); phone applies to `AppSettings.unit`.
 - **Entry ergonomics by unit** (new pure helper `WeightIncrement` in
@@ -73,4 +74,4 @@ to the phone so the two never disagree.
   on watch → phone Settings reflects it.
 
 ## Open questions
-→ see `decisions.md` D2 (which settings ride along in the first context push).
+None — D2 settled (all four settings ride in the first context push).

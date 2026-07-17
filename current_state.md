@@ -2,7 +2,7 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-17 — watch app v3 **planned** (`plans/watch-app/2026-07-17/`), awaiting decision-sheet answers._
+_Last updated: 2026-07-17 — watch app v3 **planned + all decisions settled** (`plans/watch-app/2026-07-17/`), ready to implement on approval._
 
 ## Watch app v3 — 2026-07-17 (`plans/watch-app/2026-07-17/`) — PLAN ONLY
 
@@ -12,12 +12,15 @@ lifts ("Strength" + warm-up/lifts/cool-down expected), (5) no cardio. Root cause
 all confirmed in code (HR-share auth gate aborts every session; `runner.now` never
 advanced; `finishWorkout()` never called so no workout was ever saved to HealthKit).
 
-Plan written (00-overview → 05-rollout + decisions.md + watch-mockups.html, one
-mockup per view; mockups also published as a review artifact). Phases: W1 fixes
-(HR/clock/save), W2 units (lb default + phone sync), W3 strength lifecycle,
-W4 cardio suite (run/walk/cycle indoor+outdoor, swim + laps, other), W5 backlog.
-**No implementation yet** — 8 open decisions (D1–D8) in `decisions.md` need
-answers before W3/W4 start; W1/W2 are decision-free and could start on approval.
+Plan written (00-overview → 05-rollout + watch-mockups.html, one mockup per
+view; mockups also published as a review artifact). All 8 decisions (D1–D8)
+answered 2026-07-17 and recorded verbatim in `00-overview.md`; the decision
+sheet is retired. Scope-changing answers folded in: **partners in W3** (D4),
+**auto-pause + HIIT/Boxing rounds/work/rest setup + Rowing in W4** (D6/D7/D8),
+swim 25/50 lap-length presets (D5). Phases: W1 fixes (HR/clock/save), W2 units
+(lb default + 4-setting phone sync), W3 strength lifecycle + partners, W4 cardio
+suite, W5 backlog (Resume, complication, routes, smart swap). ~74 new headless
+tests estimated. **No implementation yet** — ready to start W1/W2 on approval.
 
 ## Watch app v2 — 2026-07-16 (`plans/watch-app/2026-07-16/`)
 

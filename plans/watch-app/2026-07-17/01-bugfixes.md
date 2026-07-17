@@ -43,8 +43,9 @@ continuously inside a workout session. So even after the auth fix, tapping
 
 ### Design
 - **Fix the gate:** request `toShare: [workoutType, activeEnergyBurned, distanceWalkingRunning,
-  distanceCycling, distanceSwimming]` (the types W4 will write), `read: [heartRate,
-  activeEnergyBurned, distance*]`. Gate `startWorkout` on
+  distanceCycling, distanceSwimming, distanceRowing†]` (the types W4 will write),
+  `read: [heartRate, activeEnergyBurned, distance*]` († availability-guarded —
+  older watchOS falls back to elapsed+HR for rowing). Gate `startWorkout` on
   `store.authorizationStatus(for: .workoutType()) == .sharingAuthorized` **only**.
   If HR read was denied, the session still runs; the UI shows `--` with a one-line
   hint ("Enable Heart Rate in Settings → Health") instead of refusing to start.
@@ -54,6 +55,7 @@ continuously inside a workout session. So even after the auth fix, tapping
   spins up an `.other` session purely for sensor streaming and calls
   `builder.discardWorkout()` on stop (never saved, no rings pollution). While any
   real workout is active, Live HR just mirrors it (as today).
+  *(Decision D1, settled: "Live HR is just so I can measure it" — discard, never save.)*
 
 ### Implementation steps
 1. Rework `requestHRAuthorization()` → `requestWorkoutAuthorization()`; correct

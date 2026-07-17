@@ -11,6 +11,7 @@ import CadenceFeatures
 struct WatchStrengthView: View {
     @Environment(\.modelContext) private var context
     @Environment(WatchWorkoutManager.self) private var watchManager
+    @Environment(AppSettings.self) private var watchSettings
     @Environment(\.dismiss) private var dismiss
 
     @State private var session: WorkoutSession?
@@ -138,7 +139,7 @@ struct WatchStrengthView: View {
                 .font(.caption.bold()).foregroundStyle(.secondary)
             HStack(spacing: 6) {
                 Button("-5") { weight = max(0, weight - 5) }.buttonStyle(.bordered)
-                Text(String(format: "%.0f kg", weight))
+                Text(Format.weight(weight, unit: watchSettings.unit))
                     .font(.title2.monospaced())
                     .focusable()
                     .digitalCrownRotation($weight, from: 0, through: 300, by: 2.5,
@@ -168,7 +169,7 @@ struct WatchStrengthView: View {
         guard let ex = activeExercise else { return nil }
         let workingSets = (ex.sets ?? []).filter { !$0.isWarmup }
         guard let last = workingSets.last else { return nil }
-        return "Previous: \(String(format: "%.0f", last.effectiveLoadKg)) × \(last.reps)"
+        return "Previous: \(Format.previousShort(last.effectiveLoadKg, reps: last.reps, unit: watchSettings.unit))"
     }
 
     private func logSet() {

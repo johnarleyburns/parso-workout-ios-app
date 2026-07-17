@@ -1,8 +1,10 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 struct WatchRootView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
+    @Environment(AppSettings.self) private var watchAppSettings
 
     var body: some View {
         NavigationStack {
@@ -39,7 +41,10 @@ struct WatchRootView: View {
 
                 Section {
                     NavigationLink { HRSettingsView() }
-                        label: { Label("Settings", systemImage: "gearshape.fill") }
+                        label: { Label("Heart-rate source", systemImage: "heart.fill") }
+
+                    NavigationLink { WatchUnitsView(appSettings: watchAppSettings) }
+                        label: { Label("Units", systemImage: "scalemass") }
                 }
             }
             .navigationTitle("Cladiron")

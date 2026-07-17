@@ -1,8 +1,10 @@
 import Foundation
 import SwiftUI
 import Observation
+import SwiftData
 import WatchConnectivity
 import CadenceCore
+import CadenceFeatures
 #if DEBUG
 import CadenceFixtures
 #endif
@@ -87,6 +89,26 @@ final class AppModel: NSObject {
         session.activate()
     }
 
+    private var _settings: AppSettings?
+    private var _modelContainer: ModelContainer?
+
+    func configureWatchSync(settings: AppSettings, container: ModelContainer) {
+        _settings = settings
+        _modelContainer = container
+    }
+
+    func pushSettingsContext() {
+        guard let settings = _settings, let session = wcSession else { return }
+        do {
+            try session.updateApplicationContext([
+                "settings.unit": settings.unit.rawValue,
+                "settings.intervalColorBlind": settings.intervalColorBlind,
+                "settings.restSeconds": settings.restSeconds,
+                "settings.cooldownMinutes": settings.cooldownMinutes,
+            ])
+        } catch {}
+    }
+
     /// Tells the Apple Watch to start an `HKWorkoutSession` for the given
     /// exercise type and begin streaming live heart rate.
     func startWatchWorkout(type: CardioType) {
@@ -153,7 +175,9 @@ extension AppModel: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if activationState == .activated {
             DispatchQueue.main.async { [weak self] in
-                self?.watchAppInstalled = session.isWatchAppInstalled
+                guard let self else { return }
+                self.watchAppInstalled = session.isWatchAppInstalled
+                self.pushSettingsContext()
             }
         }
     }
@@ -179,9 +203,6 @@ extension AppModel: WCSessionDelegate {
         }
     }
 
-    /// Handle watch-to-phone data sync: sets logged on the watch arrive via
-    /// `transferUserInfo` (guaranteed background delivery) and are merged
-    /// idempotently by UUID into the phone's local SwiftData store.
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         guard let action = userInfo["action"] as? String else { return }
         switch action {
@@ -189,6 +210,8 @@ extension AppModel: WCSessionDelegate {
             handleWatchLogSet(userInfo)
         case "end_session":
             handleWatchEndSession(userInfo)
+        case "set_unit":
+            handleWatchSetUnit(userInfo)
         default:
             break
         }
@@ -205,6 +228,12 @@ extension AppModel: WCSessionDelegate {
     private func handleWatchEndSession(_ info: [String: Any]) {
         NotificationCenter.default.post(name: .watchSessionEnded, object: nil,
                                          userInfo: info)
+    }
+
+    private func handleWatchSetUnit(_ info: [String: Any]) {
+        guard let raw = info["value"] as? String,
+              let unit = MeasurementUnitPreference(rawValue: raw) else { return }
+        _settings?.unit = unit
     }
 }
 

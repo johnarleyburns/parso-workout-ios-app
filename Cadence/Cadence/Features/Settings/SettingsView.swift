@@ -21,6 +21,7 @@ struct SettingsView: View {
                     ForEach(MeasurementUnitPreference.allCases) { Text($0.displayName).tag($0) }
                 }
                 .accessibilityIdentifier("settings.unit")
+                .onChange(of: settings.unit) { _, _ in model.pushSettingsContext() }
                 Picker("PR rule", selection: $settings.prRule) {
                     ForEach(PRRule.allCases) { Text($0.displayName).tag($0) }
                 }

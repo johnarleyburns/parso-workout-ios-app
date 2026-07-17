@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 @main
 struct CadenceWatchApp: App {
@@ -10,12 +11,21 @@ struct CadenceWatchApp: App {
     }()
 
     @State private var watchManager = WatchWorkoutManager(uiTestMode: ProcessInfo.processInfo.arguments.contains("-uiTest"))
+    @State private var watchAppSettings: AppSettings = {
+        let s = AppSettings()
+        if s.unit == .kilograms {
+            s.unit = WeightIncrement.unitDefault()
+        }
+        return s
+    }()
 
     var body: some Scene {
         WindowGroup {
             WatchRootView()
                 .environment(watchManager)
+                .environment(watchAppSettings)
                 .task { watchManager.activateWCSession() }
+                .task { watchManager.watchAppSettings = watchAppSettings }
         }
         .modelContainer(container)
     }

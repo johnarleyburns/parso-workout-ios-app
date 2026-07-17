@@ -6,6 +6,7 @@ struct RootTabView: View {
     enum Tab: Hashable { case workout, tests, progress }
     @Environment(AppSettings.self) private var settings
     @Environment(CloudBackupService.self) private var backup
+    @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: Tab = .workout
     @State private var showSplash = true
@@ -82,8 +83,9 @@ struct RootTabView: View {
             await backup.backUpIfNeeded(settings: settings)
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, settings.iCloudBackupEnabled else { return }
-            Task { await backup.backUpIfNeeded(settings: settings) }
+            guard phase == .active else { return }
+            if settings.iCloudBackupEnabled { Task { await backup.backUpIfNeeded(settings: settings) } }
+            model.pushSettingsContext()
         }
         .onReceive(NotificationCenter.default.publisher(for: .workoutHistoryChanged)) { _ in
             // Mark the store dirty so BackupPolicy schedules the next backup.

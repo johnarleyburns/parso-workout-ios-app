@@ -3,6 +3,7 @@ import HealthKit
 import WatchConnectivity
 import WatchKit
 import CadenceCore
+import CadenceFeatures
 
 @Observable
 final class WatchWorkoutManager: NSObject {
@@ -50,6 +51,7 @@ final class WatchWorkoutManager: NSObject {
     private var sessionStart: Date?
     private var accumulatedHR: Double = 0
     private var hrCount: Int = 0
+    var watchAppSettings: AppSettings?
 
     private let uiTestMode: Bool
 
@@ -289,6 +291,23 @@ extension WatchWorkoutManager: WCSessionDelegate {
             startWorkout(type: type)
         } else if message["command"] as? String == "stop_workout" {
             stopWorkout(save: false)
+        }
+    }
+
+    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        guard let s = watchAppSettings else { return }
+        if let raw = applicationContext["settings.unit"] as? String,
+           let unit = MeasurementUnitPreference(rawValue: raw) {
+            s.unit = unit
+        }
+        if let cb = applicationContext["settings.intervalColorBlind"] as? Bool {
+            s.intervalColorBlind = cb
+        }
+        if let rs = applicationContext["settings.restSeconds"] as? Int {
+            s.restSeconds = rs
+        }
+        if let cm = applicationContext["settings.cooldownMinutes"] as? Int {
+            s.cooldownMinutes = cm
         }
     }
 }

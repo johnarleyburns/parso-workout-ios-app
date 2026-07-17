@@ -293,7 +293,6 @@
 				8D78A5222FD286E200AE7C2F /* Sources */,
 				8D78A5232FD286E200AE7C2F /* Frameworks */,
 				8D78A5242FD286E200AE7C2F /* Resources */,
-				WASHA10000000000000000001 /* Strip UIBackgroundModes (watch) */,
 			);
 			buildRules = (
 			);
@@ -462,27 +461,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		WASHA10000000000000000001 /* Strip UIBackgroundModes (watch) */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Strip UIBackgroundModes (watch)";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Xcode auto-adds workout-processing to Info.plist when it detects\n# HKWorkoutSession. watchOS < 27.0 rejects this in App Store validation.\n# Strip it from the processed Info.plist before codesigning.\nPLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\nif [ -f \"$PLIST\" ]; then\n    /usr/libexec/PlistBuddy -c \"Delete :UIBackgroundModes\" \"$PLIST\" 2>/dev/null || true\nfi\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8D78A4F12FD282B500AE7C2F /* Sources */ = {

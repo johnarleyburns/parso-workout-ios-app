@@ -155,6 +155,25 @@ jobs:
             exit 1
           fi
 
+      - name: Strip workout-processing from watch Info.plist
+        if: success()
+        run: |
+          set -eo pipefail
+          # Xcode auto-adds workout-processing to watch Info.plist (invalid for watchOS < 27.0).
+          # Strip it from the archived bundle before export.
+          WATCH_PLIST="./build/Cadence.xcarchive/Products/Applications/Cadence.app/Watch/Cadence Watch App Watch App.app/Info.plist"
+          if [ -f "$WATCH_PLIST" ]; then
+            /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$WATCH_PLIST" 2>/dev/null || true
+            echo "Stripped UIBackgroundModes from watch Info.plist"
+          else
+            echo "Watch Info.plist not found at expected path, trying alternate..."
+            WATCH_PLIST=$(find ./build/Cadence.xcarchive -name "Info.plist" -path "*/Watch/*" | head -1)
+            if [ -f "$WATCH_PLIST" ]; then
+              /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$WATCH_PLIST" 2>/dev/null || true
+              echo "Stripped UIBackgroundModes from $WATCH_PLIST"
+            fi
+          fi
+
       - name: Export IPA
         run: |
           set -eo pipefail

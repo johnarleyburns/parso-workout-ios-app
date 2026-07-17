@@ -2,12 +2,12 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-16 — watch app v2 shipped (Phases 0-5, `plans/watch-app/2026-07-16/`)._
+_Last updated: 2026-07-16 — watch app v2 shipped + CI green (`plans/watch-app/2026-07-16/`)._
 
 ## Watch app v2 — 2026-07-16 (`plans/watch-app/2026-07-16/`)
 
 Root causes addressed: watch app never embedded in phone archive, `liveWatchHREnabled = false`,
-Timer-based HR polling, empty delegate callbacks. Shipped in one commit (`b2ccca6`):
+Timer-based HR polling, empty delegate callbacks. Shipped in commits from `b2ccca6` to `7e5a906`:
 
 - **Phase 0 (Foundation):** Embed Watch Content in phone archive, link CadenceFeatures
   to watch target, WatchRootView launcher, named watch simulator, `make watch-smoke`,
@@ -24,10 +24,14 @@ Timer-based HR polling, empty delegate callbacks. Shipped in one commit (`b2ccca
   pattern, muscle overlap, equipment, recency.
 - **Phase 5 (Handoff):** `AppModel` handles watch→phone `transferUserInfo` for
   `log_set` + `end_session`; `NSNotification` bridge to phone store.
+- **CI fixes:** `ARCHS=arm64` removed (stripped arm64_32 from watch); watch provisioning
+  profile added (`Parso Workout Watch App Store`); `ExportOptions.plist` maps watch bundle;
+  `workout-processing` stripped from watch Info.plist in CI post-archive step (invalid
+  for watchOS < 27.0 in App Store validation).
 
 Fix: `DataCompression.maxInflatedBytes` `Int64` to avoid arm64_32 overflow.
 
-Verification: 1066 tests (0 failures), phone build ✅, watch build ✅, pyramid OK.
+Verification: 1066 tests (0 failures), phone build ✅, watch build ✅, pyramid OK, CI green ✅.
 
 ## Coach-user-control redesign — 2026-07-16 (`plans/coach-user-control/2026-07-16/`)
 

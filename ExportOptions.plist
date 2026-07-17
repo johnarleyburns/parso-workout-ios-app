@@ -15,7 +15,7 @@
 		<key>guru.parso.ios-workout-app</key>
 		<string>Parso Workout App Store</string>
 		<key>guru.parso.ios-workout-app.watchkitapp</key>
-		<string>Parso Workout App Store</string>
+		<string>Parso Workout Watch App Store</string>
 	</dict>
 	<key>stripSwiftSymbols</key>
 	<true/>

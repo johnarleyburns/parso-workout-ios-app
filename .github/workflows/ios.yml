@@ -90,14 +90,17 @@ jobs:
             -S apple-tool:,apple: \
             -s -k "$KEYCHAIN_PASSWORD" build.keychain
 
-      - name: Import Provisioning Profile
+      - name: Import Provisioning Profiles
         env:
           PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          WATCH_PROVISIONING_PROFILE_BASE64: ${{ secrets.WATCH_PROVISIONING_PROFILE_BASE64 }}
         run: |
           set -eo pipefail
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode \
             -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_App_Store.mobileprovision"
+          echo -n "$WATCH_PROVISIONING_PROFILE_BASE64" | base64 --decode \
+            -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_Watch_App_Store.mobileprovision"
 
       - name: Cache SPM
         uses: actions/cache@v4

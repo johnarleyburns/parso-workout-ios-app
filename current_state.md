@@ -2,9 +2,58 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-17 — watch app v3 **planned + all decisions settled** (`plans/watch-app/2026-07-17/`), ready to implement on approval._
+_Last updated: 2026-07-17 — watch app v3 **SHIPPED** all four phases (`c15ab13`)._
 
-## Watch app v3 — 2026-07-17 (`plans/watch-app/2026-07-17/`) — PLAN ONLY
+## Watch app v3 — 2026-07-17 (`plans/watch-app/2026-07-17/`) — SHIPPED
+
+Shipped W1–W4 on `main` as stacked/fast-forward merged PRs (`3e8e4e7`, `4e0e845`,
+`3f31be2`, `c15ab13`). Every phase verified: `swift test` green, phone+watch
+`xcodebuild` green, test-pyramid guardrail green, watch smoke green
+(countdown-advances regression test passes).
+
+**New `swift test` cases: 67.** W1 WatchAuthPolicy (6), W2 WatchSync (10),
+W3 WatchStrengthFlowModel (23), W4 WatchCardioModels (28).
+
+- **W1 — Make it live.** `WatchAuthPolicy`: pure auth-decision logic. Auth gate
+  now uses workoutType share status, not HR read. `WatchWorkoutManager`:
+  `stopWorkout(save:)` state-driven teardown with `finishWorkout`/`discardWorkout`.
+  Live HR quick session (Start/Stop, discarded — D1). `WatchIntervalView`:
+  timeline-driven `runner.now`; summary with Save/Discard; `isLuminanceReduced`
+  flash suppression. Watch smoke asserts countdown advances after 3 s (bug-2 regression).
+- **W2 — Units on the wrist.** `WeightIncrement`: unit-specific chips/detent/range.
+  `WatchSync.Preferences`: context-apply reducer. `WatchUnitsView` with `set_unit`
+  transferUserInfo. Phone `pushSettingsContext` on activation + settings changes.
+  Watch `didReceiveApplicationContext` + locale-seeded unit default (US→lb).
+- **W3 — Strength lifecycle + partners.** `WatchStrengthFlowModel`: full state
+  machine (home→keypad→rest→cooldown→summary). Lazy session create, warm-up default
+  OFF (D3). Partner roster with rotation after each saved set (D4). Cancel emits
+  `discard_session`; empty session auto-discards. Split into 7 sub-views (each
+  ≤400 LOC). Phone real merge: `log_set` with `performed_by`+`set_id` idempotency,
+  `end_session`, `discard_session`.
+- **W4 — Cardio suite.** `WorkoutConfigurationSpec`, `CardioMetricsModel`,
+  `AutoPauseDetector`, `IntervalSetupModel`. Manager: spec-driven config with
+  lap length, location, water lock; auto-pause wiring; lap events; manual lap
+  counter. Views: setup (Outdoor|Indoor, swim 25/50 presets D5), live metrics,
+  controls (End·Pause·Lock·Lap), summary (Save/Discard + "Synced via Health").
+  Interval setup (rounds·work·rest, D8). Launcher: Strength hero + Run/Walk/Cycle/
+  Swim/HIIT/Boxing/Rowing/Other/Live HR (D6 Rowing included).
+
+### Definition of done (05-rollout.md) — SHIPPED
+
+- Strength day: warm-up sets → lifts in lbs → cool-down → Save → merges to phone
+- Partner day: rotate sets, partner sets excluded from PRs/volume/Health
+- Boxing day: custom rounds/work/rest, countdown ticks, rings credit
+- Outdoor run: auto-pauses at stop, resumes walking off; saved, ingested
+- Pool swim: 50 yd pool, lengths count, water lock on, summary saved
+- Cancelled workout leaves zero residue
+- Units read lb everywhere without ever touching the phone
+
+### Simulator-only limitations (known, per plan)
+
+- HealthKit auth, GPS, water lock, auto-pause behaviour cannot be validated on simulator.
+  Real-device/TestFlight confirmation needed for these paths.
+
+## Watch app v3 — 2026-07-17 (`plans/watch-app/2026-07-17/`) — PLAN (archived)
 
 Field feedback from the real device on v2: (1) live HR shows nothing, (2) interval
 clock frozen, (3) kg-only lifts with no setting, (4) no save/cancel lifecycle for

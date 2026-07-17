@@ -1,6 +1,6 @@
 # Cladiron
 
-A private, open-source, science-based **strength app** for iPhone. The tracker is **free forever** and open source — logging, history, Progress, Tests, and export are never gated. The **Coach** is a paid product (**Cladiron Pro**). The source is open so you can verify we never track you. v1 is iPhone-first: log strength workouts with per-set tracking, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported as a secondary capability. **There is no companion Apple Watch app at this time** — the iPhone imports Watch-recorded workouts and heart rate from Apple Health, and a native watchOS app is only a possible future addition. Your data stays entirely on-device, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
+A private, open-source, science-based **strength app** for iPhone and Apple Watch. The tracker is **free forever** and open source — logging, history, Progress, Tests, and export are never gated. The **Coach** is a paid product (**Cladiron Pro**). The source is open so you can verify we never track you. Log strength workouts with per-set tracking and partner rotation from your wrist, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported on both phone and watch. **Companion Apple Watch app included** — run a full "watch-only fitness" session without your phone: strength (with partners, lbs, warm-up/cool-down), HIIT/Boxing with customizable rounds, and cardio (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live HR streams from the wrist; every completed workout saves to HealthKit for rings credit and auto-ingests back to the phone. Your data stays entirely on-device, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
 
 **Every single coaching output cites published, user-navigable science.** Cladiron never makes a recommendation, insight, warning, or deferred decision without a tappable "The science >" link to the study behind it.
 
@@ -29,7 +29,7 @@ A private, open-source, science-based **strength app** for iPhone. The tracker i
 
 - `CadenceCore` — Swift package: data model (SwiftData), coaching engine (CoachDecision engine, eligibility gates, weekly planner, insights + recommendations + citations), exercise library, assessment math, PR logic, interval protocols. Both app targets depend on it; headlessly testable with `swift test`.
 - `Cadence` — iOS app (primary surface for v1).
-- `Cadence Watch App` — a watchOS target kept in the repo for a possible future version. It is **not part of the current release** and is not built into the shipped iOS app.
+- `Cadence Watch App` — a full watchOS companion for phone-free training: strength (with partners), customizable interval workouts, and a complete cardio suite (Run/Walk/Cycle/Swim/Rowing/Other). Built into the shipped iOS app as an embedded watchOS target.
 - HealthKit holds steps/summary workouts/HR; rich set-rep-weight detail lives locally (HealthKit has no schema for it).
 
 ## Build
@@ -39,7 +39,7 @@ Requires Xcode 16+, Swift 6. Real-device testing needed for HealthKit/CoreBlueto
 ```sh
 cd CadenceCore && swift build        # core package
 cd CadenceCore && swift test         # 718 tests (including 21 coach scientific validations)
-open Cadence/Cadence.xcodeproj       # iOS app (watchOS target in-repo, not in the current release)
+    open Cadence/Cadence.xcodeproj       # iOS app + embedded watchOS app
 # CLI build:
 xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence \
   -destination 'platform=iOS Simulator,name=iPhone 16' build

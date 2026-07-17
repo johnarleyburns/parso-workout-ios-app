@@ -11,8 +11,8 @@
 		8D78A55F2FD28A7C00AE7C2F /* CadenceCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8D78A55E2FD28A7C00AE7C2F /* CadenceCore */; };
 		CAFEFEA70000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = CAFEFEA70000000000000000 /* CadenceFeatures */; };
 		CAFEF1180000000000000001 /* CadenceFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = CAFEF1180000000000000000 /* CadenceFixtures */; };
-		WA0000010000000000000001 /* Cadence Watch App Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 8D78A5262FD286E200AE7C2F /* Cadence Watch App Watch App.app */; };
 		WA0000020000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = WA0000060000000000000001 /* CadenceFeatures */; };
+
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,27 +44,9 @@
 			remoteGlobalIDString = 8D78A5252FD286E200AE7C2F;
 			remoteInfo = "Cadence Watch App Watch App";
 		};
-		WA0000030000000000000001 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 8D78A4ED2FD282B500AE7C2F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8D78A5252FD286E200AE7C2F;
-			remoteInfo = "Cadence Watch App Watch App";
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		WA0000040000000000000001 /* Embed Watch Content */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
-			dstSubfolderSpec = 16;
-			files = (
-				WA0000010000000000000001 /* Cadence Watch App Watch App.app in Embed Watch Content */,
-			);
-			name = "Embed Watch Content";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -227,12 +209,10 @@
 				8D78A4F12FD282B500AE7C2F /* Sources */,
 				8D78A4F22FD282B500AE7C2F /* Frameworks */,
 				8D78A4F32FD282B500AE7C2F /* Resources */,
-				WA0000040000000000000001 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				WA0000050000000000000001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				8D78A4F72FD282B500AE7C2F /* Cadence */,
@@ -534,11 +514,6 @@
 			isa = PBXTargetDependency;
 			target = 8D78A5252FD286E200AE7C2F /* Cadence Watch App Watch App */;
 			targetProxy = 8D78A5402FD286E300AE7C2F /* PBXContainerItemProxy */;
-		};
-		WA0000050000000000000001 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8D78A5252FD286E200AE7C2F /* Cadence Watch App Watch App */;
-			targetProxy = WA0000030000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 

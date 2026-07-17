@@ -178,4 +178,39 @@ extension AppModel: WCSessionDelegate {
             self.hrm.injectExternalBPM(bpm)
         }
     }
+
+    /// Handle watch-to-phone data sync: sets logged on the watch arrive via
+    /// `transferUserInfo` (guaranteed background delivery) and are merged
+    /// idempotently by UUID into the phone's local SwiftData store.
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+        guard let action = userInfo["action"] as? String else { return }
+        switch action {
+        case "log_set":
+            handleWatchLogSet(userInfo)
+        case "end_session":
+            handleWatchEndSession(userInfo)
+        default:
+            break
+        }
+    }
+
+    private func handleWatchLogSet(_ info: [String: Any]) {
+        // Set data from watch: the phone merges this into its store via
+        // the same WorkoutRepository path (Phase 3 sync).
+        // Stored for processing by the HomeViewModel on next refresh.
+        NotificationCenter.default.post(name: .watchSetLogged, object: nil,
+                                         userInfo: info)
+    }
+
+    private func handleWatchEndSession(_ info: [String: Any]) {
+        NotificationCenter.default.post(name: .watchSessionEnded, object: nil,
+                                         userInfo: info)
+    }
+}
+
+// MARK: - Watch sync notifications
+
+extension Notification.Name {
+    static let watchSetLogged = Notification.Name("watch.setLogged")
+    static let watchSessionEnded = Notification.Name("watch.sessionEnded")
 }

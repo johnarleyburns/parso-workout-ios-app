@@ -35,6 +35,21 @@ public struct IntervalPlan: Equatable, Sendable {
 
     public var totalDuration: TimeInterval { phases.reduce(0) { $0 + $1.duration } }
 
+    /// Number of work phases in this plan.
+    public var workRounds: Int { phases.filter { $0.kind == .work }.count }
+
+    /// 1-based index of the current work phase given the elapsed time.
+    public func currentWorkRound(atElapsed elapsed: TimeInterval) -> Int {
+        var count = 0
+        var acc: TimeInterval = 0
+        for p in phases {
+            if p.kind == .work { count += 1 }
+            if elapsed < acc + p.duration { return max(1, count) }
+            acc += p.duration
+        }
+        return phases.filter { $0.kind == .work }.count
+    }
+
     /// Locates the active phase for an elapsed time, with seconds left in it and
     /// overall. Returns nil once the plan is complete.
     public func state(atElapsed elapsed: TimeInterval) -> (index: Int, phase: IntervalPhase, phaseRemaining: TimeInterval, overallRemaining: TimeInterval)? {
@@ -193,7 +208,7 @@ public struct IntervalPlan: Equatable, Sendable {
 
     /// Fully custom: warmup → rounds × (work / rest) → cooldown.
     public static func custom(name: String = "Custom", warmup: TimeInterval, rounds: Int,
-                              work: TimeInterval, rest: TimeInterval, cooldown: TimeInterval) -> IntervalPlan {
+                               work: TimeInterval, rest: TimeInterval, cooldown: TimeInterval) -> IntervalPlan {
         var phases: [IntervalPhase] = []
         var id = 0
         func add(_ kind: IntervalPhaseKind, _ dur: TimeInterval, _ label: String) {
@@ -206,6 +221,16 @@ public struct IntervalPlan: Equatable, Sendable {
         }
         add(.cooldown, cooldown, "Cool Down")
         return IntervalPlan(name: name, phases: phases)
+    }
+
+    /// Convenience: Tabata-style HIIT (8 × 30s work / 30s rest, 3:00 warmup, 2:00 cool-down).
+    public static func hiitDefault() -> IntervalPlan {
+        custom(name: "HIIT", warmup: 180, rounds: 8, work: 30, rest: 30, cooldown: 120)
+    }
+
+    /// Convenience: Boxing rounds (8 × 3:00 work / 1:00 rest, 3:00 warmup, 3:00 cool-down).
+    public static func boxingDefault() -> IntervalPlan {
+        custom(name: "Boxing", warmup: 180, rounds: 8, work: 180, rest: 60, cooldown: 180)
     }
 }
 

@@ -9,7 +9,7 @@ import Compression
 public enum DataCompression {
 
     /// Guard against zip-bomb-style inputs: never inflate past 4 GB.
-    public static let maxInflatedBytes = 4 * 1024 * 1024 * 1024
+    public static let maxInflatedBytes: Int64 = 4 * 1024 * 1024 * 1024
 
     public enum CompressionError: Error, Equatable {
         case deflateFailed
@@ -79,7 +79,7 @@ public enum DataCompression {
 
     static func rawInflate(_ data: Data, expectedSize: Int) throws -> Data {
         if data.isEmpty { return Data() }
-        let hint = expectedSize > 0 ? min(expectedSize, maxInflatedBytes) : max(64, data.count * 4)
+        let hint = expectedSize > 0 ? min(expectedSize, Int(maxInflatedBytes)) : max(64, data.count * 4)
         return try perform(operation: COMPRESSION_STREAM_DECODE, source: data, dstHint: hint)
     }
 
@@ -113,7 +113,7 @@ public enum DataCompression {
                 case COMPRESSION_STATUS_OK, COMPRESSION_STATUS_END:
                     let produced = bufferSize - stream.dst_size
                     if produced > 0 { output.append(dstBuffer, count: produced) }
-                    if output.count > maxInflatedBytes { return nil }
+                    if Int64(output.count) > maxInflatedBytes { return nil }
                     if status == COMPRESSION_STATUS_END { return output }
                 default:
                     return nil

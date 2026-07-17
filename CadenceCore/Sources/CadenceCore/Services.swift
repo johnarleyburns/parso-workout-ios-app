@@ -258,6 +258,27 @@ public protocol HeartRateMonitoring: AnyObject {
     func injectExternalBPM(_ bpm: Double)
 }
 
+// MARK: - HR source (Watch-native vs BLE chest strap)
+
+public enum HRSource: String, CaseIterable, Codable, Sendable {
+    case appleWatch
+    case bluetooth
+
+    public var displayName: String {
+        switch self {
+        case .appleWatch: return "Apple Watch"
+        case .bluetooth: return "Chest Strap"
+        }
+    }
+
+    public var symbol: String {
+        switch self {
+        case .appleWatch: return "applewatch"
+        case .bluetooth: return "sensor.tag.radiowaves.forward"
+        }
+    }
+}
+
 // MARK: - Location tracking (FR-2.2)
 
 public struct LocationFix: Equatable, Sendable {

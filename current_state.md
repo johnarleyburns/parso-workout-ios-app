@@ -2,7 +2,32 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-16 — coach-user-control redesign shipped (6 phases, `plans/coach-user-control/2026-07-16/`)._
+_Last updated: 2026-07-16 — watch app v2 shipped (Phases 0-5, `plans/watch-app/2026-07-16/`)._
+
+## Watch app v2 — 2026-07-16 (`plans/watch-app/2026-07-16/`)
+
+Root causes addressed: watch app never embedded in phone archive, `liveWatchHREnabled = false`,
+Timer-based HR polling, empty delegate callbacks. Shipped in one commit (`b2ccca6`):
+
+- **Phase 0 (Foundation):** Embed Watch Content in phone archive, link CadenceFeatures
+  to watch target, WatchRootView launcher, named watch simulator, `make watch-smoke`,
+  pyramid guardrails extended, ungate `liveWatchHREnabled`.
+- **Phase 1 (HR Engine):** Event-driven `HKLiveWorkoutBuilder`, no Timer polling.
+  `WatchHeartRateBLE` (CoreBluetooth on watchOS). `HRSource` enum in CadenceCore.
+  Live HR + zone view, HR source picker UI. `WatchHRProvider` in CadenceFeatures.
+- **Phase 2 (Intervals):** `WatchIntervalView` — full-screen color-coded timer reusing
+  `IntervalRunner` + `IntervalPlan` factories. `WatchIntervalHaptics` driven by
+  `IntervalCueDecider`. `workRounds`/`currentWorkRound` on `IntervalPlan`.
+- **Phase 3 (Strength):** `WatchStrengthView` — exercise picker, Crown+chip weight/reps
+  keypad, `RestTimerModel` integration. `transferUserInfo` sync to phone.
+- **Phase 4 (Swap):** `ExerciseSubstitution` ranker in CadenceCore — scores by movement
+  pattern, muscle overlap, equipment, recency.
+- **Phase 5 (Handoff):** `AppModel` handles watch→phone `transferUserInfo` for
+  `log_set` + `end_session`; `NSNotification` bridge to phone store.
+
+Fix: `DataCompression.maxInflatedBytes` `Int64` to avoid arm64_32 overflow.
+
+Verification: 1066 tests (0 failures), phone build ✅, watch build ✅, pyramid OK.
 
 ## Coach-user-control redesign — 2026-07-16 (`plans/coach-user-control/2026-07-16/`)
 

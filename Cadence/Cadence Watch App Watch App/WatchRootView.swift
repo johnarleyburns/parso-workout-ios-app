@@ -6,24 +6,34 @@ struct WatchRootView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchAppSettings
 
+    @State private var cardioLocation: WorkoutConfigurationSpec.Location = .outdoor
+    @State private var cardioLapLength: Double = 25
+
     var body: some View {
         NavigationStack {
             List {
                 Section {
+                    NavigationLink { WatchStrengthView() }
+                        label: {
+                            HStack {
+                                Image(systemName: "dumbbell.fill").foregroundStyle(.blue)
+                                VStack(alignment: .leading) {
+                                    Text("Strength").fontWeight(.semibold)
+                                    Text("Weight training").font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+
+                    ForEach(cardioTypes, id: \.self) { ct in
+                        NavigationLink {
+                            cardioSetupView(for: ct)
+                        } label: {
+                            Label(ct.displayName, systemImage: ct.symbol)
+                        }
+                    }
+
                     NavigationLink { LiveHRView() }
                         label: { Label("Live HR", systemImage: "heart.fill") }
-
-                    NavigationLink { WatchStrengthView() }
-                        label: { Label("Start Lift", systemImage: "dumbbell.fill") }
-
-                    NavigationLink { WatchIntervalView(plan: .hiitDefault(), kind: "HIIT") }
-                        label: { Label("HIIT", systemImage: "flame.fill") }
-
-                    NavigationLink { WatchIntervalView(plan: .boxingDefault(), kind: "Boxing") }
-                        label: { Label("Boxing", systemImage: "figure.boxing") }
-
-                    NavigationLink { ResumePlaceholderView() }
-                        label: { Label("Resume", systemImage: "arrow.counterclockwise") }
                 }
 
                 if !watchManager.workoutShareAuthorized && !watchManager.isActive {
@@ -32,8 +42,7 @@ struct WatchRootView: View {
                             Task { _ = await watchManager.requestWorkoutAuthorization() }
                         } label: {
                             Label("Health access needed. Tap to enable.", systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.orange)
+                                .font(.caption2).foregroundStyle(.orange)
                         }
                         .accessibilityIdentifier("healthWarningRow")
                     }
@@ -50,239 +59,95 @@ struct WatchRootView: View {
             .navigationTitle("Cladiron")
         }
     }
+
+    var cardioTypes: [CardioType] { [.run, .walk, .cycle, .swim, .hiit, .boxing, .rowing, .other] }
+
+    @ViewBuilder
+    private func cardioSetupView(for ct: CardioType) -> some View {
+        let kind = ct.toCardioKind()
+        if ct == .hiit || ct == .boxing {
+            WatchIntervalSetupView(kind: ct.displayName, model: IntervalSetupModel(kind: ct.displayName)) { plan in
+                watchManager.startWorkout(type: ct.rawValue, spec: WorkoutConfigurationSpec(kind: kind))
+            }
+        } else {
+            WatchCardioSetupView(kind: kind, location: $cardioLocation, lapLength: $cardioLapLength, unit: watchAppSettings.unit) { spec in
+                watchManager.startWorkout(type: ct.rawValue, spec: spec)
+            }
+        }
+    }
 }
 
-// MARK: - Live HR + Zone View
+// MARK: - Live HR + Settings views
 
 private struct LiveHRView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
-
     var body: some View {
         VStack(spacing: 8) {
             Spacer()
-
             if watchManager.isMonitoring {
-                Text(zoneLabel)
-                    .font(.caption.bold())
-                    .foregroundStyle(zoneColor)
-
-                Text(bpmText)
-                    .font(.system(size: 56, weight: .bold, design: .monospaced))
-                    .foregroundStyle(zoneColor)
-
-                HStack(spacing: 3) {
-                    ForEach(1...5, id: \.self) { z in
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(zoneFillColor(for: z))
-                            .frame(width: 28, height: 6)
-                    }
-                }
-
-                Button("Stop") {
-                    watchManager.stopMonitoringSession()
-                }
-                .buttonStyle(.bordered)
-                .padding(.top, 10)
+                Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
+                Text(bpmText).font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(zoneColor)
+                HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
+                Button("Stop") { watchManager.stopMonitoringSession() }.buttonStyle(.bordered).padding(.top, 10)
             } else if watchManager.isActive {
-                Text(zoneLabel)
-                    .font(.caption.bold())
-                    .foregroundStyle(zoneColor)
-
-                Text(bpmText)
-                    .font(.system(size: 56, weight: .bold, design: .monospaced))
-                    .foregroundStyle(zoneColor)
-
-                HStack(spacing: 3) {
-                    ForEach(1...5, id: \.self) { z in
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(zoneFillColor(for: z))
-                            .frame(width: 28, height: 6)
-                    }
-                }
+                Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
+                Text(bpmText).font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(zoneColor)
+                HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
             } else {
-                Text("Not monitoring")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
-
-                Text("--")
-                    .font(.system(size: 56, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 3) {
-                    ForEach(1...5, id: \.self) { _ in
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(.gray.opacity(0.25))
-                            .frame(width: 28, height: 6)
-                    }
-                }
-
-                Button("Start monitoring") {
-                    watchManager.startMonitoringSession()
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.blue)
-                .padding(.top, 8)
-
-                Text("Runs a sensor-only session.\nNothing is saved to Health.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
-                    .padding(.top, 4)
+                Text("Not monitoring").font(.caption.bold()).foregroundStyle(.secondary)
+                Text("--").font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(.secondary)
+                HStack(spacing: 3) { ForEach(1...5, id: \.self) { _ in RoundedRectangle(cornerRadius: 2).fill(.gray.opacity(0.25)).frame(width: 28, height: 6) } }
+                Button("Start monitoring") { watchManager.startMonitoringSession() }.buttonStyle(.borderedProminent).tint(.blue).padding(.top, 8)
+                Text("Runs a sensor-only session.\nNothing is saved to Health.").font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.horizontal, 8).padding(.top, 4)
             }
-
             Spacer()
         }
         .navigationTitle("Live HR")
-        .onChange(of: watchManager.currentBPM) { _, _ in update() }
-        .onAppear { update() }
     }
-
-    private func update() {}
-
-    private var bpmText: String {
-        guard let bpm = watchManager.currentBPM else { return "--" }
-        return String(format: "%.0f", bpm)
-    }
-
-    private var zone: Int {
-        guard let bpm = watchManager.currentBPM else { return 0 }
-        return hrZone(bpm: bpm)
-    }
-
-    private var zoneLabel: String {
-        switch zone {
-        case 1: return "Recovery"
-        case 2: return "Endurance"
-        case 3: return "Tempo"
-        case 4: return "Threshold"
-        case 5: return "Max"
-        default: return "--"
-        }
-    }
-
-    private var zoneColor: Color {
-        switch zone {
-        case 1: return .cyan
-        case 2: return .green
-        case 3: return .yellow
-        case 4: return .orange
-        case 5: return .red
-        default: return .secondary
-        }
-    }
-
-    private func zoneFillColor(for z: Int) -> Color {
-        z <= zone ? zoneColor : .gray.opacity(0.25)
-    }
-
-    private func hrZone(bpm bpmVal: Double) -> Int {
-        let maxHR = 220.0 - 30
-        let pct = bpmVal / maxHR
-        switch pct {
-        case ..<0.60: return 1
-        case 0.60..<0.70: return 2
-        case 0.70..<0.80: return 3
-        case 0.80..<0.90: return 4
-        default: return 5
-        }
-    }
+    private var bpmText: String { guard let bpm = watchManager.currentBPM else { return "--" }; return String(format: "%.0f", bpm) }
+    private var zone: Int { guard let bpm = watchManager.currentBPM else { return 0 }; let pct = bpm / (220.0 - 30); switch pct { case ..<0.60: return 1; case ..<0.70: return 2; case ..<0.80: return 3; case ..<0.90: return 4; default: return 5 } }
+    private var zoneLabel: String { switch zone { case 1: "Recovery"; case 2: "Endurance"; case 3: "Tempo"; case 4: "Threshold"; case 5: "Max"; default: "--" } }
+    private var zoneColor: Color { switch zone { case 1: .cyan; case 2: .green; case 3: .yellow; case 4: .orange; case 5: .red; default: .secondary } }
 }
-
-// MARK: - HR Settings / Source Picker
 
 private struct HRSettingsView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
-
     var body: some View {
         List {
             Section("Heart Rate Source") {
                 ForEach(HRSource.allCases, id: \.self) { source in
-                    Button {
-                        watchManager.hrSource = source
-                        watchManager.switchToSource(source)
-                    } label: {
-                        HStack {
-                            Label(source.displayName, systemImage: source.symbol)
-                            Spacer()
-                            if watchManager.hrSource == source {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(.green)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
+                    Button { watchManager.hrSource = source; watchManager.switchToSource(source) } label: {
+                        HStack { Label(source.displayName, systemImage: source.symbol); Spacer(); if watchManager.hrSource == source { Image(systemName: "checkmark").foregroundStyle(.green) } }
+                    }.buttonStyle(.plain)
                 }
             }
-
             if watchManager.hrSource == .bluetooth {
                 Section("Chest Strap Status") {
                     HStack {
-                        Circle()
-                            .fill(bleStatusColor)
-                            .frame(width: 8, height: 8)
-                        Text(bleStatusText)
-                            .font(.caption)
+                        Circle().fill(bleColor).frame(width: 8, height: 8)
+                        Text(bleText).font(.caption)
                     }
-                    if let battery = watchManager.bleBattery {
-                        Label("Battery: \(battery)%", systemImage: batteryIcon(pct: battery))
-                            .font(.caption)
-                    }
+                    if let b = watchManager.bleBattery { Label("Battery: \(b)%", systemImage: b < 20 ? "battery.0percent" : b < 45 ? "battery.25percent" : b < 70 ? "battery.50percent" : b < 90 ? "battery.75percent" : "battery.100percent").font(.caption) }
                 }
             }
-
-            Section {
-                Button("Request HealthKit Access") {
-                    Task { _ = await watchManager.requestWorkoutAuthorization() }
-                }
-                if !watchManager.hrAuthorized {
-                    Text("HealthKit access needed for heart rate")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .navigationTitle("Settings")
+            Section { Button("Request HealthKit Access") { Task { _ = await watchManager.requestWorkoutAuthorization() } } }
+        }.navigationTitle("Settings")
     }
-
-    private var bleStatusColor: Color {
-        guard let state = watchManager.bleState else { return .secondary }
-        switch state {
-        case .scanning: return .blue
-        case .connected: return .green
-        case .disconnected: return .orange
-        }
-    }
-
-    private var bleStatusText: String {
-        guard let state = watchManager.bleState else { return "Not active" }
-        switch state {
-        case .scanning: return "Scanning..."
-        case .connected: return "Connected"
-        case .disconnected: return "Disconnected"
-        }
-    }
-
-    private func batteryIcon(pct: Int) -> String {
-        switch pct {
-        case 0..<20: return "battery.0percent"
-        case 20..<45: return "battery.25percent"
-        case 45..<70: return "battery.50percent"
-        case 70..<90: return "battery.75percent"
-        default: return "battery.100percent"
-        }
-    }
+    private var bleColor: Color { guard let s = watchManager.bleState else { return .secondary }; switch s { case .scanning: return .blue; case .connected: return .green; case .disconnected: return .orange } }
+    private var bleText: String { guard let s = watchManager.bleState else { return "Not active" }; switch s { case .scanning: return "Scanning..."; case .connected: return "Connected"; case .disconnected: return "Disconnected" } }
 }
 
-private struct ResumePlaceholderView: View {
-    var body: some View {
-        Text("Resume ships in Phase 3")
-            .foregroundStyle(.secondary)
-            .navigationTitle("Resume")
+extension CardioType {
+    func toCardioKind() -> WorkoutConfigurationSpec.CardioKind {
+        switch self {
+        case .run: return .run
+        case .walk: return .walk
+        case .cycle: return .cycle
+        case .swim: return .swim
+        case .hiit: return .hiit
+        case .boxing: return .boxing
+        case .rowing: return .rowing
+        case .other: return .other
+        }
     }
-}
-
-#Preview {
-    WatchRootView()
-        .environment(WatchWorkoutManager())
 }

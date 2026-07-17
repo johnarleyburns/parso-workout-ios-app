@@ -113,15 +113,15 @@ final class WatchWorkoutManager: NSObject {
 
     // MARK: Workout control
 
-    func startWorkout(type rawType: String, cardioType: CardioType? = nil) {
+    func startWorkout(type rawType: String, cardioType: CardioType? = nil, spec: WorkoutConfigurationSpec? = nil) {
         guard !isActive else { return }
         workoutType = rawType
         isActive = true; isMonitoring = false
         let activity = Self.activityType(for: rawType)
-        if uiTestMode { sessionStart = Date(); beginSession(activity: activity); return }
+        if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: spec); return }
         Task {
             guard await requestWorkoutAuthorization() else { isActive = false; return }
-            await MainActor.run { beginSession(activity: activity) }
+            await MainActor.run { beginSession(activity: activity, spec: spec) }
         }
     }
 
@@ -152,6 +152,8 @@ final class WatchWorkoutManager: NSObject {
         ble?.disconnect(); ble = nil; currentBPM = nil
         isActive = false; isMonitoring = false; workoutType = nil; bleState = nil
         sessionStart = nil; accumulatedHR = 0; hrCount = 0
+        isSwimSession = false; isOutdoorSession = false
+        autoPauseDetector.reset(); lastAutoPauseDistance = 0
         elapsed = 0; activeEnergyKcal = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
         if let b, let s {
             b.endCollection(withEnd: Date()) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
@@ -168,6 +170,19 @@ final class WatchWorkoutManager: NSObject {
     }
 
     func resetSavedSummary() { savedSummary = nil }
+
+    private var lastAutoPauseDistance: Double = 0
+    private func evaluateAutoPause(distance m: Double) {
+        guard isOutdoorSession else { return }
+        let speed: Double? = (m - lastAutoPauseDistance) > 0 ? (m - lastAutoPauseDistance) : nil
+        lastAutoPauseDistance = m
+        let enabled = UserDefaults.standard.object(forKey: "watch.cardio.autoPause") as? Bool ?? true
+        switch autoPauseDetector.evaluate(speedMPS: speed, isDisabled: !enabled) {
+        case .pause: if session?.state == .running { session?.pause(); WKInterfaceDevice.current().play(.notification) }
+        case .resume: if session?.state == .paused { session?.resume() }
+        case .none: break
+        }
+    }
 
     // MARK: HR source switching
 
@@ -216,35 +231,48 @@ final class WatchWorkoutManager: NSObject {
 
     // MARK: Helpers
 
-    private func beginSession(activity: HKWorkoutActivityType) {
+    private var autoPauseDetector = AutoPauseDetector()
+    private(set) var manualLapCount: Int = 0
+    private(set) var autoLapCount: Int = 0
+    private var isSwimSession: Bool = false
+    private var isOutdoorSession: Bool = false
+
+    func incrementManualLap() { manualLapCount += 1 }
+    func enableWaterLock() { WKInterfaceDevice.current().enableWaterLock() }
+    func togglePause() {
+        guard let s = session else { return }
+        if s.state == .running { s.pause() } else if s.state == .paused { s.resume() }
+    }
+    var isPaused: Bool { session?.state == .paused }
+
+    private func beginSession(activity: HKWorkoutActivityType, spec: WorkoutConfigurationSpec? = nil) {
         let config = HKWorkoutConfiguration()
-        config.activityType = activity
-        config.locationType = .indoor
-        sessionStart = Date()
-
+        config.activityType = activity; config.locationType = .indoor
+        if let spec {
+            switch spec.location {
+            case .indoor: break
+            case .outdoor: config.locationType = .outdoor; isOutdoorSession = true
+            case .pool(let lapLength):
+                config.swimmingLocationType = .pool; isSwimSession = true
+                if #available(watchOS 10.0, *) { config.lapLength = HKQuantity(unit: .meter(), doubleValue: lapLength) }
+            case .openWater: config.swimmingLocationType = .openWater; isSwimSession = true
+            }
+        }
+        sessionStart = Date(); autoPauseDetector.reset(); manualLapCount = 0; autoLapCount = 0
         guard !uiTestMode else { return }
-
         do {
             let s = try HKWorkoutSession(healthStore: store, configuration: config)
             self.session = s
             let b = s.associatedWorkoutBuilder()
             b.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: config)
-            b.delegate = self
-            self.builder = b
-            s.delegate = self
+            b.delegate = self; self.builder = b; s.delegate = self
             s.startActivity(with: Date())
             b.beginCollection(withStart: Date(), completion: { _, _ in })
             extendedSession = WKExtendedRuntimeSession()
-            extendedSession?.delegate = self
-            extendedSession?.start()
+            extendedSession?.delegate = self; extendedSession?.start()
             if hrSource == .bluetooth { startBLE() }
-        } catch {
-            isActive = false
-            isMonitoring = false
-            session = nil
-            builder = nil
-            sessionStart = nil
-        }
+            if isSwimSession { enableWaterLock() }
+        } catch { isActive = false; isMonitoring = false; session = nil; builder = nil; sessionStart = nil }
     }
 
     private func relayBPM(_ bpm: Double) {
@@ -275,40 +303,18 @@ extension WatchWorkoutManager {
 
 extension WatchWorkoutManager: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
-
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        handleMessage(message)
-    }
-
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-        handleMessage(message)
-        replyHandler(["ack": true])
-    }
-
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) { handleMessage(message) }
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) { handleMessage(message); replyHandler(["ack": true]) }
     private func handleMessage(_ message: [String: Any]) {
-        if message["command"] as? String == "start_workout",
-           let type = message["type"] as? String {
-            startWorkout(type: type)
-        } else if message["command"] as? String == "stop_workout" {
-            stopWorkout(save: false)
-        }
+        if message["command"] as? String == "start_workout", let type = message["type"] as? String { startWorkout(type: type) }
+        else if message["command"] as? String == "stop_workout" { stopWorkout(save: false) }
     }
-
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         guard let s = watchAppSettings else { return }
-        if let raw = applicationContext["settings.unit"] as? String,
-           let unit = MeasurementUnitPreference(rawValue: raw) {
-            s.unit = unit
-        }
-        if let cb = applicationContext["settings.intervalColorBlind"] as? Bool {
-            s.intervalColorBlind = cb
-        }
-        if let rs = applicationContext["settings.restSeconds"] as? Int {
-            s.restSeconds = rs
-        }
-        if let cm = applicationContext["settings.cooldownMinutes"] as? Int {
-            s.cooldownMinutes = cm
-        }
+        if let raw = applicationContext["settings.unit"] as? String, let unit = MeasurementUnitPreference(rawValue: raw) { s.unit = unit }
+        if let cb = applicationContext["settings.intervalColorBlind"] as? Bool { s.intervalColorBlind = cb }
+        if let rs = applicationContext["settings.restSeconds"] as? Int { s.restSeconds = rs }
+        if let cm = applicationContext["settings.cooldownMinutes"] as? Int { s.cooldownMinutes = cm }
     }
 }
 
@@ -358,7 +364,10 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
                let stats = workoutBuilder.statistics(for: dt),
                let qty = stats.sumQuantity() {
                 let m = qty.doubleValue(for: HKUnit.meter())
-                Task { @MainActor in self.distanceMeters = m }
+                Task { @MainActor in
+                    self.distanceMeters = m
+                    self.evaluateAutoPause(distance: m)
+                }
             }
         }
         if #available(watchOS 11.0, *) {
@@ -376,12 +385,15 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
         }
     }
 
-    func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
+    func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {
+        guard let event = workoutBuilder.workoutEvents.last else { return }
+        if event.type == .lap || event.type == .segment {
+            Task { @MainActor in self.autoLapCount += 1 }
+        }
+    }
 }
-
 extension WatchWorkoutManager: WKExtendedRuntimeSessionDelegate {
-    func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession,
-                                didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {}
+    func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {}
     func extendedRuntimeSessionDidStart(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}
     func extendedRuntimeSessionWillExpire(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}
 }

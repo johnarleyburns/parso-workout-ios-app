@@ -9,7 +9,7 @@ struct CadenceWatchApp: App {
         catch { fatalError("Failed to create ModelContainer: \(error)") }
     }()
 
-    @State private var watchManager = WatchWorkoutManager()
+    @State private var watchManager = WatchWorkoutManager(uiTestMode: ProcessInfo.processInfo.arguments.contains("-uiTest"))
 
     var body: some Scene {
         WindowGroup {

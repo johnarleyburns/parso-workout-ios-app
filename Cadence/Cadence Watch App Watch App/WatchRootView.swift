@@ -1,13 +1,6 @@
 import SwiftUI
 import CadenceCore
 
-/// Root launcher for the Cladiron Watch App. Presents a glanceable list of
-/// workout options and live HR monitoring so the user can start a session or
-/// check their heart rate without the phone.
-///
-/// Phase 1: live HR view + HR source picker replaces HR settings placeholder.
-/// Phase 2: real interval timer replaces HIIT/Boxing placeholders.
-/// Phase 3: real strength logging replaces Lift/Resume placeholders.
 struct WatchRootView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
 
@@ -31,6 +24,19 @@ struct WatchRootView: View {
                         label: { Label("Resume", systemImage: "arrow.counterclockwise") }
                 }
 
+                if !watchManager.workoutShareAuthorized && !watchManager.isActive {
+                    Section {
+                        Button {
+                            Task { _ = await watchManager.requestWorkoutAuthorization() }
+                        } label: {
+                            Label("Health access needed. Tap to enable.", systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        .accessibilityIdentifier("healthWarningRow")
+                    }
+                }
+
                 Section {
                     NavigationLink { HRSettingsView() }
                         label: { Label("Settings", systemImage: "gearshape.fill") }
@@ -41,7 +47,7 @@ struct WatchRootView: View {
     }
 }
 
-// MARK: - Live HR + Zone View (Phase 1)
+// MARK: - Live HR + Zone View
 
 private struct LiveHRView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
@@ -50,27 +56,74 @@ private struct LiveHRView: View {
         VStack(spacing: 8) {
             Spacer()
 
-            Text(zoneLabel)
-                .font(.caption.bold())
-                .foregroundStyle(zoneColor)
+            if watchManager.isMonitoring {
+                Text(zoneLabel)
+                    .font(.caption.bold())
+                    .foregroundStyle(zoneColor)
 
-            Text(bpmText)
-                .font(.system(size: 56, weight: .bold, design: .monospaced))
-                .foregroundStyle(zoneColor)
+                Text(bpmText)
+                    .font(.system(size: 56, weight: .bold, design: .monospaced))
+                    .foregroundStyle(zoneColor)
 
-            HStack(spacing: 3) {
-                ForEach(1...5, id: \.self) { z in
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(zoneFillColor(for: z))
-                        .frame(width: 28, height: 6)
+                HStack(spacing: 3) {
+                    ForEach(1...5, id: \.self) { z in
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(zoneFillColor(for: z))
+                            .frame(width: 28, height: 6)
+                    }
                 }
-            }
 
-            if !watchManager.isActive {
-                Text("Start a workout to unlock\ncontinuous HR monitoring")
+                Button("Stop") {
+                    watchManager.stopMonitoringSession()
+                }
+                .buttonStyle(.bordered)
+                .padding(.top, 10)
+            } else if watchManager.isActive {
+                Text(zoneLabel)
+                    .font(.caption.bold())
+                    .foregroundStyle(zoneColor)
+
+                Text(bpmText)
+                    .font(.system(size: 56, weight: .bold, design: .monospaced))
+                    .foregroundStyle(zoneColor)
+
+                HStack(spacing: 3) {
+                    ForEach(1...5, id: \.self) { z in
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(zoneFillColor(for: z))
+                            .frame(width: 28, height: 6)
+                    }
+                }
+            } else {
+                Text("Not monitoring")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+
+                Text("--")
+                    .font(.system(size: 56, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 3) {
+                    ForEach(1...5, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(.gray.opacity(0.25))
+                            .frame(width: 28, height: 6)
+                    }
+                }
+
+                Button("Start monitoring") {
+                    watchManager.startMonitoringSession()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.blue)
+                .padding(.top, 8)
+
+                Text("Runs a sensor-only session.\nNothing is saved to Health.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 4)
             }
 
             Spacer()
@@ -80,9 +133,7 @@ private struct LiveHRView: View {
         .onAppear { update() }
     }
 
-    private func update() {
-        // trigger SwiftUI update via @Observable
-    }
+    private func update() {}
 
     private var bpmText: String {
         guard let bpm = watchManager.currentBPM else { return "--" }
@@ -121,7 +172,7 @@ private struct LiveHRView: View {
     }
 
     private func hrZone(bpm bpmVal: Double) -> Int {
-        let maxHR = 220.0 - 30 // simple default; replaced by real CardioMath later
+        let maxHR = 220.0 - 30
         let pct = bpmVal / maxHR
         switch pct {
         case ..<0.60: return 1
@@ -133,7 +184,7 @@ private struct LiveHRView: View {
     }
 }
 
-// MARK: - HR Settings / Source Picker (Phase 1)
+// MARK: - HR Settings / Source Picker
 
 private struct HRSettingsView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
@@ -177,7 +228,7 @@ private struct HRSettingsView: View {
 
             Section {
                 Button("Request HealthKit Access") {
-                    Task { _ = await watchManager.requestHRAuthorization() }
+                    Task { _ = await watchManager.requestWorkoutAuthorization() }
                 }
                 if !watchManager.hrAuthorized {
                     Text("HealthKit access needed for heart rate")
@@ -217,8 +268,6 @@ private struct HRSettingsView: View {
         }
     }
 }
-
-// MARK: - Placeholder (replaced in later phase)
 
 private struct ResumePlaceholderView: View {
     var body: some View {

@@ -30,10 +30,10 @@ ci: test smoke
 
 # Watch smoke gate: build once, run exactly ONE simulator test (launch → start → stop)
 # on the single named watch simulator. Local only — never in CI.
-WATCH_SMOKE_DEST ?= platform=watchOS Simulator,name=Apple Watch Series 10 (46mm)
+WATCH_SMOKE_DEST ?= platform=watchOS Simulator,name=Apple Watch Series 10 (46mm),OS=11.1
 watch-smoke:
-	xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App" \
+	xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
 	  -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' -quiet
-	xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App" \
+	xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
 	  -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' \
 	  -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1

@@ -4,42 +4,36 @@ import WatchConnectivity
 import WatchKit
 import CadenceCore
 
-/// Event-driven workout session controller for the Cladiron Watch App.
-///
-/// Replaces the old 1s Timer polling with proper `HKLiveWorkoutBuilder`
-/// data-collection callbacks. Supports both Apple Watch optical HR and direct
-/// BLE chest strap (via `WatchHeartRateBLE`). Persists the user's preferred
-/// `HRSource` so it survives restarts.
-///
-/// WCSession receives `start_workout`/`stop_workout` commands from the phone
-/// (legacy FR-8) and also sends commands when the user starts a workout
-/// directly on the watch (Phases 2+).
 @Observable
 final class WatchWorkoutManager: NSObject {
 
     // MARK: Published state
 
-    /// Current heart rate from the active source, or nil if no data yet.
     private(set) var currentBPM: Double?
-
-    /// Whether a workout session is currently active.
     private(set) var isActive: Bool = false
-
-    /// The `CardioType` raw value for the current workout, if any.
+    private(set) var isMonitoring: Bool = false
     private(set) var workoutType: String?
 
-    /// User's preferred HR source (persisted in `UserDefaults`).
     var hrSource: HRSource {
         get { HRSource(rawValue: hrSourceRaw) ?? .appleWatch }
         set { hrSourceRaw = newValue.rawValue }
     }
 
-    /// Whether the optical HR sensor is authorized by the user.
     private(set) var hrAuthorized: Bool = false
-
-    /// Connection state of the BLE chest strap (nil when not scanning).
+    private(set) var workoutShareAuthorized: Bool = false
     private(set) var bleState: BLEConnectionState? = nil
     private(set) var bleBattery: Int? = nil
+
+    private(set) var elapsed: TimeInterval = 0
+    private(set) var activeEnergyKcal: Double = 0
+    private(set) var avgHeartRate: Double?
+    private(set) var maxHeartRate: Double?
+    private(set) var distanceMeters: Double = 0
+    var savedSummary: SavedWorkoutSummary?
+
+    struct SavedWorkoutSummary {
+        let duration: TimeInterval, avgHR: Double?, maxHR: Double?, activeKcal: Double, distanceMeters: Double
+    }
 
     private var hrSourceRaw: String {
         get { UserDefaults.standard.string(forKey: "watch.hrSource") ?? HRSource.appleWatch.rawValue }
@@ -53,6 +47,16 @@ final class WatchWorkoutManager: NSObject {
     private var builder: HKLiveWorkoutBuilder?
     private var extendedSession: WKExtendedRuntimeSession?
     private var ble: WatchHeartRateBLE?
+    private var sessionStart: Date?
+    private var accumulatedHR: Double = 0
+    private var hrCount: Int = 0
+
+    private let uiTestMode: Bool
+
+    init(uiTestMode: Bool = false) {
+        self.uiTestMode = uiTestMode
+        super.init()
+    }
 
     private var wcSession: WCSession? { WCSession.isSupported() ? WCSession.default : nil }
 
@@ -66,14 +70,40 @@ final class WatchWorkoutManager: NSObject {
 
     // MARK: HealthKit authorization
 
-    func requestHRAuthorization() async -> Bool {
+    @discardableResult
+    func requestWorkoutAuthorization() async -> Bool {
+        guard !uiTestMode else {
+            workoutShareAuthorized = true
+            hrAuthorized = true
+            return true
+        }
         let hrType = HKObjectType.quantityType(forIdentifier: .heartRate)!
-        let types: Set<HKObjectType> = [HKObjectType.workoutType(), hrType]
+        var shareTypes: Set<HKSampleType> = [
+            HKObjectType.workoutType(),
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .distanceCycling)!,
+            HKObjectType.quantityType(forIdentifier: .distanceSwimming)!,
+        ]
+        if #available(watchOS 11.0, *) {
+            if let rowing = HKObjectType.quantityType(forIdentifier: .distanceRowing) {
+                shareTypes.insert(rowing)
+            }
+        }
+        let readTypes: Set<HKObjectType> = [
+            hrType,
+            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
+            HKObjectType.quantityType(forIdentifier: .distanceCycling)!,
+            HKObjectType.quantityType(forIdentifier: .distanceSwimming)!,
+        ]
         do {
-            try await store.requestAuthorization(toShare: [.workoutType()], read: types)
-            let status = store.authorizationStatus(for: hrType)
-            hrAuthorized = (status == .sharingAuthorized)
-            return hrAuthorized
+            try await store.requestAuthorization(toShare: shareTypes, read: readTypes)
+            let wStatus = store.authorizationStatus(for: HKObjectType.workoutType())
+            workoutShareAuthorized = (wStatus == .sharingAuthorized)
+            let hStatus = store.authorizationStatus(for: hrType)
+            hrAuthorized = (hStatus != .notDetermined)
+            return workoutShareAuthorized
         } catch {
             return false
         }
@@ -81,52 +111,69 @@ final class WatchWorkoutManager: NSObject {
 
     // MARK: Workout control
 
-    /// Starts a workout session. Called either from a phone command or locally
-    /// when the user taps a workout row in the launcher.
     func startWorkout(type rawType: String, cardioType: CardioType? = nil) {
         guard !isActive else { return }
-
         workoutType = rawType
-        isActive = true
-
+        isActive = true; isMonitoring = false
         let activity = Self.activityType(for: rawType)
-
+        if uiTestMode { sessionStart = Date(); beginSession(activity: activity); return }
         Task {
-            let authorized = await requestHRAuthorization()
-            guard authorized else {
-                isActive = false
-                return
-            }
+            guard await requestWorkoutAuthorization() else { isActive = false; return }
             await MainActor.run { beginSession(activity: activity) }
         }
     }
 
-    func stopWorkout() {
-        builder?.endCollection(withEnd: Date()) { [weak self] _, _ in self?.builder = nil }
-        session?.end()
-        session = nil
-        extendedSession?.invalidate()
-        extendedSession = nil
-        ble?.disconnect()
-        ble = nil
-        currentBPM = nil
-        isActive = false
-        workoutType = nil
-        bleState = nil
+    func startMonitoringSession() {
+        guard !isActive, !isMonitoring else { return }
+        isMonitoring = true; workoutType = "monitoring"
+        if uiTestMode { sessionStart = Date(); beginSession(activity: .other); return }
+        Task {
+            guard await requestWorkoutAuthorization() else { isMonitoring = false; return }
+            await MainActor.run { beginSession(activity: .other) }
+        }
     }
+
+    func stopMonitoringSession() {
+        guard isMonitoring else { return }
+        stopWorkout(save: false)
+    }
+
+    func stopWorkout(save: Bool = true) {
+        guard isActive || isMonitoring else { return }
+        if save, let s = sessionStart {
+            elapsed = Date().timeIntervalSince(s)
+            let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
+            savedSummary = SavedWorkoutSummary(duration: elapsed, avgHR: avg, maxHR: maxHeartRate, activeKcal: activeEnergyKcal, distanceMeters: distanceMeters)
+        }
+        let b = builder; let s = session
+        builder = nil; session = nil; extendedSession?.invalidate(); extendedSession = nil
+        ble?.disconnect(); ble = nil; currentBPM = nil
+        isActive = false; isMonitoring = false; workoutType = nil; bleState = nil
+        sessionStart = nil; accumulatedHR = 0; hrCount = 0
+        elapsed = 0; activeEnergyKcal = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
+        if let b, let s {
+            b.endCollection(withEnd: Date()) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
+            s.end()
+        }
+    }
+
+    func liveSummary() -> (duration: TimeInterval, avgHR: Double?, maxHR: Double?, activeKcal: Double, distanceMeters: Double) {
+        if let start = sessionStart {
+            elapsed = Date().timeIntervalSince(start)
+        }
+        let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
+        return (elapsed, avg, maxHeartRate, activeEnergyKcal, distanceMeters)
+    }
+
+    func resetSavedSummary() { savedSummary = nil }
 
     // MARK: HR source switching
 
     func switchToSource(_ source: HRSource) {
         hrSource = source
-        guard isActive else { return }
-
-        switch source {
-        case .appleWatch:
-            ble?.disconnect(); ble = nil; bleState = nil
-        case .bluetooth:
-            startBLE()
-        }
+        guard isActive || isMonitoring else { return }
+        if source == .appleWatch { ble?.disconnect(); ble = nil; bleState = nil }
+        else { startBLE() }
     }
 
     func startBLE() {
@@ -142,6 +189,11 @@ final class WatchWorkoutManager: NSObject {
                     self.bleBattery = nil
                 case .bpm(let value):
                     self.currentBPM = value
+                    self.accumulatedHR += value
+                    self.hrCount += 1
+                    if self.maxHeartRate == nil || value > (self.maxHeartRate ?? 0) {
+                        self.maxHeartRate = value
+                    }
                     self.relayBPM(value)
                 case .scanning:
                     self.bleState = .scanning
@@ -166,6 +218,9 @@ final class WatchWorkoutManager: NSObject {
         let config = HKWorkoutConfiguration()
         config.activityType = activity
         config.locationType = .indoor
+        sessionStart = Date()
+
+        guard !uiTestMode else { return }
 
         do {
             let s = try HKWorkoutSession(healthStore: store, configuration: config)
@@ -174,22 +229,19 @@ final class WatchWorkoutManager: NSObject {
             b.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: config)
             b.delegate = self
             self.builder = b
-
             s.delegate = self
             s.startActivity(with: Date())
             b.beginCollection(withStart: Date(), completion: { _, _ in })
-
-            // Start extended runtime session for background / Always-On
             extendedSession = WKExtendedRuntimeSession()
             extendedSession?.delegate = self
             extendedSession?.start()
-
-            // If the user prefers BLE, start scanning now
             if hrSource == .bluetooth { startBLE() }
         } catch {
             isActive = false
+            isMonitoring = false
             session = nil
             builder = nil
+            sessionStart = nil
         }
     }
 
@@ -213,17 +265,11 @@ final class WatchWorkoutManager: NSObject {
     }
 }
 
-// MARK: - BLE connection state
-
 extension WatchWorkoutManager {
-    enum BLEConnectionState {
-        case scanning
-        case connected
-        case disconnected
-    }
+    enum BLEConnectionState { case scanning, connected, disconnected }
 }
 
-// MARK: - WCSessionDelegate
+// MARK: - WCSessionDelegate / Session / Builder delegates
 
 extension WatchWorkoutManager: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
@@ -242,45 +288,77 @@ extension WatchWorkoutManager: WCSessionDelegate {
            let type = message["type"] as? String {
             startWorkout(type: type)
         } else if message["command"] as? String == "stop_workout" {
-            stopWorkout()
+            stopWorkout(save: false)
         }
     }
 }
-
-// MARK: - HKWorkoutSessionDelegate
 
 extension WatchWorkoutManager: HKWorkoutSessionDelegate {
     func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
                         from fromState: HKWorkoutSessionState, date: Date) {}
 
     func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
-        stopWorkout()
+        stopWorkout(save: false)
     }
 }
 
-// MARK: - HKLiveWorkoutBuilderDelegate (event-driven HR)
-
 extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
     func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
-        guard hrSource == .appleWatch, isActive else { return }
+        guard isActive || isMonitoring else { return }
 
         let hrType = HKQuantityType(.heartRate)
-        guard collectedTypes.contains(hrType) else { return }
-
-        if let stats = workoutBuilder.statistics(for: hrType),
+        if collectedTypes.contains(hrType),
+           let stats = workoutBuilder.statistics(for: hrType),
            let qty = stats.mostRecentQuantity() {
             let bpm = qty.doubleValue(for: HKUnit(from: "count/min"))
             Task { @MainActor in
                 self.currentBPM = bpm
-                self.relayBPM(bpm)
+                self.accumulatedHR += bpm
+                self.hrCount += 1
+                if self.maxHeartRate == nil || bpm > (self.maxHeartRate ?? 0) {
+                    self.maxHeartRate = bpm
+                }
+                if hrSource == .appleWatch {
+                    self.relayBPM(bpm)
+                }
             }
+        }
+
+        let energyType = HKQuantityType(.activeEnergyBurned)
+        if collectedTypes.contains(energyType),
+           let stats = workoutBuilder.statistics(for: energyType),
+           let qty = stats.sumQuantity() {
+            let kcal = qty.doubleValue(for: HKUnit.kilocalorie())
+            Task { @MainActor in self.activeEnergyKcal = kcal }
+        }
+
+        let distanceTypes: [HKQuantityTypeIdentifier] = [.distanceWalkingRunning, .distanceCycling, .distanceSwimming]
+        for id in distanceTypes {
+            let dt = HKQuantityType(id)
+            if collectedTypes.contains(dt),
+               let stats = workoutBuilder.statistics(for: dt),
+               let qty = stats.sumQuantity() {
+                let m = qty.doubleValue(for: HKUnit.meter())
+                Task { @MainActor in self.distanceMeters = m }
+            }
+        }
+        if #available(watchOS 11.0, *) {
+            let rowType = HKQuantityType(.distanceRowing)
+            if collectedTypes.contains(rowType),
+               let stats = workoutBuilder.statistics(for: rowType),
+               let qty = stats.sumQuantity() {
+                let m = qty.doubleValue(for: HKUnit.meter())
+                Task { @MainActor in self.distanceMeters = m }
+            }
+        }
+
+        if let elapsedTime = sessionStart {
+            Task { @MainActor in self.elapsed = Date().timeIntervalSince(elapsedTime) }
         }
     }
 
     func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
 }
-
-// MARK: - WKExtendedRuntimeSessionDelegate
 
 extension WatchWorkoutManager: WKExtendedRuntimeSessionDelegate {
     func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession,

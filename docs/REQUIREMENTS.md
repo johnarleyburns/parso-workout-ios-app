@@ -2,9 +2,9 @@
 
 > **Product name (user-visible): Cladiron.** Internal codename: Cadence — used for the repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, and type names.
 
-**Status:** Draft v1.0 · **Platforms:** **v1 ships iPhone-only (iOS 17+).** watchOS 10+ is planned but **deferred** (hardware); in v1, Watch-recorded workouts/steps/HR are read from HealthKit. · **License:** GPLv3 (brand/trademark reserved) · **Distribution:** Source + TestFlight + App Store
+**Status:** Draft v1.1 · **Platforms:** **v1 ships iPhone (iOS 17+) + an embedded watchOS 10+ companion app** (FR-8 shipped ahead of schedule, 2026-07-17); Watch-recorded workouts/steps/HR are also read from HealthKit. · **License:** GPLv3 (brand/trademark reserved) · **Distribution:** Source + TestFlight + App Store
 
-> **v1 release scope:** log strength on the phone with coaching; read steps + ingest Watch-recorded workouts/HR from HealthKit; run a no-lab fitness test battery that feeds the coach; review history, PRs, and trends. The watch app (FR-8) and on-device cardio/sensors move to later releases — see §8.
+> **v1 release scope:** log strength on the phone with coaching; read steps + ingest Watch-recorded workouts/HR from HealthKit; run a no-lab fitness test battery that feeds the coach; review history, PRs, and trends; train phone-free from the Watch (FR-8, shipped 2026-07-17: strength with partners, HIIT, cardio suite, live wrist HR). FTMS/NFC and Smart Start sensors move to later releases — see §9.
 
 ---
 
@@ -122,9 +122,14 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - FR-7.6 Manual override always present.
 - FR-7.7 Cold start: sensible category defaults.
 
-### FR-8 Apple Watch (deferred)
-- FR-8.1 Standalone watchOS app for wrist workouts (deferred to v2).
-- FR-8.2-8.7: see v2 phasing.
+### FR-8 Apple Watch (SHIPPED 2026-07-17, ahead of the original v2 phasing)
+- FR-8.1 Embedded watchOS companion app for phone-free wrist workouts: strength
+  (partner rotation, warm-up/cool-down), HIIT/Boxing rounds, and cardio
+  (run/walk/cycle indoor & outdoor, swim with lap counter, rowing, other).
+- Live wrist HR via `HKWorkoutSession`; workouts save to HealthKit (rings
+  credit) and relay to the phone over WatchConnectivity for auto-ingest.
+- Remaining W5 backlog (Resume, complication, routes, smart swap) tracked in
+  `plans/watch-app/2026-07-17/`.
 
 ### FR-9 Cross-device portability & roles
 - FR-9.1 (removed) No cloud sync. The store is local; cross-install portability is the JSON export/import (FR-6). WatchConnectivity is for live handoff only.
@@ -260,7 +265,7 @@ Schema changes are **additive only** — optional fields, no unique constraints,
   - P3: Tests engine (on-device VO2max, no-lab battery, fitness baseline card)
   - P4: Coach wiring (test baselines feed recommendations, citations UI)
   - P5: Built-in programs (5/3/1, PPL + planning surface integration)
-- **v2 — watch-first (when hardware allows):** FR-8 (wrist logging + live cardio), FR-7 (Smart Start).
+- **v2 — watch-first:** FR-8 (wrist logging + live cardio) — **shipped early, 2026-07-17**; FR-7 (Smart Start) remains.
 - **v3 — sensors & enhancements:** FR-7 enhancements (FTMS/NFC/beacon), advanced assessments.
 
 ## 10. Resolved Decisions

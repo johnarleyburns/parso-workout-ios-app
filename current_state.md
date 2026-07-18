@@ -2,7 +2,35 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-17 — watch app v3 **SHIPPED** all four phases (`c15ab13`)._
+_Last updated: 2026-07-18 — launch-readiness reconciliation pass (docs + privacy-URL fix)._
+
+## Launch-readiness reconciliation — 2026-07-18
+
+Competitive + launch-readiness audit (see `docs/COMPETITIVE-ANALYSIS.md` §8
+addendum, added in this pass). App judged ready to launch except manual
+runbook items. Fixed in this pass:
+
+- **Watch-app doc contradiction resolved.** `docs/app-store/metadata.md`,
+  `release-checklist.md`, `docs/REQUIREMENTS.md` (FR-8, §9, header), README,
+  and `CLAUDE.md` all said "iPhone-only / no companion Watch app" — stale
+  since watch v3 shipped 2026-07-17. All now describe the embedded Watch app;
+  metadata gains an Apple Watch screenshot storyboard (required for embedded
+  watchOS apps); review notes now disclose the watch `HKWorkoutSession` and
+  the private-CloudKit backup (iCloud entitlement rationale for App Review).
+- **Paywall privacy link was a live 404** (`parso.guru/cladiron/privacy`).
+  Canonicalized to `https://parso.guru/cladiron_privacy` (verified 200) in
+  `PaywallView.swift` + `AboutView.swift`; matches metadata/checklist.
+- **README test count** corrected 718 → 1,133 (actual `func test` count).
+- **Launch screen confirmed non-issue**: `INFOPLIST_KEY_UILaunchScreen_Generation
+  = YES` in pbxproj.
+- Verified already-done: LICENSE App Store exception present; `isPro` literal
+  fix in `HomeView` confirmed gone; images bundled; `check-no-network.sh` in CI.
+
+**Remaining before submission (manual, runbook `docs/app-store/release-checklist.md`):**
+ASC app record + 6 IAPs + sandbox purchase test; real-device pass (HealthKit,
+BLE strap, GPS, Watch session/HR relay, iCloud backup restore); final
+screenshots incl. ≥1 Apple Watch; TestFlight public beta → launch week
+(Show HN, Product Hunt, privacy directories, Apple featuring nomination).
 
 ## Watch app v3 — 2026-07-17 (`plans/watch-app/2026-07-17/`) — SHIPPED
 

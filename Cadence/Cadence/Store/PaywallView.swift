@@ -18,7 +18,7 @@ struct PaywallView: View {
     @State private var pendingMessage: String?
     @State private var errorMessage: String?
 
-    private let privacyURL = URL(string: "https://parso.guru/cladiron/privacy")!
+    private let privacyURL = URL(string: "https://parso.guru/cladiron_privacy")!
     private let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
 
     var body: some View {

@@ -28,8 +28,8 @@ deletes it).
 - **Tests** — no-lab fitness assessment battery, "Your Fitness" baseline card, protocol instructions, cited sources.
 - **Progress** — training history, PR timeline, per-exercise trends, assessment trends, consistency heatmap.
 
-## Current release (v1) — iPhone-only
-The watch app is **deferred** (hardware-blocked for now) but stays in the repo; do **not** prioritize it. v1 ships on iPhone:
+## Current release (v1) — iPhone + embedded Watch app
+The watch app **shipped 2026-07-17** (W1–W4: strength with partners, HIIT/Boxing, cardio suite, live wrist HR, Health save + phone sync); the W5 backlog (Resume, complication, routes) is deferred — see `plans/watch-app/2026-07-17/`. v1 ships:
 - Log **strength** workouts on the phone with **coaching** — the core loop.
 - Run a **no-lab fitness test battery** whose baselines feed the coach.
 - Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**. The coach also reads **HRV, resting HR, sleep, and bodyweight** (read-only, on-device) as a passive-readiness prior fused with self-report.

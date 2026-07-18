@@ -5,11 +5,13 @@ Use this checklist for the first public App Store v1 submission.
 ## Code Readiness
 
 - Confirm app display name is `Cladiron`.
-- Confirm the iOS app target is iPhone-only for v1.
-- Confirm the app archive does not embed a Watch app.
-- Confirm public copy says Apple Watch workouts import from Apple Health after
-  recording, but no companion Watch app ships in v1.
-- Confirm live heart-rate copy references Bluetooth chest straps for v1.
+- Confirm the archive embeds the `Cadence Watch App` and both binaries pass
+  App Store validation.
+- Confirm public copy matches the shipped Watch app (phone-free strength with
+  partners, HIIT/boxing rounds, cardio suite, live wrist HR, Health save +
+  phone sync).
+- Confirm live heart-rate copy references Bluetooth chest straps (iPhone) and
+  wrist heart rate (Watch).
 - Confirm no copy implies generative AI, cloud AI, medical advice, diagnosis,
   treatment, guaranteed results, cloud sync, social features, or nutrition
   coaching.
@@ -31,6 +33,10 @@ Use this checklist for the first public App Store v1 submission.
 - On a real device with hardware available, verify Bluetooth chest-strap pairing
   and live heart-rate capture.
 - Verify outdoor GPS workout recording and Health save.
+- On a real Apple Watch: verify a phone-free strength session, live wrist HR,
+  Health save (rings credit), and auto-ingest back to the phone.
+- Verify the automatic iCloud backup and restore-on-fresh-install path with a
+  signed-in iCloud account.
 - Verify JSON export/import round-trip with non-empty strength, cardio,
   assessment, and preference data.
 - Verify StoreKit local products using `Cadence.storekit`.
@@ -47,7 +53,8 @@ Use this checklist for the first public App Store v1 submission.
   - Price: Free
 - Fill App Information from `docs/app-store/metadata.md`.
 - Upload final screenshots using the screenshot storyboard in
-  `docs/app-store/metadata.md`.
+  `docs/app-store/metadata.md`, including at least one Apple Watch screenshot
+  (required — the archive embeds a watchOS app).
 - Set App Privacy to `Data Not Collected`.
 - Confirm the privacy policy URL is live and accurate:
   `https://parso.guru/cladiron_privacy`.
@@ -100,8 +107,10 @@ Do not show:
 
 - Debug launch arguments or test identifiers.
 - Placeholder product unavailable state in the final screenshot set.
-- Watch companion UI.
 - Medical claims or guaranteed outcomes.
+
+Watch screenshots must be captured from the real watch UI (watchOS simulator or
+device), per the storyboard in `docs/app-store/metadata.md`.
 
 ## Post-Approval Smoke Test
 

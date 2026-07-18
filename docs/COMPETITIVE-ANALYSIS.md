@@ -330,6 +330,56 @@ once launch produces real conversion data.
 
 ---
 
+## 8. Addendum — 2026-07-18 launch-readiness re-check
+
+Five days after this analysis was written, most of its recommendations have
+shipped. Status of each:
+
+| Recommendation | Status |
+|---|---|
+| R1 Reprice ($79.99/$12.99/$149.99, founding $99.99) | **Shipped** — `Cadence.storekit`, paywall, metadata all aligned |
+| R3 Passive readiness (HRV/RHR/sleep/bodyweight fusion) | **Shipped** — `PassiveReadiness.swift`, `ReadinessFusion.swift` (D4 fusion, self-report wins) |
+| R4.1 Data durability (private-CloudKit auto-backup) | **Shipped** — D5, `CloudBackupService.swift` |
+| R4.3 Apple Watch app | **Shipped** (W1–W4, `c15ab13`) — ahead of the "after launch" advice |
+| PR timeline + consistency heatmap | **Shipped** |
+| R5.1 `isPro: false` literal | **Fixed** (no longer present in `HomeView`) |
+| R5.3 Exercise images fetched at runtime | **Fixed** — images bundled; CI runs `check-no-network.sh` |
+| R5.5/R5.6 README/CLAUDE.md honesty | **Fixed** — free-tracker/paid-coach story is consistent |
+| R5.7 GPLv3 App Store exception | **Added** to `LICENSE` |
+| R2 Launch | **Still the whole game — nothing is in front of a user yet** |
+
+### Fresh market intel (2026-07-18)
+
+- **Hevy** now ships "Hevy Trainer" adaptive programming inside Pro
+  ($2.99/mo / $23.99/yr / $74.99 lifetime tiers are being promoted) — the
+  logger tier is acquiring coaching features. The citation moat matters more,
+  not less: Hevy adjusts weights, but it cannot show the paper.
+- **RevenueCat 2026 benchmarks**: fitness median trial→paid ~40%
+  (top decile 68%); download→paid D35 median ~2.6% NA. 68% of fitness subs are
+  annual. The §2 math still holds.
+- The privacy/OSS lane is still uncontested for *coaching*: Liftosaur, LiftLog,
+  OwnLift remain loggers with no paid coach and no test battery.
+
+### Launch-readiness verdict
+
+The app is ready except for procedural items. Reconciled today (2026-07-18):
+App Store metadata/checklist/REQUIREMENTS updated for the shipped Watch app;
+the paywall's dead privacy link (`/cladiron/privacy`, 404) fixed to the live
+`https://parso.guru/cladiron_privacy`; README test count corrected. Launch
+screen is handled by `INFOPLIST_KEY_UILaunchScreen_Generation`.
+
+Remaining, all manual (runbook: `docs/app-store/release-checklist.md`):
+
+1. App Store Connect: app record + 6 IAPs + sandbox purchase/restore check.
+2. Real-device pass: HealthKit, BLE strap, GPS, Watch session/HR relay,
+   iCloud backup restore.
+3. Screenshots: final iPhone set + at least one Apple Watch screenshot
+   (now required — the archive embeds a watchOS app).
+4. TestFlight public beta (2–4 weeks, recruited from r/weightroom /
+   evidence-based-lifting communities), then the R2 coordinated launch week:
+   App Store release + Show HN + Product Hunt + privacy directories
+   (PrivacyGuides, AlternativeTo) + Apple featuring nomination.
+
 ## Sources
 
 Market data gathered July 2026.

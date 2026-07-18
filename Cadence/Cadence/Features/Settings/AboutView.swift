@@ -5,7 +5,7 @@ import SwiftUI
 /// plus open-source, copyright, and a link to the online privacy policy.
 /// "Cladiron" is the public product name; the internal target is still "Cadence".
 struct AboutView: View {
-    private let privacyURL = URL(string: "https://parso.guru/cladiron_privacy.html")!
+    private let privacyURL = URL(string: "https://parso.guru/cladiron_privacy")!
     private let sourceURL = URL(string: "https://github.com/johnarleyburns/parso-workout-ios-app")!
     private let siteURL = URL(string: "https://www.parso.guru")!
     private let exerciseDBURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!

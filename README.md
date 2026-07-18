@@ -19,7 +19,7 @@ A private, open-source, science-based **strength app** for iPhone and Apple Watc
 - **Workout routines** — Full Body A/B, PHUL (4-day), Arnold Split, StrongLifts 5x5, Push/Pull/Legs, Upper/Lower, Calisthenics, Olympic Lifting, plus user-created templates. Every preset cites the relevant evidence.
 - **Cardio recording** — GPS outdoor (run/walk/cycle), indoor recording, swim laps, with live HR from a BLE chest strap (Apple Watch workouts are imported from Health afterward).
 - **HIIT intervals** — 7 science-backed protocols (Tabata, Norwegian 4x4, Gibala, SIT, REHIT, 10-20-30, Boxing) with work/rest timing, round bells, and warm-up/cool-down.
-- **No companion Apple Watch app (yet)** — the current release is iPhone-only. Apple Watch workouts and heart rate are imported from Apple Health after the session. A native watchOS app (live HR relay + on-watch logging) is a potential future direction, not part of this release.
+- **Companion Apple Watch app** — phone-free training from the wrist: strength with partner rotation, HIIT/Boxing rounds, and a full cardio suite (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live wrist HR, Health save with rings credit, and automatic sync back to the phone.
 - **BLE chest strap** — CoreBluetooth `0x180D` with exponential-backoff reconnection, battery monitoring, and cold-launch auto-reconnect.
 - **HealthKit** — reads steps, ingests Watch-recorded workouts + HR, and reads HRV, resting heart rate, sleep, and body weight (on-device only) as a passive-readiness prior the coach fuses with your self-report; writes strength/cardio/interval summaries, HR samples, and GPS routes back to Health.
 - **History & trends** — unified strength + cardio history, per-exercise trend charts, workout summary with full per-set detail.
@@ -38,7 +38,7 @@ Requires Xcode 16+, Swift 6. Real-device testing needed for HealthKit/CoreBlueto
 
 ```sh
 cd CadenceCore && swift build        # core package
-cd CadenceCore && swift test         # 718 tests (including 21 coach scientific validations)
+cd CadenceCore && swift test         # 1,137 tests (including 21 coach scientific validations)
     open Cadence/Cadence.xcodeproj       # iOS app + embedded watchOS app
 # CLI build:
 xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence \

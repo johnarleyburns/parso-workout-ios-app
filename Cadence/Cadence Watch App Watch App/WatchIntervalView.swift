@@ -5,19 +5,20 @@ import CadenceFeatures
 struct WatchIntervalView: View {
     let plan: IntervalPlan
     let kind: String
+    let onDone: () -> Void
 
     @State private var runner: IntervalRunner
     @State private var haptics: WatchIntervalHaptics
     @State private var isShowingConfirmEnd = false
     @State private var showSummary = false
 
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
     @Environment(WatchWorkoutManager.self) private var watchManager
 
-    init(plan: IntervalPlan, kind: String) {
+    init(plan: IntervalPlan, kind: String, onDone: @escaping () -> Void = {}) {
         self.plan = plan
         self.kind = kind
+        self.onDone = onDone
         _runner = State(initialValue: IntervalRunner(plan: plan))
         _haptics = State(initialValue: WatchIntervalHaptics())
     }
@@ -151,7 +152,8 @@ struct WatchIntervalView: View {
             }
 
             Button("Save workout") {
-                dismiss()
+                watchManager.stopWorkout(save: true)
+                onDone()
             }
             .buttonStyle(.borderedProminent)
             .tint(.green)
@@ -159,7 +161,7 @@ struct WatchIntervalView: View {
 
             Button("Discard") {
                 watchManager.stopWorkout(save: false)
-                dismiss()
+                onDone()
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)

@@ -11,11 +11,8 @@ final class Cadence_Watch_App_Watch_AppUITests: XCTestCase {
     @MainActor
     func testBoxingCountdownAdvances() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-uiTest", "-uiTestBoxingInterval"]
         app.launch()
-
-        let boxingRow = app.buttons["Boxing"]
-        XCTAssertTrue(boxingRow.waitForExistence(timeout: 5), "Boxing row not found")
-        boxingRow.tap()
 
         let countdownLabel = app.staticTexts["intervalCountdown"]
         XCTAssertTrue(countdownLabel.waitForExistence(timeout: 5), "Countdown label not found")

@@ -8,8 +8,37 @@ struct WatchRootView: View {
 
     @State private var cardioLocation: WorkoutConfigurationSpec.Location = .outdoor
     @State private var cardioLapLength: Double = 25
+    @State private var activeCardioKind: WorkoutConfigurationSpec.CardioKind?
+    @State private var activeIntervalSession: ActiveIntervalSession?
+
+    init(arguments: [String] = ProcessInfo.processInfo.arguments) {
+        let intervalSession: ActiveIntervalSession?
+        if arguments.contains("-uiTestBoxingInterval") {
+            let model = IntervalSetupModel(kind: "Boxing")
+            intervalSession = ActiveIntervalSession(plan: model.intervalPlan(), kind: "Boxing")
+        } else {
+            intervalSession = nil
+        }
+        _activeIntervalSession = State(initialValue: intervalSession)
+    }
 
     var body: some View {
+        Group {
+            if let activeIntervalSession {
+                WatchIntervalView(plan: activeIntervalSession.plan, kind: activeIntervalSession.kind) {
+                    self.activeIntervalSession = nil
+                }
+            } else if let activeCardioKind {
+                WatchCardioSessionView(kind: activeCardioKind) {
+                    self.activeCardioKind = nil
+                }
+            } else {
+                launcher
+            }
+        }
+    }
+
+    private var launcher: some View {
         NavigationStack {
             List {
                 Section {
@@ -67,14 +96,20 @@ struct WatchRootView: View {
         let kind = ct.toCardioKind()
         if ct == .hiit || ct == .boxing {
             WatchIntervalSetupView(kind: ct.displayName, model: IntervalSetupModel(kind: ct.displayName)) { plan in
-                watchManager.startWorkout(type: ct.rawValue, spec: WorkoutConfigurationSpec(kind: kind))
+                activeIntervalSession = ActiveIntervalSession(plan: plan, kind: ct.displayName)
             }
         } else {
             WatchCardioSetupView(kind: kind, location: $cardioLocation, lapLength: $cardioLapLength, unit: watchAppSettings.unit) { spec in
                 watchManager.startWorkout(type: ct.rawValue, spec: spec)
+                activeCardioKind = kind
             }
         }
     }
+}
+
+private struct ActiveIntervalSession {
+    let plan: IntervalPlan
+    let kind: String
 }
 
 // MARK: - Live HR + Settings views

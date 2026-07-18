@@ -59,7 +59,20 @@ public final class WatchStrengthFlowModel {
     public func goToAddExercise() { stage = .addExercise }
 
     public func addExercise(named name: String) {
-        pendingExercises.append(name)
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        do {
+            _ = try WorkoutRepository.findOrCreateExercise(named: trimmed, in: context)
+            if let session {
+                if !session.plannedExerciseNames.contains(trimmed) {
+                    session.plannedExerciseNames.append(trimmed)
+                    try? context.save()
+                }
+            } else if !pendingExercises.contains(trimmed) {
+                pendingExercises.append(trimmed)
+            }
+        } catch {}
         stage = .home
         refreshExerciseList()
     }
@@ -115,7 +128,14 @@ public final class WatchStrengthFlowModel {
     public func addRestTime(_ seconds: Int) { restTimer.add(seconds) }
 
     public func finish() {
-        if session == nil, pendingExercises.isEmpty {
+        if session == nil {
+            stage = .discarded
+            return
+        }
+        if let session, session.orderedSets.isEmpty {
+            context.delete(session)
+            try? context.save()
+            self.session = nil
             stage = .discarded
             return
         }
@@ -182,23 +202,45 @@ public final class WatchStrengthFlowModel {
                 partnerIDs: partners.map { $0.id.uuidString },
                 in: context
             )
+            session?.plannedExerciseNames = pendingExercises
             for name in pendingExercises {
                 _ = try WorkoutRepository.findOrCreateExercise(named: name, in: context)
             }
             pendingExercises = []
+            try? context.save()
         } catch {}
     }
 
     private func refreshExerciseList() {
         guard let session else {
-            exerciseList = []
+            let pending = pendingExercises.compactMap { name -> (exercise: Exercise, setCount: Int)? in
+                guard let exercise = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) else {
+                    return nil
+                }
+                return (exercise, 0)
+            }
+            exerciseList = pending
+            exerciseCount = 0
             return
         }
-        let exs = session.exercisesInOrder
-        exerciseList = exs.map { ex in
-            (ex, (ex.sets ?? []).count)
+
+        var seen = Set<UUID>()
+        var rows: [(exercise: Exercise, setCount: Int)] = []
+        for ex in session.exercisesInOrder {
+            seen.insert(ex.id)
+            let count = session.orderedSets.filter { $0.exercise?.id == ex.id }.count
+            rows.append((ex, count))
         }
-        exerciseCount = exs.count
+
+        for name in session.plannedExerciseNames {
+            guard let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context),
+                  !seen.contains(ex.id) else { continue }
+            seen.insert(ex.id)
+            rows.append((ex, 0))
+        }
+
+        exerciseList = rows
+        exerciseCount = session.exercisesInOrder.count
     }
 
     private var currentPerformer: Person? {

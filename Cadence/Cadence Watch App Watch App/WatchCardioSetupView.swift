@@ -48,10 +48,16 @@ struct WatchCardioSetupView: View {
                     HStack(spacing: 8) {
                         Text("25 \(unit.abbreviation == "kg" ? "m" : "yd")").font(.caption.bold())
                             .padding(8).background(lapLength == 25 ? .blue : .white.opacity(0.1))
-                            .clipShape(Capsule()).onTapGesture { lapLength = 25 }
+                            .clipShape(Capsule()).onTapGesture {
+                                lapLength = 25
+                                location = .pool(lapLength: 25)
+                            }
                         Text("50 \(unit.abbreviation == "kg" ? "m" : "yd")").font(.caption.bold())
                             .padding(8).background(lapLength == 50 ? .blue : .white.opacity(0.1))
-                            .clipShape(Capsule()).onTapGesture { lapLength = 50 }
+                            .clipShape(Capsule()).onTapGesture {
+                                lapLength = 50
+                                location = .pool(lapLength: 50)
+                            }
                     }
                     Text("Laps count automatically.\nWater Lock turns on at start.")
                         .font(.caption2).foregroundStyle(.secondary)
@@ -61,7 +67,7 @@ struct WatchCardioSetupView: View {
             }
 
             Button(buttonTitle) {
-                let spec = WorkoutConfigurationSpec(kind: kind, location: location)
+                let spec = WorkoutConfigurationSpec(kind: kind, location: resolvedLocation)
                 onStart(spec)
                 dismiss()
             }
@@ -69,6 +75,7 @@ struct WatchCardioSetupView: View {
             .tint(.green)
         }
         .padding()
+        .onAppear { normalizeLocationForKind() }
     }
 
     private var displayName: String {
@@ -78,6 +85,7 @@ struct WatchCardioSetupView: View {
         case .cycle: return "Cycle"
         case .swim: return "Swim"
         case .rowing: return "Rowing"
+        case .other: return "Other"
         default: return "Setup"
         }
     }
@@ -89,7 +97,48 @@ struct WatchCardioSetupView: View {
         case .cycle: return "Start cycle"
         case .swim: return "Start swim"
         case .rowing: return "Start row"
+        case .other: return "Start other"
         default: return "Start"
+        }
+    }
+
+    private var resolvedLocation: WorkoutConfigurationSpec.Location {
+        switch kind {
+        case .run, .walk, .cycle:
+            switch location {
+            case .indoor, .outdoor:
+                return location
+            case .pool, .openWater:
+                return .outdoor
+            }
+        case .swim:
+            switch location {
+            case .pool:
+                return .pool(lapLength: lapLength)
+            case .openWater:
+                return .openWater
+            case .indoor, .outdoor:
+                return .pool(lapLength: lapLength)
+            }
+        default:
+            return .indoor
+        }
+    }
+
+    private func normalizeLocationForKind() {
+        switch kind {
+        case .run, .walk, .cycle:
+            if case .pool = location { location = .outdoor }
+            if case .openWater = location { location = .outdoor }
+        case .swim:
+            switch location {
+            case .pool, .openWater:
+                break
+            case .indoor, .outdoor:
+                location = .pool(lapLength: lapLength)
+            }
+        default:
+            location = .indoor
         }
     }
 }

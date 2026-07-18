@@ -51,6 +51,50 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.stage, .home)
     }
 
+    func testAddExercise_showsPendingExerciseOnHome() {
+        let m = makeModel()
+        m.start()
+        m.addExercise(named: "Bench Press")
+        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Bench Press"])
+        XCTAssertEqual(m.exerciseList.first?.setCount, 0)
+    }
+
+    func testLogSetFromAddedExercise_createsSessionAndKeepsExerciseVisible() {
+        let m = makeModel()
+        m.start()
+        m.addExercise(named: "Bench Press")
+        let ex = m.exerciseList[0].exercise
+        m.startLogSet(for: ex)
+        _ = m.logSet()
+        m.finishRest()
+        XCTAssertNotNil(m.session)
+        XCTAssertEqual(m.pendingExercises, [])
+        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Bench Press"])
+        XCTAssertEqual(m.exerciseList.first?.setCount, 1)
+    }
+
+    func testQueuedExercisesSurviveFirstLoggedSet() {
+        let m = makeModel()
+        m.start()
+        m.addExercise(named: "Bench Press")
+        m.addExercise(named: "Squat")
+        let ex = m.exerciseList[0].exercise
+        m.startLogSet(for: ex)
+        _ = m.logSet()
+        m.finishRest()
+        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Bench Press", "Squat"])
+        XCTAssertEqual(m.exerciseList.map { $0.setCount }, [1, 0])
+    }
+
+    func testFinishAfterOnlyAddingExercise_discardsEmptySession() {
+        let m = makeModel()
+        m.start()
+        m.addExercise(named: "Bench Press")
+        m.finish()
+        XCTAssertEqual(m.stage, .discarded)
+        XCTAssertNil(m.session)
+    }
+
     func testLogSet_createsSessionLazily() {
         let m = makeModel()
         m.start()

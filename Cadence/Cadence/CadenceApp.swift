@@ -74,7 +74,7 @@ struct CadenceApp: App {
                 .environment(backup)
                 .environment(\.cadenceModelContainer, container)
                 .task { model.activateWCSession() }
-                .task { model.configureWatchSync(settings: settings, container: container) }
+                .task { model.configureWatchSync(settings: settings, container: container, active: active) }
                 .task { contributions.beginSession() }
                 .task { await store.start() }
         }

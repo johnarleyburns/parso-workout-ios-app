@@ -91,10 +91,13 @@ final class AppModel: NSObject {
 
     private var _settings: AppSettings?
     private var _modelContainer: ModelContainer?
+    private var _active: ActiveWorkoutModel?
 
-    func configureWatchSync(settings: AppSettings, container: ModelContainer) {
+    func configureWatchSync(settings: AppSettings, container: ModelContainer,
+                            active: ActiveWorkoutModel? = nil) {
         _settings = settings
         _modelContainer = container
+        _active = active
     }
 
     func pushSettingsContext() {
@@ -269,6 +272,11 @@ extension AppModel: WCSessionDelegate {
         guard let container = _modelContainer,
               let sid = info["session_id"] as? String,
               let sessionID = UUID(uuidString: sid) else { return }
+        // The phone's live workout ends only by an explicit tap on the phone —
+        // a watch-relayed end may never finalize it (launch-blockers Phase 1d).
+        guard WatchSessionEndPolicy.shouldApplyEnd(
+            sessionID: sessionID,
+            phoneActiveID: _active?.strengthSession?.id) else { return }
         let ctx = ModelContext(container)
         do {
             let sessions = try ctx.fetch(FetchDescriptor<WorkoutSession>(

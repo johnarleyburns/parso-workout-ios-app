@@ -67,6 +67,9 @@ struct PreWorkoutHRView: View {
         .padding(.vertical)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemBackground))
+        // The HR gate is part of the workout start sequence — the screen must
+        // not auto-lock while the user straps on a monitor (Phase 1c).
+        .keepAwake()
         .onAppear {
             hrm.startScanning()
             if let id = defaultDevice?.id { hrm.connect(id) }

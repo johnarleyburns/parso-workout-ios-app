@@ -277,8 +277,7 @@ struct HomeView: View {
     private var headerDateText: String { Self.headerDateFormatter.string(from: .now) }
 
     var body: some View {
-        @Bindable var active = active
-        return ZStack {
+        ZStack {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -381,12 +380,6 @@ struct HomeView: View {
             }
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker(onSaved: workoutSaved)
-            }
-            // P1 #9 — the post-workout summary is presented here, above the whole
-            // NavigationStack, so the finished session can pop behind it.
-            .fullScreenCover(item: $active.finishedSummary) { finished in
-                WorkoutSummaryView(data: finished.data,
-                                   onDone: { active.finishedSummary = nil })
             }
             .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR, onSaved: { _ in workoutSaved() }) }
             .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR, onSaved: { _ in workoutSaved() }) }
@@ -837,7 +830,7 @@ struct HomeView: View {
     }
 
     private func resumeCard(_ session: WorkoutSession) -> some View {
-        Button { Haptics.selection(); path.append(session) } label: {
+        Button { Haptics.selection(); active.present() } label: {
             HStack(spacing: 12) {
                 Image(systemName: "figure.strengthtraining.traditional").font(.title2)
                 VStack(alignment: .leading, spacing: 2) {
@@ -937,21 +930,21 @@ struct HomeView: View {
             if let plan = pendingPlan {
                 pendingPlan = nil
                 if let s = try? materializePlan(plan) {
-                    active.startStrength(s); path.append(s)
+                    active.startStrength(s)
                     playStartCue(startCue)
                 }
             } else if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
-                active.startStrength(s); path.append(s)
+                active.startStrength(s)
                 playStartCue(startCue)
             }
         case .plan(let plan, let ladder):
             if let s = try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) {
-                active.startStrength(s); path.append(s)
+                active.startStrength(s)
                 playStartCue(startCue)
             }
         case .reuse(let past):
             if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
-                active.startStrength(s); path.append(s)
+                active.startStrength(s)
                 playStartCue(startCue)
             }
         case .outdoor(let c): outdoorType = c

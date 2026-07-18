@@ -63,6 +63,8 @@ struct PreWorkoutCountdownView: View {
         } message: {
             Text("Start workout immediately.")
         }
+        // Part of the workout start sequence — no auto-lock (Phase 1c).
+        .keepAwake()
         .onAppear { if remaining <= 0 { onStart() } }
         .onReceive(tick) { _ in
             guard !paused, remaining > 0 else { return }

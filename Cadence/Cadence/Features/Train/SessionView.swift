@@ -54,10 +54,12 @@ struct SessionView: View {
     @State private var exerciseToRemove: Exercise?
     @State private var changingExerciseFor: Exercise?
     @State var managePartnersPresented = false
-    // Idle auto-terminate (field-testing §02/§04, decisions #6/#7).
-    @State private var lastActivity = Date()
+    // Idle watchdog (launch-blockers Phase 1a, decisions #1/#2): after
+    // `idleTimeoutMinutes` of no activity a prompt appears; ignoring it can only
+    // auto-PAUSE the workout. Auto-end is unrepresentable in `IdleWatchdog`.
+    @State private var watchdog = IdleWatchdog()
     @State private var idlePromptShown = false
-    @State private var idlePromptAt: Date?
+    @Environment(\.scenePhase) private var scenePhase
     @State private var usePreviousPresented = false
     @State private var swappingPlannedName: String?
     // Cool-down (feedback batch 4): a guided timer that, on finish/skip, ends the
@@ -442,6 +444,17 @@ struct SessionView: View {
                     }
                 }
                 .toolbar {
+                    // Minimize (launch-blockers Phase 1b): the ONLY way to Home
+                    // mid-workout — hides the cover, keeps the session running.
+                    if active.strengthSession?.id == session.id {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button {
+                                active.minimize()
+                            } label: { Image(systemName: "chevron.down") }
+                                .accessibilityIdentifier("session.minimize")
+                                .accessibilityLabel("Minimize workout")
+                        }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         HStack(spacing: 12) {
                             if let plan {
@@ -491,6 +504,9 @@ struct SessionView: View {
         // Keep the screen awake during a live workout so it never locks between
         // sets. Manual logging is data entry, not training, so it's excluded.
         .keepAwake(!isManualLog)
+        // Any tap anywhere on the session counts as activity for the idle
+        // watchdog (launch-blockers Phase 1a) — not just logged sets.
+        .simultaneousGesture(TapGesture().onEnded { recordActivity() })
         .sheet(isPresented: $pickerPresented) {
             ExercisePickerView { exercise in
                 if !session.exercisesInOrder.contains(where: { $0.id == exercise.id }) &&
@@ -521,7 +537,7 @@ struct SessionView: View {
             ExercisePickerView(action: .use) { picked in
                 if let old = changingExerciseFor, old.id != picked.id {
                     _ = try? WorkoutRepository.changeExercise(in: session, from: old, to: picked, in: context)
-                    poke()
+                    recordActivity()
                 }
                 changingExerciseFor = nil
             }
@@ -531,7 +547,7 @@ struct SessionView: View {
         .sheet(isPresented: $usePreviousPresented) {
             PreviousWorkoutPicker(excluding: session) { past in
                 _ = try? WorkoutRepository.copyWorkout(from: past, into: session, in: context)
-                poke()
+                recordActivity()
             }
         }
         .sheet(isPresented: $showRPEInfo) {
@@ -577,14 +593,24 @@ struct SessionView: View {
         // history with an empty "Logged" row.
         .onDisappear { if isManualLog { cleanupEmptyLog() } }
         .onReceive(idleTimer) { _ in
-            checkIdle()
-            if active.strengthSession?.id == session.id { sampleHR() }
+            handleIdleTick()
+            if active.strengthSession?.id == session.id {
+                sampleHR()
+                active.writeHeartbeat()
+            }
         }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            recordActivity()
+        }
+        .onChange(of: inlineWeight) { _, _ in recordActivity() }
+        .onChange(of: inlineReps) { _, _ in recordActivity() }
+        .onChange(of: inlineRPE) { _, _ in recordActivity() }
         .alert("Still training?", isPresented: $idlePromptShown) {
-            Button("Keep going") { poke() }
+            Button("Keep going") { recordActivity() }
             Button("Save now", role: .destructive) { endWorkout() }
         } message: {
-            Text("No activity for \(settings.idleTimeoutMinutes) min. This workout saves automatically soon.")
+            Text("No activity for \(settings.idleTimeoutMinutes) min. Your workout will pause — it never ends on its own.")
         }
         .alert("Rename workout", isPresented: $renamePresented) {
             TextField("Title", text: $editedTitle)
@@ -597,11 +623,13 @@ struct SessionView: View {
         }
         .confirmationDialog("Delete this workout?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
-                if active.strengthSession?.id == session.id {
+                let wasActive = active.strengthSession?.id == session.id
+                if wasActive {
                     active.endStrength()
+                    active.minimize()   // drop the workout cover; nothing to summarize
                 }
                 try? WorkoutRepository.softDeleteSession(session, in: context)
-                dismiss()
+                if !wasActive { dismiss() }
             }
             .accessibilityIdentifier("session.deleteConfirm")
             Button("Cancel", role: .cancel) { }
@@ -1293,39 +1321,50 @@ struct SessionView: View {
         withAnimation { healthSaved = true }
     }
 
-    /// Idle watchdog: after `idleTimeoutMinutes` with no activity, prompt; if the
-    /// prompt is ignored for 30s, auto-save (field-testing §02, decisions #6/#7).
-    private func checkIdle() {
+    /// Idle watchdog (launch-blockers Phase 1a): after `idleTimeoutMinutes` with
+    /// no activity, prompt; if the prompt is ignored for 30 s, the workout is
+    /// auto-PAUSED — never ended. Only an explicit user tap ends a workout
+    /// (decisions.md #1, 2026-07-18).
+    private func handleIdleTick() {
         guard active.strengthSession?.id == session.id else { return }
-        // Auto-end on idle is opt-out (batch 7 item 8) — some users never want it.
-        guard settings.autoEndOnIdle else { return }
-        // A paused workout never auto-saves — the clock and idle watchdog freeze.
-        guard !active.isPaused else { return }
-        if idlePromptShown {
-            if let at = idlePromptAt, Date().timeIntervalSince(at) >= 30 { endWorkout() }
-        } else {
-            let timeout = TimeInterval(max(1, settings.idleTimeoutMinutes) * 60)
-            if Date().timeIntervalSince(lastActivity) >= timeout {
-                idlePromptShown = true; idlePromptAt = Date()
-            }
+        switch watchdog.tick(now: Date(),
+                             timeoutMinutes: settings.idleTimeoutMinutes,
+                             isPaused: active.isPaused,
+                             enabled: settings.autoEndOnIdle) {
+        case .showPrompt:
+            idlePromptShown = true
+        case .autoPause:
+            idlePromptShown = false
+            active.pause(origin: .auto)
+        case .none:
+            break
         }
     }
 
-    /// Records activity, resetting the idle countdown.
-    private func poke() {
-        lastActivity = Date(); idlePromptShown = false; idlePromptAt = nil
+    /// Records user activity: resets the idle countdown, clears any prompt, and
+    /// resumes an automatic pause (a manual pause stays until the user resumes).
+    private func recordActivity() {
+        watchdog.recordActivity()
+        guard active.strengthSession?.id == session.id else { return }
+        active.recordActivityAutoResume()
     }
 
     /// Toggles the active session's pause (field-testing Round 4 A1). Resuming
-    /// also pokes the idle watchdog so it doesn't fire on the stale timestamp.
+    /// also resets the idle watchdog so it doesn't fire on the stale timestamp.
     private func togglePause() {
-        if active.isPaused { active.resume(); poke() } else { active.pause() }
+        if active.isPaused {
+            active.resume()
+            watchdog.recordActivity()
+        } else {
+            active.pause(origin: .manual)
+        }
     }
 
-    /// Finalizes the active session (field-testing §02): optionally writes a Health
-    /// summary (P1 #8), stamps `endedAt`, clears the active reference, then hands the
-    /// summary to the app model so it presents *over Home* (P1 #9) — the session pops
-    /// behind it, so Done reveals Home without flashing the session screen.
+    /// Finalizes the active session — ONLY ever called from an explicit user tap
+    /// (End, Save now, cool-down finish; decisions.md #1). Optionally writes a
+    /// Health summary (P1 #8), stamps `endedAt`, clears the active reference,
+    /// then publishes the summary: the root cover swaps `.session` → `.summary`
+    /// in place, so Done reveals Home without flashing the session screen.
     private func endWorkout() {
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         model.stopWatchWorkout()
@@ -1347,7 +1386,6 @@ struct SessionView: View {
             await Task.yield()
             active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples))
         }
-        dismiss()
     }
 
     /// A compact live HR readout band shown under the elapsed clock during a
@@ -1413,7 +1451,7 @@ struct SessionView: View {
         session.plannedExerciseNames = names
         _ = try? WorkoutRepository.findOrCreateExercise(named: newName, in: context)
         try? context.save()
-        poke()
+        recordActivity()
     }
 
     // MARK: Partner roster helpers
@@ -1590,7 +1628,7 @@ struct SessionView: View {
     private func addSet(to exercise: Exercise, weightKg: Double, reps: Int,
                         rpe: Double?, isWarmup: Bool, usesBodyweight: Bool = false,
                         note: String?, performedBy: Person? = nil) {
-        poke()
+        recordActivity()
         let person = (performedBy?.isMe ?? true) ? nil : performedBy
         // PR is only the owner's concern; a partner's set never fires a PR.
         let isPR = person == nil && WorkoutRepository.wouldBePR(exercise: exercise, weightKg: weightKg, reps: reps,

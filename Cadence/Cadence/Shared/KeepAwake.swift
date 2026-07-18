@@ -1,28 +1,54 @@
 import SwiftUI
 import UIKit
+import CadenceFeatures
 
-/// Keeps the screen awake (disables iOS auto-lock) while a live workout, warm-up,
-/// or cool-down is on screen, so the phone never locks mid-exercise (the user
-/// reported it locking between sets / during intervals). Restores the system
-/// default the moment the surface disappears, so battery is unaffected elsewhere.
+/// App-wide keep-awake coordinator (launch-blockers Phase 1c). All surfaces
+/// route through one reference-counted `IdleTimerArbiter`, whose holder union
+/// maps onto `UIApplication.isIdleTimerDisabled`. This is state-driven — a
+/// surface leaving the screen releases only ITS token, so the screen stays
+/// awake as long as any holder (e.g. RootTabView while a workout is active)
+/// remains. Previously a single boolean was flipped by whichever view
+/// (dis)appeared last, so SessionView leaving re-enabled auto-lock mid-workout.
+@MainActor
+enum IdleTimerCoordinator {
+    static let arbiter: IdleTimerArbiter = {
+        let a = IdleTimerArbiter()
+        a.apply = { UIApplication.shared.isIdleTimerDisabled = $0 }
+        return a
+    }()
+}
+
 private struct KeepAwakeModifier: ViewModifier {
     let active: Bool
+    @State private var token = UUID().uuidString
+    @Environment(\.scenePhase) private var scenePhase
 
     func body(content: Content) -> some View {
         content
-            .onAppear { apply(active) }
-            .onChange(of: active) { _, newValue in apply(newValue) }
-            .onDisappear { apply(false) }
+            .onAppear { update(active) }
+            .onChange(of: active) { _, newValue in update(newValue) }
+            .onDisappear { IdleTimerCoordinator.arbiter.release(token) }
+            // iOS resets the idle timer on its own across some lifecycle
+            // transitions; re-assert the union whenever we return to .active.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { IdleTimerCoordinator.arbiter.reassert() }
+            }
     }
 
-    private func apply(_ value: Bool) {
-        UIApplication.shared.isIdleTimerDisabled = value
+    private func update(_ value: Bool) {
+        if value {
+            IdleTimerCoordinator.arbiter.acquire(token)
+        } else {
+            IdleTimerCoordinator.arbiter.release(token)
+        }
     }
 }
 
 extension View {
-    /// Disables auto-lock while `active` is true, restoring the default on
-    /// disappear. Apply to live workout / warm-up / cool-down surfaces only.
+    /// Holds a keep-awake token while `active` is true. Tokens are
+    /// reference-counted across surfaces (live session, HR gate, countdown,
+    /// warm-up/cool-down, minimized-but-running workout), so the screen stays
+    /// awake until the LAST holder releases.
     func keepAwake(_ active: Bool = true) -> some View {
         modifier(KeepAwakeModifier(active: active))
     }

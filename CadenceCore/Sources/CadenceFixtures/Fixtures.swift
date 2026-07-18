@@ -47,6 +47,7 @@ public enum Fixtures {
         let bench = (try? WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx))
         guard let bench else { return }
         let prior = WorkoutSession(title: "Push Day", date: Date(timeIntervalSinceNow: -3 * 86_400))
+        prior.endedAt = prior.date.addingTimeInterval(1800)
         ctx.insert(prior)
         for (i, reps) in [5, 5, 4].enumerated() {
             ctx.insert(SetEntry(weight: 100, reps: reps, order: i,
@@ -63,6 +64,7 @@ public enum Fixtures {
         let weeks: [(Int, Double, Double)] = [(28, 90, 120), (21, 92.5, 125), (14, 95, 130), (7, 97.5, 135), (1, 100, 140)]
         for (daysAgo, benchKg, squatKg) in weeks {
             let s = WorkoutSession(title: "Session", date: Date(timeIntervalSinceNow: -Double(daysAgo) * 86_400))
+            s.endedAt = s.date.addingTimeInterval(1800)
             ctx.insert(s)
             for i in 0..<3 {
                 ctx.insert(SetEntry(weight: benchKg, reps: 5, order: i, completedAt: s.date, session: s, exercise: bench))

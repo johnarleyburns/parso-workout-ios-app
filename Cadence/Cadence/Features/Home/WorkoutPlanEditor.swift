@@ -82,14 +82,16 @@ struct WorkoutPlanEditor: View {
                 }
 
                 Section {
-                    Toggle("Auto-end when idle", isOn: $autoEndOnIdle)
+                    Toggle("Check in when idle", isOn: $autoEndOnIdle)
                         .accessibilityIdentifier("editor.autoEndOnIdle")
-                    Stepper("Auto-end after \(idleTimeoutMinutes) min idle",
+                    Stepper("Ask after \(idleTimeoutMinutes) min idle",
                             value: $idleTimeoutMinutes, in: 2...30)
                         .disabled(!autoEndOnIdle)
                         .accessibilityIdentifier("editor.idleTimeout")
                 } header: {
-                    Text("Idle Auto-End")
+                    Text("Idle Check-In")
+                } footer: {
+                    Text("If you don't respond, the workout pauses. It never ends on its own.")
                 }
 
                 Section {

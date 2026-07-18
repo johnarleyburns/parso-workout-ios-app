@@ -1,0 +1,354 @@
+import SwiftUI
+import CadenceCore
+import CadenceFeatures
+
+struct ExerciseCardView: View {
+    let context: SessionRenderModel.ExerciseContext
+    let prSetIDs: Set<UUID>
+    let roster: [RosterEntry]
+    let hasPartners: Bool
+    let unit: MeasurementUnitPreference
+    let prRule: PRRule
+    let prescriptionText: String?
+
+    let isInlineActive: Bool
+    let inlineEditingSetID: UUID?
+    let inlineConfig: InlineEditorConfig?
+    let wouldBePR: ((Double, Int) -> Bool)?
+
+    let onTapSet: (SessionRenderModel.SetDisplay) -> Void
+    let onTapPending: (Int) -> Void
+    let onRepeat: () -> Void
+    let onAddSet: () -> Void
+    let onChangeExercise: () -> Void
+    let onRemoveExercise: () -> Void
+    let exercise: Exercise?
+    let onSaveSet: (SetDraft) -> Void
+    let onDeleteSet: () -> Void
+    let onCancelInline: () -> Void
+    let onActivity: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            headerRow
+            contextLines
+
+            if !context.sets.isEmpty || (isInlineActive && inlineEditingSetID == nil) || context.pendingCount > 0 {
+                setColumnHeader
+            }
+
+            ForEach(context.sets) { set in
+                if isInlineActive, inlineEditingSetID == set.setID, let cfg = inlineConfig {
+                    InlineSetEditorView(
+                        config: cfg,
+                        wouldBePR: wouldBePR,
+                        onSave: onSaveSet,
+                        onDelete: { onDeleteSet() },
+                        onCancel: onCancelInline,
+                        onActivity: onActivity)
+                    .id("editor-\(cfg.id)")
+                } else {
+                    completedSetRow(set)
+                }
+                Divider()
+            }
+
+            if isInlineActive, inlineEditingSetID == nil, let cfg = inlineConfig {
+                InlineSetEditorView(
+                    config: cfg,
+                    wouldBePR: wouldBePR,
+                    onSave: onSaveSet,
+                    onDelete: nil,
+                    onCancel: onCancelInline,
+                    onActivity: onActivity)
+                .id("editor-\(cfg.id)")
+                Divider()
+            }
+
+            ForEach(0..<context.pendingCount, id: \.self) { offset in
+                pendingRow(offset: offset)
+                Divider()
+            }
+
+            if !isInlineActive || inlineEditingSetID != nil {
+                actionButtons
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    // MARK: - Header
+
+    private var headerRow: some View {
+        HStack {
+            Text(context.name).font(.headline)
+                .accessibilityIdentifier("exerciseCard.\(context.name)")
+            Spacer()
+            if let exercise {
+                NavigationLink {
+                    ExerciseDetailView(exercise: exercise)
+                } label: {
+                    Image(systemName: "info.circle").font(.headline)
+                        .foregroundStyle(.secondary).frame(width: 44, height: 44)
+                }
+                .accessibilityIdentifier("exercise.info.\(context.name)")
+                .accessibilityLabel("\(context.name) details")
+            }
+            Menu {
+                Button { onChangeExercise() } label: {
+                    Label("Change exercise", systemImage: "arrow.triangle.2.circlepath")
+                }
+                .accessibilityIdentifier("exercise.changeExercise.\(context.name)")
+                Button(role: .destructive) { onRemoveExercise() } label: {
+                    Label("Remove exercise", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis").font(.headline)
+                    .foregroundStyle(.secondary).frame(width: 44, height: 44)
+            }
+            .accessibilityIdentifier("exercise.menu.\(context.name)")
+            .accessibilityLabel("Exercise options")
+        }
+    }
+
+    // MARK: - Context lines
+
+    @ViewBuilder
+    private var contextLines: some View {
+        if !context.performerContexts.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                if let rx = prescriptionText {
+                    Text(rx).font(.subheadline).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("session.rx.\(context.name)")
+                }
+                ForEach(context.performerContexts, id: \.label) { pc in
+                    performerContextView(pc)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func performerContextView(_ pc: SessionRenderModel.PerformerContext) -> some View {
+        if context.hasPartners {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(pc.label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                if !pc.lastTimeSets.isEmpty {
+                    Text("Last time: " + pc.lastTimeSets.map { setDisplayLine($0) }.joined(separator: ", "))
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("exercise.lastTime.\(pc.label)")
+                }
+                if let pr = pc.pr {
+                    Text("PR: \(Format.weight(pr, unit: unit)) · \(pc.prRuleName)")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("exercise.pr.\(pc.label)")
+                }
+            }
+        } else {
+            if !pc.lastTimeSets.isEmpty {
+                Text("Last time: " + pc.lastTimeSets.map { setDisplayLine($0) }.joined(separator: ", "))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("exercise.lastTime")
+            }
+            if let pr = pc.pr {
+                Text("PR: \(Format.weight(pr, unit: unit)) · \(pc.prRuleName)")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("exercise.pr")
+            }
+        }
+    }
+
+    private func setDisplayLine(_ set: SessionRenderModel.SetDisplay) -> String {
+        if set.usesBodyweight {
+            let added = set.weight > 0 ? " + \(Format.weightValue(set.weight, unit: unit)) \(unit.abbreviation)" : ""
+            return "BW\(added) × \(set.reps)"
+        }
+        return "\(Format.weightValue(set.weight, unit: unit)) \(unit.abbreviation) × \(set.reps)"
+    }
+
+    // MARK: - Column header
+
+    private var setColumnHeader: some View {
+        HStack(spacing: SetCol.gap) {
+            Text(hasPartners ? "WHO" : "Set")
+                .frame(width: hasPartners ? 32 : SetCol.num, alignment: .leading)
+            Text("Weight (\(unit.abbreviation))")
+                .frame(maxWidth: .infinity, alignment: .center)
+            Text("Reps")
+                .frame(width: SetCol.reps, alignment: .center)
+            Text("RPE")
+                .frame(width: SetCol.rpe, alignment: .center)
+            Color.clear.frame(width: SetCol.check)
+        }
+        .font(.caption2).textCase(.uppercase).foregroundStyle(.tertiary)
+        .lineLimit(1).minimumScaleFactor(0.5)
+        .padding(.horizontal, 2)
+    }
+
+    // MARK: - Set rows
+
+    @ViewBuilder
+    private func completedSetRow(_ set: SessionRenderModel.SetDisplay) -> some View {
+        let number = setNumber(set)
+        HStack(spacing: SetCol.gap) {
+            if hasPartners {
+                performerChipView(set.performedBy)
+            } else {
+                setIndexBadge(number, isWarmup: set.isWarmup)
+            }
+
+            Button { onTapSet(set) } label: {
+                if set.usesBodyweight && set.weight <= 0 {
+                    Text("BW").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text(Format.weightValue(set.weight, unit: unit, decimals: 0))
+                        .monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("set.editWeight.\(context.name).\(number)")
+
+            rpeBadge(set)
+
+            Button { onTapSet(set) } label: {
+                Text("\(set.reps)").monospacedDigit().frame(width: SetCol.reps)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("set.editReps.\(context.name).\(number)")
+
+            if prSetIDs.contains(set.setID) {
+                Image(systemName: "trophy.fill").foregroundStyle(.orange)
+                    .frame(width: SetCol.check)
+                    .accessibilityIdentifier("set.prBadge")
+                    .accessibilityLabel("Personal record")
+            } else {
+                Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(.green)
+                    .frame(width: SetCol.check)
+                    .accessibilityLabel("Set completed")
+            }
+        }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .contextMenu { setRowMenu(set) }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("set.row.\(context.name).\(number)")
+    }
+
+    @ViewBuilder
+    private func rpeBadge(_ set: SessionRenderModel.SetDisplay) -> some View {
+        if let rpe = set.rpe, !set.isWarmup {
+            Text("\(Int(rpe.rounded()))")
+                .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                .padding(.horizontal, 3).padding(.vertical, 1)
+                .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 3))
+                .accessibilityIdentifier("set.rpe.\(context.name).\(setNumber(set))")
+                .accessibilityLabel("RPE \(Int(rpe.rounded()))")
+        } else {
+            Color.clear.frame(width: SetCol.rpe)
+        }
+    }
+
+    private func setNumber(_ set: SessionRenderModel.SetDisplay) -> String {
+        if set.isWarmup { return "" }
+        let workingBefore = context.sets.prefix { $0.setID != set.setID }.filter { !$0.isWarmup }
+        return String(workingBefore.count + 1)
+    }
+
+    // MARK: - Pending rows
+
+    @ViewBuilder
+    private func pendingRow(offset: Int) -> some View {
+        let reps = offset < context.pendingReps.count ? context.pendingReps[offset] : 5
+        Button { onTapPending(reps) } label: {
+            HStack(spacing: SetCol.gap) {
+                if hasPartners {
+                    performerChipView(nil)
+                } else {
+                    setIndexBadge(
+                        String(context.sets.filter { !$0.isWarmup }.count + offset + 1),
+                        isWarmup: false)
+                }
+                Text("\(reps) reps").font(.subheadline).foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity)
+                Color.clear.frame(width: SetCol.reps)
+                Color.clear.frame(width: SetCol.rpe)
+                Image(systemName: "plus.circle").foregroundStyle(.tint).frame(width: SetCol.check)
+            }
+            .frame(minHeight: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("set.pending.\(context.name).\(offset + 1)")
+    }
+
+    // MARK: - Action buttons
+
+    private var actionButtons: some View {
+        HStack(spacing: 10) {
+            Button { onAddSet() } label: {
+                Label("Add set", systemImage: "plus").frame(maxWidth: .infinity).lineLimit(1)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("set.add.\(context.name)")
+
+            if !context.sets.isEmpty {
+                Button { onRepeat() } label: {
+                    Label("Repeat", systemImage: "arrow.clockwise").frame(maxWidth: .infinity).lineLimit(1)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("set.repeat.\(context.name)")
+            }
+        }
+        .controlSize(.regular)
+        .padding(.top, 2)
+    }
+
+    // MARK: - Context menu
+
+    @ViewBuilder
+    private func setRowMenu(_ set: SessionRenderModel.SetDisplay) -> some View {
+        Button { onTapSet(set) } label: {
+            Label("Edit set", systemImage: "pencil")
+        }
+        Button {
+            // toggle warmup handled by SessionView
+            onTapSet(set) // bail out for now — warmup toggle is a session-level action
+        } label: {
+            Label(set.isWarmup ? "Mark as working set" : "Mark as warm-up",
+                  systemImage: set.isWarmup ? "flame" : "flame.fill")
+        }
+    }
+
+    // MARK: - Shared helpers
+
+    @ViewBuilder
+    private func setIndexBadge(_ label: String, isWarmup: Bool) -> some View {
+        Group {
+            if isWarmup {
+                Text("W").font(.caption2.weight(.bold)).foregroundStyle(.orange)
+                    .frame(width: 22, height: 22).background(.orange.opacity(0.15), in: Circle())
+            } else {
+                Text(label).font(.subheadline.weight(.medium)).monospacedDigit()
+            }
+        }
+        .frame(width: SetCol.num, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func performerChipView(_ ref: SessionRenderModel.PerformerRef?) -> some View {
+        let label = ref?.isMe ?? true ? "M" : String((ref?.name ?? "?").prefix(1)).uppercased()
+        let color: Color = {
+            guard let r = ref, !r.isMe else { return .accentColor }
+            let palette: [Color] = [.purple, .teal, .pink, .indigo, .orange, .mint]
+            return palette[abs(r.personID.hashValue) % palette.count]
+        }()
+        Text(label)
+            .font(.caption2.weight(.semibold)).foregroundStyle(.white)
+            .frame(width: 24, height: 24)
+            .background(color, in: Circle())
+            .accessibilityIdentifier("set.performer.\(ref?.isMe ?? true ? "Me" : (ref?.name ?? "?"))")
+    }
+}

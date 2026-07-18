@@ -117,25 +117,28 @@ private struct ActiveIntervalSession {
 private struct LiveHRView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
     var body: some View {
-        VStack(spacing: 8) {
-            Spacer()
-            if watchManager.isMonitoring {
-                Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
-                Text(bpmText).font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(zoneColor)
-                HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
-                Button("Stop") { watchManager.stopMonitoringSession() }.buttonStyle(.bordered).padding(.top, 10)
-            } else if watchManager.isActive {
-                Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
-                Text(bpmText).font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(zoneColor)
-                HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
-            } else {
-                Text("Not monitoring").font(.caption.bold()).foregroundStyle(.secondary)
-                Text("--").font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(.secondary)
-                HStack(spacing: 3) { ForEach(1...5, id: \.self) { _ in RoundedRectangle(cornerRadius: 2).fill(.gray.opacity(0.25)).frame(width: 28, height: 6) } }
-                Button("Start monitoring") { watchManager.startMonitoringSession() }.buttonStyle(.borderedProminent).tint(.blue).padding(.top, 8)
-                Text("Runs a sensor-only session.\nNothing is saved to Health.").font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.horizontal, 8).padding(.top, 4)
+        GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: 8) {
+                    if watchManager.isMonitoring {
+                        Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
+                        Text(bpmText).font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(zoneColor)
+                        HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
+                        Button("Stop") { watchManager.stopMonitoringSession() }.buttonStyle(.bordered).padding(.top, 10)
+                    } else if watchManager.isActive {
+                        Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
+                        Text(bpmText).font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(zoneColor)
+                        HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
+                    } else {
+                        Text("Not monitoring").font(.caption.bold()).foregroundStyle(.secondary)
+                        Text("--").font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(.secondary)
+                        HStack(spacing: 3) { ForEach(1...5, id: \.self) { _ in RoundedRectangle(cornerRadius: 2).fill(.gray.opacity(0.25)).frame(width: 28, height: 6) } }
+                        Button("Start monitoring") { watchManager.startMonitoringSession() }.buttonStyle(.borderedProminent).tint(.blue).padding(.top, 8)
+                        Text("Runs a sensor-only session.\nNothing is saved to Health.").font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.horizontal, 8).padding(.top, 4)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: geo.size.height)
             }
-            Spacer()
         }
         .navigationTitle("Live HR")
     }

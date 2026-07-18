@@ -18,6 +18,14 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Cladiron reads your heart rate during workouts and monitoring sessions so you can see live BPM and zone data on your watch.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Cladiron saves workout summaries to Apple Health so they appear system-wide and close your Activity rings.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

@@ -82,6 +82,50 @@ Updated per phase. Test count baseline: 1184 before any phase.
 5. SessionView stays at 1101 LOC (ratchet ≤1102)
 
 ### Test counts
-- CadenceCoreTests: 895 (unchanged)
-- CadenceFeaturesTests: 311 → 315 (+4)
-- Total: 1203 → 1207 (+4)
+- CadenceCoreTests: 895 → 897 (+2)
+- CadenceFeaturesTests: 315 (unchanged — tests live in CadenceCoreTests)
+- Total: 1207 → 1216 (+9 — F + G combined, 2 CoachFacts/Snapshot + 9 WeightSuggestion)
+
+## Phase F — "Your Plan" uses cached coach facts ✅ SHIPPED
+
+### Test proof
+- `CoachSnapshotBuilderTests.testCoachFactsExposedAndConsistent`: coachFacts exposed + consistent
+- `CoachFactsTests.testWithStepSummaryPopulatesStepsPreservingOtherFields`: stepSummary overlay works
+
+### Changes
+1. **CoachSnapshotBuilder.swift**: Added `coachFacts: CoachFacts` to `CoachSnapshot`, plumbed through builder
+2. **CoachFacts.swift**: Added `withStepSummary(from:)` method
+3. **HomeCoachSnapshot.swift**: Mirrored `coachFacts`
+4. **HomeView.swift**: `.yourPlan` and `strengthAnyway` use `coachSnapshot.coachFacts.withStepSummary(from:)`; removed `buildTrainingEvents()`
+5. HomeView: 1089 LOC (was 1104)
+
+## Phase G — Per-rep-count weight autofill + inverse-e1RM fallback ✅ SHIPPED
+
+### Test proof
+- `WeightSuggestionTests` (9 tests): exactRepMatchWins, mostRecentExactMatchPreferred, e1RMScalesFromBestRecentSet, e1RMUsesChosenFormula, warmupsExcluded, partnerHistoryFullySeparated, roundTripSelfConsistency, noHistoryReturnsNil, everyEmittedCitationIdResolves
+
+### Changes
+1. **CadenceCore/WeightSuggestion.swift**: `suggest(targetReps:history:formula:)` — exact-rep match wins, falls back to inverse Epley/Brzycki from best recent set
+2. **WorkoutRepository.swift**: `performerSetHistory(for:performedBy:excluding:)` — raw-weight, non-warmup, per-performer, newest first
+3. **CadenceFeatures/InlineEditorDefaults.swift**: Cascade integration — current-session-exact → WeightSuggestion → prescribed load → nil
+4. Citation hard rule: `everyEmittedCitationIdResolves` proves `oneRMEstimation` citation ID resolves
+
+### Test counts
+- CadenceCoreTests: 897 → 906 (+9)
+- CadenceFeaturesTests: 315 (unchanged)
+- Total: 1216 (was 1207 from Phase E, +9 from F/G combined)
+
+## Summary — All phases complete
+
+| Phase | SHA | Description |
+|-------|-----|-------------|
+| A | `19661f6` | isResumable + never-block gate |
+| B | `7c36fbf` | CoachHeroPresenter from logged work |
+| C | `917c0e9` | Cardio rescue before rest fallback |
+| D | `17920b3` | TodayActivityPresenter |
+| E | `635aa3a` | Swap via sheet(item:) + Remove |
+| F | `f347f8b` | Your Plan uses cached coachFacts |
+| G | _pending_ | Weight autofill + inverse-e1RM |
+
+Test counts: 1184 → 1216 (+32 across 7 phases)
+All launch-blocker items covered: 3→E, 4→G, 5→D, Step 6→F

@@ -507,6 +507,20 @@ public enum WorkoutRepository {
 
     // MARK: Last-time & PRs (FR-1.3, FR-1.4, FR-5.2)
 
+    /// Phase G (field-test-fixes): raw-weight, non-warmup set samples for an
+    /// exercise by performer, newest first, excluding a session. Uses raw weight
+    /// (effective load) for new-accounting sets.
+    public static func performerSetHistory(for exercise: Exercise,
+                                           performedBy person: Person?,
+                                           excluding session: WorkoutSession?) -> [SetSample] {
+        let sets = (exercise.sets ?? []).filter {
+            $0.session?.id != session?.id && set($0, wasPerformedBy: person) && !$0.isWarmup
+        }
+        return sets
+            .map { SetSample.from($0) }
+            .sorted { $0.date > $1.date }
+    }
+
     /// All non-warmup sets for an exercise as pure samples, newest first.
     /// Partner sets are excluded so they never affect the owner's stats
     /// (field-testing §04, decision #13). Uses effective load for calculations.

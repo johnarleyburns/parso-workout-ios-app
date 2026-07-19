@@ -17,6 +17,7 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         }
         XCTAssertFalse(prefs.allowsTwoADays)
         XCTAssertEqual(prefs.sameDayCardioTiming, .afterStrength)
+        XCTAssertEqual(prefs.desiredSetsPerExercise, 3)
     }
 
     // MARK: - Constraints
@@ -43,6 +44,12 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         XCTAssertEqual(valid.cardioDaysPerWeek, 5)
     }
 
+    func testDesiredSetsPerExerciseClamped() {
+        XCTAssertEqual(CoachSchedulePreferences(desiredSetsPerExercise: 2).desiredSetsPerExercise, 3)
+        XCTAssertEqual(CoachSchedulePreferences(desiredSetsPerExercise: 5).desiredSetsPerExercise, 4)
+        XCTAssertEqual(CoachSchedulePreferences(desiredSetsPerExercise: 4).desiredSetsPerExercise, 4)
+    }
+
     // MARK: - Codable round-trip
 
     func testCodableRoundTrip() throws {
@@ -60,6 +67,7 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         XCTAssertEqual(decoded.restPreference, .fixed(days: [.saturday, .sunday]))
         XCTAssertTrue(decoded.allowsTwoADays)
         XCTAssertEqual(decoded.sameDayCardioTiming, .separateLater)
+        XCTAssertEqual(decoded.desiredSetsPerExercise, 3)
     }
 
     func testRollingRestRoundTrip() throws {
@@ -116,6 +124,11 @@ final class CoachSchedulePreferencesTests: XCTestCase {
     func testWithSameDayCardioTiming() {
         let prefs = CoachSchedulePreferences.default.withSameDayCardioTiming(.separateLater)
         XCTAssertEqual(prefs.sameDayCardioTiming, .separateLater)
+    }
+
+    func testWithDesiredSetsPerExercise() {
+        XCTAssertEqual(CoachSchedulePreferences.default.withDesiredSetsPerExercise(4).desiredSetsPerExercise, 4)
+        XCTAssertEqual(CoachSchedulePreferences.default.withDesiredSetsPerExercise(9).desiredSetsPerExercise, 4)
     }
 
     // MARK: - Decision engine uses strength target 2
@@ -289,6 +302,37 @@ final class CoachSchedulePreferencesTests: XCTestCase {
                 && day.sessions.contains { $0.kind == .moderateAerobic || $0.kind == .easyAerobic }
         }
         XCTAssertTrue(hasSameDayBoth, "Two-a-days should still pair strength and cardio on a day")
+    }
+
+    // MARK: - Desired working sets
+
+    func testWeeklyPlanUsesDefaultDesiredSetsPerExercise() throws {
+        let facts = CoachFacts.make(from: [], goal: .hypertrophy, experience: .intermediate,
+                                    now: plannerNow())
+        let prefs = CoachSchedulePreferences(
+            strengthDaysPerWeek: 2,
+            cardioDaysPerWeek: 0,
+            restPreference: .fixed(days: [])
+        )
+
+        let exercise = try firstPlannedExercise(from: WeeklyPlan.generate(from: facts, schedulePreferences: prefs))
+        XCTAssertEqual(exercise.sets, 3)
+        XCTAssertEqual(exercise.repLadder, [12, 10, 8])
+    }
+
+    func testWeeklyPlanUsesFourDesiredSetsPerExercise() throws {
+        let facts = CoachFacts.make(from: [], goal: .hypertrophy, experience: .intermediate,
+                                    now: plannerNow())
+        let prefs = CoachSchedulePreferences(
+            strengthDaysPerWeek: 2,
+            cardioDaysPerWeek: 0,
+            restPreference: .fixed(days: []),
+            desiredSetsPerExercise: 4
+        )
+
+        let exercise = try firstPlannedExercise(from: WeeklyPlan.generate(from: facts, schedulePreferences: prefs))
+        XCTAssertEqual(exercise.sets, 4)
+        XCTAssertEqual(exercise.repLadder, [12, 10, 8, 6])
     }
 
     // MARK: - Fixed rest days
@@ -471,5 +515,22 @@ final class CoachSchedulePreferencesTests: XCTestCase {
                 }
             }
         }
+    }
+
+    private func plannerNow() -> Date {
+        var comps = DateComponents()
+        comps.year = 2026
+        comps.month = 6
+        comps.day = 22
+        comps.hour = 12
+        return Calendar.current.date(from: comps) ?? Date(timeIntervalSince1970: 1_750_000_000)
+    }
+
+    private func firstPlannedExercise(from plan: WeeklyPlan) throws -> CoachSession.RecommendedExercise {
+        let exercises = plan.days
+            .flatMap(\.sessions)
+            .filter { $0.kind == .strength }
+            .flatMap { $0.exercises ?? [] }
+        return try XCTUnwrap(exercises.first)
     }
 }

@@ -81,6 +81,13 @@ final class HomeCoachModelTests: XCTestCase {
         XCTAssertNotEqual(a, b)
     }
 
+    func testChangingDesiredSetsChangesSignature() {
+        let token = UUID()
+        let a = sig(token: token, schedule: .default)
+        let b = sig(token: token, schedule: CoachSchedulePreferences.default.withDesiredSetsPerExercise(4))
+        XCTAssertNotEqual(a, b)
+    }
+
     func testPainTodayChangesSignature() throws {
         let ctx = try makeContext()
         let token = UUID()

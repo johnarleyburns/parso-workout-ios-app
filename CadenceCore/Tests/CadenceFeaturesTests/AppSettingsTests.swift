@@ -50,9 +50,12 @@ final class AppSettingsTests: XCTestCase {
     func testCoachScheduleJSONPersistence() {
         let d = freshDefaults()
         let a = AppSettings(defaults: d)
-        a.coachSchedulePreferences = CoachSchedulePreferences.default.withTwoADays(true)
+        a.coachSchedulePreferences = CoachSchedulePreferences.default
+            .withTwoADays(true)
+            .withDesiredSetsPerExercise(4)
         let b = AppSettings(defaults: d)
         XCTAssertTrue(b.coachSchedulePreferences.allowsTwoADays)
+        XCTAssertEqual(b.coachSchedulePreferences.desiredSetsPerExercise, 4)
     }
 
     func testExportImportRoundTrip() {
@@ -62,6 +65,7 @@ final class AppSettingsTests: XCTestCase {
         src.experienceLevel = .advanced
         src.userAge = 41
         src.warmupMinutes = 7
+        src.coachSchedulePreferences = src.coachSchedulePreferences.withDesiredSetsPerExercise(4)
         let snapshot = src.exportPreferences()
 
         let dst = AppSettings(defaults: freshDefaults("dst"))
@@ -71,5 +75,6 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(dst.experienceLevel, .advanced)
         XCTAssertEqual(dst.userAge, 41)
         XCTAssertEqual(dst.warmupMinutes, 7)
+        XCTAssertEqual(dst.coachSchedulePreferences.desiredSetsPerExercise, 4)
     }
 }

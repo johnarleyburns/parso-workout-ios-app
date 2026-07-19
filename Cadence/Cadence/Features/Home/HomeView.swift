@@ -350,7 +350,9 @@ struct HomeView: View {
                                              onOpenCoach: { path.append(HomeRoute.coachPreview) })
                 case .yourPlan:
                     let facts = coachSnapshot.coachFacts.withStepSummary(from: activityTrend)
+                    let plan = HomePlanPresenter.yourPlanDestinationPlan(cachedPlan: coachSnapshot.plan)
                     YourWeekView(decision: coachDecision, facts: facts,
+                                 plan: plan,
                                  sessions: sessions.filter { $0.deletedAt == nil },
                                  cardio: cardio.filter { $0.deletedAt == nil },
                                  path: $path)
@@ -660,7 +662,13 @@ struct HomeView: View {
             plan: coachPlan,
             balance: coachDecision.weeklyBalance,
             preferences: settings.coachSchedulePreferences,
-            onTap: { Haptics.selection(); path.append(HomeRoute.yourPlan) }
+            onTap: {
+                Haptics.selection()
+                switch HomePlanPresenter.weekStripTapRoute() {
+                case .yourPlan:
+                    path.append(HomeRoute.yourPlan)
+                }
+            }
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.weekStrip")
@@ -1044,7 +1052,10 @@ struct HomeView: View {
     /// best-fit full-body session and open it in the plan editor for perusal.
     private func strengthAnyway() {
         let facts = coachSnapshot.coachFacts.withStepSummary(from: activityTrend)
-        guard let plan = EditablePlan.strengthAnyway(facts: facts) else { return }
+        guard let plan = EditablePlan.strengthAnyway(
+            facts: facts,
+            desiredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise
+        ) else { return }
         path.append(HomeRoute.workoutEditor(plan))
     }
 

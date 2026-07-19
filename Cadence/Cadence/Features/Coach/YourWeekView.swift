@@ -6,6 +6,7 @@ import CadenceFeatures
 struct YourWeekView: View {
     let decision: CoachDecision
     let facts: CoachFacts
+    let plan: WeeklyPlan
     var sessions: [WorkoutSession] = []
     var cardio: [CardioWorkout] = []
     @Binding var path: NavigationPath
@@ -20,11 +21,12 @@ struct YourWeekView: View {
         var id: String { day.id }
     }
 
-    init(decision: CoachDecision, facts: CoachFacts,
+    init(decision: CoachDecision, facts: CoachFacts, plan: WeeklyPlan,
          sessions: [WorkoutSession] = [], cardio: [CardioWorkout] = [],
          path: Binding<NavigationPath> = .constant(NavigationPath())) {
         self.decision = decision
         self.facts = facts
+        self.plan = plan
         self.sessions = sessions
         self.cardio = cardio
         self._path = path
@@ -34,7 +36,6 @@ struct YourWeekView: View {
         @Bindable var settings = settingsObject
         let effectivePrefs = settings.coachSchedulePreferences
         let balance = decision.weeklyBalance
-        let plan = WeeklyPlan.generate(from: facts, schedulePreferences: effectivePrefs)
         let completed = plan.completedDaysInGeneratedWeek
         let nextWeek = plan.nextWeekDays.filter { !$0.sessions.isEmpty }
         let stepSummary = facts.stepSummary ?? StepActivitySummary(from: [])
@@ -255,7 +256,11 @@ struct YourWeekView: View {
             .accessibilityIdentifier("yourPlan.day.\(day.id)")
         } else if day.isFuture || day.isToday, !day.sessions.isEmpty {
             NavigationLink {
-                PlannedDayPreviewView(day: day, goal: facts.goal)
+                PlannedDayPreviewView(
+                    day: day,
+                    goal: facts.goal,
+                    desiredSetsPerExercise: settingsObject.coachSchedulePreferences.desiredSetsPerExercise
+                )
             } label: {
                 CoachPlanDayRow(day: day)
             }

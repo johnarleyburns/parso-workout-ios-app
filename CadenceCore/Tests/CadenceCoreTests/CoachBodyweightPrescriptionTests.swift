@@ -94,10 +94,26 @@ final class CoachBodyweightPrescriptionTests: XCTestCase {
             .first { $0.name == "Crunch" }
         let ex = try XCTUnwrap(absExercise, "coach should route abs volume to the user's crunches")
         XCTAssertEqual(ex.repsHigh, 40, "prescription tracks the logged 40-rep top set")
-        XCTAssertGreaterThanOrEqual(ex.repsLow ?? 0, 12, "no 6–12 prescription for a 40-rep move")
-        XCTAssertEqual(ex.repLadder?.first, 40, "descending ladder starts at the real top set")
-        XCTAssertFalse(ex.repLadder?.contains(where: { $0 <= 12 }) ?? true,
-                       "ladder stays high-rep, not a 12/10/8 pyramid")
+        XCTAssertEqual(ex.repsLow, 20, "history-based high-rep range uses a conservative half-top-set floor")
+        XCTAssertEqual(Array((ex.repLadder ?? []).prefix(3)), [40, 30, 20],
+                       "high-rep bodyweight ladders drop by 10 reps, not 2")
+    }
+
+    func testLowRepBodyweightDoesNotUseHighRepDecrement() {
+        let pullUpRange = PrescriptionMath.repRange(forExerciseNamed: "Pull-Up", goal: .hypertrophy)
+        XCTAssertEqual(pullUpRange, TrainingGoal.hypertrophy.repRange)
+        XCTAssertEqual(
+            RepLadder.ladder(low: pullUpRange.lowerBound, high: pullUpRange.upperBound, sets: 3),
+            [12, 10, 8]
+        )
+
+        let muscleUpRange = PrescriptionMath.repRange(forExerciseNamed: "Muscle-Up", goal: .strength,
+                                                      recentTopReps: 8)
+        XCTAssertLessThan(muscleUpRange.upperBound, 30)
+        XCTAssertNotEqual(
+            RepLadder.ladder(low: muscleUpRange.lowerBound, high: muscleUpRange.upperBound, sets: 3),
+            [8, 3, 3]
+        )
     }
 
     // MARK: - Helpers

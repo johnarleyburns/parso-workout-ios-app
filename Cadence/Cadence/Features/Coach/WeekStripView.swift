@@ -31,7 +31,6 @@ struct WeekStripView: View {
             }
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("home.yourPlan")
         .padding()
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
         .accessibilityElement(children: .contain)

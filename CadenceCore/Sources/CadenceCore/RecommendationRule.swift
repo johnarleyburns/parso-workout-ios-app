@@ -285,7 +285,7 @@ enum PrescriptionMath {
         }
         if let reps = recentTopReps, reps > 0 {
             let high = reps
-            let low = min(high, max(8, Int((Double(high) * 0.6).rounded())))
+            let low = min(high, max(8, Int((Double(high) * 0.5).rounded())))
             return low...high
         }
         if isHighRepBodyweight(named: name) { return 15...25 }

@@ -27,6 +27,8 @@ public enum RepLadder {
     ///
     /// - Wide ranges (hypertrophy 6…12, endurance 15…20): descend by 2 from the top,
     ///   clamped at `low` — `12,10,8,6…` / `20,18,16,15…`.
+    /// - Explicit high-rep ranges (`high >= 30`): descend by 10 from the top,
+    ///   clamped at `low` — `40,30,20…`.
     /// - Narrow ranges (strength 3…5, width ≤ 2): a heavy top-set **hold** — the
     ///   first half of the sets at `high`, the rest at `low` (`5,5,3` / `5,5,3,3`),
     ///   matching how lifters ramp heavy triples/fives.
@@ -41,6 +43,9 @@ public enum RepLadder {
         // A single prescribed set uses the productive midpoint, not the lightest dose.
         if sets == 1 { return [midpoint(low: lo, high: hi)] }
 
+        if hi >= 30 {
+            return descending(from: hi, by: 10, count: sets, floor: lo)
+        }
         if hi - lo <= 2 {
             return topHeavyHold(low: lo, high: hi, count: sets)
         }

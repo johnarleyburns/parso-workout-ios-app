@@ -45,6 +45,17 @@ final class RepLadderTests: XCTestCase {
         XCTAssertEqual(RepLadder.ladder(for: .endurance, sets: 4), [20, 18, 16, 15])
     }
 
+    // MARK: explicit high-rep ranges — descending by 10 from the top
+
+    func testHighRepRangeDescendsByTen() {
+        XCTAssertEqual(RepLadder.ladder(low: 24, high: 40, sets: 3), [40, 30, 24])
+        XCTAssertEqual(RepLadder.ladder(low: 20, high: 40, sets: 3), [40, 30, 20])
+    }
+
+    func testNonHighRepExplicitRangeKeepsTwoRepDrops() {
+        XCTAssertEqual(RepLadder.ladder(low: 6, high: 12, sets: 3), [12, 10, 8])
+    }
+
     // MARK: edges
 
     func testZeroSetsIsEmpty() {

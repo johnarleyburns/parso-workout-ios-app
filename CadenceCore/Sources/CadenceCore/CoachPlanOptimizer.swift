@@ -150,6 +150,7 @@ public enum CoachPlanOptimizer {
                                 constraintPolicy: PlanningConstraintPolicy = .safe) -> OptimizedCoachPlan {
         let lowParts = weeklyCoverageParts(in: trainingFacts, excluded: schedulePreferences.excludedCoverageParts)
         let strengthCandidates = uniqueStrengthCandidates(candidateSessions)
+        let desiredSetsPerExercise = schedulePreferences.desiredSetsPerExercise
         var diagnostics: [PlanningDiagnostic] = []
 
         var slots = remainingStrengthSlots(in: weeklyPlan,
@@ -203,6 +204,7 @@ public enum CoachPlanOptimizer {
              trainingFacts: trainingFacts,
              coachFacts: coachFacts,
              strengthCandidates: strengthCandidates,
+             desiredSetsPerExercise: desiredSetsPerExercise,
              policy: constraintPolicy,
              diagnostics: &diagnostics)
 
@@ -224,6 +226,7 @@ public enum CoachPlanOptimizer {
                  trainingFacts: trainingFacts,
                  coachFacts: coachFacts,
                  strengthCandidates: strengthCandidates,
+                 desiredSetsPerExercise: desiredSetsPerExercise,
                  policy: constraintPolicy,
                  diagnostics: &diagnostics)
         }
@@ -330,6 +333,7 @@ public enum CoachPlanOptimizer {
                               trainingFacts: TrainingFacts,
                               coachFacts: CoachFacts,
                               strengthCandidates: [CoachSession],
+                              desiredSetsPerExercise: Int,
                               policy: PlanningConstraintPolicy,
                               diagnostics: inout [PlanningDiagnostic]) {
         for (i, slot) in slots.enumerated() {
@@ -348,6 +352,7 @@ public enum CoachPlanOptimizer {
                 coachFacts: coachFacts,
                 strengthCandidates: strengthCandidates,
                 usedThisWeek: usedThisWeek,
+                desiredSetsPerExercise: desiredSetsPerExercise,
                 policy: policy)
             planned.append(choice.session)
             let added = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [choice.session])
@@ -381,6 +386,7 @@ public enum CoachPlanOptimizer {
                                       coachFacts: CoachFacts,
                                       strengthCandidates: [CoachSession],
                                       usedThisWeek: Set<String>,
+                                      desiredSetsPerExercise: Int,
                                       policy: PlanningConstraintPolicy) -> CandidatePlan {
         let candidatePool = strengthCandidates.isEmpty ? [syntheticBaseSession()] : strengthCandidates
         let options = candidatePool.map {
@@ -391,6 +397,7 @@ public enum CoachPlanOptimizer {
                              trainingFacts: trainingFacts,
                              coachFacts: coachFacts,
                              usedThisWeek: usedThisWeek,
+                             desiredSetsPerExercise: desiredSetsPerExercise,
                              policy: policy)
         } + [
             optimizedVersion(of: syntheticBaseSession(),
@@ -400,6 +407,7 @@ public enum CoachPlanOptimizer {
                              trainingFacts: trainingFacts,
                              coachFacts: coachFacts,
                              usedThisWeek: usedThisWeek,
+                             desiredSetsPerExercise: desiredSetsPerExercise,
                              policy: policy)
         ]
 
@@ -409,6 +417,7 @@ public enum CoachPlanOptimizer {
                                                              facts: trainingFacts,
                                                              coachFacts: coachFacts,
                                                              slot: slot,
+                                                             desiredSetsPerExercise: desiredSetsPerExercise,
                                                              policy: policy),
                                  targetedParts: Set(deficits.keys), synthesized: true),
             remainingDeficits: deficits,
@@ -427,6 +436,7 @@ public enum CoachPlanOptimizer {
                                          trainingFacts: TrainingFacts,
                                          coachFacts: CoachFacts,
                                          usedThisWeek: Set<String>,
+                                         desiredSetsPerExercise: Int,
                                          policy: PlanningConstraintPolicy) -> CandidatePlan {
         let originalNames = Set((base.exercises ?? []).map(\.name))
         let exercises = reshapedExercises(from: base.exercises ?? [],
@@ -436,6 +446,7 @@ public enum CoachPlanOptimizer {
                                           coachFacts: coachFacts,
                                           slot: slot,
                                           usedThisWeek: usedThisWeek,
+                                          desiredSetsPerExercise: desiredSetsPerExercise,
                                           policy: policy)
         let added = PlanAwareWeeklyAccounting.plannedSetsByPart(from: exercises)
         let nextProjected = projected.merging(added) { $0 + $1 }
@@ -466,6 +477,7 @@ public enum CoachPlanOptimizer {
                                           coachFacts: CoachFacts,
                                           slot: PlanningSlot,
                                           usedThisWeek: Set<String>,
+                                          desiredSetsPerExercise: Int,
                                           policy: PlanningConstraintPolicy) -> [CoachSession.RecommendedExercise] {
         guard !deficits.isEmpty else {
             let preserved = baseExercises
@@ -473,7 +485,7 @@ public enum CoachPlanOptimizer {
                 .prefix(policy.maxExercisesPerSession)
                 .map { exercise in
                     copy(exercise,
-                         sets: min(policy.maxSetsPerExercise, max(1, exercise.sets ?? 3)),
+                         sets: min(policy.maxSetsPerExercise, max(1, exercise.sets ?? desiredSetsPerExercise)),
                          goal: trainingFacts.goal,
                          coachFacts: coachFacts)
                 }
@@ -483,7 +495,12 @@ public enum CoachPlanOptimizer {
                                          slot: slot, policy: policy)
             }
             return ["Back Squat", "Bench Press", "Barbell Row", "Romanian Deadlift"]
-                .map { CoachSession.RecommendedExercise(name: $0, sets: 3) }
+                .map {
+                    copy(CoachSession.RecommendedExercise(name: $0),
+                         sets: min(policy.maxSetsPerExercise, max(1, desiredSetsPerExercise)),
+                         goal: trainingFacts.goal,
+                         coachFacts: coachFacts)
+                }
         }
 
         var selected: [CoachSession.RecommendedExercise] = []
@@ -513,6 +530,7 @@ public enum CoachPlanOptimizer {
                                                          target: .mev),
                                    projected: runningProjected,
                                    experience: trainingFacts.experience,
+                                   desiredSetsPerExercise: desiredSetsPerExercise,
                                    policy: policy)
             guard sets > 0, sessionSets + sets <= policy.maxTotalSetsPerSession else { continue }
             let planned = copy(exercise, sets: sets, goal: trainingFacts.goal, coachFacts: coachFacts)
@@ -537,6 +555,7 @@ public enum CoachPlanOptimizer {
                                           facts: trainingFacts,
                                           coachFacts: coachFacts,
                                           slot: slot,
+                                          desiredSetsPerExercise: desiredSetsPerExercise,
                                           policy: policy) else {
                 break
             }
@@ -547,6 +566,7 @@ public enum CoachPlanOptimizer {
                                    deficits: remaining,
                                    projected: runningProjected,
                                    experience: trainingFacts.experience,
+                                   desiredSetsPerExercise: desiredSetsPerExercise,
                                    policy: policy)
             guard sets > 0, sessionSets + sets <= policy.maxTotalSetsPerSession else { break }
             let planned = copy(next, sets: sets, goal: trainingFacts.goal, coachFacts: coachFacts)
@@ -601,6 +621,7 @@ public enum CoachPlanOptimizer {
                                             facts: trainingFacts,
                                             coachFacts: coachFacts,
                                             slot: slot,
+                                            desiredSetsPerExercise: desiredSetsPerExercise,
                                             policy: policy)
                 .filter { isExerciseEligible($0, on: slot.date, facts: coachFacts, policy: policy) }
                 .prefix(policy.maxExercisesPerSession)
@@ -712,8 +733,11 @@ public enum CoachPlanOptimizer {
                                     deficits: [BodyPart: Double],
                                     projected: [BodyPart: Double],
                                     experience: ExperienceLevel,
+                                    desiredSetsPerExercise: Int,
                                     policy: PlanningConstraintPolicy) -> Int {
-        guard !deficits.isEmpty else { return min(policy.maxSetsPerExercise, max(2, exercise.sets ?? 3)) }
+        guard !deficits.isEmpty else {
+            return min(policy.maxSetsPerExercise, max(2, exercise.sets ?? desiredSetsPerExercise))
+        }
         let perSet = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [copy(exercise, sets: 1)])
         guard perSet.contains(where: { deficits[$0.key] != nil && $0.value > 0 }) else { return 0 }
         var needed = 1
@@ -731,7 +755,7 @@ public enum CoachPlanOptimizer {
             }
         }
 
-        let desired = max(exercise.sets ?? 0, needed)
+        let desired = max(exercise.sets ?? desiredSetsPerExercise, needed)
         return min(policy.maxSetsPerExercise, max(0, safe), max(1, desired))
     }
 
@@ -740,6 +764,7 @@ public enum CoachPlanOptimizer {
                                       facts: TrainingFacts,
                                       coachFacts: CoachFacts,
                                       slot: PlanningSlot,
+                                      desiredSetsPerExercise: Int,
                                       policy: PlanningConstraintPolicy) -> CoachSession.RecommendedExercise? {
         let existingOptions = existing
             .filter { partsCovered(by: $0).contains(part) }
@@ -753,7 +778,8 @@ public enum CoachPlanOptimizer {
                 return a.name < b.name
             }
         if let first = existingOptions.first {
-            return copy(first, sets: nil, goal: facts.goal, coachFacts: coachFacts)
+            return copy(first, sets: first.sets ?? desiredSetsPerExercise,
+                        goal: facts.goal, coachFacts: coachFacts)
         }
 
         let preferred = CoachSession.mostTrainedExercises(facts: coachFacts)
@@ -762,7 +788,8 @@ public enum CoachPlanOptimizer {
                partsCovered(by: CoachSession.RecommendedExercise(name: name)).contains(part) {
                 let exercise = CoachSession.RecommendedExercise(name: name)
                 if isExerciseEligible(exercise, on: slot.date, facts: coachFacts, policy: policy) {
-                    return copy(exercise, sets: nil, goal: facts.goal, coachFacts: coachFacts)
+                    return copy(exercise, sets: desiredSetsPerExercise,
+                                goal: facts.goal, coachFacts: coachFacts)
                 }
             }
         }
@@ -770,17 +797,20 @@ public enum CoachPlanOptimizer {
         return defaultExerciseNames(for: part)
             .map { CoachSession.RecommendedExercise(name: $0) }
             .first { isExerciseEligible($0, on: slot.date, facts: coachFacts, policy: policy) }
-            .map { copy($0, sets: nil, goal: facts.goal, coachFacts: coachFacts) }
+            .map { copy($0, sets: desiredSetsPerExercise, goal: facts.goal, coachFacts: coachFacts) }
     }
 
     private static func defaultExercises(for deficits: [BodyPart: Double],
                                          facts: TrainingFacts,
                                          coachFacts: CoachFacts,
                                          slot: PlanningSlot,
+                                         desiredSetsPerExercise: Int,
                                          policy: PlanningConstraintPolicy) -> [CoachSession.RecommendedExercise] {
         deficits.sorted(by: partDeficitSort).compactMap { part, _ in
             return bestExercise(for: part, existing: [], facts: facts, coachFacts: coachFacts,
-                                slot: slot, policy: policy)
+                                slot: slot,
+                                desiredSetsPerExercise: desiredSetsPerExercise,
+                                policy: policy)
         }
     }
 

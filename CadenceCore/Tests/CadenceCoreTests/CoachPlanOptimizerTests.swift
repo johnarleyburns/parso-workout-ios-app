@@ -89,6 +89,44 @@ final class CoachPlanOptimizerTests: XCTestCase {
                              "Two planned sessions should not have identical exercise lists")
     }
 
+    func testOptimizerUsesDesiredSetsWhenCandidateSetsAreMissing() throws {
+        let now = fixedWednesday()
+        let facts = trainingFacts([.chest: 0])
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 0)
+        let plan = weeklyPlan(now: now, days: [(1, [.strength])])
+        let excluded = Set(BodyPart.allCases.filter { $0 != .chest })
+        let prefs = CoachSchedulePreferences(
+            strengthDaysPerWeek: 2,
+            cardioDaysPerWeek: 3,
+            restPreference: .fixed(days: []),
+            allowsTwoADays: false,
+            excludedCoverageParts: excluded,
+            desiredSetsPerExercise: 4
+        )
+        let candidate = CoachSession(
+            id: "strength.nilSets",
+            kind: .strength,
+            title: "Strength session",
+            exercises: [.init(name: "Bench Press")],
+            launchPayload: .strengthPlan("nilSets")
+        )
+
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: plan,
+            schedulePreferences: prefs,
+            candidates: [candidate])
+
+        let exercise = try XCTUnwrap(
+            optimized.plannedStrengthSessions
+                .flatMap { $0.exercises ?? [] }
+                .first { $0.name == "Bench Press" }
+        )
+        XCTAssertEqual(exercise.sets, 4)
+        XCTAssertEqual(exercise.repLadder, [5, 5, 3, 3])
+    }
+
     func testImpossibleCaseEmitsOneUnresolvedPlanningInsight() {
         let now = fixedWednesday()
         let facts = trainingFacts([

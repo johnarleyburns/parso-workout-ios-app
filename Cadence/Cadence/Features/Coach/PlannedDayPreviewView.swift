@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 /// A read-only preview of a planned (future) day (issue 7): the day's planned
 /// sessions with their rep prescription and a cited rationale. Deliberately has NO
@@ -7,6 +8,13 @@ import CadenceCore
 struct PlannedDayPreviewView: View {
     let day: WeeklyPlan.DayOutline
     let goal: TrainingGoal
+    let desiredSetsPerExercise: Int
+
+    init(day: WeeklyPlan.DayOutline, goal: TrainingGoal, desiredSetsPerExercise: Int = 3) {
+        self.day = day
+        self.goal = goal
+        self.desiredSetsPerExercise = desiredSetsPerExercise
+    }
 
     var body: some View {
         List {
@@ -49,7 +57,7 @@ struct PlannedDayPreviewView: View {
             } header: {
                 Text(headerLabel)
             } footer: {
-                Text("This is a planned day. Start it from the Workout tab when it's today.")
+                Text(PlannedDayPreviewPresenter.footerText(for: day))
             }
 
             if day.sessions.contains(where: { $0.kind == .strength }) || hasPlannedCardio {
@@ -127,9 +135,10 @@ struct PlannedDayPreviewView: View {
 
     /// The goal's descending rep ladder rendered compactly, e.g. "12-10-8 reps".
     private var strengthPrescription: String {
-        let ladder = RepLadder.ladder(for: goal, sets: 3)
-        let reps = ladder.map(String.init).joined(separator: "-")
-        return "3 sets · \(reps) reps · ~\(goal.targetRIR) RIR"
+        PlannedDayPreviewPresenter.strengthPrescription(
+            goal: goal,
+            sets: desiredSetsPerExercise
+        )
     }
 
     private var headerLabel: String {

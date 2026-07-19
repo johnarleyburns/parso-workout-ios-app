@@ -106,6 +106,7 @@ extension CoachSession {
 
         // The weekly strength floor is the user's own target (was hardcoded 2).
         let strengthFloor = schedulePreferences.strengthDaysPerWeek
+        let desiredSets = schedulePreferences.desiredSetsPerExercise
 
         let strengthNeeded = balance.strengthDays < strengthFloor
         // Once the weekly strength target is met, NO strength is offered (general,
@@ -115,7 +116,8 @@ extension CoachSession {
 
         // Always offer strength if something needs training and is eligible
         if strengthNeeded || facts.events.isEmpty {
-            let exercises = buildStrengthExercises(facts: facts)
+            let exercises = buildStrengthExercises(facts: facts,
+                                                   desiredSetsPerExercise: desiredSets)
             candidates.append(CoachSession(
                 id: "strength.general",
                 kind: .strength,
@@ -131,7 +133,8 @@ extension CoachSession {
 
         // Full-body A/B for beginners
         if facts.events.count < 5 && facts.experience == .beginner && !strengthCapMet {
-            let aExercises = generateBeginnerA(facts: facts)
+            let aExercises = generateBeginnerA(facts: facts,
+                                               desiredSetsPerExercise: desiredSets)
             candidates.append(CoachSession(
                 id: "strength.beginnerA",
                 kind: .strength,
@@ -143,7 +146,8 @@ extension CoachSession {
                 citationIds: ["schoenfeld2021"],
                 launchPayload: .strengthPlan("beginnerA")
             ))
-            let bExercises = generateBeginnerB(facts: facts)
+            let bExercises = generateBeginnerB(facts: facts,
+                                               desiredSetsPerExercise: desiredSets)
             candidates.append(CoachSession(
                 id: "strength.beginnerB",
                 kind: .strength,
@@ -392,11 +396,20 @@ extension CoachSession {
         let loadSpiked = facts.loadSpikeFlags.contains { $0.ratio >= 1.3 }
         let readinessPoor = facts.readiness?.isPoor == true
         if (loadSpiked || readinessPoor) && !facts.events.isEmpty && !strengthCapMet {
-            let exercises = buildStrengthExercises(facts: facts).map {
-                RecommendedExercise(name: $0.name, primaryMuscles: $0.primaryMuscles,
-                                    sets: max(2, ($0.sets ?? 3) - 1),
-                                    repsLow: $0.repsLow, repsHigh: $0.repsHigh,
-                                    loadKg: nil, rir: (($0.rir ?? rir) + 2))
+            let exercises = buildStrengthExercises(facts: facts,
+                                                   desiredSetsPerExercise: desiredSets).map {
+                let sets = max(2, ($0.sets ?? desiredSets) - 1)
+                let ladder: [Int]?
+                if let low = $0.repsLow, let high = $0.repsHigh {
+                    ladder = RepLadder.ladder(low: low, high: high, sets: sets)
+                } else {
+                    ladder = $0.repLadder
+                }
+                return RecommendedExercise(name: $0.name, primaryMuscles: $0.primaryMuscles,
+                                           sets: sets,
+                                           repsLow: $0.repsLow, repsHigh: $0.repsHigh,
+                                           loadKg: nil, rir: (($0.rir ?? rir) + 2),
+                                           repLadder: ladder)
             }
             candidates.append(CoachSession(
                 id: "strength.reducedLoad",
@@ -486,8 +499,10 @@ extension CoachSession {
     /// Public entry point so other engines (e.g. `CoachAddOnEngine`) can build a
     /// coach-quality full-body strength session carrying the goal's rep ladders
     /// (issue 3 — "Additional strength → Start anyway" must produce a real session).
-    public static func fullBodyStrengthExercises(facts: CoachFacts) -> [RecommendedExercise] {
-        buildStrengthExercises(facts: facts)
+    public static func fullBodyStrengthExercises(facts: CoachFacts,
+                                                 desiredSetsPerExercise: Int = 3) -> [RecommendedExercise] {
+        buildStrengthExercises(facts: facts,
+                               desiredSetsPerExercise: desiredSetsPerExercise)
     }
 
     /// Build a concrete strength prescription for a specific movement-pattern set
@@ -496,19 +511,21 @@ extension CoachSession {
     /// canonical compound; carries the goal's descending rep ladder.
     public static func strengthExercises(facts: CoachFacts,
                                          patterns: [MovementPattern],
-                                         maxExercises: Int = 6) -> [RecommendedExercise] {
+                                         maxExercises: Int = 6,
+                                         desiredSetsPerExercise: Int = 3) -> [RecommendedExercise] {
         let goal = facts.goal
+        let desiredSets = clampedDesiredSets(desiredSetsPerExercise)
         let preferred = mostTrainedExercises(facts: facts)
-        let fallbacks: [MovementPattern: (String, Int?)] = [
-            .squat: ("Back Squat", 3),
-            .horizontalPush: ("Bench Press", 3),
-            .horizontalPull: ("Barbell Row", 3),
-            .hinge: ("Romanian Deadlift", 3),
-            .verticalPush: ("Overhead Press", 3),
-            .verticalPull: ("Pull-Up", 3),
-            .core: ("Plank", 2),
-            .locomotion: ("Standing Calf Raise", 2),
-            .carry: ("Farmer Carry", 2),
+        let fallbacks: [MovementPattern: String] = [
+            .squat: "Back Squat",
+            .horizontalPush: "Bench Press",
+            .horizontalPull: "Barbell Row",
+            .hinge: "Romanian Deadlift",
+            .verticalPush: "Overhead Press",
+            .verticalPull: "Pull-Up",
+            .core: "Plank",
+            .locomotion: "Standing Calf Raise",
+            .carry: "Farmer Carry",
         ]
         var exercises: [RecommendedExercise] = []
         var used = Set<MovementPattern>()
@@ -516,52 +533,53 @@ extension CoachSession {
             guard exercises.count < maxExercises else { break }
             guard !used.contains(pattern) else { continue }
             used.insert(pattern)
-            let (fallback, setCount) = fallbacks[pattern] ?? ("Back Squat", 3)
+            let fallback = fallbacks[pattern] ?? "Back Squat"
+            let setCount = desiredSets
             let name = preferred[pattern] ?? fallback
             let range = repRange(forExerciseNamed: name, facts: facts)
             exercises.append(RecommendedExercise(
-                name: name, sets: setCount,
+                name: name, sets: desiredSets,
                 repsLow: range.lowerBound, repsHigh: range.upperBound,
                 loadKg: nil, rir: goal.targetRIR,
                 repLadder: RepLadder.ladder(low: range.lowerBound, high: range.upperBound,
-                                            sets: setCount ?? 3)
+                                            sets: setCount)
             ))
         }
         return exercises
     }
 
-    private static func buildStrengthExercises(facts: CoachFacts) -> [RecommendedExercise] {
+    private static func buildStrengthExercises(facts: CoachFacts,
+                                               desiredSetsPerExercise: Int = 3) -> [RecommendedExercise] {
         let goal = facts.goal
-        let compoundSets: Int? = 3
-        let isolationSets: Int? = 2
+        let desiredSets = clampedDesiredSets(desiredSetsPerExercise)
 
         let preferred = mostTrainedExercises(facts: facts)
 
         var exercises: [RecommendedExercise] = []
-        let patterns: [(MovementPattern, String, Int?)] = [
-            (.squat, "Back Squat", compoundSets),
-            (.horizontalPush, "Bench Press", compoundSets),
-            (.horizontalPull, "Barbell Row", compoundSets),
-            (.hinge, "Romanian Deadlift", compoundSets),
-            (.verticalPush, "Overhead Press", compoundSets),
-            (.verticalPull, "Pull-Up", compoundSets),
-            (.core, "Plank", isolationSets),
-            (.locomotion, "Standing Calf Raise", isolationSets),
+        let patterns: [(MovementPattern, String)] = [
+            (.squat, "Back Squat"),
+            (.horizontalPush, "Bench Press"),
+            (.horizontalPull, "Barbell Row"),
+            (.hinge, "Romanian Deadlift"),
+            (.verticalPush, "Overhead Press"),
+            (.verticalPull, "Pull-Up"),
+            (.core, "Plank"),
+            (.locomotion, "Standing Calf Raise"),
         ]
 
         var used = Set<MovementPattern>()
-        for (pattern, fallback, setCount) in patterns {
+        for (pattern, fallback) in patterns {
             guard used.count < 6 else { break }
             let name = preferred[pattern] ?? fallback
             guard !used.contains(pattern) else { continue }
             used.insert(pattern)
             let range = repRange(forExerciseNamed: name, facts: facts)
             exercises.append(RecommendedExercise(
-                name: name, sets: setCount,
+                name: name, sets: desiredSets,
                 repsLow: range.lowerBound, repsHigh: range.upperBound,
                 loadKg: nil, rir: goal.targetRIR,
                 repLadder: RepLadder.ladder(low: range.lowerBound, high: range.upperBound,
-                                            sets: setCount ?? 3)
+                                            sets: desiredSets)
             ))
         }
 
@@ -592,24 +610,40 @@ extension CoachSession {
         return best
     }
 
-    private static func generateBeginnerA(facts: CoachFacts) -> [RecommendedExercise] {
+    private static func generateBeginnerA(facts: CoachFacts,
+                                          desiredSetsPerExercise: Int = 3) -> [RecommendedExercise] {
         let preferred = mostTrainedExercises(facts: facts)
+        let sets = clampedDesiredSets(desiredSetsPerExercise)
         return [
-            RecommendedExercise(name: preferred[.squat] ?? "Back Squat", sets: 3, repsLow: 6, repsHigh: 10, rir: 3),
-            RecommendedExercise(name: preferred[.horizontalPush] ?? "Bench Press", sets: 3, repsLow: 6, repsHigh: 10, rir: 3),
-            RecommendedExercise(name: preferred[.horizontalPull] ?? "Barbell Row", sets: 3, repsLow: 6, repsHigh: 10, rir: 3),
-            RecommendedExercise(name: preferred[.carry] ?? "Farmer Carry", sets: 2, repsLow: 1, repsHigh: 1, rir: 3),
+            RecommendedExercise(name: preferred[.squat] ?? "Back Squat", sets: sets, repsLow: 6, repsHigh: 10, rir: 3,
+                                repLadder: RepLadder.ladder(low: 6, high: 10, sets: sets)),
+            RecommendedExercise(name: preferred[.horizontalPush] ?? "Bench Press", sets: sets, repsLow: 6, repsHigh: 10, rir: 3,
+                                repLadder: RepLadder.ladder(low: 6, high: 10, sets: sets)),
+            RecommendedExercise(name: preferred[.horizontalPull] ?? "Barbell Row", sets: sets, repsLow: 6, repsHigh: 10, rir: 3,
+                                repLadder: RepLadder.ladder(low: 6, high: 10, sets: sets)),
+            RecommendedExercise(name: preferred[.carry] ?? "Farmer Carry", sets: sets, repsLow: 1, repsHigh: 1, rir: 3,
+                                repLadder: RepLadder.ladder(low: 1, high: 1, sets: sets)),
         ]
     }
 
-    private static func generateBeginnerB(facts: CoachFacts) -> [RecommendedExercise] {
+    private static func generateBeginnerB(facts: CoachFacts,
+                                          desiredSetsPerExercise: Int = 3) -> [RecommendedExercise] {
         let preferred = mostTrainedExercises(facts: facts)
+        let sets = clampedDesiredSets(desiredSetsPerExercise)
         return [
-            RecommendedExercise(name: preferred[.hinge] ?? "Romanian Deadlift", sets: 2, repsLow: 6, repsHigh: 10, rir: 3),
-            RecommendedExercise(name: preferred[.verticalPush] ?? "Overhead Press", sets: 3, repsLow: 6, repsHigh: 10, rir: 3),
-            RecommendedExercise(name: preferred[.verticalPull] ?? "Pull-Up", sets: 3, repsLow: 6, repsHigh: 10, rir: 3),
-            RecommendedExercise(name: preferred[.core] ?? "Plank", sets: 2, repsLow: 1, repsHigh: 1, rir: 3),
+            RecommendedExercise(name: preferred[.hinge] ?? "Romanian Deadlift", sets: sets, repsLow: 6, repsHigh: 10, rir: 3,
+                                repLadder: RepLadder.ladder(low: 6, high: 10, sets: sets)),
+            RecommendedExercise(name: preferred[.verticalPush] ?? "Overhead Press", sets: sets, repsLow: 6, repsHigh: 10, rir: 3,
+                                repLadder: RepLadder.ladder(low: 6, high: 10, sets: sets)),
+            RecommendedExercise(name: preferred[.verticalPull] ?? "Pull-Up", sets: sets, repsLow: 6, repsHigh: 10, rir: 3,
+                                repLadder: RepLadder.ladder(low: 6, high: 10, sets: sets)),
+            RecommendedExercise(name: preferred[.core] ?? "Plank", sets: sets, repsLow: 1, repsHigh: 1, rir: 3,
+                                repLadder: RepLadder.ladder(low: 1, high: 1, sets: sets)),
         ]
+    }
+
+    private static func clampedDesiredSets(_ sets: Int) -> Int {
+        min(4, max(3, sets))
     }
 
     public static func mostTrainedExercises(facts: CoachFacts) -> [MovementPattern: String] {

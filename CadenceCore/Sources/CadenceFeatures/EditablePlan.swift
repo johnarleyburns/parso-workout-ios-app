@@ -111,8 +111,12 @@ public struct EditablePlan: Hashable {
     /// coach plan carries no strength, the user can still ask for one. Builds the
     /// best-fit full-body session from the user's own trained movements and goal
     /// rep scheme — a suggestion for perusal in the plan editor, never a launch.
-    public static func strengthAnyway(facts: CoachFacts) -> EditablePlan? {
-        let exercises = CoachSession.fullBodyStrengthExercises(facts: facts)
+    public static func strengthAnyway(facts: CoachFacts,
+                                      desiredSetsPerExercise: Int = 3) -> EditablePlan? {
+        let exercises = CoachSession.fullBodyStrengthExercises(
+            facts: facts,
+            desiredSetsPerExercise: desiredSetsPerExercise
+        )
         guard !exercises.isEmpty else { return nil }
         let range = facts.goal.repRange
         let rir = facts.goal.targetRIR

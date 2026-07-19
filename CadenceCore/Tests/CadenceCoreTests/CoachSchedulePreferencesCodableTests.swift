@@ -39,6 +39,8 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
                        "Missing dailyStepTarget should default to 8000")
         XCTAssertEqual(prefs.excludedCoverageParts, [],
                        "Missing excludedCoverageParts should default to empty set")
+        XCTAssertEqual(prefs.desiredSetsPerExercise, 3,
+                       "Missing desiredSetsPerExercise should default to 3")
     }
 
     // MARK: - Legacy blob: missing only excludedCoverageParts (had dailyStepTarget before the new field)
@@ -70,6 +72,8 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
                        "Existing dailyStepTarget should survive")
         XCTAssertEqual(prefs.excludedCoverageParts, [],
                        "Missing excludedCoverageParts should default to empty set")
+        XCTAssertEqual(prefs.desiredSetsPerExercise, 3,
+                       "Missing desiredSetsPerExercise should default to 3")
     }
 
     // MARK: - Round-trip stability
@@ -82,7 +86,8 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
             allowsTwoADays: true,
             sameDayCardioTiming: .separateLater,
             dailyStepTarget: 10_000,
-            excludedCoverageParts: [.abs, .calves]
+            excludedCoverageParts: [.abs, .calves],
+            desiredSetsPerExercise: 4
         )
         let data = try JSONEncoder().encode(prefs)
         let decoded = try JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
@@ -94,6 +99,7 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         XCTAssertEqual(decoded.sameDayCardioTiming, .separateLater)
         XCTAssertEqual(decoded.dailyStepTarget, 10_000)
         XCTAssertEqual(decoded.excludedCoverageParts, [.abs, .calves])
+        XCTAssertEqual(decoded.desiredSetsPerExercise, 4)
     }
 
     // MARK: - Clamping still applies through decoder
@@ -107,7 +113,8 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
           "allowsTwoADays": false,
           "sameDayCardioTiming": "afterStrength",
           "dailyStepTarget": 1000,
-          "excludedCoverageParts": []
+          "excludedCoverageParts": [],
+          "desiredSetsPerExercise": 9
         }
         """
         let data = Data(json.utf8)
@@ -119,6 +126,8 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
                        "Cardio above 7 should clamp to 7")
         XCTAssertEqual(prefs.dailyStepTarget, 2_000,
                        "Step target below 2_000 should clamp to 2_000")
+        XCTAssertEqual(prefs.desiredSetsPerExercise, 4,
+                       "Desired sets above 4 should clamp to 4")
     }
 
     // MARK: - ExcludedCoverageParts survives as a populated set

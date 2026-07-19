@@ -341,6 +341,7 @@ public struct WeeklyPlan: Sendable, Equatable {
                 allowsTwoADays: schedulePreferences.allowsTwoADays,
                 sameDayCardioTiming: schedulePreferences.sameDayCardioTiming,
                 restPreference: schedulePreferences.restPreference,
+                desiredSetsPerExercise: schedulePreferences.desiredSetsPerExercise,
                 useSplit: useSplit,
                 focus: plannedFocus,
                 facts: facts,
@@ -398,6 +399,7 @@ public struct WeeklyPlan: Sendable, Equatable {
                 allowsTwoADays: schedulePreferences.allowsTwoADays,
                 sameDayCardioTiming: schedulePreferences.sameDayCardioTiming,
                 restPreference: schedulePreferences.restPreference,
+                desiredSetsPerExercise: schedulePreferences.desiredSetsPerExercise,
                 useSplit: useSplit,
                 focus: useSplit ? .upper : .fullBody,
                 facts: facts,
@@ -429,6 +431,7 @@ public struct WeeklyPlan: Sendable, Equatable {
         allowsTwoADays: Bool,
         sameDayCardioTiming: SameDayCardioTiming,
         restPreference: RestPreference,
+        desiredSetsPerExercise: Int,
         useSplit: Bool,
         focus: StrengthFocus,
         facts: CoachFacts,
@@ -501,7 +504,11 @@ public struct WeeklyPlan: Sendable, Equatable {
         }
 
         if canStrength {
-            let exercises = CoachSession.strengthExercises(facts: facts, patterns: planFocus.patterns)
+            let exercises = CoachSession.strengthExercises(
+                facts: facts,
+                patterns: planFocus.patterns,
+                desiredSetsPerExercise: desiredSetsPerExercise
+            )
             sessions.append(PlannedSession(id: "f-\(date)-strength",
                                             kind: .strength,
                                             label: useSplit ? "Strength · \(planFocus.label)" : "Strength",

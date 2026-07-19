@@ -147,7 +147,8 @@ final class DataExportTests: XCTestCase {
             unit: "pounds", stepGoal: 12000, trainingGoal: "strength", experienceLevel: "advanced",
             favoriteRoutineIDs: ["preset-5x5"],
             schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 4, cardioDaysPerWeek: 2,
-                                                          allowsTwoADays: true),
+                                                          allowsTwoADays: true,
+                                                          desiredSetsPerExercise: 4),
             coachProfile: profile)
 
         // Export → JSON → decode (proves Codable round-trip).
@@ -177,6 +178,7 @@ final class DataExportTests: XCTestCase {
         XCTAssertEqual(decoded.preferences?.unit, "pounds")
         XCTAssertEqual(decoded.preferences?.stepGoal, 12000)
         XCTAssertEqual(decoded.preferences?.schedulePreferences?.strengthDaysPerWeek, 4)
+        XCTAssertEqual(decoded.preferences?.schedulePreferences?.desiredSetsPerExercise, 4)
         XCTAssertTrue(decoded.preferences?.schedulePreferences?.allowsTwoADays ?? false)
         XCTAssertEqual(decoded.preferences?.coachProfile?.aerobicPreferences.first?.score, 4)
     }
@@ -269,6 +271,7 @@ final class DataExportTests: XCTestCase {
                        "Schedule preferences should survive legacy blob")
         XCTAssertEqual(decoded.preferences?.schedulePreferences?.cardioDaysPerWeek, 2)
         XCTAssertEqual(decoded.preferences?.schedulePreferences?.dailyStepTarget, 10_000)
+        XCTAssertEqual(decoded.preferences?.schedulePreferences?.desiredSetsPerExercise, 3)
         XCTAssertTrue(decoded.preferences?.schedulePreferences?.allowsTwoADays ?? false)
         XCTAssertEqual(decoded.preferences?.schedulePreferences?.excludedCoverageParts, [],
                        "Missing excludedCoverageParts should default to empty, not fail decode")

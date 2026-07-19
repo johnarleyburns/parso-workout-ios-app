@@ -65,11 +65,12 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public var sameDayCardioTiming: SameDayCardioTiming
     public var dailyStepTarget: Int
     public var excludedCoverageParts: Set<BodyPart>
+    public var desiredSetsPerExercise: Int
 
     private enum CodingKeys: String, CodingKey {
         case strengthDaysPerWeek, cardioDaysPerWeek, restPreference
         case allowsTwoADays, sameDayCardioTiming, dailyStepTarget
-        case excludedCoverageParts
+        case excludedCoverageParts, desiredSetsPerExercise
     }
 
     public static let `default` = CoachSchedulePreferences(
@@ -78,7 +79,8 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         restPreference: .defaultRolling,
         allowsTwoADays: false,
         sameDayCardioTiming: .afterStrength,
-        excludedCoverageParts: [])
+        excludedCoverageParts: [],
+        desiredSetsPerExercise: 3)
 
     public init(strengthDaysPerWeek: Int = 2,
                 cardioDaysPerWeek: Int = 3,
@@ -86,7 +88,8 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
                 allowsTwoADays: Bool = false,
                 sameDayCardioTiming: SameDayCardioTiming = .afterStrength,
                 dailyStepTarget: Int = 8_000,
-                excludedCoverageParts: Set<BodyPart> = []) {
+                excludedCoverageParts: Set<BodyPart> = [],
+                desiredSetsPerExercise: Int = 3) {
         self.strengthDaysPerWeek = min(5, max(2, strengthDaysPerWeek))
         self.cardioDaysPerWeek = min(7, max(0, cardioDaysPerWeek))
         self.restPreference = restPreference
@@ -94,6 +97,7 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         self.sameDayCardioTiming = sameDayCardioTiming
         self.dailyStepTarget = min(20_000, max(2_000, dailyStepTarget))
         self.excludedCoverageParts = excludedCoverageParts
+        self.desiredSetsPerExercise = Self.clampDesiredSets(desiredSetsPerExercise)
     }
 
     public init(from decoder: Decoder) throws {
@@ -105,6 +109,9 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         sameDayCardioTiming = try c.decodeIfPresent(SameDayCardioTiming.self, forKey: .sameDayCardioTiming) ?? .afterStrength
         dailyStepTarget = min(20_000, max(2_000, try c.decodeIfPresent(Int.self, forKey: .dailyStepTarget) ?? 8_000))
         excludedCoverageParts = try c.decodeIfPresent(Set<BodyPart>.self, forKey: .excludedCoverageParts) ?? []
+        desiredSetsPerExercise = Self.clampDesiredSets(
+            try c.decodeIfPresent(Int.self, forKey: .desiredSetsPerExercise) ?? 3
+        )
     }
 
     // MARK: Constrained setters for use in UI
@@ -143,5 +150,15 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         var copy = self
         copy.dailyStepTarget = min(20_000, max(2_000, target))
         return copy
+    }
+
+    public func withDesiredSetsPerExercise(_ sets: Int) -> CoachSchedulePreferences {
+        var copy = self
+        copy.desiredSetsPerExercise = Self.clampDesiredSets(sets)
+        return copy
+    }
+
+    private static func clampDesiredSets(_ sets: Int) -> Int {
+        min(4, max(3, sets))
     }
 }

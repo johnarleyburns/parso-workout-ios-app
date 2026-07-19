@@ -66,6 +66,23 @@ struct CoachSchedulePreferencesView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Working sets/exercise").font(.subheadline.weight(.medium))
+                        Spacer()
+                        Text("\(settings.coachSchedulePreferences.desiredSetsPerExercise)").font(.subheadline.bold())
+                    }
+                    Picker("Working sets/exercise", selection: Binding(get: {
+                        settings.coachSchedulePreferences.desiredSetsPerExercise
+                    }, set: { v in
+                        settings.coachSchedulePreferences = settings.coachSchedulePreferences.withDesiredSetsPerExercise(v)
+                    })) {
+                        Text("3").tag(3)
+                        Text("4").tag(4)
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("settings.coach.desiredSets")
+                }
                 if let citation = CitationRegistry.citation(forId: "frequencyMeta") {
                     CitationLink(citation: citation, compact: true)
                 }

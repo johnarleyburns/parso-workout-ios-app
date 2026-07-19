@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 struct CoachDecisionCardView: View {
     let decision: CoachDecision
@@ -13,6 +14,10 @@ struct CoachDecisionCardView: View {
     var onFixCustomExercises: () -> Void = {}
     var onStrengthAnyway: () -> Void = {}
     var onSwapComponent: (CoachSession) -> Void = { _ in }
+    /// Phase B: true when a strength event was completed today (from actual log data).
+    var hasTodayStrengthCompleted: Bool = false
+    /// Phase B: exercise names from completed strength today, deduped, newest first.
+    var todayLoggedExerciseNames: [String] = []
 
     @State private var warningsExpanded = false
     @State private var addOnsExpanded = false
@@ -345,60 +350,33 @@ struct CoachDecisionCardView: View {
         }
     }
 
-    private var heroTitle: String {
-        if isCompleteState {
-            switch planAdherenceCompletedKind {
-            case .strength:
-                return "You put in the work"
-            case .easyAerobic, .moderateAerobic:
-                return "Cardio banked for today"
-            case .vo2Intervals:
-                return "Speed work in the books"
-            case .recovery:
-                return "Recovery done for today"
-            case .rest:
-                return "Rest earned for today"
-            case .assessment:
-                return "Baseline in the books"
-            case nil:
-                return "Today's workouts are completed"
-            }
-        }
-        if let planned = remainingPlannedRecommendation {
-            return planned.title
-        }
-        if hasRecentStrength && decision.primary.kind != .strength {
-            // Name the actual follow-up when it's a trainable cardio session so the
-            // two-a-day's remaining half is explicit; otherwise acknowledge strength.
-            switch decision.primary.kind {
-            case .easyAerobic, .moderateAerobic, .vo2Intervals:
-                return decision.primary.title
-            default:
-                return "Strength is done today"
-            }
-        }
-        if decision.primary.kind == .rest {
-            return "Rest is training too"
-        }
-        return decision.primary.title
-    }
-
-    private var heroSubtitle: String {
-        if isCompleteState {
-            return todayCompleteDescription
+    private var heroContent: CoachHeroPresenter.Content {
+        let adherence = decision.planAdherence
+        let isComplete: Bool
+        let completedKind: CoachSessionKind?
+        let completedDesc: String?
+        switch adherence {
+        case .planAhead, .offPlan:
+            isComplete = false; completedKind = nil; completedDesc = nil
+        case .planComplete(let kind, let desc, _):
+            isComplete = true; completedKind = kind; completedDesc = desc
         }
         let recent = decision.observedFacts.first.map { "\($0.title): \($0.value)" } ?? ""
-        if let planned = remainingPlannedRecommendation {
-            return planned.subtitle.isEmpty ? recent : planned.subtitle
-        }
-        if hasRecentStrength && decision.primary.kind != .strength {
-            let exercises = recentlyTrainedExercises()
-            if exercises.isEmpty { return recent }
-            return "\(exercises) logged \(recent)."
-        }
-        if decision.primary.subtitle.isEmpty { return recent }
-        return decision.primary.subtitle
+        return CoachHeroPresenter.present(
+            primaryKind: decision.primary.kind,
+            primaryTitle: decision.primary.title,
+            primarySubtitle: decision.primary.subtitle,
+            todayPlannedCount: decision.todayPlannedRecommendations.count,
+            isCompleteState: isComplete,
+            planAdherenceCompletedKind: completedKind,
+            completedDescription: completedDesc,
+            recentFactText: recent,
+            hasTodayStrengthCompleted: hasTodayStrengthCompleted,
+            todayLoggedExerciseNames: todayLoggedExerciseNames)
     }
+
+    private var heroTitle: String { heroContent.title }
+    private var heroSubtitle: String { heroContent.subtitle }
 
     private var recoveryChips: [(String, String)] {
         let deferredExercises = decision.deferred.compactMap { d -> String? in
@@ -417,18 +395,6 @@ struct CoachDecisionCardView: View {
     private var remainingPlannedRecommendation: CoachSession? {
         guard decision.todayPlannedRecommendations.count == 1 else { return nil }
         return decision.todayPlannedRecommendations.first
-    }
-
-    private func recentlyTrainedExercises() -> String {
-        let names = decision.deferred
-            .filter { $0.session.kind == .strength }
-            .compactMap { $0.session.exercises?.first?.name }
-            .prefix(3)
-        let list = Array(names)
-        if list.isEmpty { return "" }
-        if list.count == 1 { return list[0] }
-        if list.count == 2 { return "\(list[0]) and \(list[1])" }
-        return "\(list[0]), \(list[1]), and \(list[2])"
     }
 
     // MARK: - CTA

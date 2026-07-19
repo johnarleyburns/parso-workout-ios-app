@@ -178,7 +178,9 @@ struct HomeView: View {
                     onPickAlternative: { showAlternatives = true },
                     onFixCustomExercises: { path.append(HomeRoute.customExercises) },
                     onStrengthAnyway: { strengthAnyway() },
-                    onSwapComponent: { swapComponent($0) })
+                    onSwapComponent: { swapComponent($0) },
+                    hasTodayStrengthCompleted: hasTodayStrengthCompleted,
+                    todayLoggedExerciseNames: todayLoggedExerciseNames)
             }
         case .introducing:
             VStack(alignment: .leading, spacing: 8) {
@@ -281,6 +283,10 @@ struct HomeView: View {
     /// ActiveWorkoutModel hasn't yet adopted.
     private var resumeSession: WorkoutSession? {
         active.strengthSession ?? ActiveSessionRecovery.candidate(in: sessions)
+    }
+
+    private var (hasTodayStrengthCompleted, todayLoggedExerciseNames): (Bool, [String]) {
+        TodayLogHelper.completedStrength(sessions: sessions)
     }
 
     var body: some View {

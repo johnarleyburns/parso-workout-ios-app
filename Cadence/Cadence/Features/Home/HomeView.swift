@@ -179,8 +179,8 @@ struct HomeView: View {
                     onFixCustomExercises: { path.append(HomeRoute.customExercises) },
                     onStrengthAnyway: { strengthAnyway() },
                     onSwapComponent: { swapComponent($0) },
-                    hasTodayStrengthCompleted: hasTodayStrengthCompleted,
-                    todayLoggedExerciseNames: todayLoggedExerciseNames)
+                    hasTodayStrengthCompleted: todayStrength.hasStrength,
+                    todayLoggedExerciseNames: todayStrength.exerciseNames)
             }
         case .introducing:
             VStack(alignment: .leading, spacing: 8) {
@@ -285,9 +285,7 @@ struct HomeView: View {
         active.strengthSession ?? ActiveSessionRecovery.candidate(in: sessions)
     }
 
-    private var (hasTodayStrengthCompleted, todayLoggedExerciseNames): (Bool, [String]) {
-        TodayLogHelper.completedStrength(sessions: sessions)
-    }
+    private var todayStrength: (hasStrength: Bool, exerciseNames: [String]) { TodayLogHelper.completedStrength(sessions: sessions) }
 
     var body: some View {
         ZStack {

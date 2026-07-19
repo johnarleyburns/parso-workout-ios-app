@@ -288,6 +288,24 @@ public extension CoachFacts {
         )
     }
 
+    /// Phase F (field-test-fixes): returns a copy of these facts with step
+    /// summary overlaid. This avoids re-running the entire pipeline when only
+    /// the step count data needs a refresh.
+    public func withStepSummary(from activityTrend: [DayActivity]) -> CoachFacts {
+        let summary = StepActivitySummary(from: activityTrend)
+        return CoachFacts(
+            events: events, recovery: recovery, weeklyBalance: weeklyBalance,
+            goal: goal, experience: experience, referenceDate: referenceDate,
+            rolling72hCompletedEvents: rolling72hCompletedEvents,
+            rolling7dCompletedEvents: rolling7dCompletedEvents,
+            rolling28dCompletedEvents: rolling28dCompletedEvents,
+            systemLoads: systemLoads, readiness: readiness,
+            assessmentCoverage: assessmentCoverage,
+            loadSpikeFlags: loadSpikeFlags, zoneSource: zoneSource,
+            aerobicMinutesByBucket: aerobicMinutesByBucket,
+            stepSummary: summary, recoveryAwareCoachV2: recoveryAwareCoachV2)
+    }
+
     static func make(from events: [TrainingEvent],
                      goal: TrainingGoal,
                      experience: ExperienceLevel,

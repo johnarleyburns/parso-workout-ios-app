@@ -262,15 +262,6 @@ struct HomeView: View {
 
     private var addOnRecommendation: CoachAddOnRecommendation { coachSnapshot.addOn }
 
-    private func buildTrainingEvents() -> [TrainingEvent] {
-        _ = historyRefreshToken
-        let activeSessions = sessions.filter { $0.deletedAt == nil }
-        let strengthEvents = activeSessions.compactMap { TrainingEvent.from(session: $0, formula: settings.formula) }
-        let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { TrainingEvent.from(cardio: $0, userAge: settings.userAge) }
-        let assessmentEvents = assessments.map { TrainingEvent.from(assessment: $0) }
-        return strengthEvents + cardioEvents + assessmentEvents
-    }
-
     private static let headerDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.setLocalizedDateFormatFromTemplate("EEEEMMMd")
@@ -358,10 +349,7 @@ struct HomeView: View {
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() },
                                              onOpenCoach: { path.append(HomeRoute.coachPreview) })
                 case .yourPlan:
-                    let facts = CoachFacts.make(
-                        from: buildTrainingEvents(), goal: settings.trainingGoal,
-                        experience: settings.experienceLevel, formula: settings.formula,
-                        activityTrend: activityTrend)
+                    let facts = coachSnapshot.coachFacts.withStepSummary(from: activityTrend)
                     YourWeekView(decision: coachDecision, facts: facts,
                                  sessions: sessions.filter { $0.deletedAt == nil },
                                  cardio: cardio.filter { $0.deletedAt == nil },
@@ -1055,10 +1043,7 @@ struct HomeView: View {
     /// "Do a strength workout anyway" (coach-user-control Phase 5): build the
     /// best-fit full-body session and open it in the plan editor for perusal.
     private func strengthAnyway() {
-        let facts = CoachFacts.make(
-            from: buildTrainingEvents(), goal: settings.trainingGoal,
-            experience: settings.experienceLevel, formula: settings.formula,
-            activityTrend: activityTrend)
+        let facts = coachSnapshot.coachFacts.withStepSummary(from: activityTrend)
         guard let plan = EditablePlan.strengthAnyway(facts: facts) else { return }
         path.append(HomeRoute.workoutEditor(plan))
     }

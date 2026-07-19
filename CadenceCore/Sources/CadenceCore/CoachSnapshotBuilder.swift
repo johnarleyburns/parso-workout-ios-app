@@ -7,6 +7,10 @@ import Foundation
 /// change), which is what removed the 1–2s stall on every logged set.
 public struct CoachSnapshot: Sendable {
     public let facts: TrainingFacts
+    /// Phase F (field-test-fixes): the CoachFacts the builder already computes
+    /// at line ~60. Exposed so YourWeekView and strengthAnyway can reuse the
+    /// cached value instead of recomputing from scratch.
+    public let coachFacts: CoachFacts
     public let insights: [Insight]
     public let recommendation: Recommendation
     public let decision: CoachDecision
@@ -16,10 +20,11 @@ public struct CoachSnapshot: Sendable {
     /// The fused readiness (self-report + passive HealthKit), when present.
     public let readiness: ReadinessSnapshot?
 
-    public init(facts: TrainingFacts, insights: [Insight], recommendation: Recommendation,
+    public init(facts: TrainingFacts, coachFacts: CoachFacts, insights: [Insight], recommendation: Recommendation,
                 decision: CoachDecision, plan: WeeklyPlan, behindPlan: Bool,
                 addOn: CoachAddOnRecommendation, readiness: ReadinessSnapshot? = nil) {
         self.facts = facts
+        self.coachFacts = coachFacts
         self.insights = insights
         self.recommendation = recommendation
         self.decision = decision
@@ -118,7 +123,8 @@ public enum CoachSnapshotBuilder {
                                         hasPainConcern: hasPainToday)
         }()
 
-        return CoachSnapshot(facts: trainingFacts, insights: allInsights,
+        return CoachSnapshot(facts: trainingFacts, coachFacts: coachFacts,
+                             insights: allInsights,
                              recommendation: recommendation, decision: decision,
                              plan: plan, behindPlan: behindPlan, addOn: addOn,
                              readiness: coachFacts.readiness)

@@ -430,4 +430,24 @@ final class CoachFactsTests: XCTestCase {
         XCTAssertTrue(candidates.contains { $0.id == "strength.reducedLoad" },
                       "poor passive readiness should surface the lighter-strength candidate")
     }
+
+    // MARK: - Phase F (field-test-fixes): withStepSummary
+
+    func testWithStepSummaryPopulatesStepsPreservingOtherFields() throws {
+        let now = Date()
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+        XCTAssertNil(facts.stepSummary, "Base facts should have no step summary")
+
+        let trend: [DayActivity] = [DayActivity(date: now, steps: 8000)]
+        let withSteps = facts.withStepSummary(from: trend)
+
+        XCTAssertNotNil(withSteps.stepSummary)
+        if let summary = withSteps.stepSummary {
+            XCTAssertEqual(summary.sevenDayAverageSteps, 8000, accuracy: 1)
+        }
+        // All other fields must be preserved.
+        XCTAssertEqual(withSteps.events.count, facts.events.count)
+        XCTAssertEqual(withSteps.weeklyBalance, facts.weeklyBalance)
+        XCTAssertEqual(withSteps.goal, facts.goal)
+    }
 }

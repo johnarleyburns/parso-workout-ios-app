@@ -8,6 +8,7 @@ import CadenceCore
 /// history or settings change), which removed the 1–2s stall on every logged set.
 struct HomeCoachSnapshot {
     var facts: TrainingFacts
+    var coachFacts: CoachFacts
     var insights: [Insight]
     var recommendation: Recommendation
     var decision: CoachDecision
@@ -17,7 +18,7 @@ struct HomeCoachSnapshot {
     var readiness: ReadinessSnapshot?
 
     init(_ s: CoachSnapshot) {
-        facts = s.facts; insights = s.insights; recommendation = s.recommendation
+        facts = s.facts; coachFacts = s.coachFacts; insights = s.insights; recommendation = s.recommendation
         decision = s.decision; plan = s.plan; behindPlan = s.behindPlan; addOn = s.addOn
         readiness = s.readiness
     }

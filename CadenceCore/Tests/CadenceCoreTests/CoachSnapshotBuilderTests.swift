@@ -180,4 +180,21 @@ final class CoachSnapshotBuilderTests: XCTestCase {
         // Soft-deleted sessions are excluded from the facts the coach reasons over.
         XCTAssertEqual(after.facts.weeklySetsByPart[.chest] ?? 0, 0)
     }
+
+    // MARK: - Phase F (field-test-fixes): coachFacts exposed
+
+    func testCoachFactsExposedAndConsistent() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let snap = CoachSnapshotBuilder.build(sessions: [], cardio: [], assessments: [],
+                                              hasPainToday: false, goal: .strength,
+                                              experience: .intermediate, formula: .epley,
+                                              schedulePreferences: CoachSchedulePreferences(),
+                                              profile: .empty, now: now)
+
+        // coachFacts.events should be empty (no sessions).
+        XCTAssertTrue(snap.coachFacts.events.isEmpty)
+        // coachFacts and snapshot readiness should be the same (even if nil).
+        XCTAssertEqual(snap.coachFacts.readiness, snap.readiness)
+    }
 }

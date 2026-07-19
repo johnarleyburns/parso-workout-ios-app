@@ -441,6 +441,28 @@ public enum WorkoutRepository {
         try context.save()
     }
 
+    /// Phase E (field-test-fixes): resolves an entire exercise — all its sets
+    /// and its planned name — from a session.
+    @discardableResult
+    public static func removeExercise(_ exercise: Exercise, from session: WorkoutSession,
+                                       in context: ModelContext) throws -> Int {
+        let sets = session.orderedSets.filter { $0.exercise?.id == exercise.id }
+        for s in sets { context.delete(s) }
+        session.plannedExerciseNames.removeAll { $0 == exercise.name }
+        session.updatedAt = Date()
+        try context.save()
+        return sets.count
+    }
+
+    /// Phase E (field-test-fixes): removes a planned exercise name from a
+    /// session without touching any logged sets.
+    public static func removePlannedExercise(named name: String, from session: WorkoutSession,
+                                              in context: ModelContext) throws {
+        session.plannedExerciseNames.removeAll { $0 == name }
+        session.updatedAt = Date()
+        try context.save()
+    }
+
     @discardableResult
     public static func reassignAndDeleteExercise(from custom: Exercise,
                                                   into builtIn: Exercise,

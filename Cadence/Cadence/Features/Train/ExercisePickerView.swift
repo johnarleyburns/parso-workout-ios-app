@@ -261,8 +261,8 @@ struct ExercisePickerView: View {
             .searchable(text: $query, prompt: "Search name, muscle, or equipment")
             .navigationDestination(for: Exercise.self) { exercise in
                 ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
-                    dismiss()
                     onPick(picked)
+                    dismiss()
                 }
             }
             .toolbar {

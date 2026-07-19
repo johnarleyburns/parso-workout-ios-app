@@ -68,3 +68,20 @@ Updated per phase. Test count baseline: 1184 before any phase.
 - CadenceCoreTests: 895 (unchanged)
 - CadenceFeaturesTests: 301 → 311 (+10)
 - Total: 1193 → 1203 (+10)
+
+## Phase E — Swap via sheet(item:) + Remove on planned-only cards ✅ SHIPPED
+
+### Test proof
+- `ExerciseSwapTests` (4 new tests): swapTarget survives dismissal, changeExercise moves sets + dedups, removePlannedExercise removes exactly that card, removeExercise deletes sets + name on completed workout
+
+### Changes
+1. **CadenceFeatures/ExerciseSwap.swift**: New `SwapTarget` enum for `.sheet(item:)` — payload rides the item
+2. **ExercisePickerView.swift**: Reordered detail-path to `onPick(picked); dismiss()` (match row path)
+3. **SessionView.swift**: Replaced two derived-`isPresented` sheets with one `.sheet(item: $swapTarget)`; removed `changingExerciseFor` and `swappingPlannedName` state vars; `plannedCard` now uses ellipsis Menu (Swap + Remove); confirmationDialog uses `WorkoutRepository.removeExercise`
+4. **WorkoutRepository.swift**: Added `removeExercise` and `removePlannedExercise` methods
+5. SessionView stays at 1101 LOC (ratchet ≤1102)
+
+### Test counts
+- CadenceCoreTests: 895 (unchanged)
+- CadenceFeaturesTests: 311 → 315 (+4)
+- Total: 1203 → 1207 (+4)

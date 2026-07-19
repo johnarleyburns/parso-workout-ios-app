@@ -34,28 +34,24 @@ struct SessionView: View {
     @State private var datePickerPresented = false
     @State private var endDatePickerPresented = false
     @State private var exerciseToRemove: Exercise?
-    @State private var changingExerciseFor: Exercise?
     @State var managePartnersPresented = false
     @State private var watchdog = IdleWatchdog()
     @State private var idlePromptShown = false
     @Environment(\.scenePhase) private var scenePhase
     @State private var usePreviousPresented = false
-    @State private var swappingPlannedName: String?
+    /// Phase E: unified swap target — dismissal never nils the payload.
+    @State private var swapTarget: ExerciseSwap.SwapTarget?
     @State private var coolingDown = false
     @State private var coolDownConfirm = false
     private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     @State private var hrSamples: [HRSamplePoint] = []
-
     /// Perf cache (launch-blockers Phase 2): rebuilds only when the signature
     /// (set count, order, roster, PR rule) changes — not on keystrokes.
     @State private var cache = SessionHistoryCache()
-
     // MARK: - Computed properties
-
     private var refreshSignature: SessionRenderModel.Signature {
         SessionRenderModel.signature(session: session, prRule: settings.prRule, formula: settings.formula)
     }
-
     private var rosterEntries: [RosterEntry] {
         [RosterEntry(personID: nil, name: "Me", isMe: true)]
         + attributablePartners.map { RosterEntry(personID: $0.id, name: $0.name, isMe: false) }
@@ -392,27 +388,23 @@ struct SessionView: View {
                 openInlineEditor(for: exercise)
             }
         }
-        .sheet(isPresented: Binding(
-            get: { swappingPlannedName != nil },
-            set: { if !$0 { swappingPlannedName = nil } }
-        )) {
-            ExercisePickerView(action: .swap) { exercise in
-                if let oldName = swappingPlannedName {
-                    swapPlannedExercise(oldName: oldName, newName: exercise.name)
-                    swappingPlannedName = nil
+        .sheet(item: $swapTarget) { target in
+            let pickAction: ExercisePickerView.PickAction = {
+                switch target {
+                case .logged: return .use
+                case .planned: return .swap
                 }
-            }
-        }
-        .sheet(isPresented: Binding(
-            get: { changingExerciseFor != nil },
-            set: { if !$0 { changingExerciseFor = nil } }
-        )) {
-            ExercisePickerView(action: .use) { picked in
-                if let old = changingExerciseFor, old.id != picked.id {
-                    _ = try? WorkoutRepository.changeExercise(in: session, from: old, to: picked, in: context)
-                    recordActivity()
+            }()
+            ExercisePickerView(action: pickAction) { picked in
+                switch target {
+                case .planned(let oldName):
+                    swapPlannedExercise(oldName: oldName, newName: picked.name)
+                case .logged(let exerciseID):
+                    if let old = exerciseForID(exerciseID), old.id != picked.id {
+                        _ = try? WorkoutRepository.changeExercise(in: session, from: old, to: picked, in: context)
+                        recordActivity()
+                    }
                 }
-                changingExerciseFor = nil
             }
         }
         .sheet(isPresented: $managePartnersPresented) { managePartnersSheet }
@@ -521,10 +513,8 @@ struct SessionView: View {
         ), titleVisibility: .visible) {
             Button("Remove exercise and all its sets", role: .destructive) {
                 if let ex = exerciseToRemove {
-                    let sets = session.orderedSets.filter { $0.exercise?.id == ex.id }
-                    for s in sets { try? WorkoutRepository.deleteSet(s, in: context) }
-                    session.plannedExerciseNames.removeAll { $0 == ex.name }
-                    try? context.save()
+                    try? WorkoutRepository.removeExercise(ex, from: session, in: context)
+                    recordActivity()
                 }
                 exerciseToRemove = nil
             }
@@ -580,7 +570,7 @@ struct SessionView: View {
                 openInlineEditor(for: ex)
             },
             onChangeExercise: {
-                if let ex = exerciseForID(ctx.exerciseID) { changingExerciseFor = ex }
+                if let ex = exerciseForID(ctx.exerciseID) { swapTarget = .logged(exerciseID: ex.id) }
             },
             onRemoveExercise: {
                 if let ex = exerciseForID(ctx.exerciseID) { exerciseToRemove = ex }
@@ -662,13 +652,22 @@ struct SessionView: View {
                     .accessibilityIdentifier("exercise.info.\(name)")
                     .accessibilityLabel("\(name) details")
                 }
-                Button {
-                    swappingPlannedName = name
+                Menu {
+                    Button { swapTarget = .planned(name: name) } label: {
+                        Label("Swap", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    Button(role: .destructive) {
+                        try? WorkoutRepository.removePlannedExercise(named: name, from: session, in: context)
+                        recordActivity()
+                    } label: {
+                        Label("Remove", systemImage: "trash")
+                    }
                 } label: {
-                    Label("Swap", systemImage: "arrow.triangle.2.circlepath").font(.caption)
+                    Image(systemName: "ellipsis").font(.headline)
+                        .foregroundStyle(.secondary).frame(width: 44, height: 44)
                 }
-                .buttonStyle(.bordered).controlSize(.mini)
-                .accessibilityIdentifier("planned.swap.\(name)")
+                .accessibilityIdentifier("planned.menu.\(name)")
+                .accessibilityLabel("Planned exercise options")
             }
             if let rx = prescription(for: name) {
                 Text(rx).font(.subheadline).foregroundStyle(.secondary)

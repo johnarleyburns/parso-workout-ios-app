@@ -28,3 +28,6 @@ secrets.plist
 
 # Local data exports (personal workout history — never commit)
 Cladiron-Export-*.json.gz
+
+# Design docs and plans (historical, not needed in repo)
+plans/

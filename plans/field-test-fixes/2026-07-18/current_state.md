@@ -54,3 +54,17 @@ Updated per phase. Test count baseline: 1184 before any phase.
 - CadenceCoreTests: 895 (was 893)
 - CadenceFeaturesTests: 301 (unchanged)
 - Total: 1193 (was 1191, +2)
+
+## Phase D — True today-list TodayActivityPresenter for "What you did" ✅ SHIPPED
+
+### Test proof
+- `TodayActivityPresenterTests` (10 new tests): all pass — includesOnlyToday, inProgressExcluded, deletedExcluded, multipleSameDayAllListed, mixedSortedNewestFirst, midnightBoundary, unitFormatting, emptyDay, multipleStrengthTodayAllVisible, resumableExcluded
+
+### Changes
+1. **CadenceFeatures/TodayActivityPresenter.swift**: New presenter returns all completed (non-resumable) workouts from today
+2. **HomeView.swift**: Replaced `whatYouDidFacts` (coachDecision.observedFacts filter) with `TodayActivityPresenter.entries()`. Empty copy: "Nothing yet today." Reduced to 1102 LOC (was 1113).
+
+### Test counts
+- CadenceCoreTests: 895 (unchanged)
+- CadenceFeaturesTests: 301 → 311 (+10)
+- Total: 1193 → 1203 (+10)

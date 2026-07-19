@@ -259,6 +259,14 @@ public enum CoachDecisionEngine {
         if let override = strengthOverrideWarning {
             warnings.append(override)
         }
+        // Phase A (field-test-fixes): warn about open workout but never block
+        if facts.events.contains(where: { $0.completion == .inProgress }) {
+            warnings.insert(CoachWarning(
+                id: "activeWorkout",
+                message: "A workout is currently in progress. Finish or discard it first.",
+                citationIds: []
+            ), at: 0)
+        }
 
         // Generate observed facts
         var factsList: [ObservedFact] = []

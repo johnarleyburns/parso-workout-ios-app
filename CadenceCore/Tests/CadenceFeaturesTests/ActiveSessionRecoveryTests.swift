@@ -89,6 +89,59 @@ final class ActiveSessionRecoveryTests: XCTestCase {
         XCTAssertEqual(m.clock.elapsed(now: Date()), 0, accuracy: 1)
     }
 
+    // MARK: - Phase A (field-test-fixes): isResumable invariant
+
+    /// Coach sees in-progress ⟺ a resume affordance exists.
+    /// The two sources of truth (`facts.events` completion, `ActiveSessionRecovery.candidate`)
+    /// must agree. Prior to Phase A they diverged: a session with `endedAt: nil` but
+    /// `isLogged: true` would block the coach (via TrainingEvent.completion == .inProgress)
+    /// but produce no resume card because `candidate` filters `isLogged`.
+    func testIsResumableMatchesCoachingInProgress() throws {
+        let ctx = try makeContext()
+
+        let inProgress = WorkoutSession(title: "In Progress", date: Date())
+        ctx.insert(inProgress)
+
+        // A logged session without endedAt (stranded): should NOT be resumable,
+        // but currently TrainingEvent.from produces .inProgress because endedAt == nil.
+        let strandedLogged = WorkoutSession(title: "Stranded Logged", date: Date(), isLogged: true)
+        ctx.insert(strandedLogged)
+
+        // isLogged but endedAt non-nil: should be NEITHER resumable nor in-progress.
+        let endedLogged = WorkoutSession(title: "Ended Logged", date: Date(), isLogged: true)
+        endedLogged.endedAt = Date()
+        ctx.insert(endedLogged)
+
+        // Normal completed: NOT resumable, NOT in-progress.
+        let completed = WorkoutSession(title: "Completed", date: Date())
+        completed.endedAt = Date()
+        ctx.insert(completed)
+
+        // Pre-fix defect: candidate() filters !isLogged, so strandedLogged is excluded.
+        // But TrainingEvent.from produces .inProgress for ANY endedAt == nil session,
+        // including strandedLogged. Post-fix: isResumable is the single predicate.
+        let candidate = ActiveSessionRecovery.candidate(in: [inProgress, strandedLogged, endedLogged, completed])
+        XCTAssertEqual(candidate?.id, inProgress.id, "only the truly in-progress session is resumable")
+
+        // strandedLogged: TrainingEvent reports .inProgress (endedAt nil), but should be
+        // neither resumable nor coaching-relevant after Phase A.
+        let strandedEvent = TrainingEvent.from(session: strandedLogged)
+        XCTAssertNotNil(strandedEvent)
+        XCTAssertEqual(strandedEvent?.completion, .inProgress,
+                       "documenting: endedAt nil → .inProgress regardless of isLogged (legacy bridge)")
+
+        // inProgress event: should be recognized as resumable AND coaching in-progress.
+        let inProgressEvent = TrainingEvent.from(session: inProgress)
+        XCTAssertNotNil(inProgressEvent)
+        XCTAssertEqual(inProgressEvent?.completion, .inProgress)
+
+        // The invariant: isResumable is the one predicate both systems use.
+        XCTAssertTrue(inProgress.isResumable, "in-progress session is resumable")
+        XCTAssertFalse(strandedLogged.isResumable, "logged session without endedAt is NOT resumable")
+        XCTAssertFalse(endedLogged.isResumable, "ended+logged session is NOT resumable")
+        XCTAssertFalse(completed.isResumable, "completed session is NOT resumable")
+    }
+
     func testMismatchedHeartbeatCreditsNothing() throws {
         let ctx = try makeContext()
         let session = WorkoutSession(title: "Mismatch", date: Date().addingTimeInterval(-1200))

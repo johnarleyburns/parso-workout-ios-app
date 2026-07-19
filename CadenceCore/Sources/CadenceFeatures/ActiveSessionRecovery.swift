@@ -7,11 +7,11 @@ import CadenceCore
 /// "Resume Workout" card — never auto-presented, never discarded.
 public enum ActiveSessionRecovery {
 
-    /// The most recent in-progress session: not ended, not deleted, and not a
-    /// manual after-the-fact log.
+    /// The most recent in-progress session, by the single `isResumable` predicate
+    /// (field-test-fixes Phase A).
     public static func candidate(in sessions: [WorkoutSession]) -> WorkoutSession? {
         sessions
-            .filter { $0.endedAt == nil && $0.deletedAt == nil && !$0.isLogged }
+            .filter(\.isResumable)
             .max { $0.date < $1.date }
     }
 

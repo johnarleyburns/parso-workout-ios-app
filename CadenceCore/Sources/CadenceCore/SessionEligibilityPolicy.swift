@@ -34,11 +34,8 @@ public enum SessionEligibilityPolicy {
         let now = facts.referenceDate
         let recovery = facts.recovery
 
-        if let active = facts.events.first(where: { $0.completion == .inProgress }) {
-            return .deferred(until: active.start, reasons: [
-                DecisionReason(id: "activeWorkout", message: "A workout is currently in progress. Finish or discard it first.", citationIds: [])
-            ])
-        }
+        // Phase A (field-test-fixes): in-progress workout no longer blocks
+        // eligibility. The warning is attached at the CoachDecisionEngine level.
 
         // Readiness gate: a poor self-reported check-in defers hard work for a day.
         // Easy aerobic, recovery, and rest stay eligible so there's always a path.

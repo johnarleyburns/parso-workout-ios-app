@@ -276,6 +276,13 @@ struct HomeView: View {
     }()
     private var headerDateText: String { Self.headerDateFormatter.string(from: .now) }
 
+    /// Phase A (field-test-fixes): resume card from either in-memory active session
+    /// or a persisted `isResumable` candidate the coach pipeline detects but
+    /// ActiveWorkoutModel hasn't yet adopted.
+    private var resumeSession: WorkoutSession? {
+        active.strengthSession ?? ActiveSessionRecovery.candidate(in: sessions)
+    }
+
     var body: some View {
         ZStack {
         NavigationStack(path: $path) {
@@ -287,7 +294,7 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier("home.headerDate")
 
-                    if let s = active.strengthSession { resumeCard(s) }
+                    if let s = resumeSession { resumeCard(s) }
                     coachTopSurface
                     weekStripSection
                     quickActionsRow
@@ -830,7 +837,14 @@ struct HomeView: View {
     }
 
     private func resumeCard(_ session: WorkoutSession) -> some View {
-        Button { Haptics.selection(); active.present() } label: {
+        Button {
+            Haptics.selection()
+            if active.strengthSession == nil {
+                let heartbeat = WorkoutHeartbeatStore.read()
+                active.adopt(session, heartbeat: heartbeat)
+            }
+            active.present()
+        } label: {
             HStack(spacing: 12) {
                 Image(systemName: "figure.strengthtraining.traditional").font(.title2)
                 VStack(alignment: .leading, spacing: 2) {

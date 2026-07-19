@@ -242,6 +242,30 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         }
     }
 
+    // MARK: - Phase A (field-test-fixes): active-workout gate → eligible + warning
+
+    func testActiveWorkoutDoesNotBlockEligibleCandidate() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-30 * 60), in: ctx)
+        let squat = try WorkoutRepository.findOrCreateExercise(
+            named: "Back Squat", primaryMuscles: ["quadriceps"], in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: squat, weightKg: 100, reps: 5, rpe: 8, in: ctx)
+        // endedAt == nil → in-progress
+        try ctx.save()
+
+        let event = TrainingEvent.from(session: session)!
+        let facts = makeFacts(events: [event], now: now)
+
+        let candidate = makeStrengthCandidate()
+        let result = SessionEligibilityPolicy.evaluate(candidate, facts: facts)
+
+        // Phase A: in-progress workout should NOT block — candidates stay eligible.
+        guard case .eligible = result else {
+            XCTFail("Expected eligible after Phase A; in-progress workout only warns, never blocks"); return
+        }
+    }
+
     func testLowerBodyStrengthAllowsEasyWalk() throws {
         let ctx = try makeContext()
         let now = testNow

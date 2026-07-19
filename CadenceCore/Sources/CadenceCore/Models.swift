@@ -409,6 +409,14 @@ public final class WorkoutSession {
         return "dumbbell"
     }
 
+    /// Single source of truth for "workout in progress" (field-test-fixes Phase A).
+    /// Ended implies finalized; deleted is soft-deleted; isLogged is a manual
+    /// after-the-fact log. Both the coach pipeline and the Resume card use this
+    /// predicate exclusively.
+    public var isResumable: Bool {
+        endedAt == nil && deletedAt == nil && !isLogged
+    }
+
     /// Total working volume (kg) across the owner's non-warmup sets. Partner
     /// sets are excluded (field-testing §04, decision #13). Uses effective load
     /// for new-accounting sets, raw weight for legacy sets.

@@ -125,7 +125,7 @@ Updated per phase. Test count baseline: 1184 before any phase.
 | D | `17920b3` | TodayActivityPresenter |
 | E | `635aa3a` | Swap via sheet(item:) + Remove |
 | F | `f347f8b` | Your Plan uses cached coachFacts |
-| G | _pending_ | Weight autofill + inverse-e1RM |
+| G | `33e265b` | Weight autofill + inverse-e1RM |
 
 Test counts: 1184 → 1216 (+32 across 7 phases)
 All launch-blocker items covered: 3→E, 4→G, 5→D, Step 6→F

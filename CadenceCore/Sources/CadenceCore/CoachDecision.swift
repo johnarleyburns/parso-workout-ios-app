@@ -214,9 +214,21 @@ public enum CoachDecisionEngine {
                     message: "Coach is recommending strength despite some muscle groups still recovering. Prioritize the exercises that feel recovered.",
                     citationIds: ["schoenfeld2021"])
             } else {
-                primary = candidates.first { $0.kind == .rest } ?? CoachSession(
-                    id: "rest.fallback", kind: .rest, title: "Rest day",
-                    subtitle: "No eligible training candidates right now.", launchPayload: .rest)
+                // Phase C (field-test-fixes): rescue still-due cardio before ever
+                // recommending rest when the weekly cardio target is unmet.
+                let cardioNeeded = facts.weeklyBalance.cardioDays < schedulePreferences.cardioDaysPerWeek
+                if cardioNeeded,
+                   let deferredCardio = deferred.first(where: {
+                       $0.session.kind == .easyAerobic
+                       || $0.session.kind == .moderateAerobic
+                       || $0.session.kind == .vo2Intervals
+                   }) {
+                    primary = deferredCardio.session
+                } else {
+                    primary = candidates.first { $0.kind == .rest } ?? CoachSession(
+                        id: "rest.fallback", kind: .rest, title: "Rest day",
+                        subtitle: "No eligible training candidates right now.", launchPayload: .rest)
+                }
             }
         }
 

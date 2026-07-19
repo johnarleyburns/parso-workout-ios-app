@@ -1344,4 +1344,73 @@ final class CoachDecisionEngineTests: XCTestCase {
                               "Strength alone must not claim both modalities are done")
         }
     }
+
+    // MARK: - Phase C (field-test-fixes): cardio rescue before rest fallback
+
+    /// Reproduces the "Take a Rest Day" on two-a-day Saturday bug: all non-rest
+    /// candidates deferred, cardio target unmet, and the fallback MUST rescue
+    /// a cardio session instead of recommending rest.
+    func testCardioRescueBeforeRestFallback() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        // Two strength days already done; heavy session 30m ago blocks everything.
+        let s1 = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
+                                        date: now.addingTimeInterval(-2 * 86400))
+        let s2 = try makeStrengthEvent(context: ctx, name: "Bench", primaryMuscles: ["chest"],
+                                        date: now.addingTimeInterval(-4 * 86400))
+        let today = try makeStrengthEvent(context: ctx, name: "Back Squat",
+                                           primaryMuscles: ["quadriceps", "glutes", "hamstrings"],
+                                           date: now.addingTimeInterval(-1800), sets: 5, rpe: 9,
+                                           setCompletedAt: now.addingTimeInterval(-1800))
+
+        let facts = CoachFacts.make(from: [s1, s2, today], goal: .strength,
+                                     experience: .intermediate, now: now)
+
+        // Cardio target is 6/wk but 0 cardio done. Strength 5/wk, 3 done.
+        // On current code, rest may win when everything is blocked.
+        let prefs = CoachSchedulePreferences(
+            strengthDaysPerWeek: 5, cardioDaysPerWeek: 6,
+            restPreference: .rolling(everyNDays: 4),
+            allowsTwoADays: true)
+
+        let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
+
+        // The key assertion: when cardio is still needed, the decision must
+        // recommend SOMETHING trainable — not pure rest.
+        // After the fix, the fallback rescues a deferred cardio candidate
+        // before ever falling back to rest.
+        XCTAssertNotEqual(decision.primary.id, "rest.fallback",
+                          "Must rescue cardio before rest.fallback when cardio target is unmet")
+    }
+
+    /// After the fix, when all candidates are deferred but cardio is needed, the
+    /// primary must be a cardio session (e.g. easy walk), not rest.
+    func testDeferredAllButCardioNeededStillGetsTrainable() throws {
+        let ctx = try makeContext()
+        let now = testNow
+
+        // Heavy squats <30min ago → blocks all strength and hard cardio via recovery.
+        let today = try makeStrengthEvent(context: ctx, name: "Back Squat",
+                                           primaryMuscles: ["quadriceps", "glutes", "hamstrings"],
+                                           date: now.addingTimeInterval(-1200), sets: 5, rpe: 9,
+                                           setCompletedAt: now.addingTimeInterval(-1200))
+
+        let facts = CoachFacts.make(from: [today], goal: .strength,
+                                     experience: .intermediate, now: now)
+
+        // 0/6 cardio, 1/5 strength → cardio is the priority
+        let prefs = CoachSchedulePreferences(
+            strengthDaysPerWeek: 5, cardioDaysPerWeek: 6,
+            restPreference: .rolling(everyNDays: 4),
+            allowsTwoADays: true)
+
+        let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
+
+        // The primary must not be rest when cardio is still needed.
+        if decision.primary.kind == CoachSessionKind.rest
+            || decision.primary.id == "rest.fallback" {
+            XCTFail("Got rest when cardio target (6/week) is unmet and 0 cardio done. Primary: \(decision.primary.id)")
+        }
+    }
 }

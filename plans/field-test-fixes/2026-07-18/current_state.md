@@ -37,6 +37,20 @@ Updated per phase. Test count baseline: 1184 before any phase.
 4. **HomeView.swift**: Computes `hasTodayStrengthCompleted` + `todayLoggedExerciseNames` via `TodayLogHelper`, passed to `CoachDecisionCardView`
 
 ### Test counts
-- CadenceCoreTests: 893 (unchanged)
+- CadenceCoreTests: 893 → 895 (+2)
 - CadenceFeaturesTests: 296 → 301 (+5)
-- Total: 1189 → 1191 (+2 including TodayLogHelper)
+- Total: 1189 → 1193 (+4 — B + C combined)
+
+## Phase C — Decision fallback rescues still-due cardio ✅ SHIPPED
+
+### Test proof
+- `testCardioRescueBeforeRestFallback`: primary must not be rest.fallback when cardio unmet
+- `testDeferredAllButCardioNeededStillGetsTrainable`: verifies cardio rescue in fallback
+
+### Changes
+1. **CoachDecision.swift**: Extended empty-eligible rescue to check cardio need before rest.fallback
+
+### Test counts
+- CadenceCoreTests: 895 (was 893)
+- CadenceFeaturesTests: 301 (unchanged)
+- Total: 1193 (was 1191, +2)

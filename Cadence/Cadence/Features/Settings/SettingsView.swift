@@ -21,7 +21,6 @@ struct SettingsView: View {
                     ForEach(MeasurementUnitPreference.allCases) { Text($0.displayName).tag($0) }
                 }
                 .accessibilityIdentifier("settings.unit")
-                .onChange(of: settings.unit) { _, _ in model.pushSettingsContext() }
                 Picker("PR rule", selection: $settings.prRule) {
                     ForEach(PRRule.allCases) { Text($0.displayName).tag($0) }
                 }
@@ -68,6 +67,54 @@ struct SettingsView: View {
                 Text("Health & Sensors")
             } footer: {
                 Text("Your health data stays on your device. Detailed sets stay local; only workout summaries are written to Apple Health.")
+            }
+
+            Section {
+                HStack {
+                    Label("Status", systemImage: "applewatch")
+                    Spacer()
+                    if model.watchSyncState.isInProgress {
+                        ProgressView()
+                    }
+                    Text(model.watchSyncState.settingsText(lastSyncAt: model.lastWatchSyncAt))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .accessibilityIdentifier("settings.watchSync.status")
+                }
+
+                HStack {
+                    Label("Last synced", systemImage: "clock.arrow.2.circlepath")
+                    Spacer()
+                    Text(WatchSync.Status.lastSyncText(model.lastWatchSyncAt))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.watchSync.lastSynced")
+                }
+
+                if let error = model.lastWatchSyncError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("settings.watchSync.error")
+                }
+
+                Button {
+                    model.pushSettingsContext(force: true)
+                } label: {
+                    if model.watchSyncState.isInProgress {
+                        HStack { ProgressView(); Text("Syncing to Watch...") }
+                    } else {
+                        Label("Sync to Watch Now", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+                .disabled(model.watchSyncState.isInProgress)
+                .accessibilityIdentifier("settings.watchSync.force")
+            } header: {
+                Text("Apple Watch")
+            } footer: {
+                Text("Sends units, interval defaults, workout sounds, and recent partners to the Watch app.")
             }
 
             Section {

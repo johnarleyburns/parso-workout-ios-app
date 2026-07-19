@@ -8,12 +8,17 @@ import CadenceFeatures
 @Observable
 final class WatchIntervalHaptics {
     private let device = WKInterfaceDevice.current()
+    private let audio = WatchIntervalCuePlayer()
     private var decider = IntervalCueDecider()
     private var lastPhaseID: Int? = nil
 
-    func tick(runner: IntervalRunner) {
+    func tick(runner: IntervalRunner, soundsEnabled: Bool, isBoxing: Bool) {
         guard !runner.isComplete else {
-            if lastPhaseID != nil { device.play(.success); lastPhaseID = nil }
+            if lastPhaseID != nil {
+                playHapticSequence(.success, count: 3)
+                audio.phaseTransition(soundsEnabled: soundsEnabled, isBoxing: isBoxing)
+                lastPhaseID = nil
+            }
             return
         }
 
@@ -29,6 +34,7 @@ final class WatchIntervalHaptics {
             switch cue {
             case .warning:
                 device.play(.directionUp)
+                audio.warning(soundsEnabled: soundsEnabled, isBoxing: isBoxing)
             case .countdownTick:
                 device.play(.click)
             }
@@ -39,11 +45,12 @@ final class WatchIntervalHaptics {
             lastPhaseID = current
             guard let kind = runner.phaseKind else { return }
             switch kind {
-            case .work: device.play(.success)
-            case .rest: device.play(.directionDown)
-            case .warmup: device.play(.directionUp)
-            case .cooldown: device.play(.directionDown)
+            case .work: playHapticSequence(.success, count: 3)
+            case .rest: playHapticSequence(.directionDown, count: 3)
+            case .warmup: playHapticSequence(.directionUp, count: 3)
+            case .cooldown: playHapticSequence(.directionDown, count: 3)
             }
+            audio.phaseTransition(soundsEnabled: soundsEnabled, isBoxing: isBoxing)
             decider.reset()
         }
     }
@@ -51,5 +58,14 @@ final class WatchIntervalHaptics {
     func stop() {
         lastPhaseID = nil
         decider.reset()
+        audio.stop()
+    }
+
+    private func playHapticSequence(_ type: WKHapticType, count: Int) {
+        for index in 0..<count {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.14) { [device] in
+                device.play(type)
+            }
+        }
     }
 }

@@ -14,6 +14,7 @@ struct RootTabView: View {
     @State private var selection: Tab = .workout
     @State private var showSplash = true
     @State private var offerRestore: RemoteBackupMeta?
+    @State private var watchSyncToast: WatchSyncToast?
     /// Liveness heartbeat for crash/upgrade recovery (launch-blockers Phase 1e).
     /// Root-level so it keeps beating while the workout is minimized.
     private let heartbeatTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
@@ -72,6 +73,14 @@ struct RootTabView: View {
                     .zIndex(10)
                     .transition(.opacity)
             }
+
+            if let watchSyncToast {
+                WatchSyncToastView(toast: watchSyncToast)
+                    .padding(.top, 10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .zIndex(20)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
         // The live workout + its finish summary share ONE root-level cover
         // (launch-blockers Phase 1b). A cover — not a NavigationStack push — so
@@ -118,6 +127,15 @@ struct RootTabView: View {
             if settings.iCloudBackupEnabled { Task { await backup.backUpIfNeeded(settings: settings) } }
             model.pushSettingsContext()
         }
+        .onChange(of: settings.unit) { _, _ in model.pushSettingsContext() }
+        .onChange(of: settings.intervalColorBlind) { _, _ in model.pushSettingsContext() }
+        .onChange(of: settings.restSeconds) { _, _ in model.pushSettingsContext() }
+        .onChange(of: settings.warmupMinutes) { _, _ in model.pushSettingsContext() }
+        .onChange(of: settings.cooldownMinutes) { _, _ in model.pushSettingsContext() }
+        .onChange(of: settings.workoutSounds) { _, _ in model.pushSettingsContext() }
+        .onChange(of: model.watchSyncState) { _, state in
+            showWatchSyncToast(for: state)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .workoutHistoryChanged)) { _ in
             // Mark the store dirty so BackupPolicy schedules the next backup.
             settings.lastLocalChangeAt = Date()
@@ -151,5 +169,45 @@ struct RootTabView: View {
             return
         }
         active.adopt(candidate, heartbeat: WorkoutHeartbeatStore.read())
+    }
+
+    private func showWatchSyncToast(for state: WatchSync.Status) {
+        guard let text = state.toastText else { return }
+        let toast = WatchSyncToast(text: text, isFailure: state.isFailure)
+        withAnimation(.easeInOut(duration: 0.18)) {
+            watchSyncToast = toast
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard watchSyncToast?.id == toast.id else { return }
+            withAnimation(.easeInOut(duration: 0.18)) {
+                watchSyncToast = nil
+            }
+        }
+    }
+}
+
+private struct WatchSyncToast: Identifiable, Equatable {
+    let id = UUID()
+    let text: String
+    let isFailure: Bool
+}
+
+private struct WatchSyncToastView: View {
+    let toast: WatchSyncToast
+
+    var body: some View {
+        Label(toast.text, systemImage: toast.isFailure ? "exclamationmark.triangle.fill" : "applewatch")
+            .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(toast.isFailure ? Color.red.opacity(0.45) : Color.green.opacity(0.35), lineWidth: 1)
+            }
+            .padding(.horizontal, 16)
+            .accessibilityIdentifier("watchSync.toast")
     }
 }

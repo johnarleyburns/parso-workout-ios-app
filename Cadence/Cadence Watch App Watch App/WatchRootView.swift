@@ -84,6 +84,38 @@ struct WatchRootView: View {
                     NavigationLink { WatchUnitsView(appSettings: watchAppSettings) }
                         label: { Label("Units", systemImage: "scalemass") }
                 }
+
+                Section("Phone Sync") {
+                    HStack {
+                        Label("Status", systemImage: "iphone.and.arrow.forward")
+                        Spacer()
+                        if watchManager.phoneSyncState.isInProgress {
+                            ProgressView()
+                                .controlSize(.mini)
+                        }
+                        Text(watchManager.phoneSyncState.settingsText(lastSyncAt: watchManager.lastPhoneSyncAt))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+
+                    HStack {
+                        Label("Last sync", systemImage: "clock.arrow.2.circlepath")
+                        Spacer()
+                        Text(WatchSync.Status.lastSyncText(watchManager.lastPhoneSyncAt))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Button {
+                        watchManager.requestSettingsSync()
+                    } label: {
+                        Label("Sync now", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .disabled(watchManager.phoneSyncState.isInProgress)
+                }
             }
             .navigationTitle("Cladiron")
         }
@@ -95,7 +127,7 @@ struct WatchRootView: View {
     private func cardioSetupView(for ct: CardioType) -> some View {
         let kind = ct.toCardioKind()
         if ct == .hiit || ct == .boxing {
-            WatchIntervalSetupView(kind: ct.displayName, model: IntervalSetupModel(kind: ct.displayName)) { plan in
+            WatchIntervalSetupView(kind: ct.displayName, model: intervalSetupModel(kind: ct.displayName)) { plan in
                 activeIntervalSession = ActiveIntervalSession(plan: plan, kind: ct.displayName)
             }
         } else {
@@ -104,6 +136,12 @@ struct WatchRootView: View {
                 activeCardioKind = kind
             }
         }
+    }
+
+    private func intervalSetupModel(kind: String) -> IntervalSetupModel {
+        let syncedWarmup = watchManager.lastPhoneSyncAt == nil ? nil : watchAppSettings.warmupMinutes * 60
+        let syncedCooldown = watchManager.lastPhoneSyncAt == nil ? nil : watchAppSettings.cooldownMinutes * 60
+        return IntervalSetupModel(kind: kind, warmupSeconds: syncedWarmup, cooldownSeconds: syncedCooldown)
     }
 }
 

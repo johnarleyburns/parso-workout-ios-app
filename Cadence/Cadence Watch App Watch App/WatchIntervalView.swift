@@ -14,6 +14,7 @@ struct WatchIntervalView: View {
 
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
     @Environment(WatchWorkoutManager.self) private var watchManager
+    @Environment(AppSettings.self) private var watchAppSettings
 
     init(plan: IntervalPlan, kind: String, onDone: @escaping () -> Void = {}) {
         self.plan = plan
@@ -53,82 +54,113 @@ struct WatchIntervalView: View {
     // MARK: - Interval content
 
     private func intervalContent(date: Date) -> some View {
-        ZStack {
-            bgColor
-                .ignoresSafeArea(.all)
-                .animation(.easeInOut(duration: 0.3), value: runner.colorState)
+        GeometryReader { geo in
+            let compact = geo.size.height < 190
+            let timerSize = min(max(geo.size.height * 0.27, compact ? 38 : 42), 52)
+            let controlSize: CGFloat = compact ? 34 : 38
 
-            VStack(spacing: 2) {
-                Spacer()
+            ZStack {
+                bgColor
+                    .ignoresSafeArea(.all)
+                    .animation(.easeInOut(duration: 0.3), value: runner.colorState)
 
-                Text(runner.phaseLabel.uppercased())
-                    .font(.caption2.bold())
-                    .foregroundStyle(fgColor)
+                VStack(spacing: compact ? 2 : 4) {
+                    Text(runner.phaseLabel.uppercased())
+                        .font(.caption2.bold())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .foregroundStyle(fgColor)
 
-                Text(formatTime(runner.phaseRemaining))
-                    .font(.system(size: 52, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(fgColor)
-                    .accessibilityIdentifier("intervalCountdown")
+                    Text(formatTime(runner.phaseRemaining))
+                        .font(.system(size: timerSize, weight: .heavy, design: .monospaced))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .foregroundStyle(fgColor)
+                        .accessibilityIdentifier("intervalCountdown")
 
-                Text(roundLabel)
-                    .font(.caption2)
-                    .foregroundStyle(fgColor.opacity(0.8))
+                    Text(roundLabel)
+                        .font(.caption2.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .foregroundStyle(fgColor.opacity(0.82))
 
-                if let bpm = watchManager.currentBPM {
-                    HStack(spacing: 4) {
-                        Image(systemName: "heart.fill")
-                            .font(.caption2)
-                        Text("\(Int(bpm)) BPM")
-                            .font(.caption2.bold())
-                    }
-                    .foregroundStyle(fgColor.opacity(0.6))
-                    .padding(.top, 4)
+                    metricStrip
+                        .padding(.top, compact ? 0 : 1)
+
+                    Spacer(minLength: compact ? 1 : 4)
+
+                    controlsToolbar(controlSize: controlSize)
+                        .frame(height: controlSize)
                 }
-
-                Text("Total: \(formatTime(runner.overallRemaining))")
-                    .font(.caption2)
-                    .foregroundStyle(fgColor.opacity(0.5))
-                    .padding(.top, 2)
-
-                Spacer()
-
-                HStack(spacing: 16) {
-                    Button(action: togglePause) {
-                        Image(systemName: runner.isPaused ? "play.fill" : "pause.fill")
-                            .font(.title3)
-                            .foregroundStyle(fgColor)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(runner.isPaused ? "Resume" : "Pause")
-
-                    Button(action: skipPhase) {
-                        Image(systemName: "forward.end.fill")
-                            .font(.title3)
-                            .foregroundStyle(fgColor)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Skip phase")
-
-                    Button(action: addOneMinute) {
-                        Text("+1m")
-                            .font(.caption.bold())
-                            .foregroundStyle(fgColor)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Add one minute")
-
-                    Button(role: .destructive, action: { isShowingConfirmEnd = true }) {
-                        Image(systemName: "stop.fill")
-                            .font(.title3)
-                            .foregroundStyle(.red)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("End workout")
-                }
-                .padding(.bottom, 12)
+                .padding(.horizontal, 8)
+                .padding(.top, compact ? 2 : 5)
+                .padding(.bottom, 5)
             }
-            .padding()
         }
+    }
+
+    private var metricStrip: some View {
+        HStack(spacing: 7) {
+            if let bpm = watchManager.currentBPM {
+                Label("\(Int(bpm))", systemImage: "heart.fill")
+                    .labelStyle(.titleAndIcon)
+                    .accessibilityLabel("\(Int(bpm)) BPM")
+            }
+            Text("Tot \(formatTime(runner.overallRemaining))")
+                .monospacedDigit()
+        }
+        .font(.caption2.weight(.semibold))
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
+        .foregroundStyle(fgColor.opacity(0.62))
+    }
+
+    private func controlsToolbar(controlSize: CGFloat) -> some View {
+        HStack(spacing: 7) {
+            toolbarButton(accessibilityLabel: runner.isPaused ? "Resume" : "Pause", controlSize: controlSize) {
+                togglePause()
+            } label: {
+                Image(systemName: runner.isPaused ? "play.fill" : "pause.fill")
+            }
+
+            toolbarButton(accessibilityLabel: "Skip phase", controlSize: controlSize) {
+                skipPhase()
+            } label: {
+                Image(systemName: "forward.end.fill")
+            }
+
+            toolbarButton(accessibilityLabel: "Add one minute", controlSize: controlSize) {
+                addOneMinute()
+            } label: {
+                Text("+1m")
+                    .font(.caption.bold())
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+
+            toolbarButton(accessibilityLabel: "End workout", controlSize: controlSize, foreground: .red) {
+                isShowingConfirmEnd = true
+            } label: {
+                Image(systemName: "stop.fill")
+            }
+        }
+    }
+
+    private func toolbarButton<LabelView: View>(accessibilityLabel: String,
+                                                controlSize: CGFloat,
+                                                foreground: Color? = nil,
+                                                action: @escaping () -> Void,
+                                                @ViewBuilder label: () -> LabelView) -> some View {
+        Button(action: action) {
+            label()
+                .font(.system(size: 17, weight: .bold))
+                .frame(width: controlSize, height: controlSize)
+                .foregroundStyle(foreground ?? fgColor)
+                .background(.black.opacity(0.16), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     // MARK: - Summary
@@ -222,8 +254,11 @@ struct WatchIntervalView: View {
 
     private func advance(to date: Date) {
         runner.now = date
-        guard !runner.isPaused, !runner.isComplete else { return }
-        haptics.tick(runner: runner)
+        guard !runner.isPaused else { return }
+        haptics.tick(runner: runner, soundsEnabled: watchAppSettings.workoutSounds, isBoxing: isBoxingInterval)
+        if runner.isComplete, !showSummary {
+            transitionToSummary()
+        }
     }
 
     private func togglePause() {
@@ -257,5 +292,9 @@ struct WatchIntervalView: View {
     private func formatTime(_ interval: TimeInterval) -> String {
         let total = max(0, Int(interval))
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+
+    private var isBoxingInterval: Bool {
+        kind.localizedCaseInsensitiveContains("boxing") || plan.name.localizedCaseInsensitiveContains("boxing")
     }
 }

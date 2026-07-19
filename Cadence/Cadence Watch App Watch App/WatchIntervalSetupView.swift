@@ -10,55 +10,92 @@ struct WatchIntervalSetupView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(spacing: 10) {
-            Text("\(kind) setup").font(.headline)
+        GeometryReader { geo in
+            let compact = geo.size.height < 185
+            let rowHeight: CGFloat = compact ? 24 : 28
+            VStack(spacing: compact ? 3 : 5) {
+                if !compact {
+                    Text("\(kind) setup")
+                        .font(.caption.bold())
+                        .lineLimit(1)
+                }
 
-            field("Rounds", value: $model.rounds, range: 1...30)
-            field("Work", value: $model.workSeconds, format: timeFormat, range: 5...600)
-            field("Rest", value: $model.restSeconds, format: timeFormat, range: 5...600)
+                setupRow("Warmup", value: $model.warmupSeconds, range: 0...600, step: 60, format: timeFormat, rowHeight: rowHeight)
+                setupRow("Rounds", value: $model.rounds, range: 1...30, step: 1, format: { "\($0)" }, rowHeight: rowHeight)
+                setupRow("Round", value: $model.workSeconds, range: 5...600, step: 60, format: timeFormat, rowHeight: rowHeight)
+                setupRow("Rest", value: $model.restSeconds, range: 5...600, step: 30, format: timeFormat, rowHeight: rowHeight)
+                setupRow("Cooldown", value: $model.cooldownSeconds, range: 0...600, step: 60, format: timeFormat, rowHeight: rowHeight)
 
-            Button("Start \(kind.lowercased())") {
-                onStart(model.intervalPlan())
-                dismiss()
+                Button {
+                    onStart(model.intervalPlan())
+                    dismiss()
+                } label: {
+                    Label("Start", systemImage: "play.fill")
+                        .font(.caption.bold())
+                        .frame(maxWidth: .infinity, minHeight: compact ? 28 : 32)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .accessibilityIdentifier("intervalSetup.start")
             }
-            .buttonStyle(.borderedProminent).tint(.green)
-
-            Text("crown adjusts selected field")
-                .font(.caption2).foregroundStyle(.tertiary)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding(.horizontal, 6)
+            .padding(.vertical, compact ? 2 : 5)
         }
-        .padding()
     }
 
-    private func field(_ label: String, value: Binding<Int>, range _: ClosedRange<Int>) -> some View {
-        let doubleBinding = Binding<Double>(get: { Double(value.wrappedValue) }, set: { value.wrappedValue = Int($0) })
-        return HStack {
-            Text(label).font(.caption.bold()).foregroundStyle(.secondary)
-            Spacer()
-            Text("\(value.wrappedValue)")
-                .font(.title3.monospacedDigit())
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .focusable()
-        .digitalCrownRotation(doubleBinding, from: 1, through: 600, by: 1, sensitivity: .medium, isContinuous: false)
-    }
+    private func setupRow(_ label: String,
+                          value: Binding<Int>,
+                          range: ClosedRange<Int>,
+                          step: Int,
+                          format: @escaping (Int) -> String,
+                          rowHeight: CGFloat) -> some View {
+        HStack(spacing: 3) {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(width: 54, alignment: .leading)
 
-    private func field(_ label: String, value: Binding<Int>, format: @escaping (Int) -> String, range _: ClosedRange<Int>) -> some View {
-        let doubleBinding = Binding<Double>(get: { Double(value.wrappedValue) }, set: { value.wrappedValue = Int($0) })
-        return HStack {
-            Text(label).font(.caption.bold()).foregroundStyle(.secondary)
-            Spacer()
+            stepButton(systemName: "minus.circle.fill", disabled: value.wrappedValue <= range.lowerBound) {
+                value.wrappedValue = clamped(value.wrappedValue - step, range: range)
+            }
+            .accessibilityLabel("Decrease \(label)")
+
             Text(format(value.wrappedValue))
-                .font(.title3.monospacedDigit())
+                .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(width: 48)
+
+            stepButton(systemName: "plus.circle.fill", disabled: value.wrappedValue >= range.upperBound) {
+                value.wrappedValue = clamped(value.wrappedValue + step, range: range)
+            }
+            .accessibilityLabel("Increase \(label)")
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .frame(height: rowHeight)
+        .padding(.horizontal, 5)
         .background(.white.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 8))
-        .focusable()
-        .digitalCrownRotation(doubleBinding, from: 5, through: 600, by: 5, sensitivity: .medium, isContinuous: false)
+    }
+
+    private func stepButton(systemName: String,
+                            disabled: Bool,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 18, weight: .semibold))
+                .frame(width: 26, height: 24)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(disabled ? Color.secondary.opacity(0.45) : Color.primary)
+        .disabled(disabled)
+    }
+
+    private func clamped(_ value: Int, range: ClosedRange<Int>) -> Int {
+        max(range.lowerBound, min(range.upperBound, value))
     }
 
     private func timeFormat(_ s: Int) -> String {

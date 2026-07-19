@@ -34,18 +34,22 @@ final class WatchSyncTests: XCTestCase {
         XCTAssertEqual(prefs.unit, .pounds)
     }
 
-    func testContextAppliesAllFourSettings() {
+    func testContextAppliesAllSettings() {
         var prefs = WatchSync.Preferences()
         prefs = prefs.applying(context: [
             "settings.unit": "pounds",
             "settings.intervalColorBlind": true,
             "settings.restSeconds": 120,
+            "settings.warmupMinutes": 4,
             "settings.cooldownMinutes": 3,
+            "settings.workoutSounds": false,
         ])
         XCTAssertEqual(prefs.unit, .pounds)
         XCTAssertTrue(prefs.intervalColorBlind)
         XCTAssertEqual(prefs.restSeconds, 120)
+        XCTAssertEqual(prefs.warmupMinutes, 4)
         XCTAssertEqual(prefs.cooldownMinutes, 3)
+        XCTAssertFalse(prefs.workoutSounds)
     }
 
     func testContextAppliesRecentPartners() {
@@ -63,26 +67,59 @@ final class WatchSyncTests: XCTestCase {
     }
 
     func testContextDictRoundTrip() {
-        let prefs = WatchSync.Preferences(unit: .pounds, intervalColorBlind: true, restSeconds: 60, cooldownMinutes: 3, recentPartnerNames: ["Jo"])
+        let prefs = WatchSync.Preferences(unit: .pounds, intervalColorBlind: true, restSeconds: 60, warmupMinutes: 4, cooldownMinutes: 3, workoutSounds: false, recentPartnerNames: ["Jo"])
         let dict = WatchSync.Preferences.contextDict(prefs)
         let restored = WatchSync.Preferences().applying(context: dict)
         XCTAssertEqual(restored.unit, prefs.unit)
         XCTAssertEqual(restored.intervalColorBlind, prefs.intervalColorBlind)
         XCTAssertEqual(restored.restSeconds, prefs.restSeconds)
+        XCTAssertEqual(restored.warmupMinutes, prefs.warmupMinutes)
         XCTAssertEqual(restored.cooldownMinutes, prefs.cooldownMinutes)
+        XCTAssertEqual(restored.workoutSounds, prefs.workoutSounds)
         XCTAssertEqual(restored.recentPartnerNames, prefs.recentPartnerNames)
     }
 
+    func testContextDictAddsUpdatedAtWhenRequested() {
+        let date = Date(timeIntervalSince1970: 1_234)
+        let dict = WatchSync.Preferences.contextDict(WatchSync.Preferences(), updatedAt: date)
+        XCTAssertEqual(dict[WatchSync.Key.contextUpdatedAt] as? Date, date)
+    }
+
     func testMissingKeysPreserveDefaults() {
-        var prefs = WatchSync.Preferences(unit: .pounds, restSeconds: 90)
+        var prefs = WatchSync.Preferences(unit: .pounds, restSeconds: 90, warmupMinutes: 2, cooldownMinutes: 4, workoutSounds: false)
         prefs = prefs.applying(context: [:])
         XCTAssertEqual(prefs.unit, .pounds)
         XCTAssertEqual(prefs.restSeconds, 90)
+        XCTAssertEqual(prefs.warmupMinutes, 2)
+        XCTAssertEqual(prefs.cooldownMinutes, 4)
+        XCTAssertFalse(prefs.workoutSounds)
     }
 
     func testInvalidUnitPreservesExisting() {
         var prefs = WatchSync.Preferences(unit: .kilograms)
         prefs = prefs.applying(context: ["settings.unit": "stones"])
         XCTAssertEqual(prefs.unit, .kilograms)
+    }
+
+    func testInvalidValuesPreserveExisting() {
+        var prefs = WatchSync.Preferences(restSeconds: 90, warmupMinutes: 5, cooldownMinutes: 5, workoutSounds: true)
+        prefs = prefs.applying(context: [
+            "settings.restSeconds": "fast",
+            "settings.warmupMinutes": "long",
+            "settings.cooldownMinutes": false,
+            "settings.workoutSounds": "yes",
+        ])
+        XCTAssertEqual(prefs.restSeconds, 90)
+        XCTAssertEqual(prefs.warmupMinutes, 5)
+        XCTAssertEqual(prefs.cooldownMinutes, 5)
+        XCTAssertTrue(prefs.workoutSounds)
+    }
+
+    func testStatusHelpers() {
+        let date = Date(timeIntervalSince1970: 1_234)
+        XCTAssertTrue(WatchSync.Status.syncing(date).isInProgress)
+        XCTAssertFalse(WatchSync.Status.synced(date).isInProgress)
+        XCTAssertEqual(WatchSync.Status.synced(date).toastText, "Watch synced")
+        XCTAssertEqual(WatchSync.requestSettingsSyncMessage()[WatchSync.Key.command] as? String, WatchSync.Key.requestSettingsSync)
     }
 }

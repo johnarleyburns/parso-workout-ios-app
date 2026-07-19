@@ -36,6 +36,9 @@ final class AppModel: NSObject {
     /// Cached once at launch — avoids hitting `WCSession.default.isWatchAppInstalled`
     /// (a synchronous IPC call) from SwiftUI body evaluation.
     private(set) var watchAppInstalled: Bool = false
+    private(set) var watchSyncState: WatchSync.Status = .idle
+    private(set) var lastWatchSyncAt: Date? = UserDefaults.standard.object(forKey: "settings.lastWatchSyncAt") as? Date
+    private(set) var lastWatchSyncError: String?
 
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var lastHealthSync: Date? {
@@ -100,16 +103,32 @@ final class AppModel: NSObject {
         _active = active
     }
 
-    func pushSettingsContext() {
-        guard let settings = _settings, let session = wcSession else { return }
+    func pushSettingsContext(force: Bool = false) {
+        guard let settings = _settings else {
+            if force { recordWatchSyncFailure("Settings unavailable") }
+            return
+        }
+        guard let session = wcSession, session.isWatchAppInstalled else {
+            if force { recordWatchSyncFailure("Watch unavailable") }
+            return
+        }
+        let now = Date()
+        watchSyncState = .syncing(now)
+        let prefs = WatchSync.Preferences(
+            unit: settings.unit,
+            intervalColorBlind: settings.intervalColorBlind,
+            restSeconds: settings.restSeconds,
+            warmupMinutes: settings.warmupMinutes,
+            cooldownMinutes: settings.cooldownMinutes,
+            workoutSounds: settings.workoutSounds,
+            recentPartnerNames: recentPartnerNames()
+        )
         do {
-            try session.updateApplicationContext([
-                "settings.unit": settings.unit.rawValue,
-                "settings.intervalColorBlind": settings.intervalColorBlind,
-                "settings.restSeconds": settings.restSeconds,
-                "settings.cooldownMinutes": settings.cooldownMinutes,
-            ])
-        } catch {}
+            try session.updateApplicationContext(WatchSync.Preferences.contextDict(prefs, updatedAt: now))
+            recordWatchSyncSuccess(now)
+        } catch {
+            recordWatchSyncFailure(error.localizedDescription)
+        }
     }
 
     /// Tells the Apple Watch to start an `HKWorkoutSession` for the given
@@ -135,7 +154,7 @@ final class AppModel: NSObject {
             return
         }
 
-        session.sendMessage(["command": "start_workout", "type": rawType],
+        session.sendMessage([WatchSync.Key.command: "start_workout", "type": rawType],
                             replyHandler: nil,
                             errorHandler: { [weak self] error in
             DispatchQueue.main.async {
@@ -159,7 +178,7 @@ final class AppModel: NSObject {
     func stopWatchWorkout() {
         watchTimeout?.invalidate(); watchTimeout = nil
         guard watchAvailable, let session = wcSession else { return }
-        session.sendMessage(["command": "stop_workout"],
+        session.sendMessage([WatchSync.Key.command: "stop_workout"],
                             replyHandler: nil, errorHandler: nil)
         watchActive = false
         watchError = nil
@@ -169,6 +188,30 @@ final class AppModel: NSObject {
         guard WCSession.isSupported() else { return nil }
         let s = WCSession.default
         return s.activationState == .activated ? s : nil
+    }
+
+    private func recentPartnerNames() -> [String] {
+        guard let container = _modelContainer else { return [] }
+        let ctx = ModelContext(container)
+        var descriptor = FetchDescriptor<Person>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
+        descriptor.fetchLimit = 6
+        let people = (try? ctx.fetch(descriptor)) ?? []
+        return Array(people
+            .filter { !$0.isMe && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .map(\.name)
+            .prefix(3))
+    }
+
+    private func recordWatchSyncSuccess(_ date: Date) {
+        lastWatchSyncAt = date
+        lastWatchSyncError = nil
+        UserDefaults.standard.set(date, forKey: "settings.lastWatchSyncAt")
+        watchSyncState = .synced(date)
+    }
+
+    private func recordWatchSyncFailure(_ message: String) {
+        lastWatchSyncError = message
+        watchSyncState = .failed(message, lastWatchSyncAt)
     }
 }
 
@@ -197,12 +240,35 @@ extension AppModel: WCSessionDelegate {
     }
 
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        guard let bpm = message["bpm"] as? Double else { return }
+        handleWatchMessage(message)
+    }
+
+    func session(_ session: WCSession,
+                 didReceiveMessage message: [String: Any],
+                 replyHandler: @escaping ([String: Any]) -> Void) {
+        handleWatchMessage(message, replyHandler: replyHandler)
+    }
+
+    private func handleWatchMessage(_ message: [String: Any],
+                                    replyHandler: (([String: Any]) -> Void)? = nil) {
+        if message[WatchSync.Key.command] as? String == WatchSync.Key.requestSettingsSync {
+            DispatchQueue.main.async { [weak self] in
+                self?.pushSettingsContext(force: true)
+                replyHandler?(["ack": true])
+            }
+            return
+        }
+
+        guard let bpm = message["bpm"] as? Double else {
+            replyHandler?(["ack": false])
+            return
+        }
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.watchTimeout?.invalidate(); self.watchTimeout = nil
             self.watchError = nil
             self.hrm.injectExternalBPM(bpm)
+            replyHandler?(["ack": true])
         }
     }
 

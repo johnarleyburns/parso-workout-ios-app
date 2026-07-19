@@ -151,26 +151,59 @@ final class WatchCardioModelsTests: XCTestCase {
     func testHIITDefaults() {
         let m = IntervalSetupModel(kind: "HIIT")
         XCTAssertEqual(m.rounds, 8)
+        XCTAssertEqual(m.warmupSeconds, 180)
         XCTAssertEqual(m.workSeconds, 30)
         XCTAssertEqual(m.restSeconds, 30)
+        XCTAssertEqual(m.cooldownSeconds, 120)
     }
 
     func testBoxingDefaults() {
         let m = IntervalSetupModel(kind: "Boxing")
         XCTAssertEqual(m.rounds, 8)
-        XCTAssertEqual(m.workSeconds, 180)
+        XCTAssertEqual(m.warmupSeconds, 180)
+        XCTAssertEqual(m.workSeconds, 300)
         XCTAssertEqual(m.restSeconds, 60)
+        XCTAssertEqual(m.cooldownSeconds, 120)
+    }
+
+    func testIntervalAcceptsSyncedWarmupAndCooldown() {
+        let m = IntervalSetupModel(kind: "Boxing", warmupSeconds: 240, cooldownSeconds: 60)
+        XCTAssertEqual(m.warmupSeconds, 240)
+        XCTAssertEqual(m.cooldownSeconds, 60)
+    }
+
+    func testIntervalInitializerClampsSyncedWarmupAndCooldown() {
+        let m = IntervalSetupModel(kind: "Boxing", warmupSeconds: 900, cooldownSeconds: -20)
+        XCTAssertEqual(m.warmupSeconds, 600)
+        XCTAssertEqual(m.cooldownSeconds, 0)
     }
 
     func testIntervalClamp() {
-        var m = IntervalSetupModel(kind: "HIIT")
+        let m = IntervalSetupModel(kind: "HIIT")
         m.rounds = 100
+        m.warmupSeconds = -10
         m.workSeconds = 1000
         m.restSeconds = 0
+        m.cooldownSeconds = 1000
         let c = m.clamped()
         XCTAssertEqual(c.rounds, 30)
+        XCTAssertEqual(c.warmupSeconds, 0)
         XCTAssertEqual(c.workSeconds, 600)
         XCTAssertEqual(c.restSeconds, 5)
+        XCTAssertEqual(c.cooldownSeconds, 600)
+    }
+
+    func testWarmupAndCooldownAllowZeroButWorkAndRestDoNot() {
+        let m = IntervalSetupModel(kind: "Boxing")
+        m.warmupSeconds = 0
+        m.workSeconds = 0
+        m.restSeconds = 0
+        m.cooldownSeconds = 0
+        let c = m.clamped()
+        XCTAssertEqual(c.warmupSeconds, 0)
+        XCTAssertEqual(c.workSeconds, 5)
+        XCTAssertEqual(c.restSeconds, 5)
+        XCTAssertEqual(c.cooldownSeconds, 0)
     }
 
     func testIntervalPlanBuilt() {
@@ -181,9 +214,30 @@ final class WatchCardioModelsTests: XCTestCase {
     }
 
     func testIntervalPlanWorkRoundsMatchesRounds() {
-        var m = IntervalSetupModel(kind: "HIIT")
+        let m = IntervalSetupModel(kind: "HIIT")
         m.rounds = 3
         let plan = m.intervalPlan()
         XCTAssertEqual(plan.workRounds, 3)
+    }
+
+    func testIntervalPlanUsesConfiguredWarmupAndCooldown() {
+        let m = IntervalSetupModel(kind: "Boxing", warmupSeconds: 240, cooldownSeconds: 60)
+        m.rounds = 2
+        let plan = m.intervalPlan()
+        XCTAssertEqual(plan.phases.first?.kind, .warmup)
+        XCTAssertEqual(plan.phases.first?.duration, 240)
+        XCTAssertEqual(plan.phases.last?.kind, .cooldown)
+        XCTAssertEqual(plan.phases.last?.duration, 60)
+    }
+
+    func testIntervalPlanOmitsZeroWarmupAndCooldown() {
+        let m = IntervalSetupModel(kind: "Boxing")
+        m.rounds = 1
+        m.warmupSeconds = 0
+        m.cooldownSeconds = 0
+        let plan = m.intervalPlan()
+        XCTAssertFalse(plan.phases.contains { $0.kind == .warmup })
+        XCTAssertFalse(plan.phases.contains { $0.kind == .cooldown })
+        XCTAssertEqual(plan.workRounds, 1)
     }
 }

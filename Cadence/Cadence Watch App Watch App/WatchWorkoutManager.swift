@@ -31,6 +31,9 @@ final class WatchWorkoutManager: NSObject {
     private(set) var maxHeartRate: Double?
     private(set) var distanceMeters: Double = 0
     var savedSummary: SavedWorkoutSummary?
+    private(set) var phoneSyncState: WatchSync.Status = .idle
+    private(set) var lastPhoneSyncAt: Date? = UserDefaults.standard.object(forKey: "watch.lastPhoneSyncAt") as? Date
+    private(set) var lastPhoneSyncError: String?
 
     struct SavedWorkoutSummary {
         let duration: TimeInterval, avgHR: Double?, maxHR: Double?, activeKcal: Double, distanceMeters: Double
@@ -51,7 +54,15 @@ final class WatchWorkoutManager: NSObject {
     private var sessionStart: Date?
     private var accumulatedHR: Double = 0
     private var hrCount: Int = 0
-    var watchAppSettings: AppSettings?
+    var watchAppSettings: AppSettings? {
+        didSet {
+            if let pendingApplicationContext {
+                applySettingsContext(pendingApplicationContext)
+                self.pendingApplicationContext = nil
+            }
+        }
+    }
+    private var pendingApplicationContext: [String: Any]?
 
     private let uiTestMode: Bool
 
@@ -68,6 +79,24 @@ final class WatchWorkoutManager: NSObject {
         guard let session = wcSession else { return }
         session.delegate = self
         session.activate()
+    }
+
+    func requestSettingsSync() {
+        phoneSyncState = .syncing(Date())
+        lastPhoneSyncError = nil
+        guard let session = wcSession, session.activationState == .activated else {
+            recordPhoneSyncFailure("Phone unavailable")
+            return
+        }
+        guard session.isReachable else {
+            recordPhoneSyncFailure("Open Cladiron on iPhone")
+            return
+        }
+        session.sendMessage(WatchSync.requestSettingsSyncMessage(), replyHandler: nil) { [weak self] error in
+            DispatchQueue.main.async {
+                self?.recordPhoneSyncFailure(error.localizedDescription)
+            }
+        }
     }
 
     // MARK: HealthKit authorization
@@ -302,19 +331,56 @@ extension WatchWorkoutManager {
 // MARK: - WCSessionDelegate / Session / Builder delegates
 
 extension WatchWorkoutManager: WCSessionDelegate {
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        guard activationState == .activated, !session.receivedApplicationContext.isEmpty else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.applySettingsContext(session.receivedApplicationContext)
+        }
+    }
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) { handleMessage(message) }
     func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) { handleMessage(message); replyHandler(["ack": true]) }
     private func handleMessage(_ message: [String: Any]) {
-        if message["command"] as? String == "start_workout", let type = message["type"] as? String { startWorkout(type: type) }
-        else if message["command"] as? String == "stop_workout" { stopWorkout(save: false) }
+        if message[WatchSync.Key.command] as? String == "start_workout", let type = message["type"] as? String { startWorkout(type: type) }
+        else if message[WatchSync.Key.command] as? String == "stop_workout" { stopWorkout(save: false) }
     }
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        guard let s = watchAppSettings else { return }
-        if let raw = applicationContext["settings.unit"] as? String, let unit = MeasurementUnitPreference(rawValue: raw) { s.unit = unit }
-        if let cb = applicationContext["settings.intervalColorBlind"] as? Bool { s.intervalColorBlind = cb }
-        if let rs = applicationContext["settings.restSeconds"] as? Int { s.restSeconds = rs }
-        if let cm = applicationContext["settings.cooldownMinutes"] as? Int { s.cooldownMinutes = cm }
+        DispatchQueue.main.async { [weak self] in
+            self?.applySettingsContext(applicationContext)
+        }
+    }
+
+    private func applySettingsContext(_ applicationContext: [String: Any]) {
+        guard let s = watchAppSettings else {
+            pendingApplicationContext = applicationContext
+            return
+        }
+        phoneSyncState = .syncing(Date())
+        let current = WatchSync.Preferences(
+            unit: s.unit,
+            intervalColorBlind: s.intervalColorBlind,
+            restSeconds: s.restSeconds,
+            warmupMinutes: s.warmupMinutes,
+            cooldownMinutes: s.cooldownMinutes,
+            workoutSounds: s.workoutSounds
+        )
+        let incoming = current.applying(context: applicationContext)
+        s.unit = incoming.unit
+        s.intervalColorBlind = incoming.intervalColorBlind
+        s.restSeconds = incoming.restSeconds
+        s.warmupMinutes = incoming.warmupMinutes
+        s.cooldownMinutes = incoming.cooldownMinutes
+        s.workoutSounds = incoming.workoutSounds
+
+        let syncedAt = (applicationContext[WatchSync.Key.contextUpdatedAt] as? Date) ?? Date()
+        lastPhoneSyncAt = syncedAt
+        lastPhoneSyncError = nil
+        UserDefaults.standard.set(syncedAt, forKey: "watch.lastPhoneSyncAt")
+        phoneSyncState = .synced(syncedAt)
+    }
+
+    private func recordPhoneSyncFailure(_ message: String) {
+        lastPhoneSyncError = message
+        phoneSyncState = .failed(message, lastPhoneSyncAt)
     }
 }
 

@@ -176,31 +176,49 @@ public struct AutoPauseDetector {
 public final class IntervalSetupModel {
     public let kind: String
     public var rounds: Int
+    public var warmupSeconds: Int
     public var workSeconds: Int
     public var restSeconds: Int
+    public var cooldownSeconds: Int
 
-    public init(kind: String) {
+    public init(kind: String, warmupSeconds: Int? = nil, cooldownSeconds: Int? = nil) {
         self.kind = kind
+        self.warmupSeconds = Self.clampOptionalDuration(warmupSeconds, fallback: 180, allowsZero: true)
+        self.cooldownSeconds = Self.clampOptionalDuration(cooldownSeconds, fallback: 120, allowsZero: true)
         switch kind.lowercased() {
         case "hiit":
             self.rounds = 8; self.workSeconds = 30; self.restSeconds = 30
+        case "boxing":
+            self.rounds = 8; self.workSeconds = 300; self.restSeconds = 60
         default:
             self.rounds = 8; self.workSeconds = 180; self.restSeconds = 60
         }
     }
 
+    private static func clampOptionalDuration(_ value: Int?, fallback: Int, allowsZero: Bool) -> Int {
+        let lower = allowsZero ? 0 : 5
+        return max(lower, min(600, value ?? fallback))
+    }
+
     public func clamped() -> IntervalSetupModel {
         let copy = IntervalSetupModel(kind: kind)
         copy.rounds = max(1, min(30, rounds))
+        copy.warmupSeconds = max(0, min(600, warmupSeconds))
         copy.workSeconds = max(5, min(600, workSeconds))
         copy.restSeconds = max(5, min(600, restSeconds))
+        copy.cooldownSeconds = max(0, min(600, cooldownSeconds))
         return copy
     }
 
     public func intervalPlan() -> IntervalPlan {
-        .custom(name: kind, warmup: 180, rounds: max(1, min(30, rounds)),
-                work: TimeInterval(max(5, min(600, workSeconds))),
-                rest: TimeInterval(max(5, min(600, restSeconds))),
-                cooldown: 120)
+        let setup = clamped()
+        return .custom(
+            name: kind,
+            warmup: TimeInterval(setup.warmupSeconds),
+            rounds: setup.rounds,
+            work: TimeInterval(setup.workSeconds),
+            rest: TimeInterval(setup.restSeconds),
+            cooldown: TimeInterval(setup.cooldownSeconds)
+        )
     }
 }

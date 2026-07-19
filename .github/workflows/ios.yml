@@ -33,12 +33,11 @@ jobs:
           key: spm-core-${{ hashFiles('CadenceCore/Package.resolved') }}
           restore-keys: spm-core-
 
-      - name: Run CadenceCore tests
-        working-directory: CadenceCore
+      - name: Run SwiftPM package tests
         run: |
           set -eo pipefail
-          swift build
-          swift test
+          swift build --package-path CadenceCore
+          swift test --package-path CadenceCore
 
       - name: Test-pyramid guardrail
         run: bash scripts/check-test-pyramid.sh
@@ -48,8 +47,8 @@ jobs:
 
   # The XCUITest UI smoke suite is intentionally NOT run in CI: simulator-based
   # UI tests are unreliable on shared GitHub Actions runners (cold-launch timing,
-  # shared CPU). The reliable CI gate is core-tests (host `swift test` + the
-  # guardrail). The UI smoke plan is run locally on the pinned iPhone 16
+  # shared CPU). The reliable CI gate is core-tests (host SwiftPM package tests +
+  # guardrails). The UI smoke plan is run locally on the pinned iPhone 16
   # simulator via `make smoke` (see Makefile SMOKE_DEST).
 
   testflight-build:

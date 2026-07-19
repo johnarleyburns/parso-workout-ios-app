@@ -56,9 +56,11 @@
   - Extend `WatchSyncTests` for `warmupMinutes`, `workoutSounds`, context round trip, missing-key preservation, and invalid-value preservation.
   - Add a pure cue/haptic sequencing adapter test if implemented outside `WatchIntervalHaptics`, verifying transition maps to 3 events and warning maps to 1 event.
 - Build checks:
-  - `xcodebuild test -scheme CadenceFeatures`
-  - `xcodebuild test -scheme CadenceCore`
-  - Build Watch app target after adding audio resources.
+  - `swift test --package-path CadenceCore`
+  - `bash scripts/check-test-pyramid.sh`
+  - `bash scripts/check-no-network.sh`
+  - `xcodebuild build -project Cadence/Cadence.xcodeproj -scheme 'Cadence Watch App Watch App' -destination 'generic/platform=watchOS' CODE_SIGNING_ALLOWED=NO`
+  - Package tests must use SwiftPM; the `CadenceCore` and `CadenceFeatures` Xcode product schemes are not configured for `xcodebuild test`. See `docs/TESTING.md`.
 - Optional simulator visual verification:
   - Run Watch app in simulator with `-uiTestBoxingInterval`.
   - Capture screenshots for 41mm and 45/49mm watch sizes.

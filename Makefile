@@ -1,15 +1,25 @@
-.PHONY: update-exercises test build smoke ci
+.PHONY: update-exercises build test test-core test-features guardrails smoke all-tests ci pre-commit pre-push watch-smoke
 
 update-exercises:
 	@bash scripts/update-exercises.sh
 
-# The everyday gate: headless CadenceCore + CadenceFeatures unit tests.
-# Seconds, no simulator. This is what every phase must keep green.
-test:
-	cd CadenceCore && swift test
-
 build:
-	cd CadenceCore && swift build
+	swift build --package-path CadenceCore
+
+# The everyday gate: headless CadenceCore + CadenceFeatures unit tests.
+# No simulator. This is what every phase must keep green.
+test:
+	swift test --package-path CadenceCore
+
+test-core:
+	swift test --package-path CadenceCore --filter CadenceCoreTests
+
+test-features:
+	swift test --package-path CadenceCore --filter CadenceFeaturesTests
+
+guardrails:
+	bash scripts/check-test-pyramid.sh
+	bash scripts/check-no-network.sh
 
 # UI smoke gate: build once, then run serially on a single simulator with no
 # parallel clones and no retries — parallel testing + 148 cold launches is what
@@ -25,8 +35,15 @@ smoke:
 	  -testPlan Cadence -derivedDataPath .build/dd -destination '$(SMOKE_DEST)' \
 	  -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1
 
-# Full gate used by CI and before a release: unit suite + UI smoke.
-ci: test smoke
+# Full local gate used before push: unit suite + simulator UI smoke.
+all-tests: test smoke
+
+# CI-equivalent host gate without simulators.
+ci: build test guardrails
+
+pre-commit: test
+
+pre-push: all-tests
 
 # Watch smoke gate: build once, run exactly ONE simulator test (launch → start → stop)
 # on the single named watch simulator. Local only — never in CI.

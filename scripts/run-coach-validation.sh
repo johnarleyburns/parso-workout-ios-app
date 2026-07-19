@@ -7,7 +7,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-CADENCE_CORE_DIR="$PROJECT_DIR/CadenceCore"
 
 echo "=== Coach Scientific Validation Suite ==="
 echo "Running tests..."
@@ -15,8 +14,8 @@ echo ""
 
 # Run tests with verbose output, capture to log
 TEST_LOG="/tmp/coach-validation-$(date +%s).log"
-cd "$CADENCE_CORE_DIR"
-swift test --filter "CoachScientificValidationTests" 2>&1 | tee "$TEST_LOG"
+cd "$PROJECT_DIR"
+swift test --package-path CadenceCore --filter "CoachScientificValidationTests" 2>&1 | tee "$TEST_LOG"
 
 # Parse results
 echo ""

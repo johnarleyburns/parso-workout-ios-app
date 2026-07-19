@@ -25,7 +25,7 @@ Use this checklist for the first public App Store v1 submission.
 
 ## Verification
 
-- Run `cd CadenceCore && swift test`.
+- Run `swift test --package-path CadenceCore`.
 - Run a Release build/archive for the `Cadence` iOS scheme.
 - On a real device, verify HealthKit permission priming and authorization.
 - On a real device, verify Apple Health workout import.

@@ -23,7 +23,7 @@ in the changelog rather than padding — the credibility *is* the product.
    - Bump `version` (calendar semver, e.g. `2026.4.0`) and `releaseDate`.
    - Prepend a new entry to `entries` with `version`, `date`, `title`, `summary`,
      and `citationIds` (every ID **must** resolve in `CitationRegistry`).
-4. **Verify.** `cd CadenceCore && swift test` — `CoachKnowledgeBaseTests` and
+4. **Verify.** `swift test --package-path CadenceCore` — `CoachKnowledgeBaseTests` and
    `CitationIntegrityTests` fail if any changelog citation is missing.
 5. **Ship the app update.** The "Coach Research Updates" screen renders the new
    entry automatically, and a "New" badge appears in Settings until the user views

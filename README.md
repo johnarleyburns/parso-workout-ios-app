@@ -37,19 +37,33 @@ A private, open-source, science-based **strength app** for iPhone and Apple Watc
 Requires Xcode 16+, Swift 6. Real-device testing needed for HealthKit/CoreBluetooth.
 
 ```sh
-cd CadenceCore && swift build        # core package
-cd CadenceCore && swift test         # 1,137 tests (including 21 coach scientific validations)
-    open Cadence/Cadence.xcodeproj       # iOS app + embedded watchOS app
+swift build --package-path CadenceCore
+swift test --package-path CadenceCore # CadenceCore + CadenceFeatures package tests
+make test                            # same package test suite
+make all-tests                       # package tests + simulator UI smoke test
+open Cadence/Cadence.xcodeproj       # iOS app + embedded watchOS app
 # CLI build:
 xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence \
   -destination 'platform=iOS Simulator,name=iPhone 16' build
 ```
 
+Use SwiftPM for `CadenceCore` and `CadenceFeatures` tests. The Xcode project lists
+`CadenceCore` and `CadenceFeatures` as package product schemes, but those schemes
+are not configured for Xcode's `test` action. Do not use
+`xcodebuild test -scheme CadenceCore` or `xcodebuild test -scheme CadenceFeatures`
+in plans or CI; use `swift test --package-path CadenceCore` instead. See
+[`docs/TESTING.md`](docs/TESTING.md) for the standard commands and rationale.
+
+Local git hooks are versioned in `scripts/git-hooks`. Install them with
+`bash scripts/install-git-hooks.sh`: pre-commit runs `make pre-commit`
+(SwiftPM unit tests), and pre-push runs `make pre-push` (unit tests plus the
+simulator smoke test).
+
 ## Status
 
 Active development. The app ships a full recovery-aware coaching engine with 30+ peer-reviewed citations, 1,000+ exercises, and 28+ preset routines. See `PLAN_STATUS.md` for detailed phase tracking and `docs/CITATIONS.md` for the evidence base.
 
-**Coach scientific validation:** A 21-test black-box suite (`CoachScientificValidationTests`) verifies every coaching rule against published exercise science — recovery gates, balance priorities, preference learning, assessment prompts, and edge cases. Each test carries a `CitationRegistry` reference. The full list of validated rules is accessible in-app under Settings → Coach → Coach Methodology. Run with `swift test --filter CoachScientificValidationTests`.
+**Coach scientific validation:** A 21-test black-box suite (`CoachScientificValidationTests`) verifies every coaching rule against published exercise science — recovery gates, balance priorities, preference learning, assessment prompts, and edge cases. Each test carries a `CitationRegistry` reference. The full list of validated rules is accessible in-app under Settings → Coach → Coach Methodology. Run with `swift test --package-path CadenceCore --filter CoachScientificValidationTests`.
 
 App Store launch materials live in `docs/app-store/metadata.md` and `docs/app-store/release-checklist.md`. The market positioning and revenue strategy are analyzed in `docs/COMPETITIVE-ANALYSIS.md`.
 

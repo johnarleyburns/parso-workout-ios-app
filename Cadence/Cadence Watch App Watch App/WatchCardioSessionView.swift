@@ -12,6 +12,7 @@ struct WatchCardioSessionView: View {
     @State private var metrics: CardioMetricsModel?
     @State private var pendingSummary: WatchWorkoutManager.SavedWorkoutSummary?
     @State private var isShowingConfirmEnd = false
+    @State private var isLocked = false
 
     var body: some View {
         Group {
@@ -24,7 +25,11 @@ struct WatchCardioSessionView: View {
                     onDiscard: discard
                 )
             } else if let metrics {
-                activePages(metrics)
+                if isLocked {
+                    lockedOverlay
+                } else {
+                    activePages(metrics)
+                }
             } else {
                 ProgressView()
             }
@@ -45,6 +50,26 @@ struct WatchCardioSessionView: View {
         }
     }
 
+    private var lockedOverlay: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(.white)
+            Text("Screen locked")
+                .font(.headline)
+                .foregroundStyle(.white)
+            Text("Long-press bezel to unlock")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.85))
+        .onLongPressGesture(minimumDuration: 1.0) {
+            isLocked = false
+        }
+    }
+
     private func activePages(_ metrics: CardioMetricsModel) -> some View {
         TimelineView(.periodic(from: .now, by: 1.0)) { context in
             TabView {
@@ -54,7 +79,7 @@ struct WatchCardioSessionView: View {
                     isPaused: watchManager.isPaused,
                     onEnd: { isShowingConfirmEnd = true },
                     onPause: { watchManager.togglePause(); update(metrics) },
-                    onLock: { watchManager.enableWaterLock() },
+                    onLock: { watchManager.enableWaterLock(); isLocked = true },
                     onLap: { watchManager.incrementManualLap(); update(metrics) }
                 )
             }

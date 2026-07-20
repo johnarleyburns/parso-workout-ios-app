@@ -54,6 +54,7 @@ final class WatchWorkoutManager: NSObject {
     private var sessionStart: Date?
     private var accumulatedHR: Double = 0
     private var hrCount: Int = 0
+    private var elapsedTracker = ElapsedTimeTracker()
     var watchAppSettings: AppSettings? {
         didSet {
             if let pendingApplicationContext {
@@ -153,8 +154,8 @@ final class WatchWorkoutManager: NSObject {
 
     func stopWorkout(save: Bool = true) {
         guard isActive || isMonitoring else { return }
-        if save, let s = sessionStart {
-            elapsed = Date().timeIntervalSince(s)
+        if save {
+            elapsed = effectiveElapsed
             let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
             savedSummary = SavedWorkoutSummary(duration: elapsed, avgHR: avg, maxHR: maxHeartRate, activeKcal: activeEnergyKcal, distanceMeters: distanceMeters)
         }
@@ -166,6 +167,7 @@ final class WatchWorkoutManager: NSObject {
         isSwimSession = false; isOutdoorSession = false
         autoPauseDetector.reset(); lastAutoPauseDistance = 0
         elapsed = 0; activeEnergyKcal = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
+        elapsedTracker.reset()
         if let b, let s {
             b.endCollection(withEnd: Date()) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
             s.end()
@@ -173,9 +175,7 @@ final class WatchWorkoutManager: NSObject {
     }
 
     func liveSummary() -> (duration: TimeInterval, avgHR: Double?, maxHR: Double?, activeKcal: Double, distanceMeters: Double) {
-        if let start = sessionStart {
-            elapsed = Date().timeIntervalSince(start)
-        }
+        elapsed = effectiveElapsed
         let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
         return (elapsed, avg, maxHeartRate, activeEnergyKcal, distanceMeters)
     }
@@ -252,9 +252,21 @@ final class WatchWorkoutManager: NSObject {
     func enableWaterLock() { WKInterfaceDevice.current().enableWaterLock() }
     func togglePause() {
         guard let s = session else { return }
-        if s.state == .running { s.pause() } else if s.state == .paused { s.resume() }
+        if s.state == .running {
+            s.pause()
+            elapsedTracker.startPause()
+            WKInterfaceDevice.current().play(.stop)
+        } else if s.state == .paused {
+            s.resume()
+            elapsedTracker.resume()
+            WKInterfaceDevice.current().play(.start)
+        }
     }
     var isPaused: Bool { session?.state == .paused }
+    var effectiveElapsed: TimeInterval {
+        guard let sessionStart else { return 0 }
+        return elapsedTracker.elapsed(since: sessionStart)
+    }
 
     private func beginSession(activity: HKWorkoutActivityType, spec: WorkoutConfigurationSpec? = nil) {
         let config = HKWorkoutConfiguration()

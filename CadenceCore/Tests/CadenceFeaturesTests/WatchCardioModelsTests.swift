@@ -112,6 +112,33 @@ final class WatchCardioModelsTests: XCTestCase {
         XCTAssertFalse(m.isAutoPaused)
     }
 
+    func testLapCount_defaultsToZero() {
+        let m = CardioMetricsModel(kind: .run, unit: .kilograms)
+        XCTAssertEqual(m.lapCount, 0)
+        XCTAssertEqual(m.manualLapCount, 0)
+    }
+
+    func testLapCount_totalIncludesManual() {
+        let m = CardioMetricsModel(kind: .run, unit: .kilograms)
+        m.lapCount = 3
+        m.manualLapCount = 2
+        XCTAssertEqual(m.lapCount + m.manualLapCount, 5)
+    }
+
+    func testDistanceFormat_imperial_roundsCorrectly() {
+        let m = CardioMetricsModel(kind: .run, unit: .pounds)
+        m.updateDistance(0)
+        XCTAssertTrue(m.formatDistance().contains("mi"))
+    }
+
+    func testSplitPer500m_zeroDistance() {
+        let m = CardioMetricsModel(kind: .rowing, unit: .kilograms)
+        m.updateDistance(0)
+        m.elapsed = 100
+        m.recomputeSplitPer500m()
+        XCTAssertNil(m.splitPer500m)
+    }
+
     // MARK: - AutoPauseDetector
 
     func testHighSpeed_noPause() {

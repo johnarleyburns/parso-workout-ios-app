@@ -10,11 +10,11 @@ struct WatchCardioView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(formatElapsed())
                     .font(.system(size: 34, weight: .heavy, design: .monospaced))
                     .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.bottom, 4)
+                    .padding(.bottom, 2)
 
                 if kind != .swim {
                     metricRow("Distance", metrics.formatDistance())
@@ -34,7 +34,8 @@ struct WatchCardioView: View {
                 if kind != .swim {
                     metricRow("Heart rate", hrText)
                 }
-                metricRow("Active energy", "\(Int(metrics.activeKcal)) kcal")
+
+                metricRow("Lap", "\(metrics.lapCount + metrics.manualLapCount)")
 
                 if metrics.isAutoPaused {
                     Text("Auto-paused")
@@ -44,6 +45,7 @@ struct WatchCardioView: View {
             }
             .padding()
         }
+        .background(zoneBackgroundColor)
     }
 
     @ViewBuilder
@@ -74,5 +76,16 @@ struct WatchCardioView: View {
     private var hrText: String {
         guard let bpm = metrics.hrBPM else { return "--" }
         return "\(Int(bpm)) · Z\(metrics.hrZone)"
+    }
+
+    private var zoneBackgroundColor: Color {
+        switch metrics.hrZone {
+        case 1: return Color.cyan.opacity(0.15)
+        case 2: return Color.green.opacity(0.15)
+        case 3: return Color.yellow.opacity(0.15)
+        case 4: return Color.orange.opacity(0.15)
+        case 5: return Color.red.opacity(0.15)
+        default: return Color.clear
+        }
     }
 }

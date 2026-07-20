@@ -16,9 +16,11 @@ struct WatchStrengthView: View {
         Group {
             if let model = flowModel {
                 content(model)
+            } else {
+                ProgressView("Loading...")
             }
         }
-        .onAppear {
+        .task {
             if flowModel == nil {
                 let m = WatchStrengthFlowModel(
                     context: modelContext,

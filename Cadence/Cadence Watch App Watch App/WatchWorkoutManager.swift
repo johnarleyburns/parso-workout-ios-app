@@ -252,15 +252,8 @@ final class WatchWorkoutManager: NSObject {
     func enableWaterLock() { WKInterfaceDevice.current().enableWaterLock() }
     func togglePause() {
         guard let s = session else { return }
-        if s.state == .running {
-            s.pause()
-            elapsedTracker.startPause()
-            WKInterfaceDevice.current().play(.stop)
-        } else if s.state == .paused {
-            s.resume()
-            elapsedTracker.resume()
-            WKInterfaceDevice.current().play(.start)
-        }
+        if s.state == .running { s.pause(); elapsedTracker.startPause() }
+        else if s.state == .paused { s.resume(); elapsedTracker.resume() }
     }
     var isPaused: Bool { session?.state == .paused }
     var effectiveElapsed: TimeInterval {

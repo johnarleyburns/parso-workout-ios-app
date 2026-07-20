@@ -67,7 +67,6 @@ struct HomeView: View {
     private var coachRecommendation: Recommendation { coachSnapshot.recommendation }
     private var coachDecision: CoachDecision { coachSnapshot.decision }
     private var coachPlan: WeeklyPlan { coachSnapshot.plan }
-    private var coachInsightsBehindPlan: Bool { coachSnapshot.behindPlan }
 
     /// The passive-readiness line (HRV/sleep/RHR), prepared headlessly. `nil` when
     /// there is nothing honest to say. This is coach *insight*, so it is free.
@@ -87,11 +86,7 @@ struct HomeView: View {
     private var testRecommendation: TestRecommendation? {
         if testCardDismissed { return nil }
         if let override = testCardOverride { return override }
-        return computeTestRecommendation()
-    }
-
-    private func computeTestRecommendation() -> TestRecommendation? {
-        HomeCoachModel.testRecommendation(
+        return HomeCoachModel.testRecommendation(
             coachHidden: settings.coachHidden,
             assessments: assessments,
             lastRecommendedAt: settings.lastTestRecommendationAt,
@@ -161,24 +156,6 @@ struct HomeView: View {
         Haptics.selection()
         settings.coachPlanOverrideWeekKey = AppSettings.weekKey(for: Date())
         pendingAddGapsDeficits = nil
-    }
-
-    private func relaxedGuardrailDescriptions() -> [String] {
-        let diagnostics = coachSnapshot.optimizedPlan.diagnostics
-        var items: [String] = []
-        if diagnostics.contains(where: { $0.kind == .recoveryBlocked }) {
-            items.append("may plan hard work before full recovery eligibility")
-        }
-        if diagnostics.contains(where: { $0.kind == .skippedRestDay }) {
-            items.append("may skip a scheduled rest day")
-        }
-        if diagnostics.contains(where: { $0.kind == .noStrengthSlots }) {
-            items.append("may need to schedule an extra strength session")
-        }
-        if items.isEmpty {
-            items.append("may exceed the conservative per-session size")
-        }
-        return items
     }
 
     // MARK: Coach presence (coach-surface-design.md §2, as amended)
@@ -618,29 +595,10 @@ struct HomeView: View {
         .onChange(of: passiveSamples) {
             Task { coachSnapshot = await buildCoachSnapshot() }
         }
-        .confirmationDialog(
-            "Add the gaps anyway?",
-            isPresented: Binding(get: { pendingAddGapsDeficits != nil },
-                                 set: { if !$0 { pendingAddGapsDeficits = nil } }),
-            titleVisibility: .visible
-        ) {
-            Button("Add to this week's plan", role: .none) {
-                confirmAddGaps()
-            }
-            Button("Cancel", role: .cancel) {
-                pendingAddGapsDeficits = nil
-            }
-        } message: {
-            if let deficits = pendingAddGapsDeficits {
-                let parts = deficits.sorted { $0.key.displayName < $1.key.displayName }
-                    .map { "\($0.key.displayName) +\(Int($0.value.rounded()))" }
-                    .joined(separator: ", ")
-                let guardrails = relaxedGuardrailDescriptions()
-                    .map { "  • \($0)" }
-                    .joined(separator: "\n")
-                Text("Coach will replan this week to close: \(parts).\n\nTo fit them, Coach will go past its usual guardrails:\n\(guardrails)\n\nYour call — Coach recommends, you decide. You can revert to the safe plan any time this week.")
-            }
-        }
+        .coachOverrideConfirmation(
+            pending: $pendingAddGapsDeficits,
+            guardrails: { CoachOverrideGuardrails.describe(from: coachSnapshot.optimizedPlan.diagnostics) },
+            onConfirm: { confirmAddGaps() })
     }
 
     /// The contribution toast is allowed only on Home with no workout (or workout
@@ -842,50 +800,16 @@ struct HomeView: View {
     }
 
     private func whatYouDidEntryRow(_ entry: TodayActivityPresenter.Entry) -> some View {
-        let hasDestination = (whatYouDidTarget(entry) != nil)
-        let rowContent = HStack(spacing: 8) {
-            Image(systemName: entry.kind == .strength ? "dumbbell.fill" : "heart.fill")
-                .font(.caption)
-                .foregroundStyle(entry.kind == .strength ? .green : .teal)
-                .frame(width: 22, height: 22)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(entry.title)
-                    .font(.subheadline.weight(.medium))
-                if let detail = entry.detail {
-                    Text(detail)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            Spacer()
-            Text(entry.value)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-            if hasDestination {
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+        let target = whatYouDidTarget(entry)
+        return HomeWhatYouDidRow(entry: entry, target: target) { t in
+            switch t {
+            case .strength(let s): path.append(s)
+            case .cardio(let c): path.append(c)
             }
         }
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
-
-        return Group {
-            if hasDestination {
-                Button { Haptics.selection(); openWhatYouDid(entry) } label: { rowContent }
-                    .buttonStyle(.plain)
-            } else {
-                rowContent
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("home.fact.\(entry.id)")
     }
 
-    private enum WhatYouDidTarget { case strength(WorkoutSession), cardio(CardioWorkout) }
-
-    private func whatYouDidTarget(_ entry: TodayActivityPresenter.Entry) -> WhatYouDidTarget? {
+    private func whatYouDidTarget(_ entry: TodayActivityPresenter.Entry) -> HomeWhatYouDidRow.WhatYouDidTarget? {
         switch entry.kind {
         case .strength:
             if let s = sessions.first(where: { $0.id == entry.sourceId }) { return .strength(s) }
@@ -893,14 +817,6 @@ struct HomeView: View {
             if let c = cardio.first(where: { $0.id == entry.sourceId }) { return .cardio(c) }
         }
         return nil
-    }
-
-    private func openWhatYouDid(_ entry: TodayActivityPresenter.Entry) {
-        switch whatYouDidTarget(entry) {
-        case .strength(let s): path.append(s)
-        case .cardio(let c): path.append(c)
-        case .none: break
-        }
     }
 
     private func resumeCard(_ session: WorkoutSession) -> some View {

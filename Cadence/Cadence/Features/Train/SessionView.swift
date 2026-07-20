@@ -513,7 +513,7 @@ struct SessionView: View {
         ), titleVisibility: .visible) {
             Button("Remove exercise and all its sets", role: .destructive) {
                 if let ex = exerciseToRemove {
-                    try? WorkoutRepository.removeExercise(ex, from: session, in: context)
+                    _ = try? WorkoutRepository.removeExercise(ex, from: session, in: context)
                     recordActivity()
                 }
                 exerciseToRemove = nil

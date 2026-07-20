@@ -62,9 +62,7 @@ struct InsightContentView: View {
                 } label: {
                     HStack {
                         switch action {
-                        case .addGapsToPlan(let deficits):
-                            let parts = deficits.keys.sorted { $0.displayName < $1.displayName }
-                                .prefix(3).map(\.displayName).joined(separator: ", ")
+                        case .addGapsToPlan:
                             Label("Add these gaps to my planned workouts", systemImage: "plus.circle")
                                 .font(.caption.weight(.medium))
                         case .revertToSafePlan:

@@ -59,6 +59,12 @@ Local git hooks are versioned in `scripts/git-hooks`. Install them with
 (SwiftPM unit tests), and pre-push runs `make pre-push` (unit tests plus the
 simulator smoke test).
 
+**Timing notes:** `swift test` takes ~50s, `xcodebuild build` ~20s, and the
+full pre-push sequence (build-for-testing + smoke test) takes ~2-3 min.
+When scripting `git push`, use a timeout of at least 300s to allow the
+pre-push hook to complete. CI workflows should budget ≥5 min for the
+core-tests job and ≥10 min for the smoke/xcodebuild jobs.
+
 ## Status
 
 Active development. The app ships a full recovery-aware coaching engine with 30+ peer-reviewed citations, 1,000+ exercises, and 28+ preset routines. See `PLAN_STATUS.md` for detailed phase tracking and `docs/CITATIONS.md` for the evidence base.

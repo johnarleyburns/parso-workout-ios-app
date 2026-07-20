@@ -26,7 +26,7 @@ final class IntervalCueScheduler {
         // Fire every 0.5 s to catch 30 s warning and 3 s countdown boundaries
         // accurately. The runner's wall-clock phase boundaries drive precision.
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            self?.tick()
+            MainActor.assumeIsolated { self?.tick() }
         }
         // Ensure the Timer fires even during scrolling / background run loops.
         if let t = timer {

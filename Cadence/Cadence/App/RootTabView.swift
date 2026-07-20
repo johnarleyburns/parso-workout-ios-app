@@ -112,7 +112,7 @@ struct RootTabView: View {
             guard settings.iCloudBackupEnabled else { return }
             switch await backup.restoreDecision() {
             case .autoRestore:
-                try? await backup.restore(settings: settings)
+                _ = try? await backup.restore(settings: settings)
             case .offerRestore(let meta):
                 offerRestore = meta
             case .none:

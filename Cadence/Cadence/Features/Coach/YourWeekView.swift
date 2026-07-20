@@ -421,9 +421,7 @@ struct YourWeekView: View {
             .accessibilityIdentifier("yourPlan.partVolume.\(row.part.rawValue)")
             .accessibilityLabel(accessibilityLabel(for: row))
 
-            // Bar: scale to MAV, solid = done, hatched = planned, tick at MEV
-            let mav = row.band.upperBound
-            let scale = mav > 0 ? mav : 1
+            // Bar: solid = done, hatched = planned, tick at MEV
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     // Rail

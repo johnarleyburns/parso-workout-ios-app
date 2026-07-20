@@ -80,6 +80,7 @@ public final class AppSettings {
         self.lastCoachUpsellShown = defaults.object(forKey: "settings.lastCoachUpsellShown") as? Date
         self.coachHidden = defaults.bool(forKey: "settings.coachHidden")
         self.coachIntroImpressions = defaults.object(forKey: "settings.coachIntroImpressions") as? Int ?? 0
+        self.coachPlanOverrideWeekKey = defaults.string(forKey: "settings.coachPlanOverrideWeekKey")
         self.lastTestRecommendationAt = defaults.object(forKey: "settings.lastTestRecommendationAt") as? Date
         if let data = defaults.data(forKey: "settings.testRecommendationSnoozes"),
            let map = try? JSONDecoder().decode([String: Date].self, from: data) {
@@ -200,6 +201,25 @@ public final class AppSettings {
     /// How many times the full introducing coach card has been shown on Home. After
     /// `CoachSurfacePresenter.introImpressionCap` it demotes to the compact row.
     public var coachIntroImpressions: Int { didSet { defaults.set(coachIntroImpressions, forKey: "settings.coachIntroImpressions") } }
+    /// The ISO week-start date string ("yyyy-MM-dd") for which the user has asked
+    /// Coach to use the `.meetDeficits` constraint policy. When it matches the
+    /// current week the coach plans past guardrails; when the week rolls over it
+    /// auto-expires and the coach returns to safe planning. nil = safe policy.
+    public var coachPlanOverrideWeekKey: String? {
+        didSet { defaults.set(coachPlanOverrideWeekKey, forKey: "settings.coachPlanOverrideWeekKey") }
+    }
+    /// Whether the plan override is active for the current week.
+    public func isPlanOverrideActive(now: Date = Date()) -> Bool {
+        guard let key = coachPlanOverrideWeekKey else { return false }
+        return key == Self.weekKey(for: now)
+    }
+    /// The ISO week-start key for the given date.
+    public static func weekKey(for date: Date) -> String {
+        let start = WeeklyStats.weekStart(now: date)
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: start)
+    }
     /// When the coach last surfaced a fitness-test recommendation card (issue 11).
     /// Gates the card to at most once per week.
     public var lastTestRecommendationAt: Date? { didSet { defaults.set(lastTestRecommendationAt, forKey: "settings.lastTestRecommendationAt") } }

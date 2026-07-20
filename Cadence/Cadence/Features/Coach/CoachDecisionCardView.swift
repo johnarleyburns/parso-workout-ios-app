@@ -14,6 +14,7 @@ struct CoachDecisionCardView: View {
     var onFixCustomExercises: () -> Void = {}
     var onStrengthAnyway: () -> Void = {}
     var onSwapComponent: (CoachSession) -> Void = { _ in }
+    var onInsightAction: ((Insight.Action) -> Void)? = nil
     /// Phase B: true when a strength event was completed today (from actual log data).
     var hasTodayStrengthCompleted: Bool = false
     /// Phase B: exercise names from completed strength today, deduped, newest first.
@@ -280,6 +281,19 @@ struct CoachDecisionCardView: View {
                     if topInsight.kind == .exerciseDefinition {
                         Button { onFixCustomExercises() } label: {
                             Label("Fix in Settings", systemImage: "gearshape")
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.caption)
+                    }
+
+                    if let action = topInsight.action, let onAction = onInsightAction {
+                        Button { onAction(action) } label: {
+                            switch action {
+                            case .addGapsToPlan:
+                                Label("Add these gaps to my planned workouts", systemImage: "plus.circle")
+                            case .revertToSafePlan:
+                                Label("Back to safe planning", systemImage: "arrow.uturn.backward")
+                            }
                         }
                         .buttonStyle(.bordered)
                         .font(.caption)

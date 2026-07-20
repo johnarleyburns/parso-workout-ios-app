@@ -71,6 +71,14 @@ public enum Format {
         return String(format: "%d:%02d", m, s)
     }
 
+    public static func sets(_ value: Double) -> String {
+        let whole = value.rounded(.toNearestOrEven)
+        if abs(value - whole) < 0.001 {
+            return "\(Int(whole))"
+        }
+        return String(format: "%.1f", value)
+    }
+
     public static func integer(_ value: Int) -> String {
         let f = NumberFormatter()
         f.numberStyle = .decimal

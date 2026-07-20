@@ -12,6 +12,7 @@ struct CoachPreviewScreen: View {
     var onCTADisplayed: () -> Void = {}
     var onHide: () -> Void = {}
     var onFixCustomExercises: (() -> Void)? = nil
+    var onInsightAction: ((Insight.Action) -> Void)? = nil
 
     @State private var showCTA: Bool
     @State private var didRecordCTA = false
@@ -22,13 +23,15 @@ struct CoachPreviewScreen: View {
          onUnlock: @escaping () -> Void,
          onCTADisplayed: @escaping () -> Void = {},
          onHide: @escaping () -> Void = {},
-         onFixCustomExercises: (() -> Void)? = nil) {
+         onFixCustomExercises: (() -> Void)? = nil,
+         onInsightAction: ((Insight.Action) -> Void)? = nil) {
         self.topInsight = topInsight
         self.prescription = prescription
         self.onUnlock = onUnlock
         self.onCTADisplayed = onCTADisplayed
         self.onHide = onHide
         self.onFixCustomExercises = onFixCustomExercises
+        self.onInsightAction = onInsightAction
         _showCTA = State(initialValue: showUnlockCTA)
     }
 
@@ -48,7 +51,9 @@ struct CoachPreviewScreen: View {
 
                 if let topInsight {
                     section("WHAT THE COACH NOTICED") {
-                        InsightContentView(insight: topInsight, onFixCustomExercises: onFixCustomExercises)
+                        InsightContentView(insight: topInsight,
+                                           onFixCustomExercises: onFixCustomExercises,
+                                           onInsightAction: onInsightAction)
                     }
                     .accessibilityIdentifier("coach.previewScreen.insight")
                 }

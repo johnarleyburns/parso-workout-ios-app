@@ -2,7 +2,67 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-18 — launch-readiness reconciliation pass (docs + privacy-URL fix)._
+_Last updated: 2026-07-19 — Week volume & gaps (P1-P3) shipped._
+
+## Week volume & gaps — 2026-07-19 (`plans/week-volume-and-gaps/2026-07-19/`) — SHIPPED
+
+Three-phase feature giving users per-body-part volume visibility against the
+coach's plan, plus a "close the gaps" override action (NFR-8: coach suggests,
+user decides). Also fixes the week-strip first-tap launch blocker.
+
+All decisions (D1-D7) settled per recommendations. `swift test` **1240 tests,
+0 failures**; app-target `xcodebuild` **BUILD SUCCEEDED**.
+
+### P1 — Week-strip first-tap fix
+- **Root cause:** `.padding()` and `.cadenceGlassCard(...)` applied *outside* the
+  `Button` label in `WeekStripView.swift`, shrinking the hit target to the text.
+  Fix: moved both modifiers inside the `Button` label scope (H1 confirmed, H2
+  not triggered).
+- **Off-main-actor snapshot:** `CoachSnapshotBuilder.buildFromFactsAndEvents(…)`
+  accepts pre-computed facts/events; `HomeCoachModel.snapshotAsync(…)` runs a
+  two-phase execution (main-actor model fetch → `Task.detached` computation).
+  `HomeView.buildCoachSnapshot()` is now `async`; `.task(id:)` and
+  `.onChange(of:passiveSamples)` call sites updated.
+
+### P2 — Per-body-part volume rows on Your Plan
+- **New `WeekVolumePresenter`** in CadenceFeatures: `PartRow` (bar with
+  done/planned/MEV-tick, status: targetMet/onTrack/short/high), `Summary`
+  (total done/planned/recommended), `rows(facts:optimized:excluded:)`,
+  `summary(rows:)`.
+- **New `Format.sets(_:)`** formatter in CadenceFeatures.
+- **Data plumbing:** `CoachSnapshot` and `HomeCoachSnapshot` gained
+  `optimized: OptimizedCoachPlan`; `CoachSnapshotBuilder.build` and
+  `buildFromFactsAndEvents` preserve the optimized plan; `HomeView` threads
+  `trainingFacts` + `optimizedPlan` into `YourWeekView`.
+- **UI:** `YourWeekView` gained a "Body-part volume vs plan" section (separate,
+  per D2) with aggregate header bar (done+planned vs recommended, per D4),
+  per-part rows (bar with hatch pattern for planned, status chip), and a
+  section-level "The science" citation. All free (D1).
+
+### P3 — "Close the gaps" insight action with override confirmation
+- **`Insight.Action` enum** (`addGapsToPlan`, `revertToSafePlan`) with optional
+  `action` property on `Insight`.
+- **Engine:** `PlanAwareInsightEngine.run` accepts `isOverrideActive`, attaches
+  `.addGapsToPlan` / `.revertToSafePlan` actions to `planning.unresolvedVolume`,
+  `planning.partialResolved`, `planning.volumeResolved`. Added
+  `overrideActiveInsight` helper.
+- **Builder:** `CoachSnapshotBuilder.build` and `buildFromFactsAndEvents` accept
+  `constraintPolicy: PlanningConstraintPolicy = .safe`; threaded to
+  `CoachPlanOptimizer.optimize` (`.meetDeficits` was already implemented but
+  dormant) and insight engine (`isOverrideActive`).
+- **Settings:** `AppSettings.coachPlanOverrideWeekKey: String?`, with
+  `isPlanOverrideActive(now:)` (week-scoped, auto-expiring per D6) and
+  `weekKey(for:)`.
+- **Signature:** `HomeCoachModel.Signature` gained `overrideWeekKey`; coach
+  cache re-validates when the override is toggled.
+- **UI:** `onInsightAction` callback threaded through `InsightContentView`,
+  `CoachDecisionCardView`, `CoachPreviewView`, `CoachPreviewScreen`,
+  `CoachInsightsView` → `HomeView.handleInsightAction`. Confirmation sheet
+  (`confirmAddGaps` / `relaxedGuardrailDescriptions`) lists only the guardrails
+  being relaxed + citation + "Add to this week's plan" (per D5). Action button
+  visible to all; free users route to paywall (D7). Not exported (D3).
+
+## Launch-readiness reconciliation — 2026-07-18
 
 ## Launch-readiness reconciliation — 2026-07-18
 

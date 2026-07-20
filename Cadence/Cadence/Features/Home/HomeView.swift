@@ -58,6 +58,7 @@ struct HomeView: View {
     @State private var showAlternatives = false
     @State private var showSupport = false
     @State private var showPaywall = false
+    @State private var pendingAddGapsDeficits: [BodyPart: Double]?
 
     @State private var coachSnapshot: HomeCoachSnapshot = .placeholder
 
@@ -115,12 +116,16 @@ struct HomeView: View {
             formula: settings.formula,
             schedule: settings.coachSchedulePreferences,
             profile: settings.coachPreferenceProfile,
-            userAge: settings.userAge)
+            userAge: settings.userAge,
+            overrideWeekKey: settings.coachPlanOverrideWeekKey)
     }
 
     /// Builds the full coach snapshot ONCE via the pure CadenceCore builder.
-    private func buildCoachSnapshot() -> HomeCoachSnapshot {
-        HomeCoachSnapshot(HomeCoachModel.snapshot(
+    /// Phase 1 (model extraction) runs on the main actor; Phase 2 (pure computation)
+    /// runs in a detached background task so the main thread never blocks.
+    private func buildCoachSnapshot() async -> HomeCoachSnapshot {
+        let policy: PlanningConstraintPolicy = settings.isPlanOverrideActive() ? .meetDeficits : .safe
+        return HomeCoachSnapshot(await HomeCoachModel.snapshotAsync(
             sessions: sessions,
             cardio: cardio,
             assessments: assessments,
@@ -131,7 +136,49 @@ struct HomeView: View {
             schedule: settings.coachSchedulePreferences,
             profile: settings.coachPreferenceProfile,
             passiveSamples: passiveSamples,
-            userAge: settings.userAge))
+            userAge: settings.userAge,
+            constraintPolicy: policy))
+    }
+
+    /// Routes an insight action: for free users the paywall appears; for
+    /// Pro/trial users the override is applied (with a confirmation sheet for
+    /// gap-closing; revert is immediate). D7 + D5.
+    private func handleInsightAction(_ action: Insight.Action) {
+        switch action {
+        case .addGapsToPlan(let deficits):
+            if !store.entitlement.isPro {
+                showPaywall = true
+                return
+            }
+            pendingAddGapsDeficits = deficits
+        case .revertToSafePlan:
+            settings.coachPlanOverrideWeekKey = nil
+            Haptics.selection()
+        }
+    }
+
+    private func confirmAddGaps() {
+        Haptics.selection()
+        settings.coachPlanOverrideWeekKey = AppSettings.weekKey(for: Date())
+        pendingAddGapsDeficits = nil
+    }
+
+    private func relaxedGuardrailDescriptions() -> [String] {
+        let diagnostics = coachSnapshot.optimizedPlan.diagnostics
+        var items: [String] = []
+        if diagnostics.contains(where: { $0.kind == .recoveryBlocked }) {
+            items.append("may plan hard work before full recovery eligibility")
+        }
+        if diagnostics.contains(where: { $0.kind == .skippedRestDay }) {
+            items.append("may skip a scheduled rest day")
+        }
+        if diagnostics.contains(where: { $0.kind == .noStrengthSlots }) {
+            items.append("may need to schedule an extra strength session")
+        }
+        if items.isEmpty {
+            items.append("may exceed the conservative per-session size")
+        }
+        return items
     }
 
     // MARK: Coach presence (coach-surface-design.md §2, as amended)
@@ -179,6 +226,7 @@ struct HomeView: View {
                     onFixCustomExercises: { path.append(HomeRoute.customExercises) },
                     onStrengthAnyway: { strengthAnyway() },
                     onSwapComponent: { swapComponent($0) },
+                    onInsightAction: { handleInsightAction($0) },
                     hasTodayStrengthCompleted: todayStrength.hasStrength,
                     todayLoggedExerciseNames: todayStrength.exerciseNames)
             }
@@ -194,7 +242,8 @@ struct HomeView: View {
                     showUnlockCTA: coachShowsUnlockCTA,
                     onUnlock: { showPaywall = true },
                     onCTADisplayed: { settings.lastCoachUpsellShown = Date() },
-                    onFixCustomExercises: { path.append(HomeRoute.customExercises) })
+                    onFixCustomExercises: { path.append(HomeRoute.customExercises) },
+                    onInsightAction: { handleInsightAction($0) })
                     .onAppear { settings.coachIntroImpressions += 1 }
             }
         case .ambient, .insight, .hidden:
@@ -332,7 +381,8 @@ struct HomeView: View {
                     // prescription behind them is Pro. Free users still get the
                     // full, live insights list here.
                     CoachInsightsView(insights: coachInsights,
-                                      onFixCustomExercises: { path.append(HomeRoute.customExercises) })
+                                      onFixCustomExercises: { path.append(HomeRoute.customExercises) },
+                                      onInsightAction: { handleInsightAction($0) })
                 case .coachPreview:
                     CoachPreviewScreen(
                         topInsight: coachInsights.first,
@@ -344,7 +394,8 @@ struct HomeView: View {
                             settings.coachHidden = true
                             if !path.isEmpty { path.removeLast() }
                         },
-                        onFixCustomExercises: { path.append(HomeRoute.customExercises) })
+                        onFixCustomExercises: { path.append(HomeRoute.customExercises) },
+                        onInsightAction: { handleInsightAction($0) })
                 case .coachPreferences: CoachSchedulePreferencesView()
                 case .planning: PlanningView(switchToWorkout: { path = NavigationPath() },
                                              onOpenCoach: { path.append(HomeRoute.coachPreview) })
@@ -352,6 +403,8 @@ struct HomeView: View {
                     let facts = coachSnapshot.coachFacts.withStepSummary(from: activityTrend)
                     let plan = HomePlanPresenter.yourPlanDestinationPlan(cachedPlan: coachSnapshot.plan)
                     YourWeekView(decision: coachDecision, facts: facts,
+                                 trainingFacts: coachSnapshot.facts,
+                                 optimizedPlan: coachSnapshot.optimizedPlan,
                                  plan: plan,
                                  sessions: sessions.filter { $0.deletedAt == nil },
                                  cardio: cardio.filter { $0.deletedAt == nil },
@@ -558,12 +611,35 @@ struct HomeView: View {
         // coach-relevant settings actually change (see `coachSignature`). This keeps
         // set logging instant — the pipeline no longer runs on every set save.
         .task(id: coachSignature) {
-            coachSnapshot = buildCoachSnapshot()
+            coachSnapshot = await buildCoachSnapshot()
         }
         // Passive HealthKit samples arrive asynchronously after the initial pipeline
         // run; rebuild the snapshot once they land (and whenever they change).
         .onChange(of: passiveSamples) {
-            coachSnapshot = buildCoachSnapshot()
+            Task { coachSnapshot = await buildCoachSnapshot() }
+        }
+        .confirmationDialog(
+            "Add the gaps anyway?",
+            isPresented: Binding(get: { pendingAddGapsDeficits != nil },
+                                 set: { if !$0 { pendingAddGapsDeficits = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Add to this week's plan", role: .none) {
+                confirmAddGaps()
+            }
+            Button("Cancel", role: .cancel) {
+                pendingAddGapsDeficits = nil
+            }
+        } message: {
+            if let deficits = pendingAddGapsDeficits {
+                let parts = deficits.sorted { $0.key.displayName < $1.key.displayName }
+                    .map { "\($0.key.displayName) +\(Int($0.value.rounded()))" }
+                    .joined(separator: ", ")
+                let guardrails = relaxedGuardrailDescriptions()
+                    .map { "  • \($0)" }
+                    .joined(separator: "\n")
+                Text("Coach will replan this week to close: \(parts).\n\nTo fit them, Coach will go past its usual guardrails:\n\(guardrails)\n\nYour call — Coach recommends, you decide. You can revert to the safe plan any time this week.")
+            }
         }
     }
 

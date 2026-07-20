@@ -58,7 +58,8 @@ public enum PlanAwareInsightEngine {
                            unresolvedDeficits: [BodyPart: Double] = [:],
                            diagnostics: [PlanningDiagnostic] = [],
                            isBehindPlan: Bool = false,
-                           now: Date = Date()) -> [Insight] {
+                           now: Date = Date(),
+                           isOverrideActive: Bool = false) -> [Insight] {
         let base = InsightEngine.run(facts)
         guard base.first?.kind != .coldStart else { return base }
 
@@ -79,7 +80,8 @@ public enum PlanAwareInsightEngine {
             }
             return ranked(filtered + unresolvedPlanningInsights(deficits: unresolvedDeficits,
                                                                 diagnostics: diagnostics,
-                                                                experience: facts.experience))
+                                                                experience: facts.experience,
+                                                                isOverrideActive: isOverrideActive))
         }
 
         let unresolvedParts = Set(unresolvedDeficits.keys)
@@ -169,8 +171,14 @@ public enum PlanAwareInsightEngine {
                                                      diagnostics: diagnostics,
                                                      experience: facts.experience,
                                                      resolvedParts: resolved,
-                                                     resolvedSets: resolvedSets)
-        return ranked(filtered + behind + unresolved)
+                                                     resolvedSets: resolvedSets,
+                                                     isOverrideActive: isOverrideActive)
+
+        var result = filtered + behind + unresolved
+        if isOverrideActive {
+            result.append(overrideActiveInsight)
+        }
+        return ranked(result)
     }
 
     private static func projectedLowVolumeInsight(for part: BodyPart,
@@ -224,7 +232,8 @@ public enum PlanAwareInsightEngine {
                                                     diagnostics: [PlanningDiagnostic],
                                                     experience: ExperienceLevel,
                                                     resolvedParts: Set<BodyPart> = [],
-                                                    resolvedSets: [BodyPart: Double] = [:]) -> [Insight] {
+                                                    resolvedSets: [BodyPart: Double] = [:],
+                                                    isOverrideActive: Bool = false) -> [Insight] {
         if deficits.isEmpty && resolvedParts.isEmpty { return [] }
 
         // Fully resolved — positive insight
@@ -239,7 +248,8 @@ public enum PlanAwareInsightEngine {
                 message: "Added to tonight: \(added).",
                 detail: "Coach routed residual weekly volume into today's session. All targets are now on track.",
                 citation: CitationRegistry.frequencyMeta,
-                severity: .info)]
+                severity: .info,
+                action: isOverrideActive ? .revertToSafePlan : nil)]
         }
 
         // Partially resolved — note what was added AND what's still short
@@ -267,7 +277,9 @@ public enum PlanAwareInsightEngine {
                 message: "Added to tonight: \(added). Still short: \(short) sets to go.",
                 detail: "\(reason) \(ranges). Coach added what fits safely; the remaining gap needs another eligible slot or a schedule adjustment.",
                 citation: CitationRegistry.volumeDoseResponse,
-                severity: .attention)]
+                severity: .attention,
+                action: isOverrideActive ? .revertToSafePlan :
+                    .addGapsToPlan(deficits: deficits))]
         }
 
         // None resolved — keep existing nag
@@ -291,7 +303,9 @@ public enum PlanAwareInsightEngine {
             message: "Still short after safe planning: \(summary) sets to go.",
             detail: "\(reason) \(ranges). Keep the planned work as the priority, then adjust the schedule or add another eligible strength slot if recovery allows.",
             citation: CitationRegistry.volumeDoseResponse,
-            severity: .attention)]
+            severity: .attention,
+            action: isOverrideActive ? .revertToSafePlan :
+                .addGapsToPlan(deficits: deficits))]
     }
 
     private static func partIdx(_ part: BodyPart) -> Int {
@@ -322,6 +336,18 @@ public enum PlanAwareInsightEngine {
         let today = cal.startOfDay(for: now)
         let elapsed = cal.dateComponents([.day], from: weekStart, to: today).day ?? 0
         return elapsed < 3
+    }
+
+    private static var overrideActiveInsight: Insight {
+        Insight(
+            id: "planning.overrideActive",
+            kind: .volume,
+            title: "Planning past safe guardrails this week",
+            message: "At your request, Coach is planning past recovery eligibility and session-size limits until Sunday. Watch for performance drops.",
+            detail: "The productive-volume targets are evidence-informed starting points, not fixed laws. Individual response varies, and you always have the final say. But persistent overload without recovery impairs adaptation.",
+            citation: CitationRegistry.volumeDoseResponse,
+            severity: .info,
+            action: .revertToSafePlan)
     }
 
     private static func ranked(_ insights: [Insight]) -> [Insight] {

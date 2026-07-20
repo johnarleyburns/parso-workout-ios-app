@@ -19,10 +19,14 @@ public struct CoachSnapshot: Sendable {
     public let addOn: CoachAddOnRecommendation
     /// The fused readiness (self-report + passive HealthKit), when present.
     public let readiness: ReadinessSnapshot?
+    /// The optimizer's output — planned sessions + unresolved deficits + diagnostics.
+    /// Carried so the Your Plan screen can render per-part volume vs plan (§1).
+    public let optimizedPlan: OptimizedCoachPlan
 
     public init(facts: TrainingFacts, coachFacts: CoachFacts, insights: [Insight], recommendation: Recommendation,
                 decision: CoachDecision, plan: WeeklyPlan, behindPlan: Bool,
-                addOn: CoachAddOnRecommendation, readiness: ReadinessSnapshot? = nil) {
+                addOn: CoachAddOnRecommendation, readiness: ReadinessSnapshot? = nil,
+                optimizedPlan: OptimizedCoachPlan = .empty) {
         self.facts = facts
         self.coachFacts = coachFacts
         self.insights = insights
@@ -32,6 +36,7 @@ public struct CoachSnapshot: Sendable {
         self.behindPlan = behindPlan
         self.addOn = addOn
         self.readiness = readiness
+        self.optimizedPlan = optimizedPlan
     }
 }
 
@@ -51,7 +56,8 @@ public enum CoachSnapshotBuilder {
                              readinessEntry: ReadinessEntry? = nil,
                              passiveSamples: [PassiveReadinessSample] = [],
                              userAge: Int? = nil,
-                             now: Date = Date()) -> CoachSnapshot {
+                             now: Date = Date(),
+                             constraintPolicy: PlanningConstraintPolicy = .safe) -> CoachSnapshot {
         let liveSessions = sessions.filter { $0.deletedAt == nil }
         let trainingFacts = TrainingFacts.make(sessions: liveSessions,
                                                assessments: assessments,
@@ -92,7 +98,8 @@ public enum CoachSnapshotBuilder {
             unresolvedDeficits: optimized.unresolvedDeficits,
             diagnostics: optimized.diagnostics,
             isBehindPlan: behindPlan,
-            now: now)
+            now: now,
+            isOverrideActive: constraintPolicy == .meetDeficits)
         // "You already trained hard today" is an observation, not a prescription —
         // surfaced first so the Coach card's top insight acknowledges banked work
         // instead of nagging (coach-user-control Phase 2).
@@ -127,12 +134,97 @@ public enum CoachSnapshotBuilder {
                              insights: allInsights,
                              recommendation: recommendation, decision: decision,
                              plan: plan, behindPlan: behindPlan, addOn: addOn,
-                             readiness: coachFacts.readiness)
+                             readiness: coachFacts.readiness, optimizedPlan: optimized)
+    }
+
+    /// Off-main-actor variant: the caller pre-computes `TrainingFacts` and
+    /// `TrainingEvent`s (on the main actor where SwiftData models are safe to read)
+    /// and passes them here; the rest of the pipeline runs in a background task.
+    public static func buildFromFactsAndEvents(
+        trainingFacts: TrainingFacts,
+        trainingEvents: [TrainingEvent],
+        hasPainToday: Bool,
+        goal: TrainingGoal,
+        experience: ExperienceLevel,
+        formula: OneRepMaxFormula,
+        schedulePreferences: CoachSchedulePreferences,
+        profile: CoachPreferenceProfile,
+        readinessEntry: ReadinessEntry? = nil,
+        passiveSamples: [PassiveReadinessSample] = [],
+        now: Date = Date(),
+        constraintPolicy: PlanningConstraintPolicy = .safe
+    ) -> CoachSnapshot {
+        let coachFacts = CoachFacts.make(from: trainingEvents, goal: goal, experience: experience,
+                                          readinessEntry: readinessEntry,
+                                          formula: formula, now: now,
+                                          passiveSamples: passiveSamples)
+        let plan = WeeklyPlan.generate(from: coachFacts, schedulePreferences: schedulePreferences)
+
+        let base = CoachDecisionEngine.run(coachFacts,
+                                            profile: profile,
+                                            schedulePreferences: schedulePreferences,
+                                            hasPainConcern: hasPainToday)
+
+        let candidates = strengthCandidates(for: base, facts: coachFacts,
+                                             schedulePreferences: schedulePreferences)
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: trainingFacts,
+            coachFacts: coachFacts,
+            weeklyPlan: plan,
+            schedulePreferences: schedulePreferences,
+            candidates: candidates,
+            constraintPolicy: constraintPolicy)
+
+        let decision = applyingOptimizedStrength(base, optimizedPlan: optimized)
+        let behindPlan: Bool = { if case .offPlan = decision.planAdherence { return true }; return false }()
+
+        let insights = PlanAwareInsightEngine.run(
+            completed: trainingFacts,
+            plan: plan,
+            plannedStrengthSessions: optimized.plannedStrengthSessions,
+            unresolvedDeficits: optimized.unresolvedDeficits,
+            diagnostics: optimized.diagnostics,
+            isBehindPlan: behindPlan,
+            now: now,
+            isOverrideActive: constraintPolicy == .meetDeficits)
+
+        let allInsights: [Insight]
+        if let sameDay = SameDayLoadInsight.insight(facts: coachFacts) {
+            allInsights = [sameDay] + insights
+        } else {
+            allInsights = insights
+        }
+
+        let recommendation: Recommendation = {
+            if let rec = CoachRecommendationEngine.run(coachFacts, profile: profile)
+                .first(where: { rec in
+                    if let system = rec.system {
+                        return [.maximalStrength, .hypertrophy, .strengthEndurance].contains(system)
+                    }
+                    return [.progression, .deload, .addVolume, .starter, .strengthBlock, .volumeAdjust].contains(rec.kind)
+                }) {
+                return rec
+            }
+            return RecommendationEngine.top(trainingFacts)
+        }()
+
+        let addOn: CoachAddOnRecommendation = {
+            guard case .planComplete = decision.planAdherence else { return .empty }
+            return CoachAddOnEngine.run(facts: coachFacts,
+                                         schedulePreferences: schedulePreferences,
+                                         hasPainConcern: hasPainToday)
+        }()
+
+        return CoachSnapshot(facts: trainingFacts, coachFacts: coachFacts,
+                             insights: allInsights,
+                             recommendation: recommendation, decision: decision,
+                             plan: plan, behindPlan: behindPlan, addOn: addOn,
+                             readiness: coachFacts.readiness, optimizedPlan: optimized)
     }
 
     // MARK: - Helpers (ported verbatim from HomeView so behavior is unchanged)
 
-    static func trainingEvents(sessions: [WorkoutSession], cardio: [CardioWorkout],
+    public static func trainingEvents(sessions: [WorkoutSession], cardio: [CardioWorkout],
                                assessments: [Assessment], formula: OneRepMaxFormula,
                                userAge: Int? = nil) -> [TrainingEvent] {
         let strength = sessions.compactMap { TrainingEvent.from(session: $0, formula: formula) }

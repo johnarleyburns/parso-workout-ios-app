@@ -7,6 +7,7 @@ struct InsightContentView: View {
     let insight: Insight
     var headline: Bool = false
     var onFixCustomExercises: (() -> Void)? = nil
+    var onInsightAction: ((Insight.Action) -> Void)? = nil
     @State private var expanded = false
 
     var body: some View {
@@ -53,6 +54,28 @@ struct InsightContentView: View {
                 }
                 .padding(.top, 2)
                 .transition(.opacity)
+            }
+
+            if let action = insight.action, let onAction = onInsightAction {
+                Button {
+                    onAction(action)
+                } label: {
+                    HStack {
+                        switch action {
+                        case .addGapsToPlan(let deficits):
+                            let parts = deficits.keys.sorted { $0.displayName < $1.displayName }
+                                .prefix(3).map(\.displayName).joined(separator: ", ")
+                            Label("Add these gaps to my planned workouts", systemImage: "plus.circle")
+                                .font(.caption.weight(.medium))
+                        case .revertToSafePlan:
+                            Label("Back to safe planning", systemImage: "arrow.uturn.backward")
+                                .font(.caption.weight(.medium))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .padding(.top, 4)
             }
 
             if insight.kind == .exerciseDefinition, let onFix = onFixCustomExercises {

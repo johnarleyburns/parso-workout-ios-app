@@ -7,12 +7,15 @@ import CadenceCore
 struct CoachInsightsView: View {
     let insights: [Insight]
     var onFixCustomExercises: (() -> Void)? = nil
+    var onInsightAction: ((Insight.Action) -> Void)? = nil
 
     var body: some View {
         List {
             Section {
                 ForEach(insights) { insight in
-                    InsightContentView(insight: insight, onFixCustomExercises: onFixCustomExercises)
+                    InsightContentView(insight: insight,
+                                       onFixCustomExercises: onFixCustomExercises,
+                                       onInsightAction: onInsightAction)
                         .padding(.vertical, 4)
                 }
             } footer: {

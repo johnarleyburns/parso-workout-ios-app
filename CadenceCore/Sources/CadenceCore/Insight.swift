@@ -26,6 +26,17 @@ public enum InsightKind: String, Sendable, Equatable {
 /// shows and *why it matters*, with a mandatory citation (decision D3). Prescriptive
 /// actions (load/sets/RIR targets) are added in P5; there are none here.
 public struct Insight: Identifiable, Sendable, Equatable {
+
+    /// A user-invokable action attached to an insight (e.g. "add these gaps to plan").
+    /// Semantic only — the view maps it to a button + sheet.
+    public enum Action: Equatable, Sendable {
+        /// Offer to fold the listed per-part gaps into this week's planned
+        /// strength sessions, relaxing safe-planning guardrails.
+        case addGapsToPlan(deficits: [BodyPart: Double])
+        /// Offer to restore the safe-planning guardrails for this week.
+        case revertToSafePlan
+    }
+
     public let id: String
     public let kind: InsightKind
     public let part: BodyPart?      // the body part this concerns, if any
@@ -35,6 +46,8 @@ public struct Insight: Identifiable, Sendable, Equatable {
     public let detail: String       // the "why / the science" expansion
     public let citation: Citation   // always present (D3)
     public let severity: InsightSeverity
+    /// Optional action the user can take directly from this insight (P3 week-volume).
+    public let action: Action?
 
     public init(id: String,
                 kind: InsightKind,
@@ -44,7 +57,8 @@ public struct Insight: Identifiable, Sendable, Equatable {
                 message: String,
                 detail: String,
                 citation: Citation,
-                severity: InsightSeverity) {
+                severity: InsightSeverity,
+                action: Action? = nil) {
         self.id = id
         self.kind = kind
         self.part = part
@@ -54,5 +68,6 @@ public struct Insight: Identifiable, Sendable, Equatable {
         self.detail = detail
         self.citation = citation
         self.severity = severity
+        self.action = action
     }
 }

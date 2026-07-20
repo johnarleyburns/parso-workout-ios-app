@@ -29,11 +29,14 @@ public enum HomeCoachModel {
         /// Cardio intensity classification is age-anchored (Tanaka HRmax), so an
         /// age edit must invalidate the snapshot. Additive/defaulted.
         public var userAge: Int?
+        /// The coach plan override week key; when it changes the snapshot rebuilds
+        /// with the corresponding constraint policy.
+        public var overrideWeekKey: String?
 
         public init(token: UUID, sessionCount: Int, cardioCount: Int, assessmentCount: Int,
                     goal: TrainingGoal, experience: ExperienceLevel, formula: OneRepMaxFormula,
                     schedule: CoachSchedulePreferences, profile: CoachPreferenceProfile,
-                    painToday: Bool, userAge: Int? = nil) {
+                    painToday: Bool, userAge: Int? = nil, overrideWeekKey: String? = nil) {
             self.token = token
             self.sessionCount = sessionCount
             self.cardioCount = cardioCount
@@ -45,6 +48,7 @@ public enum HomeCoachModel {
             self.profile = profile
             self.painToday = painToday
             self.userAge = userAge
+            self.overrideWeekKey = overrideWeekKey
         }
     }
 
@@ -70,6 +74,7 @@ public enum HomeCoachModel {
                                  schedule: CoachSchedulePreferences,
                                  profile: CoachPreferenceProfile,
                                  userAge: Int? = nil,
+                                 overrideWeekKey: String? = nil,
                                  now: Date = Date()) -> Signature {
         Signature(token: token,
                   sessionCount: sessions.count,
@@ -81,7 +86,8 @@ public enum HomeCoachModel {
                   schedule: schedule,
                   profile: profile,
                   painToday: painToday(readiness: readiness, now: now),
-                  userAge: userAge)
+                  userAge: userAge,
+                  overrideWeekKey: overrideWeekKey)
     }
 
     /// Runs the full pure coach pipeline once, deriving `hasPainToday` from readiness.
@@ -96,7 +102,8 @@ public enum HomeCoachModel {
                                 profile: CoachPreferenceProfile,
                                 passiveSamples: [PassiveReadinessSample] = [],
                                 userAge: Int? = nil,
-                                now: Date = Date()) -> CoachSnapshot {
+                                now: Date = Date(),
+                                constraintPolicy: PlanningConstraintPolicy = .safe) -> CoachSnapshot {
         CoachSnapshotBuilder.build(
             sessions: sessions,
             cardio: cardio,
@@ -110,7 +117,56 @@ public enum HomeCoachModel {
             readinessEntry: latestReadiness(readiness, now: now),
             passiveSamples: passiveSamples,
             userAge: userAge,
-            now: now)
+            now: now,
+            constraintPolicy: constraintPolicy)
+    }
+
+    /// Runs the coach pipeline in two phases: extracts data from SwiftData models
+    /// on the current actor (main), then runs pure computation in a detached task
+    /// so the main thread never blocks. Call from `@MainActor` contexts.
+    public static func snapshotAsync(sessions: [WorkoutSession],
+                                     cardio: [CardioWorkout],
+                                     assessments: [Assessment],
+                                     readiness: [ReadinessEntry],
+                                     goal: TrainingGoal,
+                                     experience: ExperienceLevel,
+                                     formula: OneRepMaxFormula,
+                                     schedule: CoachSchedulePreferences,
+                                     profile: CoachPreferenceProfile,
+                                     passiveSamples: [PassiveReadinessSample] = [],
+                                     userAge: Int? = nil,
+                                     now: Date = Date(),
+                                     constraintPolicy: PlanningConstraintPolicy = .safe) async -> CoachSnapshot {
+        // Phase 1: extract value types from SwiftData models (must be on main actor)
+        let liveSessions = sessions.filter { $0.deletedAt == nil }
+        let trainingFacts = TrainingFacts.make(sessions: liveSessions,
+                                               assessments: assessments,
+                                               now: now,
+                                               goal: goal,
+                                               experience: experience,
+                                               formula: formula)
+        let events = CoachSnapshotBuilder.trainingEvents(sessions: liveSessions, cardio: cardio,
+                                                          assessments: assessments, formula: formula,
+                                                          userAge: userAge)
+        let hasPain = painToday(readiness: readiness, now: now)
+        let entry = latestReadiness(readiness, now: now)
+
+        // Phase 2: pure computation off the main actor
+        return await Task.detached(priority: .userInitiated) {
+            CoachSnapshotBuilder.buildFromFactsAndEvents(
+                trainingFacts: trainingFacts,
+                trainingEvents: events,
+                hasPainToday: hasPain,
+                goal: goal,
+                experience: experience,
+                formula: formula,
+                schedulePreferences: schedule,
+                profile: profile,
+                readinessEntry: entry,
+                passiveSamples: passiveSamples,
+                now: now,
+                constraintPolicy: constraintPolicy)
+        }.value
     }
 
     /// The most recent readiness check-in on or before `now`, if any — the one the

@@ -29,10 +29,10 @@ struct WeekStripView: View {
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
             }
+            .padding()
+            .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
         }
         .buttonStyle(.plain)
-        .padding()
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.weekStrip")
         .accessibilityLabel(weekStripAccessibilityLabel)

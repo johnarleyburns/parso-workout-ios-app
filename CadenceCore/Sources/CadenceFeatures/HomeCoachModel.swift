@@ -122,8 +122,10 @@ public enum HomeCoachModel {
     }
 
     /// Runs the coach pipeline in two phases: extracts data from SwiftData models
-    /// on the current actor (main), then runs pure computation in a detached task
-    /// so the main thread never blocks. Call from `@MainActor` contexts.
+    /// on the main actor, then runs pure computation in a detached task so the
+    /// main thread never blocks. The main-actor boundary is required because
+    /// SwiftData relationships are not safe to fault from concurrent executors.
+    @MainActor
     public static func snapshotAsync(sessions: [WorkoutSession],
                                      cardio: [CardioWorkout],
                                      assessments: [Assessment],
@@ -149,7 +151,8 @@ public enum HomeCoachModel {
                                                           assessments: assessments, formula: formula,
                                                           userAge: userAge)
         let hasPain = painToday(readiness: readiness, now: now)
-        let entry = latestReadiness(readiness, now: now)
+        let readinessSnapshot = latestReadiness(readiness, now: now)
+            .map { ReadinessSnapshot.from($0, now: now) }
 
         // Phase 2: pure computation off the main actor
         return await Task.detached(priority: .userInitiated) {
@@ -162,7 +165,7 @@ public enum HomeCoachModel {
                 formula: formula,
                 schedulePreferences: schedule,
                 profile: profile,
-                readinessEntry: entry,
+                readinessSnapshot: readinessSnapshot,
                 passiveSamples: passiveSamples,
                 now: now,
                 constraintPolicy: constraintPolicy)

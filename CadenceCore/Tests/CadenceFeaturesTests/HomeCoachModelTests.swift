@@ -120,6 +120,50 @@ final class HomeCoachModelTests: XCTestCase {
         XCTAssertNotNil(snapshot.decision.primary)
     }
 
+    func testSnapshotAsyncConcurrentCallersDoNotFaultCardioRelationshipsOffMainActor() async throws {
+        let ctx = try makeContext()
+        let start = Date().addingTimeInterval(-3_600)
+        let workout = CardioWorkout(type: .run,
+                                    start: start,
+                                    end: start.addingTimeInterval(1_800),
+                                    avgHeartRate: nil,
+                                    maxHeartRate: nil)
+        ctx.insert(workout)
+        for offset in 0..<120 {
+            ctx.insert(HRSample(t: TimeInterval(offset * 10),
+                                bpm: Double(120 + (offset % 30)),
+                                cardio: workout))
+        }
+        try ctx.save()
+        let cardio = try ctx.fetch(FetchDescriptor<CardioWorkout>())
+
+        let snapshots = await withTaskGroup(of: CoachSnapshot.self) { group in
+            for _ in 0..<8 {
+                group.addTask {
+                    await HomeCoachModel.snapshotAsync(
+                        sessions: [],
+                        cardio: cardio,
+                        assessments: [],
+                        readiness: [],
+                        goal: .strength,
+                        experience: .intermediate,
+                        formula: .epley,
+                        schedule: .default,
+                        profile: .empty)
+                }
+            }
+
+            var collected: [CoachSnapshot] = []
+            for await snapshot in group {
+                collected.append(snapshot)
+            }
+            return collected
+        }
+
+        XCTAssertEqual(snapshots.count, 8)
+        XCTAssertTrue(snapshots.allSatisfy { $0.coachFacts.events.count == 1 })
+    }
+
     func testTestRecommendationNilWhenCoachHidden() throws {
         let ctx = try makeContext()
         _ = ctx

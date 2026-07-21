@@ -208,11 +208,13 @@ public extension CoachFacts {
                      experience: ExperienceLevel,
                      assessments: [AssessmentSummary] = [],
                      readinessEntry: ReadinessEntry? = nil,
+                     readinessSnapshot: ReadinessSnapshot? = nil,
                      formula: OneRepMaxFormula = .epley,
                      now: Date = Date(),
                      passiveSamples: [PassiveReadinessSample] = []) -> CoachFacts {
         return make(from: events, goal: goal, experience: experience,
                     assessments: assessments, readinessEntry: readinessEntry,
+                    readinessSnapshot: readinessSnapshot,
                     formula: formula, now: now, passiveSamples: passiveSamples,
                     recoveryAwareCoachV2: true)
     }
@@ -222,6 +224,7 @@ public extension CoachFacts {
                      experience: ExperienceLevel,
                      assessments: [AssessmentSummary] = [],
                      readinessEntry: ReadinessEntry? = nil,
+                     readinessSnapshot: ReadinessSnapshot? = nil,
                      formula: OneRepMaxFormula = .epley,
                      now: Date = Date(),
                      passiveSamples: [PassiveReadinessSample] = [],
@@ -252,7 +255,7 @@ public extension CoachFacts {
         let spikeFlags = SystemLoadComputer.loadSpikeFlags(systemLoads)
         let zoneSrc = SystemLoadComputer.zoneSource(rolling28d: rolling28d)
         let coverage = SystemLoadComputer.assessmentCoverage(assessments, now: now)
-        let selfReport = readinessEntry.map { ReadinessSnapshot.from($0, now: now) }
+        let selfReport = readinessSnapshot ?? readinessEntry.map { ReadinessSnapshot.from($0, now: now) }
 
         // Passive readiness fusion (revenue Phase 4, D4). Self-report stays
         // authoritative where present; passive HealthKit signals fill the gap and

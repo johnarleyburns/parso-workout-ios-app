@@ -149,13 +149,13 @@ public enum CoachSnapshotBuilder {
         formula: OneRepMaxFormula,
         schedulePreferences: CoachSchedulePreferences,
         profile: CoachPreferenceProfile,
-        readinessEntry: ReadinessEntry? = nil,
+        readinessSnapshot: ReadinessSnapshot? = nil,
         passiveSamples: [PassiveReadinessSample] = [],
         now: Date = Date(),
         constraintPolicy: PlanningConstraintPolicy = .safe
     ) -> CoachSnapshot {
         let coachFacts = CoachFacts.make(from: trainingEvents, goal: goal, experience: experience,
-                                          readinessEntry: readinessEntry,
+                                          readinessSnapshot: readinessSnapshot,
                                           formula: formula, now: now,
                                           passiveSamples: passiveSamples)
         let plan = WeeklyPlan.generate(from: coachFacts, schedulePreferences: schedulePreferences)

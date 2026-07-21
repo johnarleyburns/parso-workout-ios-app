@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Watch Adjustment Mockups</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --panel: #181a1f;
+      --watch: #050608;
+      --line: #30343d;
+      --text: #f5f7fb;
+      --muted: #9aa3b2;
+      --green: #31d158;
+      --blue: #4da3ff;
+      --cyan: #5ac8fa;
+      --red: #ff453a;
+      --yellow: #ffd60a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .mockup {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .mockup h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .watch {
+      width: 198px;
+      min-height: 242px;
+      margin: 0 auto;
+      padding: 16px 14px;
+      border: 6px solid #262a31;
+      border-radius: 42px;
+      background: var(--watch);
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px #11151c;
+    }
+
+    .title {
+      margin: 0 0 12px;
+      font-size: 18px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .section-label {
+      margin: 12px 0 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 25px;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .row + .row {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .value {
+      min-width: 70px;
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .check {
+      color: var(--green);
+      font-weight: 900;
+    }
+
+    .toggle {
+      position: relative;
+      width: 50px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--green);
+      flex: 0 0 auto;
+    }
+
+    .toggle::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: white;
+    }
+
+    .button {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--green);
+      color: #061107;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .secondary-button {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 7px 10px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .bpm {
+      margin: 8px 0 8px;
+      color: var(--cyan);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 58px;
+      font-weight: 800;
+      line-height: 0.95;
+      text-align: center;
+    }
+
+    .zone {
+      margin-top: 28px;
+      color: var(--cyan);
+      font-size: 14px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .bars {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 3px;
+      margin: 8px 0 18px;
+    }
+
+    .bar {
+      height: 6px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .bar.active {
+      background: var(--cyan);
+    }
+
+    .summary-icon {
+      margin: 6px 0 12px;
+      color: var(--green);
+      font-size: 30px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .picker {
+      margin-top: 10px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: 14px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .note {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Watch Adjustment Mockups</h1>
+    <p class="subtitle">Static implementation targets for the one-phase watch UI adjustment plan.</p>
+
+    <section class="grid" aria-label="Watch screen mockups">
+      <article class="mockup">
+        <h2>Units</h2>
+        <div class="watch">
+          <p class="title">Units</p>
+          <div class="section-label">Weight</div>
+          <div class="row"><span>Pounds (lb)</span><span class="check">check</span></div>
+          <div class="row"><span>Kilograms (kg)</span><span></span></div>
+          <div class="section-label">Distance</div>
+          <div class="row"><span>Miles (mi)</span><span class="check">check</span></div>
+          <div class="row"><span>Kilometers (km)</span><span></span></div>
+        </div>
+        <p class="note">Weight and distance choices must be independent.</p>
+      </article>
+
+      <article class="mockup">
+        <h2>Live HR</h2>
+        <div class="watch">
+          <p class="title">Live HR</p>
+          <div class="zone">Z1 / Recovery</div>
+          <div class="bpm">92</div>
+          <div class="bars">
+            <span class="bar active"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+          </div>
+          <div class="button" style="background: var(--blue); color: white;">Start monitoring</div>
+        </div>
+        <p class="note">No idle label above the BPM and no explanatory text under the button.</p>
+      </article>
+
+      <article class="mockup">
+        <h2>Run / Walk / Cycle / Swim / Rowing Setup</h2>
+        <div class="watch">
+          <p class="title">Run</p>
+          <div class="row" style="margin-top: 42px;">
+            <span style="font-size: 18px; font-weight: 800;">GPS</span>
+            <span class="toggle" aria-hidden="true"></span>
+          </div>
+          <div class="button" style="margin-top: 54px;">Start run</div>
+        </div>
+        <p class="note">Same structure for Walk, Cycle, Swim, and Rowing. GPS defaults on.</p>
+      </article>
+
+      <article class="mockup">
+        <h2>Workout Summary</h2>
+        <div class="watch">
+          <div class="summary-icon">ok</div>
+          <div class="row"><span class="muted">Total</span><span class="value">0:00:42</span></div>
+          <div class="row"><span class="muted">Avg HR</span><span class="value">128</span></div>
+          <div class="row"><span class="muted">Distance</span><span class="value">0.12 mi</span></div>
+          <div class="row"><span class="muted">Laps</span><span class="value">4</span></div>
+          <div class="button" style="margin-top: 20px;">Save</div>
+          <div class="secondary-button">Discard</div>
+        </div>
+        <p class="note">No Active kcal row. HR shows average only.</p>
+      </article>
+
+      <article class="mockup">
+        <h2>HIIT Setup</h2>
+        <div class="watch">
+          <p class="title">HIIT</p>
+          <div class="section-label" style="margin-top: 34px;">Protocol</div>
+          <div class="picker">Tabata</div>
+          <div class="button" style="margin-top: 66px;">Start</div>
+        </div>
+        <p class="note">Only built-in protocol selection is editable.</p>
+      </article>
+
+      <article class="mockup">
+        <h2>Boxing Setup</h2>
+        <div class="watch">
+          <p class="title">Boxing</p>
+          <div style="margin-top: 24px;">
+            <div class="row"><span class="muted">Rounds</span><span class="value">8</span></div>
+            <div class="row"><span class="muted">Round</span><span class="value">3 min</span></div>
+            <div class="row"><span class="muted">Rest</span><span class="value">60 sec</span></div>
+          </div>
+          <div class="button" style="margin-top: 58px;">Start</div>
+        </div>
+        <p class="note">No warmup and no cooldown.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -15,9 +15,9 @@ struct WatchCardioSummaryView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 28)).foregroundStyle(.green)
 
-            summaryRow("Duration", formatTime(summary.duration))
+            summaryRow("Total", formatTime(summary.duration))
             if let avg = summary.avgHR {
-                summaryRow("Avg / Max HR", "\(Int(avg)) / \(Int(summary.maxHR ?? avg))")
+                summaryRow("Avg HR", "\(Int(avg))")
             }
             if summary.distanceMeters > 0 {
                 summaryRow("Distance", metrics.formatDistance())
@@ -25,24 +25,25 @@ struct WatchCardioSummaryView: View {
             if let laps = lapText {
                 summaryRow("Laps", laps)
             }
-            summaryRow("Active kcal", "\(Int(summary.activeKcal))")
 
             Button("Save") { onSave() }
                 .buttonStyle(.borderedProminent).tint(.green)
             Button("Discard") { onDiscard() }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
 
-            Text("Synced to iPhone via Health")
-                .font(.caption2).foregroundStyle(.tertiary).padding(.top, 4)
             Spacer()
         }
     }
 
     private func summaryRow(_ label: String, _ value: String) -> some View {
         HStack {
-            Text(label).font(.caption).foregroundStyle(.secondary)
-            Spacer()
-            Text(value).font(.caption.bold()).monospacedDigit()
+            Text(label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            Spacer(minLength: 6)
+            Text(value)
+                .font(.system(.caption, design: .monospaced).bold())
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .padding(.horizontal, 20)
     }

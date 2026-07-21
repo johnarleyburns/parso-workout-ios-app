@@ -31,6 +31,7 @@ public enum WatchSync {
         public static let contextUpdatedAt = "watchSync.contextUpdatedAt"
 
         public static let unit = "settings.unit"
+        public static let distanceUnit = "settings.distanceUnit"
         public static let intervalColorBlind = "settings.intervalColorBlind"
         public static let restSeconds = "settings.restSeconds"
         public static let warmupMinutes = "settings.warmupMinutes"
@@ -96,6 +97,7 @@ public enum WatchSync {
 
     public struct Preferences: Equatable, Sendable {
         public var unit: MeasurementUnitPreference
+        public var distanceUnit: DistanceUnitPreference
         public var intervalColorBlind: Bool
         public var restSeconds: Int
         public var warmupMinutes: Int
@@ -104,6 +106,7 @@ public enum WatchSync {
         public var recentPartnerNames: [String]
 
         public init(unit: MeasurementUnitPreference = .kilograms,
+                    distanceUnit: DistanceUnitPreference = .kilometers,
                     intervalColorBlind: Bool = false,
                     restSeconds: Int = 90,
                     warmupMinutes: Int = 5,
@@ -111,6 +114,7 @@ public enum WatchSync {
                     workoutSounds: Bool = true,
                     recentPartnerNames: [String] = []) {
             self.unit = unit
+            self.distanceUnit = distanceUnit
             self.intervalColorBlind = intervalColorBlind
             self.restSeconds = restSeconds
             self.warmupMinutes = warmupMinutes
@@ -122,6 +126,7 @@ public enum WatchSync {
         public static func contextDict(_ prefs: Preferences) -> [String: Any] {
             var dict: [String: Any] = [
                 Key.unit: prefs.unit.rawValue,
+                Key.distanceUnit: prefs.distanceUnit.rawValue,
                 Key.intervalColorBlind: prefs.intervalColorBlind,
                 Key.restSeconds: prefs.restSeconds,
                 Key.warmupMinutes: prefs.warmupMinutes,
@@ -145,6 +150,10 @@ public enum WatchSync {
             if let raw = context[Key.unit] as? String,
                let u = MeasurementUnitPreference(rawValue: raw) {
                 copy.unit = u
+            }
+            if let raw = context[Key.distanceUnit] as? String,
+               let du = DistanceUnitPreference(rawValue: raw) {
+                copy.distanceUnit = du
             }
             if let cb = context[Key.intervalColorBlind] as? Bool {
                 copy.intervalColorBlind = cb

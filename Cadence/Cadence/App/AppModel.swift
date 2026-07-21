@@ -283,6 +283,8 @@ extension AppModel: WCSessionDelegate {
             handleWatchDiscardSession(userInfo)
         case "set_unit":
             handleWatchSetUnit(userInfo)
+        case "set_distance_unit":
+            handleWatchSetDistanceUnit(userInfo)
         default:
             break
         }
@@ -377,6 +379,12 @@ extension AppModel: WCSessionDelegate {
         guard let raw = info["value"] as? String,
               let unit = MeasurementUnitPreference(rawValue: raw) else { return }
         _settings?.unit = unit
+    }
+
+    private func handleWatchSetDistanceUnit(_ info: [String: Any]) {
+        guard let raw = info["value"] as? String,
+              let du = DistanceUnitPreference(rawValue: raw) else { return }
+        _settings?.distanceUnit = du
     }
 }
 

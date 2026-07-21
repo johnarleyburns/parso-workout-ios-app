@@ -19,7 +19,7 @@ public final class AppSettings {
         // In UI-test mode, start from a clean, deterministic preference set so
         // test order can never bleed through persisted UserDefaults.
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {
-            for key in [SettingsKey.unit, SettingsKey.prRule, SettingsKey.oneRepMaxFormula,
+            for key in [SettingsKey.unit, SettingsKey.distanceUnit, SettingsKey.prRule, SettingsKey.oneRepMaxFormula,
                         SettingsKey.stepGoal, SettingsKey.weeklyCardioMinutesGoal,
                         SettingsKey.restSeconds, SettingsKey.warmupMinutes, SettingsKey.cooldownMinutes,
                         SettingsKey.lastHealthSync, "settings.autoRest",
@@ -45,6 +45,7 @@ public final class AppSettings {
         // Onboarding — true after the user completes the 4-screen flow.
         self.hasCompletedOnboarding = defaults.bool(forKey: "settings.hasCompletedOnboarding")
         self.unit = Self.read(defaults, SettingsKey.unit, MeasurementUnitPreference.self) ?? SettingsDefault.unit
+        self.distanceUnit = Self.read(defaults, SettingsKey.distanceUnit, DistanceUnitPreference.self) ?? SettingsDefault.distanceUnit
         self.prRule = Self.read(defaults, SettingsKey.prRule, PRRule.self) ?? SettingsDefault.prRule
         self.formula = Self.read(defaults, SettingsKey.oneRepMaxFormula, OneRepMaxFormula.self) ?? SettingsDefault.oneRepMaxFormula
         self.stepGoal = defaults.object(forKey: SettingsKey.stepGoal) as? Int ?? SettingsDefault.stepGoal
@@ -150,6 +151,7 @@ public final class AppSettings {
     }
 
     public var unit: MeasurementUnitPreference { didSet { defaults.set(unit.rawValue, forKey: SettingsKey.unit) } }
+    public var distanceUnit: DistanceUnitPreference { didSet { defaults.set(distanceUnit.rawValue, forKey: SettingsKey.distanceUnit) } }
     public var prRule: PRRule { didSet { defaults.set(prRule.rawValue, forKey: SettingsKey.prRule) } }
     public var formula: OneRepMaxFormula { didSet { defaults.set(formula.rawValue, forKey: SettingsKey.oneRepMaxFormula) } }
     public var stepGoal: Int { didSet { defaults.set(stepGoal, forKey: SettingsKey.stepGoal) } }
@@ -320,7 +322,8 @@ public extension AppSettings {
     /// profile) so a fresh install round-trips exactly.
     func exportPreferences() -> ExportPreferences {
         ExportPreferences(
-            unit: unit.rawValue, prRule: prRule.rawValue, oneRepMaxFormula: formula.rawValue,
+            unit: unit.rawValue, distanceUnit: distanceUnit.rawValue,
+            prRule: prRule.rawValue, oneRepMaxFormula: formula.rawValue,
             stepGoal: nil, weeklyCardioMinutesGoal: weeklyCardioMinutesGoal, restSeconds: restSeconds,
             warmupMinutes: warmupMinutes, cooldownMinutes: cooldownMinutes, autoStartRest: autoStartRest,
             idleTimeoutMinutes: idleTimeoutMinutes, gpsHighAccuracy: gpsHighAccuracy, autoPause: autoPause,
@@ -340,6 +343,7 @@ public extension AppSettings {
     /// (partial/legacy exports never clobber existing settings).
     func applyImportedPreferences(_ p: ExportPreferences) {
         if let v = p.unit.flatMap(MeasurementUnitPreference.init(rawValue:)) { unit = v }
+        if let v = p.distanceUnit.flatMap(DistanceUnitPreference.init(rawValue:)) { distanceUnit = v }
         if let v = p.prRule.flatMap(PRRule.init(rawValue:)) { prRule = v }
         if let v = p.oneRepMaxFormula.flatMap(OneRepMaxFormula.init(rawValue:)) { formula = v }
         if let v = p.stepGoal { stepGoal = v }

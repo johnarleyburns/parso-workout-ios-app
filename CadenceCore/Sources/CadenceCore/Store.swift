@@ -57,11 +57,13 @@ public enum SettingsKey {
     public static let restSeconds = "settings.restSeconds"   // Int
     public static let warmupMinutes = "settings.warmupMinutes"   // Int (minutes)
     public static let cooldownMinutes = "settings.cooldownMinutes" // Int (minutes)
+    public static let distanceUnit = "settings.distanceUnit"     // DistanceUnitPreference.rawValue
     public static let lastHealthSync = "settings.lastHealthSync" // Date (timeIntervalSince1970)
 }
 
 public enum SettingsDefault {
     public static let unit = MeasurementUnitPreference.kilograms
+    public static let distanceUnit = DistanceUnitPreference.kilometers
     public static let prRule = PRRule.estimated1RM
     public static let oneRepMaxFormula = OneRepMaxFormula.epley
     public static let stepGoal = 10_000

@@ -76,7 +76,7 @@ final class WatchCardioModelsTests: XCTestCase {
     }
 
     func testDistanceFormat_miles() {
-        let m = CardioMetricsModel(kind: .run, unit: .pounds)
+        let m = CardioMetricsModel(kind: .run, unit: .kilograms, distanceUnit: .miles)
         m.updateDistance(1609.344)
         XCTAssertTrue(m.formatDistance().contains("mi"))
     }
@@ -126,7 +126,7 @@ final class WatchCardioModelsTests: XCTestCase {
     }
 
     func testDistanceFormat_imperial_roundsCorrectly() {
-        let m = CardioMetricsModel(kind: .run, unit: .pounds)
+        let m = CardioMetricsModel(kind: .run, unit: .kilograms, distanceUnit: .miles)
         m.updateDistance(0)
         XCTAssertTrue(m.formatDistance().contains("mi"))
     }
@@ -179,18 +179,21 @@ final class WatchCardioModelsTests: XCTestCase {
         let m = IntervalSetupModel(kind: "HIIT")
         XCTAssertEqual(m.rounds, 8)
         XCTAssertEqual(m.warmupSeconds, 180)
-        XCTAssertEqual(m.workSeconds, 30)
-        XCTAssertEqual(m.restSeconds, 30)
+        XCTAssertEqual(m.workSeconds, 20)
+        XCTAssertEqual(m.restSeconds, 10)
         XCTAssertEqual(m.cooldownSeconds, 120)
+        XCTAssertEqual(m.hiitProtocol, .tabata)
     }
 
     func testBoxingDefaults() {
         let m = IntervalSetupModel(kind: "Boxing")
         XCTAssertEqual(m.rounds, 8)
         XCTAssertEqual(m.warmupSeconds, 180)
-        XCTAssertEqual(m.workSeconds, 300)
+        XCTAssertEqual(m.workSeconds, 180)
         XCTAssertEqual(m.restSeconds, 60)
         XCTAssertEqual(m.cooldownSeconds, 120)
+        XCTAssertEqual(m.boxingRoundMinutes, 3)
+        XCTAssertEqual(m.boxingRestSeconds, 60)
     }
 
     func testIntervalAcceptsSyncedWarmupAndCooldown() {
@@ -266,5 +269,117 @@ final class WatchCardioModelsTests: XCTestCase {
         XCTAssertFalse(plan.phases.contains { $0.kind == .warmup })
         XCTAssertFalse(plan.phases.contains { $0.kind == .cooldown })
         XCTAssertEqual(plan.workRounds, 1)
+    }
+
+    // MARK: - DistanceUnitPreference formatting
+
+    func testKgWeightMilesDistance_formatsDistanceAsMiles() {
+        let m = CardioMetricsModel(kind: .run, unit: .kilograms, distanceUnit: .miles)
+        m.updateDistance(1609.344)
+        XCTAssertTrue(m.formatDistance().contains("mi"))
+    }
+
+    func testPoundsWeightKmDistance_formatsDistanceAsKilometers() {
+        let m = CardioMetricsModel(kind: .walk, unit: .pounds, distanceUnit: .kilometers)
+        m.updateDistance(500)
+        XCTAssertTrue(m.formatDistance().contains("m"))
+        m.updateDistance(2000)
+        XCTAssertTrue(m.formatDistance().contains("km"))
+    }
+
+    func testPaceLabelFollowsDistanceUnit() {
+        let mMiles = CardioMetricsModel(kind: .run, unit: .kilograms, distanceUnit: .miles)
+        let mKm = CardioMetricsModel(kind: .run, unit: .pounds, distanceUnit: .kilometers)
+
+        mMiles.updateDistance(100); mMiles.elapsed = 360
+        mKm.updateDistance(1000); mKm.elapsed = 360
+
+        let paceMiles = mMiles.formatPace()
+        let paceKm = mKm.formatPace()
+        if paceMiles != "--" { XCTAssertTrue(paceMiles.contains("/mi")) }
+        if paceKm != "--" { XCTAssertTrue(paceKm.contains("/km")) }
+    }
+
+    func testSpeedLabelFollowsDistanceUnit() {
+        let mMiles = CardioMetricsModel(kind: .cycle, unit: .kilograms, distanceUnit: .miles)
+        let mKm = CardioMetricsModel(kind: .cycle, unit: .pounds, distanceUnit: .kilometers)
+
+        mMiles.updateDistance(100); mMiles.elapsed = 10
+        mKm.updateDistance(100); mKm.elapsed = 10
+
+        let speedMiles = mMiles.formatSpeed()
+        let speedKm = mKm.formatSpeed()
+        if speedMiles != "--" { XCTAssertTrue(speedMiles.hasSuffix("mph")) }
+        if speedKm != "--" { XCTAssertTrue(speedKm.hasSuffix("km/h")) }
+    }
+
+    func testRowingSplitRemains500m() {
+        let m = CardioMetricsModel(kind: .rowing, unit: .kilograms, distanceUnit: .miles)
+        m.updateDistance(1000); m.elapsed = 150
+        m.recomputeSplitPer500m()
+        XCTAssertTrue(m.formatSplit().contains("/500m"))
+    }
+
+    // MARK: - HIIT protocol picker
+
+    func testHIITSetupDefaultsToTabata() {
+        let m = IntervalSetupModel(kind: "HIIT")
+        XCTAssertEqual(m.hiitProtocol, .tabata)
+        let plan = m.hiitIntervalPlan()
+        XCTAssertEqual(plan.name, "Tabata")
+    }
+
+    func testEachHIITProtocolMapsToBuiltInFactory() {
+        let model = IntervalSetupModel(kind: "HIIT")
+        for proto in HIITProtocol.allCases {
+            model.hiitProtocol = proto
+            let plan = model.hiitIntervalPlan()
+            XCTAssertFalse(plan.phases.isEmpty, "\(proto.displayName) plan should not be empty")
+            XCTAssertGreaterThan(plan.totalDuration, 0, "\(proto.displayName) should have positive duration")
+        }
+    }
+
+    func testBoxingDefaultsRounds() {
+        let m = IntervalSetupModel(kind: "Boxing")
+        XCTAssertEqual(m.rounds, 8)
+        XCTAssertEqual(m.boxingRoundMinutes, 3)
+        XCTAssertEqual(m.boxingRestSeconds, 60)
+    }
+
+    func testBoxingPlanHasNoWarmupAndNoCooldown() {
+        let m = IntervalSetupModel(kind: "Boxing")
+        let plan = m.boxingIntervalPlan()
+        XCTAssertFalse(plan.phases.contains { $0.kind == .warmup })
+        XCTAssertFalse(plan.phases.contains { $0.kind == .cooldown })
+    }
+
+    func testBoxingRoundsLimitedTo1to20() {
+        let m = IntervalSetupModel(kind: "Boxing")
+        m.rounds = 25
+        let c = m.clamped()
+        XCTAssertEqual(c.rounds, 20)
+        m.rounds = 0
+        let c2 = m.clamped()
+        XCTAssertEqual(c2.rounds, 1)
+    }
+
+    func testBoxingRoundLengthOnly2or3Minutes() {
+        let m = IntervalSetupModel(kind: "Boxing")
+        m.boxingRoundMinutes = 5
+        let c = m.clamped()
+        XCTAssertEqual(c.boxingRoundMinutes, 3)
+        m.boxingRoundMinutes = 1
+        let c2 = m.clamped()
+        XCTAssertEqual(c2.boxingRoundMinutes, 2)
+    }
+
+    func testBoxingRestOnly30or60Seconds() {
+        let m = IntervalSetupModel(kind: "Boxing")
+        m.boxingRestSeconds = 45
+        let c = m.clamped()
+        XCTAssertEqual(c.boxingRestSeconds, 60)
+        m.boxingRestSeconds = 15
+        let c2 = m.clamped()
+        XCTAssertEqual(c2.boxingRestSeconds, 30)
     }
 }

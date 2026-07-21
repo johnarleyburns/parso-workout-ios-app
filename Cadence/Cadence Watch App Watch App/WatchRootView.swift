@@ -141,8 +141,9 @@ struct WatchRootView: View {
     }
 
     private func intervalSetupModel(kind: String) -> IntervalSetupModel {
-        let syncedWarmup = watchManager.lastPhoneSyncAt == nil ? nil : watchAppSettings.warmupMinutes * 60
-        let syncedCooldown = watchManager.lastPhoneSyncAt == nil ? nil : watchAppSettings.cooldownMinutes * 60
+        let isHIITOrBoxing = kind.lowercased() == "hiit" || kind.lowercased() == "boxing"
+        let syncedWarmup = isHIITOrBoxing ? nil : (watchManager.lastPhoneSyncAt == nil ? nil : watchAppSettings.warmupMinutes * 60)
+        let syncedCooldown = isHIITOrBoxing ? nil : (watchManager.lastPhoneSyncAt == nil ? nil : watchAppSettings.cooldownMinutes * 60)
         return IntervalSetupModel(kind: kind, warmupSeconds: syncedWarmup, cooldownSeconds: syncedCooldown)
     }
 }
@@ -159,21 +160,15 @@ private struct LiveHRView: View {
     var body: some View {
         VStack(spacing: 8) {
             Spacer()
-            if watchManager.isMonitoring {
+            if watchManager.isMonitoring || watchManager.isActive {
                 Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
                 Text(bpmText).font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(zoneColor)
                 HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
                 Button("Stop") { watchManager.stopMonitoringSession() }.buttonStyle(.bordered).padding(.top, 10)
-            } else if watchManager.isActive {
-                Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
-                Text(bpmText).font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(zoneColor)
-                HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
             } else {
-                Text("Not monitoring").font(.caption.bold()).foregroundStyle(.secondary)
                 Text("--").font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(.secondary)
                 HStack(spacing: 3) { ForEach(1...5, id: \.self) { _ in RoundedRectangle(cornerRadius: 2).fill(.gray.opacity(0.25)).frame(width: 28, height: 6) } }
                 Button("Start monitoring") { watchManager.startMonitoringSession() }.buttonStyle(.borderedProminent).tint(.blue).padding(.top, 8)
-                Text("Runs a sensor-only session.\nNothing is saved to Health.").font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.horizontal, 8).padding(.top, 4)
             }
             Spacer()
         }
@@ -183,7 +178,7 @@ private struct LiveHRView: View {
     }
     private var bpmText: String { guard let bpm = watchManager.currentBPM else { return "--" }; return String(format: "%.0f", bpm) }
     private var zone: Int { guard let bpm = watchManager.currentBPM else { return 0 }; let pct = bpm / (220.0 - 30); switch pct { case ..<0.60: return 1; case ..<0.70: return 2; case ..<0.80: return 3; case ..<0.90: return 4; default: return 5 } }
-    private var zoneLabel: String { switch zone { case 1: "Recovery"; case 2: "Endurance"; case 3: "Tempo"; case 4: "Threshold"; case 5: "Max"; default: "--" } }
+    private var zoneLabel: String { switch zone { case 1: "Z1 / Recovery"; case 2: "Z2 / Endurance"; case 3: "Z3 / Tempo"; case 4: "Z4 / Threshold"; case 5: "Z5 / Max"; default: "--" } }
     private var zoneColor: Color { switch zone { case 1: .cyan; case 2: .green; case 3: .yellow; case 4: .orange; case 5: .red; default: .secondary } }
     private var zoneBackgroundColor: Color {
         guard watchManager.isMonitoring || watchManager.isActive else { return Color.clear }

@@ -63,6 +63,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         phoneSyncState = .syncing(Date())
         let current = WatchSync.Preferences(
             unit: s.unit,
+            distanceUnit: s.distanceUnit,
             intervalColorBlind: s.intervalColorBlind,
             restSeconds: s.restSeconds,
             warmupMinutes: s.warmupMinutes,
@@ -71,6 +72,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         )
         let incoming = current.applying(context: applicationContext)
         s.unit = incoming.unit
+        s.distanceUnit = incoming.distanceUnit
         s.intervalColorBlind = incoming.intervalColorBlind
         s.restSeconds = incoming.restSeconds
         s.warmupMinutes = incoming.warmupMinutes

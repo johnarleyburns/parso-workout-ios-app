@@ -46,15 +46,17 @@ public final class CardioMetricsModel {
     public var isAutoPaused: Bool = false
 
     let unit: MeasurementUnitPreference
+    let distanceUnit: DistanceUnitPreference
     let kind: WorkoutConfigurationSpec.CardioKind
 
     private var lastDistance: Double = 0
     private var lastDistanceTime: Date?
     private var distanceHistory: [(time: Date, dist: Double)] = []
 
-    public init(kind: WorkoutConfigurationSpec.CardioKind, unit: MeasurementUnitPreference = .kilograms) {
+    public init(kind: WorkoutConfigurationSpec.CardioKind, unit: MeasurementUnitPreference = .kilograms, distanceUnit: DistanceUnitPreference = .kilometers) {
         self.kind = kind
         self.unit = unit
+        self.distanceUnit = distanceUnit
     }
 
     public func updateElapsed(_ s: TimeInterval) { elapsed = s }
@@ -94,7 +96,7 @@ public final class CardioMetricsModel {
 
     public func formatDistance() -> String {
         let m = distanceMeters
-        if unit == .kilograms {
+        if distanceUnit == .kilometers {
             if m >= 1000 { return String(format: "%.2f km", m / 1000) }
             return String(format: "%.0f m", m)
         } else {
@@ -105,15 +107,15 @@ public final class CardioMetricsModel {
 
     public func formatPace() -> String {
         guard let sec = currentPaceSecPerKm, sec.isFinite, sec > 0 else { return "--" }
-        let perUnit: Double = unit == .kilograms ? sec : sec * 1.609344
+        let perUnit: Double = distanceUnit == .kilometers ? sec : sec * 1.609344
         let m = Int(perUnit) / 60, s = Int(perUnit) % 60
-        let label = unit == .kilograms ? "/km" : "/mi"
+        let label = distanceUnit == .kilometers ? "/km" : "/mi"
         return String(format: "%d:%02d %@", m, s, label)
     }
 
     public func formatSpeed() -> String {
         guard let mps = currentSpeedMPS, mps.isFinite else { return "--" }
-        if unit == .kilograms {
+        if distanceUnit == .kilometers {
             return String(format: "%.1f km/h", mps * 3.6)
         } else {
             return String(format: "%.1f mph", mps * 2.23694)
@@ -180,6 +182,9 @@ public final class IntervalSetupModel {
     public var workSeconds: Int
     public var restSeconds: Int
     public var cooldownSeconds: Int
+    public var hiitProtocol: HIITProtocol = .tabata
+    public var boxingRoundMinutes: Int = 3
+    public var boxingRestSeconds: Int = 60
 
     public init(kind: String, warmupSeconds: Int? = nil, cooldownSeconds: Int? = nil) {
         self.kind = kind
@@ -187,9 +192,12 @@ public final class IntervalSetupModel {
         self.cooldownSeconds = Self.clampOptionalDuration(cooldownSeconds, fallback: 120, allowsZero: true)
         switch kind.lowercased() {
         case "hiit":
-            self.rounds = 8; self.workSeconds = 30; self.restSeconds = 30
+            self.rounds = 8; self.workSeconds = 20; self.restSeconds = 10
+            self.hiitProtocol = .tabata
         case "boxing":
-            self.rounds = 8; self.workSeconds = 300; self.restSeconds = 60
+            self.rounds = 8; self.workSeconds = 180; self.restSeconds = 60
+            self.boxingRoundMinutes = 3
+            self.boxingRestSeconds = 60
         default:
             self.rounds = 8; self.workSeconds = 180; self.restSeconds = 60
         }
@@ -207,6 +215,12 @@ public final class IntervalSetupModel {
         copy.workSeconds = max(5, min(600, workSeconds))
         copy.restSeconds = max(5, min(600, restSeconds))
         copy.cooldownSeconds = max(0, min(600, cooldownSeconds))
+        copy.hiitProtocol = hiitProtocol
+        copy.boxingRoundMinutes = max(2, min(3, boxingRoundMinutes))
+        copy.boxingRestSeconds = boxingRestSeconds <= 30 ? 30 : 60
+        if kind.lowercased() == "boxing" {
+            copy.rounds = max(1, min(20, rounds))
+        }
         return copy
     }
 
@@ -220,5 +234,36 @@ public final class IntervalSetupModel {
             rest: TimeInterval(setup.restSeconds),
             cooldown: TimeInterval(setup.cooldownSeconds)
         )
+    }
+
+    public func hiitIntervalPlan() -> IntervalPlan {
+        switch hiitProtocol {
+        case .tabata: return .tabata()
+        case .norwegian4x4: return .norwegian4x4()
+        case .gibala: return .gibala()
+        case .sit: return .sit()
+        case .rehit: return .rehit()
+        case .tenTwentyThirty: return .tenTwentyThirty()
+        }
+    }
+
+    public func boxingIntervalPlan() -> IntervalPlan {
+        let setup = clamped()
+        return .boxing(rounds: setup.rounds, round: TimeInterval(setup.boxingRoundMinutes * 60), rest: TimeInterval(setup.boxingRestSeconds))
+    }
+}
+
+public enum HIITProtocol: String, CaseIterable, Codable, Sendable, Identifiable {
+    case tabata, norwegian4x4, gibala, sit, rehit, tenTwentyThirty
+    public var id: String { rawValue }
+    public var displayName: String {
+        switch self {
+        case .tabata: return "Tabata"
+        case .norwegian4x4: return "Norwegian 4x4"
+        case .gibala: return "Gibala"
+        case .sit: return "SIT (Wingate)"
+        case .rehit: return "REHIT"
+        case .tenTwentyThirty: return "10-20-30"
+        }
     }
 }

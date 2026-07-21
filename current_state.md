@@ -2,7 +2,21 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-19 — Week volume & gaps (P1-P3) shipped._
+_Last updated: 2026-07-21 — Watch adjustment phase shipped._
+
+## Watch adjustments — 2026-07-21 (`docs/watch-adjustments-plan.md`) — SHIPPED
+
+One-phase comprehensive Apple Watch UI and model changes:
+- **Lock recovery:** Removed app-owned locked overlay; water lock now delegated to system.
+- **Independent units:** `DistanceUnitPreference` added alongside `MeasurementUnitPreference`; weight (lb/kg) and distance (mi/km) are now independent. New `WatchUnitsView` shows both sections; watch sync carries distance unit; iPhone handles `set_distance_unit` message.
+- **Cardio formatting:** `CardioMetricsModel` uses `DistanceUnitPreference` for distance, pace, and speed formatting. Rowing split stays `/500m` always.
+- **Live HR cleanup:** Removed "Not monitoring" idle label and explanatory text; zone label now says "Z# / Name".
+- **Summary cleanup:** Renamed Duration→Total, Avg/Max HR→Avg HR (single number), removed Active kcal row, improved layout.
+- **GPS toggles:** Run/Walk/Cycle/Swim/Rowing use GPS toggle (default on) instead of Indoor/Outdoor buttons. Swim hides pool/open-water language; GPS off uses `.pool(lapLength: 25)` internally.
+- **HIIT protocol picker:** Only built-in protocol selection (Tabata, Norwegian 4x4, Gibala, SIT, REHIT, 10-20-30); all warmup/work/rest/cooldown/rounds are fixed.
+- **Boxing simplified:** Rounds (1-20, default 8), Round (2/3 min, default 3), Rest (30/60 sec, default 60). No warmup, no cooldown.
+
+`swift test` **1265 tests, 0 failures** (16 files changed).
 
 ## Week volume & gaps — 2026-07-19 (`plans/week-volume-and-gaps/2026-07-19/`) — SHIPPED
 

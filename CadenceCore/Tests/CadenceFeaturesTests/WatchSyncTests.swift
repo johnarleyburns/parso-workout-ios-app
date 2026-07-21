@@ -38,6 +38,7 @@ final class WatchSyncTests: XCTestCase {
         var prefs = WatchSync.Preferences()
         prefs = prefs.applying(context: [
             "settings.unit": "pounds",
+            "settings.distanceUnit": "miles",
             "settings.intervalColorBlind": true,
             "settings.restSeconds": 120,
             "settings.warmupMinutes": 4,
@@ -45,11 +46,18 @@ final class WatchSyncTests: XCTestCase {
             "settings.workoutSounds": false,
         ])
         XCTAssertEqual(prefs.unit, .pounds)
+        XCTAssertEqual(prefs.distanceUnit, .miles)
         XCTAssertTrue(prefs.intervalColorBlind)
         XCTAssertEqual(prefs.restSeconds, 120)
         XCTAssertEqual(prefs.warmupMinutes, 4)
         XCTAssertEqual(prefs.cooldownMinutes, 3)
         XCTAssertFalse(prefs.workoutSounds)
+    }
+
+    func testContextAppliesDistanceUnit() {
+        var prefs = WatchSync.Preferences(distanceUnit: .kilometers)
+        prefs = prefs.applying(context: ["settings.distanceUnit": "miles"])
+        XCTAssertEqual(prefs.distanceUnit, .miles)
     }
 
     func testContextAppliesRecentPartners() {
@@ -67,10 +75,11 @@ final class WatchSyncTests: XCTestCase {
     }
 
     func testContextDictRoundTrip() {
-        let prefs = WatchSync.Preferences(unit: .pounds, intervalColorBlind: true, restSeconds: 60, warmupMinutes: 4, cooldownMinutes: 3, workoutSounds: false, recentPartnerNames: ["Jo"])
+        let prefs = WatchSync.Preferences(unit: .pounds, distanceUnit: .miles, intervalColorBlind: true, restSeconds: 60, warmupMinutes: 4, cooldownMinutes: 3, workoutSounds: false, recentPartnerNames: ["Jo"])
         let dict = WatchSync.Preferences.contextDict(prefs)
         let restored = WatchSync.Preferences().applying(context: dict)
         XCTAssertEqual(restored.unit, prefs.unit)
+        XCTAssertEqual(restored.distanceUnit, prefs.distanceUnit)
         XCTAssertEqual(restored.intervalColorBlind, prefs.intervalColorBlind)
         XCTAssertEqual(restored.restSeconds, prefs.restSeconds)
         XCTAssertEqual(restored.warmupMinutes, prefs.warmupMinutes)
@@ -99,6 +108,18 @@ final class WatchSyncTests: XCTestCase {
         var prefs = WatchSync.Preferences(unit: .kilograms)
         prefs = prefs.applying(context: ["settings.unit": "stones"])
         XCTAssertEqual(prefs.unit, .kilograms)
+    }
+
+    func testInvalidDistanceUnitPreservesExisting() {
+        var prefs = WatchSync.Preferences(distanceUnit: .kilometers)
+        prefs = prefs.applying(context: ["settings.distanceUnit": "parsecs"])
+        XCTAssertEqual(prefs.distanceUnit, .kilometers)
+    }
+
+    func testMissingDistanceUnitPreservesDefaults() {
+        var prefs = WatchSync.Preferences(distanceUnit: .miles)
+        prefs = prefs.applying(context: [:])
+        XCTAssertEqual(prefs.distanceUnit, .miles)
     }
 
     func testInvalidValuesPreserveExisting() {

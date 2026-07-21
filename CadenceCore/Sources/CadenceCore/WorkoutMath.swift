@@ -106,6 +106,28 @@ public enum MeasurementUnitPreference: String, CaseIterable, Codable, Sendable, 
     }
 }
 
+/// Global distance unit preference for cardio (independent of weight).
+public enum DistanceUnitPreference: String, CaseIterable, Codable, Sendable, Identifiable {
+    case kilometers, miles
+    public var id: String { rawValue }
+    public var abbreviation: String {
+        switch self {
+        case .kilometers: return "km"
+        case .miles: return "mi"
+        }
+    }
+    public var displayName: String {
+        switch self {
+        case .kilometers: return "Kilometers (km)"
+        case .miles: return "Miles (mi)"
+        }
+    }
+
+    public static func unitDefault() -> DistanceUnitPreference {
+        Locale.current.measurementSystem == .us ? .miles : .kilometers
+    }
+}
+
 /// How a personal record is defined (FR-1.4, configurable).
 public enum PRRule: String, CaseIterable, Codable, Sendable, Identifiable {
     case topWeight        // heaviest weight lifted

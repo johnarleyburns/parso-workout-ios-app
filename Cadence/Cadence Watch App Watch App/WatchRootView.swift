@@ -161,8 +161,8 @@ private struct LiveHRView: View {
         VStack(spacing: 8) {
             Spacer()
             if watchManager.isMonitoring || watchManager.isActive {
-                Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
                 Text(bpmText).font(.system(size: 56, weight: .bold, design: .monospaced)).foregroundStyle(zoneColor)
+                Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
                 HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
                 Button("Stop") { watchManager.stopMonitoringSession() }.buttonStyle(.bordered).padding(.top, 10)
             } else {

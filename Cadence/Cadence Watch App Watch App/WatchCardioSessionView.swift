@@ -67,7 +67,6 @@ struct WatchCardioSessionView: View {
         let live = watchManager.liveSummary()
         metrics.updateElapsed(live.duration)
         metrics.updateHR(watchManager.currentBPM)
-        metrics.updateKcal(watchManager.activeEnergyKcal)
         metrics.updateDistance(watchManager.distanceMeters)
         metrics.lapCount = watchManager.autoLapCount
         metrics.manualLapCount = watchManager.manualLapCount
@@ -81,7 +80,6 @@ struct WatchCardioSessionView: View {
             duration: live.duration,
             avgHR: live.avgHR,
             maxHR: live.maxHR,
-            activeKcal: live.activeKcal,
             distanceMeters: live.distanceMeters
         )
     }

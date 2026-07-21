@@ -180,7 +180,6 @@ struct WatchIntervalView: View {
                 if let avg = s.avgHR, let max = s.maxHR {
                     summaryRow("Avg / Max HR", "\(Int(avg)) / \(Int(max))")
                 }
-                summaryRow("Active kcal", "\(Int(s.activeKcal))")
             }
 
             Button("Save workout") {
@@ -283,7 +282,6 @@ struct WatchIntervalView: View {
             duration: sum.duration,
             avgHR: sum.avgHR,
             maxHR: sum.maxHR,
-            activeKcal: sum.activeKcal,
             distanceMeters: sum.distanceMeters
         )
         showSummary = true

@@ -26,7 +26,6 @@ final class WatchWorkoutManager: NSObject {
     private(set) var bleBattery: Int? = nil
 
     private(set) var elapsed: TimeInterval = 0
-    private(set) var activeEnergyKcal: Double = 0
     private(set) var avgHeartRate: Double?
     private(set) var maxHeartRate: Double?
     private(set) var distanceMeters: Double = 0
@@ -36,7 +35,7 @@ final class WatchWorkoutManager: NSObject {
     var lastPhoneSyncError: String?
 
     struct SavedWorkoutSummary {
-        let duration: TimeInterval, avgHR: Double?, maxHR: Double?, activeKcal: Double, distanceMeters: Double
+        let duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double
     }
 
     private var hrSourceRaw: String {
@@ -94,7 +93,6 @@ final class WatchWorkoutManager: NSObject {
         let hrType = HKObjectType.quantityType(forIdentifier: .heartRate)!
         var shareTypes: Set<HKSampleType> = [
             HKObjectType.workoutType(),
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
             HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
             HKObjectType.quantityType(forIdentifier: .distanceCycling)!,
             HKObjectType.quantityType(forIdentifier: .distanceSwimming)!,
@@ -106,7 +104,6 @@ final class WatchWorkoutManager: NSObject {
         }
         let readTypes: Set<HKObjectType> = [
             hrType,
-            HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
             HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
             HKObjectType.quantityType(forIdentifier: .distanceCycling)!,
             HKObjectType.quantityType(forIdentifier: .distanceSwimming)!,
@@ -157,7 +154,7 @@ final class WatchWorkoutManager: NSObject {
         if save {
             elapsed = effectiveElapsed
             let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
-            savedSummary = SavedWorkoutSummary(duration: elapsed, avgHR: avg, maxHR: maxHeartRate, activeKcal: activeEnergyKcal, distanceMeters: distanceMeters)
+            savedSummary = SavedWorkoutSummary(duration: elapsed, avgHR: avg, maxHR: maxHeartRate, distanceMeters: distanceMeters)
         }
         let b = builder; let s = session
         builder = nil; session = nil; extendedSession?.invalidate(); extendedSession = nil
@@ -166,7 +163,7 @@ final class WatchWorkoutManager: NSObject {
         sessionStart = nil; accumulatedHR = 0; hrCount = 0
         isSwimSession = false; isOutdoorSession = false
         autoPauseDetector.reset(); lastAutoPauseDistance = 0
-        elapsed = 0; activeEnergyKcal = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
+        elapsed = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
         elapsedTracker.reset()
         if let b, let s {
             b.endCollection(withEnd: Date()) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
@@ -174,10 +171,10 @@ final class WatchWorkoutManager: NSObject {
         }
     }
 
-    func liveSummary() -> (duration: TimeInterval, avgHR: Double?, maxHR: Double?, activeKcal: Double, distanceMeters: Double) {
+    func liveSummary() -> (duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double) {
         elapsed = effectiveElapsed
         let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
-        return (elapsed, avg, maxHeartRate, activeEnergyKcal, distanceMeters)
+        return (elapsed, avg, maxHeartRate, distanceMeters)
     }
 
     func resetSavedSummary() { savedSummary = nil }
@@ -346,14 +343,6 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
                     self.relayBPM(bpm)
                 }
             }
-        }
-
-        let energyType = HKQuantityType(.activeEnergyBurned)
-        if collectedTypes.contains(energyType),
-           let stats = workoutBuilder.statistics(for: energyType),
-           let qty = stats.sumQuantity() {
-            let kcal = qty.doubleValue(for: HKUnit.kilocalorie())
-            Task { @MainActor in self.activeEnergyKcal = kcal }
         }
 
         let distanceTypes: [HKQuantityTypeIdentifier] = [.distanceWalkingRunning, .distanceCycling, .distanceSwimming]

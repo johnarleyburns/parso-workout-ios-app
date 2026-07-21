@@ -55,7 +55,7 @@ struct WatchIntervalSetupView: View {
             Text("Protocol")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Picker("Protocol", selection: $model.hiitProtocol) {
+            Picker("", selection: $model.hiitProtocol) {
                 ForEach(HIITProtocol.allCases, id: \.self) { proto in
                     Text(proto.displayName).tag(proto)
                 }
@@ -70,9 +70,41 @@ struct WatchIntervalSetupView: View {
     private func boxingSetup(compact: Bool) -> some View {
         VStack(spacing: compact ? 2 : 4) {
             boxingPickerRow("Rounds", value: $model.rounds, range: 1...20, step: 1, format: { "\($0)" }, compact: compact)
-            boxingPickerRow("Round", value: $model.boxingRoundMinutes, range: 2...3, step: 1, format: { "\($0) min" }, compact: compact)
-            boxingPickerRow("Rest", value: $model.boxingRestSeconds, range: 30...60, step: 30, format: { "\($0) sec" }, compact: compact)
+            boxingRadioRow("Round", selection: $model.boxingRoundMinutes, options: [(2, "2 min"), (3, "3 min")], compact: compact)
+            boxingRadioRow("Rest", selection: $model.boxingRestSeconds, options: [(30, "30 sec"), (60, "60 sec")], compact: compact)
         }
+    }
+
+    private func boxingRadioRow(_ label: String, selection: Binding<Int>, options: [(value: Int, label: String)], compact: Bool) -> some View {
+        let rowHeight: CGFloat = compact ? 24 : 28
+        return HStack(spacing: 3) {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(width: 40, alignment: .leading)
+
+            ForEach(options, id: \.value) { option in
+                Button {
+                    selection.wrappedValue = option.value
+                } label: {
+                    Text(option.label)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                        .background(selection.wrappedValue == option.value ? Color.white.opacity(0.22) : Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(height: rowHeight)
+        .padding(.horizontal, 5)
+        .background(.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
     private func boxingPickerRow(_ label: String, value: Binding<Int>, range: ClosedRange<Int>, step: Int, format: @escaping (Int) -> String, compact: Bool) -> some View {

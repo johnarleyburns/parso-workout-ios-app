@@ -39,7 +39,6 @@ public final class CardioMetricsModel {
     public var currentSpeedMPS: Double?
     public var hrBPM: Double?
     public var hrZone: Int = 0
-    public var activeKcal: Double = 0
     public var lapCount: Int = 0
     public var manualLapCount: Int = 0
     public var splitPer500m: Double?
@@ -64,7 +63,6 @@ public final class CardioMetricsModel {
         hrBPM = bpm
         if let bpm { hrZone = CardioMath.hrZone(bpm: bpm, maxHR: CardioMath.defaultMaxHR(age: nil)) }
     }
-    public func updateKcal(_ kcal: Double) { activeKcal = kcal }
     public func updateDistance(_ m: Double) {
         distanceMeters = m
         recomputeSplitPer500m()

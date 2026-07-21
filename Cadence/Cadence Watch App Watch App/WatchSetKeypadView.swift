@@ -88,7 +88,8 @@ struct WatchSetKeypadView: View {
                 }
                 .buttonStyle(.bordered)
                 Text(model.weightValue(model.currentWeight))
-                    .font(.title2.monospaced())
+                    .font(.title3.monospacedDigit())
+                    .minimumScaleFactor(0.7)
                     .focusable()
                     .digitalCrownRotation(
                         $bindableModel.currentWeight,

@@ -267,7 +267,7 @@ public final class WatchStrengthFlowModel {
     }
 
     public func weightValue(_ kg: Double) -> String {
-        Format.weightValue(kg, unit: unit)
+        Format.weightValue(kg, unit: unit, decimals: 0)
     }
 
     public var durationText: String {

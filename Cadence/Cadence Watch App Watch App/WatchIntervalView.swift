@@ -177,8 +177,8 @@ struct WatchIntervalView: View {
             let sum = watchManager.savedSummary
             if let s = sum {
                 summaryRow("Duration", formatTime(s.duration))
-                if let avg = s.avgHR, let max = s.maxHR {
-                    summaryRow("Avg / Max HR", "\(Int(avg)) / \(Int(max))")
+                if let avg = s.avgHR {
+                    summaryRow("Avg HR", "\(Int(avg))")
                 }
             }
 

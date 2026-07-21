@@ -36,9 +36,7 @@ struct WatchStrengthHomeView: View {
                         Label("Partners", systemImage: "person.2")
                     }
                 }
-            }
 
-            Section {
                 Button { model.finish() } label: {
                     Label("Finish & Save", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)

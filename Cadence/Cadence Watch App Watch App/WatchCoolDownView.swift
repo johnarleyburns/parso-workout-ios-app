@@ -16,8 +16,6 @@ struct WatchCoolDownView: View {
                 Text(formatTime(TimeInterval(model.cooldownTimerModel.remaining)))
                     .font(.system(size: 52, weight: .heavy, design: .monospaced))
                     .foregroundStyle(.white)
-                Text("Breathe · stretch").font(.caption2).foregroundStyle(.white.opacity(0.8))
-
                 HStack(spacing: 16) {
                     Button("+1m") { model.cooldownTimerModel.add(60) }
                         .foregroundStyle(.white)

@@ -15,8 +15,6 @@ struct WatchStrengthSummaryView: View {
             Text("Saved").font(.headline)
 
             summaryRow("Duration", model.durationText)
-            summaryRow("Exercises · sets", "\(model.exerciseCount) · \(model.setCount)")
-            summaryRow("Volume", Format.weight(model.volume, unit: model.unit, decimals: 0))
 
             Button("Done") {
                 sendEndSession()

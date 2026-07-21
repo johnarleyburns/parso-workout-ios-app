@@ -69,8 +69,14 @@ struct WatchIntervalSetupView: View {
 
     private func boxingSetup(compact: Bool) -> some View {
         VStack(spacing: compact ? 2 : 4) {
-            boxingPickerRow("Rounds", value: $model.rounds, range: 1...20, step: 1, format: { "\($0)" }, compact: compact)
-            boxingRadioRow("Round", selection: $model.boxingRoundMinutes, options: [(2, "2 min"), (3, "3 min")], compact: compact)
+            HStack {
+                Spacer()
+                Text("Boxing")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+            boxingPickerRow("#Rnds", value: $model.rounds, range: 1...20, step: 1, format: { "\($0)" }, compact: compact)
+            boxingRadioRow("Work", selection: $model.boxingRoundMinutes, options: [(2, "2 min"), (3, "3 min")], compact: compact)
             boxingRadioRow("Rest", selection: $model.boxingRestSeconds, options: [(30, "30 sec"), (60, "60 sec")], compact: compact)
         }
     }

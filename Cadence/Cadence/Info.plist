@@ -9,6 +9,7 @@
 		<string>location</string>
 		<string>audio</string>
 		<string>bluetooth-central</string>
+		<string>remote-notification</string>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Cladiron reads your steps, workouts, heart rate, and — for recovery-aware coaching — your heart-rate variability, resting heart rate, sleep, and body weight, so your activity, Watch-recorded sessions, and readiness appear here. Your health data never leaves your device.</string>

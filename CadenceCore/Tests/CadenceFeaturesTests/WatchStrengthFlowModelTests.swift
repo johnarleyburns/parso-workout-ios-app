@@ -304,6 +304,52 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertFalse(text.isEmpty)
     }
 
+    // MARK: - Weight defaulting & display units (2.5 lb increments)
+
+    private func poundsModel() -> WatchStrengthFlowModel {
+        WatchStrengthFlowModel(context: context, unit: .pounds, cooldownDefault: 5, restDefault: 90)
+    }
+
+    /// The last working weight defaults the next set, snapped to the nearest
+    /// 2.5 in the display unit — 20 kg (≈44.09 lb) must show as 45 lb, never 44.
+    func testStartLogSet_pounds_defaultSnapsOddKgToNearest2point5() {
+        let m = poundsModel()
+        m.start()
+        let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
+        m.startLogSet(for: ex)
+        m.currentWeight = 20            // 20 kg == 44.09 lb canonical
+        _ = m.logSet()
+        m.finishRest()
+        m.startLogSet(for: ex)
+        XCTAssertEqual(m.currentWeightDisplay, 45, accuracy: 0.001)
+    }
+
+    /// With no history the empty-bar default also lands on a 2.5 boundary.
+    func testStartLogSet_pounds_noHistoryDefaultIsOn2point5Boundary() {
+        let m = poundsModel()
+        m.start()
+        let ex = try! WorkoutRepository.findOrCreateExercise(named: "Fresh", equipment: nil, in: context)
+        m.startLogSet(for: ex)
+        let d = m.currentWeightDisplay
+        XCTAssertEqual((d / 2.5).rounded() * 2.5, d, accuracy: 0.001)
+    }
+
+    /// The display accessor round-trips through canonical kg without drift.
+    func testCurrentWeightDisplay_roundTripsPounds() {
+        let m = poundsModel()
+        m.currentWeightDisplay = 135
+        XCTAssertEqual(m.currentWeightDisplay, 135, accuracy: 0.001)
+        XCTAssertEqual(m.currentWeight, WorkoutMath.canonical(135, from: .pounds), accuracy: 0.001)
+    }
+
+    /// A +2.5 chip adds exactly 2.5 lb (not 2.5 kg / ~5.5 lb).
+    func testChipIncrement_addsExactly2point5Pounds() {
+        let m = poundsModel()
+        m.currentWeightDisplay = 100
+        m.currentWeightDisplay += WeightIncrement(unit: .pounds).chips.last!  // +2.5
+        XCTAssertEqual(m.currentWeightDisplay, 102.5, accuracy: 0.001)
+    }
+
     func testPreviousSetHint() {
         let m = makeModel()
         m.start()

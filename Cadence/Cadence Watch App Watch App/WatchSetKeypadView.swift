@@ -83,27 +83,36 @@ struct WatchSetKeypadView: View {
             Text("Weight (\(model.unit.abbreviation))")
                 .font(.caption.bold()).foregroundStyle(.secondary)
             HStack(spacing: 6) {
-                Button("\(String(format: "%.0f", increment.chips.first!))") {
-                    model.currentWeight = max(increment.range.lowerBound, model.currentWeight + increment.chips.first!)
+                Button(increment.chipLabel(increment.chips.first!)) {
+                    adjustWeight(by: increment.chips.first!)
                 }
                 .buttonStyle(.bordered)
-                Text(model.weightValue(model.currentWeight))
+                Text(model.currentWeightText)
                     .font(.title3.monospacedDigit())
                     .minimumScaleFactor(0.7)
                     .focusable()
                     .digitalCrownRotation(
-                        $bindableModel.currentWeight,
+                        $bindableModel.currentWeightDisplay,
                         from: increment.range.lowerBound,
                         through: increment.range.upperBound,
                         by: increment.crownDetent,
                         sensitivity: .medium, isContinuous: false
                     )
-                Button("+\(String(format: "%.0f", increment.chips.last!))") {
-                    model.currentWeight = min(increment.range.upperBound, model.currentWeight + increment.chips.last!)
+                Button(increment.chipLabel(increment.chips.last!)) {
+                    adjustWeight(by: increment.chips.last!)
                 }
                 .buttonStyle(.bordered)
             }
         }
+    }
+
+    /// Steps the weight by a chip amount, in the user's display unit, clamped to
+    /// the valid range. Operating in display units keeps every value on a 2.5
+    /// boundary (never an odd "44 lb") and makes "+2.5" add exactly 2.5 lb.
+    private func adjustWeight(by delta: Double) {
+        let next = model.currentWeightDisplay + delta
+        model.currentWeightDisplay = min(increment.range.upperBound,
+                                         max(increment.range.lowerBound, next))
     }
 
     private var repsControl: some View {

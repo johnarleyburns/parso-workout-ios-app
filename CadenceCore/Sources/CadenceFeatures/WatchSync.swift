@@ -9,7 +9,11 @@ public struct WeightIncrement {
     public init(unit: MeasurementUnitPreference) {
         switch unit {
         case .pounds:
-            self.chips = [-5, +5]
+            // Smallest common plate pair is 1.25 lb → a 2.5 lb jump. The chips
+            // and crown both step by 2.5 lb; values are stored/compared in the
+            // *display* unit (see `WatchStrengthFlowModel.currentWeightDisplay`),
+            // never added to the canonical-kg value.
+            self.chips = [-2.5, +2.5]
             self.crownDetent = 2.5
             self.range = 0...650
         case .kilograms:
@@ -17,6 +21,14 @@ public struct WeightIncrement {
             self.crownDetent = 1.25
             self.range = 0...300
         }
+    }
+
+    /// Signed chip label, e.g. "-2.5" / "+2.5" / "+5". Trims a trailing ".0".
+    public func chipLabel(_ value: Double) -> String {
+        let mag = abs(value)
+        let magStr = mag == mag.rounded() ? String(format: "%.0f", mag)
+                                          : String(format: "%.1f", mag)
+        return (value < 0 ? "-" : "+") + magStr
     }
 
     public static func unitDefault() -> MeasurementUnitPreference {

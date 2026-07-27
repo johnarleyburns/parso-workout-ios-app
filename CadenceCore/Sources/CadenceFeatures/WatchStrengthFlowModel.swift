@@ -78,11 +78,14 @@ public final class WatchStrengthFlowModel {
     }
 
     public func startLogSet(for exercise: Exercise) {
-        currentWeight = 20
         currentReps = 8
         isWarmupSet = false
+        // Default to the last working weight for this exercise (or a 20 kg
+        // empty-bar baseline), snapped to the nearest 2.5 in the user's display
+        // unit. Without the snap a canonical-kg value shows as an odd "44 lb".
         let lastWork = (exercise.sets ?? []).last(where: { !$0.isWarmup && $0.isOwnerSet })
-        if let lastWork { currentWeight = lastWork.effectiveLoadKg }
+        let baseKg = lastWork?.effectiveLoadKg ?? 20
+        currentWeight = UnitEntry.plateRounded(kg: baseKg, unit: unit, increment: 2.5)
         stage = .keypad(exercise)
     }
 
@@ -268,6 +271,21 @@ public final class WatchStrengthFlowModel {
 
     public func weightValue(_ kg: Double) -> String {
         Format.weightValue(kg, unit: unit, decimals: 0)
+    }
+
+    /// The working weight expressed in the user's display unit (lb/kg). The watch
+    /// keypad binds this so the digital crown and +/- chips step in whole
+    /// display-unit increments (e.g. 2.5 lb); canonical-kg storage stays in
+    /// `currentWeight`. Reading/writing here converts, so the two never drift.
+    public var currentWeightDisplay: Double {
+        get { WorkoutMath.display(currentWeight, in: unit) }
+        set { currentWeight = WorkoutMath.canonical(newValue, from: unit) }
+    }
+
+    /// The current weight formatted for the keypad, allowing a half (e.g.
+    /// "47.5") but trimming a trailing ".0".
+    public var currentWeightText: String {
+        Format.weightValue(currentWeight, unit: unit, decimals: 1)
     }
 
     public var durationText: String {

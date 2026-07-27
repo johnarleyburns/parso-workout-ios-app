@@ -6,14 +6,12 @@ import CadenceFeatures
 struct RootTabView: View {
     enum Tab: Hashable { case workout, tests, progress }
     @Environment(AppSettings.self) private var settings
-    @Environment(CloudBackupService.self) private var backup
     @Environment(AppModel.self) private var model
     @Environment(ActiveWorkoutModel.self) private var active
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: Tab = .workout
     @State private var showSplash = true
-    @State private var offerRestore: RemoteBackupMeta?
     @State private var watchSyncToast: WatchSyncToast?
     /// Liveness heartbeat for crash/upgrade recovery (launch-blockers Phase 1e).
     /// Root-level so it keeps beating while the workout is minimized.
@@ -106,25 +104,13 @@ struct RootTabView: View {
             // an in-progress workout paused; Home shows the Resume card. A
             // workout is never auto-ended or discarded, no matter how stale.
             recoverActiveSessionIfNeeded()
-            // On launch: if the local store is empty and a remote backup exists,
-            // auto-restore (fresh install). If local data is present, ask first —
-            // never silently clobber. Guarded by BackupPolicy in the service.
-            guard settings.iCloudBackupEnabled else { return }
-            switch await backup.restoreDecision() {
-            case .autoRestore:
-                _ = try? await backup.restore(settings: settings)
-            case .offerRestore(let meta):
-                offerRestore = meta
-            case .none:
-                break
-            }
-            // Opportunistic backup (no-ops when not due).
-            await backup.backUpIfNeeded(settings: settings)
+            // The training log syncs live via SwiftData↔CloudKit (private DB);
+            // there is nothing to restore or upload here — SwiftData mirrors the
+            // store automatically on launch and as changes happen.
         }
         .onChange(of: scenePhase) { _, phase in
             active.writeHeartbeat()
             guard phase == .active else { return }
-            if settings.iCloudBackupEnabled { Task { await backup.backUpIfNeeded(settings: settings) } }
             model.pushSettingsContext()
         }
         .onChange(of: settings.unit) { _, _ in model.pushSettingsContext() }
@@ -135,25 +121,6 @@ struct RootTabView: View {
         .onChange(of: settings.workoutSounds) { _, _ in model.pushSettingsContext() }
         .onChange(of: model.watchSyncState) { _, state in
             showWatchSyncToast(for: state)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .workoutHistoryChanged)) { _ in
-            // Mark the store dirty so BackupPolicy schedules the next backup.
-            settings.lastLocalChangeAt = Date()
-        }
-        .alert("Restore from iCloud?", isPresented: Binding(
-            get: { offerRestore != nil },
-            set: { if !$0 { offerRestore = nil } }
-        )) {
-            Button("Restore") {
-                let s = settings
-                offerRestore = nil
-                Task { try? await backup.restore(settings: s) }
-            }
-            Button("Not Now", role: .cancel) { offerRestore = nil }
-        } message: {
-            if let meta = offerRestore {
-                Text("An iCloud backup from \(meta.createdAt.formatted(date: .abbreviated, time: .shortened)) with \(meta.sessionCount) workout\(meta.sessionCount == 1 ? "" : "s") is available. Restoring merges it into your current data — nothing is deleted.")
-            }
         }
     }
 

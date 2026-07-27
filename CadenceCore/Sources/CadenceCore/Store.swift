@@ -1,10 +1,18 @@
 import Foundation
 import SwiftData
 
-/// Builds the shared SwiftData store. Cladiron is local-only: all data lives on
-/// the device (no cloud sync). Portability is handled by full JSON export/import
+/// Builds the shared SwiftData store. Cladiron mirrors the store to the user's
+/// **private** CloudKit database (`iCloud.guru.parso.ios-workout-app`) so the
+/// full training log syncs live across the user's iPhone and Apple Watch — it
+/// stays in the user's own iCloud, never a Cladiron server, so the Data Not
+/// Collected label is unaffected. JSON export/import remains for portability
 /// (see `DataExport` / `WorkoutRepository.buildExport` & `merge`).
 public enum CadenceStore {
+
+    /// The private CloudKit container backing SwiftData sync. Must match the
+    /// `com.apple.developer.icloud-container-identifiers` entitlement on both the
+    /// iOS and watch targets.
+    public static let cloudKitContainerID = "iCloud.guru.parso.ios-workout-app"
 
     public static let schema = Schema([
         WorkoutSession.self,
@@ -20,12 +28,16 @@ public enum CadenceStore {
         Assessment.self
     ])
 
-    /// - Parameter inMemory: pass `true` for previews/tests. The on-disk store is
-    ///   always local (no CloudKit) — data portability is via export/import.
+    /// - Parameter inMemory: pass `true` for previews/tests — that store is
+    ///   in-memory and never touches CloudKit. The on-disk store mirrors to the
+    ///   user's private CloudKit database for live cross-device sync (FR-9); the
+    ///   models are CloudKit-compatible by construction (all optional/defaulted,
+    ///   optional relationships, no unique constraints — see `Models.swift`).
     public static func makeModelContainer(inMemory: Bool = false) throws -> ModelContainer {
         let configuration = inMemory
             ? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            : ModelConfiguration(schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .none)
+            : ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
+                                 cloudKitDatabase: .private(cloudKitContainerID))
         return try ModelContainer(for: schema, configurations: [configuration])
     }
 

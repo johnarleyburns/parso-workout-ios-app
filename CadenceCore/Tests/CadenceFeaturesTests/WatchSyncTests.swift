@@ -8,9 +8,17 @@ final class WatchSyncTests: XCTestCase {
 
     func testPoundChips() {
         let inc = WeightIncrement(unit: .pounds)
-        XCTAssertEqual(inc.chips, [-5, 5])
+        XCTAssertEqual(inc.chips, [-2.5, 2.5])
         XCTAssertEqual(inc.crownDetent, 2.5)
         XCTAssertEqual(inc.range, 0...650)
+    }
+
+    func testChipLabel_formatsHalfIncrements() {
+        let inc = WeightIncrement(unit: .pounds)
+        XCTAssertEqual(inc.chipLabel(-2.5), "-2.5")
+        XCTAssertEqual(inc.chipLabel(2.5), "+2.5")
+        XCTAssertEqual(inc.chipLabel(5), "+5")
+        XCTAssertEqual(inc.chipLabel(-10), "-10")
     }
 
     func testKilogramChips() {

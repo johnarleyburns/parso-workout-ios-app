@@ -2,7 +2,44 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-21 — Watch adjustment phase shipped._
+_Last updated: 2026-07-27 — CloudKit live sync + watch weight fix shipped._
+
+## CloudKit live sync + watch weight increments — 2026-07-27 — SHIPPED
+
+Two changes, both verified (`swift test` **1266 tests, 0 failures**; iOS + watch
+schemes **BUILD SUCCEEDED**; test-pyramid + no-network guards OK).
+
+**1. Full CloudKit data sync (replaces the export-blob backup / D5).** Decision
+"No live cloud sync" reversed at the user's request.
+- `CadenceStore.makeModelContainer` now mirrors the on-disk SwiftData store to the
+  user's **private** CloudKit DB (`cloudKitDatabase: .private("iCloud.guru.parso.ios-workout-app")`);
+  in-memory (preview/UI-test) stores stay CloudKit-free. Models were already
+  CloudKit-compatible (FR-9), so this was a config flip, not a schema change.
+- Watch target gains the CloudKit entitlement + container; iOS `Info.plist` gains
+  the `remote-notification` background mode (watch already had it).
+- **Removed** the blob backup: `CloudBackupService.swift`, `BackupPolicy.swift` +
+  `BackupPolicyTests.swift`, the backup wiring in `CadenceApp`/`RootTabView`, the
+  `AppSettings` backup props (`iCloudBackupEnabled`/`lastBackupAt`/`lastLocalChangeAt`),
+  and the Settings "iCloud Backup" section (now a static "iCloud Sync — On" info
+  section). JSON export/import is untouched. WCSession live handoff is untouched.
+- **Manual follow-ups (not code):** (a) enable the iCloud/CloudKit capability +
+  container on the **watch** App ID and regenerate the watch App Store
+  provisioning profile (`WATCH_PROVISIONING_PROFILE_BASE64` secret) — the CI
+  `testflight-build` archive will fail until this profile includes CloudKit;
+  (b) deploy the CloudKit schema to **Production** in the Dashboard.
+
+**2. Watch strength weight increments (bug fix).** On the watch keypad, weights
+now step by **±2.5** in the display unit and default to the last working weight
+snapped to the nearest 2.5 (never an odd "44 lb").
+- Root cause: `currentWeight` is canonical **kg**, but `WeightIncrement` chips
+  (`[-5,+5]` lb) and the crown detent were added directly to that kg value — so
+  "+5" added 5 kg (≈11 lb, the "increments by 10" bug) and the `effectiveLoadKg`
+  default rendered as "44 lb".
+- Fix: pounds chips → `[-2.5,+2.5]`; the keypad crown/chips now bind a new
+  `WatchStrengthFlowModel.currentWeightDisplay` (display-unit accessor that
+  converts to/from kg); `startLogSet` defaults via `UnitEntry.plateRounded(...,
+  increment: 2.5)`. New tests cover 20 kg→45 lb snapping, on-boundary defaults,
+  round-trip, and the +2.5-lb chip.
 
 ## Watch adjustments — 2026-07-21 (`docs/watch-adjustments-plan.md`) — SHIPPED
 

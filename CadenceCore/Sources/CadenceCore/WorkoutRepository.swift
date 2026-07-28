@@ -83,6 +83,9 @@ public enum WorkoutRepository {
                 changed = true
             }
         }
+        if try collapseCustomExerciseAliasesIntoBuiltIns(context) {
+            changed = true
+        }
         if changed { try context.save() }
         return changed
     }
@@ -128,6 +131,66 @@ public enum WorkoutRepository {
         return changed
     }
 
+    /// Repairs custom rows that were accidentally created for known built-ins
+    /// under common aliases (for example "Lateral Raise" or singular
+    /// "Tricep Pushdown"). Only empty custom definitions are touched; user-defined
+    /// customs with muscles remain user-owned.
+    @discardableResult
+    static func collapseCustomExerciseAliasesIntoBuiltIns(_ context: ModelContext) throws -> Bool {
+        var all = try allExercises(context)
+        var changed = false
+        for custom in all where custom.isCustom && custom.primaryMuscles.isEmpty {
+            guard let template = ExerciseLibrary.template(matching: custom.name) else { continue }
+            let builtIn = try ensureBuiltInExercise(from: template, in: context, allExercises: &all)
+            _ = try reassignExerciseReferences(from: custom, into: builtIn, in: context)
+            all.removeAll { $0.id == custom.id }
+            changed = true
+        }
+        if changed { try context.save() }
+        return changed
+    }
+
+    private static func ensureBuiltInExercise(from template: ExerciseTemplate,
+                                              in context: ModelContext,
+                                              allExercises: inout [Exercise]) throws -> Exercise {
+        if let existing = allExercises.first(where: {
+            !$0.isCustom && $0.name.compare(template.name, options: .caseInsensitive) == .orderedSame
+        }) {
+            return existing
+        }
+        let exercise = ExerciseLibrary.makeExercise(from: template)
+        context.insert(exercise)
+        allExercises.append(exercise)
+        return exercise
+    }
+
+    private static func reassignExerciseReferences(from custom: Exercise,
+                                                   into builtIn: Exercise,
+                                                   in context: ModelContext) throws -> Int {
+        let allSessions = try context.fetch(FetchDescriptor<WorkoutSession>())
+        var moved = 0
+        for session in allSessions {
+            guard let sets = session.sets else { continue }
+            for set in sets where set.exercise?.id == custom.id {
+                set.exercise = builtIn
+                set.updatedAt = Date()
+                moved += 1
+            }
+            var names = session.plannedExerciseNames
+            if let idx = names.firstIndex(of: custom.name) {
+                names[idx] = builtIn.name
+                var seen = Set<String>()
+                names = names.filter { seen.insert($0).inserted }
+                session.plannedExerciseNames = names
+            }
+            session.updatedAt = Date()
+        }
+        if custom.isFavorite { builtIn.isFavorite = true }
+        builtIn.updatedAt = Date()
+        context.delete(custom)
+        return moved
+    }
+
     // MARK: Exercises (FR-1.1)
 
     public static func allExercises(_ context: ModelContext) throws -> [Exercise] {
@@ -171,8 +234,21 @@ public enum WorkoutRepository {
                                             secondaryMuscles: [String] = [],
                                             in context: ModelContext) throws -> Exercise {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let all = try allExercises(context)
+        var all = try allExercises(context)
+        let template = ExerciseLibrary.template(matching: trimmed)
         if let existing = all.first(where: { $0.name.compare(trimmed, options: .caseInsensitive) == .orderedSame }) {
+            if existing.isCustom, existing.primaryMuscles.isEmpty, let template {
+                let builtIn = try ensureBuiltInExercise(from: template, in: context, allExercises: &all)
+                _ = try reassignExerciseReferences(from: existing, into: builtIn, in: context)
+                try context.save()
+                return builtIn
+            }
+            return existing
+        }
+        if let template,
+           let existing = all.first(where: {
+               !$0.isCustom && $0.name.compare(template.name, options: .caseInsensitive) == .orderedSame
+           }) {
             return existing
         }
         // Backfill facets from the built-in catalog when the caller didn't supply
@@ -180,7 +256,6 @@ public enum WorkoutRepository {
         // bodyweight detection work even for movements materialized by name (plan
         // launches, reuse) before the library is fully seeded. An exact built-in
         // is therefore not "custom".
-        let template = ExerciseLibrary.byName[trimmed.lowercased()]
         let resolvedCategory = category ?? template?.category
         let resolvedEquipment = equipment ?? template?.equipment
         let resolvedLateral = isLateral || (template?.isLateral ?? false)
@@ -204,10 +279,11 @@ public enum WorkoutRepository {
         } else {
             resolvedSecondary = []
         }
-        let keywords = ExerciseSearch.keywords(name: trimmed, equipment: resolvedEquipment, isLateral: resolvedLateral,
+        let resolvedName = template?.name ?? trimmed
+        let keywords = ExerciseSearch.keywords(name: resolvedName, equipment: resolvedEquipment, isLateral: resolvedLateral,
                                                force: resolvedForce, mechanics: resolvedMechanics,
                                                primaryMuscles: resolvedPrimary, secondaryMuscles: resolvedSecondary)
-        let ex = Exercise(name: trimmed, category: resolvedCategory, muscleGroups: resolvedPrimary + resolvedSecondary,
+        let ex = Exercise(name: resolvedName, category: resolvedCategory, muscleGroups: resolvedPrimary + resolvedSecondary,
                           isCustom: template == nil, equipment: resolvedEquipment, isLateral: resolvedLateral,
                           mechanics: resolvedMechanics, force: resolvedForce,
                           primaryMuscles: resolvedPrimary, secondaryMuscles: resolvedSecondary,
@@ -467,25 +543,7 @@ public enum WorkoutRepository {
     public static func reassignAndDeleteExercise(from custom: Exercise,
                                                   into builtIn: Exercise,
                                                   in context: ModelContext) throws -> Int {
-        let allSessions = try context.fetch(FetchDescriptor<WorkoutSession>())
-        var moved = 0
-        for session in allSessions {
-            guard let sets = session.sets else { continue }
-            for set in sets where set.exercise?.id == custom.id {
-                set.exercise = builtIn
-                set.updatedAt = Date()
-                moved += 1
-            }
-            var names = session.plannedExerciseNames
-            if let idx = names.firstIndex(of: custom.name) {
-                names[idx] = builtIn.name
-                var seen = Set<String>()
-                names = names.filter { seen.insert($0).inserted }
-                session.plannedExerciseNames = names
-            }
-            session.updatedAt = Date()
-        }
-        context.delete(custom)
+        let moved = try reassignExerciseReferences(from: custom, into: builtIn, in: context)
         try context.save()
         return moved
     }
@@ -1052,10 +1110,18 @@ public enum WorkoutRepository {
         var exerciseByName: [String: Exercise] = [:]
         // Pre-load custom exercises from export (v5+)
         for exportEx in export.exercises {
-            let key = exportEx.name.lowercased()
+            let key = ExerciseLibrary.lookupKey(exportEx.name)
             if exerciseByName[key] != nil { continue }
+            if exportEx.primaryMuscles.isEmpty,
+               let template = ExerciseLibrary.template(matching: exportEx.name) {
+                var allLocal = try allExercises(context)
+                let builtIn = try ensureBuiltInExercise(from: template, in: context, allExercises: &allLocal)
+                exerciseByName[key] = builtIn
+                exerciseByName[ExerciseLibrary.lookupKey(template.name)] = builtIn
+                continue
+            }
             let allLocal = try allExercises(context)
-            if allLocal.contains(where: { $0.id == exportEx.id || $0.name.lowercased() == key }) { continue }
+            if allLocal.contains(where: { $0.id == exportEx.id || ExerciseLibrary.lookupKey($0.name) == key }) { continue }
             let ex = Exercise(
                 id: exportEx.id,
                 name: exportEx.name,
@@ -1074,26 +1140,44 @@ public enum WorkoutRepository {
             context.insert(ex)
             exerciseByName[key] = ex
         }
-        for ex in try allExercises(context) { exerciseByName[ex.name.lowercased()] = ex }
+        for ex in try allExercises(context) { exerciseByName[ExerciseLibrary.lookupKey(ex.name)] = ex }
         var personByName: [String: Person] = [:]
-        for p in try allPeople(context) { personByName[p.name.lowercased()] = p }
+        for p in try allPeople(context) { personByName[ExerciseLibrary.lookupKey(p.name)] = p }
 
         func resolveExercise(named name: String, category: ExerciseCategory?) throws -> Exercise {
             let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-            let key = trimmed.lowercased()
-            if let hit = exerciseByName[key] { return hit }
-            let template = ExerciseLibrary.byName[key]
-            let resolvedCategory = category ?? template?.category
+            let key = ExerciseLibrary.lookupKey(trimmed)
+            let template = ExerciseLibrary.template(matching: trimmed)
+            if let hit = exerciseByName[key] {
+                if hit.isCustom, hit.primaryMuscles.isEmpty, let template {
+                    var allLocal = try allExercises(context)
+                    let builtIn = try ensureBuiltInExercise(from: template, in: context, allExercises: &allLocal)
+                    _ = try reassignExerciseReferences(from: hit, into: builtIn, in: context)
+                    exerciseByName[key] = builtIn
+                    exerciseByName[ExerciseLibrary.lookupKey(template.name)] = builtIn
+                    return builtIn
+                }
+                return hit
+            }
+            if let template,
+               let hit = exerciseByName[ExerciseLibrary.lookupKey(template.name)] {
+                exerciseByName[key] = hit
+                return hit
+            }
+            if let template {
+                var allLocal = try allExercises(context)
+                let builtIn = try ensureBuiltInExercise(from: template, in: context, allExercises: &allLocal)
+                exerciseByName[key] = builtIn
+                exerciseByName[ExerciseLibrary.lookupKey(template.name)] = builtIn
+                return builtIn
+            }
+            let resolvedCategory = category
             let keywords = ExerciseSearch.keywords(
-                name: trimmed, equipment: template?.equipment, isLateral: template?.isLateral ?? false,
-                force: template?.force, mechanics: template?.mechanics,
-                primaryMuscles: template?.primaryMuscles ?? [], secondaryMuscles: template?.secondaryMuscles ?? [])
+                name: trimmed, equipment: nil, isLateral: false,
+                force: nil, mechanics: nil,
+                primaryMuscles: [], secondaryMuscles: [])
             let ex = Exercise(name: trimmed, category: resolvedCategory,
-                              muscleGroups: (template?.primaryMuscles ?? []) + (template?.secondaryMuscles ?? []),
-                              isCustom: template == nil, equipment: template?.equipment,
-                              isLateral: template?.isLateral ?? false, mechanics: template?.mechanics,
-                              force: template?.force, primaryMuscles: template?.primaryMuscles ?? [],
-                              secondaryMuscles: template?.secondaryMuscles ?? [], searchKeywords: keywords)
+                              muscleGroups: [], isCustom: true, searchKeywords: keywords)
             context.insert(ex)
             exerciseByName[key] = ex
             return ex
@@ -1101,12 +1185,25 @@ public enum WorkoutRepository {
 
         func resolvePerson(named name: String) -> Person {
             let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-            let key = trimmed.lowercased()
+            let key = ExerciseLibrary.lookupKey(trimmed)
             if let hit = personByName[key] { return hit }
             let p = Person(name: trimmed, isMe: false)
             context.insert(p)
             personByName[key] = p
             return p
+        }
+
+        func canonicalPlannedExerciseNames(_ names: [String]) -> [String] {
+            var seen = Set<String>()
+            var result: [String] = []
+            for name in names {
+                let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { continue }
+                let resolved = ExerciseLibrary.template(matching: trimmed)?.name ?? trimmed
+                guard seen.insert(ExerciseLibrary.lookupKey(resolved)).inserted else { continue }
+                result.append(resolved)
+            }
+            return result
         }
 
         // Batch saves to bound peak memory on large imports (year-plus of HR/route
@@ -1129,7 +1226,7 @@ public enum WorkoutRepository {
             session.isLogged = es.isLogged ?? false
             session.templateName = es.templateName
             session.planKey = es.planKey
-            if let names = es.plannedExerciseNames { session.plannedExerciseNames = names }
+            if let names = es.plannedExerciseNames { session.plannedExerciseNames = canonicalPlannedExerciseNames(names) }
             if let ladder = es.plannedRepLadder { session.plannedRepLadder = ladder }
             session.warmupSeconds = es.warmupSeconds ?? 0
             session.cooldownSeconds = es.cooldownSeconds ?? 0

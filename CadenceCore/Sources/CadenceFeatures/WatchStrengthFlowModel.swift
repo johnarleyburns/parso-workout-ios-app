@@ -80,9 +80,13 @@ public final class WatchStrengthFlowModel {
         }
         if let session {
             if !plannedExerciseNames.isEmpty {
-                for name in plannedExerciseNames where !session.plannedExerciseNames.contains(name) {
-                    session.plannedExerciseNames.append(name)
-                    _ = try? WorkoutRepository.findOrCreateExercise(named: name, in: context)
+                for name in plannedExerciseNames {
+                    let resolved = resolvedExerciseName(name)
+                    guard !resolved.isEmpty,
+                          !session.plannedExerciseNames.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) else {
+                        continue
+                    }
+                    session.plannedExerciseNames.append(resolved)
                 }
             }
             if !repLadder.isEmpty {
@@ -93,8 +97,13 @@ public final class WatchStrengthFlowModel {
             }
             try? context.save()
         } else {
-            for name in plannedExerciseNames where !pendingExercises.contains(name) {
-                pendingExercises.append(name)
+            for name in plannedExerciseNames {
+                let resolved = resolvedExerciseName(name)
+                guard !resolved.isEmpty,
+                      !pendingExercises.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) else {
+                    continue
+                }
+                pendingExercises.append(resolved)
             }
         }
         stage = .home
@@ -108,14 +117,15 @@ public final class WatchStrengthFlowModel {
         guard !trimmed.isEmpty else { return }
 
         do {
-            _ = try WorkoutRepository.findOrCreateExercise(named: trimmed, in: context)
+            let exercise = try WorkoutRepository.findOrCreateExercise(named: trimmed, in: context)
+            let resolved = exercise.name
             if let session {
-                if !session.plannedExerciseNames.contains(trimmed) {
-                    session.plannedExerciseNames.append(trimmed)
+                if !session.plannedExerciseNames.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) {
+                    session.plannedExerciseNames.append(resolved)
                     try? context.save()
                 }
-            } else if !pendingExercises.contains(trimmed) {
-                pendingExercises.append(trimmed)
+            } else if !pendingExercises.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) {
+                pendingExercises.append(resolved)
             }
         } catch {}
         stage = .home
@@ -260,10 +270,16 @@ public final class WatchStrengthFlowModel {
                 partnerIDs: partners.map { $0.id.uuidString },
                 in: context
             )
-            session?.plannedExerciseNames = pendingExercises
+            var resolvedPending: [String] = []
             for name in pendingExercises {
-                _ = try WorkoutRepository.findOrCreateExercise(named: name, in: context)
+                let resolved = resolvedExerciseName(name)
+                guard !resolved.isEmpty,
+                      !resolvedPending.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) else {
+                    continue
+                }
+                resolvedPending.append(resolved)
             }
+            session?.plannedExerciseNames = resolvedPending
             pendingExercises = []
             try? context.save()
         } catch {}
@@ -299,6 +315,15 @@ public final class WatchStrengthFlowModel {
 
         exerciseList = rows
         exerciseCount = session.exercisesInOrder.count
+    }
+
+    private func resolvedExerciseName(_ name: String) -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        if let exercise = try? WorkoutRepository.findOrCreateExercise(named: trimmed, in: context) {
+            return exercise.name
+        }
+        return trimmed
     }
 
     private var currentPerformer: Person? {

@@ -346,12 +346,20 @@ extension AppModel: WCSessionDelegate {
                 }
                 session = try WorkoutRepository.createSession(title: sessionTitle, in: ctx)
                 session.id = sessionID
-                session.plannedExerciseNames = info["planned_exercises"] as? [String] ?? []
+                let planned = info["planned_exercises"] as? [String] ?? []
+                var resolvedPlanned: [String] = []
+                var seen = Set<String>()
+                for name in planned {
+                    let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { continue }
+                    let exercise = try? WorkoutRepository.findOrCreateExercise(named: trimmed, in: ctx)
+                    let resolved = exercise?.name ?? trimmed
+                    guard seen.insert(ExerciseLibrary.lookupKey(resolved)).inserted else { continue }
+                    resolvedPlanned.append(resolved)
+                }
+                session.plannedExerciseNames = resolvedPlanned
                 session.plannedRepLadder = info["planned_rep_ladder"] as? [Int] ?? []
                 session.planKey = info["plan_key"] as? String
-                for name in session.plannedExerciseNames {
-                    _ = try? WorkoutRepository.findOrCreateExercise(named: name, in: ctx)
-                }
                 try ctx.save()
             }
             guard let exName = info["exercise"] as? String,

@@ -59,6 +59,33 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.exerciseList.first?.setCount, 0)
     }
 
+    func testAddExerciseAliasStoresCanonicalBuiltInName() {
+        let m = makeModel()
+        m.start()
+        m.addExercise(named: "Tricep Pushdown")
+        XCTAssertEqual(m.pendingExercises, ["Triceps Pushdown"])
+        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Triceps Pushdown"])
+        XCTAssertEqual(m.exerciseList.first?.exercise.primaryMuscles, ["triceps"])
+    }
+
+    func testPlannedAliasLogSetPayloadUsesCanonicalBuiltInName() {
+        let m = makeModel()
+        m.start(
+            title: "Shoulders",
+            plannedExerciseNames: ["Lateral Raise"],
+            createSession: true
+        )
+        XCTAssertEqual(m.session?.plannedExerciseNames, ["Dumbbell Lateral Raise"])
+        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Dumbbell Lateral Raise"])
+
+        let exercise = m.exerciseList[0].exercise
+        m.startLogSet(for: exercise)
+        _ = m.logSet()
+
+        XCTAssertEqual(m.lastSyncPayload?["exercise"] as? String, "Dumbbell Lateral Raise")
+        XCTAssertEqual(m.lastSyncPayload?["planned_exercises"] as? [String], ["Dumbbell Lateral Raise"])
+    }
+
     func testLogSetFromAddedExercise_createsSessionAndKeepsExerciseVisible() {
         let m = makeModel()
         m.start()

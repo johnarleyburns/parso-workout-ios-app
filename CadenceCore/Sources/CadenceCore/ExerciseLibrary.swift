@@ -437,9 +437,41 @@ public enum ExerciseLibrary {
         ExerciseSearch.rank(query, over: templates)
     }
 
-    /// Case-insensitive lookup of a built-in template by name.
+    /// Case-insensitive lookup of a built-in template by canonical name.
     public static let byName: [String: ExerciseTemplate] =
-        Dictionary(starter.map { ($0.name.lowercased(), $0) }, uniquingKeysWith: { a, _ in a })
+        Dictionary(starter.map { (lookupKey($0.name), $0) }, uniquingKeysWith: { a, _ in a })
+
+    /// Common names users type or carry over from older app lists. These are still
+    /// built-ins; resolving them here prevents empty "custom" duplicates from
+    /// being created by watch sync or import-by-name paths.
+    public static let commonNameAliases: [String: String] = [
+        "lateral raise": "Dumbbell Lateral Raise",
+        "dumbell lateral raise": "Dumbbell Lateral Raise",
+        "tricep pushdown": "Triceps Pushdown",
+        "tricep pressdown": "Triceps Pushdown",
+        "triceps pressdown": "Triceps Pushdown",
+        "cable tricep pushdown": "Triceps Pushdown",
+        "cable triceps pushdown": "Triceps Pushdown",
+    ]
+
+    private static let byDedupKey: [String: ExerciseTemplate] =
+        Dictionary(starter.map { (dedupKey($0.name), $0) }, uniquingKeysWith: { a, _ in a })
+
+    public static func lookupKey(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    /// Resolves canonical built-in names plus known aliases and simple spelling
+    /// variants. Returns nil only when the name truly has no built-in equivalent.
+    public static func template(matching name: String) -> ExerciseTemplate? {
+        let key = lookupKey(name)
+        if let exact = byName[key] { return exact }
+        if let canonical = commonNameAliases[key],
+           let alias = byName[lookupKey(canonical)] {
+            return alias
+        }
+        return byDedupKey[dedupKey(name)]
+    }
 
     /// Builds a SwiftData `Exercise` from a template, deriving search keywords
     /// and load accounting defaults.
@@ -456,4 +488,3 @@ public enum ExerciseLibrary {
                  defaultBarWeightKg: t.equipment == .barbell ? Exercise.defaultBarWeightKg : 0)
     }
 }
-

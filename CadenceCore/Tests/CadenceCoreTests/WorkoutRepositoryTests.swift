@@ -30,8 +30,8 @@ final class WorkoutRepositoryTests: XCTestCase {
 
     func testFindOrCreateExerciseDeduplicates() throws {
         let ctx = try makeContext()
-        let a = try WorkoutRepository.findOrCreateExercise(named: "Zercher Squat", in: ctx)
-        let b = try WorkoutRepository.findOrCreateExercise(named: "zercher squat", in: ctx)
+        let a = try WorkoutRepository.findOrCreateExercise(named: "Garage Custom Lift", in: ctx)
+        let b = try WorkoutRepository.findOrCreateExercise(named: "garage custom lift", in: ctx)
         XCTAssertEqual(a.id, b.id)
         XCTAssertTrue(a.isCustom)
     }

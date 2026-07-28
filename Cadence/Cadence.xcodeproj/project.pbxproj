@@ -804,7 +804,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Cadence-Watch-App-Watch-App-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Cladiron Watch App";
+				INFOPLIST_KEY_CFBundleDisplayName = Cladiron;
+				INFOPLIST_KEY_CFBundleName = Cladiron;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "guru.parso.ios-workout-app";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -836,7 +837,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Cadence-Watch-App-Watch-App-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Cladiron Watch App";
+				INFOPLIST_KEY_CFBundleDisplayName = Cladiron;
+				INFOPLIST_KEY_CFBundleName = Cladiron;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "guru.parso.ios-workout-app";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

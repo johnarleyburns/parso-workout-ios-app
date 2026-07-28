@@ -19,6 +19,10 @@ struct SettingsView: View {
                     ForEach(MeasurementUnitPreference.allCases) { Text($0.displayName).tag($0) }
                 }
                 .accessibilityIdentifier("settings.unit")
+                Picker("Distance unit", selection: $settings.distanceUnit) {
+                    ForEach(DistanceUnitPreference.allCases) { Text($0.displayName).tag($0) }
+                }
+                .accessibilityIdentifier("settings.distanceUnit")
                 Picker("PR rule", selection: $settings.prRule) {
                     ForEach(PRRule.allCases) { Text($0.displayName).tag($0) }
                 }

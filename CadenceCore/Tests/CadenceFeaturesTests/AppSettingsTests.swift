@@ -18,6 +18,7 @@ final class AppSettingsTests: XCTestCase {
     func testDefaultsWhenEmpty() {
         let s = AppSettings(defaults: freshDefaults())
         XCTAssertEqual(s.unit, SettingsDefault.unit)
+        XCTAssertEqual(s.distanceUnit, SettingsDefault.distanceUnit)
         XCTAssertEqual(s.formula, SettingsDefault.oneRepMaxFormula)
         XCTAssertEqual(s.restSeconds, SettingsDefault.restSeconds)
         XCTAssertFalse(s.hasCompletedOnboarding)
@@ -27,12 +28,14 @@ final class AppSettingsTests: XCTestCase {
         let d = freshDefaults()
         let a = AppSettings(defaults: d)
         a.unit = .pounds
+        a.distanceUnit = .miles
         a.restSeconds = 120
         a.trainingGoal = .strength
         a.coachHidden = true
 
         let b = AppSettings(defaults: d)
         XCTAssertEqual(b.unit, .pounds)
+        XCTAssertEqual(b.distanceUnit, .miles)
         XCTAssertEqual(b.restSeconds, 120)
         XCTAssertEqual(b.trainingGoal, .strength)
         XCTAssertTrue(b.coachHidden)
@@ -61,6 +64,7 @@ final class AppSettingsTests: XCTestCase {
     func testExportImportRoundTrip() {
         let src = AppSettings(defaults: freshDefaults("src"))
         src.unit = .pounds
+        src.distanceUnit = .miles
         src.weeklyCardioMinutesGoal = 200
         src.experienceLevel = .advanced
         src.userAge = 41
@@ -71,6 +75,7 @@ final class AppSettingsTests: XCTestCase {
         let dst = AppSettings(defaults: freshDefaults("dst"))
         dst.applyImportedPreferences(snapshot)
         XCTAssertEqual(dst.unit, .pounds)
+        XCTAssertEqual(dst.distanceUnit, .miles)
         XCTAssertEqual(dst.weeklyCardioMinutesGoal, 200)
         XCTAssertEqual(dst.experienceLevel, .advanced)
         XCTAssertEqual(dst.userAge, 41)

@@ -105,6 +105,22 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.stage, .rest)
     }
 
+    func testStartCreateSessionPrefillsPlannedExercisesAndLadder() {
+        let m = makeModel()
+        m.start(title: "Push Day",
+                plannedExerciseNames: ["Bench Press", "Back Squat"],
+                repLadder: [12, 10, 8],
+                planKey: "preset-push",
+                createSession: true)
+
+        XCTAssertEqual(m.session?.title, "Push Day")
+        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press", "Back Squat"])
+        XCTAssertEqual(m.session?.plannedRepLadder, [12, 10, 8])
+        XCTAssertEqual(m.session?.planKey, "preset-push")
+        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Bench Press", "Back Squat"])
+        XCTAssertEqual(m.exerciseList.map { $0.setCount }, [0, 0])
+    }
+
     func testLogSet_ownerSet_countsVolume() {
         let m = makeModel()
         m.start()
@@ -351,16 +367,81 @@ final class WatchStrengthFlowModelTests: XCTestCase {
     }
 
     func testPreviousSetHint() {
-        let m = makeModel()
-        m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
-        m.currentWeight = 100; m.currentReps = 8
-        m.startLogSet(for: ex)
-        _ = m.logSet()
-        m.finishRest()
+        let prior = try! WorkoutRepository.createSession(title: "Last",
+                                                         date: Date(timeIntervalSince1970: 100),
+                                                         in: context)
+        _ = try! WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 100, reps: 8, in: context)
+
+        let m = makeModel()
+        m.start(createSession: true)
         m.startLogSet(for: ex)
         let hint = m.previousSetHint
         XCTAssertNotNil(hint)
         XCTAssertTrue(hint!.contains("Previous:"))
+    }
+
+    func testDefaultRepsUsePriorWorkingLadderAndIgnoreWarmups() {
+        let ex = simpleExercise(named: "Ladder Press")
+        let prior = try! WorkoutRepository.createSession(title: "Last",
+                                                         date: Date(timeIntervalSince1970: 100),
+                                                         in: context)
+        _ = try! WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 40, reps: 15, isWarmup: true, in: context)
+        _ = try! WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 60, reps: 12, in: context)
+        _ = try! WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 65, reps: 10, in: context)
+        _ = try! WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 70, reps: 8, in: context)
+
+        let m = makeModel()
+        m.start(createSession: true)
+        m.startLogSet(for: ex)
+        XCTAssertEqual(Int(m.currentReps), 12)
+
+        _ = m.logSet()
+        m.finishRest()
+        m.startLogSet(for: ex)
+        XCTAssertEqual(Int(m.currentReps), 10)
+    }
+
+    func testSetHistoryLinesShowPriorAndCurrentWorkoutSets() {
+        let ex = simpleExercise(named: "History Press")
+        let prior = try! WorkoutRepository.createSession(title: "Last",
+                                                         date: Date(timeIntervalSince1970: 100),
+                                                         in: context)
+        _ = try! WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 40, reps: 6, isWarmup: true, in: context)
+        _ = try! WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 60, reps: 12, in: context)
+        _ = try! WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 65, reps: 10, in: context)
+
+        let m = makeModel()
+        m.start(createSession: true)
+        m.startLogSet(for: ex)
+        XCTAssertEqual(m.previousWorkoutHistoryLines.map(\.label), ["W", "1", "2"])
+        XCTAssertEqual(m.previousWorkoutHistoryLines.map(\.reps), [6, 12, 10])
+
+        m.currentWeight = 70
+        m.currentReps = 12
+        _ = m.logSet()
+        m.finishRest()
+        m.startLogSet(for: ex)
+        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.label), ["1"])
+        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.reps), [12])
+        XCTAssertEqual(m.currentWorkingSetIndex, 2)
+    }
+
+    func testLogSetPayloadIncludesPlannedSessionMetadata() {
+        let m = makeModel()
+        m.start(title: "Push Day",
+                plannedExerciseNames: ["Bench Press"],
+                repLadder: [12, 10, 8],
+                planKey: "preset-push",
+                createSession: true)
+
+        let ex = m.exerciseList[0].exercise
+        m.startLogSet(for: ex)
+        _ = m.logSet()
+
+        XCTAssertEqual(m.lastSyncPayload?["session_title"] as? String, "Push Day")
+        XCTAssertEqual(m.lastSyncPayload?["planned_exercises"] as? [String], ["Bench Press"])
+        XCTAssertEqual(m.lastSyncPayload?["planned_rep_ladder"] as? [Int], [12, 10, 8])
+        XCTAssertEqual(m.lastSyncPayload?["plan_key"] as? String, "preset-push")
     }
 }

@@ -10,17 +10,19 @@ final class WatchIntervalHaptics {
     private let device = WKInterfaceDevice.current()
     private let audio = WatchIntervalCuePlayer()
     private var decider = IntervalCueDecider()
-    private var lastPhaseID: Int? = nil
+    private var didPlayCompletion = false
 
     func tick(runner: IntervalRunner, soundsEnabled: Bool, isBoxing: Bool) {
         guard !runner.isComplete else {
-            if lastPhaseID != nil {
+            if !didPlayCompletion {
                 playHapticSequence(.success, count: 3)
                 audio.phaseTransition(soundsEnabled: soundsEnabled, isBoxing: isBoxing)
-                lastPhaseID = nil
+                didPlayCompletion = true
+                decider = IntervalCueDecider()
             }
             return
         }
+        didPlayCompletion = false
 
         let cues = decider.cues(
             phaseKind: runner.phaseKind,
@@ -37,27 +39,28 @@ final class WatchIntervalHaptics {
                 audio.warning(soundsEnabled: soundsEnabled, isBoxing: isBoxing)
             case .countdownTick:
                 device.play(.click)
+            case .phaseTransition(let kind):
+                switch kind {
+                case .work:
+                    device.play(.notification)
+                    playHapticSequence(.success, count: 2)
+                case .rest:
+                    device.play(.notification)
+                    playHapticSequence(.directionDown, count: 2)
+                case .warmup:
+                    playHapticSequence(.directionUp, count: 2)
+                case .cooldown:
+                    playHapticSequence(.directionDown, count: 2)
+                }
+                audio.phaseTransition(soundsEnabled: soundsEnabled, isBoxing: isBoxing)
+                decider.reset()
             }
-        }
-
-        // Phase transition haptic
-        if let current = runner.currentPhaseID, current != lastPhaseID {
-            lastPhaseID = current
-            guard let kind = runner.phaseKind else { return }
-            switch kind {
-            case .work: playHapticSequence(.success, count: 3)
-            case .rest: playHapticSequence(.directionDown, count: 3)
-            case .warmup: playHapticSequence(.directionUp, count: 3)
-            case .cooldown: playHapticSequence(.directionDown, count: 3)
-            }
-            audio.phaseTransition(soundsEnabled: soundsEnabled, isBoxing: isBoxing)
-            decider.reset()
         }
     }
 
     func stop() {
-        lastPhaseID = nil
-        decider.reset()
+        decider = IntervalCueDecider()
+        didPlayCompletion = false
         audio.stop()
     }
 

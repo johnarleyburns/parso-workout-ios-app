@@ -3,6 +3,22 @@ import SwiftData
 import Observation
 import CadenceCore
 
+public struct WatchSetHistoryLine: Equatable, Sendable, Identifiable {
+    public var id: Int
+    public var label: String
+    public var weightText: String
+    public var reps: Int
+    public var isWarmup: Bool
+
+    public init(id: Int, label: String, weightText: String, reps: Int, isWarmup: Bool) {
+        self.id = id
+        self.label = label
+        self.weightText = weightText
+        self.reps = reps
+        self.isWarmup = isWarmup
+    }
+}
+
 @Observable
 public final class WatchStrengthFlowModel {
     public enum Stage: Equatable {
@@ -51,7 +67,36 @@ public final class WatchStrengthFlowModel {
         self.cooldownTimerModel = RestTimerModel()
     }
 
-    public func start() {
+    public func start(resuming existingSession: WorkoutSession? = nil,
+                      title: String = "Strength",
+                      plannedExerciseNames: [String] = [],
+                      repLadder: [Int] = [],
+                      planKey: String? = nil,
+                      createSession: Bool = false) {
+        if let existingSession {
+            session = existingSession
+        } else if createSession, session == nil {
+            beginSession(title: title)
+        }
+        if let session {
+            if !plannedExerciseNames.isEmpty {
+                for name in plannedExerciseNames where !session.plannedExerciseNames.contains(name) {
+                    session.plannedExerciseNames.append(name)
+                    _ = try? WorkoutRepository.findOrCreateExercise(named: name, in: context)
+                }
+            }
+            if !repLadder.isEmpty {
+                session.plannedRepLadder = repLadder
+            }
+            if let planKey {
+                session.planKey = planKey
+            }
+            try? context.save()
+        } else {
+            for name in plannedExerciseNames where !pendingExercises.contains(name) {
+                pendingExercises.append(name)
+            }
+        }
         stage = .home
         refreshExerciseList()
     }
@@ -78,13 +123,18 @@ public final class WatchStrengthFlowModel {
     }
 
     public func startLogSet(for exercise: Exercise) {
-        currentReps = 8
+        currentReps = Double(defaultReps(for: exercise))
         isWarmupSet = false
         // Default to the last working weight for this exercise (or a 20 kg
         // empty-bar baseline), snapped to the nearest 2.5 in the user's display
         // unit. Without the snap a canonical-kg value shows as an odd "44 lb".
-        let lastWork = (exercise.sets ?? []).last(where: { !$0.isWarmup && $0.isOwnerSet })
-        let baseKg = lastWork?.effectiveLoadKg ?? 20
+        let lastWork = session.flatMap {
+            SessionViewModel.lastSessionWeight(session: $0, exercise: exercise, performerID: nil)
+        } ?? WorkoutRepository.firstWorkingSetWeight(for: exercise, performedBy: nil, excluding: session)
+        let prescribed = (session.map { SessionViewModel.isPrescribedMovement(exercise.name, session: $0) } == true)
+            ? (session?.prescribedLoadKg ?? 0)
+            : 0
+        let baseKg = lastWork ?? (prescribed > 0 ? prescribed : 20)
         currentWeight = UnitEntry.plateRounded(kg: baseKg, unit: unit, increment: 2.5)
         stage = .keypad(exercise)
     }
@@ -199,9 +249,14 @@ public final class WatchStrengthFlowModel {
 
     private func ensureSession() {
         guard session == nil else { return }
+        beginSession(title: "Strength")
+    }
+
+    private func beginSession(title: String) {
+        guard session == nil else { return }
         do {
             session = try WorkoutRepository.createSession(
-                title: "Strength",
+                title: title,
                 partnerIDs: partners.map { $0.id.uuidString },
                 in: context
             )
@@ -264,9 +319,32 @@ public final class WatchStrengthFlowModel {
 
     public var previousSetHint: String? {
         guard case .keypad(let exercise) = stage else { return nil }
-        let working = (exercise.sets ?? []).filter { !$0.isWarmup && $0.isOwnerSet }
+        let working: [SetEntry]
+        if let session {
+            working = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
+                .filter { !$0.isWarmup && $0.isOwnerSet }
+        } else {
+            working = (exercise.sets ?? []).filter { !$0.isWarmup && $0.isOwnerSet }
+        }
         guard let last = working.last else { return nil }
         return "Previous: \(Format.previousShort(last.effectiveLoadKg, reps: last.reps, unit: unit))"
+    }
+
+    public var previousWorkoutHistoryLines: [WatchSetHistoryLine] {
+        guard case .keypad(let exercise) = stage else { return [] }
+        return historyLines(from: WorkoutRepository.lastTimeSets(for: exercise, excluding: session))
+    }
+
+    public var currentWorkoutHistoryLines: [WatchSetHistoryLine] {
+        guard case .keypad(let exercise) = stage, let session else { return [] }
+        let sets = session.orderedSets.filter { $0.exercise?.id == exercise.id }
+        return historyLines(from: sets)
+    }
+
+    public var currentWorkingSetIndex: Int {
+        guard case .keypad(let exercise) = stage else { return 1 }
+        let completed = currentWorkoutHistoryLines.filter { !$0.isWarmup }.count
+        return completed + 1
     }
 
     public func weightValue(_ kg: Double) -> String {
@@ -295,6 +373,64 @@ public final class WatchStrengthFlowModel {
         return String(format: "%d:%02d", total / 60, total % 60)
     }
 
+    private func defaultReps(for exercise: Exercise) -> Int {
+        let currentReps: [Int]
+        let setIndex: Int
+        let lastLogged: Int?
+        if let session {
+            let sets = session.orderedSets
+                .filter { $0.exercise?.id == exercise.id && !$0.isWarmup && $0.isOwnerSet }
+                .sorted { $0.order < $1.order }
+            currentReps = sets.map(\.reps)
+            setIndex = sets.count
+            lastLogged = sets.last?.reps
+            if setIndex < session.plannedRepLadder.count,
+               session.plannedRepLadder[setIndex] > 0 {
+                return session.plannedRepLadder[setIndex]
+            }
+        } else {
+            currentReps = []
+            setIndex = 0
+            lastLogged = nil
+        }
+
+        let prior = WorkoutRepository.repLadderHistory(for: exercise, performedBy: nil, excluding: session)
+        if setIndex < (prior.last?.count ?? 0), let reps = prior.last?[setIndex], reps > 0 {
+            return reps
+        }
+
+        return SessionViewModel.plannedReps(
+            ladder: session.flatMap { SessionViewModel.effectiveLadder(session: $0) },
+            setIndex: setIndex,
+            currentSessionReps: currentReps,
+            priorSessionLadders: prior,
+            lastLoggedReps: lastLogged
+        )
+    }
+
+    private func historyLines(from sets: [SetEntry]) -> [WatchSetHistoryLine] {
+        var workingIndex = 0
+        return sets.sorted { $0.order < $1.order }.enumerated().map { offset, set in
+            if set.isWarmup {
+                return WatchSetHistoryLine(
+                    id: offset,
+                    label: "W",
+                    weightText: Format.weightValue(set.effectiveLoadKg, unit: unit, decimals: 1),
+                    reps: set.reps,
+                    isWarmup: true
+                )
+            }
+            workingIndex += 1
+            return WatchSetHistoryLine(
+                id: offset,
+                label: "\(workingIndex)",
+                weightText: Format.weightValue(set.effectiveLoadKg, unit: unit, decimals: 1),
+                reps: set.reps,
+                isWarmup: false
+            )
+        }
+    }
+
     private func completeSession(cooldown seconds: TimeInterval) {
         session?.endedAt = Date()
         session?.cooldownSeconds = seconds
@@ -311,7 +447,13 @@ public final class WatchStrengthFlowModel {
             "reps": set.reps,
             "is_warmup": set.isWarmup,
             "timestamp": Date().timeIntervalSince1970,
+            "session_title": session.title,
+            "planned_exercises": session.plannedExerciseNames,
+            "planned_rep_ladder": session.plannedRepLadder,
         ]
+        if let planKey = session.planKey {
+            dict["plan_key"] = planKey
+        }
         if let performer = currentPerformer {
             dict["performed_by"] = performer.name
             dict["performed_by_id"] = performer.id.uuidString

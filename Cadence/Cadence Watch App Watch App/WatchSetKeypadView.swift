@@ -27,9 +27,16 @@ struct WatchSetKeypadView: View {
                     Text(ex.name).font(.headline)
                 }
 
+                Text("Set \(model.currentWorkingSetIndex)")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+
                 if let hint = model.previousSetHint {
                     Text(hint).font(.caption).foregroundStyle(.secondary)
                 }
+
+                setHistorySection(title: "This Workout", lines: model.currentWorkoutHistoryLines)
+                setHistorySection(title: "Last Time", lines: model.previousWorkoutHistoryLines)
 
                 if let performer = model.performerLabel {
                     HStack(spacing: 4) {
@@ -83,13 +90,15 @@ struct WatchSetKeypadView: View {
             Text("Weight (\(model.unit.abbreviation))")
                 .font(.caption.bold()).foregroundStyle(.secondary)
             HStack(spacing: 6) {
-                Button(increment.chipLabel(increment.chips.first!)) {
+                Button(shortChipLabel(increment.chips.first!)) {
                     adjustWeight(by: increment.chips.first!)
                 }
                 .buttonStyle(.bordered)
                 Text(model.currentWeightText)
                     .font(.title3.monospacedDigit())
+                    .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .frame(minWidth: 54)
                     .focusable()
                     .digitalCrownRotation(
                         $bindableModel.currentWeightDisplay,
@@ -98,7 +107,7 @@ struct WatchSetKeypadView: View {
                         by: increment.crownDetent,
                         sensitivity: .medium, isContinuous: false
                     )
-                Button(increment.chipLabel(increment.chips.last!)) {
+                Button(shortChipLabel(increment.chips.last!)) {
                     adjustWeight(by: increment.chips.last!)
                 }
                 .buttonStyle(.bordered)
@@ -113,6 +122,40 @@ struct WatchSetKeypadView: View {
         let next = model.currentWeightDisplay + delta
         model.currentWeightDisplay = min(increment.range.upperBound,
                                          max(increment.range.lowerBound, next))
+    }
+
+    private func shortChipLabel(_ value: Double) -> String {
+        value < 0 ? "-" : "+"
+    }
+
+    @ViewBuilder
+    private func setHistorySection(title: String, lines: [WatchSetHistoryLine]) -> some View {
+        if !lines.isEmpty {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title.uppercased())
+                    .font(.caption2.bold())
+                    .foregroundStyle(.tertiary)
+                ForEach(lines) { line in
+                    HStack(spacing: 5) {
+                        Text(line.label)
+                            .font(.caption2.bold())
+                            .frame(width: 18, height: 18)
+                            .background(line.isWarmup ? Color.orange.opacity(0.22) : Color.white.opacity(0.12), in: Circle())
+                            .foregroundStyle(line.isWarmup ? .orange : .primary)
+                        Text(line.weightText)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                        Text("x\(line.reps)")
+                            .monospacedDigit()
+                        Spacer(minLength: 0)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+        }
     }
 
     private var repsControl: some View {

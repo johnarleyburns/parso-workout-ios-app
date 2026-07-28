@@ -7,7 +7,7 @@ final class WatchIntervalCuePlayer {
     private var sessionActive = false
 
     func phaseTransition(soundsEnabled: Bool, isBoxing: Bool) {
-        guard soundsEnabled, isBoxing else { return }
+        guard soundsEnabled else { return }
         play(bell)
     }
 

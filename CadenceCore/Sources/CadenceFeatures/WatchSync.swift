@@ -50,6 +50,147 @@ public enum WatchSync {
         public static let cooldownMinutes = "settings.cooldownMinutes"
         public static let workoutSounds = "settings.workoutSounds"
         public static let recentPartners = "partners.recent"
+
+        public static let todayPlanSessions = "todayPlan.sessions"
+        public static let todayPlanUpdatedAt = "todayPlan.updatedAt"
+    }
+
+    public struct TodayPlan: Equatable, Sendable {
+        public struct Session: Equatable, Sendable, Identifiable {
+            public enum Kind: String, Equatable, Sendable {
+                case strength
+                case cardio
+                case rest
+            }
+
+            public var id: String
+            public var kind: Kind
+            public var label: String
+            public var exerciseNames: [String]
+            public var repLadder: [Int]
+            public var cardioType: String?
+            public var durationMinutes: Int?
+            public var zone: Int?
+
+            public init(id: String, kind: Kind, label: String,
+                        exerciseNames: [String] = [], repLadder: [Int] = [],
+                        cardioType: String? = nil, durationMinutes: Int? = nil,
+                        zone: Int? = nil) {
+                self.id = id
+                self.kind = kind
+                self.label = label
+                self.exerciseNames = exerciseNames
+                self.repLadder = repLadder
+                self.cardioType = cardioType
+                self.durationMinutes = durationMinutes
+                self.zone = zone
+            }
+
+            public var isStrength: Bool { kind == .strength }
+            public var isRest: Bool { kind == .rest }
+        }
+
+        public var sessions: [Session]
+        public var updatedAt: Date
+
+        public init(sessions: [Session] = [], updatedAt: Date = Date()) {
+            self.sessions = sessions
+            self.updatedAt = updatedAt
+        }
+
+        public var isRestDay: Bool {
+            !sessions.isEmpty && sessions.allSatisfy(\.isRest)
+        }
+
+        public var strengthSessions: [Session] {
+            sessions.filter(\.isStrength)
+        }
+
+        public static func from(day: WeeklyPlan.DayOutline?, updatedAt: Date = Date()) -> TodayPlan {
+            guard let day else { return TodayPlan(sessions: [], updatedAt: updatedAt) }
+            let sessions = day.sessions.enumerated().map { idx, session -> Session in
+                if session.kind == .strength {
+                    let exercises = session.exercises?.map(\.name) ?? []
+                    let ladder = session.exercises?.first?.repLadder ?? []
+                    return Session(
+                        id: session.id.isEmpty ? "strength-\(idx)" : session.id,
+                        kind: .strength,
+                        label: session.label.isEmpty ? "Strength" : session.label,
+                        exerciseNames: exercises,
+                        repLadder: ladder
+                    )
+                }
+                if session.kind == .rest || session.isRest {
+                    return Session(
+                        id: session.id.isEmpty ? "rest-\(idx)" : session.id,
+                        kind: .rest,
+                        label: session.label.isEmpty ? "Rest" : session.label
+                    )
+                }
+                return Session(
+                    id: session.id.isEmpty ? "cardio-\(idx)" : session.id,
+                    kind: .cardio,
+                    label: session.label,
+                    cardioType: cardioTypeHint(for: session),
+                    durationMinutes: session.cardioDurationMinutes,
+                    zone: session.cardioZone
+                )
+            }
+            return TodayPlan(sessions: sessions, updatedAt: updatedAt)
+        }
+
+        public static func contextDict(_ plan: TodayPlan) -> [String: Any] {
+            [
+                Key.todayPlanUpdatedAt: plan.updatedAt,
+                Key.todayPlanSessions: plan.sessions.map { session -> [String: Any] in
+                    var dict: [String: Any] = [
+                        "id": session.id,
+                        "kind": session.kind.rawValue,
+                        "label": session.label,
+                        "exerciseNames": session.exerciseNames,
+                        "repLadder": session.repLadder,
+                    ]
+                    if let cardioType = session.cardioType { dict["cardioType"] = cardioType }
+                    if let duration = session.durationMinutes { dict["durationMinutes"] = duration }
+                    if let zone = session.zone { dict["zone"] = zone }
+                    return dict
+                },
+            ]
+        }
+
+        public static func from(context: [String: Any]) -> TodayPlan? {
+            guard let rows = context[Key.todayPlanSessions] as? [[String: Any]] else { return nil }
+            let sessions = rows.compactMap { row -> Session? in
+                guard let id = row["id"] as? String,
+                      let rawKind = row["kind"] as? String,
+                      let kind = Session.Kind(rawValue: rawKind),
+                      let label = row["label"] as? String else { return nil }
+                return Session(
+                    id: id,
+                    kind: kind,
+                    label: label,
+                    exerciseNames: row["exerciseNames"] as? [String] ?? [],
+                    repLadder: row["repLadder"] as? [Int] ?? [],
+                    cardioType: row["cardioType"] as? String,
+                    durationMinutes: row["durationMinutes"] as? Int,
+                    zone: row["zone"] as? Int
+                )
+            }
+            let updatedAt = (context[Key.todayPlanUpdatedAt] as? Date) ?? Date()
+            return TodayPlan(sessions: sessions, updatedAt: updatedAt)
+        }
+
+        private static func cardioTypeHint(for session: PlannedSession) -> String {
+            let lower = session.label.lowercased()
+            if lower.contains("box") { return "boxing" }
+            if lower.contains("row") { return "rowing" }
+            if lower.contains("swim") { return "swim" }
+            if lower.contains("cycle") || lower.contains("bike") { return "cycle" }
+            if lower.contains("walk") { return "walk" }
+            if lower.contains("run") { return "run" }
+            if session.kind == .vo2Intervals || lower.contains("interval") { return "hiit" }
+            return "other"
+        }
     }
 
     public enum Status: Equatable, Sendable {

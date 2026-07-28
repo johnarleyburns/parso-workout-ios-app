@@ -569,13 +569,14 @@ public enum WorkoutRepository {
         return set.performedBy?.id == person.id
     }
 
-    /// Rep ladders (one `[Int]` per prior session) for an exercise, scoped to a
-    /// performer. Ordered oldest first so the last element is the most recent.
+    /// Working-set rep ladders (one `[Int]` per prior session) for an exercise,
+    /// scoped to a performer. Ordered oldest first so the last element is the most
+    /// recent.
     public static func repLadderHistory(for exercise: Exercise,
                                         performedBy person: Person?,
                                         excluding session: WorkoutSession?) -> [[Int]] {
         let sets = (exercise.sets ?? []).filter {
-            $0.session?.id != session?.id && set($0, wasPerformedBy: person)
+            $0.session?.id != session?.id && !$0.isWarmup && set($0, wasPerformedBy: person)
         }
         let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
         let sessions = Array(grouped.values)

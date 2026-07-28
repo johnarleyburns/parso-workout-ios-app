@@ -59,6 +59,10 @@ final class IntervalCueScheduler {
             switch cue {
             case .warning: cues.warning()
             case .countdownTick: cues.countdownTick()
+            case .phaseTransition:
+                // iPhone interval UI fires transition cues immediately from the
+                // phase-ID change; the scheduler owns only timed cues here.
+                break
             }
         }
     }

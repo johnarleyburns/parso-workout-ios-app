@@ -189,7 +189,7 @@ struct SessionView: View {
             reps = set.reps
         } else {
             let loggedCount = session.orderedSets.filter {
-                $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID)
+                $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID)
             }.count
             reps = plannedReps(for: exercise, setIndex: loggedCount, performerID: performerID)
         }
@@ -262,13 +262,13 @@ struct SessionView: View {
 
     private func plannedReps(for exercise: Exercise, setIndex: Int, performerID: UUID?) -> Int {
         let currentReps = session.orderedSets
-            .filter { $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID) }
+            .filter { $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID) }
             .sorted { $0.order < $1.order }
             .map { $0.reps }
         let performer = people(for: performerID)
         let prior = WorkoutRepository.repLadderHistory(for: exercise, performedBy: performer, excluding: session)
         let lastLogged = session.orderedSets.last(where: {
-            $0.exercise?.id == exercise.id && setPerformedBy($0, performerID: performerID)
+            $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID)
         })?.reps
         return SessionViewModel.plannedReps(
             ladder: SessionViewModel.effectiveLadder(session: session),

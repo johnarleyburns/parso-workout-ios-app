@@ -151,4 +151,52 @@ final class WatchSyncTests: XCTestCase {
         XCTAssertEqual(WatchSync.Status.synced(date).toastText, "Watch synced")
         XCTAssertEqual(WatchSync.requestSettingsSyncMessage()[WatchSync.Key.command] as? String, WatchSync.Key.requestSettingsSync)
     }
+
+    func testTodayPlanContextRoundTripStrengthAndCardio() {
+        let updatedAt = Date(timeIntervalSince1970: 42)
+        let plan = WatchSync.TodayPlan(sessions: [
+            .init(id: "strength", kind: .strength, label: "Strength",
+                  exerciseNames: ["Bench Press", "Back Squat"], repLadder: [12, 10, 8]),
+            .init(id: "cardio", kind: .cardio, label: "Moderate aerobic",
+                  cardioType: "run", durationMinutes: 30, zone: 2),
+        ], updatedAt: updatedAt)
+
+        let dict = WatchSync.TodayPlan.contextDict(plan)
+        let restored = WatchSync.TodayPlan.from(context: dict)
+
+        XCTAssertEqual(restored, plan)
+        XCTAssertEqual(restored?.strengthSessions.first?.exerciseNames, ["Bench Press", "Back Squat"])
+        XCTAssertFalse(restored?.isRestDay ?? true)
+    }
+
+    func testTodayPlanFromWeeklyRestDay() {
+        let day = WeeklyPlan.DayOutline(date: Date(), label: "Rest", sessions: [
+            PlannedSession(id: "rest", kind: .rest, label: "Rest", isHard: false, isRest: true)
+        ], isToday: true)
+
+        let plan = WatchSync.TodayPlan.from(day: day)
+
+        XCTAssertTrue(plan.isRestDay)
+        XCTAssertEqual(plan.sessions.first?.kind, .rest)
+    }
+
+    func testTodayPlanFromWeeklyStrengthUsesExercisePrescription() {
+        let exercise = CoachSession.RecommendedExercise(
+            name: "Bench Press",
+            sets: 3,
+            repsLow: 8,
+            repsHigh: 12,
+            rir: 2,
+            repLadder: [12, 10, 8]
+        )
+        let day = WeeklyPlan.DayOutline(date: Date(), label: "Strength", sessions: [
+            PlannedSession(id: "strength", kind: .strength, label: "Strength",
+                           isHard: true, isRest: false, exercises: [exercise])
+        ], isToday: true)
+
+        let plan = WatchSync.TodayPlan.from(day: day)
+
+        XCTAssertEqual(plan.strengthSessions.first?.exerciseNames, ["Bench Press"])
+        XCTAssertEqual(plan.strengthSessions.first?.repLadder, [12, 10, 8])
+    }
 }

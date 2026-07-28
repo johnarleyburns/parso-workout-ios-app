@@ -123,8 +123,12 @@ final class AppModel: NSObject {
             workoutSounds: settings.workoutSounds,
             recentPartnerNames: recentPartnerNames()
         )
+        var context = WatchSync.Preferences.contextDict(prefs, updatedAt: now)
+        if let todayPlan = watchTodayPlan(settings: settings, updatedAt: now) {
+            context.merge(WatchSync.TodayPlan.contextDict(todayPlan)) { _, new in new }
+        }
         do {
-            try session.updateApplicationContext(WatchSync.Preferences.contextDict(prefs, updatedAt: now))
+            try session.updateApplicationContext(context)
             recordWatchSyncSuccess(now)
         } catch {
             recordWatchSyncFailure(error.localizedDescription)
@@ -200,6 +204,36 @@ final class AppModel: NSObject {
             .filter { !$0.isMe && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .map(\.name)
             .prefix(3))
+    }
+
+    private func watchTodayPlan(settings: AppSettings, updatedAt: Date) -> WatchSync.TodayPlan? {
+        guard let container = _modelContainer else { return nil }
+        let ctx = ModelContext(container)
+        let sessions = (try? ctx.fetch(FetchDescriptor<WorkoutSession>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        ))) ?? []
+        let cardio = (try? ctx.fetch(FetchDescriptor<CardioWorkout>(
+            sortBy: [SortDescriptor(\.start, order: .reverse)]
+        ))) ?? []
+        let assessments = (try? ctx.fetch(FetchDescriptor<Assessment>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        ))) ?? []
+        let policy: PlanningConstraintPolicy = settings.isPlanOverrideActive(now: updatedAt) ? .meetDeficits : .safe
+        let snapshot = HomeCoachModel.snapshot(
+            sessions: sessions,
+            cardio: cardio,
+            assessments: assessments,
+            readiness: [],
+            goal: settings.trainingGoal,
+            experience: settings.experienceLevel,
+            formula: settings.formula,
+            schedule: settings.coachSchedulePreferences,
+            profile: settings.coachPreferenceProfile,
+            userAge: settings.userAge,
+            now: updatedAt,
+            constraintPolicy: policy
+        )
+        return WatchSync.TodayPlan.from(day: snapshot.plan.today, updatedAt: updatedAt)
     }
 
     private func recordWatchSyncSuccess(_ date: Date) {
@@ -303,8 +337,21 @@ extension AppModel: WCSessionDelegate {
             if let existing = sessions.first {
                 session = existing
             } else {
-                session = try WorkoutRepository.createSession(title: "Strength", in: ctx)
+                let title = (info["session_title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let sessionTitle: String
+                if let title, !title.isEmpty {
+                    sessionTitle = title
+                } else {
+                    sessionTitle = "Strength"
+                }
+                session = try WorkoutRepository.createSession(title: sessionTitle, in: ctx)
                 session.id = sessionID
+                session.plannedExerciseNames = info["planned_exercises"] as? [String] ?? []
+                session.plannedRepLadder = info["planned_rep_ladder"] as? [Int] ?? []
+                session.planKey = info["plan_key"] as? String
+                for name in session.plannedExerciseNames {
+                    _ = try? WorkoutRepository.findOrCreateExercise(named: name, in: ctx)
+                }
                 try ctx.save()
             }
             guard let exName = info["exercise"] as? String,

@@ -6,7 +6,12 @@ import CadenceFeatures
 @main
 struct CadenceWatchApp: App {
     let container: ModelContainer = {
-        do { return try CadenceStore.makeModelContainer() }
+        do {
+            let container = try CadenceStore.makeModelContainer(cloudKitEnabled: false)
+            let context = ModelContext(container)
+            _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(context)
+            return container
+        }
         catch { fatalError("Failed to create ModelContainer: \(error)") }
     }()
 

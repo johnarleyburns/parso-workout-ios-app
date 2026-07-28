@@ -15,7 +15,17 @@ final class IntervalCueDeciderTests: XCTestCase {
     func testWarningRearmsForNewPhase() {
         var d = IntervalCueDecider()
         _ = d.cues(phaseKind: .work, currentPhaseID: 3, phaseRemaining: 30, isPaused: false, isComplete: false)
-        XCTAssertEqual(d.cues(phaseKind: .work, currentPhaseID: 5, phaseRemaining: 30, isPaused: false, isComplete: false), [.warning])
+        XCTAssertEqual(d.cues(phaseKind: .work, currentPhaseID: 5, phaseRemaining: 30, isPaused: false, isComplete: false),
+                       [.phaseTransition(.work), .warning])
+    }
+
+    func testPhaseTransitionCuesWorkAndRestBoundaries() {
+        var d = IntervalCueDecider()
+        XCTAssertEqual(d.cues(phaseKind: .work, currentPhaseID: 1, phaseRemaining: 20, isPaused: false, isComplete: false), [])
+        XCTAssertEqual(d.cues(phaseKind: .rest, currentPhaseID: 2, phaseRemaining: 30, isPaused: false, isComplete: false),
+                       [.phaseTransition(.rest)])
+        XCTAssertEqual(d.cues(phaseKind: .work, currentPhaseID: 3, phaseRemaining: 30, isPaused: false, isComplete: false),
+                       [.phaseTransition(.work), .warning])
     }
 
     func testCountdownTicksOnFinalThreeSeconds() {

@@ -11,15 +11,18 @@ public struct IntervalCueDecider {
     public enum Cue: Equatable {
         case warning
         case countdownTick
+        case phaseTransition(IntervalPhaseKind)
     }
 
     private var lastWarnedPhase: Int?
     private var lastTickSecond = -1
+    private var lastPhaseID: Int?
 
     public init() {}
 
-    /// Re-arm trackers (called after a phase skip so warnings/ticks fire for the
-    /// new phase).
+    /// Re-arm timing trackers (called after a phase skip so warnings/ticks fire
+    /// for the new phase). Phase tracking is deliberately preserved so the next
+    /// tick can still detect a real transition.
     public mutating func reset() {
         lastWarnedPhase = nil
         lastTickSecond = -1
@@ -36,6 +39,14 @@ public struct IntervalCueDecider {
 
         var out: [Cue] = []
         let secs = Int(phaseRemaining.rounded(.up))
+
+        if let currentPhaseID {
+            if let lastPhaseID, currentPhaseID != lastPhaseID, let phaseKind {
+                out.append(.phaseTransition(phaseKind))
+                lastTickSecond = -1
+            }
+            lastPhaseID = currentPhaseID
+        }
 
         // 30-second warning (once per work phase)
         if phaseKind == .work, secs == 30, currentPhaseID != lastWarnedPhase {

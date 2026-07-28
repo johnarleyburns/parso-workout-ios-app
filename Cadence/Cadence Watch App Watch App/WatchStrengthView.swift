@@ -6,6 +6,25 @@ import CadenceFeatures
 
 struct WatchStrengthView: View {
     @State private var flowModel: WatchStrengthFlowModel?
+    @State private var shouldStopWorkoutOnDisappear = false
+
+    private let resumingSession: WorkoutSession?
+    private let title: String
+    private let plannedExerciseNames: [String]
+    private let repLadder: [Int]
+    private let planKey: String?
+
+    init(resuming session: WorkoutSession? = nil,
+         title: String = "Strength",
+         plannedExerciseNames: [String] = [],
+         repLadder: [Int] = [],
+         planKey: String? = nil) {
+        self.resumingSession = session
+        self.title = title
+        self.plannedExerciseNames = plannedExerciseNames
+        self.repLadder = repLadder
+        self.planKey = planKey
+    }
 
     @Environment(\.modelContext) private var modelContext
     @Environment(WatchWorkoutManager.self) private var watchManager
@@ -28,13 +47,24 @@ struct WatchStrengthView: View {
                     cooldownDefault: watchSettings.cooldownMinutes,
                     restDefault: watchSettings.restSeconds
                 )
-                m.start()
+                m.start(
+                    resuming: resumingSession,
+                    title: title,
+                    plannedExerciseNames: plannedExerciseNames,
+                    repLadder: repLadder,
+                    planKey: planKey,
+                    createSession: true
+                )
                 flowModel = m
-                watchManager.startWorkout(type: "strength")
+                if watchManager.isActive {
+                    if watchManager.isPaused { watchManager.togglePause() }
+                } else {
+                    watchManager.startWorkout(type: "strength")
+                }
             }
         }
         .onDisappear {
-            if watchManager.isActive {
+            if shouldStopWorkoutOnDisappear, watchManager.isActive {
                 watchManager.stopWorkout(save: false)
             }
         }
@@ -43,8 +73,25 @@ struct WatchStrengthView: View {
             if let payload = flowModel?.discardPayload {
                 sendWCPayload(payload)
             }
+            shouldStopWorkoutOnDisappear = true
             watchManager.stopWorkout(save: false)
             dismiss()
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                if flowModel?.stage != .summary {
+                    Button {
+                        if watchManager.isActive, !watchManager.isPaused {
+                            watchManager.togglePause()
+                        }
+                        dismiss()
+                    } label: {
+                        Label("Pause", systemImage: "pause.fill")
+                    }
+                    .accessibilityIdentifier("watchStrength.pause")
+                }
+            }
         }
     }
 
@@ -64,7 +111,11 @@ struct WatchStrengthView: View {
         case .cooldown:
             WatchCoolDownView(model: model)
         case .summary:
-            WatchStrengthSummaryView(model: model, onDismiss: { dismiss() })
+            WatchStrengthSummaryView(model: model, onDismiss: {
+                shouldStopWorkoutOnDisappear = true
+                if watchManager.isActive { watchManager.stopWorkout(save: false) }
+                dismiss()
+            })
         case .discarded, .idle:
             EmptyView()
         }

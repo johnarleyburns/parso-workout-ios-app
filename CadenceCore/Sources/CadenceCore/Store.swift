@@ -1,17 +1,15 @@
 import Foundation
 import SwiftData
 
-/// Builds the shared SwiftData store. Cladiron mirrors the store to the user's
-/// **private** CloudKit database (`iCloud.guru.parso.ios-workout-app`) so the
-/// full training log syncs live across the user's iPhone and Apple Watch — it
-/// stays in the user's own iCloud, never a Cladiron server, so the Data Not
-/// Collected label is unaffected. JSON export/import remains for portability
-/// (see `DataExport` / `WorkoutRepository.buildExport` & `merge`).
+/// Builds the shared SwiftData store. The iPhone mirrors the store to the user's
+/// **private** CloudKit database (`iCloud.guru.parso.ios-workout-app`). The watch
+/// uses a local-only store and syncs through WatchConnectivity so the phone is
+/// the sole CloudKit writer.
 public enum CadenceStore {
 
-    /// The private CloudKit container backing SwiftData sync. Must match the
-    /// `com.apple.developer.icloud-container-identifiers` entitlement on both the
-    /// iOS and watch targets.
+    /// The private CloudKit container backing the iPhone SwiftData store. Must
+    /// match the `com.apple.developer.icloud-container-identifiers` entitlement
+    /// on the iOS target.
     public static let cloudKitContainerID = "iCloud.guru.parso.ios-workout-app"
 
     public static let schema = Schema([
@@ -28,16 +26,19 @@ public enum CadenceStore {
         Assessment.self
     ])
 
-    /// - Parameter inMemory: pass `true` for previews/tests — that store is
-    ///   in-memory and never touches CloudKit. The on-disk store mirrors to the
-    ///   user's private CloudKit database for live cross-device sync (FR-9); the
-    ///   models are CloudKit-compatible by construction (all optional/defaulted,
-    ///   optional relationships, no unique constraints — see `Models.swift`).
-    public static func makeModelContainer(inMemory: Bool = false) throws -> ModelContainer {
-        let configuration = inMemory
-            ? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            : ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
-                                 cloudKitDatabase: .private(cloudKitContainerID))
+    /// - Parameters:
+    ///   - inMemory: pass `true` for previews/tests — that store never touches CloudKit.
+    ///   - cloudKitEnabled: pass `false` for the watch app; the phone remains the
+    ///     sole CloudKit writer and watch data moves over WatchConnectivity.
+    public static func makeModelContainer(inMemory: Bool = false,
+                                          cloudKitEnabled: Bool = true) throws -> ModelContainer {
+        let configuration: ModelConfiguration
+        if inMemory || !cloudKitEnabled {
+            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
+        } else {
+            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
+                                               cloudKitDatabase: .private(cloudKitContainerID))
+        }
         return try ModelContainer(for: schema, configurations: [configuration])
     }
 

@@ -1,10 +1,12 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 
 struct WatchRootView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchAppSettings
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
     @State private var cardioLocation: WorkoutConfigurationSpec.Location = .outdoor
     @State private var cardioLapLength: Double = 25
@@ -41,18 +43,34 @@ struct WatchRootView: View {
     private var launcher: some View {
         NavigationStack {
             List {
-                Section {
-                    NavigationLink { WatchStrengthView() }
-                        label: {
-                            HStack {
-                                Image(systemName: "dumbbell.fill").foregroundStyle(.blue)
-                                VStack(alignment: .leading) {
-                                    Text("Strength").fontWeight(.semibold)
-                                    Text("Weight training").font(.caption2).foregroundStyle(.secondary)
+                if let resume = resumableStrengthSession {
+                    Section {
+                        NavigationLink { WatchStrengthView(resuming: resume) }
+                            label: {
+                                HStack {
+                                    Image(systemName: "arrow.clockwise.circle.fill").foregroundStyle(.green)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Resume \(resume.title.isEmpty ? "Workout" : resume.title)")
+                                            .fontWeight(.semibold)
+                                        Text("\(resume.orderedSets.count) sets logged")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
-                        }
+                    }
+                }
 
+                Section("Your Plan") {
+                    yourPlanRows
+                }
+
+                Section("Strength Workout") {
+                    NavigationLink { WatchStrengthStartView() }
+                        label: { Label("Strength Workout", systemImage: "dumbbell.fill") }
+                }
+
+                Section {
                     ForEach(cardioTypes, id: \.self) { ct in
                         NavigationLink {
                             cardioSetupView(for: ct)
@@ -121,6 +139,104 @@ struct WatchRootView: View {
             }
             .navigationTitle("Cladiron")
         }
+    }
+
+    private var resumableStrengthSession: WorkoutSession? {
+        sessions.filter(\.isResumable).first
+    }
+
+    @ViewBuilder
+    private var yourPlanRows: some View {
+        if let plan = watchManager.todayPlan {
+            if plan.sessions.isEmpty || plan.isRestDay {
+                Label("Rest", systemImage: "bed.double.fill")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(plan.sessions) { session in
+                    switch session.kind {
+                    case .strength:
+                        NavigationLink {
+                            WatchStrengthView(
+                                title: session.label.isEmpty ? "Strength" : session.label,
+                                plannedExerciseNames: session.exerciseNames,
+                                repLadder: session.repLadder
+                            )
+                        } label: {
+                            plannedStrengthLabel(session)
+                        }
+                    case .cardio:
+                        Button {
+                            startPlannedCardio(session)
+                        } label: {
+                            plannedCardioLabel(session)
+                        }
+                    case .rest:
+                        Label(session.label.isEmpty ? "Rest" : session.label, systemImage: "bed.double.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        } else {
+            Text("Open Cladiron on iPhone to sync today.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func plannedStrengthLabel(_ session: WatchSync.TodayPlan.Session) -> some View {
+        HStack {
+            Image(systemName: "checklist.checked").foregroundStyle(.green)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.label.isEmpty ? "Strength" : session.label)
+                    .fontWeight(.semibold)
+                if !session.exerciseNames.isEmpty {
+                    Text(session.exerciseNames.prefix(3).joined(separator: ", "))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+        }
+    }
+
+    private func plannedCardioLabel(_ session: WatchSync.TodayPlan.Session) -> some View {
+        HStack {
+            Image(systemName: cardioType(from: session.cardioType).symbol).foregroundStyle(.teal)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.label.isEmpty ? "Cardio" : session.label)
+                    .fontWeight(.semibold)
+                let detail = plannedCardioDetail(session)
+                if !detail.isEmpty {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func plannedCardioDetail(_ session: WatchSync.TodayPlan.Session) -> String {
+        var parts: [String] = []
+        if let minutes = session.durationMinutes { parts.append("\(minutes) min") }
+        if let zone = session.zone { parts.append("Z\(zone)") }
+        return parts.joined(separator: " · ")
+    }
+
+    private func startPlannedCardio(_ session: WatchSync.TodayPlan.Session) {
+        let ct = cardioType(from: session.cardioType)
+        if ct == .hiit || ct == .boxing {
+            let model = intervalSetupModel(kind: ct.displayName)
+            activeIntervalSession = ActiveIntervalSession(plan: model.intervalPlan(), kind: ct.displayName)
+        } else {
+            let kind = ct.toCardioKind()
+            watchManager.startWorkout(type: ct.rawValue, spec: nil)
+            activeCardioKind = kind
+        }
+    }
+
+    private func cardioType(from raw: String?) -> CardioType {
+        guard let raw, let type = CardioType(rawValue: raw) else { return .other }
+        return type
     }
 
     var cardioTypes: [CardioType] { [.run, .walk, .cycle, .swim, .hiit, .boxing, .rowing, .other] }

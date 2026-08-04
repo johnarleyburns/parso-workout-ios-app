@@ -85,10 +85,10 @@ bash scripts/install-git-hooks.sh
 
 Installed hooks:
 
-- `pre-commit`: runs `make pre-commit`, which is the SwiftPM unit suite.
-- `pre-push`: runs `make pre-push`, which is the SwiftPM unit suite plus the iOS simulator smoke test.
+- `pre-commit`: runs `make pre-commit`, which is the SwiftPM unit suite plus the iOS simulator smoke test (every commit leaves the app field-testable, including the strength-loop smoke test that logs a set).
+- `pre-push`: runs `make pre-push`, which is the SwiftPM unit suite only — no UI.
 
-The pre-push hook intentionally includes simulator smoke coverage, so it expects
+The pre-commit hook includes simulator smoke coverage, so it expects
 the pinned simulator from `Makefile`'s `SMOKE_DEST` to be available locally. For
 exceptional cases, Git's standard `--no-verify` flag bypasses hooks.
 
@@ -106,7 +106,7 @@ xcodebuild build -project Cadence/Cadence.xcodeproj \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-For full local pre-push verification, use:
+For full local pre-commit verification, use:
 
 ```sh
 make all-tests

@@ -41,9 +41,13 @@ all-tests: test smoke
 # CI-equivalent host gate without simulators.
 ci: build test guardrails
 
-pre-commit: test
+# Commit gate: the full local gate (unit suite + simulator UI smoke) — every
+# commit must leave the app field-testable, including the smoke strength loop.
+pre-commit: all-tests
 
-pre-push: all-tests
+# Push gate: SwiftPM unit tests ONLY, no simulator. Pushes are frequent and the
+# UI smoke already ran at commit; CI runs the SwiftPM suite on the push.
+pre-push: test
 
 # Watch smoke gate: build once, run exactly ONE simulator test (launch → start → stop)
 # on the single named watch simulator. Local only — never in CI.

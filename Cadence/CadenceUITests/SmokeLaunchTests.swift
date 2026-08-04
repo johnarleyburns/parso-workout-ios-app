@@ -22,4 +22,31 @@ final class SmokeLaunchTests: CadenceUITestCase {
         app.tabBars.buttons["Workout"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 5))
     }
+
+    /// The core loop must actually work: start a strength workout, add an
+    /// exercise, and log at least one set — "the smoke gate is a pass only when
+    /// a set lands in the session" (field issue: add-set regression). The
+    /// picker's Add action opens the inline editor for the fresh planned
+    /// exercise; it must render even with no sets logged (cache-miss
+    /// regression), and saving must land a completed set row.
+    func testStrengthWorkoutLogsASet() {
+        let app = XCUIApplication.launched()
+
+        XCTAssertTrue(app.startEmptyStrengthWorkout(), "strength session did not start")
+
+        XCTAssertTrue(app.pickExercise("Bench Press"), "could not add Bench Press from picker")
+
+        let weightField = app.textFields["set.weightField"]
+        XCTAssertTrue(weightField.waitForExistence(timeout: 10),
+                      "inline set editor did not open for planned exercise (add-set regression)")
+        weightField.tap()
+        weightField.typeText("40")
+
+        app.buttons["set.save"].tap()
+
+        // The set must land as a completed row on the card.
+        XCTAssertTrue(app.buttons["set.editWeight.Bench Press.1"].waitForExistence(timeout: 10),
+                      "logged set row did not appear")
+        app.dismissRestBar()
+    }
 }

@@ -56,6 +56,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 - App: open `Cadence.xcodeproj`; schemes are **Cadence** (iOS) and **Cadence Watch App**. The `.xcodeproj` is committed (created in Xcode, not generated).
 - CLI build: `xcodebuild -scheme Cadence -destination 'platform=iOS Simulator,name=iPhone 16' build`
 - Real-device runs are required to test HealthKit — the simulator has no real Health data.
+- Git hooks (installed via `scripts/install-git-hooks.sh`): **pre-commit** runs the full local gate (SwiftPM unit tests + simulator UI smoke); **pre-push** runs SwiftPM unit tests only, no UI.
 
 ## Conventions
 - Small, focused commits; one feature per branch; push to main when verified.

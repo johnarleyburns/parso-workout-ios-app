@@ -148,12 +148,12 @@ struct SessionView: View {
     }
 
     /// Builds the inline editor config from the cache + current session state.
+    /// The cache only covers exercises with logged sets, so a planned-only card
+    /// (first set of the session) falls back to direct history lookups.
     private func inlineEditorConfig() -> InlineEditorConfig? {
         guard let exerciseID = inlineExerciseID,
-              let ctx = cache.state.contexts.first(where: { $0.exerciseID == exerciseID }),
-              let exercise = session.exercisesInOrder.first(where: { $0.id == exerciseID }) else {
-            return nil
-        }
+              let exercise = inlineExercise else { return nil }
+        let cachedCtx = cache.state.contexts.first(where: { $0.exerciseID == exerciseID })
 
         let isEditing = inlineEditingSetID != nil
         let editingSet = isEditing ? session.orderedSets.first(where: { $0.id == inlineEditingSetID }) : nil
@@ -162,8 +162,8 @@ struct SessionView: View {
             ? (editingSet?.performedBy?.isMe ?? true ? nil : editingSet?.performedBy?.id)
             : nextPerson().flatMap { $0.isMe ? nil : $0.id }
 
-        let pc = ctx.performerContexts.first { $0.performerID == performerID }
-            ?? ctx.performerContexts.first { $0.isMe }
+        let pc = cachedCtx?.performerContexts.first { $0.performerID == performerID }
+            ?? cachedCtx?.performerContexts.first { $0.isMe }
 
         let weight: String
         let hint: Double?
@@ -174,7 +174,8 @@ struct SessionView: View {
             if let last = SessionViewModel.lastSessionWeight(session: session, exercise: exercise, performerID: performerID) {
                 weight = Format.weightValue(last, unit: settings.unit)
                 hint = nil
-            } else if let firstPrior = pc?.firstWorkingWeightKg {
+            } else if let firstPrior = pc?.firstWorkingWeightKg
+                        ?? WorkoutRepository.firstWorkingSetWeight(for: exercise, performedBy: people(for: performerID), excluding: session) {
                 weight = Format.weightValue(firstPrior, unit: settings.unit)
                 hint = firstPrior
             } else {

@@ -170,14 +170,14 @@ extension XCUIApplication {
     /// the columnar checkmark button (redesign A3).
     func recordKeypadSet(_ value: String, clear: Bool = false) {
         keypadEnter(value, clear: clear)
-        buttons["inline.save"].tap()
+        buttons["set.save"].tap()
     }
 
     /// Types a weight into the inline weight TextField. The columnar redesign
     /// replaced the dedicated weight keypad sheet with an inline text field.
     func keypadEnter(_ value: String, clear: Bool = false) {
         // Inline text field may need focus first — tap it
-        let field = textFields["inline.weight"]
+        let field = textFields["set.weightField"]
         if field.exists { field.tap() }
         XCTAssertTrue(field.waitForExistence(timeout: 25), "inline weight field")
         if clear { field.tap(); field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 10)) }

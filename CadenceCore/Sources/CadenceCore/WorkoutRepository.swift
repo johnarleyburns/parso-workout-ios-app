@@ -205,10 +205,13 @@ public enum WorkoutRepository {
 
     /// The most recently used distinct exercises from the user's workout history
     /// (Recents tab). Returns up to `limit` exercises ordered by recency.
-    /// Uses a fetchLimit to avoid pulling every set ever logged.
+    /// Uses a fetchLimit to avoid pulling every set ever logged. The cap is set
+    /// to the most recent 200 sets — ~30+ sessions of distinct-exercise coverage,
+    /// identical "last used" results in practice, but ~10x cheaper than scanning
+    /// 2000 rows on the watch's slow CPU (watch strength latency fix).
     public static func recentlyUsedExercises(_ context: ModelContext, limit: Int = 25) throws -> [Exercise] {
         var desc = FetchDescriptor<SetEntry>(sortBy: [SortDescriptor(\.completedAt, order: .reverse)])
-        desc.fetchLimit = 2000
+        desc.fetchLimit = 200
         let all = try context.fetch(desc)
         var seen = Set<UUID>()
         var result: [Exercise] = []

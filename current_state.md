@@ -2,7 +2,52 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-07-27 — CloudKit live sync + watch weight fix shipped._
+_Last updated: 2026-08-03 — field issues: watch strength latency, iPhone add-set regression, hook gates._
+
+## Field issues — 2026-08-03 — SHIPPED
+
+Three fixes + CI-gate swap, verified (`swift test` **1282 tests, 0 failures**;
+iOS `make smoke` 2/2 passed incl. the new strength-set loop; test-pyramid +
+no-network guards OK).
+
+**1. Watch strength-workout button latency.** Every press (exercise lookup,
+selection, set entry, start rest, next set) ran multiple synchronous full-store
+SwiftData scans on the watch CPU (per-tap measured at 45–130 ms on a Mac →
+multi-second on watch): `findOrCreateExercise` refetches the full ~937-row
+exercise table per call, `refreshExerciseList` repeated it per planned name,
+the keypad recomputed `lastTimeSets`/`repLadderHistory` on every render, and
+`recentlyUsedExercises` scanned 2000 rows.
+- `WatchStrengthFlowModel` now holds an in-memory name→Exercise catalog (loaded
+  once per flow; `findOrCreateExercise` only on cache miss) and a per-exercise
+  memo of prior sets for the session (the exclusion is immutable; cleared on
+  `start`/`beginSession`). Keypad reads (`previousSetHint`,
+  `previousWorkoutHistoryLines`, `defaultReps` via warmup-filtered ladder
+  derivation) use the memo.
+- `recentlyUsedExercises` fetchLimit 2000 → 200 (identical recents, ~10x cheaper).
+- Result (probe, 937 exercises / 7200 sets / 300 sessions): log set 6.7 ms
+  (was ~145), next set ~0 ms (was ~118), add exercise ~0 ms (was ~64),
+  keypad render ~0.2 ms (was ~7+ per re-render); only the one-time per-exercise
+  history scan remains (~100 ms on Mac ≈ ~1 s on watch) for weight defaulting.
+- Unit tests unchanged + green (watch-flow suites cover the memo paths).
+
+**2. iPhone strength: "Add Set does nothing" (add-set regression).** The
+render-cache perf pass (9233975) made `inlineEditorConfig()` require a cached
+`ExerciseContext`, but the cache only covers exercises **with logged sets** —
+so a planned-only card (first set of any freshly picked exercise) rendered
+neither the editor nor the button: tapping Add Set visibly did nothing.
+- Fix: `inlineEditorConfig()` uses `inlineExercise` directly and falls back to
+  `WorkoutRepository.firstWorkingSetWeight` when the cache has no context,
+  restoring pre-cache behavior for planned-only cards.
+- The smoke gate now **must log a set**: new `SmokeLaunchTests`
+  `testStrengthWorkoutLogsASet` starts a strength workout (Home → Start Workout →
+  Weights → Quick Start), picks Bench Press, types 40 into the inline editor,
+  saves, and asserts the completed set row appears. Stale test identifiers
+  (`inline.weight`/`inline.save`) updated to `set.weightField`/`set.save`.
+
+**3. Git hook gates swapped.** `pre-commit` now runs the **full local gate**
+(SwiftPM unit tests + simulator UI smoke, `make all-tests`); `pre-push` runs
+**SwiftPM unit tests only, no UI** (`make test`). CLAUDE.md/README/make targets
+kept in sync; the GitHub workflow is unchanged (UI smoke stays local-only).
 
 ## CloudKit live sync + watch weight increments — 2026-07-27 — SHIPPED
 

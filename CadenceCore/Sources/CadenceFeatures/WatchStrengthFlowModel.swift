@@ -57,6 +57,18 @@ public final class WatchStrengthFlowModel {
     let restDefault: Int
     private let context: ModelContext
 
+    /// In-memory name → Exercise catalog, loaded once per flow so the per-tap
+    /// path never refetches the full exercise table (~900 seeded rows — the
+    /// dominant per-tap cost on the watch CPU). `findOrCreateExercise` is only
+    /// hit on a cache miss (custom exercises, first-seen names).
+    private var exerciseCache: [String: Exercise]?
+
+    /// Prior working sets per exercise for the CURRENT session, memoized: the
+    /// session is the only exclusion, so `lastTimeSets(excluding: session)` is
+    /// immutable for the life of the flow. Computed once per exercise instead of
+    /// re-scanning every exercise's full set history on every tap/render.
+    private var priorSetsByExercise: [UUID: [SetEntry]] = [:]
+
     public init(context: ModelContext, unit: MeasurementUnitPreference = .kilograms,
                 cooldownDefault: Int = 5, restDefault: Int = 90) {
         self.context = context
@@ -73,6 +85,8 @@ public final class WatchStrengthFlowModel {
                       repLadder: [Int] = [],
                       planKey: String? = nil,
                       createSession: Bool = false) {
+        priorSetsByExercise.removeAll()
+        exerciseCache = nil
         if let existingSession {
             session = existingSession
         } else if createSession, session == nil {
@@ -110,14 +124,47 @@ public final class WatchStrengthFlowModel {
         refreshExerciseList()
     }
 
+    // MARK: - Cached lookups (watch latency: never refetch the full table per tap)
+
+    private func exercise(named name: String) -> Exercise? {
+        let key = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return nil }
+        if exerciseCache == nil {
+            exerciseCache = Dictionary(
+                ((try? WorkoutRepository.allExercises(context)) ?? []).map { ($0.name, $0) },
+                uniquingKeysWith: { first, _ in first }
+            )
+        }
+        if let cached = exerciseCache?[key] { return cached }
+        guard let resolved = try? WorkoutRepository.findOrCreateExercise(named: key, in: context) else {
+            return nil
+        }
+        exerciseCache?[resolved.name] = resolved
+        return resolved
+    }
+
+    private func priorSets(for exercise: Exercise) -> [SetEntry] {
+        if let cached = priorSetsByExercise[exercise.id] { return cached }
+        let sets = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
+        priorSetsByExercise[exercise.id] = sets
+        return sets
+    }
+
+    private func repLadders(from prior: [SetEntry]) -> [[Int]] {
+        let working = prior.filter { !$0.isWarmup }
+        let grouped = Dictionary(grouping: working) { $0.session?.id ?? UUID() }
+        return Array(grouped.values)
+            .sorted { ($0.first?.session?.date ?? .distantPast) < ($1.first?.session?.date ?? .distantPast) }
+            .map { $0.sorted { $0.order < $1.order }.map(\.reps) }
+    }
+
     public func goToAddExercise() { stage = .addExercise }
 
     public func addExercise(named name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        do {
-            let exercise = try WorkoutRepository.findOrCreateExercise(named: trimmed, in: context)
+        if let exercise = exercise(named: trimmed) {
             let resolved = exercise.name
             if let session {
                 if !session.plannedExerciseNames.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) {
@@ -127,7 +174,7 @@ public final class WatchStrengthFlowModel {
             } else if !pendingExercises.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) {
                 pendingExercises.append(resolved)
             }
-        } catch {}
+        }
         stage = .home
         refreshExerciseList()
     }
@@ -140,7 +187,7 @@ public final class WatchStrengthFlowModel {
         // unit. Without the snap a canonical-kg value shows as an odd "44 lb".
         let lastWork = session.flatMap {
             SessionViewModel.lastSessionWeight(session: $0, exercise: exercise, performerID: nil)
-        } ?? WorkoutRepository.firstWorkingSetWeight(for: exercise, performedBy: nil, excluding: session)
+        } ?? priorSets(for: exercise).first { !$0.isWarmup && $0.weight > 0 }?.weight
         let prescribed = (session.map { SessionViewModel.isPrescribedMovement(exercise.name, session: $0) } == true)
             ? (session?.prescribedLoadKg ?? 0)
             : 0
@@ -264,6 +311,7 @@ public final class WatchStrengthFlowModel {
 
     private func beginSession(title: String) {
         guard session == nil else { return }
+        priorSetsByExercise.removeAll()
         do {
             session = try WorkoutRepository.createSession(
                 title: title,
@@ -288,7 +336,7 @@ public final class WatchStrengthFlowModel {
     private func refreshExerciseList() {
         guard let session else {
             let pending = pendingExercises.compactMap { name -> (exercise: Exercise, setCount: Int)? in
-                guard let exercise = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) else {
+                guard let exercise = exercise(named: name) else {
                     return nil
                 }
                 return (exercise, 0)
@@ -307,7 +355,7 @@ public final class WatchStrengthFlowModel {
         }
 
         for name in session.plannedExerciseNames {
-            guard let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context),
+            guard let ex = exercise(named: name),
                   !seen.contains(ex.id) else { continue }
             seen.insert(ex.id)
             rows.append((ex, 0))
@@ -320,10 +368,7 @@ public final class WatchStrengthFlowModel {
     private func resolvedExerciseName(_ name: String) -> String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "" }
-        if let exercise = try? WorkoutRepository.findOrCreateExercise(named: trimmed, in: context) {
-            return exercise.name
-        }
-        return trimmed
+        return exercise(named: trimmed)?.name ?? trimmed
     }
 
     private var currentPerformer: Person? {
@@ -346,8 +391,7 @@ public final class WatchStrengthFlowModel {
         guard case .keypad(let exercise) = stage else { return nil }
         let working: [SetEntry]
         if let session {
-            working = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
-                .filter { !$0.isWarmup && $0.isOwnerSet }
+            working = priorSets(for: exercise).filter { !$0.isWarmup && $0.isOwnerSet }
         } else {
             working = (exercise.sets ?? []).filter { !$0.isWarmup && $0.isOwnerSet }
         }
@@ -357,7 +401,7 @@ public final class WatchStrengthFlowModel {
 
     public var previousWorkoutHistoryLines: [WatchSetHistoryLine] {
         guard case .keypad(let exercise) = stage else { return [] }
-        return historyLines(from: WorkoutRepository.lastTimeSets(for: exercise, excluding: session))
+        return historyLines(from: priorSets(for: exercise))
     }
 
     public var currentWorkoutHistoryLines: [WatchSetHistoryLine] {
@@ -419,7 +463,7 @@ public final class WatchStrengthFlowModel {
             lastLogged = nil
         }
 
-        let prior = WorkoutRepository.repLadderHistory(for: exercise, performedBy: nil, excluding: session)
+        let prior = repLadders(from: priorSets(for: exercise))
         if setIndex < (prior.last?.count ?? 0), let reps = prior.last?[setIndex], reps > 0 {
             return reps
         }

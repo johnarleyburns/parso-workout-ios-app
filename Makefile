@@ -1,4 +1,4 @@
-.PHONY: update-exercises build test test-core test-features guardrails smoke all-tests ci pre-commit pre-push watch-smoke
+.PHONY: update-exercises build test test-core test-features guardrails smoke watch-smoke all-tests ci pre-commit pre-push
 
 update-exercises:
 	@bash scripts/update-exercises.sh
@@ -21,9 +21,8 @@ guardrails:
 	bash scripts/check-test-pyramid.sh
 	bash scripts/check-no-network.sh
 
-# UI smoke gate: build once, then run serially on a single simulator with no
-# parallel clones and no retries — parallel testing + 148 cold launches is what
-# pins the CPU. The smoke plan itself is culled to ~10 tests in Phase 5.
+# iPhone UI smoke gate: build once, then run the single normal smoke test on a
+# pinned simulator. Manual App Store screenshot UI tests stay out of this plan.
 SMOKE_SCHEME ?= Cadence
 # Bind by name to the one simulator installed on disk (iPhone 16) so every run
 # uses the same device and xcodebuild never resolves to — or downloads — another.
@@ -33,28 +32,30 @@ smoke:
 	  -testPlan Cadence -derivedDataPath .build/dd -destination '$(SMOKE_DEST)' -quiet
 	xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "$(SMOKE_SCHEME)" \
 	  -testPlan Cadence -derivedDataPath .build/dd -destination '$(SMOKE_DEST)' \
+	  -only-testing:CadenceUITests/SmokeLaunchTests/testIPhoneStrengthWorkoutPlansLogsAndCompletes \
 	  -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1
 
-# Full local gate used before push: unit suite + simulator UI smoke.
-all-tests: test smoke
-
-# CI-equivalent host gate without simulators.
-ci: build test guardrails
-
-# Commit gate: the full local gate (unit suite + simulator UI smoke) — every
-# commit must leave the app field-testable, including the smoke strength loop.
-pre-commit: all-tests
-
-# Push gate: SwiftPM unit tests ONLY, no simulator. Pushes are frequent and the
-# UI smoke already ran at commit; CI runs the SwiftPM suite on the push.
-pre-push: test
-
-# Watch smoke gate: build once, run exactly ONE simulator test (launch → start → stop)
-# on the single named watch simulator. Local only — never in CI.
-WATCH_SMOKE_DEST ?= platform=watchOS Simulator,name=Apple Watch Series 10 (46mm),OS=11.1
+# Watch smoke gate: build once, then run exactly ONE simulator test
+# (start -> log -> complete strength) on the single named watch simulator.
+# Local only: never in CI.
+WATCH_SMOKE_DEST ?= platform=watchOS Simulator,name=Watch-Large,OS=26.5
 watch-smoke:
 	xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
 	  -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' -quiet
 	xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
 	  -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' \
+	  -only-testing:"Cadence Watch App Watch AppUITests/WatchSmokeTests/testWatchStrengthWorkoutStartsLogsAndCompletes" \
 	  -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1
+
+# Full local gate used before commit: SwiftPM suite + iPhone and watch UI smoke.
+all-tests: test smoke watch-smoke
+
+# CI-equivalent host gate without simulators.
+ci: build test guardrails
+
+# Commit gate: the full local gate (SwiftPM + iPhone/watch simulator smoke).
+pre-commit: all-tests
+
+# Push gate: SwiftPM unit tests ONLY, no simulator. Pushes are frequent and the
+# UI smoke already ran at commit; CI runs the SwiftPM suite on the push.
+pre-push: test

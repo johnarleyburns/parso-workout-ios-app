@@ -27,6 +27,7 @@ struct WatchRestView: View {
                     model.finishRest()
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("watchRest.nextSet")
             }
             Spacer()
         }

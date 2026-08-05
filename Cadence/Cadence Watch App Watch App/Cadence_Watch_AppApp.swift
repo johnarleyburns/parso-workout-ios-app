@@ -7,7 +7,8 @@ import CadenceFeatures
 struct CadenceWatchApp: App {
     let container: ModelContainer = {
         do {
-            let container = try CadenceStore.makeModelContainer(cloudKitEnabled: false)
+            let uiTest = ProcessInfo.processInfo.arguments.contains("-uiTest")
+            let container = try CadenceStore.makeModelContainer(inMemory: uiTest, cloudKitEnabled: false)
             let context = ModelContext(container)
             _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(context)
             return container

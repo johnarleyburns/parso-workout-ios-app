@@ -45,11 +45,10 @@ jobs:
       - name: No-network guardrail
         run: bash scripts/check-no-network.sh
 
-  # The XCUITest UI smoke suite is intentionally NOT run in CI: simulator-based
-  # UI tests are unreliable on shared GitHub Actions runners (cold-launch timing,
+  # XCUITest smoke suites are intentionally NOT run in CI: simulator-based UI
+  # tests are unreliable on shared GitHub Actions runners (cold-launch timing,
   # shared CPU). The reliable CI gate is core-tests (host SwiftPM package tests +
-  # guardrails). The UI smoke plan is run locally on the pinned iPhone 16
-  # simulator via `make smoke` (see Makefile SMOKE_DEST).
+  # guardrails). UI smoke runs locally via `make smoke` and `make watch-smoke`.
 
   testflight-build:
     needs: core-tests

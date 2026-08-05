@@ -40,7 +40,7 @@ Requires Xcode 16+, Swift 6. Real-device testing needed for HealthKit/CoreBlueto
 swift build --package-path CadenceCore
 swift test --package-path CadenceCore # CadenceCore + CadenceFeatures package tests
 make test                            # same package test suite
-make all-tests                       # package tests + simulator UI smoke test
+make all-tests                       # package tests + iPhone/watch simulator smoke tests
 open Cadence/Cadence.xcodeproj       # iOS app + embedded watchOS app
 # CLI build:
 xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence \
@@ -56,15 +56,16 @@ in plans or CI; use `swift test --package-path CadenceCore` instead. See
 
 Local git hooks are versioned in `scripts/git-hooks`. Install them with
 `bash scripts/install-git-hooks.sh`: pre-commit runs `make pre-commit` (SwiftPM
-unit tests plus the simulator UI smoke test — every commit leaves the app
-field-testable), and pre-push runs `make pre-push` (SwiftPM unit tests only,
-no UI).
+unit tests plus the single iPhone and watch simulator smoke tests — every commit
+leaves the app field-testable), and pre-push runs `make pre-push` (SwiftPM unit
+tests only, no UI).
 
 **Timing notes:** `swift test` takes ~50s, `xcodebuild build` ~20s, and the
-full pre-commit sequence (build-for-testing + smoke test) takes ~2-3 min.
+full pre-commit sequence (build-for-testing + iPhone/watch smoke tests) takes
+~2-3 min.
 When scripting `git commit`, use a timeout of at least 300s to allow the
 pre-commit hook to complete. CI workflows should budget ≥5 min for the
-core-tests job and ≥10 min for the smoke/xcodebuild jobs.
+core-tests job and ≥10 min for any local smoke/xcodebuild jobs.
 
 ## Status
 

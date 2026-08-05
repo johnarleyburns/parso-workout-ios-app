@@ -25,6 +25,7 @@ struct WatchStrengthStartView: View {
                 } label: {
                     Label("Custom", systemImage: "plus.circle.fill")
                 }
+                .accessibilityIdentifier("watchStrength.custom")
             }
 
             Section("Prescriptions") {

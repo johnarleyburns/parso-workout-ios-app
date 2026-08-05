@@ -1,40 +1,29 @@
 import XCTest
 
-/// Test-pyramid smoke suite (Phase 5): ~10 XCUITests that need a real OS —
-/// app boot, navigation, and the core loops. Everything else moved down to
-/// headless `swift test` in CadenceFeaturesTests. This file: app boots, three
-/// tabs, Home hero. Replaces P3CoachHomeUITests / LayoutPolishUITests /
-/// HomeSimplificationUITests / AboutUITests.
+/// The one normal iPhone XCUITest. It covers the minimum end-to-end surface that
+/// needs a real simulator: launch, planning, starting, logging, ending, and the
+/// post-workout summary. Everything else belongs in headless `swift test`.
 final class SmokeLaunchTests: CadenceUITestCase {
-    func testColdLaunchShowsHomeAndTabs() {
+    func testIPhoneStrengthWorkoutPlansLogsAndCompletes() {
         let app = XCUIApplication.launched()
 
-        XCTAssertTrue(app.tabBars.buttons["Workout"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.tabBars.buttons["Tests"].exists)
-        XCTAssertTrue(app.tabBars.buttons["Progress"].exists)
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
+                      "Home did not load")
+        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10),
+                      "Coach card did not render on Home")
 
-        app.tabBars.buttons["Tests"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["tests.assessments.list"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.scrollToHittableAndTap("home.planning"), "Programs shortcut did not open")
+        XCTAssertTrue(app.descendants(matching: .any)["planning"].waitForExistence(timeout: 10),
+                      "Programs screen did not render")
+        app.popToHome()
 
-        app.tabBars.buttons["Progress"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["progress"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.openQuickStartStrengthEditor(), "Quick Start editor did not open")
+        XCTAssertTrue(app.addExerciseToOpenWorkoutPlan("Bench Press"),
+                      "could not add Bench Press to the workout plan")
 
-        app.tabBars.buttons["Workout"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 5))
-    }
-
-    /// The core loop must actually work: start a strength workout, add an
-    /// exercise, and log at least one set — "the smoke gate is a pass only when
-    /// a set lands in the session" (field issue: add-set regression). The
-    /// picker's Add action opens the inline editor for the fresh planned
-    /// exercise; it must render even with no sets logged (cache-miss
-    /// regression), and saving must land a completed set row.
-    func testStrengthWorkoutLogsASet() {
-        let app = XCUIApplication.launched()
-
-        XCTAssertTrue(app.startEmptyStrengthWorkout(), "strength session did not start")
-
-        XCTAssertTrue(app.pickExercise("Bench Press"), "could not add Bench Press from picker")
+        XCTAssertTrue(app.buttons["editor.start"].waitTap(timeout: 10), "planned workout did not start")
+        XCTAssertTrue(app.buttons["set.add.Bench Press"].waitTap(timeout: 25),
+                      "planned Bench Press card did not render")
 
         let weightField = app.textFields["set.weightField"]
         XCTAssertTrue(weightField.waitForExistence(timeout: 10),
@@ -48,5 +37,18 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["set.editWeight.Bench Press.1"].waitForExistence(timeout: 10),
                       "logged set row did not appear")
         app.dismissRestBar()
+
+        XCTAssertTrue(app.scrollToHittableAndTap("workout.end"), "End workout button did not tap")
+        let end = app.dialogButton("workout.endConfirm")
+        XCTAssertTrue(end.waitForExistence(timeout: 5), "End confirmation did not appear")
+        end.tap()
+
+        XCTAssertTrue(app.descendants(matching: .any)["summary.title"].waitForExistence(timeout: 15),
+                      "post-workout summary did not render")
+        XCTAssertTrue(app.descendants(matching: .any)["summary.metric.sets"].waitForExistence(timeout: 5),
+                      "summary did not show set count")
+        XCTAssertTrue(app.buttons["summary.done"].waitTap(timeout: 10), "summary Done did not tap")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Home did not return after summary")
     }
 }

@@ -4,26 +4,38 @@
 # Keeps the pyramid from inverting again:
 #   1. CadenceFeatures must never import SwiftUI/HealthKit/StoreKit/UIKit — that
 #      is what keeps it buildable + testable on macOS under `swift test`.
-#   2. The XCUITest suite is a fixed smoke gate and does not grow — new coverage
-#      goes into CadenceFeaturesTests (headless `swift test`), not the simulator.
+#   2. Normal XCUITest coverage is one real smoke test per UI device target.
+#      Manual App Store screenshot generation is allowed, but it must stay out of
+#      the default Cadence test plan. New behavioral coverage goes into
+#      CadenceFeaturesTests (headless `swift test`), not the simulator.
 #   3. Logic lives in CadenceFeatures, not in a View: no file under Features/
 #      exceeds 400 LOC. A ratchet grandfathers the pre-existing large views whose
 #      *logic* is already extracted (they now carry only SwiftUI markup); each may
 #      only SHRINK from its recorded ceiling. Every other file is capped at 400.
 set -uo pipefail
+shopt -s nullglob
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 fail=0
 
 FEATURES_SRC="$ROOT/CadenceCore/Sources/CadenceFeatures"
 UITEST_DIR="$ROOT/Cadence/CadenceUITests"
+IPHONE_SMOKE_FILE="$UITEST_DIR/SmokeLaunchTests.swift"
+IPHONE_SCREENSHOT_FILE="$UITEST_DIR/AppStoreScreenshotsUITests.swift"
+IPHONE_TEST_PLAN="$ROOT/Cadence/Cadence.xctestplan"
+SCREENSHOT_TEST_PLAN="$ROOT/Cadence/Screenshots.xctestplan"
 FEATURES_DIR="$ROOT/Cadence/Cadence/Features"
 WATCH_SRC="$ROOT/Cadence/Cadence Watch App Watch App"
 WATCH_UITEST_DIR="$ROOT/Cadence/Cadence Watch App Watch AppUITests"
 
 MAX_LOC=400
-MAX_UITESTS=12
-MAX_WATCH_UITESTS=3
+EXPECTED_IPHONE_SMOKE_TESTS=1
+EXPECTED_WATCH_SMOKE_TESTS=1
+
+count_tests_in_files() {
+  if [ "$#" -eq 0 ]; then echo 0; return; fi
+  grep -rho "func test" "$@" 2>/dev/null | wc -l | tr -d ' '
+}
 
 # ── 1. CadenceFeatures import ban ────────────────────────────────────────────
 banned='^[[:space:]]*import[[:space:]]+(SwiftUI|HealthKit|StoreKit|UIKit|CoreBluetooth|CoreLocation)([[:space:]]|$)'
@@ -33,11 +45,39 @@ if grep -rEn "$banned" "$FEATURES_SRC" >/dev/null 2>&1; then
   fail=1
 fi
 
-# ── 2. Smoke suite does not grow ─────────────────────────────────────────────
-uitest_count=$(grep -rho "func test" "$UITEST_DIR"/*.swift 2>/dev/null | wc -l | tr -d ' ')
-if [ "${uitest_count:-0}" -gt "$MAX_UITESTS" ]; then
-  echo "❌ CadenceUITests has $uitest_count test functions (max $MAX_UITESTS)."
-  echo "   Push new coverage into CadenceFeaturesTests (swift test), not the simulator."
+# ── 2. iPhone UI suite is one normal smoke test ─────────────────────────────
+iphone_smoke_count=$(count_tests_in_files "$IPHONE_SMOKE_FILE")
+if [ "${iphone_smoke_count:-0}" -ne "$EXPECTED_IPHONE_SMOKE_TESTS" ]; then
+  echo "❌ iPhone smoke must have exactly $EXPECTED_IPHONE_SMOKE_TESTS test function in SmokeLaunchTests.swift (found $iphone_smoke_count)."
+  echo "   Push new behavior coverage into CadenceFeaturesTests (swift test), not the simulator."
+  fail=1
+fi
+
+iphone_other_files=()
+for f in "$UITEST_DIR"/*.swift; do
+  case "$f" in
+    "$IPHONE_SMOKE_FILE"|"$IPHONE_SCREENSHOT_FILE"|"$UITEST_DIR/UITestHelpers.swift") ;;
+    *) iphone_other_files+=("$f") ;;
+  esac
+done
+if [ "${#iphone_other_files[@]}" -eq 0 ]; then
+  iphone_other_count=0
+else
+  iphone_other_count=$(count_tests_in_files "${iphone_other_files[@]}")
+fi
+if [ "${iphone_other_count:-0}" -ne 0 ]; then
+  echo "❌ CadenceUITests has $iphone_other_count non-smoke test function(s) outside the manual screenshot generator."
+  echo "   Keep normal UI coverage to the one smoke test; put other coverage in swift test."
+  printf '   %s\n' "${iphone_other_files[@]#"$ROOT"/}"
+  fail=1
+fi
+
+if ! grep -q '"AppStoreScreenshotsUITests"' "$IPHONE_TEST_PLAN" 2>/dev/null; then
+  echo "❌ AppStoreScreenshotsUITests must stay skipped in Cadence.xctestplan."
+  fail=1
+fi
+if ! grep -q '"AppStoreScreenshotsUITests' "$SCREENSHOT_TEST_PLAN" 2>/dev/null; then
+  echo "❌ Screenshots.xctestplan must remain the manual runner for AppStoreScreenshotsUITests."
   fail=1
 fi
 
@@ -73,11 +113,12 @@ while IFS= read -r f; do
   fi
 done < <(find "$FEATURES_DIR" -name '*.swift')
 
-# ── 4. Watch UI smoke cap (≤3 tests) ─────────────────────────────────────────
-watch_uitest_count=$(grep -rho "func test" "$WATCH_UITEST_DIR"/*.swift 2>/dev/null | wc -l | tr -d ' ')
-if [ "${watch_uitest_count:-0}" -gt "$MAX_WATCH_UITESTS" ]; then
-  echo "❌ Watch UITests has $watch_uitest_count test functions (max $MAX_WATCH_UITESTS)."
-  echo "   Push new coverage into CadenceFeaturesTests (swift test), not the simulator."
+# ── 4. Watch UI suite is one normal smoke test ──────────────────────────────
+watch_ui_files=("$WATCH_UITEST_DIR"/*.swift)
+watch_uitest_count=$(count_tests_in_files "${watch_ui_files[@]}")
+if [ "${watch_uitest_count:-0}" -ne "$EXPECTED_WATCH_SMOKE_TESTS" ]; then
+  echo "❌ Watch UITests must have exactly $EXPECTED_WATCH_SMOKE_TESTS smoke test function (found $watch_uitest_count)."
+  echo "   Push new behavior coverage into CadenceFeaturesTests (swift test), not the simulator."
   fail=1
 fi
 
@@ -97,4 +138,4 @@ if [ "$fail" -ne 0 ]; then
   echo "test-pyramid guardrail: FAILED"
   exit 1
 fi
-echo "test-pyramid guardrail: OK (uitests=$uitest_count/$MAX_UITESTS, watch_uitests=$watch_uitest_count/$MAX_WATCH_UITESTS)"
+echo "test-pyramid guardrail: OK (iphone_smoke=$iphone_smoke_count, watch_smoke=$watch_uitest_count; screenshots manual-only)"

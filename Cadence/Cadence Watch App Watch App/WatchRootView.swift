@@ -68,6 +68,7 @@ struct WatchRootView: View {
                 Section("Strength Workout") {
                     NavigationLink { WatchStrengthStartView() }
                         label: { Label("Strength Workout", systemImage: "dumbbell.fill") }
+                        .accessibilityIdentifier("watch.startStrength")
                 }
 
                 Section {

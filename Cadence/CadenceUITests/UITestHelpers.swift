@@ -98,16 +98,31 @@ extension XCUIApplication {
     }
 
     /// Starts a blank strength session the way the app now does it: Home → Start
-    /// Workout → Weights → Quick Start. (The New Workout button was removed from
-    /// History — round4b feedback #1/#4.) Lands on the session screen. In UI-test
-    /// mode the get-ready countdown defaults to 0, so this goes straight through.
+    /// Workout → Weights → Quick Start. Lands on the editor first, so callers can
+    /// optionally plan exercises before tapping Start.
     @discardableResult
-    func startEmptyStrengthWorkout() -> Bool {
+    func openQuickStartStrengthEditor() -> Bool {
         popToHome()
         guard scrollToHittableAndTap("home.startWorkout") else { return false }
         guard buttons["weights.quickStart"].waitTap() else { return false }
+        return buttons["editor.start"].waitForExistence(timeout: 10)
+    }
+
+    /// Starts a blank strength session without adding anything in the editor.
+    @discardableResult
+    func startEmptyStrengthWorkout() -> Bool {
+        guard openQuickStartStrengthEditor() else { return false }
         guard buttons["editor.start"].waitTap() else { return false }
         return buttons["session.addExercise"].waitForExistence(timeout: 25)
+    }
+
+    /// Adds an exercise to the open `WorkoutPlanEditor` and returns after the
+    /// editor renders the planned exercise row.
+    @discardableResult
+    func addExerciseToOpenWorkoutPlan(_ name: String) -> Bool {
+        guard scrollToAndTapButton("editor.addExercise", maxSwipes: 8) else { return false }
+        guard pickExerciseFromPresentedPicker(name) else { return false }
+        return descendants(matching: .any)["editor.exercise.\(name)"].waitForExistence(timeout: 10)
     }
 
     /// Opens the exercise picker from a live session and picks `name`
@@ -118,6 +133,12 @@ extension XCUIApplication {
     @discardableResult
     func pickExercise(_ name: String) -> Bool {
         guard buttons["session.addExercise"].waitTap() else { return false }
+        return pickExerciseFromPresentedPicker(name)
+    }
+
+    /// Picks `name` from the currently presented exercise picker.
+    @discardableResult
+    func pickExerciseFromPresentedPicker(_ name: String) -> Bool {
         let field = searchFields.firstMatch
         guard field.waitForExistence(timeout: 10) else { return false }
         field.tap(); field.typeText(name)

@@ -1,37 +1,67 @@
 import XCTest
 
-final class Cadence_Watch_App_Watch_AppUITests: XCTestCase {
+final class WatchSmokeTests: XCTestCase {
 
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
-    override func tearDownWithError() throws {}
-
     @MainActor
-    func testBoxingCountdownAdvances() throws {
+    func testWatchStrengthWorkoutStartsLogsAndCompletes() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTest", "-uiTestBoxingInterval"]
+        app.launchArguments = ["-uiTest", "-ApplePersistenceIgnoreState", "YES"]
         app.launch()
 
-        let countdownLabel = app.staticTexts["intervalCountdown"]
-        XCTAssertTrue(countdownLabel.waitForExistence(timeout: 5), "Countdown label not found")
+        XCTAssertTrue(app.tapButton("watch.startStrength", scrollAttempts: 4),
+                      "Watch launcher did not show Strength Workout")
 
-        let before = countdownLabel.label
-        let wait = expectation(description: "Countdown advances")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { wait.fulfill() }
-        waitForExpectations(timeout: 5)
+        XCTAssertTrue(app.tapButton("watchStrength.custom"),
+                      "Strength start screen did not show Custom")
 
-        let after = countdownLabel.label
-        XCTAssertNotEqual(before, after, "Countdown did not advance: \(before) → \(after)")
+        XCTAssertTrue(app.tapButton("watchStrength.addExercise"),
+                      "Strength session did not start")
+
+        XCTAssertTrue(app.tapButton("watchAddExercise.row.Bench Press"),
+                      "Watch exercise picker did not show Bench Press")
+
+        XCTAssertTrue(app.tapButton("watchStrength.exercise.Bench Press"),
+                      "Bench Press was not planned in the watch session")
+
+        XCTAssertTrue(app.tapButton("logSetButton"),
+                      "Watch set logger did not open")
+
+        XCTAssertTrue(app.tapButton("watchRest.nextSet"),
+                      "Watch rest screen did not appear after logging")
+
+        XCTAssertTrue(app.tapButton("watchStrength.finish", scrollAttempts: 4),
+                      "Watch strength home did not return after rest")
+
+        XCTAssertTrue(app.tapButton("watchCooldown.skip"),
+                      "Watch cooldown screen did not appear")
+
+        XCTAssertTrue(app.staticTexts["watchSummary.saved"].waitForExistence(timeout: 10),
+                      "Watch summary did not render")
+        XCTAssertTrue(app.buttons["watchSummary.done"].waitForExistence(timeout: 10),
+                      "Watch summary Done button did not render")
     }
+}
 
+private extension XCUIApplication {
     @MainActor
-    func testLaunchPerformance() throws {
-        if #available(macOS 10.15, iOS 13.0, tvOS 13.0, watchOS 7.0, *) {
-            measure(metrics: [XCTApplicationLaunchMetric()]) {
-                XCUIApplication().launch()
+    func tapButton(_ identifier: String, timeout: TimeInterval = 10, scrollAttempts: Int = 0) -> Bool {
+        let button = buttons[identifier].firstMatch
+        if button.waitForExistence(timeout: timeout) {
+            button.tap()
+            return true
+        }
+
+        for _ in 0..<scrollAttempts {
+            swipeUp()
+            if button.waitForExistence(timeout: 1) {
+                button.tap()
+                return true
             }
         }
+        return false
     }
 }

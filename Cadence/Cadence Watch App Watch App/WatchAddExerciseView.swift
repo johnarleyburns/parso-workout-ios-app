@@ -61,6 +61,7 @@ struct WatchAddExerciseView: View {
                 .lineLimit(2)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("watchAddExercise.row.\(name)")
     }
 
     private func loadRecent() {

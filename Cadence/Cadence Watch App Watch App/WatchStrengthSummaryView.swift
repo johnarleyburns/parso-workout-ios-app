@@ -13,6 +13,7 @@ struct WatchStrengthSummaryView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 28)).foregroundStyle(.green)
             Text("Saved").font(.headline)
+                .accessibilityIdentifier("watchSummary.saved")
 
             summaryRow("Duration", model.durationText)
 
@@ -22,6 +23,7 @@ struct WatchStrengthSummaryView: View {
             }
             .buttonStyle(.borderedProminent)
             .padding(.top, 8)
+            .accessibilityIdentifier("watchSummary.done")
             Spacer()
         }
     }

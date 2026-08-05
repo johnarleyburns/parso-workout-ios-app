@@ -75,6 +75,20 @@ make smoke
 make watch-smoke
 ```
 
+The normal simulator suite is intentionally tiny: one iPhone smoke test and one
+watch smoke test. The App Store screenshot XCUITest remains available only via
+`Cadence/Screenshots.xctestplan`; it is skipped by `Cadence/Cadence.xctestplan`
+and is not run by `make smoke`, `make all-tests`, git hooks, or CI.
+
+Manual screenshot capture:
+
+```sh
+CLADIRON_SCREENSHOT_DIR=docs/app-store/screenshots \
+xcodebuild test -project Cadence/Cadence.xcodeproj -scheme Cadence \
+  -testPlan Screenshots \
+  -destination 'platform=iOS Simulator,name=iPhone 16'
+```
+
 ## Git Hooks
 
 Versioned hooks live in `scripts/git-hooks`. Install them once per clone:
@@ -85,12 +99,12 @@ bash scripts/install-git-hooks.sh
 
 Installed hooks:
 
-- `pre-commit`: runs `make pre-commit`, which is the SwiftPM unit suite plus the iOS simulator smoke test (every commit leaves the app field-testable, including the strength-loop smoke test that logs a set).
+- `pre-commit`: runs `make pre-commit`, which is the SwiftPM unit suite plus the single iPhone and watch simulator smoke tests.
 - `pre-push`: runs `make pre-push`, which is the SwiftPM unit suite only — no UI.
 
-The pre-commit hook includes simulator smoke coverage, so it expects
-the pinned simulator from `Makefile`'s `SMOKE_DEST` to be available locally. For
-exceptional cases, Git's standard `--no-verify` flag bypasses hooks.
+The pre-commit hook includes simulator smoke coverage, so it expects the pinned
+simulators from `Makefile`'s `SMOKE_DEST` and `WATCH_SMOKE_DEST` to be available
+locally. For exceptional cases, Git's standard `--no-verify` flag bypasses hooks.
 
 ## Standard Gate
 

@@ -25,6 +25,7 @@ struct WatchCoolDownView: View {
                         sendEndSession()
                     }
                     .foregroundStyle(.white)
+                    .accessibilityIdentifier("watchCooldown.skip")
                 }
                 .padding(.top, 8)
                 Spacer()

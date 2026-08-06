@@ -35,7 +35,7 @@ struct WatchSetKeypadView: View {
                     Text(hint).font(.caption).foregroundStyle(.secondary)
                 }
 
-                setHistorySection(title: "This Workout", lines: model.currentWorkoutHistoryLines)
+                setHistorySection(title: "This Workout", lines: model.currentWorkoutHistoryLines, allowsDelete: true)
                 setHistorySection(title: "Last Time", lines: model.previousWorkoutHistoryLines)
 
                 if let performer = model.performerLabel {
@@ -53,6 +53,7 @@ struct WatchSetKeypadView: View {
 
                 weightControl
                 repsControl
+                effortControl
 
                 Button(action: { model.toggleWarmup() }) {
                     HStack(spacing: 4) {
@@ -67,6 +68,7 @@ struct WatchSetKeypadView: View {
                 .accessibilityLabel(model.isWarmupSet ? "Warm-up on" : "Warm-up off")
 
                 Button {
+                    WatchHaptics.success()
                     if let _ = model.logSet() {
                         sendSync()
                     }
@@ -78,8 +80,32 @@ struct WatchSetKeypadView: View {
                 .tint(.green)
                 .accessibilityIdentifier("logSetButton")
 
-                Text("crown \(String(format: "%.1f", increment.crownDetent)) \(model.unit.abbreviation)")
-                    .font(.caption2).foregroundStyle(.tertiary)
+                Button {
+                    WatchHaptics.success()
+                    if let _ = model.logLastSet() {
+                        sendSync()
+                    }
+                } label: {
+                    Label("Last Set", systemImage: "checkmark.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.orange)
+                .accessibilityIdentifier("lastSetButton")
+
+                if let ex = exercise {
+                    Button(role: .destructive) {
+                        WatchHaptics.delete()
+                        if model.deleteExercise(ex) != nil {
+                            sendSync()
+                        }
+                    } label: {
+                        Label("Delete Exercise", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("watchSet.deleteExercise")
+                }
             }
             .padding()
         }
@@ -90,15 +116,12 @@ struct WatchSetKeypadView: View {
             Text("Weight (\(model.unit.abbreviation))")
                 .font(.caption.bold()).foregroundStyle(.secondary)
             HStack(spacing: 6) {
-                Button(shortChipLabel(increment.chips.first!)) {
-                    adjustWeight(by: increment.chips.first!)
-                }
-                .buttonStyle(.bordered)
+                weightChipColumn(increment.negativeChips)
                 Text(model.currentWeightText)
                     .font(.title3.monospacedDigit())
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                    .frame(minWidth: 54)
+                    .frame(width: 54)
                     .focusable()
                     .digitalCrownRotation(
                         $bindableModel.currentWeightDisplay,
@@ -107,10 +130,22 @@ struct WatchSetKeypadView: View {
                         by: increment.crownDetent,
                         sensitivity: .medium, isContinuous: false
                     )
-                Button(shortChipLabel(increment.chips.last!)) {
-                    adjustWeight(by: increment.chips.last!)
+                weightChipColumn(increment.positiveChips)
+            }
+        }
+    }
+
+    private func weightChipColumn(_ chips: [Double]) -> some View {
+        VStack(spacing: 3) {
+            ForEach(chips, id: \.self) { chip in
+                Button(chipSymbol(chip)) {
+                    adjustWeight(by: chip)
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .frame(width: 42)
+                .accessibilityLabel("\(increment.chipLabel(chip)) \(model.unit.abbreviation)")
+                .accessibilityIdentifier("watchWeight.\(chipIdentifier(chip))")
             }
         }
     }
@@ -119,17 +154,29 @@ struct WatchSetKeypadView: View {
     /// the valid range. Operating in display units keeps every value on a 2.5
     /// boundary (never an odd "44 lb") and makes "+2.5" add exactly 2.5 lb.
     private func adjustWeight(by delta: Double) {
+        WatchHaptics.tap()
         let next = model.currentWeightDisplay + delta
         model.currentWeightDisplay = min(increment.range.upperBound,
                                          max(increment.range.lowerBound, next))
     }
 
-    private func shortChipLabel(_ value: Double) -> String {
-        value < 0 ? "-" : "+"
+    private func chipSymbol(_ value: Double) -> String {
+        switch abs(value) {
+        case 10: return value < 0 ? "---" : "+++"
+        case 5: return value < 0 ? "--" : "++"
+        default: return value < 0 ? "-" : "+"
+        }
+    }
+
+    private func chipIdentifier(_ value: Double) -> String {
+        increment.chipLabel(value)
+            .replacingOccurrences(of: "+", with: "plus")
+            .replacingOccurrences(of: "-", with: "minus")
+            .replacingOccurrences(of: ".", with: "_")
     }
 
     @ViewBuilder
-    private func setHistorySection(title: String, lines: [WatchSetHistoryLine]) -> some View {
+    private func setHistorySection(title: String, lines: [WatchSetHistoryLine], allowsDelete: Bool = false) -> some View {
         if !lines.isEmpty {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title.uppercased())
@@ -147,7 +194,23 @@ struct WatchSetKeypadView: View {
                             .lineLimit(1)
                         Text("x\(line.reps)")
                             .monospacedDigit()
+                        if let rpe = line.rpe, !line.isWarmup {
+                            Text("RPE \(Int(rpe.rounded()))")
+                                .monospacedDigit()
+                        }
                         Spacer(minLength: 0)
+                        if allowsDelete, let setID = line.setID {
+                            Button(role: .destructive) {
+                                WatchHaptics.delete()
+                                if model.deleteSet(id: setID) != nil {
+                                    sendSync()
+                                }
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("watchSet.delete.\(line.label)")
+                        }
                     }
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -162,15 +225,58 @@ struct WatchSetKeypadView: View {
         VStack(spacing: 4) {
             Text("Reps").font(.caption.bold()).foregroundStyle(.secondary)
             HStack(spacing: 6) {
-                Button("-1") { model.currentReps = max(1, model.currentReps - 1) }.buttonStyle(.bordered)
+                Button("-1") {
+                    WatchHaptics.tap()
+                    model.currentReps = max(1, model.currentReps - 1)
+                }
+                .buttonStyle(.bordered)
                 Text("\(Int(model.currentReps))")
                     .font(.title2.monospaced())
                     .focusable()
                     .digitalCrownRotation($bindableModel.currentReps, from: 1, through: 30, by: 1,
                                           sensitivity: .medium, isContinuous: false)
-                Button("+1") { model.currentReps += 1 }.buttonStyle(.bordered)
+                Button("+1") {
+                    WatchHaptics.tap()
+                    model.currentReps += 1
+                }
+                .buttonStyle(.bordered)
             }
         }
+    }
+
+    private var effortControl: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                ForEach(WatchEffortMode.allCases) { mode in
+                    Button(mode.displayName) {
+                        WatchHaptics.tap()
+                        model.effortMode = mode
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .tint(model.effortMode == mode ? .green : nil)
+                }
+            }
+            .accessibilityIdentifier("watchEffort.mode")
+
+            Picker(model.effortMode.displayName, selection: effortSelection) {
+                Text("None").tag(0.0)
+                ForEach(1...10, id: \.self) { value in
+                    Text("\(value)").tag(Double(value))
+                }
+            }
+            .pickerStyle(.wheel)
+            .frame(height: 58)
+            .clipped()
+            .accessibilityIdentifier("watchEffort.value")
+        }
+    }
+
+    private var effortSelection: Binding<Double> {
+        Binding(
+            get: { model.effortValue ?? 0 },
+            set: { model.effortValue = $0 <= 0 ? nil : $0 }
+        )
     }
 
     private func sendSync() {

@@ -309,12 +309,8 @@ extension AppModel: WCSessionDelegate {
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         guard let action = userInfo["action"] as? String else { return }
         switch action {
-        case "log_set":
-            handleWatchLogSet(userInfo)
-        case "end_session":
-            handleWatchEndSession(userInfo)
-        case "discard_session":
-            handleWatchDiscardSession(userInfo)
+        case "log_set", "end_session", "discard_session", "delete_exercise", "delete_set":
+            handleWatchStrengthMutation(userInfo)
         case "set_unit":
             handleWatchSetUnit(userInfo)
         case "set_distance_unit":
@@ -324,108 +320,24 @@ extension AppModel: WCSessionDelegate {
         }
     }
 
-    private func handleWatchLogSet(_ info: [String: Any]) {
-        guard let container = _modelContainer,
-              let sid = info["session_id"] as? String,
-              let sessionID = UUID(uuidString: sid) else { return }
+    private func handleWatchStrengthMutation(_ info: [String: Any]) {
+        guard let container = _modelContainer else { return }
         let ctx = ModelContext(container)
         do {
-            let sessions = try ctx.fetch(FetchDescriptor<WorkoutSession>(
-                predicate: #Predicate { $0.id == sessionID }
-            ))
-            let session: WorkoutSession
-            if let existing = sessions.first {
-                session = existing
-            } else {
-                let title = (info["session_title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-                let sessionTitle: String
-                if let title, !title.isEmpty {
-                    sessionTitle = title
-                } else {
-                    sessionTitle = "Strength"
-                }
-                session = try WorkoutRepository.createSession(title: sessionTitle, in: ctx)
-                session.id = sessionID
-                let planned = info["planned_exercises"] as? [String] ?? []
-                var resolvedPlanned: [String] = []
-                var seen = Set<String>()
-                for name in planned {
-                    let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { continue }
-                    let exercise = try? WorkoutRepository.findOrCreateExercise(named: trimmed, in: ctx)
-                    let resolved = exercise?.name ?? trimmed
-                    guard seen.insert(ExerciseLibrary.lookupKey(resolved)).inserted else { continue }
-                    resolvedPlanned.append(resolved)
-                }
-                session.plannedExerciseNames = resolvedPlanned
-                session.plannedRepLadder = info["planned_rep_ladder"] as? [Int] ?? []
-                session.planKey = info["plan_key"] as? String
-                try ctx.save()
-            }
-            guard let exName = info["exercise"] as? String,
-                  let weight = info["weight"] as? Double,
-                  let reps = info["reps"] as? Int else { return }
-            let exercise = try WorkoutRepository.findOrCreateExercise(named: exName, in: ctx)
-            let isWarmup = info["is_warmup"] as? Bool ?? false
-            let performedBy: Person?
-            if let pid = info["performed_by_id"] as? String, let puid = UUID(uuidString: pid) {
-                performedBy = try ctx.fetch(FetchDescriptor<Person>(
-                    predicate: #Predicate { $0.id == puid }
-                )).first
-            } else if let pname = info["performed_by"] as? String {
-                performedBy = try WorkoutRepository.findOrCreatePerson(named: pname, in: ctx)
-            } else {
-                performedBy = nil
-            }
-            if let sidStr = info["set_id"] as? String, let setID = UUID(uuidString: sidStr) {
-                let existing = try ctx.fetch(FetchDescriptor<SetEntry>(
-                    predicate: #Predicate { $0.id == setID }
-                ))
-                guard existing.isEmpty else { return }
-            }
-            _ = try WorkoutRepository.addSet(
-                to: session, exercise: exercise, weightKg: weight, reps: reps,
-                isWarmup: isWarmup, performedBy: performedBy, in: ctx
+            let action = try WatchStrengthSyncApplier.apply(
+                userInfo: info,
+                in: ctx,
+                phoneActiveID: _active?.strengthSession?.id
             )
-            NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
-        } catch {}
-    }
-
-    private func handleWatchEndSession(_ info: [String: Any]) {
-        guard let container = _modelContainer,
-              let sid = info["session_id"] as? String,
-              let sessionID = UUID(uuidString: sid) else { return }
-        // The phone's live workout ends only by an explicit tap on the phone —
-        // a watch-relayed end may never finalize it (launch-blockers Phase 1d).
-        guard WatchSessionEndPolicy.shouldApplyEnd(
-            sessionID: sessionID,
-            phoneActiveID: _active?.strengthSession?.id) else { return }
-        let ctx = ModelContext(container)
-        do {
-            let sessions = try ctx.fetch(FetchDescriptor<WorkoutSession>(
-                predicate: #Predicate { $0.id == sessionID }
-            ))
-            guard let session = sessions.first else { return }
-            session.endedAt = Date()
-            if let cs = info["cooldown_seconds"] as? Int {
-                session.cooldownSeconds = Double(cs)
+            guard action != .ignored else { return }
+            switch action {
+            case .logSet:
+                NotificationCenter.default.post(name: .watchSetLogged, object: nil)
+            case .endSession:
+                NotificationCenter.default.post(name: .watchSessionEnded, object: nil)
+            default:
+                break
             }
-            try ctx.save()
-            NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
-        } catch {}
-    }
-
-    private func handleWatchDiscardSession(_ info: [String: Any]) {
-        guard let container = _modelContainer,
-              let sid = info["session_id"] as? String,
-              let sessionID = UUID(uuidString: sid) else { return }
-        let ctx = ModelContext(container)
-        do {
-            let sessions = try ctx.fetch(FetchDescriptor<WorkoutSession>(
-                predicate: #Predicate { $0.id == sessionID }
-            ))
-            for s in sessions { ctx.delete(s) }
-            try ctx.save()
             NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
         } catch {}
     }

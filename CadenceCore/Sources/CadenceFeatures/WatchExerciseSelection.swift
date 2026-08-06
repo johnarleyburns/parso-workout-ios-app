@@ -56,6 +56,12 @@ public enum WatchExerciseSelection {
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
+    public static func search(_ query: String, exercises: [Exercise], limit: Int = 8) -> [Exercise] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        return Array(ExerciseSearchIndex(exercises).rank(trimmed).prefix(max(0, limit)))
+    }
+
     private static func bodyPartHighlights(part: BodyPart,
                                            exercises: [Exercise],
                                            recent: [Exercise],

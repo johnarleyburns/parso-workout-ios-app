@@ -3,22 +3,27 @@ import CadenceCore
 
 public struct WeightIncrement {
     public let chips: [Double]
+    public let negativeChips: [Double]
+    public let positiveChips: [Double]
     public let crownDetent: Double
     public let range: ClosedRange<Double>
 
     public init(unit: MeasurementUnitPreference) {
         switch unit {
         case .pounds:
-            // Smallest common plate pair is 1.25 lb → a 2.5 lb jump. The chips
-            // and crown both step by 2.5 lb; values are stored/compared in the
-            // *display* unit (see `WatchStrengthFlowModel.currentWeightDisplay`),
+            // Common plate jumps for fast correction on the watch. Values are in
+            // the display unit (see `WatchStrengthFlowModel.currentWeightDisplay`),
             // never added to the canonical-kg value.
-            self.chips = [-2.5, +2.5]
+            self.negativeChips = [-10, -5, -2.5]
+            self.positiveChips = [10, 5, 2.5]
+            self.chips = negativeChips + positiveChips
             self.crownDetent = 2.5
             self.range = 0...650
         case .kilograms:
-            self.chips = [-2.5, +2.5]
-            self.crownDetent = 1.25
+            self.negativeChips = [-10, -5, -2.5]
+            self.positiveChips = [10, 5, 2.5]
+            self.chips = negativeChips + positiveChips
+            self.crownDetent = 2.5
             self.range = 0...300
         }
     }

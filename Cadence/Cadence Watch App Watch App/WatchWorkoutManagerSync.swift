@@ -78,6 +78,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         s.warmupMinutes = incoming.warmupMinutes
         s.cooldownMinutes = incoming.cooldownMinutes
         s.workoutSounds = incoming.workoutSounds
+        recentPartnerNames = incoming.recentPartnerNames
         todayPlan = WatchSync.TodayPlan.from(context: applicationContext)
 
         let syncedAt = (applicationContext[WatchSync.Key.contextUpdatedAt] as? Date) ?? Date()

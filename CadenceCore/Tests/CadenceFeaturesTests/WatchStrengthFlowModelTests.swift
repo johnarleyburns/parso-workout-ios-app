@@ -471,4 +471,109 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.lastSyncPayload?["planned_rep_ladder"] as? [Int], [12, 10, 8])
         XCTAssertEqual(m.lastSyncPayload?["plan_key"] as? String, "preset-push")
     }
+
+    func testStartCreateSessionLoadsInitialPartnersAndSessionRoster() {
+        let m = makeModel()
+        m.start(initialPartnerNames: ["Jo", "Sam", "Jo"], createSession: true)
+
+        XCTAssertEqual(m.partners.map(\.name), ["Jo", "Sam"])
+        XCTAssertEqual(m.session?.activePartnerIDs.count, 2)
+    }
+
+    func testEffortRPELogsToSetAndPayload() {
+        let m = makeModel()
+        m.start()
+        let ex = simpleExercise(named: "Effort Press")
+        m.startLogSet(for: ex)
+        m.effortMode = .rpe
+        m.effortValue = 8
+
+        let set = m.logSet()
+
+        XCTAssertEqual(set?.rpe, 8)
+        XCTAssertEqual(m.lastSyncPayload?["rpe"] as? Double, 8)
+        XCTAssertEqual(m.lastSyncPayload?["effort_mode"] as? String, "rpe")
+    }
+
+    func testEffortRIRConvertsToStoredRPE() {
+        let m = makeModel()
+        m.start()
+        let ex = simpleExercise(named: "RIR Press")
+        m.startLogSet(for: ex)
+        m.effortMode = .rir
+        m.effortValue = 2
+
+        let set = m.logSet()
+
+        XCTAssertEqual(set?.rpe, 8)
+        XCTAssertEqual(m.lastSyncPayload?["effort_mode"] as? String, "rir")
+        XCTAssertEqual(m.lastSyncPayload?["effort_value"] as? Double, 2)
+    }
+
+    func testLogLastSetReturnsHomeWithoutRest() {
+        let m = makeModel()
+        m.start()
+        let ex = simpleExercise(named: "Last Set Press")
+        m.startLogSet(for: ex)
+
+        _ = m.logLastSet()
+
+        XCTAssertEqual(m.stage, .home)
+        XCTAssertEqual(m.exerciseList.first?.setCount, 1)
+        XCTAssertEqual(m.restTimer.remaining, 0)
+    }
+
+    func testDeleteSetRemovesLocalSetAndEmitsPayload() {
+        let m = makeModel()
+        m.start()
+        let ex = simpleExercise(named: "Delete Set Press")
+        m.startLogSet(for: ex)
+        let set = m.logSet()
+        m.finishRest()
+        m.startLogSet(for: ex)
+
+        let payload = m.deleteSet(id: set!.id)
+
+        XCTAssertEqual(m.currentWorkoutHistoryLines.count, 0)
+        XCTAssertEqual(payload?["action"] as? String, "delete_set")
+        XCTAssertEqual(payload?["set_id"] as? String, set?.id.uuidString)
+    }
+
+    func testDeleteExerciseRemovesPlannedNameSetsAndEmitsPayload() {
+        let m = makeModel()
+        m.start(createSession: true)
+        let ex = simpleExercise(named: "Delete Exercise Press")
+        m.addExercise(named: ex.name)
+        m.startLogSet(for: ex)
+        _ = m.logSet()
+
+        let payload = m.deleteExercise(ex)
+
+        XCTAssertTrue(m.exerciseList.isEmpty)
+        XCTAssertTrue(m.session?.orderedSets.isEmpty == true)
+        XCTAssertEqual(payload?["action"] as? String, "delete_exercise")
+        XCTAssertEqual(payload?["exercise"] as? String, ex.name)
+    }
+
+    func testEndSessionPayloadIncludesMetadataForOutOfOrderPhoneFinalize() {
+        let m = makeModel()
+        m.start(title: "Push Day",
+                plannedExerciseNames: ["Bench Press"],
+                repLadder: [12, 10, 8],
+                planKey: "preset-push",
+                createSession: true)
+        let ex = m.exerciseList[0].exercise
+        m.startLogSet(for: ex)
+        _ = m.logSet()
+        m.finish()
+        m.skipCooldown()
+
+        let payload = m.endSessionPayload()
+
+        XCTAssertEqual(payload?["session_title"] as? String, "Push Day")
+        XCTAssertEqual(payload?["planned_exercises"] as? [String], ["Bench Press"])
+        XCTAssertEqual(payload?["planned_rep_ladder"] as? [Int], [12, 10, 8])
+        XCTAssertEqual(payload?["plan_key"] as? String, "preset-push")
+        XCTAssertNotNil(payload?["ended_at"])
+    }
 }

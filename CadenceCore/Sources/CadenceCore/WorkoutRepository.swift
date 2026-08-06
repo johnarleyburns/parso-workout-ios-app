@@ -527,7 +527,9 @@ public enum WorkoutRepository {
                                        in context: ModelContext) throws -> Int {
         let sets = session.orderedSets.filter { $0.exercise?.id == exercise.id }
         for s in sets { context.delete(s) }
-        session.plannedExerciseNames.removeAll { $0 == exercise.name }
+        session.plannedExerciseNames.removeAll {
+            $0.compare(exercise.name, options: .caseInsensitive) == .orderedSame
+        }
         session.updatedAt = Date()
         try context.save()
         return sets.count
@@ -537,7 +539,9 @@ public enum WorkoutRepository {
     /// session without touching any logged sets.
     public static func removePlannedExercise(named name: String, from session: WorkoutSession,
                                               in context: ModelContext) throws {
-        session.plannedExerciseNames.removeAll { $0 == name }
+        session.plannedExerciseNames.removeAll {
+            $0.compare(name, options: .caseInsensitive) == .orderedSame
+        }
         session.updatedAt = Date()
         try context.save()
     }

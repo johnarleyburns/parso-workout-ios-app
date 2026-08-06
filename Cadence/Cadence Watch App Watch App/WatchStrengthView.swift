@@ -13,17 +13,23 @@ struct WatchStrengthView: View {
     private let plannedExerciseNames: [String]
     private let repLadder: [Int]
     private let planKey: String?
+    private let initialPartnerNames: [String]
+    private let restSecondsOverride: Int?
 
     init(resuming session: WorkoutSession? = nil,
          title: String = "Strength",
          plannedExerciseNames: [String] = [],
          repLadder: [Int] = [],
-         planKey: String? = nil) {
+         planKey: String? = nil,
+         initialPartnerNames: [String] = [],
+         restSeconds: Int? = nil) {
         self.resumingSession = session
         self.title = title
         self.plannedExerciseNames = plannedExerciseNames
         self.repLadder = repLadder
         self.planKey = planKey
+        self.initialPartnerNames = initialPartnerNames
+        self.restSecondsOverride = restSeconds
     }
 
     @Environment(\.modelContext) private var modelContext
@@ -41,11 +47,12 @@ struct WatchStrengthView: View {
         }
         .task {
             if flowModel == nil {
+                WatchHaptics.success()
                 let m = WatchStrengthFlowModel(
                     context: modelContext,
                     unit: watchSettings.unit,
                     cooldownDefault: watchSettings.cooldownMinutes,
-                    restDefault: watchSettings.restSeconds
+                    restDefault: restSecondsOverride ?? watchSettings.restSeconds
                 )
                 m.start(
                     resuming: resumingSession,
@@ -53,6 +60,7 @@ struct WatchStrengthView: View {
                     plannedExerciseNames: plannedExerciseNames,
                     repLadder: repLadder,
                     planKey: planKey,
+                    initialPartnerNames: initialPartnerNames,
                     createSession: true
                 )
                 flowModel = m
@@ -82,6 +90,7 @@ struct WatchStrengthView: View {
             ToolbarItem(placement: .cancellationAction) {
                 if flowModel?.stage != .summary {
                     Button {
+                        WatchHaptics.tap()
                         if watchManager.isActive, !watchManager.isPaused {
                             watchManager.togglePause()
                         }

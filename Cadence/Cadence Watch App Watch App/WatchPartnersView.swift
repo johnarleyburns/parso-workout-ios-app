@@ -22,14 +22,19 @@ struct WatchPartnersView: View {
                     }
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { model.selectPerformer(at: idx) }
+                .onTapGesture {
+                    WatchHaptics.tap()
+                    model.selectPerformer(at: idx)
+                }
             }
             .onDelete { idxs in
+                WatchHaptics.delete()
                 for i in idxs { model.removePartner(at: i) }
             }
 
             Section {
                 Button {
+                    WatchHaptics.tap()
                     model.addPartner(named: "New Partner")
                 } label: {
                     Label("Add partner...", systemImage: "plus")

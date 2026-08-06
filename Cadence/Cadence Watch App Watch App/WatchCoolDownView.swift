@@ -17,9 +17,13 @@ struct WatchCoolDownView: View {
                     .font(.system(size: 52, weight: .heavy, design: .monospaced))
                     .foregroundStyle(.white)
                 HStack(spacing: 16) {
-                    Button("+1m") { model.cooldownTimerModel.add(60) }
+                    Button("+1m") {
+                        WatchHaptics.tap()
+                        model.cooldownTimerModel.add(60)
+                    }
                         .foregroundStyle(.white)
                     Button("Skip") {
+                        WatchHaptics.success()
                         model.cooldownTimerModel.skip()
                         model.skipCooldown()
                         sendEndSession()

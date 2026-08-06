@@ -49,4 +49,17 @@ final class WatchExerciseSelectionTests: XCTestCase {
         XCTAssertEqual(WatchExerciseSelection.fullList(for: .calves, exercises: exercises),
                        ["A Calf Raise", "Z Calf Raise"])
     }
+
+    func testSearchRanksClosestMatchesForVoiceQuery() {
+        let exercises = [
+            Exercise(name: "Bench Press", equipment: .barbell, primaryMuscles: ["chest"]),
+            Exercise(name: "Cable Row", equipment: .cable, primaryMuscles: ["lats"]),
+            Exercise(name: "Back Squat", equipment: .barbell, primaryMuscles: ["quads"]),
+        ]
+
+        let matches = WatchExerciseSelection.search("bench", exercises: exercises)
+
+        XCTAssertEqual(matches.first?.name, "Bench Press")
+        XCTAssertFalse(matches.contains { $0.name == "Cable Row" })
+    }
 }

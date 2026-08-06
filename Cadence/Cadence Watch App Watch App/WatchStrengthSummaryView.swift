@@ -18,6 +18,7 @@ struct WatchStrengthSummaryView: View {
             summaryRow("Duration", model.durationText)
 
             Button("Done") {
+                WatchHaptics.success()
                 sendEndSession()
                 onDismiss()
             }

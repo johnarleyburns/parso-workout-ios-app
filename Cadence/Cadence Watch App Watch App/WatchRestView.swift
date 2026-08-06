@@ -21,8 +21,13 @@ struct WatchRestView: View {
             }
 
             HStack(spacing: 12) {
-                Button("+30s") { model.addRestTime(30) }.buttonStyle(.bordered)
+                Button("+30s") {
+                    WatchHaptics.tap()
+                    model.addRestTime(30)
+                }
+                .buttonStyle(.bordered)
                 Button("Next Set") {
+                    WatchHaptics.tap()
                     timer?.invalidate()
                     model.finishRest()
                 }

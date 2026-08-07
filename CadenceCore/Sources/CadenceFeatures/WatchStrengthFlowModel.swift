@@ -195,11 +195,19 @@ public final class WatchStrengthFlowModel {
             if let session {
                 if !session.plannedExerciseNames.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) {
                     session.plannedExerciseNames.append(resolved)
-                    try? context.save()
                 }
             } else if !pendingExercises.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) {
                 pendingExercises.append(resolved)
             }
+            // Update the visible workout before SwiftData persistence. Saving can
+            // take multiple watch run-loop turns when the catalog is large.
+            stage = .home
+            refreshExerciseList()
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                try? self?.context.save()
+            }
+            return
         }
         stage = .home
         refreshExerciseList()

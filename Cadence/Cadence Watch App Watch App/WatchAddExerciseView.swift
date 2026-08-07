@@ -10,13 +10,14 @@ struct WatchAddExerciseView: View {
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var recent: [Exercise] = []
     @State private var selectedBodyPart: BodyPart?
+    @State private var showingRecent = false
     @State private var selectedExercise: Exercise?
+    @State private var showingDetail = false
     @State private var query = ""
     @State private var searchIndex = ExerciseSearchIndex<Exercise>([])
     @State private var searchResults: [Exercise] = []
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
-    @State private var addingExerciseID: UUID?
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -33,10 +34,6 @@ struct WatchAddExerciseView: View {
         }
         .navigationTitle(selectedExercise?.name ?? selectedBodyPart?.displayName ?? "Add Exercise")
         .task { loadRecent() }
-        .task(id: exercises.map(\.id)) {
-            searchIndex = ExerciseSearchIndex(exercises)
-            scheduleSearch(immediate: true)
-        }
         .onChange(of: query) { _, _ in
             scheduleSearch()
         }
@@ -47,12 +44,14 @@ struct WatchAddExerciseView: View {
 
     private var picker: some View {
         List {
-            Section {
-                TextField("Search", text: $query)
-                    .accessibilityIdentifier("watchAddExercise.search")
-            }
-
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Section {
+                    Button {
+                        WatchHaptics.tap()
+                        query = ""
+                    } label: { Label("Back", systemImage: "chevron.left") }
+                    .buttonStyle(.plain)
+                }
                 Section("Matches") {
                     switch WatchExerciseSearchPresenter.phase(query: query,
                                                               isSearching: isSearching,
@@ -96,32 +95,68 @@ struct WatchAddExerciseView: View {
                         }
                     }
                 }
+            } else if showingRecent {
+                Section {
+                    Button {
+                        WatchHaptics.tap()
+                        showingRecent = false
+                    } label: { Label("Back", systemImage: "chevron.left") }
+                    .buttonStyle(.plain)
+                }
+                Section("My Last Exercises") {
+                    ForEach(recent, id: \.persistentModelID) { exercise in
+                        exerciseButton(exercise)
+                    }
+                }
             } else {
-                ForEach(WatchExerciseSelection.defaultSections(exercises: exercises, recent: recent)) { section in
-                    Section(section.title) {
-                        ForEach(section.exerciseNames, id: \.self) { name in
-                            if let exercise = exercise(named: name) {
-                                exerciseButton(exercise)
-                            }
-                        }
-                        if let part = section.otherBodyPart {
-                            Button {
-                                WatchHaptics.tap()
-                                selectedBodyPart = part
-                            } label: {
-                                Label("Other...", systemImage: "ellipsis.circle")
-                            }
-                            .buttonStyle(.plain)
-                        }
+                Section {
+                    TextField("Search", text: $query)
+                        .accessibilityIdentifier("watchAddExercise.search")
+                    if !recent.isEmpty {
+                        Button {
+                            WatchHaptics.tap()
+                            showingRecent = true
+                        } label: { Label("My Last Exercises", systemImage: "clock.arrow.circlepath") }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Section("Categories") {
+                    ForEach(BodyPart.allCases) { part in
+                        Button {
+                            WatchHaptics.tap()
+                            selectedBodyPart = part
+                        } label: { Text(part.displayName) }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("watchAddExercise.category.\(part.rawValue)")
                     }
                 }
             }
         }
     }
 
+    @ViewBuilder
     private func preview(_ exercise: Exercise) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
+        if showingDetail {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    detailContent(exercise)
+                    quickActions(exercise)
+                }
+                .padding()
+            }
+        } else {
+            VStack(spacing: 10) {
+                Text(exercise.name)
+                    .font(.headline)
+                    .multilineTextAlignment(.center)
+                quickActions(exercise)
+                    .padding(.horizontal)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func detailContent(_ exercise: Exercise) -> some View {
                 let imageURLs = ExerciseLibrary.imageURLs(forImageName: exercise.imageName)
                 if !imageURLs.isEmpty {
                     ForEach(imageURLs, id: \.self) { url in
@@ -142,39 +177,41 @@ struct WatchAddExerciseView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                HStack(spacing: 8) {
-                    Button {
-                        WatchHaptics.tap()
-                        selectedExercise = nil
-                    } label: {
-                        Label("Back", systemImage: "chevron.left")
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("watchAddExercise.previewBack")
+    }
 
-                    Button {
-                        WatchHaptics.success()
-                        addingExerciseID = exercise.id
-                        DispatchQueue.main.async {
-                            model.addExercise(named: exercise.name)
-                            addingExerciseID = nil
-                        }
-                    } label: {
-                        if addingExerciseID == exercise.id {
-                            HStack {
-                                ProgressView()
-                                    .controlSize(.mini)
-                                Text("Adding")
-                            }
-                        } else {
-                            Label("Add", systemImage: "plus.circle.fill")
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("watchAddExercise.previewAdd")
-                }
+    private func quickActions(_ exercise: Exercise) -> some View {
+        VStack(spacing: 8) {
+            Button {
+                WatchHaptics.tap()
+                selectedExercise = nil
+                showingDetail = false
+            } label: {
+                Label("Back", systemImage: "chevron.left")
+                    .frame(maxWidth: .infinity)
             }
-            .padding()
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("watchAddExercise.previewBack")
+
+            Button {
+                WatchHaptics.success()
+                model.addExercise(named: exercise.name)
+            } label: {
+                Label("Add", systemImage: "plus.circle.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            .accessibilityIdentifier("watchAddExercise.previewAdd")
+
+            Button {
+                WatchHaptics.tap()
+                showingDetail = true
+            } label: {
+                Text("Show Detail")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("watchAddExercise.showDetail")
         }
     }
 
@@ -231,13 +268,15 @@ struct WatchAddExerciseView: View {
 
         isSearching = true
         searchResults = []
-        let index = searchIndex
         searchTask = Task { @MainActor in
             if !immediate {
                 try? await Task.sleep(for: .milliseconds(120))
             }
             guard !Task.isCancelled else { return }
-            let matches = Array(index.rank(trimmed).prefix(8))
+            if searchIndex.count != exercises.count {
+                searchIndex = ExerciseSearchIndex(exercises)
+            }
+            let matches = Array(searchIndex.rank(trimmed).prefix(8))
             guard query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
             searchResults = matches
             isSearching = false

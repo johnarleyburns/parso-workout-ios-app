@@ -34,6 +34,8 @@ final class WatchSmokeTests: XCTestCase {
 
         XCTAssertTrue(app.textFields["watchAddExercise.search"].waitForExistence(timeout: 10),
                       "Watch exercise picker did not expose search first")
+        XCTAssertTrue(app.tapButton("watchAddExercise.category.chest", scrollAttempts: 4),
+                      "Watch exercise picker did not show categories")
         XCTAssertTrue(app.tapButton("watchAddExercise.row.Bench Press"),
                       "Watch exercise picker did not show Bench Press")
         XCTAssertTrue(app.tapButton("watchAddExercise.previewAdd"),
@@ -61,6 +63,8 @@ final class WatchSmokeTests: XCTestCase {
 
         XCTAssertTrue(app.tapButton("watchStrength.addExercise", scrollAttempts: 4),
                       "Could not add a second exercise")
+        XCTAssertTrue(app.tapButton("watchAddExercise.category.legs", scrollAttempts: 4),
+                      "Second watch exercise picker did not show categories")
         XCTAssertTrue(app.tapButton("watchAddExercise.row.Deadlift", scrollAttempts: 4),
                       "Watch exercise picker did not show Deadlift")
         XCTAssertTrue(app.tapButton("watchAddExercise.previewAdd", scrollAttempts: 4),

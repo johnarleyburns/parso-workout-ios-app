@@ -143,15 +143,7 @@ struct WatchSetKeypadView: View {
         VStack(spacing: 6) {
             Text("Weight (\(model.unit.abbreviation))")
                 .font(.caption.bold()).foregroundStyle(.secondary)
-            VStack(spacing: 4) {
-                ForEach(increment.positiveChips, id: \.self) { chip in
-                    HStack(spacing: 6) {
-                        weightChip(-chip)
-                        weightChip(chip)
-                    }
-                }
-            }
-            Text(model.currentWeightText)
+            Text("\(model.currentWeightText) \(model.unit.abbreviation)")
                 .font(.title2.monospacedDigit())
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -166,6 +158,15 @@ struct WatchSetKeypadView: View {
                 )
                 .accessibilityIdentifier("watchWeight.current")
                 .accessibilityLabel("Current weight \(model.currentWeightText) \(model.unit.abbreviation)")
+
+            VStack(spacing: 4) {
+                ForEach(increment.positiveChips, id: \.self) { chip in
+                    HStack(spacing: 6) {
+                        weightChip(-chip)
+                        weightChip(chip)
+                    }
+                }
+            }
         }
     }
 

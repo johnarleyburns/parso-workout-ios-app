@@ -14,14 +14,14 @@ public struct WeightIncrement {
             // Common plate jumps for fast correction on the watch. Values are in
             // the display unit (see `WatchStrengthFlowModel.currentWeightDisplay`),
             // never added to the canonical-kg value.
-            self.negativeChips = [-45, -35, -25, -10, -5]
-            self.positiveChips = [45, 35, 25, 10, 5]
+            self.negativeChips = [-45, -35, -25, -10, -5, -2.5]
+            self.positiveChips = [45, 35, 25, 10, 5, 2.5]
             self.chips = negativeChips + positiveChips
             self.crownDetent = 2.5
             self.range = 0...650
         case .kilograms:
-            self.negativeChips = [-25, -20, -15, -10, -5]
-            self.positiveChips = [25, 20, 15, 10, 5]
+            self.negativeChips = [-25, -20, -15, -10, -5, -2.5]
+            self.positiveChips = [25, 20, 15, 10, 5, 2.5]
             self.chips = negativeChips + positiveChips
             self.crownDetent = 2.5
             self.range = 0...300

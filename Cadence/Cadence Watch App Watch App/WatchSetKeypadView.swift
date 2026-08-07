@@ -6,6 +6,8 @@ import CadenceFeatures
 struct WatchSetKeypadView: View {
     @Bindable var bindableModel: WatchStrengthFlowModel
     var model: WatchStrengthFlowModel { bindableModel }
+    @State private var isLoggingSet = false
+    @State private var isLoggingLastSet = false
 
     init(model: WatchStrengthFlowModel) {
         self.bindableModel = model
@@ -38,18 +40,7 @@ struct WatchSetKeypadView: View {
                 setHistorySection(title: "This Workout", lines: model.currentWorkoutHistoryLines, allowsDelete: true)
                 setHistorySection(title: "Last Time", lines: model.previousWorkoutHistoryLines)
 
-                if let performer = model.performerLabel {
-                    HStack(spacing: 4) {
-                        Text(String(performer.prefix(1)))
-                            .font(.caption2.bold())
-                            .frame(width: 18, height: 18)
-                            .background(.blue)
-                            .clipShape(Circle())
-                            .foregroundStyle(.white)
-                        Text(performer).font(.caption.bold())
-                    }
-                    .accessibilityLabel("Performer: \(performer)")
-                }
+                performerSelector
 
                 weightControl
                 repsControl
@@ -68,29 +59,29 @@ struct WatchSetKeypadView: View {
                 .accessibilityLabel(model.isWarmupSet ? "Warm-up on" : "Warm-up off")
 
                 Button {
-                    WatchHaptics.success()
-                    if let _ = model.logSet() {
-                        sendSync()
-                    }
+                    logSet(last: false)
                 } label: {
-                    Label("Log Set", systemImage: "checkmark.circle.fill")
+                    loggingLabel(isLogging: isLoggingSet,
+                                 title: "Log Set",
+                                 systemImage: "checkmark.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
+                .disabled(isLoggingSet || isLoggingLastSet)
                 .accessibilityIdentifier("logSetButton")
 
                 Button {
-                    WatchHaptics.success()
-                    if let _ = model.logLastSet() {
-                        sendSync()
-                    }
+                    logSet(last: true)
                 } label: {
-                    Label("Last Set", systemImage: "checkmark.circle")
+                    loggingLabel(isLogging: isLoggingLastSet,
+                                 title: "Last Set",
+                                 systemImage: "checkmark.circle")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .tint(.orange)
+                .disabled(isLoggingSet || isLoggingLastSet)
                 .accessibilityIdentifier("lastSetButton")
 
                 if let ex = exercise {
@@ -111,42 +102,111 @@ struct WatchSetKeypadView: View {
         }
     }
 
-    private var weightControl: some View {
-        VStack(spacing: 4) {
-            Text("Weight (\(model.unit.abbreviation))")
-                .font(.caption.bold()).foregroundStyle(.secondary)
-            HStack(spacing: 6) {
-                weightChipColumn(increment.negativeChips)
-                Text(model.currentWeightText)
-                    .font(.title3.monospacedDigit())
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(width: 54)
-                    .focusable()
-                    .digitalCrownRotation(
-                        $bindableModel.currentWeightDisplay,
-                        from: increment.range.lowerBound,
-                        through: increment.range.upperBound,
-                        by: increment.crownDetent,
-                        sensitivity: .medium, isContinuous: false
-                    )
-                weightChipColumn(increment.positiveChips)
+    @ViewBuilder
+    private var performerSelector: some View {
+        if !model.performerOptions.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Lifter")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                VStack(spacing: 5) {
+                    ForEach(model.performerOptions) { option in
+                        Button {
+                            WatchHaptics.tap()
+                            model.selectPerformer(at: option.index)
+                        } label: {
+                            HStack {
+                                Text(option.name)
+                                    .font(.caption.bold())
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                Spacer(minLength: 6)
+                                if model.currentPerformerIndex == option.index {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.bold())
+                                }
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 28)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                        .tint(model.currentPerformerIndex == option.index ? .green : nil)
+                        .accessibilityIdentifier("watchPerformer.\(optionIdentifier(option.name))")
+                    }
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func weightChipColumn(_ chips: [Double]) -> some View {
-        VStack(spacing: 3) {
-            ForEach(chips, id: \.self) { chip in
-                Button(chipSymbol(chip)) {
-                    adjustWeight(by: chip)
+    private var weightControl: some View {
+        VStack(spacing: 6) {
+            Text("Weight (\(model.unit.abbreviation))")
+                .font(.caption.bold()).foregroundStyle(.secondary)
+            VStack(spacing: 4) {
+                ForEach(increment.positiveChips, id: \.self) { chip in
+                    HStack(spacing: 6) {
+                        weightChip(-chip)
+                        weightChip(chip)
+                    }
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.mini)
-                .frame(width: 42)
-                .accessibilityLabel("\(increment.chipLabel(chip)) \(model.unit.abbreviation)")
-                .accessibilityIdentifier("watchWeight.\(chipIdentifier(chip))")
             }
+            Text(model.currentWeightText)
+                .font(.title2.monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, minHeight: 28)
+                .focusable()
+                .digitalCrownRotation(
+                    $bindableModel.currentWeightDisplay,
+                    from: increment.range.lowerBound,
+                    through: increment.range.upperBound,
+                    by: increment.crownDetent,
+                    sensitivity: .medium, isContinuous: false
+                )
+                .accessibilityIdentifier("watchWeight.current")
+                .accessibilityLabel("Current weight \(model.currentWeightText) \(model.unit.abbreviation)")
+        }
+    }
+
+    private func weightChip(_ chip: Double) -> some View {
+        Button(increment.chipLabel(chip)) {
+            adjustWeight(by: chip)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.mini)
+        .frame(maxWidth: .infinity, minHeight: 30)
+        .accessibilityLabel("\(increment.chipLabel(chip)) \(model.unit.abbreviation)")
+        .accessibilityIdentifier("watchWeight.\(chipIdentifier(chip))")
+    }
+
+    @ViewBuilder
+    private func loggingLabel(isLogging: Bool, title: String, systemImage: String) -> some View {
+        if isLogging {
+            HStack {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Logging")
+            }
+            .accessibilityIdentifier("watchSet.logging")
+        } else {
+            Label(title, systemImage: systemImage)
+        }
+    }
+
+    private func logSet(last: Bool) {
+        guard !isLoggingSet, !isLoggingLastSet else { return }
+        if last {
+            isLoggingLastSet = true
+        } else {
+            isLoggingSet = true
+        }
+        WatchHaptics.success()
+        DispatchQueue.main.async {
+            let set = last ? model.logLastSet() : model.logSet()
+            if set != nil { sendSync() }
+            isLoggingSet = false
+            isLoggingLastSet = false
         }
     }
 
@@ -160,18 +220,16 @@ struct WatchSetKeypadView: View {
                                          max(increment.range.lowerBound, next))
     }
 
-    private func chipSymbol(_ value: Double) -> String {
-        switch abs(value) {
-        case 10: return value < 0 ? "---" : "+++"
-        case 5: return value < 0 ? "--" : "++"
-        default: return value < 0 ? "-" : "+"
-        }
-    }
-
     private func chipIdentifier(_ value: Double) -> String {
         increment.chipLabel(value)
             .replacingOccurrences(of: "+", with: "plus")
             .replacingOccurrences(of: "-", with: "minus")
+            .replacingOccurrences(of: ".", with: "_")
+    }
+
+    private func optionIdentifier(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: " ", with: "_")
             .replacingOccurrences(of: ".", with: "_")
     }
 

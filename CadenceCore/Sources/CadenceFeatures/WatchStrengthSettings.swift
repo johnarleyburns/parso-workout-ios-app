@@ -42,6 +42,49 @@ public enum WatchRestOptions {
     }
 }
 
+public struct WatchCustomStrengthDefaults: Equatable, Sendable {
+    public var repPattern: WatchRepPattern
+    public var restSeconds: Int
+    public var selectedPartners: [String]
+    public var partnerOptions: [String]
+
+    public init(storedRepPattern: String,
+                storedRestSeconds: Int,
+                storedPartners: String,
+                recentPartners: [String]) {
+        self.repPattern = WatchRepPattern.normalized(Self.parseRepPattern(storedRepPattern))
+        self.restSeconds = WatchRestOptions.normalized(storedRestSeconds)
+        self.selectedPartners = Self.decodedPartners(from: storedPartners)
+        self.partnerOptions = Self.unique(self.selectedPartners + recentPartners)
+    }
+
+    public static func parseRepPattern(_ raw: String) -> [Int] {
+        raw.split(separator: "-").compactMap { Int($0) }
+    }
+
+    public static func decodedPartners(from raw: String) -> [String] {
+        raw.split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    public static func encodedPartners(_ names: [String]) -> String {
+        unique(names).joined(separator: "\n")
+    }
+
+    public static func unique(_ names: [String]) -> [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for name in names {
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty,
+                  seen.insert(trimmed.lowercased()).inserted else { continue }
+            out.append(trimmed)
+        }
+        return out
+    }
+}
+
 public enum WatchEffortMode: String, CaseIterable, Codable, Sendable, Identifiable {
     case rpe
     case rir
@@ -64,5 +107,23 @@ public enum WatchEffortMode: String, CaseIterable, Codable, Sendable, Identifiab
         case .rir:
             return min(10, max(1, 10 - clamped))
         }
+    }
+}
+
+public enum WatchExerciseSearchPhase: Equatable, Sendable {
+    case empty
+    case searching
+    case noMatches
+    case matches
+}
+
+public enum WatchExerciseSearchPresenter {
+    public static func phase(query: String,
+                             isSearching: Bool,
+                             resultCount: Int) -> WatchExerciseSearchPhase {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .empty }
+        if isSearching { return .searching }
+        return resultCount == 0 ? .noMatches : .matches
     }
 }

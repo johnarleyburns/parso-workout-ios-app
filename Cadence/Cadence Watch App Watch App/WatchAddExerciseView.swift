@@ -12,6 +12,11 @@ struct WatchAddExerciseView: View {
     @State private var selectedBodyPart: BodyPart?
     @State private var selectedExercise: Exercise?
     @State private var query = ""
+    @State private var searchIndex = ExerciseSearchIndex<Exercise>([])
+    @State private var searchResults: [Exercise] = []
+    @State private var isSearching = false
+    @State private var searchTask: Task<Void, Never>?
+    @State private var addingExerciseID: UUID?
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -28,6 +33,16 @@ struct WatchAddExerciseView: View {
         }
         .navigationTitle(selectedExercise?.name ?? selectedBodyPart?.displayName ?? "Add Exercise")
         .task { loadRecent() }
+        .task(id: exercises.map(\.id)) {
+            searchIndex = ExerciseSearchIndex(exercises)
+            scheduleSearch(immediate: true)
+        }
+        .onChange(of: query) { _, _ in
+            scheduleSearch()
+        }
+        .onDisappear {
+            searchTask?.cancel()
+        }
     }
 
     private var picker: some View {
@@ -39,8 +54,29 @@ struct WatchAddExerciseView: View {
 
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Section("Matches") {
-                    ForEach(WatchExerciseSelection.search(query, exercises: exercises), id: \.persistentModelID) { exercise in
-                        exerciseButton(exercise)
+                    switch WatchExerciseSearchPresenter.phase(query: query,
+                                                              isSearching: isSearching,
+                                                              resultCount: searchResults.count) {
+                    case .searching:
+                        HStack {
+                            ProgressView()
+                                .controlSize(.mini)
+                            Text("Searching")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityIdentifier("watchAddExercise.searching")
+                    case .noMatches:
+                        Text("No matches")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("watchAddExercise.noMatches")
+                    case .matches:
+                        ForEach(searchResults, id: \.persistentModelID) { exercise in
+                            exerciseButton(exercise)
+                        }
+                    case .empty:
+                        EmptyView()
                     }
                 }
             } else if let selectedBodyPart {
@@ -118,9 +154,21 @@ struct WatchAddExerciseView: View {
 
                     Button {
                         WatchHaptics.success()
-                        model.addExercise(named: exercise.name)
+                        addingExerciseID = exercise.id
+                        DispatchQueue.main.async {
+                            model.addExercise(named: exercise.name)
+                            addingExerciseID = nil
+                        }
                     } label: {
-                        Label("Add", systemImage: "plus.circle.fill")
+                        if addingExerciseID == exercise.id {
+                            HStack {
+                                ProgressView()
+                                    .controlSize(.mini)
+                                Text("Adding")
+                            }
+                        } else {
+                            Label("Add", systemImage: "plus.circle.fill")
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier("watchAddExercise.previewAdd")
@@ -170,5 +218,29 @@ struct WatchAddExerciseView: View {
 
     private func loadRecent() {
         recent = (try? WorkoutRepository.recentlyUsedExercises(context, limit: 12)) ?? []
+    }
+
+    private func scheduleSearch(immediate: Bool = false) {
+        searchTask?.cancel()
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            isSearching = false
+            searchResults = []
+            return
+        }
+
+        isSearching = true
+        searchResults = []
+        let index = searchIndex
+        searchTask = Task { @MainActor in
+            if !immediate {
+                try? await Task.sleep(for: .milliseconds(120))
+            }
+            guard !Task.isCancelled else { return }
+            let matches = Array(index.rank(trimmed).prefix(8))
+            guard query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
+            searchResults = matches
+            isSearching = false
+        }
     }
 }

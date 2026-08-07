@@ -24,6 +24,19 @@ public struct WatchSetHistoryLine: Equatable, Sendable, Identifiable {
     }
 }
 
+public struct WatchPerformerOption: Equatable, Sendable, Identifiable {
+    public var id: Int { index }
+    public let index: Int
+    public let name: String
+    public let isMe: Bool
+
+    public init(index: Int, name: String, isMe: Bool) {
+        self.index = index
+        self.name = name
+        self.isMe = isMe
+    }
+}
+
 @Observable
 public final class WatchStrengthFlowModel {
     public enum Stage: Equatable {
@@ -63,6 +76,7 @@ public final class WatchStrengthFlowModel {
     let cooldownDefault: Int
     let restDefault: Int
     private let context: ModelContext
+    private var exercisePendingAfterRest: Exercise?
 
     /// In-memory name → Exercise catalog, loaded once per flow so the per-tap
     /// path never refetches the full exercise table (~900 seeded rows — the
@@ -248,9 +262,11 @@ public final class WatchStrengthFlowModel {
             }
             updateExerciseListAfterLogging(exercise)
             if goToRest {
+                exercisePendingAfterRest = exercise
                 restTimer.start(seconds: restDefault)
                 stage = .rest
             } else {
+                exercisePendingAfterRest = nil
                 stage = .home
             }
             return set
@@ -259,7 +275,14 @@ public final class WatchStrengthFlowModel {
         }
     }
 
-    public func finishRest() { stage = .home }
+    public func finishRest() {
+        guard let exercise = exercisePendingAfterRest else {
+            stage = .home
+            return
+        }
+        exercisePendingAfterRest = nil
+        startLogSet(for: exercise)
+    }
 
     public func addRestTime(_ seconds: Int) { restTimer.add(seconds) }
 
@@ -373,11 +396,18 @@ public final class WatchStrengthFlowModel {
         partners.remove(at: index)
         session?.activePartnerIDs = partners.map { $0.id.uuidString }
         try? context.save()
-        if currentPerformerIndex >= partners.count { currentPerformerIndex = 0 }
+        let removedPerformerIndex = index + 1
+        if currentPerformerIndex == removedPerformerIndex {
+            currentPerformerIndex = 0
+        } else if currentPerformerIndex > removedPerformerIndex {
+            currentPerformerIndex -= 1
+        } else if currentPerformerIndex > partners.count {
+            currentPerformerIndex = 0
+        }
     }
 
     public func selectPerformer(at index: Int) {
-        currentPerformerIndex = min(index, partners.count)
+        currentPerformerIndex = min(max(0, index), partners.count)
     }
 
     public func dismissSummary() {
@@ -507,13 +537,23 @@ public final class WatchStrengthFlowModel {
     }
 
     private var currentPerformer: Person? {
-        guard !partners.isEmpty, currentPerformerIndex < partners.count else { return nil }
-        return partners[currentPerformerIndex]
+        guard !partners.isEmpty, currentPerformerIndex > 0 else { return nil }
+        let partnerIndex = currentPerformerIndex - 1
+        guard partnerIndex < partners.count else { return nil }
+        return partners[partnerIndex]
     }
 
     public var performerLabel: String? {
-        guard let p = currentPerformer else { return nil }
-        return p.name
+        guard !partners.isEmpty else { return nil }
+        return currentPerformer?.name ?? "Me"
+    }
+
+    public var performerOptions: [WatchPerformerOption] {
+        guard !partners.isEmpty else { return [] }
+        return [WatchPerformerOption(index: 0, name: "Me", isMe: true)]
+            + partners.enumerated().map { offset, partner in
+                WatchPerformerOption(index: offset + 1, name: partner.name, isMe: false)
+            }
     }
 
     public var resolvedEffortRPE: Double? {

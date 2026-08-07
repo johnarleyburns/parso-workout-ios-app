@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 
@@ -68,6 +69,7 @@ struct WatchStrengthStartView: View {
 
 private struct WatchCustomStrengthSetupView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
+    @Query(sort: \Person.updatedAt, order: .reverse) private var people: [Person]
 
     @AppStorage("watch.strength.lastRepPattern") private var lastRepPattern = WatchRepPattern.fallback.id
     @AppStorage("watch.strength.lastRestSeconds") private var lastRestSeconds = 60
@@ -75,15 +77,26 @@ private struct WatchCustomStrengthSetupView: View {
 
     @State private var selectedRepPatternID = WatchRepPattern.fallback.id
     @State private var selectedRestSeconds = 60
-    @State private var selectedPartners = Set<String>()
+    @State private var selectedPartnerNames: [String] = []
     @State private var didLoadDefaults = false
+    @State private var launchConfig: WatchCustomStrengthLaunchConfig?
 
     private var selectedPattern: WatchRepPattern {
         WatchRepPattern.popular.first { $0.id == selectedRepPatternID } ?? .fallback
     }
 
+    private var recentLocalPartnerNames: [String] {
+        people
+            .filter { !$0.isMe && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .map(\.name)
+    }
+
     private var partnerOptions: [String] {
-        unique(decodedPartners(from: lastPartners) + watchManager.recentPartnerNames)
+        WatchCustomStrengthDefaults.unique(
+            WatchCustomStrengthDefaults.decodedPartners(from: lastPartners)
+                + watchManager.recentPartnerNames
+                + recentLocalPartnerNames
+        )
     }
 
     var body: some View {
@@ -129,12 +142,12 @@ private struct WatchCustomStrengthSetupView: View {
             Section("Partners") {
                 Button {
                     WatchHaptics.tap()
-                    selectedPartners.removeAll()
+                    selectedPartnerNames.removeAll()
                 } label: {
                     HStack {
                         Text("No partner")
                         Spacer()
-                        if selectedPartners.isEmpty {
+                        if selectedPartnerNames.isEmpty {
                             Image(systemName: "checkmark")
                                 .foregroundStyle(.green)
                         }
@@ -145,17 +158,17 @@ private struct WatchCustomStrengthSetupView: View {
                 ForEach(partnerOptions, id: \.self) { name in
                     Button {
                         WatchHaptics.tap()
-                        if selectedPartners.contains(name) {
-                            selectedPartners.remove(name)
+                        if let index = selectedPartnerNames.firstIndex(where: { $0.compare(name, options: .caseInsensitive) == .orderedSame }) {
+                            selectedPartnerNames.remove(at: index)
                         } else {
-                            selectedPartners.insert(name)
+                            selectedPartnerNames.append(name)
                         }
                     } label: {
                         HStack {
                             Text(name)
                                 .lineLimit(1)
                             Spacer()
-                            if selectedPartners.contains(name) {
+                            if selectedPartnerNames.contains(where: { $0.compare(name, options: .caseInsensitive) == .orderedSame }) {
                                 Image(systemName: "checkmark")
                                     .foregroundStyle(.green)
                             }
@@ -166,63 +179,59 @@ private struct WatchCustomStrengthSetupView: View {
             }
 
             Section {
-                NavigationLink {
-                    WatchStrengthView(
-                        title: "Strength",
+                Button {
+                    WatchHaptics.success()
+                    saveDefaults()
+                    launchConfig = WatchCustomStrengthLaunchConfig(
                         repLadder: selectedPattern.reps,
-                        initialPartnerNames: Array(selectedPartners).sorted(),
+                        partnerNames: WatchCustomStrengthDefaults.unique(selectedPartnerNames),
                         restSeconds: selectedRestSeconds
                     )
-                    .onAppear { saveDefaults() }
                 } label: {
                     Label("Start", systemImage: "play.fill")
                 }
+                .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("watchStrength.customStart")
             }
         }
         .navigationTitle("Custom")
         .onAppear(perform: loadDefaultsIfNeeded)
+        .navigationDestination(item: $launchConfig) { config in
+            WatchStrengthView(
+                title: "Strength",
+                repLadder: config.repLadder,
+                initialPartnerNames: config.partnerNames,
+                restSeconds: config.restSeconds
+            )
+        }
     }
 
     private func loadDefaultsIfNeeded() {
         guard !didLoadDefaults else { return }
-        selectedRepPatternID = WatchRepPattern.normalized(parseRepPattern(lastRepPattern)).id
-        selectedRestSeconds = WatchRestOptions.normalized(lastRestSeconds)
-        selectedPartners = Set(decodedPartners(from: lastPartners))
+        let defaults = WatchCustomStrengthDefaults(
+            storedRepPattern: lastRepPattern,
+            storedRestSeconds: lastRestSeconds,
+            storedPartners: lastPartners,
+            recentPartners: watchManager.recentPartnerNames + recentLocalPartnerNames
+        )
+        selectedRepPatternID = defaults.repPattern.id
+        selectedRestSeconds = defaults.restSeconds
+        selectedPartnerNames = defaults.selectedPartners
         didLoadDefaults = true
     }
 
     private func saveDefaults() {
         lastRepPattern = selectedPattern.id
         lastRestSeconds = selectedRestSeconds
-        lastPartners = encodedPartners(Array(selectedPartners).sorted())
+        lastPartners = WatchCustomStrengthDefaults.encodedPartners(selectedPartnerNames)
     }
+}
 
-    private func parseRepPattern(_ raw: String) -> [Int] {
-        raw.split(separator: "-").compactMap { Int($0) }
-    }
-
-    private func decodedPartners(from raw: String) -> [String] {
-        raw.split(separator: "\n")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-    }
-
-    private func encodedPartners(_ names: [String]) -> String {
-        names.joined(separator: "\n")
-    }
-
-    private func unique(_ names: [String]) -> [String] {
-        var seen = Set<String>()
-        var out: [String] = []
-        for name in names {
-            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty,
-                  seen.insert(trimmed.lowercased()).inserted else { continue }
-            out.append(trimmed)
-        }
-        return out
-    }
+private struct WatchCustomStrengthLaunchConfig: Hashable, Identifiable {
+    let id = UUID()
+    let repLadder: [Int]
+    let partnerNames: [String]
+    let restSeconds: Int
 }
 
 private struct WatchRepSchemePicker: View {

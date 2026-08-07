@@ -5,6 +5,8 @@ import CadenceFeatures
 
 struct WatchStrengthHomeView: View {
     let model: WatchStrengthFlowModel
+    @State private var pendingExerciseID: UUID?
+    @State private var showingDeleteWorkoutConfirm = false
 
     var body: some View {
         List {
@@ -13,10 +15,21 @@ struct WatchStrengthHomeView: View {
                     HStack(spacing: 6) {
                         Button {
                             WatchHaptics.tap()
-                            model.startLogSet(for: item.exercise)
+                            pendingExerciseID = item.exercise.id
+                            DispatchQueue.main.async {
+                                model.startLogSet(for: item.exercise)
+                                pendingExerciseID = nil
+                            }
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(item.exercise.name).lineLimit(1)
+                                HStack(spacing: 5) {
+                                    Text(item.exercise.name).lineLimit(1)
+                                    if pendingExerciseID == item.exercise.id {
+                                        ProgressView()
+                                            .controlSize(.mini)
+                                            .accessibilityIdentifier("watchStrength.exercise.loading")
+                                    }
+                                }
                                 if item.setCount > 0 {
                                     Text("\(item.setCount) set\(item.setCount == 1 ? "" : "s")")
                                         .font(.caption2).foregroundStyle(.secondary)
@@ -66,16 +79,30 @@ struct WatchStrengthHomeView: View {
                         .foregroundStyle(.green)
                 }
                 .accessibilityIdentifier("watchStrength.finish")
+            }
+
+            Section {
                 Button(role: .destructive) {
-                    WatchHaptics.delete()
-                    model.cancel()
+                    WatchHaptics.tap()
+                    showingDeleteWorkoutConfirm = true
                 } label: {
-                    Label("Cancel", systemImage: "xmark.circle.fill")
+                    Label("Delete Workout", systemImage: "trash")
                 }
-                .accessibilityIdentifier("watchStrength.cancel")
+                .accessibilityIdentifier("watchStrength.deleteWorkout")
             }
         }
         .navigationTitle("Strength")
+        .alert("Delete Workout?", isPresented: $showingDeleteWorkoutConfirm) {
+            Button("Delete", role: .destructive) {
+                WatchHaptics.delete()
+                model.cancel()
+            }
+            .accessibilityIdentifier("watchStrength.deleteWorkout.confirm")
+            Button("Keep Workout", role: .cancel) {}
+                .accessibilityIdentifier("watchStrength.deleteWorkout.cancel")
+        } message: {
+            Text("This removes the workout and all sets logged on the watch.")
+        }
     }
 
     private func sendSync() {

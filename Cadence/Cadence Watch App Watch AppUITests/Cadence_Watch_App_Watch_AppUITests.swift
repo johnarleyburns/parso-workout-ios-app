@@ -9,7 +9,7 @@ final class WatchSmokeTests: XCTestCase {
     @MainActor
     func testWatchStrengthWorkoutStartsLogsAndCompletes() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTest", "-ApplePersistenceIgnoreState", "YES"]
+        app.launchArguments = ["-uiTest", "-ApplePersistenceIgnoreState", "YES", "-seed", "person.Sam"]
         app.launch()
 
         XCTAssertTrue(app.tapButton("watch.startStrength", scrollAttempts: 4),
@@ -22,6 +22,10 @@ final class WatchSmokeTests: XCTestCase {
                       "Custom setup did not show rep-pattern options")
         XCTAssertTrue(app.tapButton("watchStrength.rest.60", scrollAttempts: 3),
                       "Custom setup did not show rest options")
+        XCTAssertTrue(app.tapButton("watchStrength.partner.none", scrollAttempts: 4),
+                      "Custom setup did not show No partner")
+        XCTAssertTrue(app.tapButton("watchStrength.partner.Sam", scrollAttempts: 4),
+                      "Custom setup did not show seeded recent partner")
         XCTAssertTrue(app.tapButton("watchStrength.customStart", scrollAttempts: 4),
                       "Custom setup did not start")
 
@@ -38,20 +42,36 @@ final class WatchSmokeTests: XCTestCase {
         XCTAssertTrue(app.tapButton("watchStrength.exercise.Bench Press"),
                       "Bench Press was not planned in the watch session")
 
-        XCTAssertTrue(app.tapButton("watchWeight.plus10"),
-                      "Watch weight +10 button did not exist")
+        XCTAssertTrue(app.tapButton("watchPerformer.Sam", scrollAttempts: 3),
+                      "Watch set logger did not expose partner selector")
+        XCTAssertTrue(app.tapButton("watchWeight.plus45"),
+                      "Watch weight +45 plate button did not exist")
         XCTAssertTrue(app.tapButton("logSetButton", scrollAttempts: 4),
                       "Watch set logger did not open")
 
         XCTAssertTrue(app.tapButton("watchRest.nextSet"),
                       "Watch rest screen did not appear after logging")
 
-        XCTAssertTrue(app.tapButton("watchStrength.exercise.Bench Press"),
-                      "Bench Press did not reopen after rest")
+        XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 10),
+                      "Next Set did not return directly to the exercise keypad")
         XCTAssertTrue(app.tapButton("watchSet.delete.1"),
                       "Watch set delete was not available")
         XCTAssertTrue(app.tapButton("lastSetButton", scrollAttempts: 4),
                       "Watch Last Set did not return to exercise list")
+
+        XCTAssertTrue(app.tapButton("watchStrength.addExercise", scrollAttempts: 4),
+                      "Could not add a second exercise")
+        XCTAssertTrue(app.tapButton("watchAddExercise.row.Deadlift", scrollAttempts: 4),
+                      "Watch exercise picker did not show Deadlift")
+        XCTAssertTrue(app.tapButton("watchAddExercise.previewAdd", scrollAttempts: 4),
+                      "Watch exercise preview did not add Deadlift")
+        XCTAssertTrue(app.tapButton("watchStrength.deleteExercise.Deadlift", scrollAttempts: 4),
+                      "Watch exercise delete was not available")
+
+        XCTAssertTrue(app.tapButton("watchStrength.deleteWorkout", scrollAttempts: 4),
+                      "Watch workout delete button did not exist")
+        XCTAssertTrue(app.tapButton("Keep Workout"),
+                      "Watch workout delete confirmation did not show cancel")
 
         XCTAssertTrue(app.tapButton("watchStrength.finish", scrollAttempts: 4),
                       "Watch strength home did not return after rest")

@@ -8,9 +8,9 @@ final class WatchSyncTests: XCTestCase {
 
     func testPoundChips() {
         let inc = WeightIncrement(unit: .pounds)
-        XCTAssertEqual(inc.negativeChips, [-10, -5, -2.5])
-        XCTAssertEqual(inc.positiveChips, [10, 5, 2.5])
-        XCTAssertEqual(inc.chips, [-10, -5, -2.5, 10, 5, 2.5])
+        XCTAssertEqual(inc.negativeChips, [-45, -35, -25, -10, -5])
+        XCTAssertEqual(inc.positiveChips, [45, 35, 25, 10, 5])
+        XCTAssertEqual(inc.chips, [-45, -35, -25, -10, -5, 45, 35, 25, 10, 5])
         XCTAssertEqual(inc.crownDetent, 2.5)
         XCTAssertEqual(inc.range, 0...650)
     }
@@ -25,9 +25,9 @@ final class WatchSyncTests: XCTestCase {
 
     func testKilogramChips() {
         let inc = WeightIncrement(unit: .kilograms)
-        XCTAssertEqual(inc.negativeChips, [-10, -5, -2.5])
-        XCTAssertEqual(inc.positiveChips, [10, 5, 2.5])
-        XCTAssertEqual(inc.chips, [-10, -5, -2.5, 10, 5, 2.5])
+        XCTAssertEqual(inc.negativeChips, [-25, -20, -15, -10, -5])
+        XCTAssertEqual(inc.positiveChips, [25, 20, 15, 10, 5])
+        XCTAssertEqual(inc.chips, [-25, -20, -15, -10, -5, 25, 20, 15, 10, 5])
         XCTAssertEqual(inc.crownDetent, 2.5)
         XCTAssertEqual(inc.range, 0...300)
     }

@@ -7,29 +7,45 @@ struct WatchPartnersView: View {
 
     var body: some View {
         List {
-            ForEach(Array(model.partners.enumerated()), id: \.element.persistentModelID) { idx, partner in
-                HStack {
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 20, height: 20)
-                        .overlay(Text(String(partner.name.prefix(1))).font(.caption2.bold()).foregroundStyle(.white))
-                    Text(partner.name)
-                    Spacer()
-                    if idx == model.currentPerformerIndex {
-                        Text("Lifting").font(.caption2).foregroundStyle(.green)
-                    } else if idx == (model.currentPerformerIndex + 1) % (model.partners.count + 1) {
-                        Text("Up next").font(.caption2).foregroundStyle(.secondary)
+            Section("Lifter") {
+                ForEach(model.performerOptions) { option in
+                    HStack {
+                        Circle()
+                            .fill(option.isMe ? Color.green : Color.blue)
+                            .frame(width: 20, height: 20)
+                            .overlay(Text(String(option.name.prefix(1))).font(.caption2.bold()).foregroundStyle(.white))
+                        Text(option.name)
+                        Spacer()
+                        if option.index == model.currentPerformerIndex {
+                            Text("Lifting").font(.caption2).foregroundStyle(.green)
+                        } else if option.index == nextPerformerIndex {
+                            Text("Up next").font(.caption2).foregroundStyle(.secondary)
+                        }
                     }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    WatchHaptics.tap()
-                    model.selectPerformer(at: idx)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        WatchHaptics.tap()
+                        model.selectPerformer(at: option.index)
+                    }
+                    .accessibilityIdentifier("watchPartners.performer.\(option.name)")
                 }
             }
-            .onDelete { idxs in
-                WatchHaptics.delete()
-                for i in idxs { model.removePartner(at: i) }
+
+            Section("Partners") {
+                ForEach(Array(model.partners.enumerated()), id: \.element.persistentModelID) { idx, partner in
+                    HStack {
+                        Circle()
+                            .fill(Color.blue)
+                            .frame(width: 20, height: 20)
+                            .overlay(Text(String(partner.name.prefix(1))).font(.caption2.bold()).foregroundStyle(.white))
+                        Text(partner.name)
+                        Spacer()
+                    }
+                }
+                .onDelete { idxs in
+                    WatchHaptics.delete()
+                    for i in idxs { model.removePartner(at: i) }
+                }
             }
 
             Section {
@@ -42,5 +58,10 @@ struct WatchPartnersView: View {
             }
         }
         .navigationTitle("Partners")
+    }
+
+    private var nextPerformerIndex: Int {
+        guard !model.performerOptions.isEmpty else { return 0 }
+        return (model.currentPerformerIndex + 1) % model.performerOptions.count
     }
 }

@@ -7,10 +7,17 @@ import CadenceFeatures
 struct CadenceWatchApp: App {
     let container: ModelContainer = {
         do {
-            let uiTest = ProcessInfo.processInfo.arguments.contains("-uiTest")
+            let args = ProcessInfo.processInfo.arguments
+            let uiTest = args.contains("-uiTest")
             let container = try CadenceStore.makeModelContainer(inMemory: uiTest, cloudKitEnabled: false)
             let context = ModelContext(container)
             _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(context)
+            if uiTest {
+                for seed in CadenceWatchApp.seedNames(in: args) where seed.hasPrefix("person.") {
+                    let name = String(seed.dropFirst("person.".count))
+                    if !name.isEmpty { _ = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) }
+                }
+            }
             return container
         }
         catch { fatalError("Failed to create ModelContainer: \(error)") }
@@ -34,5 +41,15 @@ struct CadenceWatchApp: App {
                 .task { watchManager.watchAppSettings = watchAppSettings }
         }
         .modelContainer(container)
+    }
+
+    private static func seedNames(in args: [String]) -> Set<String> {
+        var result: Set<String> = []
+        var i = 0
+        while i < args.count {
+            if args[i] == "-seed", i + 1 < args.count { result.insert(args[i + 1]) }
+            i += 1
+        }
+        return result
     }
 }

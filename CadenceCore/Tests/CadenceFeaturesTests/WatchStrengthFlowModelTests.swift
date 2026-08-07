@@ -132,6 +132,24 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.stage, .rest)
     }
 
+    func testLogSetGoesToRestAndNextSetReturnsToSameExercise() {
+        let m = makeModel()
+        m.start(repLadder: [12, 10, 8], createSession: true)
+        let ex = simpleExercise(named: "Rest Return Press")
+        m.startLogSet(for: ex)
+        XCTAssertEqual(Int(m.currentReps), 12)
+
+        _ = m.logSet()
+        XCTAssertEqual(m.stage, .rest)
+
+        m.finishRest()
+        guard case .keypad(let returnedExercise) = m.stage else {
+            return XCTFail("Expected Next Set to return to the same exercise keypad")
+        }
+        XCTAssertEqual(returnedExercise.id, ex.id)
+        XCTAssertEqual(Int(m.currentReps), 10)
+    }
+
     func testStartCreateSessionPrefillsPlannedExercisesAndLadder() {
         let m = makeModel()
         m.start(title: "Push Day",
@@ -248,6 +266,8 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.addPartner(named: "Jo")
         XCTAssertEqual(m.partners.count, 1)
         XCTAssertEqual(m.partners.first?.name, "Jo")
+        XCTAssertEqual(m.performerOptions.map(\.name), ["Me", "Jo"])
+        XCTAssertEqual(m.performerLabel, "Me")
     }
 
     func testPartnerRotation_afterLogSet() {
@@ -272,8 +292,11 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.start()
         m.addPartner(named: "Jo")
         m.addPartner(named: "Sam")
-        m.selectPerformer(at: 1)
-        XCTAssertEqual(m.currentPerformerIndex, 1)
+        m.selectPerformer(at: 2)
+        XCTAssertEqual(m.currentPerformerIndex, 2)
+        XCTAssertEqual(m.performerLabel, "Sam")
+        m.selectPerformer(at: 0)
+        XCTAssertEqual(m.performerLabel, "Me")
     }
 
     func testRemovePartner() {
@@ -309,7 +332,7 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.addPartner(named: "Max")
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.startLogSet(for: ex)
-        m.selectPerformer(at: 1)
+        m.selectPerformer(at: 2)
         _ = m.logSet()
         XCTAssertEqual(m.lastPerformedByName, "Sam")
         XCTAssertNotNil(m.lastSyncPayload?["performed_by_id"])
@@ -385,11 +408,11 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.currentWeight, WorkoutMath.canonical(135, from: .pounds), accuracy: 0.001)
     }
 
-    /// A +2.5 chip adds exactly 2.5 lb (not 2.5 kg / ~5.5 lb).
-    func testChipIncrement_addsExactly2point5Pounds() {
+    /// The crown detent still fine-tunes by exactly 2.5 lb (not 2.5 kg / ~5.5 lb).
+    func testCrownIncrement_addsExactly2point5Pounds() {
         let m = poundsModel()
         m.currentWeightDisplay = 100
-        m.currentWeightDisplay += WeightIncrement(unit: .pounds).chips.last!  // +2.5
+        m.currentWeightDisplay += WeightIncrement(unit: .pounds).crownDetent
         XCTAssertEqual(m.currentWeightDisplay, 102.5, accuracy: 0.001)
     }
 
@@ -537,6 +560,27 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.currentWorkoutHistoryLines.count, 0)
         XCTAssertEqual(payload?["action"] as? String, "delete_set")
         XCTAssertEqual(payload?["set_id"] as? String, set?.id.uuidString)
+    }
+
+    func testDeleteSetAllowsReentryDuringSameExercise() {
+        let m = makeModel()
+        m.start()
+        let ex = simpleExercise(named: "Reenter Set Press")
+        m.startLogSet(for: ex)
+        let first = m.logSet()
+        m.finishRest()
+
+        XCTAssertNotNil(m.deleteSet(id: first!.id))
+        XCTAssertEqual(m.currentWorkoutHistoryLines, [])
+
+        m.currentWeight = 75
+        m.currentReps = 6
+        let replacement = m.logLastSet()
+
+        XCTAssertNotNil(replacement)
+        XCTAssertEqual(m.session?.orderedSets.count, 1)
+        XCTAssertEqual(m.session?.orderedSets.first?.reps, 6)
+        XCTAssertEqual(m.stage, .home)
     }
 
     func testDeleteExerciseRemovesPlannedNameSetsAndEmitsPayload() {

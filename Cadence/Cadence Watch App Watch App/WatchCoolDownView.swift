@@ -5,6 +5,7 @@ import CadenceFeatures
 
 struct WatchCoolDownView: View {
     let model: WatchStrengthFlowModel
+    @State private var timerController = WatchCooldownTimerController()
 
     var body: some View {
         ZStack {
@@ -36,16 +37,7 @@ struct WatchCoolDownView: View {
             }
         }
         .onAppear {
-            Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { t in
-                MainActor.assumeIsolated {
-                    model.cooldownTimerModel.tick()
-                    if model.cooldownTimerModel.remaining <= 0 {
-                        t.invalidate()
-                        model.completeCooldown()
-                        sendEndSession()
-                    }
-                }
-            }
+            timerController.start(model: model)
         }
     }
 
@@ -55,6 +47,33 @@ struct WatchCoolDownView: View {
     }
 
     private func sendEndSession() {
+        guard let payload = model.endSessionPayload() else { return }
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
+        WCSession.default.transferUserInfo(payload)
+    }
+}
+
+@MainActor
+private final class WatchCooldownTimerController {
+    private var timer: Timer?
+
+    func start(model: WatchStrengthFlowModel) {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self, weak model] _ in
+            MainActor.assumeIsolated {
+                guard let self, let model else { return }
+                model.cooldownTimerModel.tick()
+                if model.cooldownTimerModel.remaining <= 0 {
+                    self.timer?.invalidate()
+                    self.timer = nil
+                    model.completeCooldown()
+                    self.sendEndSession(model)
+                }
+            }
+        }
+    }
+
+    private func sendEndSession(_ model: WatchStrengthFlowModel) {
         guard let payload = model.endSessionPayload() else { return }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)

@@ -9,7 +9,7 @@ if (($# == 0)); then
 fi
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
-owned='(CadenceCore|Cadence|scripts|Package\.swift|project\.pbxproj|asset catalog)'
+owned='(CadenceCore/Sources|Cadence/|Package\.swift|project\.pbxproj|asset catalog)'
 failed=0
 for log in "$@"; do
   [[ -f "$log" ]] || { echo "warning gate: missing log: $log" >&2; failed=1; continue; }

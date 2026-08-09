@@ -101,7 +101,10 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
     public func rank(_ query: String) -> [T] {
         let terms = ExerciseSearch.terms(query)
         guard !terms.isEmpty else {
-            return indexed.sorted(by: Self.alphabeticalBuiltInsFirst).map(\.item)
+            return indexed.sorted { lhs, rhs in
+                if lhs.isCustom != rhs.isCustom { return !lhs.isCustom }
+                return lhs.item.name.localizedCaseInsensitiveCompare(rhs.item.name) == .orderedAscending
+            }.map(\.item)
         }
         let scored: [(Indexed, Int)] = indexed.compactMap { entry in
             var total = 0
@@ -114,7 +117,8 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
         }
         return scored.sorted { a, b in
             if a.1 != b.1 { return a.1 > b.1 }
-            return Self.alphabeticalBuiltInsFirst(a.0, b.0)
+            if a.0.isCustom != b.0.isCustom { return !a.0.isCustom }
+            return a.0.item.name.localizedCaseInsensitiveCompare(b.0.item.name) == .orderedAscending
         }.map(\.0.item)
     }
 
@@ -125,4 +129,3 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
 }
 
 extension Exercise: ExerciseSearchable {}
-

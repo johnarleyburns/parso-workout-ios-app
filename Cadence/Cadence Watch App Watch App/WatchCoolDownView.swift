@@ -56,12 +56,14 @@ struct WatchCoolDownView: View {
 @MainActor
 private final class WatchCooldownTimerController {
     private var timer: Timer?
+    private weak var model: WatchStrengthFlowModel?
 
     func start(model: WatchStrengthFlowModel) {
+        self.model = model
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self, weak model] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, let model else { return }
+                guard let self, let model = self.model else { return }
                 model.cooldownTimerModel.tick()
                 if model.cooldownTimerModel.remaining <= 0 {
                     self.timer?.invalidate()

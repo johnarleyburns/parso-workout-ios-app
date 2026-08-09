@@ -15,10 +15,12 @@ import CoreBluetooth
 @Observable
 final class HeartRateMonitor: NSObject, HeartRateMonitoring {
 
-    static let heartRateService = CBUUID(string: "180D")
-    static let heartRateMeasurement = CBUUID(string: "2A37")
-    static let batteryService = CBUUID(string: "180F")
-    static let batteryLevel = CBUUID(string: "2A19")
+    // CBUUID is not Sendable in the iOS 26 SDK. Keep these as computed values
+    // so Swift 6 does not treat shared CBUUID instances as mutable global state.
+    static var heartRateService: CBUUID { CBUUID(string: "180D") }
+    static var heartRateMeasurement: CBUUID { CBUUID(string: "2A37") }
+    static var batteryService: CBUUID { CBUUID(string: "180F") }
+    static var batteryLevel: CBUUID { CBUUID(string: "2A19") }
 
     /// Maximum reconnection attempts before giving up (FR-4.4).
     private var maxReconnectAttempts: Int = 5

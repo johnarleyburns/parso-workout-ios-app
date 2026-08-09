@@ -3,7 +3,7 @@ import SwiftUI
 /// Master switch for custom Liquid Glass call sites. iOS 17-25 always use the
 /// material fallback regardless of this flag.
 enum GlassFeature {
-    static var isEnabled = true
+    static let isEnabled = true
 }
 
 extension View {

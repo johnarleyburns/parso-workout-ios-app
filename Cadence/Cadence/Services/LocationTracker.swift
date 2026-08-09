@@ -7,7 +7,7 @@ import CoreLocation
 /// `LocationFix`es and exposes running distance. Has a `simulated` mode for
 /// previews/UI tests that synthesizes a moving track.
 @Observable
-final class LocationTracker: NSObject, LocationTracking {
+final class LocationTracker: NSObject, LocationTracking, @unchecked Sendable {
     private(set) var fixes: [LocationFix] = []
     private(set) var authorized = false
 
@@ -15,6 +15,7 @@ final class LocationTracker: NSObject, LocationTracking {
     private var manager: CLLocationManager?
     private var startDate: Date?
     private var simTimer: Timer?
+    private var simulationTick = 0
 
     init(simulated: Bool) {
         self.simulated = simulated
@@ -47,11 +48,12 @@ final class LocationTracker: NSObject, LocationTracking {
         startDate = Date()
         if simulated {
             authorized = true
-            var i = 0
+            simulationTick = 0
             // ~0.0001° ≈ 11 m per tick → believable jog pace
             simTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
                 guard let self else { return }
-                i += 1
+                self.simulationTick += 1
+                let i = self.simulationTick
                 self.fixes.append(LocationFix(t: TimeInterval(i), lat: 37.3349 + Double(i) * 0.0001,
                                               lon: -122.0090, elevation: 10, horizontalAccuracy: 5))
             }

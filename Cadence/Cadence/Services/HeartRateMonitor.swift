@@ -45,6 +45,7 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
     private(set) var criticalBattery: Bool = false
 
     private let simulated: Bool
+    private var simulationTick = 0
     private var central: CBCentralManager?
     private var peripheral: CBPeripheral?
     private var rememberedID: UUID?
@@ -166,11 +167,13 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
 
     private func startSimFeed() {
         simTimer?.invalidate()
-        var t = 0.0
+        simulationTick = 0
         currentBPM = 132
         simTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            t += 1
-            self?.currentBPM = 130 + 25 * (0.5 + 0.5 * sin(t / 8))
+            guard let self else { return }
+            self.simulationTick += 1
+            let t = Double(self.simulationTick)
+            self.currentBPM = 130 + 25 * (0.5 + 0.5 * sin(t / 8))
         }
     }
 

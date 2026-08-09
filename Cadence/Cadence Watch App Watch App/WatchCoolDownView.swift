@@ -37,11 +37,13 @@ struct WatchCoolDownView: View {
         }
         .onAppear {
             Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { t in
-                model.cooldownTimerModel.tick()
-                if model.cooldownTimerModel.remaining <= 0 {
-                    t.invalidate()
-                    model.completeCooldown()
-                    sendEndSession()
+                Task { @MainActor in
+                    model.cooldownTimerModel.tick()
+                    if model.cooldownTimerModel.remaining <= 0 {
+                        t.invalidate()
+                        model.completeCooldown()
+                        sendEndSession()
+                    }
                 }
             }
         }

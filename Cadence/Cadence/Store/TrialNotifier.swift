@@ -1,5 +1,5 @@
 import Foundation
-import UserNotifications
+@preconcurrency import UserNotifications
 
 /// Schedules the single, quiet trial value-receipt reminder — one local
 /// notification 3 days before the trial ends, summarizing that the Coach has been

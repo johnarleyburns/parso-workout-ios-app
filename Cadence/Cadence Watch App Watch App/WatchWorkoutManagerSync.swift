@@ -23,7 +23,7 @@ extension WatchWorkoutManager {
     }
 }
 
-@preconcurrency extension WatchWorkoutManager: WCSessionDelegate {
+extension WatchWorkoutManager: @preconcurrency WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         guard activationState == .activated, !session.receivedApplicationContext.isEmpty else { return }
         DispatchQueue.main.async { [weak self] in

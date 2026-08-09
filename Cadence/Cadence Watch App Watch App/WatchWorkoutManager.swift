@@ -317,7 +317,7 @@ extension WatchWorkoutManager {
 
 // MARK: - Session / Builder delegates
 
-@preconcurrency extension WatchWorkoutManager: HKWorkoutSessionDelegate {
+extension WatchWorkoutManager: @preconcurrency HKWorkoutSessionDelegate {
     func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
                         from fromState: HKWorkoutSessionState, date: Date) {}
 
@@ -326,7 +326,7 @@ extension WatchWorkoutManager {
     }
 }
 
-@preconcurrency extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
+extension WatchWorkoutManager: @preconcurrency HKLiveWorkoutBuilderDelegate {
     func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
         guard isActive || isMonitoring else { return }
 
@@ -383,7 +383,7 @@ extension WatchWorkoutManager {
         }
     }
 }
-@preconcurrency extension WatchWorkoutManager: WKExtendedRuntimeSessionDelegate {
+extension WatchWorkoutManager: @preconcurrency WKExtendedRuntimeSessionDelegate {
     func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {}
     func extendedRuntimeSessionDidStart(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}
     func extendedRuntimeSessionWillExpire(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}

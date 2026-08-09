@@ -2,6 +2,10 @@
 
 Project memory for Claude Code. Read `docs/REQUIREMENTS.md` for the full spec; this file is the quick, durable context. Keep it short — prune anything Claude learns on its own.
 
+## Swift 6 hard rule
+
+This repository is fully on Swift 6 language mode with complete strict-concurrency checking and is kept as warning-free as the selected toolchain permits. Do not introduce or permit any deviation, mixed Swift modes, warning suppression, or unexplained concurrency escape hatch. A commit runs logic tests and simulator tests; a push runs logic tests only.
+
 ## Naming
 
 - **Product name (user-visible):** Cladiron — Home title, About, App Store, on-screen copy, README.
@@ -57,6 +61,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 - CLI build: `xcodebuild -scheme Cadence -destination 'platform=iOS Simulator,name=iPhone 16' build`
 - Real-device runs are required to test HealthKit — the simulator has no real Health data.
 - Git hooks (installed via `scripts/install-git-hooks.sh`): **pre-commit** runs the full local gate (SwiftPM unit tests + simulator UI smoke); **pre-push** runs SwiftPM unit tests only, no UI.
+- **Set command timeouts for Git hooks:** allow at least **5 minutes (300 seconds)** for `git commit`, because pre-commit runs simulator tests; allow about **2 minutes (120 seconds)** for `git push`, because pre-push runs unit tests only.
 
 ## Conventions
 - Small, focused commits; one feature per branch; push to main when verified.

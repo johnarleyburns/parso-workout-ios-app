@@ -132,8 +132,8 @@ public enum ExportRoundTripFixture {
         let s2 = try WorkoutRepository.createSession(title: "Full Body", date: day(41), in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
         let squat = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", category: .legs, in: ctx)
-        for i in 0..<3 { _ = try WorkoutRepository.addSet(to: s2, exercise: bench, weightKg: 80, reps: 8, completedAt: day(41), in: ctx) }
-        for i in 0..<3 { _ = try WorkoutRepository.addSet(to: s2, exercise: squat, weightKg: 120, reps: 5, completedAt: day(41), in: ctx) }
+        for _ in 0..<3 { _ = try WorkoutRepository.addSet(to: s2, exercise: bench, weightKg: 80, reps: 8, completedAt: day(41), in: ctx) }
+        for _ in 0..<3 { _ = try WorkoutRepository.addSet(to: s2, exercise: squat, weightKg: 120, reps: 5, completedAt: day(41), in: ctx) }
 
         // 3. warm-up sets mixed with working sets
         let s3 = try WorkoutRepository.createSession(title: "Warmups", date: day(42), in: ctx)

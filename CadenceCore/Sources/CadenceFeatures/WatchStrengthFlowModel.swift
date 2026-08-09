@@ -230,10 +230,7 @@ public final class WatchStrengthFlowModel {
         // take multiple watch run-loop turns when the catalog is large.
         stage = .home
         refreshExerciseList()
-        Task { @MainActor [weak self] in
-            await Task.yield()
-            try? self?.context.save()
-        }
+        try? context.save()
     }
 
     public func startLogSet(for exercise: Exercise) {

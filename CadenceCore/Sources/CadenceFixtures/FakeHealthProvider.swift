@@ -5,7 +5,8 @@ import CadenceCore
 /// FR-4). The simulator has no real Health data, so UI tests injected this to get
 /// stable, assertable values. Lifted out of the app target's
 /// `Services/FakeProviders.swift` so headless `swift test` can use it too.
-public final class FakeHealthProvider: HealthDataProviding, @unchecked Sendable {
+@MainActor
+public final class FakeHealthProvider: HealthDataProviding {
     public var isHealthDataAvailable: Bool { true }
     public var authStatus: HealthAuthorizationStatus = .notDetermined
     public var seededTodaySteps = 7432

@@ -36,8 +36,15 @@ jobs:
       - name: Run SwiftPM package tests
         run: |
           set -eo pipefail
-          swift build --package-path CadenceCore
-          swift test --package-path CadenceCore
+          swift build --package-path CadenceCore 2>&1 | tee swift-build.log
+          swift test --package-path CadenceCore 2>&1 | tee swift-test.log
+
+      - name: Check owned warnings
+        if: always()
+        run: bash scripts/check-owned-warnings.sh swift-build.log swift-test.log
+
+      - name: Check warning classifier fixtures
+        run: bash scripts/test-check-owned-warnings.sh
 
       - name: Test-pyramid guardrail
         run: bash scripts/check-test-pyramid.sh
@@ -152,6 +159,10 @@ jobs:
             grep -E 'error:' build.log | head -20
             exit 1
           fi
+
+      - name: Check owned archive warnings
+        if: success()
+        run: bash scripts/check-owned-warnings.sh build.log
 
       - name: Strip workout-processing from watch Info.plist
         if: success()

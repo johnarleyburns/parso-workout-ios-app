@@ -6,6 +6,7 @@ import CadenceCore
 import CadenceFeatures
 
 @Observable
+@MainActor
 final class WatchWorkoutManager: NSObject {
 
     // MARK: Published state
@@ -316,7 +317,7 @@ extension WatchWorkoutManager {
 
 // MARK: - Session / Builder delegates
 
-extension WatchWorkoutManager: HKWorkoutSessionDelegate {
+@preconcurrency extension WatchWorkoutManager: HKWorkoutSessionDelegate {
     func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
                         from fromState: HKWorkoutSessionState, date: Date) {}
 
@@ -325,7 +326,7 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate {
     }
 }
 
-extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
+@preconcurrency extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
     func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
         guard isActive || isMonitoring else { return }
 
@@ -382,7 +383,7 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
         }
     }
 }
-extension WatchWorkoutManager: WKExtendedRuntimeSessionDelegate {
+@preconcurrency extension WatchWorkoutManager: WKExtendedRuntimeSessionDelegate {
     func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {}
     func extendedRuntimeSessionDidStart(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}
     func extendedRuntimeSessionWillExpire(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}

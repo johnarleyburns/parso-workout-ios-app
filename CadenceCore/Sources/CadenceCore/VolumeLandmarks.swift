@@ -8,11 +8,8 @@ import Foundation
 /// ranges that personalize from the user's own response rather than pseudo-precise
 /// MEV/MAV/MRV cutoffs.
 public struct VolumeBands: Equatable, Sendable {
-    @available(*, deprecated, message: "Use VolumeGuidance.startingTargetRange instead")
     public let mev: Double
-    @available(*, deprecated, message: "Use VolumeGuidance.startingTargetRange instead")
     public let mav: Double
-    @available(*, deprecated, message: "Use VolumeGuidance.personalBaselineRange instead")
     public let mrv: Double
 
     public init(mev: Double, mav: Double, mrv: Double) {

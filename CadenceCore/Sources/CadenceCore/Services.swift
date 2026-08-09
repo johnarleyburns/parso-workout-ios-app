@@ -196,7 +196,8 @@ public enum HealthAuthorizationStatus: String, Sendable {
 }
 
 /// Abstraction over HealthKit reads/writes (FR-3, FR-2.1, FR-4.1/4.3).
-public protocol HealthDataProviding: AnyObject, Sendable {
+@MainActor
+public protocol HealthDataProviding: AnyObject {
     var isHealthDataAvailable: Bool { get }
     func requestAuthorization() async -> HealthAuthorizationStatus
     func todayActivity() async -> DayActivity

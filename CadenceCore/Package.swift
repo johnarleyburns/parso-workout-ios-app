@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
@@ -24,6 +24,7 @@ let package = Package(
                 // vendored at pinned commit b0eed06 (see CREDITS.md). Transformed
                 // on-device into our taxonomy by `ImportedExerciseLibrary`.
                 .copy("Resources/free-exercise-db.json"),
+                .copy("Resources/free-exercise-db.LICENSE"),
                 // Bundled exercise photography, downscaled to HEIC from the SAME
                 // pinned commit by scripts/build-exercise-images.sh. Loaded from
                 // Bundle.module — there is NO runtime network path (NFR-3), enforced
@@ -31,16 +32,18 @@ let package = Package(
                 .copy("Resources/ExerciseImages"),
                 // Versioned Coach knowledge-base changelog (quarterly protocol packs).
                 .copy("Resources/coach-kb-version.json"),
-            ]
+            ],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // Foundation + SwiftData + Observation ONLY. No SwiftUI, no HealthKit,
         // no StoreKit, no UIKit — that is what keeps it testable on macOS.
-        .target(name: "CadenceFeatures", dependencies: ["CadenceCore"]),
-        .target(name: "CadenceFixtures", dependencies: ["CadenceCore"]),
-        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore"]),
+        .target(name: "CadenceFeatures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .target(name: "CadenceFixtures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "CadenceFeaturesTests",
-            dependencies: ["CadenceFeatures", "CadenceFixtures"]
+            dependencies: ["CadenceFeatures", "CadenceFixtures"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]
 )

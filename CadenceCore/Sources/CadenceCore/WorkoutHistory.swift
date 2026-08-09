@@ -4,7 +4,7 @@ import SwiftData
 /// A single entry in the unified (strength + cardio) workout history
 /// (field-testing Round 4 A4). Wraps the underlying `@Model` row so the list
 /// can render either kind; `id`/`date` give a stable identity and sort key.
-public enum WorkoutHistoryEntry: Identifiable, Sendable {
+public enum WorkoutHistoryEntry: Identifiable {
     case strength(WorkoutSession)
     case cardio(CardioWorkout)
 

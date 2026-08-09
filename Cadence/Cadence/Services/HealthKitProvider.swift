@@ -7,7 +7,8 @@ import CoreLocation
 /// steps and Watch-recorded workouts; writes strength, cardio, and swim workout
 /// summaries with HR, distance (per-type), and GPS routes. Detailed set/rep data
 /// stays in SwiftData — HealthKit has no schema for it.
-final class HealthKitProvider: HealthDataProviding, @unchecked Sendable {
+@MainActor
+final class HealthKitProvider: HealthDataProviding {
     private let store = HKHealthStore()
 
     var isHealthDataAvailable: Bool { HKHealthStore.isHealthDataAvailable() }

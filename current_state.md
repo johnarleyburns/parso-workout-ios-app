@@ -2,7 +2,17 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-08-08 — watch field fixes: non-interrupting bells, precise weights, compact plates, custom exercises, and lifter-scoped sets._
+_Last updated: 2026-08-09 — Swift 6 migration and warning-elimination plan documented._
+
+## Swift 6 migration — 2026-08-09 — IMPLEMENTED
+
+Applied the migration contract from `docs/plans/swift-6-migration.md`: the
+package and all checked-in Xcode configurations use Swift 6.0 with complete
+strict-concurrency checking, SwiftData history no longer claims `Sendable`,
+Health providers are main-actor owned, and the warning classifier is wired into
+CI. The root `CLAUDE.md` now makes Swift 6 and the commit (logic + simulator)
+/ push (logic only) gates hard rules. The package test suite remains the logic
+gate; simulator/archive validation remains CI/local acceptance work.
 
 ## Watch workout field fixes — 2026-08-08 — SHIPPED
 

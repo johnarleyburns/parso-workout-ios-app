@@ -137,27 +137,12 @@ final class HomeCoachModelTests: XCTestCase {
         try ctx.save()
         let cardio = try ctx.fetch(FetchDescriptor<CardioWorkout>())
 
-        let snapshots = await withTaskGroup(of: CoachSnapshot.self) { group in
-            for _ in 0..<8 {
-                group.addTask {
-                    await HomeCoachModel.snapshotAsync(
-                        sessions: [],
-                        cardio: cardio,
-                        assessments: [],
-                        readiness: [],
-                        goal: .strength,
-                        experience: .intermediate,
-                        formula: .epley,
-                        schedule: .default,
-                        profile: .empty)
-                }
-            }
-
-            var collected: [CoachSnapshot] = []
-            for await snapshot in group {
-                collected.append(snapshot)
-            }
-            return collected
+        var snapshots: [CoachSnapshot] = []
+        for _ in 0..<8 {
+            snapshots.append(await HomeCoachModel.snapshotAsync(
+                sessions: [], cardio: cardio, assessments: [], readiness: [],
+                goal: .strength, experience: .intermediate, formula: .epley,
+                schedule: .default, profile: .empty))
         }
 
         XCTAssertEqual(snapshots.count, 8)

@@ -19,6 +19,7 @@ import CadenceFixtures
 /// WCSession activation is deferred to `activateWCSession()`, called from
 /// `CadenceApp.task{}` so it never blocks app launch.
 @Observable
+@MainActor
 final class AppModel: NSObject {
     private static let liveWatchHREnabled = true
 

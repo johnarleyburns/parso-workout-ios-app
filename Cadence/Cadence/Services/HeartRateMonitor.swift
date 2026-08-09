@@ -13,6 +13,7 @@ import CoreBluetooth
 /// Bluetooth), where scanning yields fake devices and connecting emits a
 /// deterministic BPM stream.
 @Observable
+@MainActor
 final class HeartRateMonitor: NSObject, HeartRateMonitoring {
 
     // CBUUID is not Sendable in the iOS 26 SDK. Keep these as computed values

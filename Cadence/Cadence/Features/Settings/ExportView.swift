@@ -274,7 +274,7 @@ struct ExportView: View {
         restoreMessage = nil
         let prefsSink = settings
 
-        Task.detached(priority: .userInitiated) { [container] in
+        Task { [container] in
             let accessed = url.startAccessingSecurityScopedResource()
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
             do {

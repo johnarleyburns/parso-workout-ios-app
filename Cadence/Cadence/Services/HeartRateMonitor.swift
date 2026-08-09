@@ -112,7 +112,8 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring {
         rememberedID = id
         if simulated {
             state = .connecting(id)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(200))
                 guard let self else { return }
                 self.state = .connected(id)
                 self.battery = 88

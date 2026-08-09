@@ -161,7 +161,7 @@ final class AppModel: NSObject {
         session.sendMessage([WatchSync.Key.command: "start_workout", "type": rawType],
                             replyHandler: nil,
                             errorHandler: { [weak self] error in
-            DispatchQueue.main.async {
+            Task { @MainActor [weak self] in
                 self?.watchActive = false
                 self?.watchError = "Watch connection failed — make sure Cladiron is open on your Watch"
                 self?.watchTimeout?.invalidate()
@@ -169,7 +169,7 @@ final class AppModel: NSObject {
         })
         watchActive = true
         watchTimeout = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
-            DispatchQueue.main.async {
+            Task { @MainActor [weak self] in
                 guard self?.watchActive == true else { return }
                 self?.watchActive = false
                 self?.watchError = "No heart rate received — check that Cladiron is running on your Watch"
@@ -254,9 +254,10 @@ final class AppModel: NSObject {
 extension AppModel: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if activationState == .activated {
-            DispatchQueue.main.async { [weak self] in
+            let installed = session.isWatchAppInstalled
+            Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.watchAppInstalled = session.isWatchAppInstalled
+                self.watchAppInstalled = installed
                 self.pushSettingsContext()
             }
         }
@@ -268,8 +269,9 @@ extension AppModel: WCSessionDelegate {
     }
 
     func sessionWatchStateDidChange(_ session: WCSession) {
-        DispatchQueue.main.async { [weak self] in
-            self?.watchAppInstalled = session.isWatchAppInstalled
+        let installed = session.isWatchAppInstalled
+        Task { @MainActor [weak self] in
+            self?.watchAppInstalled = installed
         }
     }
 
@@ -286,10 +288,10 @@ extension AppModel: WCSessionDelegate {
     private func handleWatchMessage(_ message: [String: Any],
                                     replyHandler: (([String: Any]) -> Void)? = nil) {
         if message[WatchSync.Key.command] as? String == WatchSync.Key.requestSettingsSync {
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.pushSettingsContext(force: true)
-                replyHandler?(["ack": true])
             }
+            replyHandler?(["ack": true])
             return
         }
 
@@ -297,13 +299,13 @@ extension AppModel: WCSessionDelegate {
             replyHandler?(["ack": false])
             return
         }
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else { return }
             self.watchTimeout?.invalidate(); self.watchTimeout = nil
             self.watchError = nil
             self.hrm.injectExternalBPM(bpm)
-            replyHandler?(["ack": true])
         }
+        replyHandler?(["ack": true])
     }
 
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {

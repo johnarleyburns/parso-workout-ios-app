@@ -13,8 +13,7 @@ import CoreBluetooth
 /// Bluetooth), where scanning yields fake devices and connecting emits a
 /// deterministic BPM stream.
 @Observable
-@MainActor
-final class HeartRateMonitor: NSObject, HeartRateMonitoring {
+final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable {
 
     // CBUUID is not Sendable in the iOS 26 SDK. Keep these as computed values
     // so Swift 6 does not treat shared CBUUID instances as mutable global state.

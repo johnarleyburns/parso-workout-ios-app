@@ -1,10 +1,21 @@
 import AVFoundation
+import CadenceFeatures
 import Foundation
 
+@MainActor
 final class WatchIntervalCuePlayer {
     private let bell = WatchIntervalCuePlayer.player(named: "opening-closing-bell")
     private let warningBell = WatchIntervalCuePlayer.player(named: "warning-bell")
-    private var sessionActive = false
+    private let audioSession: WatchWorkoutAudioSession
+    private var sequenceToken = 0
+
+    init() {
+        self.audioSession = .shared
+    }
+
+    init(audioSession: WatchWorkoutAudioSession) {
+        self.audioSession = audioSession
+    }
 
     func phaseTransition(soundsEnabled: Bool, isBoxing: Bool) {
         guard soundsEnabled else { return }
@@ -16,10 +27,24 @@ final class WatchIntervalCuePlayer {
         play(warningBell)
     }
 
+    /// Three clear bells when a strength rest timer reaches zero.
+    func restComplete(soundsEnabled: Bool) {
+        guard soundsEnabled else { return }
+        sequenceToken += 1
+        let token = sequenceToken
+        for offset in WatchWorkoutCuePolicy.restCompletionBellOffsets {
+            DispatchQueue.main.asyncAfter(deadline: .now() + offset) { [weak self] in
+                guard let self, token == self.sequenceToken else { return }
+                self.play(self.warningBell)
+            }
+        }
+    }
+
     func stop() {
+        sequenceToken += 1
         bell?.stop()
         warningBell?.stop()
-        deactivateSession()
+        audioSession.deactivate()
     }
 
     private static func player(named name: String) -> AVAudioPlayer? {
@@ -30,22 +55,8 @@ final class WatchIntervalCuePlayer {
     }
 
     private func play(_ player: AVAudioPlayer?) {
-        activateSession()
+        audioSession.activateForCues()
         player?.currentTime = 0
         player?.play()
-    }
-
-    private func activateSession() {
-        guard !sessionActive else { return }
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .default)
-        try? session.setActive(true)
-        sessionActive = true
-    }
-
-    private func deactivateSession() {
-        guard sessionActive else { return }
-        try? AVAudioSession.sharedInstance().setActive(false)
-        sessionActive = false
     }
 }

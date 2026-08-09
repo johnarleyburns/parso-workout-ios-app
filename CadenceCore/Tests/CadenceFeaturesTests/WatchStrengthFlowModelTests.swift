@@ -51,6 +51,28 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.stage, .home)
     }
 
+    func testAddCustomExerciseCreatesFacetedExerciseAndAddsItToWorkout() {
+        let m = makeModel()
+        m.start(createSession: true)
+
+        let exercise = m.addCustomExercise(named: "  Standing Cable Twist  ",
+                                           bodyParts: [.abs, .shoulders])
+
+        XCTAssertEqual(exercise?.name, "Standing Cable Twist")
+        XCTAssertEqual(exercise?.isCustom, true)
+        XCTAssertEqual(Set(exercise?.primaryMuscles ?? []), ["delts", "abs", "obliques"])
+        XCTAssertEqual(exercise?.categoryValue, .other)
+        XCTAssertEqual(m.stage, .home)
+        XCTAssertTrue(m.exerciseList.contains { $0.exercise.name == "Standing Cable Twist" })
+    }
+
+    func testAddCustomExerciseRequiresNameAndBodyPart() {
+        let m = makeModel()
+        m.start(createSession: true)
+        XCTAssertNil(m.addCustomExercise(named: "", bodyParts: [.back]))
+        XCTAssertNil(m.addCustomExercise(named: "Mystery Lift", bodyParts: []))
+    }
+
     func testAddExercise_showsPendingExerciseOnHome() {
         let m = makeModel()
         m.start()
@@ -287,6 +309,58 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.currentPerformerIndex, 0)
     }
 
+    func testPartnerRotationShowsOnlyTheActiveLiftersSetsAndSetNumber() {
+        let m = makeModel()
+        m.start(initialPartnerNames: ["Jo", "Sam"], createSession: true)
+        let ex = simpleExercise(named: "Partner History Press")
+        m.startLogSet(for: ex)
+
+        m.currentReps = 8
+        _ = m.logSet() // Me -> Jo
+        m.finishRest()
+        XCTAssertEqual(m.performerLabel, "Jo")
+        XCTAssertEqual(m.currentWorkoutHistoryLines, [])
+        XCTAssertEqual(m.currentWorkingSetIndex, 1)
+
+        m.currentReps = 10
+        _ = m.logSet() // Jo -> Sam
+        m.finishRest()
+        XCTAssertEqual(m.performerLabel, "Sam")
+        XCTAssertEqual(m.currentWorkoutHistoryLines, [])
+        XCTAssertEqual(m.currentWorkingSetIndex, 1)
+
+        m.currentReps = 12
+        _ = m.logSet() // Sam -> Me
+        m.finishRest()
+        XCTAssertEqual(m.performerLabel, "Me")
+        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.reps), [8])
+        XCTAssertEqual(m.currentWorkingSetIndex, 2)
+
+        m.selectPerformer(at: 1)
+        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.reps), [10])
+        XCTAssertEqual(m.currentWorkingSetIndex, 2)
+        m.selectPerformer(at: 2)
+        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.reps), [12])
+        XCTAssertEqual(m.currentWorkingSetIndex, 2)
+    }
+
+    func testPriorWorkoutHistoryAlsoFollowsSelectedPartner() throws {
+        let jo = try WorkoutRepository.findOrCreatePerson(named: "Jo", in: context)
+        let ex = simpleExercise(named: "Prior Partner Press")
+        let prior = try WorkoutRepository.createSession(title: "Prior", in: context)
+        _ = try WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 70, reps: 8, in: context)
+        _ = try WorkoutRepository.addSet(to: prior, exercise: ex, weightKg: 45, reps: 12,
+                                         performedBy: jo, in: context)
+
+        let m = makeModel()
+        m.start(initialPartnerNames: ["Jo"], createSession: true)
+        m.startLogSet(for: ex)
+        XCTAssertEqual(m.previousWorkoutHistoryLines.map(\.reps), [8])
+
+        m.selectPerformer(at: 1)
+        XCTAssertEqual(m.previousWorkoutHistoryLines.map(\.reps), [12])
+    }
+
     func testSelectPerformer() {
         let m = makeModel()
         m.start()
@@ -370,34 +444,33 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertFalse(text.isEmpty)
     }
 
-    // MARK: - Weight defaulting & display units (2.5 lb increments)
+    // MARK: - Weight defaulting & display units
 
     private func poundsModel() -> WatchStrengthFlowModel {
         WatchStrengthFlowModel(context: context, unit: .pounds, cooldownDefault: 5, restDefault: 90)
     }
 
-    /// The last working weight defaults the next set, snapped to the nearest
-    /// 2.5 in the display unit — 20 kg (≈44.09 lb) must show as 45 lb, never 44.
-    func testStartLogSet_pounds_defaultSnapsOddKgToNearest2point5() {
+    /// Field regression: reopening the keypad must preserve a precise cable
+    /// stack value instead of silently snapping it to a 2.5 lb boundary.
+    func testStartLogSet_pounds_preservesPreciseLastWeight() {
         let m = poundsModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.startLogSet(for: ex)
-        m.currentWeight = 20            // 20 kg == 44.09 lb canonical
+        m.currentWeightDisplay = 17.7
         _ = m.logSet()
         m.finishRest()
         m.startLogSet(for: ex)
-        XCTAssertEqual(m.currentWeightDisplay, 45, accuracy: 0.001)
+        XCTAssertEqual(m.currentWeightDisplay, 17.7, accuracy: 0.001)
     }
 
-    /// With no history the empty-bar default also lands on a 2.5 boundary.
-    func testStartLogSet_pounds_noHistoryDefaultIsOn2point5Boundary() {
+    /// With no history, pounds still starts at the familiar empty-bar value.
+    func testStartLogSet_pounds_noHistoryDefaultsTo45() {
         let m = poundsModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "Fresh", equipment: nil, in: context)
         m.startLogSet(for: ex)
-        let d = m.currentWeightDisplay
-        XCTAssertEqual((d / 2.5).rounded() * 2.5, d, accuracy: 0.001)
+        XCTAssertEqual(m.currentWeightDisplay, 45, accuracy: 0.001)
     }
 
     /// The display accessor round-trips through canonical kg without drift.
@@ -408,12 +481,14 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.currentWeight, WorkoutMath.canonical(135, from: .pounds), accuracy: 0.001)
     }
 
-    /// The crown detent still fine-tunes by exactly 2.5 lb (not 2.5 kg / ~5.5 lb).
-    func testCrownIncrement_addsExactly2point5Pounds() {
+    /// Field regression: cable-stack loads must not be locked to 2.5 lb steps.
+    func testCrownIncrement_acceptsDecimalPounds() {
         let m = poundsModel()
         m.currentWeightDisplay = 100
         m.currentWeightDisplay += WeightIncrement(unit: .pounds).crownDetent
-        XCTAssertEqual(m.currentWeightDisplay, 102.5, accuracy: 0.001)
+        XCTAssertEqual(m.currentWeightDisplay, 100.1, accuracy: 0.001)
+        m.currentWeightDisplay = 17.7
+        XCTAssertEqual(m.currentWeightText, "17.7")
     }
 
     func testPreviousSetHint() {

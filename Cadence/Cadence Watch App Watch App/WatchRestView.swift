@@ -5,7 +5,9 @@ import CadenceFeatures
 struct WatchRestView: View {
     let model: WatchStrengthFlowModel
 
+    @Environment(AppSettings.self) private var watchSettings
     @State private var timer: Timer?
+    @State private var cues = WatchIntervalCuePlayer()
 
     var body: some View {
         VStack(spacing: 12) {
@@ -38,10 +40,20 @@ struct WatchRestView: View {
         }
         .onAppear {
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-                model.restTimer.tick()
+                Task { @MainActor in
+                    let wasRunning = model.restTimer.isRunning
+                    model.restTimer.tick()
+                    if wasRunning, !model.restTimer.isRunning, model.restTimer.remaining == 0 {
+                        cues.restComplete(soundsEnabled: watchSettings.workoutSounds)
+                        WatchHaptics.success()
+                    }
+                }
             }
         }
-        .onDisappear { timer?.invalidate() }
+        .onDisappear {
+            timer?.invalidate()
+            cues.stop()
+        }
     }
 
     private func formatTime(_ interval: TimeInterval) -> String {

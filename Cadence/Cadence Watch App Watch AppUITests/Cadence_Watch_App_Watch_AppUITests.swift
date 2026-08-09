@@ -34,20 +34,26 @@ final class WatchSmokeTests: XCTestCase {
 
         XCTAssertTrue(app.textFields["watchAddExercise.search"].waitForExistence(timeout: 10),
                       "Watch exercise picker did not expose search first")
+        XCTAssertTrue(app.buttons["watchAddExercise.custom"].waitForExistence(timeout: 10),
+                      "Watch exercise search did not expose custom exercise creation")
         XCTAssertTrue(app.tapButton("watchAddExercise.category.chest", scrollAttempts: 4),
                       "Watch exercise picker did not show categories")
-        XCTAssertTrue(app.tapButton("watchAddExercise.row.Bench Press"),
-                      "Watch exercise picker did not show Bench Press")
+        XCTAssertTrue(app.tapButton("watchAddExercise.row.Alternating Floor Press"),
+                      "Watch exercise picker did not show a chest exercise")
         XCTAssertTrue(app.tapButton("watchAddExercise.previewAdd"),
                       "Watch exercise preview did not show Add")
 
-        XCTAssertTrue(app.tapButton("watchStrength.exercise.Bench Press"),
-                      "Bench Press was not planned in the watch session")
+        XCTAssertTrue(app.tapButton("watchStrength.exercise.Alternating Floor Press"),
+                      "Selected chest exercise was not planned in the watch session")
 
         XCTAssertTrue(app.tapButton("watchPerformer.Sam", scrollAttempts: 3),
                       "Watch set logger did not expose partner selector")
-        XCTAssertTrue(app.tapButton("watchWeight.plus45"),
-                      "Watch weight +45 plate button did not exist")
+        XCTAssertTrue(app.buttons["watchWeight.minusPlate"].waitForExistence(timeout: 10),
+                      "Watch weight row did not expose its subtract button")
+        XCTAssertTrue(app.otherElements["watchWeight.platePicker"].waitForExistence(timeout: 10),
+                      "Watch weight row did not expose its plate spinner")
+        XCTAssertTrue(app.tapButton("watchWeight.plusPlate", scrollAttempts: 4),
+                      "Watch weight row did not expose its add button")
         XCTAssertTrue(app.tapButton("logSetButton", scrollAttempts: 4),
                       "Watch set logger did not open")
 
@@ -56,20 +62,24 @@ final class WatchSmokeTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 10),
                       "Next Set did not return directly to the exercise keypad")
+        XCTAssertFalse(app.buttons["watchSet.delete.1"].waitForExistence(timeout: 1),
+                       "Owner history incorrectly included the partner's set")
+        XCTAssertTrue(app.tapButton("watchPerformer.Sam", scrollAttempts: 3),
+                      "Could not switch back to the partner's set history")
         XCTAssertTrue(app.tapButton("watchSet.delete.1"),
-                      "Watch set delete was not available")
+                      "Partner's own set history was not available")
         XCTAssertTrue(app.tapButton("lastSetButton", scrollAttempts: 4),
                       "Watch Last Set did not return to exercise list")
 
         XCTAssertTrue(app.tapButton("watchStrength.addExercise", scrollAttempts: 4),
                       "Could not add a second exercise")
-        XCTAssertTrue(app.tapButton("watchAddExercise.category.legs", scrollAttempts: 4),
+        XCTAssertTrue(app.tapButton("watchAddExercise.category.chest", scrollAttempts: 4),
                       "Second watch exercise picker did not show categories")
-        XCTAssertTrue(app.tapButton("watchAddExercise.row.Deadlift", scrollAttempts: 4),
-                      "Watch exercise picker did not show Deadlift")
+        XCTAssertTrue(app.tapButtonAfterSmallScroll("watchAddExercise.row.Alternating Renegade Row"),
+                      "Watch exercise picker did not show a second chest exercise")
         XCTAssertTrue(app.tapButton("watchAddExercise.previewAdd", scrollAttempts: 4),
-                      "Watch exercise preview did not add Deadlift")
-        XCTAssertTrue(app.tapButton("watchStrength.deleteExercise.Deadlift", scrollAttempts: 4),
+                      "Watch exercise preview did not add the second exercise")
+        XCTAssertTrue(app.tapButton("watchStrength.deleteExercise.Alternating Renegade Row", scrollAttempts: 4),
                       "Watch exercise delete was not available")
 
         XCTAssertTrue(app.tapButton("watchStrength.deleteWorkout", scrollAttempts: 4),
@@ -91,6 +101,21 @@ final class WatchSmokeTests: XCTestCase {
 }
 
 private extension XCUIApplication {
+    @MainActor
+    func tapButtonAfterSmallScroll(_ identifier: String, attempts: Int = 4) -> Bool {
+        let button = buttons[identifier].firstMatch
+        for _ in 0...attempts {
+            if button.waitForExistence(timeout: 1), button.isHittable {
+                button.tap()
+                return true
+            }
+            let start = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
+            let end = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.60))
+            start.press(forDuration: 0.15, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.05)
+        }
+        return false
+    }
+
     @MainActor
     func tapButton(_ identifier: String, timeout: TimeInterval = 10, scrollAttempts: Int = 0) -> Bool {
         let button = buttons[identifier].firstMatch

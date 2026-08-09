@@ -8,6 +8,7 @@ struct WatchSetKeypadView: View {
     var model: WatchStrengthFlowModel { bindableModel }
     @State private var isLoggingSet = false
     @State private var isLoggingLastSet = false
+    @State private var selectedPlate: Double = 45
 
     init(model: WatchStrengthFlowModel) {
         self.bindableModel = model
@@ -143,6 +144,42 @@ struct WatchSetKeypadView: View {
         VStack(spacing: 6) {
             Text("Weight (\(model.unit.abbreviation))")
                 .font(.caption.bold()).foregroundStyle(.secondary)
+
+            HStack(spacing: 6) {
+                Button {
+                    adjustWeight(by: -selectedPlate)
+                } label: {
+                    Image(systemName: "minus")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .accessibilityLabel("Subtract \(plateText(selectedPlate)) \(model.unit.abbreviation)")
+                .accessibilityIdentifier("watchWeight.minusPlate")
+
+                Picker("Plate", selection: $selectedPlate) {
+                    ForEach(increment.plateOptions, id: \.self) { plate in
+                        Text(plateText(plate)).tag(plate)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity, minHeight: 42, maxHeight: 48)
+                .clipped()
+                .accessibilityLabel("Weight adjustment")
+                .accessibilityValue("\(plateText(selectedPlate)) \(model.unit.abbreviation)")
+                .accessibilityIdentifier("watchWeight.platePicker")
+
+                Button {
+                    adjustWeight(by: selectedPlate)
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .accessibilityLabel("Add \(plateText(selectedPlate)) \(model.unit.abbreviation)")
+                .accessibilityIdentifier("watchWeight.plusPlate")
+            }
+
             Text("\(model.currentWeightText) \(model.unit.abbreviation)")
                 .font(.title2.monospacedDigit())
                 .lineLimit(1)
@@ -154,31 +191,16 @@ struct WatchSetKeypadView: View {
                     from: increment.range.lowerBound,
                     through: increment.range.upperBound,
                     by: increment.crownDetent,
-                    sensitivity: .medium, isContinuous: false
+                    sensitivity: .medium, isContinuous: true
                 )
                 .accessibilityIdentifier("watchWeight.current")
                 .accessibilityLabel("Current weight \(model.currentWeightText) \(model.unit.abbreviation)")
 
-            VStack(spacing: 4) {
-                ForEach(increment.positiveChips, id: \.self) { chip in
-                    HStack(spacing: 6) {
-                        weightChip(-chip)
-                        weightChip(chip)
-                    }
-                }
-            }
         }
     }
 
-    private func weightChip(_ chip: Double) -> some View {
-        Button(increment.chipLabel(chip)) {
-            adjustWeight(by: chip)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.mini)
-        .frame(maxWidth: .infinity, minHeight: 30)
-        .accessibilityLabel("\(increment.chipLabel(chip)) \(model.unit.abbreviation)")
-        .accessibilityIdentifier("watchWeight.\(chipIdentifier(chip))")
+    private func plateText(_ value: Double) -> String {
+        value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
     }
 
     @ViewBuilder
@@ -211,21 +233,13 @@ struct WatchSetKeypadView: View {
         }
     }
 
-    /// Steps the weight by a chip amount, in the user's display unit, clamped to
-    /// the valid range. Operating in display units keeps every value on a 2.5
-    /// boundary (never an odd "44 lb") and makes "+2.5" add exactly 2.5 lb.
+    /// Applies the selected plate amount in the user's display unit and clamps
+    /// the result without rounding away a precisely entered crown value.
     private func adjustWeight(by delta: Double) {
         WatchHaptics.tap()
         let next = model.currentWeightDisplay + delta
         model.currentWeightDisplay = min(increment.range.upperBound,
                                          max(increment.range.lowerBound, next))
-    }
-
-    private func chipIdentifier(_ value: Double) -> String {
-        increment.chipLabel(value)
-            .replacingOccurrences(of: "+", with: "plus")
-            .replacingOccurrences(of: "-", with: "minus")
-            .replacingOccurrences(of: ".", with: "_")
     }
 
     private func optionIdentifier(_ value: String) -> String {

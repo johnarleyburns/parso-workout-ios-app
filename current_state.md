@@ -2,7 +2,48 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-08-03 — field issues: watch strength latency, iPhone add-set regression, hook gates._
+_Last updated: 2026-08-08 — watch field fixes: non-interrupting bells, precise weights, compact plates, custom exercises, and lifter-scoped sets._
+
+## Watch workout field fixes — 2026-08-08 — SHIPPED
+
+Six related watch fixes, verified with `swift test` (**1312 tests, 0 failures**),
+watch-target audio unit tests (**3 tests, 0 failures**), the single watch strength
+UI smoke, generic watch build, and the test-pyramid/no-network guardrails.
+
+**1. Workout bells no longer pause music.** The watch boxing cue player had
+configured an exclusive `.playback` audio session, so every phase bell displaced
+music or podcasts. All watch workout audio now goes through one
+`WatchWorkoutAudioSession` that requires `.mixWithOthers`, never `.duckOthers`,
+and notifies background audio on deactivation. Watch unit tests reproduce the
+old policy failure and lock the mixing/deactivation options. An audit found no
+other watch audio player; phone workout audio already uses its mixing session.
+The watch smoke gate now runs these target-level regressions before its one UI
+test without expanding the UI-test pyramid.
+
+**2. Strength rest completion now rings three times.** Natural transition from
+a running rest timer to zero plays three distinct warning bells (0/0.85/1.70 s)
+and a success haptic. Skipping/leaving rest cancels pending strikes.
+
+**3. Weight entry is precise and compact.** The Digital Crown moves in 0.1-unit
+continuous increments and exact prior values (for example 17.7 lb cable-stack
+loads) survive reopening. A single row immediately above the lifted weight is
+now `-  <wheel>  +`; the wheel defaults to 45 and offers 45, 35, 25, 10, 5, and
+2.5. The buttons apply the selected amount without rounding the entered load.
+
+**4. Custom exercises can be created from watch search.** A search-adjacent
+Add Custom action opens a compact name field and selectable body-part pills.
+Creating it stores stable muscle facets/category data and immediately adds the
+exercise to the active workout; name and at least one body part are required.
+
+**5. Partner sets are lifter-scoped.** Current/prior history, set numbering,
+weight defaults, and rep ladders now follow the selected/rotated performer.
+Each partner sees only their own sets when their turn arrives instead of the
+combined group's sets. Cache keys include performer identity to prevent history
+leaking between lifters.
+
+**6. Smoke regression expanded in place.** The one permitted watch UI smoke now
+asserts custom-workout entry exists, the compact plate row works, and switching
+performers hides/reveals only the appropriate lifter's logged set.
 
 ## Field issues — 2026-08-03 — SHIPPED
 

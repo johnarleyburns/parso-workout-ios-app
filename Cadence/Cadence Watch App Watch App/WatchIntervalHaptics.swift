@@ -6,6 +6,7 @@ import CadenceFeatures
 /// Plays haptic cues on watchOS driven by the pure `IntervalCueDecider` logic.
 /// Boxing uses a stronger pattern; HIIT uses soft taps.
 @Observable
+@MainActor
 final class WatchIntervalHaptics {
     private let device = WKInterfaceDevice.current()
     private let audio = WatchIntervalCuePlayer()

@@ -2,30 +2,24 @@ import Foundation
 import CadenceCore
 
 public struct WeightIncrement {
-    public let chips: [Double]
-    public let negativeChips: [Double]
-    public let positiveChips: [Double]
+    /// Plate-sized shortcuts shown in the single watch adjustment picker.
+    public let plateOptions: [Double]
     public let crownDetent: Double
     public let range: ClosedRange<Double>
 
     public init(unit: MeasurementUnitPreference) {
         switch unit {
         case .pounds:
-            // Common plate jumps for fast correction on the watch. Values are in
-            // the display unit (see `WatchStrengthFlowModel.currentWeightDisplay`),
-            // never added to the canonical-kg value.
-            self.negativeChips = [-45, -35, -25, -10, -5, -2.5]
-            self.positiveChips = [45, 35, 25, 10, 5, 2.5]
-            self.chips = negativeChips + positiveChips
-            self.crownDetent = 2.5
+            self.plateOptions = [45, 35, 25, 10, 5, 2.5]
             self.range = 0...650
         case .kilograms:
-            self.negativeChips = [-25, -20, -15, -10, -5, -2.5]
-            self.positiveChips = [25, 20, 15, 10, 5, 2.5]
-            self.chips = negativeChips + positiveChips
-            self.crownDetent = 2.5
+            self.plateOptions = [45, 35, 25, 10, 5, 2.5]
             self.range = 0...300
         }
+        // The crown is the precision input, independent of the selected plate
+        // shortcut. A tenth permits arbitrary practical decimal stack weights
+        // such as 12.5 or 17.7 instead of locking entry to 2.5-unit steps.
+        self.crownDetent = 0.1
     }
 
     /// Signed chip label, e.g. "-2.5" / "+2.5" / "+5". Trims a trailing ".0".

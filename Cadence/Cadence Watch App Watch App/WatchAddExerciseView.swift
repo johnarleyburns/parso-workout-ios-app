@@ -18,6 +18,9 @@ struct WatchAddExerciseView: View {
     @State private var searchResults: [Exercise] = []
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
+    @State private var showingCustomExercise = false
+    @State private var customName = ""
+    @State private var customBodyParts: Set<BodyPart> = []
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -26,13 +29,15 @@ struct WatchAddExerciseView: View {
 
     var body: some View {
         Group {
-            if let selectedExercise {
+            if showingCustomExercise {
+                customExerciseForm
+            } else if let selectedExercise {
                 preview(selectedExercise)
             } else {
                 picker
             }
         }
-        .navigationTitle(selectedExercise?.name ?? selectedBodyPart?.displayName ?? "Add Exercise")
+        .navigationTitle(showingCustomExercise ? "Custom Exercise" : selectedExercise?.name ?? selectedBodyPart?.displayName ?? "Add Exercise")
         .task { loadRecent() }
         .onChange(of: query) { _, _ in
             scheduleSearch()
@@ -78,6 +83,9 @@ struct WatchAddExerciseView: View {
                         EmptyView()
                     }
                 }
+                Section {
+                    customExerciseButton
+                }
             } else if let selectedBodyPart {
                 Section {
                     Button {
@@ -110,8 +118,11 @@ struct WatchAddExerciseView: View {
                 }
             } else {
                 Section {
-                    TextField("Search", text: $query)
-                        .accessibilityIdentifier("watchAddExercise.search")
+                    HStack(spacing: 6) {
+                        TextField("Search", text: $query)
+                            .accessibilityIdentifier("watchAddExercise.search")
+                        customExerciseButton
+                    }
                     if !recent.isEmpty {
                         Button {
                             WatchHaptics.tap()
@@ -121,7 +132,7 @@ struct WatchAddExerciseView: View {
                     }
                 }
                 Section("Categories") {
-                    ForEach(BodyPart.allCases) { part in
+                    ForEach(watchCategoryOrder) { part in
                         Button {
                             WatchHaptics.tap()
                             selectedBodyPart = part
@@ -131,6 +142,91 @@ struct WatchAddExerciseView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// Keep the most common upper-body entry points above the fold on the
+    /// watch; the complete set remains available by scrolling.
+    private var watchCategoryOrder: [BodyPart] {
+        [.chest, .back, .legs, .shoulders, .biceps, .triceps, .calves, .abs]
+    }
+
+    private var customExerciseButton: some View {
+        Button {
+            WatchHaptics.tap()
+            customName = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            showingCustomExercise = true
+        } label: {
+            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Image(systemName: "plus.circle")
+            } else {
+                Label(customNameLabel, systemImage: "plus.circle")
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(customNameLabel)
+        .accessibilityIdentifier("watchAddExercise.custom")
+    }
+
+    private var customNameLabel: String {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Add Custom Exercise" : "Add Custom “\(trimmed)”"
+    }
+
+    private var customExerciseForm: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                TextField("Exercise name", text: $customName)
+                    .accessibilityIdentifier("watchCustom.name")
+
+                Text("Body parts")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                    ForEach(BodyPart.allCases) { part in
+                        Button {
+                            WatchHaptics.tap()
+                            if customBodyParts.contains(part) {
+                                customBodyParts.remove(part)
+                            } else {
+                                customBodyParts.insert(part)
+                            }
+                        } label: {
+                            Text(part.displayName)
+                                .font(.caption2.bold())
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .frame(maxWidth: .infinity, minHeight: 28)
+                                .background(customBodyParts.contains(part) ? Color.green.opacity(0.35) : Color.white.opacity(0.1), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(part.displayName) \(customBodyParts.contains(part) ? "selected" : "not selected")")
+                        .accessibilityIdentifier("watchCustom.bodyPart.\(part.rawValue)")
+                    }
+                }
+
+                Button {
+                    WatchHaptics.success()
+                    _ = model.addCustomExercise(named: customName, bodyParts: customBodyParts)
+                } label: {
+                    Label("Create & Add", systemImage: "plus.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .disabled(customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || customBodyParts.isEmpty)
+                .accessibilityIdentifier("watchCustom.create")
+
+                Button("Back") {
+                    WatchHaptics.tap()
+                    showingCustomExercise = false
+                }
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("watchCustom.back")
+            }
+            .padding()
         }
     }
 

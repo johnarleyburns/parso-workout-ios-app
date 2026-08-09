@@ -35,13 +35,17 @@ smoke:
 	  -only-testing:CadenceUITests/SmokeLaunchTests/testIPhoneStrengthWorkoutPlansLogsAndCompletes \
 	  -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1
 
-# Watch smoke gate: build once, then run exactly ONE simulator test
-# (start -> log -> complete strength) on the single named watch simulator.
+# Watch smoke gate: build once, run the watch unit regressions, then exactly ONE
+# UI test (start -> log -> complete strength) on the single named simulator.
 # Local only: never in CI.
 WATCH_SMOKE_DEST ?= platform=watchOS Simulator,name=Watch-Large,OS=26.5
 watch-smoke:
 	xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
 	  -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' -quiet
+	xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
+	  -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' \
+	  -only-testing:"Cadence Watch App Watch AppTests" \
+	  -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1
 	xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
 	  -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' \
 	  -only-testing:"Cadence Watch App Watch AppUITests/WatchSmokeTests/testWatchStrengthWorkoutStartsLogsAndCompletes" \

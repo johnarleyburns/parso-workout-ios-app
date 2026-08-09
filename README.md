@@ -11,7 +11,7 @@ A private, open-source, science-based **strength app** for iPhone and Apple Watc
 - **Recovery-aware coaching engine** — a deterministic, on-device rule engine (not AI) that reads strength, cardio, imported HealthKit workouts, passive HealthKit signals (HRV, resting HR, sleep — fused with, never overriding, your self-report), and optional readiness check-ins. It gates every session through hard eligibility checks (same-lift recovery, pattern/body-part windows, high-fatigue deferral, lower-body collision) before scoring candidates against your balanced weekly plan — incorporating preferences learned from alternatives you've chosen. Then explains exactly what was ruled out, why, and which study backs it.
 - **"Why This Today" screen** — every decision is transparent: what you did, Coach's Pick (with alternatives), what was ruled out (with next eligible time), why the winner was chosen, and tappable science citations for every claim. Selecting an alternative teaches Coach your preferences; your learned profile is included in every JSON export.
 - **Coach Research Updates + bibliography** — a versioned changelog of the coaching engine, followed by a full bibliography of every study the coach cites, ordered by author. Each entry explains in one line why the coach uses it and links straight to the paper.
-- **Strength logging** — per-set weight/reps with inline last-time recall, auto PR detection, rest timer, partner rotation.
+- **Strength logging** — per-set weight/reps with inline last-time recall, auto PR detection, rest timer, and partner rotation with each lifter's sets kept separate.
 - **Prescriptive recommendations** — the coach prescribes concrete next-session targets (double progression, deload, volume adjustment) based on your training goal (strength / hypertrophy / endurance), experience level, and recovery state.
 - **Assessments** — strength (e1RM, rep-max, push-up, pull-up, plank, hollow hold) and cardio (VO2max field test, Wingate) battery with longitudinal tracking and retest cadence.
 - **Progress dashboard** — science-backed adaptation dashboard: e1RM trends, a PR timeline, a training-consistency heatmap, weekly volume vs landmarks, load intensity vs goal, effort/frequency, test results — every interpretation cites its source with tappable "The science >" links.
@@ -19,7 +19,7 @@ A private, open-source, science-based **strength app** for iPhone and Apple Watc
 - **Workout routines** — Full Body A/B, PHUL (4-day), Arnold Split, StrongLifts 5x5, Push/Pull/Legs, Upper/Lower, Calisthenics, Olympic Lifting, plus user-created templates. Every preset cites the relevant evidence.
 - **Cardio recording** — GPS outdoor (run/walk/cycle), indoor recording, swim laps, with live HR from a BLE chest strap (Apple Watch workouts are imported from Health afterward).
 - **HIIT intervals** — 7 science-backed protocols (Tabata, Norwegian 4x4, Gibala, SIT, REHIT, 10-20-30, Boxing) with work/rest timing, round bells, and warm-up/cool-down.
-- **Companion Apple Watch app** — phone-free training from the wrist: strength with partner rotation, HIIT/Boxing rounds, and a full cardio suite (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live wrist HR, Health save with rings credit, and automatic sync back to the phone.
+- **Companion Apple Watch app** — phone-free training from the wrist: strength with precise decimal weights, one-row plate shortcuts, custom exercise creation, partner rotation, and three-bell rest completion; HIIT/Boxing bells mix over music without pausing it; plus a full cardio suite (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live wrist HR, Health save with rings credit, and automatic sync back to the phone.
 - **BLE chest strap** — CoreBluetooth `0x180D` with exponential-backoff reconnection, battery monitoring, and cold-launch auto-reconnect.
 - **HealthKit** — reads steps, ingests Watch-recorded workouts + HR, and reads HRV, resting heart rate, sleep, and body weight (on-device only) as a passive-readiness prior the coach fuses with your self-report; writes strength/cardio/interval summaries, HR samples, and GPS routes back to Health.
 - **History & trends** — unified strength + cardio history, per-exercise trend charts, workout summary with full per-set detail.
@@ -56,9 +56,9 @@ in plans or CI; use `swift test --package-path CadenceCore` instead. See
 
 Local git hooks are versioned in `scripts/git-hooks`. Install them with
 `bash scripts/install-git-hooks.sh`: pre-commit runs `make pre-commit` (SwiftPM
-unit tests plus the single iPhone and watch simulator smoke tests — every commit
-leaves the app field-testable), and pre-push runs `make pre-push` (SwiftPM unit
-tests only, no UI).
+unit tests, watch-target audio regressions, and the single iPhone and watch UI
+smoke tests — every commit leaves the app field-testable), and pre-push runs
+`make pre-push` (SwiftPM unit tests only, no UI).
 
 **Timing notes:** `swift test` takes ~50s, `xcodebuild build` ~20s, and the
 full pre-commit sequence (build-for-testing + iPhone/watch smoke tests) takes

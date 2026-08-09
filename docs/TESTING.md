@@ -75,8 +75,10 @@ make smoke
 make watch-smoke
 ```
 
-The normal simulator suite is intentionally tiny: one iPhone smoke test and one
-watch smoke test. The App Store screenshot XCUITest remains available only via
+The normal simulator UI suite is intentionally tiny: one iPhone smoke test and
+one watch smoke test. `make watch-smoke` also runs the watch-target unit tests,
+including the system-audio mixing regression, against the same build. The App
+Store screenshot XCUITest remains available only via
 `Cadence/Screenshots.xctestplan`; it is skipped by `Cadence/Cadence.xctestplan`
 and is not run by `make smoke`, `make all-tests`, git hooks, or CI.
 
@@ -99,7 +101,7 @@ bash scripts/install-git-hooks.sh
 
 Installed hooks:
 
-- `pre-commit`: runs `make pre-commit`, which is the SwiftPM unit suite plus the single iPhone and watch simulator smoke tests.
+- `pre-commit`: runs `make pre-commit`, which is the SwiftPM unit suite, watch-target unit regressions, and the single iPhone and watch simulator UI smoke tests.
 - `pre-push`: runs `make pre-push`, which is the SwiftPM unit suite only — no UI.
 
 The pre-commit hook includes simulator smoke coverage, so it expects the pinned

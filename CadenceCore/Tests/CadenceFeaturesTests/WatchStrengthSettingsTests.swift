@@ -66,11 +66,10 @@ final class WatchStrengthSettingsTests: XCTestCase {
     }
 
     func testPlateIncrementsUseCommonPoundAndKilogramPlates() {
-        XCTAssertEqual(WeightIncrement(unit: .pounds).positiveChips, [45, 35, 25, 10, 5, 2.5])
-        XCTAssertEqual(WeightIncrement(unit: .pounds).negativeChips, [-45, -35, -25, -10, -5, -2.5])
-        XCTAssertEqual(WeightIncrement(unit: .kilograms).positiveChips, [25, 20, 15, 10, 5, 2.5])
-        XCTAssertEqual(WeightIncrement(unit: .kilograms).negativeChips, [-25, -20, -15, -10, -5, -2.5])
-        XCTAssertEqual(WeightIncrement(unit: .pounds).crownDetent, 2.5)
+        let expected = [45.0, 35, 25, 10, 5, 2.5]
+        XCTAssertEqual(WeightIncrement(unit: .pounds).plateOptions, expected)
+        XCTAssertEqual(WeightIncrement(unit: .kilograms).plateOptions, expected)
+        XCTAssertEqual(WeightIncrement(unit: .pounds).crownDetent, 0.1)
     }
 
     func testRIRConvertsToStoredRPE() {

@@ -2,7 +2,15 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-08-09 — Swift 6 migration and warning-elimination plan documented._
+_Last updated: 2026-08-09 — Git hook gates revised (commit: guards + unit + iPhone smoke; push: no tests)._
+
+## Git hook gates — 2026-08-09 — CHANGED
+
+`pre-commit` runs `make pre-commit` = **guardrails + `test` + `smoke`** (guards,
+SwiftPM unit tests, iPhone UI smoke). The full regression suite (watch smoke +
+watch unit regressions, `make all-tests`) is intentionally **not** part of the
+commit gate; run it on demand. `pre-push` runs **no tests** — pushes stay fast.
+CLAUDE.md/README/docs/TESTING.md/make targets kept in sync.
 
 ## Swift 6 migration — 2026-08-09 — IMPLEMENTED
 
@@ -10,9 +18,9 @@ Applied the migration contract from `docs/plans/swift-6-migration.md`: the
 package and all checked-in Xcode configurations use Swift 6.0 with complete
 strict-concurrency checking, SwiftData history no longer claims `Sendable`,
 Health providers are main-actor owned, and the warning classifier is wired into
-CI. The root `CLAUDE.md` now makes Swift 6 and the commit (logic + simulator)
-/ push (logic only) gates hard rules. The package test suite remains the logic
-gate; simulator/archive validation remains CI/local acceptance work.
+CI. The root `CLAUDE.md` now makes Swift 6 and the commit (guards + logic +
+iPhone smoke) / push (no tests) gates hard rules. The package test suite remains
+the logic gate; simulator/archive validation remains CI/local acceptance work.
 
 ## Watch workout field fixes — 2026-08-08 — SHIPPED
 

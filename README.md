@@ -55,14 +55,13 @@ in plans or CI; use `swift test --package-path CadenceCore` instead. See
 [`docs/TESTING.md`](docs/TESTING.md) for the standard commands and rationale.
 
 Local git hooks are versioned in `scripts/git-hooks`. Install them with
-`bash scripts/install-git-hooks.sh`: pre-commit runs `make pre-commit` (SwiftPM
-unit tests, watch-target audio regressions, and the single iPhone and watch UI
-smoke tests — every commit leaves the app field-testable), and pre-push runs
-`make pre-push` (SwiftPM unit tests only, no UI).
+`bash scripts/install-git-hooks.sh`: pre-commit runs `make pre-commit` (the
+guards, SwiftPM unit tests, and the single iPhone UI smoke test), and pre-push
+runs no tests. The full regression suite — watch smoke + watch unit regressions
+— is intentionally outside the commit gate; run `make all-tests` for it.
 
 **Timing notes:** `swift test` takes ~50s, `xcodebuild build` ~20s, and the
-full pre-commit sequence (build-for-testing + iPhone/watch smoke tests) takes
-~2-3 min.
+full pre-commit sequence (build-for-testing + iPhone smoke test) takes ~1-2 min.
 When scripting `git commit`, use a timeout of at least 300s to allow the
 pre-commit hook to complete. CI workflows should budget ≥5 min for the
 core-tests job and ≥10 min for any local smoke/xcodebuild jobs.

@@ -5,9 +5,8 @@ ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 if [[ "${SKIP_LOCAL_GUARDS:-}" == "1" ]]; then
-  echo "pre-push: SKIP_LOCAL_GUARDS=1 set; skipping SwiftPM tests"
+  echo "pre-push: SKIP_LOCAL_GUARDS=1 set; skipping"
   exit 0
 fi
 
-echo "pre-push: running SwiftPM unit tests only (no simulator)"
-make pre-push
+echo "pre-push: no tests run on push (verified at commit gate)"

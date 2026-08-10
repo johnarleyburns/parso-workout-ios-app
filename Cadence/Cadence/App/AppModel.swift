@@ -46,6 +46,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         set { UserDefaults.standard.set(newValue?.timeIntervalSince1970, forKey: SettingsKey.lastHealthSync) }
     }
 
+    @MainActor
     override init() {
         let args = ProcessInfo.processInfo.arguments
         let uiTest = args.contains("-uiTest")

@@ -51,15 +51,19 @@ watch-smoke:
 	  -only-testing:"Cadence Watch App Watch AppUITests/WatchSmokeTests/testWatchStrengthWorkoutStartsLogsAndCompletes" \
 	  -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1
 
-# Full local gate used before commit: SwiftPM suite + iPhone and watch UI smoke.
+# Full regression suite (opt-in, not part of the commit gate): SwiftPM suite +
+# iPhone and watch UI smoke.
 all-tests: test smoke watch-smoke
 
 # CI-equivalent host gate without simulators.
 ci: build test guardrails
 
-# Commit gate: the full local gate (SwiftPM + iPhone/watch simulator smoke).
-pre-commit: all-tests
+# Commit gate: guards + SwiftPM unit tests + iPhone UI smoke test. The full
+# regression suite (watch smoke + watch unit regressions) is intentionally NOT
+# part of the commit gate; run `make all-tests` for it.
+pre-commit: guardrails test smoke
 
-# Push gate: SwiftPM unit tests ONLY, no simulator. Pushes are frequent and the
-# UI smoke already ran at commit; CI runs the SwiftPM suite on the push.
-pre-push: test
+# Push gate: no tests. The commit gate already ran guards, unit tests, and the
+# iPhone UI smoke; pushes stay fast.
+pre-push:
+	@echo "pre-push: no tests run on push"

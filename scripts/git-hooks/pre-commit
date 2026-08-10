@@ -9,5 +9,5 @@ if [[ "${SKIP_LOCAL_GUARDS:-}" == "1" ]]; then
   exit 0
 fi
 
-echo "pre-commit: running SwiftPM tests plus iPhone and watch UI smoke tests"
+echo "pre-commit: running guards, SwiftPM tests, and iPhone UI smoke test"
 make pre-commit

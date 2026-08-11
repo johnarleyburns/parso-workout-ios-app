@@ -14,11 +14,33 @@ This repository is fully on Swift 6 language mode with complete strict-concurren
 ## What this is
 Cladiron: an open-source, privacy-first, iPhone-native **strength coach**. The tracker is free forever; the Coach is a paid product (see Monetization below). Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no server, no telemetry.
 
-## Monetization
+## Roadmap — adopted 2026-08-11
+
+The **Cladiron Platform Spec v2.2** (`docs/plans/cladiron-mvp-revised/`) is the
+adopted forward plan. It is **not yet implemented**; everything else in this
+file describes the app as shipped and stays authoritative until a phase lands.
+Headline direction, so you don't design against the wrong target:
+
+- **One product, four native surfaces** — iPhone, iPad, a **native macOS app**,
+  and Watch — in **one App Store record under Universal Purchase** (same bundle
+  ID; configure before the first Mac release, records can never be merged).
+- **Trainer mode**: a client roster with per-set planning, review, and CloudKit
+  sharing — at full fidelity on **iPhone as well as iPad**.
+- **Tier line moves**: planning your own training becomes free everywhere
+  (including the whole Coach), and **Pro gates clients only**. $99/yr · $12/mo ·
+  $249 lifetime, 30-day trial, lifetime available indefinitely.
+- **Persistence unchanged** — SwiftData + CloudKit, as shipped. The spec follows
+  the app here rather than the reverse.
+- Naming: `CadenceCore` / `CadenceUI` internally, **Cladiron** user-facing.
+
+When a phase ships, update the sections below — not the spec.
+
+## Monetization (as shipped)
 
 The tracker is **free forever** — logging, history, Progress, Tests, and export
 are never gated. **Cladiron Pro** gates the Coach's *prescription* (what to do);
-the Coach's *insight* (what it noticed) stays free.
+the Coach's *insight* (what it noticed) stays free. *(The roadmap moves this line
+so Pro gates clients instead; that change lands with trainer mode, not before.)*
 
 Products: `guru.parso.cladiron.pro.annual` / `.monthly` / `.lifetime`, plus
 tip-jar consumables that unlock nothing. StoreKit 2 only — no RevenueCat, no

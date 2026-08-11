@@ -2,7 +2,7 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-08-10 — field-test fixes (set-editor crash, set columns, Edit mode) SHIPPED; Cladiron platform spec v2.1 written to `docs/plans/cladiron-mvp-revised/` (planning only; no app code changed)._
+_Last updated: 2026-08-11 — Cladiron platform spec v2.2 **adopted as the roadmap**, all open decisions resolved (planning only; no app code changed). Previously 2026-08-10: field-test fixes (set-editor crash, set columns, Edit mode) SHIPPED._
 
 ## Field-test fixes — set-editor crash, column widths, Edit mode — 2026-08-10 — SHIPPED
 
@@ -36,6 +36,36 @@ previously opened the inline editor, inviting mis-entry. Now:
 - In edit mode, rows show a leading red `minus.circle` delete control
   (confirmation dialog before removal) and tapping a row opens the inline
   editor. Add/Repeat buttons hide while editing.
+
+## Cladiron platform spec — decisions resolved (v2.2) — 2026-08-11 — ROADMAP ADOPTED
+
+`docs/plans/cladiron-mvp-revised/` is now the **adopted forward plan**, and every
+business and architecture decision it raised is closed (spec Appendix Q.3 is the
+closure table). `CLAUDE.md` gained a **Roadmap** section pointing at it; the
+shipped-behaviour sections there are unchanged and stay authoritative until each
+phase actually lands.
+
+- **Persistence stays SwiftData + CloudKit.** v1.0 specified GRDB with a
+  hand-written sync layer and v2.0/v2.1 carried it forward unexamined — which
+  quietly demanded a rewrite of a layer that already ships. The spec now follows
+  the app. What moved to the foreground instead: CloudKit-compatible model
+  shapes, **append-only enforced in the domain** (mirroring is last-writer-wins
+  per property, so the framework will not do it for you), additive-only schema
+  evolution, and the fact that suppressing mirroring during a Watch runtime
+  session takes deliberate work.
+- **Naming:** `CadenceCore` / `CadenceUI` / `CadenceCommands` internally,
+  Cladiron user-facing — matching the repo's standing rule.
+- **Pricing:** $99/yr, $12/mo, $249 lifetime; 30-day trial starting at the first
+  gated action; **lifetime available indefinitely** (marginal cost of service is
+  zero, so it is honest rather than a deferred liability).
+- **Permanent non-goals:** Stripe client↔trainer payment routing — the last
+  thing that would have reintroduced a server — and group/cohort programming.
+- **iPadOS 26** is a presentation difference for the menu bar, not a floor.
+- **English at launch**, architecture localization-ready, with the per-locale
+  cost written down (curated shorthand aliases are the novel one).
+- All policy defaults ratified (archived clients don't count toward the gate;
+  14-day offline entitlement; 3 partners max; `CadenceUI` as a package; compact
+  authoring ships in Phase 1 with the free athlete app).
 
 ## Cladiron platform spec v2.1 — 2026-08-10 — PLAN (docs only)
 

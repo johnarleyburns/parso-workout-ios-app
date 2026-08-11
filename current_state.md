@@ -2,9 +2,9 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-08-10 — Cladiron platform spec v2.0 written to `docs/plans/cladiron-mvp-revised/` (planning only; no app code changed)._
+_Last updated: 2026-08-10 — Cladiron platform spec v2.1 written to `docs/plans/cladiron-mvp-revised/` (planning only; no app code changed)._
 
-## Cladiron platform spec v2.0 — 2026-08-10 — PLAN (docs only)
+## Cladiron platform spec v2.1 — 2026-08-10 — PLAN (docs only)
 
 `docs/plans/cladiron-mvp-revised/` revises the v1.0 platform spec in
 `docs/plans/cladiron-mvp/`. **Nothing here is implemented** — it is a
@@ -12,13 +12,21 @@ pre-implementation proposal, and it does not describe the shipped app. The
 shipped app's monetization (Pro gates the Coach's *prescription*) is unchanged
 and is still what `CLAUDE.md` documents.
 
-Four changes drove the revision:
+Five changes drove the revision:
 
-1. **The separate native macOS trainer app is eliminated.** Its whole capability
-   moves into the **iPad** app (three-column, keyboard-first, iPadOS 26 menu bar,
-   pointer, multi-window) and that same build ships to the desktop via **Mac
-   Catalyst**. Recorded as an explicit non-goal, with the honest Catalyst
-   trade-offs and a checkable bet in the decision log.
+1. **The Mac stops being a separate product.** The full trainer workbench lives
+   on the **iPad** (three-column, keyboard-first, iPadOS 26 menu bar, pointer,
+   multi-window). *v2.0 removed the Mac app and reached the desktop via Mac
+   Catalyst; **v2.1 reverses that**:* the Mac app is **kept and native**, shares
+   the iOS bundle ID and App Store record under **Universal Purchase**, is
+   **fully functional and free for planning your own training**, and puts only
+   clients behind the in-app purchase. Clients can be added from iPhone, iPad,
+   or Mac with iCloud syncing the roster and drafts. New guard rails: **no
+   Mac-only capability** (CI-enforced via a shared `CladironUI` package) and
+   **Universal Purchase configured before the first Mac release**, because
+   separate App Store records can never be merged. The full arc (v1.0 native →
+   v2.0 Catalyst → v2.1 native under Universal Purchase) is recorded in the
+   decision log rather than overwritten.
 2. **iPhone gains complete trainer functionality** — roster triage, authoring,
    review, and send, all on a phone — governed by a normative expressiveness
    rule (every field authorable on iPad is authorable on iPhone; only the
@@ -33,14 +41,19 @@ Four changes drove the revision:
 4. **Monetization re-cut**: Pro gates *coaching other people* only — any client
    requires Pro, 30-day trial starting at the first gated action, one purchase
    across iPhone/iPad/Mac — while **all self-coached use, including the full
-   expert system and partner sessions, is free forever**. Lapse leaves trainer
-   surfaces read-only with clients still connected. The v1.0 thin billing
-   endpoint is withdrawn, so the proposal is fully serverless.
+   expert system and partner sessions, is free forever on every surface**. Lapse
+   leaves trainer surfaces read-only with clients still connected. The v1.0 thin
+   billing endpoint is withdrawn, so the proposal is fully serverless.
+5. **Universal Purchase** is the mechanism that lets the Mac app exist without
+   becoming a second product: shared bundle ID, one App Store record, shared
+   StoreKit products, and cross-device transaction sync, so a trial started on a
+   phone unlocks the Mac with no restore step.
 
-Deliverables: `CLADIRON_PLATFORM_SPEC.md` (4,170 lines, 51 sections, appendices
+Deliverables: `CLADIRON_PLATFORM_SPEC.md` (4,249 lines, 51 sections, appendices
 A–Y including a new keyboard/menu command reference), `REVISION-NOTES.md`
-(section-by-section diff), and **54 mockups** in `mockups/` (15 iPad, 3 Mac
-Catalyst, 8 iPhone trainer, 16 iPhone athlete, 12 Watch) with a browsable index.
+(section-by-section diff, with a v2.0 → v2.1 amendment section), and **55
+mockups** in `mockups/` (15 iPad, 4 Mac native, 8 iPhone trainer, 16 iPhone
+athlete, 12 Watch) with a browsable index.
 All mockup files parse clean and every file named in Appendix K.0 exists on disk.
 Note that v1.0's companion docs (`TRAINER_PLATFORM_STRATEGY.md`,
 `DATABASE_SWIFTDATA_MIGRATION.md`) do not exist in this repo; v2.0 flags them as

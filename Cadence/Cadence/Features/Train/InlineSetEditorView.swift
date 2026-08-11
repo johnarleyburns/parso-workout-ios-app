@@ -134,19 +134,24 @@ struct InlineSetEditorView: View {
     }
 
     private var repsField: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 0) {
             Button {
                 reps = max(1, reps - 1)
             } label: {
-                Image(systemName: "minus").font(.caption2)
+                Image(systemName: "minus").font(.caption2.weight(.semibold))
+                    .frame(width: 22, height: 32)
+                    .contentShape(Rectangle())
             }
 
-            Text("\(reps)").monospacedDigit().lineLimit(1)
+            Text("\(reps)").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                .frame(minWidth: 16, maxWidth: .infinity)
 
             Button {
                 reps += 1
             } label: {
-                Image(systemName: "plus").font(.caption2)
+                Image(systemName: "plus").font(.caption2.weight(.semibold))
+                    .frame(width: 22, height: 32)
+                    .contentShape(Rectangle())
             }
         }
         .frame(width: SetCol.reps)

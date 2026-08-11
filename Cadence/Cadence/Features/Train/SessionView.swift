@@ -64,10 +64,6 @@ struct SessionView: View {
         }
     }
 
-    private var activePartnerPeople: [Person] {
-        SessionRoster.scopedPartners(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
-    }
-
     var roster: [Person] {
         SessionRoster.roster(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
     }
@@ -125,10 +121,6 @@ struct SessionView: View {
         SessionViewModel.isPrescribedMovement(name, session: session)
     }
 
-    private var whoColumnWidth: CGFloat {
-        hasPartners ? 32 : SetCol.num
-    }
-
     // MARK: - Inline editor helpers
 
     private func openInlineEditor(for exercise: Exercise, editingSetID: UUID? = nil, repsOverride: Int? = nil) {
@@ -157,6 +149,8 @@ struct SessionView: View {
 
         let isEditing = inlineEditingSetID != nil
         let editingSet = isEditing ? session.orderedSets.first(where: { $0.id == inlineEditingSetID }) : nil
+        // The edited set can vanish mid-edit (watch relay / cloud merge) — never force-unwrap it.
+        if isEditing, editingSet == nil { return nil }
 
         let performerID: UUID? = isEditing
             ? (editingSet?.performedBy?.isMe ?? true ? nil : editingSet?.performedBy?.id)
@@ -199,7 +193,7 @@ struct SessionView: View {
         let bodyweight = isEditing ? (editingSet?.usesBodyweight ?? false) : isBodyweight(exercise)
 
         return InlineEditorConfig(
-            id: isEditing ? editingSet!.id : UUID(),
+            id: isEditing ? (editingSet?.id ?? UUID()) : UUID(),
             isEditing: isEditing,
             weight: weight,
             reps: reps,
@@ -581,7 +575,12 @@ struct SessionView: View {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 recordInlineSet(for: ex, draft: draft)
             },
-            onDeleteSet: { deleteInlineSet() },
+            onDeleteEditingSet: { deleteInlineSet() },
+            onDeleteSet: { set in
+                guard let entry = session.orderedSets.first(where: { $0.id == set.setID }) else { return }
+                try? WorkoutRepository.deleteSet(entry, in: context)
+                recordActivity()
+            },
             onCancelInline: { closeInlineEditor() },
             onActivity: { recordActivity() }
         )

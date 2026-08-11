@@ -41,7 +41,7 @@ struct RosterEntry: Equatable, Identifiable {
 
 enum SetCol {
     static let num: CGFloat = 26
-    static let reps: CGFloat = 46
+    static let reps: CGFloat = 64
     static let rpe: CGFloat = 26
     static let check: CGFloat = 34
     static let gap: CGFloat = 7

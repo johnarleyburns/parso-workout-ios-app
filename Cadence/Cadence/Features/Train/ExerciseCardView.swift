@@ -24,9 +24,13 @@ struct ExerciseCardView: View {
     let onRemoveExercise: () -> Void
     let exercise: Exercise?
     let onSaveSet: (SetDraft) -> Void
-    let onDeleteSet: () -> Void
+    let onDeleteEditingSet: () -> Void
+    let onDeleteSet: (SessionRenderModel.SetDisplay) -> Void
     let onCancelInline: () -> Void
     let onActivity: () -> Void
+
+    @State private var isEditing = false
+    @State private var setToDelete: SessionRenderModel.SetDisplay?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -43,7 +47,7 @@ struct ExerciseCardView: View {
                         config: cfg,
                         wouldBePR: wouldBePR,
                         onSave: onSaveSet,
-                        onDelete: { onDeleteSet() },
+                        onDelete: { onDeleteEditingSet() },
                         onCancel: onCancelInline,
                         onActivity: onActivity)
                     .id("editor-\(cfg.id)")
@@ -70,20 +74,32 @@ struct ExerciseCardView: View {
                 Divider()
             }
 
-            if !isInlineActive || inlineEditingSetID != nil {
+            if !isEditing, !isInlineActive || inlineEditingSetID != nil {
                 actionButtons
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+        .confirmationDialog("Delete this set?", isPresented: Binding(
+            get: { setToDelete != nil },
+            set: { if !$0 { setToDelete = nil } }
+        ), titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if let set = setToDelete { onDeleteSet(set) }
+                setToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { setToDelete = nil }
+        } message: {
+            Text("The set will be removed from this workout.")
+        }
     }
 
     // MARK: - Header
 
     private var headerRow: some View {
         HStack {
-            Text(context.name).font(.headline)
+            Text(context.name).font(.headline).lineLimit(1)
                 .accessibilityIdentifier("exerciseCard.\(context.name)")
             Spacer()
             if let exercise {
@@ -110,6 +126,19 @@ struct ExerciseCardView: View {
             }
             .accessibilityIdentifier("exercise.menu.\(context.name)")
             .accessibilityLabel("Exercise options")
+            if !isInlineActive {
+                Button {
+                    withAnimation { isEditing.toggle() }
+                } label: {
+                    Text(isEditing ? "Done" : "Edit")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(minWidth: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier("exercise.edit.\(context.name)")
+                .accessibilityLabel(isEditing ? "Done editing \(context.name)" : "Edit \(context.name) sets")
+            }
         }
     }
 
@@ -174,8 +203,9 @@ struct ExerciseCardView: View {
         HStack(spacing: SetCol.gap) {
             Text(hasPartners ? "WHO" : "Set")
                 .frame(width: hasPartners ? 32 : SetCol.num, alignment: .leading)
-            Text("Weight (\(unit.abbreviation))")
+            Text(unit.abbreviation)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityLabel("Weight in \(unit.abbreviation)")
             Text("Reps")
                 .frame(width: SetCol.reps, alignment: .center)
             Text("RPE")
@@ -193,13 +223,26 @@ struct ExerciseCardView: View {
     private func completedSetRow(_ set: SessionRenderModel.SetDisplay) -> some View {
         let number = setNumber(set)
         HStack(spacing: SetCol.gap) {
-            if hasPartners {
+            if isEditing {
+                Button {
+                    setToDelete = set
+                } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.red)
+                        .frame(width: 26, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityIdentifier("set.delete.\(context.name).\(number)")
+                .accessibilityLabel(set.isWarmup ? "Delete warm-up set" : "Delete set \(number)")
+            } else if hasPartners {
                 performerChipView(set.performedBy)
             } else {
                 setIndexBadge(number, isWarmup: set.isWarmup)
             }
 
-            Button { onTapSet(set) } label: {
+            Button { if isEditing { onTapSet(set) } } label: {
                 if set.usesBodyweight && set.weight <= 0 {
                     Text("BW").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)
@@ -214,7 +257,7 @@ struct ExerciseCardView: View {
 
             rpeBadge(set)
 
-            Button { onTapSet(set) } label: {
+            Button { if isEditing { onTapSet(set) } } label: {
                 Text("\(set.reps)").monospacedDigit().frame(width: SetCol.reps)
             }
             .buttonStyle(.plain)

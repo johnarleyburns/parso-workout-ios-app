@@ -2,7 +2,40 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-08-10 — Cladiron platform spec v2.1 written to `docs/plans/cladiron-mvp-revised/` (planning only; no app code changed)._
+_Last updated: 2026-08-10 — field-test fixes (set-editor crash, set columns, Edit mode) SHIPPED; Cladiron platform spec v2.1 written to `docs/plans/cladiron-mvp-revised/` (planning only; no app code changed)._
+
+## Field-test fixes — set-editor crash, column widths, Edit mode — 2026-08-10 — SHIPPED
+
+Three field-test bugs fixed, verified (`swift test` **1312 tests, 0 failures**;
+iOS `make smoke` 1/1 passed; test-pyramid + no-network guards OK).
+
+**1. Crash while entering sets (`SessionView.inlineEditorConfig`).** TestFlight
+`EXC_BREAKPOINT` in `inlineEditorConfig()` at the force-unwrap
+`editingSet!.id` (SessionView.swift:202), reached via `exerciseCardView` while
+the inline set editor was open. The set being edited can vanish between tap and
+render (watch relay `delete_set`/`log_set`, CloudKit merge, delete-then-order
+change), leaving `inlineEditingSetID` set but `editingSet` nil.
+- Fix: `inlineEditorConfig()` now returns `nil` when `isEditing` but the set is
+  gone (card degrades to the normal row + action buttons), and the config id
+  uses `editingSet?.id ?? UUID()` — no force-unwrap anywhere.
+- Also deleted two unused helpers (`activePartnerPeople`, `whoColumnWidth`) to
+  stay under the SessionView LOC ratchet (1102).
+
+**2. Set column widths.** The `Weight (lb)` header was too wide and the inline
+reps `− n +` stepper overflowed its 46 pt column (2-digit reps clipped).
+- `setColumnHeader` now shows just the unit abbreviation (`lb`/`kg`) with a
+  VoiceOver label ("Weight in lb/kg").
+- `SetCol.reps` widened 46 → 64; the stepper uses fixed 22 pt hit targets,
+  zero inter-button spacing, and a scaling number instead of overflowing.
+
+**3. Set editing moved behind an "Edit" control.** Tapping a logged set row
+previously opened the inline editor, inviting mis-entry. Now:
+- Each exercise card header has an **Edit**/"Done" text button at the far right.
+- Outside edit mode, tapping a logged row does nothing (context menu / long
+  press still offers Edit set deliberately); pending rows and Add set still log.
+- In edit mode, rows show a leading red `minus.circle` delete control
+  (confirmation dialog before removal) and tapping a row opens the inline
+  editor. Add/Repeat buttons hide while editing.
 
 ## Cladiron platform spec v2.1 — 2026-08-10 — PLAN (docs only)
 

@@ -102,6 +102,17 @@ final class WatchSyncTests: XCTestCase {
         XCTAssertEqual(dict[WatchSync.Key.contextUpdatedAt] as? Date, date)
     }
 
+    func testCustomExercisePropertyListRoundTripsSearchFacets() {
+        let date = Date(timeIntervalSince1970: 7)
+        let exercise = WatchSync.CustomExercise(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000007")!,
+            name: "Cable Y Raise", category: "shoulders", equipment: "cable",
+            primaryMuscles: ["deltoids"], secondaryMuscles: ["trapezius"],
+            searchKeywords: ["cable", "raise"], isLateral: true, updatedAt: date)
+        let restored = WatchSync.CustomExercise(propertyList: exercise.propertyList)
+        XCTAssertEqual(restored, exercise)
+    }
+
     func testMissingKeysPreserveDefaults() {
         var prefs = WatchSync.Preferences(unit: .pounds, restSeconds: 90, warmupMinutes: 2, cooldownMinutes: 4, workoutSounds: false)
         prefs = prefs.applying(context: [:])

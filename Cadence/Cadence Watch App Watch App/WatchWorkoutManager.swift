@@ -36,6 +36,8 @@ final class WatchWorkoutManager: NSObject {
     var lastPhoneSyncError: String?
     var todayPlan: WatchSync.TodayPlan?
     var recentPartnerNames: [String] = []
+    var customExerciseRows: [[String: Any]] = []
+    internal(set) var customExercisesUpdatedAt = Date.distantPast
 
     struct SavedWorkoutSummary {
         let duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double

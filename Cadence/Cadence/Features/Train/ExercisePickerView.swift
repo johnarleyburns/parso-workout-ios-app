@@ -2,12 +2,6 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
-/// Searchable exercise library picker with three tabs:
-/// - **Recents**: last ~25 exercises from workout history
-/// - **Popular**: curated shortlist (Browse all → full catalog)
-/// - **Browse**: full catalog with body-part / equipment filter chips
-/// Each row navigates to ExerciseDetailView with public-domain image, muscles,
-/// and instructions. An inline "Create '<query>'" row adds a custom exercise.
 struct ExercisePickerView: View {
     enum PickAction {
         case add, swap, use
@@ -35,6 +29,7 @@ struct ExercisePickerView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var appModel
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var query = ""
     @State private var debouncedQuery = ""
@@ -437,6 +432,7 @@ struct ExercisePickerView: View {
         let name = trimmedQuery
         guard !name.isEmpty else { return }
         if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
+            appModel.pushSettingsContext()
             onPick(ex); dismiss()
         }
     }
@@ -450,6 +446,7 @@ struct ExercisePickerView: View {
             primaryMuscles: Array(selectedCreationMuscles),
             secondaryMuscles: Array(selectedCreationSecondary),
             in: context) {
+            appModel.pushSettingsContext()
             onPick(ex)
             showCreationSheet = false
             dismiss()

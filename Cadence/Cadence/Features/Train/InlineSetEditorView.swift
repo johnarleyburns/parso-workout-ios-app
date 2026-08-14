@@ -13,6 +13,7 @@ struct InlineSetEditorView: View {
     @State private var weight: String
     @State private var reps: Int
     @State private var rpe: Int?
+    @State private var effortMode: WatchEffortMode = .rpe
     @State private var bodyweight: Bool
     @State private var performerID: UUID?
     @FocusState private var weightFocused: Bool
@@ -54,7 +55,15 @@ struct InlineSetEditorView: View {
     }
 
     var body: some View {
-        HStack(spacing: SetCol.gap) {
+        VStack(alignment: .leading, spacing: 6) {
+            Picker("Effort", selection: $effortMode) {
+                ForEach(WatchEffortMode.allCases) { mode in
+                    Text(mode.displayName).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("set.effortMode")
+            HStack(spacing: SetCol.gap) {
             if config.hasPartners {
                 performerPicker
             } else {
@@ -65,6 +74,7 @@ struct InlineSetEditorView: View {
             repsField
             rpeField
             actionButtons
+            }
         }
         .frame(minHeight: 44)
         .onAppear { weightFocused = true }
@@ -168,24 +178,24 @@ struct InlineSetEditorView: View {
                     .padding(.horizontal, 3).padding(.vertical, 1)
                     .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 3))
             } else {
-                Text("RPE").font(.system(size: 8))
+                Text(effortMode.displayName).font(.system(size: 8))
                     .foregroundStyle(.tertiary)
             }
         }
         .frame(width: SetCol.rpe)
         .buttonStyle(.borderless)
         .contextMenu {
-            Button { rpe = 10 } label: { Text("RPE 10 · Max") }
-            Button { rpe = 9 } label: { Text("RPE 9") }
-            Button { rpe = 8 } label: { Text("RPE 8") }
-            Button { rpe = 7 } label: { Text("RPE 7") }
-            Button { rpe = 6 } label: { Text("RPE 6") }
-            Button { rpe = 5 } label: { Text("RPE 5 · Medium") }
+            ForEach(Array(1...10), id: \.self) { value in
+                Button {
+                    rpe = effortMode.rpeValue(from: Double(value)).map { Int($0) }
+                } label: { Text("\(effortMode.displayName) \(value)") }
+            }
             if rpe != nil {
                 Divider()
                 Button(role: .destructive) { rpe = nil } label: { Text("Clear") }
             }
         }
+        .accessibilityLabel("\(effortMode.displayName) effort")
     }
 
     private var actionButtons: some View {

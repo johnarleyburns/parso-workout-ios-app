@@ -28,6 +28,17 @@ public enum Format {
         return f.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
+    /// Strength-table display precision: preserve quarter-unit loads without
+    /// changing the exact canonical value stored for the set.
+    public static func weightValueQuarter(_ kg: Double, unit: MeasurementUnitPreference) -> String {
+        let value = (WorkoutMath.display(kg, in: unit) * 4).rounded() / 4
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 2
+        return f.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
     /// Compact previous-set reference, e.g. "60×8".
     public static func previousShort(_ kg: Double, reps: Int, unit: MeasurementUnitPreference) -> String {
         "\(weightValue(kg, unit: unit))×\(reps)"

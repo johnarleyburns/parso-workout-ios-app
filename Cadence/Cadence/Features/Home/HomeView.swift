@@ -475,11 +475,9 @@ struct HomeView: View {
                     intervalType = nil
                     let useHR = settings.useHRMonitoring
                     let launch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit, captureHR: useHR)
-                    let strapConnected: Bool = {
-                        if case .connected = model.hrm.state { return true }
-                        return false
-                    }()
-                    if useHR && !strapConnected {
+                    if useHR {
+                        // Let the shared gate offer either Bluetooth or Apple
+                        // Watch for HIIT/boxing as well as continuous cardio.
                         begin(.interval(launch))
                     } else {
                         intervalLaunch = launch
@@ -519,10 +517,14 @@ struct HomeView: View {
         // HR gate — appears BEFORE the get-ready countdown.  Lets the
         // user connect HR, see live data, then press "Start Workout".
         if let kind = hrGateKind {
-            PreWorkoutHRView(workoutType: kind.cardioType) { useHR in
+            PreWorkoutHRView(workoutType: kind.cardioType) { source in
                 hrGateKind = nil
-                captureHR = useHR
-                proceedFromHRGate(kind, useHR: useHR)
+                captureHR = source != .none
+                if source == .watch {
+                    if let type = kind.cardioType { model.startWatchWorkout(type: type) }
+                    else { model.startWatchStrength() }
+                }
+                proceedFromHRGate(kind, useHR: source != .none)
             }
             .transition(.identity)
             .zIndex(2)

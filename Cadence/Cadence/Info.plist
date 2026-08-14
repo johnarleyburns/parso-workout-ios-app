@@ -23,5 +23,7 @@
 	<string>Cladiron uses motion data to better recognize the kind of workout you are doing.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 </dict>
 </plist>

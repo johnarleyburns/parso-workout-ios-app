@@ -1817,6 +1817,27 @@ decisions: `plans/supporter-flow/2026-06-28/`.
 - Fixed-day chip UI preserved per plan; behavior fixed first, redesign deferred.
 - Background cues now require iOS `audio` background mode + `.playback` category.
 
+## iPhone field-testing fixes — 2026-08-13
+
+- Added a property-list-safe custom-exercise catalog payload to WatchConnectivity
+  application-context sync. Phone-created custom exercises are pushed after
+  creation and materialized into the watch's local SwiftData search catalog.
+- Warm-up phase refreshes explicitly on return from inactive/background without
+  pausing; only the user Pause control changes the phase clock.
+- Added the iPhone ActivityKit state coordinator and enabled Live Activities in
+  the iPhone plist for active strength workouts; the watch remains on its native
+  HKWorkoutSession surface. The repo still lacks a widget-extension target, so
+  lock-screen rendering is an explicit follow-up gap rather than a claimed
+  completed acceptance item.
+- Replaced the wall-clock timer with a 1-second `TimelineView`, reordered and
+  tightened set columns, added visible RPE/RIR effort mode and choices, and
+  added quarter-unit strength weight rendering.
+- HIIT/boxing and other cardio HR gates now offer Apple Watch alongside the BLE
+  chest strap.
+- SwiftPM tests: **1,314 tests, 0 failures** after this change. Xcode simulator
+  app/watch verification remains blocked by the existing embedded-watch target
+  failing to resolve WatchKit/watch AppIcon for the selected simulator SDK.
+
 ## Phase 1: RPE display on completed set rows (2026-07-06)
 - Added RPE badge (small rounded number chip) on `completedSetRow` in SessionView.swift
 - RPE visible without tapping to edit; appears only for working sets with RPE logged

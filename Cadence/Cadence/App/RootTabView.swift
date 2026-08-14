@@ -98,7 +98,22 @@ struct RootTabView: View {
         // state — presented or minimized — except a paused-and-minimized one
         // (e.g. crash-recovered onto Home), which shouldn't burn the screen.
         .keepAwake(active.isActive && !(active.isPaused && active.presentedSurface == nil))
-        .onReceive(heartbeatTimer) { _ in active.writeHeartbeat() }
+        .onReceive(heartbeatTimer) { _ in
+            active.writeHeartbeat()
+            if active.isActive {
+                WorkoutLiveActivityCoordinator.shared.update(
+                    elapsedSeconds: Int(active.clock.elapsed()),
+                    status: active.isPaused ? "Paused" : "Active",
+                    isPaused: active.isPaused)
+            }
+        }
+        .onChange(of: active.isActive) { _, isActive in
+            if isActive, let session = active.strengthSession {
+                WorkoutLiveActivityCoordinator.shared.start(title: session.title.isEmpty ? "Workout" : session.title)
+            } else {
+                WorkoutLiveActivityCoordinator.shared.end()
+            }
+        }
         .task {
             // Crash/upgrade recovery FIRST (launch-blockers Phase 1e): re-adopt
             // an in-progress workout paused; Home shows the Resume card. A

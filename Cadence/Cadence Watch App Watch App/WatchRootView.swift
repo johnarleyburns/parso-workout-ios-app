@@ -6,6 +6,7 @@ import CadenceFeatures
 struct WatchRootView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchAppSettings
+    @Environment(\.modelContext) private var context
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
     @State private var cardioLocation: WorkoutConfigurationSpec.Location = .outdoor
@@ -37,6 +38,9 @@ struct WatchRootView: View {
             } else {
                 launcher
             }
+        }
+        .onChange(of: watchManager.customExercisesUpdatedAt) { _, _ in
+            watchManager.applyCustomExercises(watchManager.customExerciseRows, in: context)
         }
     }
 

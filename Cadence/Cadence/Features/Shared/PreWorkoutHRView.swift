@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
+enum HRSourceChoice { case bluetooth, watch, none }
+
 /// Pre-workout heart-rate connection screen.
 /// Shown before cardio/interval/strength workouts so the user can connect a
 /// Bluetooth chest strap, see live HR, then press Start when ready.
@@ -13,7 +15,7 @@ import CadenceCore
 ///
 struct PreWorkoutHRView: View {
     let workoutType: CardioType?
-    let onContinue: (_ useHR: Bool) -> Void
+    let onContinue: (_ source: HRSourceChoice) -> Void
 
     @Environment(AppModel.self) private var model
     @Query private var savedDevices: [HRMDevice]
@@ -48,6 +50,13 @@ struct PreWorkoutHRView: View {
 
             VStack(spacing: 12) {
                 strapRow
+                if model.watchAvailable {
+                    HRSourceCard(icon: "applewatch", title: "Apple Watch", tint: .blue) {
+                        Button("Use Watch") { onContinue(.watch) }
+                            .buttonStyle(.bordered)
+                            .accessibilityIdentifier("prehr.useWatch")
+                    }
+                }
             }
             .padding(.horizontal)
 
@@ -55,7 +64,7 @@ struct PreWorkoutHRView: View {
 
             VStack(spacing: 12) {
                 Button {
-                    onContinue(true)
+                    onContinue(.bluetooth)
                 } label: {
                     Text("Start").frame(maxWidth: .infinity, minHeight: 52)
                 }

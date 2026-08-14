@@ -27,6 +27,7 @@ struct GuidedPhaseOverlay: View {
     var soundsEnabled: Bool = false
     let onFinish: (_ elapsedSeconds: Int) -> Void
     let onSkip: ((_ elapsedSeconds: Int) -> Void)?
+    @Environment(\.scenePhase) private var scenePhase
 
     private let total: Int
     @State private var countdown: PhaseCountdownClock
@@ -135,6 +136,12 @@ struct GuidedPhaseOverlay: View {
                 finished = true
                 onFinish(total)
             }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Locking/backgrounding is not a user pause. Refresh from the
+            // wall-clock immediately on return; PhaseCountdownClock itself
+            // continues across inactive/background spans.
+            if phase == .active { now = Date() }
         }
     }
 }

@@ -128,6 +128,11 @@ final class AppModel: NSObject, @unchecked Sendable {
         if let todayPlan = watchTodayPlan(settings: settings, updatedAt: now) {
             context.merge(WatchSync.TodayPlan.contextDict(todayPlan)) { _, new in new }
         }
+        if let container = _modelContainer {
+            let ctx = ModelContext(container)
+            let exercises = (try? WorkoutRepository.allExercises(ctx)) ?? []
+            context[WatchSync.Key.customExercises] = WatchSync.customExercisesContext(exercises)
+        }
         do {
             try session.updateApplicationContext(context)
             recordWatchSyncSuccess(now)

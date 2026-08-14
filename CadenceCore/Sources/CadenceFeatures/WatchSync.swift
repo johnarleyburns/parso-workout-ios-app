@@ -49,9 +49,79 @@ public enum WatchSync {
         public static let cooldownMinutes = "settings.cooldownMinutes"
         public static let workoutSounds = "settings.workoutSounds"
         public static let recentPartners = "partners.recent"
+        public static let customExercises = "exercises.custom"
 
         public static let todayPlanSessions = "todayPlan.sessions"
         public static let todayPlanUpdatedAt = "todayPlan.updatedAt"
+    }
+
+    /// Property-list-safe snapshot of a user-created exercise sent from the
+    /// phone to the watch. The watch has its own local SwiftData store, so
+    /// CloudKit cannot be relied on for the low-latency picker path.
+    public struct CustomExercise: Equatable, Sendable {
+        public var id: UUID
+        public var name: String
+        public var category: String?
+        public var equipment: String?
+        public var mechanics: String?
+        public var force: String?
+        public var primaryMuscles: [String]
+        public var secondaryMuscles: [String]
+        public var searchKeywords: [String]
+        public var isLateral: Bool
+        public var updatedAt: Date
+
+        public init(id: UUID, name: String, category: String? = nil,
+                    equipment: String? = nil, mechanics: String? = nil,
+                    force: String? = nil, primaryMuscles: [String] = [],
+                    secondaryMuscles: [String] = [], searchKeywords: [String] = [],
+                    isLateral: Bool = false, updatedAt: Date = Date()) {
+            self.id = id; self.name = name; self.category = category
+            self.equipment = equipment; self.mechanics = mechanics; self.force = force
+            self.primaryMuscles = primaryMuscles; self.secondaryMuscles = secondaryMuscles
+            self.searchKeywords = searchKeywords; self.isLateral = isLateral
+            self.updatedAt = updatedAt
+        }
+
+        public init(exercise: Exercise) {
+            self.init(id: exercise.id, name: exercise.name, category: exercise.category,
+                      equipment: exercise.equipment, mechanics: exercise.mechanics,
+                      force: exercise.force, primaryMuscles: exercise.primaryMuscles,
+                      secondaryMuscles: exercise.secondaryMuscles,
+                      searchKeywords: exercise.searchKeywords, isLateral: exercise.isLateral,
+                      updatedAt: exercise.updatedAt)
+        }
+
+        public var propertyList: [String: Any] {
+            var result: [String: Any] = [
+                "id": id.uuidString, "name": name, "primaryMuscles": primaryMuscles,
+                "secondaryMuscles": secondaryMuscles, "searchKeywords": searchKeywords,
+                "isLateral": isLateral, "updatedAt": updatedAt
+            ]
+            if let category { result["category"] = category }
+            if let equipment { result["equipment"] = equipment }
+            if let mechanics { result["mechanics"] = mechanics }
+            if let force { result["force"] = force }
+            return result
+        }
+
+        public init?(propertyList: [String: Any]) {
+            guard let rawID = propertyList["id"] as? String, let id = UUID(uuidString: rawID),
+                  let name = propertyList["name"] as? String else { return nil }
+            self.init(id: id, name: name, category: propertyList["category"] as? String,
+                      equipment: propertyList["equipment"] as? String,
+                      mechanics: propertyList["mechanics"] as? String,
+                      force: propertyList["force"] as? String,
+                      primaryMuscles: propertyList["primaryMuscles"] as? [String] ?? [],
+                      secondaryMuscles: propertyList["secondaryMuscles"] as? [String] ?? [],
+                      searchKeywords: propertyList["searchKeywords"] as? [String] ?? [],
+                      isLateral: propertyList["isLateral"] as? Bool ?? false,
+                      updatedAt: propertyList["updatedAt"] as? Date ?? Date())
+        }
+    }
+
+    public static func customExercisesContext(_ exercises: [Exercise]) -> [[String: Any]] {
+        exercises.filter(\.isCustom).map { CustomExercise(exercise: $0).propertyList }
     }
 
     public struct TodayPlan: Equatable, Sendable {

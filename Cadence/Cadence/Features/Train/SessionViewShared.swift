@@ -40,9 +40,9 @@ struct RosterEntry: Equatable, Identifiable {
 // MARK: - Column widths (shared)
 
 enum SetCol {
-    static let num: CGFloat = 26
-    static let reps: CGFloat = 64
-    static let rpe: CGFloat = 26
+    static let num: CGFloat = 20
+    static let reps: CGFloat = 56
+    static let rpe: CGFloat = 42
     static let check: CGFloat = 34
-    static let gap: CGFloat = 7
+    static let gap: CGFloat = 5
 }

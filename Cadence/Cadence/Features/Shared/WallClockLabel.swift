@@ -4,9 +4,6 @@ import SwiftUI
 /// user can glance at without leaving the workout. Ticks once a minute. Reused
 /// across the strength, outdoor, timer-cardio, interval, and swim headers.
 struct WallClockLabel: View {
-    @State private var now = Date()
-    private let tick = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
-
     private static let formatter: DateFormatter = {
         let f = DateFormatter()
         f.setLocalizedDateFormatFromTemplate("j:mm")
@@ -14,7 +11,13 @@ struct WallClockLabel: View {
     }()
 
     var body: some View {
-        let text = Self.formatter.string(from: now)
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let text = Self.formatter.string(from: context.date)
+            label(text)
+        }
+    }
+
+    private func label(_ text: String) -> some View {
         return HStack(spacing: 4) {
             Image(systemName: "clock")
                 .font(.caption2)
@@ -26,6 +29,5 @@ struct WallClockLabel: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("workout.wallClock")
         .accessibilityLabel("Current time \(text)")
-        .onReceive(tick) { now = $0 }
     }
 }

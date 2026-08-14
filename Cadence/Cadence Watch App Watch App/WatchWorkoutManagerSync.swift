@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
@@ -80,12 +81,40 @@ extension WatchWorkoutManager: @preconcurrency WCSessionDelegate {
         s.workoutSounds = incoming.workoutSounds
         recentPartnerNames = incoming.recentPartnerNames
         todayPlan = WatchSync.TodayPlan.from(context: applicationContext)
-
         let syncedAt = (applicationContext[WatchSync.Key.contextUpdatedAt] as? Date) ?? Date()
+        if let rows = applicationContext[WatchSync.Key.customExercises] as? [[String: Any]] {
+            customExerciseRows = rows
+            customExercisesUpdatedAt = syncedAt
+        }
+
         lastPhoneSyncAt = syncedAt
         lastPhoneSyncError = nil
         UserDefaults.standard.set(syncedAt, forKey: "watch.lastPhoneSyncAt")
         phoneSyncState = .synced(syncedAt)
+    }
+
+    func applyCustomExercises(_ raw: Any?, in context: ModelContext) {
+        guard let rows = raw as? [[String: Any]] else { return }
+        for row in rows {
+            guard let incoming = WatchSync.CustomExercise(propertyList: row) else { continue }
+            let existing = (try? WorkoutRepository.allExercises(context))?.first {
+                $0.id == incoming.id || $0.name.compare(incoming.name, options: .caseInsensitive) == .orderedSame
+            }
+            let exercise = existing ?? Exercise(id: incoming.id, name: incoming.name, isCustom: true)
+            if existing == nil { context.insert(exercise) }
+            exercise.name = incoming.name
+            exercise.isCustom = true
+            exercise.category = incoming.category
+            exercise.equipment = incoming.equipment
+            exercise.mechanics = incoming.mechanics
+            exercise.force = incoming.force
+            exercise.primaryMuscles = incoming.primaryMuscles
+            exercise.secondaryMuscles = incoming.secondaryMuscles
+            exercise.searchKeywords = incoming.searchKeywords
+            exercise.isLateral = incoming.isLateral
+            exercise.updatedAt = incoming.updatedAt
+        }
+        try? context.save()
     }
 
     private func recordPhoneSyncFailure(_ message: String) {

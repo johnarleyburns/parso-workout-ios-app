@@ -11,6 +11,11 @@ final class FormatTests: XCTestCase {
         XCTAssertEqual(Format.weightValue(60, unit: .kilograms, decimals: 0), "60")
     }
 
+    func testWeightValueQuarterPreservesQuarterUnitLoads() {
+        XCTAssertEqual(Format.weightValueQuarter(20.25, unit: .kilograms), "20.25")
+        XCTAssertEqual(Format.weightValueQuarter(20.26, unit: .kilograms), "20.25")
+    }
+
     func testPreviousShort() {
         XCTAssertEqual(Format.previousShort(60, reps: 8, unit: .kilograms), "60×8")
     }

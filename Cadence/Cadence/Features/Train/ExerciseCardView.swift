@@ -1,7 +1,6 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
-
 struct ExerciseCardView: View {
     let context: SessionRenderModel.ExerciseContext
     let prSetIDs: Set<UUID>
@@ -202,7 +201,7 @@ struct ExerciseCardView: View {
     private var setColumnHeader: some View {
         HStack(spacing: SetCol.gap) {
             Text(hasPartners ? "WHO" : "Set")
-                .frame(width: hasPartners ? 32 : SetCol.num, alignment: .leading)
+                .frame(width: hasPartners ? 20 : SetCol.num, alignment: .center)
             Text(unit.abbreviation)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .accessibilityLabel("Weight in \(unit.abbreviation)")
@@ -247,7 +246,7 @@ struct ExerciseCardView: View {
                     Text("BW").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)
                 } else {
-                    Text(Format.weightValue(set.weight, unit: unit, decimals: 0))
+                    Text(Format.weightValueQuarter(set.weight, unit: unit))
                         .monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)
                 }
@@ -255,13 +254,17 @@ struct ExerciseCardView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.editWeight.\(context.name).\(number)")
 
-            rpeBadge(set)
-
             Button { if isEditing { onTapSet(set) } } label: {
                 Text("\(set.reps)").monospacedDigit().frame(width: SetCol.reps)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.editReps.\(context.name).\(number)")
+
+            Button { if isEditing { onTapSet(set) } } label: {
+                rpeBadge(set)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("set.editRPE.\(context.name).\(number)")
 
             if prSetIDs.contains(set.setID) {
                 Image(systemName: "trophy.fill").foregroundStyle(.orange)

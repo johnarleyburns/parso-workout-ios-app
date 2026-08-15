@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 // MARK: - Shared types for the inline set editor
 
@@ -24,6 +25,11 @@ struct InlineEditorConfig: Equatable {
     var hasPartners: Bool
     var unit: MeasurementUnitPreference
     var priorWeightHint: Double?
+    var exerciseName: String = ""
+    var setNumberText: String = ""
+    var contextText: String?
+    var recordedText: String?
+    var effortMode: WatchEffortMode = .rpe
 
     static func == (lhs: InlineEditorConfig, rhs: InlineEditorConfig) -> Bool {
         lhs.id == rhs.id
@@ -35,6 +41,14 @@ struct RosterEntry: Equatable, Identifiable {
     var personID: UUID?
     var name: String
     var isMe: Bool
+}
+
+enum SetEditorRoute: Identifiable, Equatable {
+    case add(exerciseID: UUID)
+    case edit(exerciseID: UUID, setID: UUID)
+    var id: String {
+        switch self { case .add(let exerciseID): return "add-\(exerciseID)"; case .edit(let exerciseID, let setID): return "edit-\(exerciseID)-\(setID)" }
+    }
 }
 
 // MARK: - Column widths (shared)

@@ -2,6 +2,8 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
+/// Full-screen add/edit set entry. The filename is retained to avoid changing
+/// the Xcode project graph; the old inline implementation is no longer used.
 struct InlineSetEditorView: View {
     let config: InlineEditorConfig
     let wouldBePR: ((Double, Int) -> Bool)?
@@ -9,243 +11,151 @@ struct InlineSetEditorView: View {
     let onDelete: (() -> Void)?
     let onCancel: () -> Void
     let onActivity: () -> Void
+    let onEffortMode: (WatchEffortMode) -> Void
 
-    @State private var weight: String
-    @State private var reps: Int
-    @State private var rpe: Int?
-    @State private var effortMode: WatchEffortMode = .rpe
-    @State private var bodyweight: Bool
-    @State private var performerID: UUID?
-    @FocusState private var weightFocused: Bool
-    @State private var showRPEInfo = false
-    @State private var showWeightInfo = false
+    @State private var draft: ExpandedSetDraftModel
+    @State private var increment: Double
+    @State private var typedWeight: String
+    @State private var keypadPresented = false
+    @State private var keypadError: String?
+    @State private var deletePresented = false
 
-    init(config: InlineEditorConfig,
-         wouldBePR: ((Double, Int) -> Bool)?,
-         onSave: @escaping (SetDraft) -> Void,
-         onDelete: (() -> Void)?,
-         onCancel: @escaping () -> Void,
-         onActivity: @escaping () -> Void) {
-        self.config = config
-        self.wouldBePR = wouldBePR
-        self.onSave = onSave
-        self.onDelete = onDelete
-        self.onCancel = onCancel
-        self.onActivity = onActivity
-        _weight = State(initialValue: config.weight)
-        _reps = State(initialValue: config.reps)
-        _rpe = State(initialValue: config.rpe)
-        _bodyweight = State(initialValue: config.bodyweight)
-        _performerID = State(initialValue: config.performerID)
+    init(config: InlineEditorConfig, wouldBePR: ((Double, Int) -> Bool)?,
+         onSave: @escaping (SetDraft) -> Void, onDelete: (() -> Void)?,
+         onCancel: @escaping () -> Void, onActivity: @escaping () -> Void,
+         onEffortMode: @escaping (WatchEffortMode) -> Void = { _ in }) {
+        self.config = config; self.wouldBePR = wouldBePR; self.onSave = onSave
+        self.onDelete = onDelete; self.onCancel = onCancel; self.onActivity = onActivity
+        self.onEffortMode = onEffortMode
+        let value = Double(config.weight.replacingOccurrences(of: ",", with: ".")) ?? 0
+        _draft = State(initialValue: ExpandedSetDraftModel(weight: value, reps: config.reps,
+                                                            rpe: config.rpe.map(Double.init), unit: config.unit,
+                                                            effortMode: config.effortMode))
+        _increment = State(initialValue: config.unit == .pounds ? 5 : 2.5)
+        _typedWeight = State(initialValue: config.weight)
     }
 
-    private var parsedWeightKg: Double {
-        let parsed = Double(weight) ?? 0
-        return WorkoutMath.canonical(parsed, from: config.unit)
+    private var weightText: String {
+        let value = draft.weight
+        return value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value).replacingOccurrences(of: "0+$", with: "", options: .regularExpression)
     }
-
-    private var isPR: Bool {
-        guard parsedWeightKg > 0, reps > 0 else { return false }
-        return wouldBePR?(parsedWeightKg, reps) ?? false
+    private var effortValues: [Double] { Array(1...10).map(Double.init) }
+    private var effortDescription: String {
+        guard let value = draft.effort else { return draft.effortMode == .rpe ? "How hard did the set feel?" : "How many good reps remained?" }
+        if draft.effortMode == .rir { return value == 1 ? "1 good rep remained" : "(Int(value)) good reps remained" }
+        switch value { case 10: return "Maximum effort · no reps left"; case 9: return "Very hard · about 1 rep left"; case 8: return "Hard · about 2 reps left"; case 7: return "Challenging · about 3 reps left"; default: return "Comfortable effort" }
     }
-
-    private var priorHintText: String? {
-        guard let hint = config.priorWeightHint, hint > 0 else { return nil }
-        return Format.weightValue(hint, unit: config.unit)
-    }
+    private var isPR: Bool { wouldBePR?(draft.canonicalWeightKg, draft.reps) ?? false }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Picker("Effort", selection: $effortMode) {
-                ForEach(WatchEffortMode.allCases) { mode in
-                    Text(mode.displayName).tag(mode)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    headerContext
+                    weightSection
+                    repsSection
+                    effortSection
                 }
+                .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 24)
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("set.effortMode")
-            HStack(spacing: SetCol.gap) {
-            if config.hasPartners {
-                performerPicker
-            } else {
-                Color.clear.frame(width: SetCol.num)
+            .safeAreaInset(edge: .bottom) { footer }
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: onCancel).accessibilityIdentifier("setEditor.cancel") }
+                if onDelete != nil { ToolbarItem(placement: .topBarTrailing) { Button("Delete", role: .destructive) { deletePresented = true }.accessibilityIdentifier("setEditor.delete") } }
             }
-
-            weightField
-            repsField
-            rpeField
-            actionButtons
-            }
+            .alert("Delete (config.exerciseName), set (config.setNumberText)?", isPresented: $deletePresented) {
+                Button("Delete", role: .destructive) { Haptics.restComplete(); onDelete?() }
+                Button("Cancel", role: .cancel) { }
+            } message: { Text("This set will be removed from the workout.") }
+            .sheet(isPresented: $keypadPresented) { keypad }
         }
-        .frame(minHeight: 44)
-        .onAppear { weightFocused = true }
-        .onChange(of: weight) { _, _ in onActivity() }
-        .onChange(of: reps) { _, _ in onActivity() }
-        .onChange(of: rpe) { _, _ in onActivity() }
-        .sheet(isPresented: $showRPEInfo) { RPEInfoView() }
-        .sheet(isPresented: $showWeightInfo) { weightInfoSheet }
+        .accessibilityIdentifier("setEditor.fullScreen")
     }
 
-    // MARK: - Subviews
-
-    private var performerPicker: some View {
-        Menu {
-            ForEach(config.roster) { entry in
-                Button {
-                    performerID = entry.personID
-                    onActivity()
-                } label: {
-                    HStack {
-                        Text(entry.name)
-                        if performerID == entry.personID {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
+    private var headerContext: some View {
+        VStack(spacing: 6) {
+            Text(config.exerciseName).font(.headline).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity)
+                .accessibilityIdentifier("setEditor.exerciseName")
+            Text(config.setNumberText).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                .accessibilityIdentifier("setEditor.setNumber")
+            if let context = config.contextText ?? config.recordedText { Text(context).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
+            if config.hasPartners, let person = config.roster.first(where: { $0.personID == config.performerID }) ?? config.roster.first {
+                Text("For \(person.name)").font(.caption.weight(.semibold)).padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(.tint.opacity(0.14), in: Capsule()).frame(maxWidth: .infinity)
             }
-        } label: {
-            performerChip
         }
     }
 
-    private var performerChip: some View {
-        let p = config.roster.first { $0.personID == performerID }
-        ?? config.roster.first { $0.isMe }
-        ?? config.roster.first
-        let label = p?.isMe ?? true ? "M" : String((p?.name ?? "?").prefix(1)).uppercased()
-        let color: Color = {
-            guard let p, !p.isMe else { return .accentColor }
-            let palette: [Color] = [.purple, .teal, .pink, .indigo, .orange, .mint]
-            return palette[abs(p.name.hashValue) % palette.count]
-        }()
-        return Text(label)
-            .font(.caption2.weight(.semibold)).foregroundStyle(.white)
-            .frame(width: 24, height: 24)
-            .background(color, in: Circle())
-    }
-
-    private var weightField: some View {
-        HStack(spacing: 2) {
-            TextField("Weight", text: $weight)
-                .keyboardType(.decimalPad)
-                .focused($weightFocused)
-                .multilineTextAlignment(.center)
-                .font(.body.monospacedDigit())
-                .lineLimit(1).minimumScaleFactor(0.7)
-                .accessibilityIdentifier("set.weightField")
-
-            if isPR {
-                Image(systemName: "trophy.fill")
-                    .foregroundStyle(.orange)
-                    .font(.caption)
-                    .accessibilityLabel("Would be a PR")
-            }
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var repsField: some View {
-        HStack(spacing: 0) {
-            Button {
-                reps = max(1, reps - 1)
-            } label: {
-                Image(systemName: "minus").font(.caption2.weight(.semibold))
-                    .frame(width: 22, height: 32)
-                    .contentShape(Rectangle())
-            }
-
-            Text("\(reps)").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
-                .frame(minWidth: 16, maxWidth: .infinity)
-
-            Button {
-                reps += 1
-            } label: {
-                Image(systemName: "plus").font(.caption2.weight(.semibold))
-                    .frame(width: 22, height: 32)
-                    .contentShape(Rectangle())
-            }
-        }
-        .frame(width: SetCol.reps)
-        .buttonStyle(.borderless)
-    }
-
-    private var rpeField: some View {
-        Button {
-            showRPEInfo = true
-        } label: {
-            if let r = rpe {
-                Text("\(r)").font(.caption2.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 3).padding(.vertical, 1)
-                    .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 3))
-            } else {
-                Text(effortMode.displayName).font(.system(size: 8))
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .frame(width: SetCol.rpe)
-        .buttonStyle(.borderless)
-        .contextMenu {
-            ForEach(Array(1...10), id: \.self) { value in
-                Button {
-                    rpe = effortMode.rpeValue(from: Double(value)).map { Int($0) }
-                } label: { Text("\(effortMode.displayName) \(value)") }
-            }
-            if rpe != nil {
-                Divider()
-                Button(role: .destructive) { rpe = nil } label: { Text("Clear") }
-            }
-        }
-        .accessibilityLabel("\(effortMode.displayName) effort")
-    }
-
-    private var actionButtons: some View {
-        HStack(spacing: 4) {
-            if onDelete != nil {
-                Button {
-                    onDelete?()
-                } label: {
-                    Image(systemName: "trash").font(.caption).foregroundStyle(.red)
-                }
-                .accessibilityIdentifier("set.delete")
-            }
-
-            Button {
-                onCancel()
-            } label: {
-                Image(systemName: "xmark").font(.caption)
-            }
-            .accessibilityIdentifier("set.cancel")
-
-            Button {
-                onSave(SetDraft(
-                    weightString: weight,
-                    unit: config.unit,
-                    reps: reps,
-                    rpe: rpe,
-                    bodyweight: bodyweight,
-                    performerID: performerID))
-            } label: {
-                Image(systemName: "checkmark").font(.caption).foregroundStyle(.green)
-            }
-            .accessibilityIdentifier("set.save")
-        }
-        .frame(width: SetCol.check + 20)
-    }
-
-    private var weightInfoSheet: some View {
+    private var weightSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Weight").font(.headline)
-            Text("Enter the weight per side for this set. \(config.unit.abbreviation).")
-                .font(.subheadline).foregroundStyle(.secondary)
-            if let hint = priorHintText, config.priorWeightHint != nil {
-                Text("Previous: \(hint) \(config.unit.abbreviation)")
-                    .font(.caption).foregroundStyle(.tint)
-                    .onTapGesture {
-                        weight = hint
-                    }
+            Text(config.bodyweight ? "Added weight" : "Weight").font(.headline)
+            if config.bodyweight { Text("Bodyweight movement · enter added load only").font(.caption).foregroundStyle(.secondary) }
+            Button { typedWeight = weightText; keypadPresented = true } label: {
+                HStack(alignment: .lastTextBaseline, spacing: 6) { Text(weightText).scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit(); Text(config.unit.abbreviation).font(.title3.weight(.semibold)); Text("Type…").font(.caption).foregroundStyle(.tint) }
+                    .frame(maxWidth: .infinity)
+            }.buttonStyle(.plain).accessibilityIdentifier("setEditor.weightValue").accessibilityValue("\(weightText) \(config.unit.abbreviation)")
+            HStack(spacing: 10) {
+                adjustmentButton("− \(display(increment)) \(config.unit.abbreviation)") { draft.adjustWeight(by: -increment); onActivity(); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.minus")
+                adjustmentButton("+ \(display(increment)) \(config.unit.abbreviation)") { draft.adjustWeight(by: increment); onActivity(); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.plus")
             }
-        }
-        .padding()
-        .presentationDetents([.height(200)])
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                ForEach(ExpandedSetDraftModel.increments(for: config.unit), id: \.self) { value in
+                    Button(display(value)) { increment = value; Haptics.selection() }.buttonStyle(.bordered).tint(increment == value ? .green : .secondary)
+                        .frame(minHeight: 48).accessibilityIdentifier("setEditor.weight.increment.\(displayID(value))").accessibilityAddTraits(increment == value ? .isSelected : [])
+                }
+                Button("Type…") { typedWeight = weightText; keypadPresented = true }.buttonStyle(.bordered).frame(minHeight: 48).accessibilityIdentifier("setEditor.weight.type")
+            }
+            if isPR { Label("Would be a PR", systemImage: "trophy.fill").foregroundStyle(.orange).font(.subheadline.weight(.semibold)) }
+        }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var repsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Reps").font(.headline)
+            HStack(spacing: 12) {
+                adjustmentButton("−") { draft.adjustReps(by: -1); onActivity(); Haptics.selection() }.accessibilityLabel("Decrease reps").accessibilityIdentifier("setEditor.reps.minus")
+                Text("\(draft.reps)").scaledSystemFont(42, relativeTo: .title, weight: .bold, design: .rounded).monospacedDigit().frame(maxWidth: .infinity).accessibilityLabel("\(draft.reps) reps").accessibilityIdentifier("setEditor.reps.value")
+                adjustmentButton("+") { draft.adjustReps(by: 1); onActivity(); Haptics.selection() }.accessibilityLabel("Increase reps").accessibilityIdentifier("setEditor.reps.plus")
+            }
+        }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var effortSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Effort").font(.headline)
+            HStack(spacing: 0) {
+                ForEach(WatchEffortMode.allCases) { mode in
+                    Button(mode.displayName) { draft.selectMode(mode); onEffortMode(mode); onActivity(); Haptics.selection() }
+                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
+                        .background(draft.effortMode == mode ? Color.green.opacity(0.22) : .clear)
+                        .accessibilityIdentifier("setEditor.effort.\(mode.rawValue)")
+                        .accessibilityAddTraits(draft.effortMode == mode ? .isSelected : [])
+                }
+            }.background(.background, in: RoundedRectangle(cornerRadius: 10)).clipShape(RoundedRectangle(cornerRadius: 10))
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5), spacing: 8) {
+                Button("None") { draft.selectEffort(nil); onActivity(); Haptics.selection() }.buttonStyle(.bordered).tint(draft.effort == nil ? .green : .secondary).frame(minHeight: 48).accessibilityIdentifier("setEditor.effort.none").accessibilityAddTraits(draft.effort == nil ? .isSelected : [])
+                ForEach(effortValues, id: \.self) { value in Button("\(Int(value))") { draft.selectEffort(value); onActivity(); Haptics.selection() }.buttonStyle(.bordered).tint(draft.effort == value ? .green : .secondary).frame(minHeight: 48).accessibilityIdentifier("setEditor.effort.value.\(Int(value))").accessibilityAddTraits(draft.effort == value ? .isSelected : []) }
+            }
+            Text(effortDescription).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .center)
+        }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var footer: some View {
+        HStack(spacing: 10) {
+            Button("Cancel", action: onCancel).buttonStyle(.bordered).controlSize(.large).frame(minHeight: 56).accessibilityIdentifier("setEditor.cancel")
+            Button(action: { guard let result = draft.submit() else { return }; Haptics.setLogged(); onSave(SetDraft(weightString: weightText, unit: config.unit, reps: result.reps, rpe: result.rpe.map { Int($0) }, bodyweight: config.bodyweight, performerID: config.performerID)) }) {
+                Text(config.isEditing ? "Save changes" : "Save set").frame(maxWidth: .infinity)
+            }.buttonStyle(.borderedProminent).tint(.green).controlSize(.large).frame(maxWidth: .infinity, minHeight: 56).disabled(draft.hasSubmitted).overlay { if draft.hasSubmitted { ProgressView() } }.accessibilityIdentifier("setEditor.save")
+        }.padding(.horizontal, 20).padding(.vertical, 10).background(.bar)
+    }
+
+    private func adjustmentButton(_ title: String, action: @escaping () -> Void) -> some View { Button(title, action: action).font(.title3.weight(.bold)).buttonStyle(.borderedProminent).tint(.green).frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle()).padding(.vertical, 9) }
+    private func display(_ value: Double) -> String { value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value).replacingOccurrences(of: "0+$", with: "", options: .regularExpression) }
+    private func displayID(_ value: Double) -> String { display(value) }
+
+    private var keypad: some View {
+        NavigationStack { VStack(spacing: 12) { TextField("Weight", text: $typedWeight).keyboardType(.decimalPad).font(.largeTitle.monospacedDigit()).multilineTextAlignment(.center).textFieldStyle(.roundedBorder).padding(); if let keypadError { Text(keypadError).font(.caption).foregroundStyle(.red) }; ForEach([["1","2","3"],["4","5","6"],["7","8","9"],[".","0","⌫"]], id: \.self) { row in HStack { ForEach(row, id: \.self) { key in Button(key) { if key == "⌫" { if !typedWeight.isEmpty { typedWeight.removeLast() } } else if key == "." && !typedWeight.contains(".") { typedWeight += "." } else if key != "." { typedWeight += key } }.font(.title).frame(maxWidth: .infinity, minHeight: 56).buttonStyle(.bordered) } } }; Spacer() }.padding().navigationTitle(config.bodyweight ? "Enter added weight" : "Enter weight").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { if let value = Double(typedWeight), value.isFinite { draft.setWeight(value); keypadError = nil; onActivity(); keypadPresented = false } else { keypadError = "Enter a valid number" } } } } }
     }
 }

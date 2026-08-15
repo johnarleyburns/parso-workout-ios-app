@@ -41,30 +41,7 @@ struct ExerciseCardView: View {
             }
 
             ForEach(context.sets) { set in
-                if isInlineActive, inlineEditingSetID == set.setID, let cfg = inlineConfig {
-                    InlineSetEditorView(
-                        config: cfg,
-                        wouldBePR: wouldBePR,
-                        onSave: onSaveSet,
-                        onDelete: { onDeleteEditingSet() },
-                        onCancel: onCancelInline,
-                        onActivity: onActivity)
-                    .id("editor-\(cfg.id)")
-                } else {
-                    completedSetRow(set)
-                }
-                Divider()
-            }
-
-            if isInlineActive, inlineEditingSetID == nil, let cfg = inlineConfig {
-                InlineSetEditorView(
-                    config: cfg,
-                    wouldBePR: wouldBePR,
-                    onSave: onSaveSet,
-                    onDelete: nil,
-                    onCancel: onCancelInline,
-                    onActivity: onActivity)
-                .id("editor-\(cfg.id)")
+                completedSetRow(set)
                 Divider()
             }
 
@@ -73,7 +50,7 @@ struct ExerciseCardView: View {
                 Divider()
             }
 
-            if !isEditing, !isInlineActive || inlineEditingSetID != nil {
+            if !isEditing {
                 actionButtons
             }
         }

@@ -19,6 +19,9 @@ struct SessionView: View {
     @State private var inlineExerciseID: UUID?
     @State private var inlineExercise: Exercise?
     @State private var inlineEditingSetID: UUID?
+    @State private var setEditorRoute: SetEditorRoute?
+    @State private var pendingRepsOverride: Int?
+    @State private var lastEffortMode: WatchEffortMode = .rpe
     @State private var showWeightInfo = false
     @State private var showDumbbellInfo = false
     @State private var showKettlebellInfo = false
@@ -63,7 +66,6 @@ struct SessionView: View {
             return p.id
         }
     }
-
     var roster: [Person] {
         SessionRoster.roster(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
     }
@@ -100,19 +102,15 @@ struct SessionView: View {
     private func isBodyweight(_ exercise: Exercise) -> Bool {
         SessionViewModel.isBodyweight(exercise)
     }
-
     private var plannedOnlyNames: [String] {
         SessionViewModel.plannedOnlyNames(session: session)
     }
-
     private var isEmptySession: Bool {
         SessionViewModel.isEmptySession(session: session)
     }
-
     private var plan: WorkoutPlan? {
         session.planKey.flatMap { PlanCatalog.plan(forKey: $0) }
     }
-
     private func prescription(for name: String) -> String? {
         SessionViewModel.prescription(for: name, session: session, plan: plan, unit: settings.unit)
     }
@@ -122,12 +120,12 @@ struct SessionView: View {
     }
 
     // MARK: - Inline editor helpers
-
     private func openInlineEditor(for exercise: Exercise, editingSetID: UUID? = nil, repsOverride: Int? = nil) {
         inlineExerciseID = exercise.id
         inlineExercise = exercise
         inlineEditingSetID = editingSetID
-
+        pendingRepsOverride = repsOverride
+        setEditorRoute = editingSetID.map { .edit(exerciseID: exercise.id, setID: $0) } ?? .add(exerciseID: exercise.id)
         if !dumbbellInfoShown, case .dumbbell = exercise.equipmentValue {
             dumbbellInfoShown = true
             showDumbbellInfo = true
@@ -146,19 +144,16 @@ struct SessionView: View {
         guard let exerciseID = inlineExerciseID,
               let exercise = inlineExercise else { return nil }
         let cachedCtx = cache.state.contexts.first(where: { $0.exerciseID == exerciseID })
-
         let isEditing = inlineEditingSetID != nil
         let editingSet = isEditing ? session.orderedSets.first(where: { $0.id == inlineEditingSetID }) : nil
         // The edited set can vanish mid-edit (watch relay / cloud merge) — never force-unwrap it.
         if isEditing, editingSet == nil { return nil }
-
         let performerID: UUID? = isEditing
             ? (editingSet?.performedBy?.isMe ?? true ? nil : editingSet?.performedBy?.id)
             : nextPerson().flatMap { $0.isMe ? nil : $0.id }
 
         let pc = cachedCtx?.performerContexts.first { $0.performerID == performerID }
             ?? cachedCtx?.performerContexts.first { $0.isMe }
-
         let weight: String
         let hint: Double?
         if isEditing, let set = editingSet {
@@ -178,7 +173,6 @@ struct SessionView: View {
                 hint = nil
             }
         }
-
         let reps: Int
         if isEditing, let set = editingSet {
             reps = set.reps
@@ -186,12 +180,17 @@ struct SessionView: View {
             let loggedCount = session.orderedSets.filter {
                 $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID)
             }.count
-            reps = plannedReps(for: exercise, setIndex: loggedCount, performerID: performerID)
+            reps = pendingRepsOverride ?? plannedReps(for: exercise, setIndex: loggedCount, performerID: performerID)
         }
-
         let rpe: Int? = isEditing ? editingSet?.rpe.map { Int($0.rounded()) } : nil
         let bodyweight = isEditing ? (editingSet?.usesBodyweight ?? false) : isBodyweight(exercise)
-
+        let workingSets = session.orderedSets.filter { $0.exercise?.id == exercise.id && !$0.isWarmup }
+        let number = isEditing ? (workingSets.firstIndex(where: { $0.id == editingSet?.id }).map { $0 + 1 } ?? workingSets.count + 1) : workingSets.count + 1
+        let contextText: String? = {
+            guard !isEditing, let prior = workingSets.last else { return nil }
+            let effort = prior.rpe.map { " · RPE \(Int($0.rounded()))" } ?? ""
+            return "Last set \(Format.setLine(prior, unit: settings.unit))\(effort)"
+        }()
         return InlineEditorConfig(
             id: isEditing ? (editingSet?.id ?? UUID()) : UUID(),
             isEditing: isEditing,
@@ -203,7 +202,12 @@ struct SessionView: View {
             roster: rosterEntries,
             hasPartners: hasPartners,
             unit: settings.unit,
-            priorWeightHint: hint
+            priorWeightHint: hint,
+            exerciseName: exercise.name,
+            setNumberText: isEditing ? "Editing set \(number)" : "Set \(number) of \(max(number, session.plannedRepLadder.count))",
+            contextText: contextText,
+            recordedText: isEditing ? "Recorded" : nil,
+            effortMode: lastEffortMode
         )
     }
 
@@ -211,6 +215,8 @@ struct SessionView: View {
         inlineExerciseID = nil
         inlineExercise = nil
         inlineEditingSetID = nil
+        pendingRepsOverride = nil
+        setEditorRoute = nil
     }
 
     private func recordInlineSet(for exercise: Exercise, draft: SetDraft) {
@@ -274,7 +280,6 @@ struct SessionView: View {
     }
 
     // MARK: - Body
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -413,6 +418,16 @@ struct SessionView: View {
         .sheet(isPresented: $showWeightInfo) { weightInfoSheet }
         .sheet(isPresented: $showDumbbellInfo) { dumbbellInfoSheet }
         .sheet(isPresented: $showKettlebellInfo) { kettlebellInfoSheet }
+        .fullScreenCover(item: $setEditorRoute) { _ in
+            if let cfg = inlineEditorConfig(), let ex = inlineExercise {
+                InlineSetEditorView(config: cfg,
+                                    wouldBePR: { [cache] kg, reps in cache.state.wouldBePR(weightKg: kg, reps: reps, isWarmup: false, rule: settings.prRule, formula: settings.formula, for: ex.id) },
+                                    onSave: { draft in recordInlineSet(for: ex, draft: draft) },
+                                    onDelete: inlineEditingSetID == nil ? nil : { deleteInlineSet() },
+                                    onCancel: { closeInlineEditor() }, onActivity: { recordActivity() },
+                                    onEffortMode: { lastEffortMode = $0 })
+            } else { Color.clear }
+        }
         .fullScreenCover(isPresented: $coolingDown) {
             GuidedPhaseOverlay(
                 title: "Cool Down",
@@ -518,7 +533,6 @@ struct SessionView: View {
     }
 
     // MARK: - Exercise card (using cache + ExerciseCardView)
-
     @ViewBuilder
     private func exerciseCardView(for ctx: SessionRenderModel.ExerciseContext) -> some View {
         let isActive = inlineExerciseID == ctx.exerciseID
@@ -587,7 +601,6 @@ struct SessionView: View {
     }
 
     // MARK: - Toolbar
-
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if active.strengthSession?.id == session.id {
@@ -675,19 +688,7 @@ struct SessionView: View {
             } else {
                 Text("Planned — tap to log").font(.caption).foregroundStyle(.secondary)
             }
-            if let ex = inlineExercise, ex.name == name, let cfg = inlineEditorConfig() {
-                InlineSetEditorView(
-                    config: cfg,
-                    wouldBePR: { [cache] kg, reps in
-                        cache.state.wouldBePR(weightKg: kg, reps: reps, isWarmup: false,
-                                              rule: settings.prRule, formula: settings.formula,
-                                              for: ex.id)
-                    },
-                    onSave: { draft in recordInlineSet(for: ex, draft: draft) },
-                    onDelete: inlineEditingSetID != nil ? { deleteInlineSet() } : nil,
-                    onCancel: { closeInlineEditor() },
-                    onActivity: { recordActivity() })
-            } else {
+            if inlineExercise == nil || inlineExercise?.name != name {
                 Button {
                     if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
                         openInlineEditor(for: ex)

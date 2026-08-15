@@ -33,7 +33,6 @@ struct TrainingProgressView: View {
                     strengthCard
                     PRTimelineView(sessions: activeSessions)
                     ConsistencyHeatmapView(sessions: activeSessions)
-                    volumeCard
                     intensityCard
                     HStack(alignment: .top, spacing: 12) { effortCard; frequencyCard }
                     testResultsCard
@@ -47,7 +46,8 @@ struct TrainingProgressView: View {
             .navigationDestination(for: ProgressRoute.self) { _ in HistoryView(path: $path) }
             .navigationDestination(for: HistorySummaryRoute.self) { route in
                 switch route {
-                case .strength(let s): WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
+                case .strength(let s): WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) }, onExercise: { id in path.append(HistorySummaryRoute.strengthFocused(s, id)) })
+                case .strengthFocused(let s, let id): SessionView(session: s, initiallyExpandedExerciseID: id)
                 case .cardio(let c):   CardioDetailView(workout: c)
                 }
             }
@@ -164,31 +164,6 @@ struct TrainingProgressView: View {
                 .font(.caption).foregroundStyle(.orange)
         case .flat:
             Label("flat", systemImage: "minus").font(.caption).foregroundStyle(.secondary)
-        }
-    }
-
-    // MARK: - §3 Weekly volume
-
-    @ViewBuilder private var volumeCard: some View {
-        let parts = BodyPart.allCases.filter { (facts.weeklySetsByPart[$0] ?? 0) > 0 }
-        card(title: "Weekly volume", subtitle: "working sets per muscle vs. experience-scaled ranges",
-             citation: CitationRegistry.volumeDoseResponse, tint: .teal) {
-            if parts.isEmpty {
-                emptyNote("Once you log resistance sets, each muscle's weekly volume appears against an evidence-informed starting range and high-end range for your experience level.")
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(parts, id: \.self) { part in
-                        VolumeLandmarkBar(
-                            part: part,
-                            sets: facts.weeklySetsByPart[part] ?? 0,
-                            bands: VolumeLandmarks.bands(for: part, experience: settings.experienceLevel),
-                            zone: VolumeLandmarks.zone(sets: facts.weeklySetsByPart[part] ?? 0,
-                                                       for: part, experience: settings.experienceLevel))
-                    }
-                }
-                Text("Bands scale with your experience level.")
-                    .font(.caption2).foregroundStyle(.tertiary).padding(.top, 8)
-            }
         }
     }
 

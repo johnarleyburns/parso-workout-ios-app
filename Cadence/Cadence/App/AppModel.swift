@@ -18,7 +18,7 @@ import CadenceFixtures
 ///
 /// WCSession activation is deferred to `activateWCSession()`, called from
 /// `CadenceApp.task{}` so it never blocks app launch.
-@Observable
+@MainActor @Observable
 final class AppModel: NSObject, @unchecked Sendable {
     private static let liveWatchHREnabled = true
 
@@ -31,6 +31,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     private(set) var watchActive: Bool = false
     /// When set, the watch was told to start but never confirmed.
     private(set) var watchError: String?
+    let watchHRRelay: WatchHRRelay
     private var watchTimeout: Timer?
 
     /// Cached once at launch — avoids hitting `WCSession.default.isWatchAppInstalled`
@@ -72,6 +73,7 @@ final class AppModel: NSObject, @unchecked Sendable {
 
         self.hrm = HeartRateMonitor(simulated: uiTest)
         self.location = LocationTracker(simulated: uiTest)
+        self.watchHRRelay = WatchHRRelay()
 
         super.init()
     }
@@ -164,22 +166,38 @@ final class AppModel: NSObject, @unchecked Sendable {
             return
         }
 
-        session.sendMessage([WatchSync.Key.command: "start_workout", "type": rawType],
-                            replyHandler: nil,
+        let requestID = UUID()
+        watchHRRelay.begin(requestID: requestID)
+        session.sendMessage([WatchSync.Key.command: "start_workout", "type": rawType, "requestID": requestID.uuidString],
+                            replyHandler: { [weak self] reply in
+                                Task { @MainActor in
+                                    guard let self,
+                                          (reply["requestID"] as? String).flatMap(UUID.init(uuidString:)) == requestID,
+                                          let accepted = reply["accepted"] as? Bool else { return }
+                                    if accepted {
+                                        self.watchHRRelay.acknowledged()
+                                    } else {
+                                        let reason = (reply["rejection"] as? String) ?? "unavailable"
+                                        self.watchHRRelay.fail("Apple Watch rejected heart-rate monitoring (\(reason))")
+                                    }
+                                }
+                            },
                             errorHandler: { [weak self] error in
             Task { @MainActor [weak self] in
-                self?.watchActive = false
-                self?.watchError = "Watch connection failed — make sure Cladiron is open on your Watch"
-                self?.watchTimeout?.invalidate()
+                guard let self else { return }
+                self.watchActive = false
+                self.watchError = "Watch connection failed — make sure Cladiron is open on your Watch"
+                self.watchTimeout?.invalidate()
             }
         })
-        watchActive = true
+        watchActive = false
         watchTimeout = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard self?.watchActive == true else { return }
-                self?.watchActive = false
-                self?.watchError = "No heart rate received — check that Cladiron is running on your Watch"
-                self?.watchTimeout?.invalidate()
+                guard let self, self.watchHRRelay.freshBPM == nil else { return }
+                self.watchHRRelay.timeout()
+                self.watchActive = false
+                self.watchError = "No heart rate received — check that Cladiron is running on your Watch"
+                self.watchTimeout?.invalidate()
             }
         }
     }
@@ -187,8 +205,11 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Tells the Apple Watch to end the `HKWorkoutSession` and stop streaming.
     func stopWatchWorkout() {
         watchTimeout?.invalidate(); watchTimeout = nil
+        watchHRRelay.cancel()
         guard watchAvailable, let session = wcSession else { return }
-        session.sendMessage([WatchSync.Key.command: "stop_workout"],
+        var message: [String: Any] = [WatchSync.Key.command: "stop_workout"]
+        if let requestID = watchHRRelay.activeRequestID { message["requestID"] = requestID.uuidString }
+        session.sendMessage(message,
                             replyHandler: nil, errorHandler: nil)
         watchActive = false
         watchError = nil
@@ -257,7 +278,7 @@ final class AppModel: NSObject, @unchecked Sendable {
 
 // MARK: - WCSessionDelegate (FR-8)
 
-extension AppModel: WCSessionDelegate {
+extension AppModel: @preconcurrency WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if activationState == .activated {
             let installed = session.isWatchAppInstalled
@@ -301,7 +322,9 @@ extension AppModel: WCSessionDelegate {
             return
         }
 
-        guard let bpm = message["bpm"] as? Double else {
+        guard let bpm = message["bpm"] as? Double,
+              let requestIDString = message["requestID"] as? String,
+              let requestID = UUID(uuidString: requestIDString) else {
             replyHandler?(["ack": false])
             return
         }
@@ -309,7 +332,10 @@ extension AppModel: WCSessionDelegate {
             guard let self else { return }
             self.watchTimeout?.invalidate(); self.watchTimeout = nil
             self.watchError = nil
-            self.hrm.injectExternalBPM(bpm)
+            if self.watchHRRelay.receive(bpm: Int(bpm), requestID: requestID) {
+                self.watchActive = true
+                self.hrm.injectExternalBPM(bpm)
+            }
         }
         replyHandler?(["ack": true])
     }

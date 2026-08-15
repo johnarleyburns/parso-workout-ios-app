@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Active workout conflict — iPhone mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a class="active" href="10-active-workout-conflict.html">One workout</a><a href="11-watch-hr-open.html">Watch HR</a><a href="13-set-editor-grid.html">Set editor</a><a href="15-interval-timing.html">Intervals</a><a href="09-watch-launch-recovery.html">Watch launch</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">Field fix 02 · iPhone exclusivity</div><h1>Starting is gated; Resume is never merely decorative.</h1><p>Every live-workout entry point consults one coordinator before it creates a session or starts sensors. If a workout exists, the person must resume it or explicitly cancel it first.</p></header>
+  <section class="stage">
+    <div class="phone"><div class="screen"><div class="island"></div><div class="status"><span>9:41</span><span>●●● Wi-Fi 82%</span></div>
+      <div class="app-scroll"><div class="app-content">
+        <div class="nav-row"><h2>Today</h2><span class="spacer"></span><button class="icon-button">⚙︎</button></div><div class="date">Saturday, August 15</div>
+        <div class="card green padded"><span class="pill green">IN PROGRESS</span><h3 style="margin:8px 0 2px">Upper Body</h3><div class="row-sub">24:08 · 10 sets logged</div><button class="button primary wide" style="margin-top:11px">Resume Workout</button></div>
+        <div class="button-row" style="margin-top:12px"><button class="button primary">▶ Start Workout</button><button class="button secondary">✎ Log Workout</button></div>
+        <div class="section-title">This Week</div><div class="card soft padded"><strong>2 of 3 strength days</strong><div class="progress-track"><span style="width:67%"></span></div></div>
+      </div></div>
+      <div class="scrim"><div class="action-sheet"><h3>Workout already in progress</h3><p><b>Upper Body</b> has 10 sets logged. Resume it, or cancel it before starting something else.</p><button class="button primary wide">Resume Upper Body</button><button class="button destructive wide">Cancel Previous Workout…</button><button class="button wide">Not Now</button></div></div>
+    </div></div>
+    <aside class="notes">
+      <div class="note-card"><h2>Two gates, one rule</h2><p>Tap Start on Home and show this decision immediately. Also enforce the same rule at the final launch boundary for Quick Start, Coach, Previous, Plan, History reuse, cardio, swim, HIIT, boxing, and any future deep link. The second gate prevents double taps and route races.</p></div>
+      <div class="note-card"><h2>Cancel is recoverable</h2><p><b>Cancel Previous Workout…</b> opens a destructive confirmation naming the workout and its logged-set count. Confirming soft-deletes a strength session (restorable from History) or runs the modality’s explicit discard/stop cleanup, then continues the pending start intent. Never create the replacement first.</p></div>
+      <div class="note-card"><h2>Resume wins safely</h2><p>Resume discards the pending start intent and presents the existing workout with its original clock, sets, and sensor state. Not Now changes nothing. Buttons remain idempotent under rapid or repeated taps.</p></div>
+      <div class="note-card"><h2>Global meaning</h2><p>“One workout” includes live strength, outdoor/timer cardio, swim, and interval sessions started on iPhone. Manual past logging is not a live workout and remains available. A single coordinator/lease owns this truth; individual screens may not infer it from presentation state.</p></div>
+    </aside>
+  </section>
+</main></body></html>

@@ -58,11 +58,13 @@ public final class IntervalRunner {
     public var phaseKind: IntervalPhaseKind? { current?.phase.kind }
     public var phaseLabel: String { current?.phase.label ?? (isComplete ? "Done" : "") }
     public var phaseRemaining: TimeInterval { current?.phaseRemaining ?? 0 }
+    public var phaseDuration: TimeInterval { current.map { $0.phase.duration + (phaseExtensions[$0.index] ?? 0) } ?? 0 }
     public var overallRemaining: TimeInterval { current?.overallRemaining ?? 0 }
 
     public var colorState: FullScreenColorState {
         guard let c = current else { return .neutral }
-        return IntervalSignal.colorState(phase: c.phase.kind, remaining: c.phaseRemaining)
+        return IntervalSignal.colorState(phase: c.phase.kind, remaining: c.phaseRemaining,
+                                         phaseDuration: c.phase.duration + (phaseExtensions[c.index] ?? 0))
     }
 
     public func pause() { clock.pause(now: Date()) }

@@ -147,12 +147,6 @@ struct SettingsView: View {
                     }
                     .accessibilityIdentifier("settings.proStatus")
                 } else {
-                    Toggle("Hide Coach offers", isOn: $settings.coachHidden)
-                        .accessibilityIdentifier("settings.coach.hideOffers")
-                        .onChange(of: settings.coachHidden) { _, hidden in
-                            if !hidden { settings.coachIntroImpressions = 0 }
-                        }
-
                     Button {
                         Task { await store.restore() }
                     } label: {

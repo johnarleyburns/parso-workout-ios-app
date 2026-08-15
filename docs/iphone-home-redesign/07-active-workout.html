@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Active Workout — iPhone mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a href="02-select-workout.html">Select Workout</a><a href="03-log-workout.html">Log</a><a href="04-plan.html">Plan</a><a href="05-suggestions-expanded.html">Suggestions</a><a href="06-workout-summary.html">Summary</a><a class="active" href="07-active-workout.html">Active</a><a href="08-review-workout.html">Review</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">View 07 · Active strength entry</div><h1>One exercise open at a time.</h1><p>The current exercise expands automatically and owns the set-entry controls. Completed and upcoming exercises collapse to compact, readable rows, eliminating long-scroll hunting during training.</p></header>
+  <section class="stage">
+    <div class="phone"><div class="screen"><div class="island"></div><div class="status"><span>9:41</span><span>●●● Wi-Fi 82%</span></div>
+      <div class="app-scroll sheet-scroll"><div class="app-content">
+        <div class="nav-row inline"><span class="icon-button" style="display:grid;place-items:center;font-size:14px">‹ Home</span><h2>Upper Body</h2><button class="icon-button">•••</button></div>
+        <div class="card soft padded" style="margin:7px 0 12px"><div style="display:flex;align-items:baseline"><span class="pill green">Active</span><span class="spacer"></span><strong style="font-size:28px;font-variant-numeric:tabular-nums">24:08</strong></div><div class="row-sub">3 of 4 exercises · 10 of 14 sets</div></div>
+
+        <div class="exercise-card"><div class="exercise-head"><span class="round-icon green">✓</span><span class="row-main"><span class="row-title">Bench Press</span><span class="count">4 of 4 sets · top 135 lb</span></span><span class="chevron">⌄</span></div></div>
+        <div class="exercise-card"><div class="exercise-head"><span class="round-icon blue">2</span><span class="row-main"><span class="row-title">Seated Cable Row</span><span class="count">4 of 4 sets · top 125 lb</span></span><span class="chevron">⌄</span></div></div>
+
+        <div class="exercise-card" style="border-color:#9dddb0;box-shadow:0 0 0 2px var(--green-soft)">
+          <div class="exercise-head"><span class="round-icon green">▶</span><span class="row-main"><span class="row-title">Machine Fly</span><span class="count">Set 3 of 3 · current exercise</span></span><span class="chevron">⌃</span></div>
+          <div class="exercise-expanded">
+            <div class="current-label">CURRENT EXERCISE · Last time 90 lb × 12, 11, 10</div>
+            <table class="set-table"><thead><tr><th>Set</th><th>Weight</th><th>Reps</th><th>RPE</th><th></th></tr></thead><tbody>
+              <tr><td>1</td><td>100 lb</td><td>12</td><td>8</td><td>✓</td></tr>
+              <tr><td>2</td><td>100 lb</td><td>11</td><td>8.5</td><td>✓</td></tr>
+              <tr class="current"><td>3</td><td>100 lb</td><td>10</td><td>—</td><td>＋</td></tr>
+            </tbody></table>
+            <div class="exercise-actions"><button class="button">＋ Add Set</button><button class="button secondary">↻ Repeat</button></div>
+          </div>
+        </div>
+
+        <div class="exercise-card"><div class="exercise-head"><span class="round-icon">4</span><span class="row-main"><span class="row-title">Triceps Pushdown</span><span class="count">3 planned sets · not started</span></span><span class="chevron">⌄</span></div></div>
+        <button class="button wide secondary">＋ Add Exercise</button>
+        <div class="button-row" style="margin-top:10px"><button class="button secondary">Ⅱ Pause</button><button class="button" style="color:var(--red)">End Workout</button></div>
+      </div></div>
+    </div></div>
+    <aside class="notes">
+      <div class="note-card"><h2>Active-mode default</h2><p>The current exercise is the only expanded card. The current set row is highlighted. Saving a set keeps that exercise open while it still has pending sets; completing its final planned set advances and expands the next unfinished exercise.</p></div>
+      <div class="note-card"><h2>Manual control</h2><p>Tapping any collapsed header expands it and collapses the previous card. Tapping the open header collapses it, allowing a zero-open state. The user’s manual choice persists until they log a set in another exercise or explicitly open another card.</p></div>
+      <div class="note-card"><h2>Compact summary</h2><p>Collapsed rows expose state, progress, and top load—not only the name. The whole header is a minimum 44 pt button with expanded/collapsed accessibility state.</p></div>
+      <div class="note-card"><h2>Set editing</h2><p>Tapping a completed or pending set still opens the existing full-screen set editor. Accordion behavior changes the exercise container, not set storage or entry semantics.</p></div>
+    </aside>
+  </section>
+</main></body></html>

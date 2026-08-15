@@ -8,6 +8,7 @@ import CadenceFeatures
 /// value type needn't be `Hashable`.
 enum HistorySummaryRoute: Hashable {
     case strength(WorkoutSession)
+    case strengthFocused(WorkoutSession, UUID)
     case cardio(CardioWorkout)
 }
 
@@ -171,9 +172,9 @@ struct HistoryView: View {
     // MARK: Actions
 
     private func reuse(_ past: WorkoutSession) {
+        guard active.liveWorkout.active == nil else { return }
         if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
-            active.startStrength(s)
-            path.append(s)
+            if active.startStrength(s) { path.append(s) } else { s.deletedAt = Date() }
         }
     }
 

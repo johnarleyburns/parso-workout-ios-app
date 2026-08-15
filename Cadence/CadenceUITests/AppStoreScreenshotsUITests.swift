@@ -56,7 +56,7 @@ final class AppStoreScreenshotsUITests: CadenceUITestCase {
         try capture("06-progress", app: progressApp)
 
         let planningApp = launchSeededApp(["coachCyclePreference"])
-        XCTAssertTrue(planningApp.scrollToHittableAndTap("home.planning"), "open Programs")
+        XCTAssertTrue(planningApp.scrollToHittableAndTap("tab.plan"), "open Plan")
         XCTAssertTrue(planningApp.descendants(matching: .any)["planning"].waitForExistence(timeout: 10),
                       "Programs screen")
         try capture("07-programs", app: planningApp)

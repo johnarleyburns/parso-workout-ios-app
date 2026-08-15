@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Watch launch recovery — mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a href="10-active-workout-conflict.html">One workout</a><a href="11-watch-hr-open.html">Watch HR</a><a href="13-set-editor-grid.html">Set editor</a><a href="15-interval-timing.html">Intervals</a><a class="active" href="09-watch-launch-recovery.html">Watch launch</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">Field fix 01 · Watch launch</div><h1>The Watch must always reach a visible state.</h1><p>Normal launch goes straight to the Watch workout menu. If its local SwiftData file cannot open after an update, Cladiron preserves the failing files, creates a fresh local store, and explains the recovery instead of terminating.</p></header>
+  <section class="watch-grid">
+    <div><div class="watch"><div class="watch-screen"><div class="watch-icon">C</div><h2>Cladiron</h2><p>Ready</p><div class="watch-menu"><div>▰ Strength</div><div>♥ Cardio</div><div>⚡ HIIT &amp; Boxing</div></div></div></div><p style="color:#aeb8c3;font-size:12px;text-align:center">NORMAL · root visible</p></div>
+    <div><div class="watch"><div class="watch-screen watch-recovery"><div style="font-size:30px">↻</div><h2>Getting ready</h2><p>A Watch-only data file could not be opened. Your iPhone data is not affected.</p><button class="watch-button">Try Again</button><button class="watch-button secondary">Sync from iPhone</button></div></div><p style="color:#aeb8c3;font-size:12px;text-align:center">RECOVERY · never crash/close</p></div>
+    <aside class="notes">
+      <div class="note-card"><h2>Required bootstrap order</h2><p>Open normal store → on failure log the exact error and quarantine only <code>default.store</code>, <code>-shm</code>, and <code>-wal</code> → retry a new persistent store → if that also fails, render this recovery surface over an in-memory container. There is no <code>fatalError</code> launch path.</p></div>
+      <div class="note-card"><h2>Data wording</h2><p>Do not claim all Watch data is safe: an unsynced Watch workout may exist in the quarantined store. State only that iPhone data is unaffected. Keep the quarantined files for diagnostics/recovery until a separately specified retention policy exists.</p></div>
+      <div class="note-card"><h2>Proof before fix</h2><p>Collect the device crash report and launch logs. The current leading cause is the model-container <code>fatalError</code>, likely exposed by an incompatible Watch-local schema after upgrade. If the crash stack differs, preserve the same nonfatal UX but fix the proven launch stage.</p></div>
+      <div class="note-card"><h2>Completion evidence</h2><p>Unit-test fail-first and fail-twice bootstrap paths. Watch smoke-test cold launch, five relaunches, and an upgrade from the prior build with existing data. The root or recovery identifier must remain visible for at least 10 seconds.</p></div>
+    </aside>
+  </section>
+</main></body></html>

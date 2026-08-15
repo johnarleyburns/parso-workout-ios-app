@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Workout Summary — iPhone mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a href="02-select-workout.html">Select Workout</a><a href="03-log-workout.html">Log</a><a href="04-plan.html">Plan</a><a href="05-suggestions-expanded.html">Suggestions</a><a class="active" href="06-workout-summary.html">Summary</a><a href="07-active-workout.html">Active</a><a href="08-review-workout.html">Review</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">View 06 · Strength workout summary</div><h1>Exercise rows now lead somewhere.</h1><p>The summary remains a scan-friendly roll-up. Each exercise is a full-width navigation target; tapping Machine Fly opens the normal workout review with Machine Fly expanded.</p></header>
+  <section class="stage">
+    <div class="phone"><div class="screen"><div class="island"></div><div class="status"><span>9:41</span><span>●●● Wi-Fi 82%</span></div>
+      <div class="app-scroll sheet-scroll"><div class="app-content">
+        <div class="nav-row inline"><span class="icon-button" style="display:grid;place-items:center;color:var(--blue);font-size:14px">‹ Home</span><h2>Summary</h2><button class="icon-button" style="font-size:14px">Edit</button></div>
+        <div style="font-size:34px;margin-top:12px">▰</div><h3 style="font-size:26px;margin:5px 0 3px">Upper Body</h3><div class="date">Aug 14 at 8:42 AM</div>
+        <div class="summary-grid"><div class="summary-cell"><div class="label">Duration</div><strong>43:18</strong></div><div class="summary-cell"><div class="label">Total volume</div><strong>7,420 lb</strong></div><div class="summary-cell"><div class="label">Sets</div><strong>14</strong></div><div class="summary-cell"><div class="label">Total reps</div><strong>126</strong></div></div>
+        <div class="section-title" style="font-size:18px">Exercises</div>
+        <div class="card">
+          <a class="row" href="08-review-workout.html" style="color:inherit;text-decoration:none"><span class="row-main"><span class="row-title">Bench Press</span><span class="row-sub">4 sets · reps 8, 8, 7, 6 · top 135 lb</span></span><span class="chevron">›</span></a>
+          <a class="row" href="08-review-workout.html" style="color:inherit;text-decoration:none"><span class="row-main"><span class="row-title">Machine Fly</span><span class="row-sub">3 sets · reps 12, 11, 10 · top 100 lb</span></span><span class="chevron">›</span></a>
+          <a class="row" href="08-review-workout.html" style="color:inherit;text-decoration:none"><span class="row-main"><span class="row-title">Seated Cable Row</span><span class="row-sub">4 sets · reps 10, 10, 9, 8 · top 125 lb</span></span><span class="chevron">›</span></a>
+          <a class="row" href="08-review-workout.html" style="color:inherit;text-decoration:none"><span class="row-main"><span class="row-title">Triceps Pushdown</span><span class="row-sub">3 sets · reps 15, 13, 12 · top 50 lb</span></span><span class="chevron">›</span></a>
+        </div>
+        <div class="section-kicker" style="margin-top:9px">Tap an exercise to see every set’s weight, reps, and RPE.</div>
+      </div></div>
+    </div></div>
+    <aside class="notes">
+      <div class="note-card"><h2>Discoverable drill-in</h2><p>The chevron and footer explain that exercise cards are actionable. Do not expand detailed rows inside Summary; it should remain compact and continue to support partners, warm-up/cool-down, cardio, interval, HR, and route sections.</p></div>
+      <div class="note-card"><h2>Route identity</h2><p>Summary must carry the source <code>WorkoutSession.ID</code> plus the tapped <code>Exercise.ID</code>. A name-only <code>WorkoutSummaryData.ExerciseLine</code> is insufficient when exercises can be renamed or share names.</p></div>
+      <div class="note-card"><h2>Destination</h2><p>Push the existing <code>SessionView</code> in review/edit mode with a focus route. This avoids creating a second detail screen and guarantees the user sees the same set data and editing semantics as the normal workout.</p></div>
+    </aside>
+  </section>
+</main></body></html>

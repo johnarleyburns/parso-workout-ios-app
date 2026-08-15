@@ -7,6 +7,7 @@ struct SessionView: View {
     @Bindable var session: WorkoutSession
     var isManualLog: Bool = false
     var onDone: (() -> Void)? = nil
+    var initiallyExpandedExerciseID: UUID? = nil
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
@@ -17,8 +18,10 @@ struct SessionView: View {
     @State private var timers = WorkoutTimersModel()
     @State private var pickerPresented = false
     @State private var inlineExerciseID: UUID?
+    @State private var expandedExerciseID: UUID?
     @State private var inlineExercise: Exercise?
     @State private var inlineEditingSetID: UUID?
+    @State private var setEditorIdentity = UUID()
     @State private var setEditorRoute: SetEditorRoute?
     @State private var pendingRepsOverride: Int?
     @State private var lastEffortMode: WatchEffortMode = .rpe
@@ -41,17 +44,14 @@ struct SessionView: View {
     @State private var watchdog = IdleWatchdog()
     @State private var idlePromptShown = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var usePreviousPresented = false
-    /// Phase E: unified swap target — dismissal never nils the payload.
     @State private var swapTarget: ExerciseSwap.SwapTarget?
     @State private var coolingDown = false
     @State private var coolDownConfirm = false
     private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     @State private var hrSamples: [HRSamplePoint] = []
-    /// Perf cache (launch-blockers Phase 2): rebuilds only when the signature
-    /// (set count, order, roster, PR rule) changes — not on keystrokes.
     @State private var cache = SessionHistoryCache()
-    // MARK: - Computed properties
     private var refreshSignature: SessionRenderModel.Signature {
         SessionRenderModel.signature(session: session, prRule: settings.prRule, formula: settings.formula)
     }
@@ -66,6 +66,7 @@ struct SessionView: View {
             return p.id
         }
     }
+
     var roster: [Person] {
         SessionRoster.roster(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
     }
@@ -102,6 +103,7 @@ struct SessionView: View {
     private func isBodyweight(_ exercise: Exercise) -> Bool {
         SessionViewModel.isBodyweight(exercise)
     }
+
     private var plannedOnlyNames: [String] {
         SessionViewModel.plannedOnlyNames(session: session)
     }
@@ -119,11 +121,11 @@ struct SessionView: View {
         SessionViewModel.isPrescribedMovement(name, session: session)
     }
 
-    // MARK: - Inline editor helpers
     private func openInlineEditor(for exercise: Exercise, editingSetID: UUID? = nil, repsOverride: Int? = nil) {
         inlineExerciseID = exercise.id
         inlineExercise = exercise
         inlineEditingSetID = editingSetID
+        setEditorIdentity = editingSetID ?? UUID()
         pendingRepsOverride = repsOverride
         setEditorRoute = editingSetID.map { .edit(exerciseID: exercise.id, setID: $0) } ?? .add(exerciseID: exercise.id)
         if !dumbbellInfoShown, case .dumbbell = exercise.equipmentValue {
@@ -136,17 +138,12 @@ struct SessionView: View {
         }
         recordActivity()
     }
-
-    /// Builds the inline editor config from the cache + current session state.
-    /// The cache only covers exercises with logged sets, so a planned-only card
-    /// (first set of the session) falls back to direct history lookups.
     private func inlineEditorConfig() -> InlineEditorConfig? {
         guard let exerciseID = inlineExerciseID,
               let exercise = inlineExercise else { return nil }
         let cachedCtx = cache.state.contexts.first(where: { $0.exerciseID == exerciseID })
         let isEditing = inlineEditingSetID != nil
         let editingSet = isEditing ? session.orderedSets.first(where: { $0.id == inlineEditingSetID }) : nil
-        // The edited set can vanish mid-edit (watch relay / cloud merge) — never force-unwrap it.
         if isEditing, editingSet == nil { return nil }
         let performerID: UUID? = isEditing
             ? (editingSet?.performedBy?.isMe ?? true ? nil : editingSet?.performedBy?.id)
@@ -192,7 +189,7 @@ struct SessionView: View {
             return "Last set \(Format.setLine(prior, unit: settings.unit))\(effort)"
         }()
         return InlineEditorConfig(
-            id: isEditing ? (editingSet?.id ?? UUID()) : UUID(),
+            id: isEditing ? (editingSet?.id ?? setEditorIdentity) : setEditorIdentity,
             isEditing: isEditing,
             weight: weight,
             reps: reps,
@@ -210,7 +207,6 @@ struct SessionView: View {
             effortMode: lastEffortMode
         )
     }
-
     private func closeInlineEditor() {
         inlineExerciseID = nil
         inlineExercise = nil
@@ -218,7 +214,6 @@ struct SessionView: View {
         pendingRepsOverride = nil
         setEditorRoute = nil
     }
-
     private func recordInlineSet(for exercise: Exercise, draft: SetDraft) {
         let kg = SessionViewModel.canonicalKg(input: draft.weightString, unit: draft.unit,
                                               plateRounding: settings.plateRounding)
@@ -236,31 +231,25 @@ struct SessionView: View {
         }
         closeInlineEditor()
     }
-
     private func deleteInlineSet() {
         guard let setID = inlineEditingSetID,
               let set = session.orderedSets.first(where: { $0.id == setID }) else { return }
         try? WorkoutRepository.deleteSet(set, in: context)
         closeInlineEditor()
     }
-
     private func people(for id: UUID?) -> Person? {
         guard let id else { return nil }
         return allPeople.first { $0.id == id }
     }
-
     private func exerciseForID(_ id: UUID) -> Exercise? {
         session.exercisesInOrder.first { $0.id == id }
     }
-
     private func setPerformedBy(_ set: SetEntry, performerID: UUID?) -> Bool {
         SessionViewModel.setPerformedBy(set, performerID: performerID)
     }
-
     private func setPerformedBy(_ set: SetEntry, person: Person) -> Bool {
         person.isMe ? set.isOwnerSet : (set.performedBy?.id == person.id)
     }
-
     private func plannedReps(for exercise: Exercise, setIndex: Int, performerID: UUID?) -> Int {
         let currentReps = session.orderedSets
             .filter { $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID) }
@@ -279,7 +268,6 @@ struct SessionView: View {
             lastLoggedReps: lastLogged)
     }
 
-    // MARK: - Body
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -312,6 +300,7 @@ struct SessionView: View {
 
                 ForEach(cache.state.contexts, id: \.exerciseID) { ctx in
                     exerciseCardView(for: ctx)
+                        .id(ctx.exerciseID)
                 }
                 ForEach(plannedOnlyNames, id: \.self) { name in
                     plannedCard(name)
@@ -371,11 +360,22 @@ struct SessionView: View {
             }
         }
         .keepAwake(!isManualLog)
-        .simultaneousGesture(TapGesture().onEnded { recordActivity() })
         .task(id: refreshSignature) {
             cache.refresh(signature: refreshSignature) {
                 SessionRenderModel.build(session: session, prRule: settings.prRule,
                                          formula: settings.formula, allPeople: allPeople)
+            }
+            if expandedExerciseID == nil {
+                expandedExerciseID = initiallyExpandedExerciseID
+                    ?? cache.state.contexts.first(where: { $0.pendingCount > 0 })?.exerciseID
+                    ?? (active.strengthSession?.id == session.id ? cache.state.contexts.first?.exerciseID : nil)
+            }
+        }
+        .onAppear {
+            if expandedExerciseID == nil {
+                expandedExerciseID = initiallyExpandedExerciseID
+                    ?? cache.state.contexts.first(where: { $0.pendingCount > 0 })?.exerciseID
+                    ?? (active.strengthSession?.id == session.id ? cache.state.contexts.first?.exerciseID : nil)
             }
         }
         .sheet(isPresented: $pickerPresented) {
@@ -409,6 +409,11 @@ struct SessionView: View {
         }
         .sheet(isPresented: $managePartnersPresented) { managePartnersSheet }
         .sheet(isPresented: $addPartnerPresented) { addPartnerSheet }
+        .onChange(of: addPartnerPresented) { _, presented in
+            guard !presented, inlineExercise != nil else { return }
+            setEditorRoute = inlineEditingSetID.map { .edit(exerciseID: inlineExercise!.id, setID: $0) }
+                ?? .add(exerciseID: inlineExercise!.id)
+        }
         .sheet(isPresented: $usePreviousPresented) {
             PreviousWorkoutPicker(excluding: session) { past in
                 _ = try? WorkoutRepository.copyWorkout(from: past, into: session, in: context)
@@ -425,7 +430,8 @@ struct SessionView: View {
                                     onSave: { draft in recordInlineSet(for: ex, draft: draft) },
                                     onDelete: inlineEditingSetID == nil ? nil : { deleteInlineSet() },
                                     onCancel: { closeInlineEditor() }, onActivity: { recordActivity() },
-                                    onEffortMode: { lastEffortMode = $0 })
+                                    onEffortMode: { lastEffortMode = $0 },
+                                    onAddPartner: { setEditorRoute = nil; addPartnerPresented = true })
             } else { Color.clear }
         }
         .fullScreenCover(isPresented: $coolingDown) {
@@ -532,7 +538,6 @@ struct SessionView: View {
         }
     }
 
-    // MARK: - Exercise card (using cache + ExerciseCardView)
     @ViewBuilder
     private func exerciseCardView(for ctx: SessionRenderModel.ExerciseContext) -> some View {
         let isActive = inlineExerciseID == ctx.exerciseID
@@ -546,6 +551,16 @@ struct SessionView: View {
             unit: settings.unit,
             prRule: settings.prRule,
             prescriptionText: exercise.map { prescription(for: $0.name) } ?? nil,
+            isExpanded: expandedExerciseID == ctx.exerciseID,
+            isCurrent: inlineExerciseID == ctx.exerciseID,
+            compactSummary: compactSummary(for: ctx),
+            onToggleExpansion: {
+                if reduceMotion {
+                    expandedExerciseID = expandedExerciseID == ctx.exerciseID ? nil : ctx.exerciseID
+                } else { withAnimation(.easeInOut(duration: 0.18)) {
+                    expandedExerciseID = expandedExerciseID == ctx.exerciseID ? nil : ctx.exerciseID
+                } }
+            },
             isInlineActive: isActive,
             inlineEditingSetID: inlineEditingSetID,
             inlineConfig: isActive ? inlineEditorConfig() : nil,
@@ -555,10 +570,12 @@ struct SessionView: View {
                                       for: ctx.exerciseID)
             },
             onTapSet: { set in
+                expandedExerciseID = ctx.exerciseID
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 openInlineEditor(for: ex, editingSetID: set.setID)
             },
             onTapPending: { reps in
+                expandedExerciseID = ctx.exerciseID
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 openInlineEditor(for: ex, repsOverride: reps)
             },
@@ -600,7 +617,14 @@ struct SessionView: View {
         )
     }
 
-    // MARK: - Toolbar
+    private func compactSummary(for ctx: SessionRenderModel.ExerciseContext) -> String {
+        let completed = ctx.sets.count
+        let planned = completed + ctx.pendingCount
+        let count = "\(completed)/\(max(completed, planned)) sets"
+        guard let top = ctx.sets.map(\.weight).max() else { return count }
+        return "\(count) · top \(Format.weightValue(top, unit: settings.unit)) \(settings.unit.abbreviation)"
+    }
+
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if active.strengthSession?.id == session.id {
@@ -645,9 +669,6 @@ struct SessionView: View {
             }
         }
     }
-
-    // MARK: - Planned (reused) exercise card — no sets yet
-
     @ViewBuilder
     private func plannedCard(_ name: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -702,9 +723,6 @@ struct SessionView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
     }
-
-    // MARK: - Partner bar
-
     private var partnerBar: some View {
         HStack(spacing: 8) {
             Text("With:").font(.caption).foregroundStyle(.secondary)
@@ -735,9 +753,6 @@ struct SessionView: View {
             Spacer()
         }
     }
-
-    // MARK: - Misc view helpers (charts, info sheets, etc.)
-
     private func planBanner(_ plan: WorkoutPlan) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(plan.schemeSummary).font(.headline)
@@ -827,9 +842,6 @@ struct SessionView: View {
             .background(color, in: Circle())
             .accessibilityIdentifier("set.performer.\((p?.isMe ?? true) ? "Me" : (p?.name ?? "?"))")
     }
-
-    // MARK: - Weight info sheets
-
     private var weightInfoSheet: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
@@ -876,7 +888,6 @@ struct SessionView: View {
         }
         .presentationDetents([.medium])
     }
-
     private var kettlebellInfoSheet: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
@@ -890,7 +901,6 @@ struct SessionView: View {
         }
         .presentationDetents([.medium, .large])
     }
-
     private var dumbbellInfoSheet: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
@@ -904,15 +914,11 @@ struct SessionView: View {
         }
         .presentationDetents([.medium, .large])
     }
-
-    // MARK: - Actions
-
     private func recordActivity() {
         watchdog.recordActivity()
         guard active.strengthSession?.id == session.id else { return }
         active.recordActivityAutoResume()
     }
-
     private func handleIdleTick() {
         guard active.strengthSession?.id == session.id else { return }
         switch watchdog.tick(now: Date(),
@@ -924,12 +930,10 @@ struct SessionView: View {
         case .none: break
         }
     }
-
     private func togglePause() {
         if active.isPaused { active.resume(); watchdog.recordActivity() }
         else { active.pause(origin: .manual) }
     }
-
     private func endWorkout() {
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         model.stopWatchWorkout()
@@ -940,7 +944,7 @@ struct SessionView: View {
         try? context.save()
         Task { @MainActor in
             await Task.yield()
-            active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples))
+            active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples), session: session)
         }
     }
 
@@ -967,7 +971,6 @@ struct SessionView: View {
         if let hkID { session.healthKitWorkoutUUID = hkID; try? context.save() }
         withAnimation { healthSaved = true }
     }
-
     private func finishManualLog() { cleanupEmptyLog(); Haptics.selection(); onDone?() }
 
     private func cleanupEmptyLog() {
@@ -984,9 +987,6 @@ struct SessionView: View {
         try? context.save()
         recordActivity()
     }
-
-    // MARK: - Partner roster helpers
-
     func togglePartnerScope(_ p: Person) {
         var ids = explicitRosterIDs()
         if let idx = ids.firstIndex(of: p.id.uuidString) { ids.remove(at: idx) }
@@ -1003,7 +1003,6 @@ struct SessionView: View {
         var ids = explicitRosterIDs()
         if !ids.contains(p.id.uuidString) { ids.append(p.id.uuidString); session.activePartnerIDs = normalizedRosterIDs(ids); try? context.save() }
     }
-
     private func nextPerson() -> Person? {
         guard hasPartners else { return nil }
         let ordered = roster
@@ -1015,14 +1014,12 @@ struct SessionView: View {
         }
         return ordered[(lastIndex + 1) % ordered.count]
     }
-
     private func explicitRosterIDs() -> [String] {
         let current = session.activePartnerIDs
         guard hasPartners else { return current }
         let ids = roster.map { $0.id.uuidString }
         return ids.isEmpty ? current : ids
     }
-
     private func normalizedRosterIDs(_ ids: [String]) -> [String] {
         let valid = Set(allPeople.map { $0.id.uuidString })
         var seen = Set<String>()

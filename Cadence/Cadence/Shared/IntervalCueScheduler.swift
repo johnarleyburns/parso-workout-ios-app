@@ -23,7 +23,7 @@ final class IntervalCueScheduler {
 
     func start() {
         stop()
-        // Fire every 0.5 s to catch 30 s warning and 3 s countdown boundaries
+        // Fire every 0.5 s to catch duration-aware warning and 3 s boundaries
         // accurately. The runner's wall-clock phase boundaries drive precision.
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
@@ -53,6 +53,7 @@ final class IntervalCueScheduler {
             phaseKind: runner.phaseKind,
             currentPhaseID: runner.currentPhaseID,
             phaseRemaining: runner.phaseRemaining,
+            phaseDuration: runner.phaseDuration,
             isPaused: runner.isPaused,
             isComplete: runner.isComplete)
         for cue in cuesToFire {

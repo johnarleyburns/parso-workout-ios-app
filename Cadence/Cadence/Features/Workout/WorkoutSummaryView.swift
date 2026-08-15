@@ -17,6 +17,7 @@ struct WorkoutSummaryView: View {
     var onSaveHealth: (() async -> Void)? = nil
     /// Strength history only: open the set editor. `nil` ⇒ no Edit button.
     var onEdit: (() -> Void)? = nil
+    var onExercise: ((UUID) -> Void)? = nil
     /// Modal (post-workout) presentation: shows a Done button and wraps itself in
     /// a `NavigationStack`. `nil` ⇒ the view is *pushed* (history), so it relies on
     /// the ambient stack's Back button instead.
@@ -153,6 +154,8 @@ struct WorkoutSummaryView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Exercises").font(.headline)
             ForEach(data.exercises, id: \.name) { ex in exerciseRow(ex, idPrefix: "summary.exercise") }
+            Text("Tap an exercise to see every set’s weight, reps, and RPE.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 
@@ -176,18 +179,30 @@ struct WorkoutSummaryView: View {
     private func exerciseRow(_ ex: WorkoutSummaryData.ExerciseLine, idPrefix: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
+            if let sourceID = ex.sourceExerciseID, let onExercise {
+                Button { onExercise(sourceID) } label: {
+                    Text(ex.name).font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("\(idPrefix).\(sourceID.uuidString)")
+            } else {
                 Text(ex.name).font(.subheadline.weight(.semibold))
                     .accessibilityIdentifier("\(idPrefix).\(ex.name)")
+            }
                 Spacer()
                 if let top = ex.topSetWeightKg {
                     Text(topLabel(top, bodyweight: ex.usesBodyweight))
                         .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                 }
+                if onExercise != nil && ex.sourceExerciseID != nil {
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                }
             }
             Text("\(ex.setCount) set\(ex.setCount == 1 ? "" : "s") · reps \(ex.reps.map(String.init).joined(separator: ", "))")
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         .padding(12)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
     }

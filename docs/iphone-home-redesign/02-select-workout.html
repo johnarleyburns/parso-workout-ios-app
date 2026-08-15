@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Select Workout — iPhone mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a class="active" href="02-select-workout.html">Select Workout</a><a href="03-log-workout.html">Log</a><a href="04-plan.html">Plan</a><a href="05-suggestions-expanded.html">Suggestions</a><a href="06-workout-summary.html">Summary</a><a href="07-active-workout.html">Active</a><a href="08-review-workout.html">Review</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">View 02 · Presented from Home</div><h1>Select Workout</h1><p>One start surface replaces separate Strength and Cardio entry points. Strength choices are explicit actions; the existing cardio family remains a visual grid.</p></header>
+  <section class="stage">
+    <div class="phone"><div class="screen"><div class="island"></div><div class="status"><span>9:41</span><span>●●● Wi-Fi 82%</span></div>
+      <div class="app-scroll sheet-scroll"><div class="app-content">
+        <div class="nav-row inline"><a class="icon-button" href="01-home.html" aria-label="Close" style="display:grid;place-items:center;text-decoration:none">×</a><h2>Select Workout</h2><span style="width:44px"></span></div>
+        <div class="section-title" style="margin-top:12px">Strength</div>
+        <div class="card">
+          <a class="row" href="07-active-workout.html" style="color:inherit;text-decoration:none"><span class="round-icon green">⚡</span><span class="row-main"><span class="row-title">Quick Start</span><span class="row-sub">Start blank and add exercises as you go</span></span><span class="chevron">›</span></a>
+          <div class="row"><span class="round-icon green">✦</span><span class="row-main"><span class="row-title">Coach’s Workout</span><span class="row-sub">Upper body + easy cardio · built for today</span></span><span class="chevron">›</span></div>
+          <div class="row"><span class="round-icon purple">↶</span><span class="row-main"><span class="row-title">Start from Previous Workout</span><span class="row-sub">Repeat or adjust a workout you logged</span></span><span class="chevron">›</span></div>
+        </div>
+
+        <div class="section-title">Cardio</div><div class="section-kicker">Live recording options are unchanged.</div>
+        <div class="tile-grid">
+          <button class="tile run"><span class="tile-icon">🏃</span>Run</button><button class="tile walk"><span class="tile-icon">🚶</span>Walk</button>
+          <button class="tile cycle"><span class="tile-icon">◉</span>Cycle</button><button class="tile swim"><span class="tile-icon">≈</span>Swim</button>
+          <button class="tile hiit"><span class="tile-icon">ϟ</span>HIIT</button><button class="tile boxing"><span class="tile-icon">◇</span>Boxing</button>
+          <button class="tile other" style="grid-column:1/-1;min-height:82px"><span class="tile-icon" style="margin-bottom:8px">＋</span>Other Cardio</button>
+        </div>
+      </div></div>
+    </div></div>
+    <aside class="notes">
+      <div class="note-card"><h2>Presentation</h2><p>Use the existing sheet + nested <code>NavigationStack</code>. The title is “Select Workout”; dismiss is a 44 pt close target. Existing downstream HR, goal, interval, countdown, and recorder routes stay intact.</p></div>
+      <div class="note-card"><h2>Strength order</h2><ul><li>Quick Start is first because it is the shortest path.</li><li>Coach’s Workout is available to every user and has no lock, trial, upsell, or paywall branch.</li><li>Previous Workout opens the existing history picker.</li></ul></div>
+      <div class="note-card"><h2>Programs move</h2><p>“Start from Library” does not continue below this page. Programs and routines now live in the root <b>Plan</b> tab, where they can later grow into the full planner.</p></div>
+    </aside>
+  </section>
+</main></body></html>

@@ -317,16 +317,26 @@ public enum FullScreenColorState: String, Equatable, Sendable {
 }
 
 public enum IntervalSignal {
-    /// Thresholds: work >30s green, ≤30s warning, ≤3s imminent (flashing),
-    /// rest red, warmup/cooldown neutral.
-    public static func colorState(phase: IntervalPhaseKind, remaining: TimeInterval) -> FullScreenColorState {
+    /// The warning window is the final sixth of a work phase, rounded up to a
+    /// five-second boundary. Keeping this here makes phone and Watch rendering
+    /// consume the same timing contract.
+    public static func warningDuration(forWorkDuration duration: TimeInterval) -> TimeInterval {
+        let duration = max(0, duration)
+        return min(duration, ceil((duration / 6) / 5) * 5)
+    }
+
+    /// Duration-aware signal used by interval runners.
+    public static func colorState(phase: IntervalPhaseKind, remaining: TimeInterval,
+                                  phaseDuration: TimeInterval) -> FullScreenColorState {
         switch phase {
         case .rest: return .rest
         case .warmup, .cooldown: return .neutral
         case .work:
+            let warning = warningDuration(forWorkDuration: phaseDuration)
             if remaining <= 3 { return .imminent }
-            if remaining <= 30 { return .warning }
+            if remaining <= warning { return .warning }
             return .work
         }
     }
+
 }

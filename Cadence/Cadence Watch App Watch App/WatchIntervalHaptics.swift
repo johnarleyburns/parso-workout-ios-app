@@ -29,6 +29,7 @@ final class WatchIntervalHaptics {
             phaseKind: runner.phaseKind,
             currentPhaseID: runner.currentPhaseID,
             phaseRemaining: runner.phaseRemaining,
+            phaseDuration: runner.phaseDuration,
             isPaused: runner.isPaused,
             isComplete: runner.isComplete
         )

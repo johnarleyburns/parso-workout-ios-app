@@ -95,7 +95,7 @@ struct PlanningView: View {
             case .exercises: exercisesList
             }
         }
-        .navigationTitle("Programs & Routines")
+        .navigationTitle("Plan")
         .searchable(text: $query,
                     prompt: segment == .exercises
                         ? "Search name, muscle, or equipment"
@@ -207,25 +207,6 @@ struct PlanningView: View {
 
     private var routinesList: some View {
         List {
-            if let onOpenCoach, trimmedQuery.isEmpty {
-                Section {
-                    Button(action: onOpenCoach) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "leaf.fill").foregroundStyle(.green)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Coach").font(.headline)
-                                Text("Builds and adjusts your program")
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption2).foregroundStyle(.tertiary)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("programs.coachEntry")
-                }
-            }
             if trimmedQuery.isEmpty {
                 if !favoriteRoutines.isEmpty {
                     Section("Favorites") {
@@ -243,7 +224,7 @@ struct PlanningView: View {
                 routineGroupSection("Olympic Lifting", plans: RoutineGroup.olympic)
             } else {
                 if !filteredPresets.isEmpty {
-                    Section("Programs") {
+                    Section("Routines") {
                         ForEach(filteredPresets) { routineRow($0) }
                     }
                 }
@@ -303,6 +284,7 @@ struct PlanningView: View {
     private func routineRow(_ plan: WorkoutPlan) -> some View {
         NavigationLink {
             RoutineDetailView(plan: plan, onEditorStart: { edited in
+                guard active.liveWorkout.active == nil else { return }
                 guard let session = try? WorkoutRepository.createSession(title: edited.title, in: context) else { return }
                 session.plannedExerciseNames = edited.exercises.map(\.name)
                 if let first = edited.exercises.first, !first.sets.isEmpty {
@@ -318,7 +300,7 @@ struct PlanningView: View {
                 session.cooldownSeconds = Double(edited.cooldownMinutes * 60)
                 session.activePartnerIDs = edited.partnerIDs.map(\.uuidString)
                 try? context.save()
-                active.startStrength(session)
+                guard active.startStrength(session) else { session.deletedAt = Date(); return }
                 WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
                 Haptics.selection()
                 switchToWorkout()

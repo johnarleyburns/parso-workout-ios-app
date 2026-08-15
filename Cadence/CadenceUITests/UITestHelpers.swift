@@ -39,7 +39,12 @@ extension XCUIApplication {
     /// so existence alone isn't enough on the Home dashboard.
     @discardableResult
     func scrollToHittableAndTap(_ id: String, maxSwipes: Int = 8) -> Bool {
-        let el = buttons[id]
+        if id == "tab.plan" {
+            let tab = tabBars.buttons["Plan"]
+            if tab.waitForExistence(timeout: 6) { tab.tap(); return true }
+        }
+        let button = buttons[id]
+        let el = button.exists ? button : descendants(matching: .any)[id]
         guard el.waitForExistence(timeout: 6) else { return false }
         if el.isHittable { el.tap(); return true }
         for _ in 0..<maxSwipes {

@@ -29,7 +29,7 @@ enum WorkoutStartCue {
 
 /// Pushed destinations reachable from Home.
 enum HomeRoute: Hashable {
-    case history, settings, coach, coachPreview, coachPreferences, planning
+    case history, settings, coach, coachPreferences
     case yourPlan
     case workoutEditor(EditablePlan)
     case customExercises

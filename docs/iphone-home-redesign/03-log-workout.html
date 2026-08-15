@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Log Workout — iPhone mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a href="02-select-workout.html">Select Workout</a><a class="active" href="03-log-workout.html">Log</a><a href="04-plan.html">Plan</a><a href="05-suggestions-expanded.html">Suggestions</a><a href="06-workout-summary.html">Summary</a><a href="07-active-workout.html">Active</a><a href="08-review-workout.html">Review</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">View 03 · Existing behavior preserved</div><h1>Log Workout</h1><p>The Home button routes to the current manual log chooser. No new information architecture is introduced within this sheet.</p></header>
+  <section class="stage">
+    <div class="phone"><div class="screen"><div class="island"></div><div class="status"><span>9:41</span><span>●●● Wi-Fi 82%</span></div>
+      <div class="app-scroll sheet-scroll"><div class="app-content">
+        <div class="nav-row inline"><a class="icon-button" href="01-home.html" style="display:grid;place-items:center;text-decoration:none;font-size:14px">Cancel</a><h2>Log Workout</h2><span style="width:44px"></span></div>
+        <div class="section-kicker" style="margin-top:12px">Add a workout you already completed.</div>
+        <div class="tile-grid">
+          <button class="tile strength"><span class="tile-icon">▰</span>Strength</button><button class="tile run"><span class="tile-icon">🏃</span>Run</button>
+          <button class="tile walk"><span class="tile-icon">🚶</span>Walk</button><button class="tile cycle"><span class="tile-icon">◉</span>Cycle</button>
+          <button class="tile swim"><span class="tile-icon">≈</span>Swim</button><button class="tile hiit"><span class="tile-icon">ϟ</span>HIIT</button>
+          <button class="tile boxing"><span class="tile-icon">◇</span>Boxing</button><button class="tile other"><span class="tile-icon">＋</span>Other Cardio</button>
+        </div>
+      </div></div>
+    </div></div>
+    <aside class="notes">
+      <div class="note-card"><h2>Deliberately unchanged</h2><p>This is the existing <code>LogWorkoutPicker</code>: Strength continues into <code>LogStrengthEntryView</code>; cardio continues into <code>LogCardioView</code>. Saved items remain flagged “Logged” and enter history identically.</p></div>
+      <div class="note-card"><h2>Only the entry point changes</h2><p>The four-icon Home quick-action row disappears. The dedicated, labeled <b>Log Workout</b> button now opens this sheet directly.</p></div>
+    </aside>
+  </section>
+</main></body></html>

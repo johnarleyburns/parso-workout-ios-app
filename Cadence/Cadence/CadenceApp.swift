@@ -18,7 +18,7 @@ struct CadenceApp: App {
     /// `[String]` → delimited-String change is version 2: an old store still
     /// has `Array<String>` columns that log "Could not materialize" faults when
     /// SwiftData migrates them, so we discard it rather than migrate.
-    private static let schemaVersion = 2
+    private static let schemaVersion = CadenceStore.schemaVersion
     private static let schemaVersionKey = "cadence.localSchemaVersion"
 
     init() {

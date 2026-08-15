@@ -6,6 +6,8 @@ import SwiftData
 /// uses a local-only store and syncs through WatchConnectivity so the phone is
 /// the sole CloudKit writer.
 public enum CadenceStore {
+    /// Shared local-store compatibility marker used by iPhone and Watch.
+    public static let schemaVersion = 2
 
     /// The private CloudKit container backing the iPhone SwiftData store. Must
     /// match the `com.apple.developer.icloud-container-identifiers` entitlement

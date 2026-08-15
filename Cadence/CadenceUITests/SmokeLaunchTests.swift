@@ -12,7 +12,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10),
                       "Coach card did not render on Home")
 
-        XCTAssertTrue(app.scrollToHittableAndTap("home.planning"), "Programs shortcut did not open")
+        XCTAssertTrue(app.scrollToHittableAndTap("tab.plan"), "Plan tab did not open")
         XCTAssertTrue(app.descendants(matching: .any)["planning"].waitForExistence(timeout: 10),
                       "Programs screen did not render")
         app.popToHome()

@@ -14,7 +14,8 @@ public extension Notification.Name {
 public struct FinishedSummary: Identifiable {
     public let id = UUID()
     public let data: WorkoutSummaryData
-    public init(data: WorkoutSummaryData) { self.data = data }
+    public let session: WorkoutSession?
+    public init(data: WorkoutSummaryData, session: WorkoutSession? = nil) { self.data = data; self.session = session }
 }
 
 /// Why the active workout is paused. An `.auto` pause (idle watchdog, crash
@@ -50,8 +51,9 @@ public enum ActiveSurface: Identifiable {
 ///
 /// Moved into CadenceFeatures (test-pyramid Phase 2) so its lifecycle + stamping
 /// are unit-tested headlessly.
-@Observable
+@MainActor @Observable
 public final class ActiveWorkoutModel {
+    public let liveWorkout = LiveWorkoutCoordinator()
     /// The active strength session, if any. nil when nothing is in progress.
     public var strengthSession: WorkoutSession?
 
@@ -90,11 +92,31 @@ public final class ActiveWorkoutModel {
     /// True while the active session's clock is paused (field-testing Round 4 A1).
     public var isPaused: Bool { clock.isPaused }
 
-    public func startStrength(_ session: WorkoutSession) {
+    @discardableResult
+    public func startStrength(_ session: WorkoutSession) -> Bool {
+        guard liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? "Workout" : session.title)) else { return false }
         strengthSession = session
         clock = WorkoutClock(startedAt: session.date)
         pauseOrigin = nil
         presentedSurface = .session(session)
+        return true
+    }
+
+    /// Commits a strength recorder after the root coordinator has already
+    /// reserved its lease. This is the only path Home uses after a final-boundary
+    /// check, so session materialization cannot race another live start.
+    @discardableResult
+    public func startStrength(_ session: WorkoutSession, lease: LiveWorkoutLease) -> Bool {
+        guard strengthSession == nil,
+              liveWorkout.lease == lease,
+              liveWorkout.adopt(lease, descriptor: LiveWorkoutDescriptor(
+                kind: .strength(sessionID: session.id),
+                name: session.title.isEmpty ? "Workout" : session.title)) else { return false }
+        strengthSession = session
+        clock = WorkoutClock(startedAt: session.date)
+        pauseOrigin = nil
+        presentedSurface = .session(session)
+        return true
     }
 
     /// Presents the workout cover for the active session (Resume card tap).
@@ -141,11 +163,13 @@ public final class ActiveWorkoutModel {
         strengthSession = nil
         pauseOrigin = nil
         WorkoutHeartbeatStore.clear(defaults: defaults)
+        if let lease = liveWorkout.lease { _ = liveWorkout.release(lease) }
     }
 
     /// Clears the active workout and its cover without stamping `endedAt`
     /// (delete flow — the session model is being soft-deleted by the caller).
     public func discardActive() {
+        if strengthSession != nil, let lease = liveWorkout.lease { _ = liveWorkout.release(lease) }
         strengthSession = nil
         pauseOrigin = nil
         presentedSurface = nil
@@ -161,6 +185,7 @@ public final class ActiveWorkoutModel {
         let elapsed = ActiveSessionRecovery.adoptedElapsed(sessionID: session.id, heartbeat: heartbeat)
         let gross = max(0, now.timeIntervalSince(session.date))
         strengthSession = session
+        _ = liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? "Workout" : session.title))
         clock = WorkoutClock(startedAt: session.date,
                              pausedAccumulated: max(0, gross - elapsed),
                              pausedSince: now)

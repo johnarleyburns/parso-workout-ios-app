@@ -113,12 +113,12 @@ final class IntervalEngineTests: XCTestCase {
     }
 
     func testColorStateThresholds() {
-        XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 60), .work)     // green
-        XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 30), .warning)  // yellow
-        XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 3), .imminent)  // flashing
-        XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 1), .imminent)
-        XCTAssertEqual(IntervalSignal.colorState(phase: .rest, remaining: 5), .rest)      // red
-        XCTAssertEqual(IntervalSignal.colorState(phase: .warmup, remaining: 5), .neutral)
-        XCTAssertEqual(IntervalSignal.colorState(phase: .cooldown, remaining: 5), .neutral)
+        XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 60, phaseDuration: 180), .work)
+        XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 30, phaseDuration: 180), .warning)
+        XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 3, phaseDuration: 180), .imminent)
+        XCTAssertEqual(IntervalSignal.colorState(phase: .work, remaining: 1, phaseDuration: 180), .imminent)
+        XCTAssertEqual(IntervalSignal.colorState(phase: .rest, remaining: 5, phaseDuration: 180), .rest)
+        XCTAssertEqual(IntervalSignal.colorState(phase: .warmup, remaining: 5, phaseDuration: 180), .neutral)
+        XCTAssertEqual(IntervalSignal.colorState(phase: .cooldown, remaining: 5, phaseDuration: 180), .neutral)
     }
 }

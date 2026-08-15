@@ -3,16 +3,13 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-/// Home dashboard (field-test round 3): a simple step count + workouts-this-week,
-/// the Start Workout hero, and trends / cardio history / workout history surfaced
-/// directly — not hidden under menus. A get-ready countdown runs before a workout.
+/// Home dashboard.
 struct HomeView: View {
     @Environment(\.modelContext) private var context
     @Environment(AppModel.self) private var model
     @Environment(AppSettings.self) private var settings
     @Environment(ActiveWorkoutModel.self) private var active
     @Environment(ContributionCoordinator.self) private var contributions
-    @Environment(StoreService.self) private var store
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
@@ -21,35 +18,25 @@ struct HomeView: View {
     @Query(filter: #Predicate<Exercise> { $0.isFavorite }, sort: \Exercise.name) private var favoriteExercises: [Exercise]
 
     @State private var logPickerPresented = false
+    @State private var selectWorkoutPresented = false
     @State private var path = NavigationPath()
     @State private var cardioType: CardioType?
     @State private var outdoorType: CardioType?
-    /// Free-text label for an in-flight "Other Cardio" recording (feedback batch 6).
     @State private var otherCardioTitle: String?
     @State private var intervalType: WorkoutType?
     @State private var intervalLaunch: IntervalLaunch?
     @State private var swimPresented = false
     @State private var pending: PendingWorkout?
-    /// Strength HR gate — shown BEFORE the get-ready countdown so the user can
-    /// connect a strap or start the Watch, see live HR, then press Start.
     @State private var hrGateKind: PendingWorkout.Kind?
-    /// When true, the warm-up overlay appears after the HR gate passes.
     @State private var startWarmupAfterHRGate = false
     @State private var warmupActive = false
     @State private var today: DayActivity?
     @State private var activityTrend: [DayActivity] = []
-    // Passive readiness samples (HRV/RHR/sleep) read from HealthKit off the render
-    // path; folded into the coach signature so a change re-runs the pipeline.
     @State private var passiveSamples: [PassiveReadinessSample] = []
-    /// Bumped after any workout-history mutation (save, log, ingest, delete) so the
-    /// computed Coach / This Week / recent surfaces recompute immediately — without
-    /// waiting for `scenePhase == .active` (the old "only fixed after re-entry" bug).
     @State private var historyRefreshToken = UUID()
-    /// Setup surface for non-GPS timer cardio (rowing/other) launched from Coach.
     @State private var timerCardioSetup: TimerCardioSetup?
     @State private var pendingPlan: EditablePlan?
     @State private var captureHR = false
-    // Quick-start shortcuts from the stat tiles (feedback batch 8).
     @State private var cardioPickerPresented = false
     @State private var weightsStartPresented = false
     @State private var cardioGoalFor: CardioType?
@@ -57,10 +44,23 @@ struct HomeView: View {
     @State private var outdoorGoalMeters: Double?
     @State private var showAlternatives = false
     @State private var showSupport = false
-    @State private var showPaywall = false
     @State private var pendingAddGapsDeficits: [BodyPart: Double]?
+    @State private var suggestionsExpanded = false
+    @State private var showWorkoutConflict = false
+    @State private var confirmCancelPrevious = false
 
     @State private var coachSnapshot: HomeCoachSnapshot = .placeholder
+
+    private var dashboard: HomeDashboardState {
+        let snapshot = CoachSnapshot(facts: coachSnapshot.facts, coachFacts: coachSnapshot.coachFacts,
+                                     insights: coachSnapshot.insights, recommendation: coachSnapshot.recommendation,
+                                     decision: coachSnapshot.decision, plan: coachSnapshot.plan,
+                                     behindPlan: coachSnapshot.behindPlan, addOn: coachSnapshot.addOn,
+                                     readiness: coachSnapshot.readiness, optimizedPlan: coachSnapshot.optimizedPlan)
+        return HomeDashboardPresenter.make(snapshot: snapshot, schedule: settings.coachSchedulePreferences,
+                                    goal: settings.trainingGoal, experience: settings.experienceLevel,
+                                    userAge: settings.userAge)
+    }
 
     private var coachFacts: TrainingFacts { coachSnapshot.facts }
     private var coachInsights: [Insight] { coachSnapshot.insights }
@@ -68,18 +68,10 @@ struct HomeView: View {
     private var coachDecision: CoachDecision { coachSnapshot.decision }
     private var coachPlan: WeeklyPlan { coachSnapshot.plan }
 
-    /// The passive-readiness line (HRV/sleep/RHR), prepared headlessly. `nil` when
-    /// there is nothing honest to say. This is coach *insight*, so it is free.
     private var passiveReadinessDisplay: PassiveReadinessPresenter.Display? {
         PassiveReadinessPresenter.display(for: coachSnapshot.readiness)
     }
 
-    /// The current fitness-test recommendation (issue 11), gated to ≤1/week and
-    /// honoring per-kind "not right now" snoozes. Computed directly (cheap) from the
-    /// assessment `@Query` + persisted state so it renders on first frame without
-    /// waiting on the heavy coach pipeline. `testCardOverride` lets "pick a different
-    /// test" advance within a shown card; `testCardDismissed` hides it after "not
-    /// right now" until the view/state refreshes.
     @State private var testCardOverride: TestRecommendation?
     @State private var testCardDismissed = false
 
@@ -114,10 +106,6 @@ struct HomeView: View {
             userAge: settings.userAge,
             overrideWeekKey: settings.coachPlanOverrideWeekKey)
     }
-
-    /// Builds the full coach snapshot ONCE via the pure CadenceCore builder.
-    /// Phase 1 (model extraction) runs on the main actor; Phase 2 (pure computation)
-    /// runs in a detached background task so the main thread never blocks.
     private func buildCoachSnapshot() async -> HomeCoachSnapshot {
         let policy: PlanningConstraintPolicy = settings.isPlanOverrideActive() ? .meetDeficits : .safe
         return HomeCoachSnapshot(await HomeCoachModel.snapshotAsync(
@@ -135,16 +123,9 @@ struct HomeView: View {
             constraintPolicy: policy))
     }
 
-    /// Routes an insight action: for free users the paywall appears; for
-    /// Pro/trial users the override is applied (with a confirmation sheet for
-    /// gap-closing; revert is immediate). D7 + D5.
     private func handleInsightAction(_ action: Insight.Action) {
         switch action {
         case .addGapsToPlan(let deficits):
-            if !store.entitlement.isPro {
-                showPaywall = true
-                return
-            }
             pendingAddGapsDeficits = deficits
         case .revertToSafePlan:
             settings.coachPlanOverrideWeekKey = nil
@@ -158,88 +139,7 @@ struct HomeView: View {
         pendingAddGapsDeficits = nil
     }
 
-    // MARK: Coach presence (coach-surface-design.md §2, as amended)
 
-    /// The current Home coach surface. Insights are continuous; only the introducing
-    /// card and the "Unlock the Coach" CTA are paced.
-    private var coachSurfaceState: CoachSurfaceState {
-        CoachSurfacePresenter.state(
-            entitlement: store.entitlement,
-            hidden: settings.coachHidden,
-            introImpressions: settings.coachIntroImpressions,
-            hasInsight: coachInsights.first != nil,
-            protocolPackPending: !settings.lastSeenCoachKBVersion.isEmpty
-                && CoachKBBadge.hasUnseenUpdate(lastSeen: settings.lastSeenCoachKBVersion))
-    }
-
-    private var coachShowsUnlockCTA: Bool {
-        HomeCoachModel.upsellCTAVisible(entitlement: store.entitlement,
-                                        lastShown: settings.lastCoachUpsellShown)
-    }
-
-    /// Top-of-Home coach surface: the functional card for entitled users, the full
-    /// introducing pitch for new/updated free users, nothing otherwise (the ambient
-    /// row lives below the user's own data).
-    @ViewBuilder
-    private var coachTopSurface: some View {
-        switch coachSurfaceState {
-        case .pro, .trial:
-            VStack(alignment: .leading, spacing: 8) {
-                if let days = store.trialDaysRemaining {
-                    trialBanner(daysLeft: days)
-                }
-                if let passive = passiveReadinessDisplay {
-                    PassiveReadinessCard(display: passive)
-                }
-                CoachDecisionCardView(
-                    decision: coachDecision,
-                    addOnRecommendation: addOnRecommendation,
-                    topInsight: coachInsights.first,
-                    onStart: { launchDecision($0) },
-                    onAddOn: { session, status in handleAddOn(session, status) },
-                    onSeeInsights: { path.append(HomeRoute.coach) },
-                    onPreferences: { path.append(HomeRoute.coachPreferences) },
-                    onPickAlternative: { showAlternatives = true },
-                    onFixCustomExercises: { path.append(HomeRoute.customExercises) },
-                    onStrengthAnyway: { strengthAnyway() },
-                    onSwapComponent: { swapComponent($0) },
-                    onInsightAction: { handleInsightAction($0) },
-                    hasTodayStrengthCompleted: todayStrength.hasStrength,
-                    todayLoggedExerciseNames: todayStrength.exerciseNames)
-            }
-        case .introducing:
-            VStack(alignment: .leading, spacing: 8) {
-                if let passive = passiveReadinessDisplay {
-                    PassiveReadinessCard(display: passive)
-                }
-                CoachPreviewView(
-                    plan: coachPlan,
-                    topInsight: coachInsights.first,
-                    prescription: coachRecommendation,
-                    showUnlockCTA: coachShowsUnlockCTA,
-                    onUnlock: { showPaywall = true },
-                    onCTADisplayed: { settings.lastCoachUpsellShown = Date() },
-                    onFixCustomExercises: { path.append(HomeRoute.customExercises) },
-                    onInsightAction: { handleInsightAction($0) })
-                    .onAppear { settings.coachIntroImpressions += 1 }
-            }
-        case .ambient, .insight, .hidden:
-            EmptyView()
-        }
-    }
-
-    /// The compact ambient/insight coach row, placed after the user's own data.
-    @ViewBuilder
-    private var coachAmbientSurface: some View {
-        if coachSurfaceState.showsCompactRow {
-            CoachRow(
-                topInsight: coachInsights.first,
-                onTap: { path.append(HomeRoute.coachPreview) },
-                onHide: { settings.coachHidden = true })
-        }
-    }
-
-    /// The once-per-week "run this fitness test" suggestion (issue 11).
     @ViewBuilder
     private var testRecommendationCard: some View {
         if let rec = testRecommendation {
@@ -255,7 +155,6 @@ struct HomeView: View {
         }
     }
 
-    /// Advances to the next-priority test candidate, skipping the current one.
     private func pickDifferentTest() {
         let summaries = AssessmentMath.summaries(from: assessments)
         let inputs = CoachTestRecommendationEngine.Inputs(
@@ -275,7 +174,6 @@ struct HomeView: View {
         }
     }
 
-    /// "Not right now" — snoozes this kind for ~1 week and dismisses the card.
     private func snoozeTest(_ kind: AssessmentKind) {
         let until = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
         var snoozes = settings.testRecommendationSnoozes
@@ -316,12 +214,10 @@ struct HomeView: View {
                         .accessibilityIdentifier("home.headerDate")
 
                     if let s = resumeSession { resumeCard(s) }
-                    coachTopSurface
-                    weekStripSection
-                    quickActionsRow
-                    coachAmbientSurface
-                    testRecommendationCard
-                    favoritesSection
+                    homeActionRow
+                    weekDashboardSection
+                    weeklyVolumeSection
+                    coachSuggestionsSection
                     whatYouDidSection
                 }
                 .padding()
@@ -344,7 +240,9 @@ struct HomeView: View {
             .navigationDestination(for: HistorySummaryRoute.self) { route in
                 switch route {
                 case .strength(let s):
-                    WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
+                    WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) }, onExercise: { id in path.append(HistorySummaryRoute.strengthFocused(s, id)) })
+                case .strengthFocused(let s, let id):
+                    SessionView(session: s, initiallyExpandedExerciseID: id)
                 case .cardio(let c):
                     CardioDetailView(workout: c)
                 }
@@ -360,22 +258,7 @@ struct HomeView: View {
                     CoachInsightsView(insights: coachInsights,
                                       onFixCustomExercises: { path.append(HomeRoute.customExercises) },
                                       onInsightAction: { handleInsightAction($0) })
-                case .coachPreview:
-                    CoachPreviewScreen(
-                        topInsight: coachInsights.first,
-                        prescription: coachRecommendation,
-                        showUnlockCTA: coachShowsUnlockCTA,
-                        onUnlock: { showPaywall = true },
-                        onCTADisplayed: { settings.lastCoachUpsellShown = Date() },
-                        onHide: {
-                            settings.coachHidden = true
-                            if !path.isEmpty { path.removeLast() }
-                        },
-                        onFixCustomExercises: { path.append(HomeRoute.customExercises) },
-                        onInsightAction: { handleInsightAction($0) })
                 case .coachPreferences: CoachSchedulePreferencesView()
-                case .planning: PlanningView(switchToWorkout: { path = NavigationPath() },
-                                             onOpenCoach: { path.append(HomeRoute.coachPreview) })
                 case .yourPlan:
                     let facts = coachSnapshot.coachFacts.withStepSummary(from: activityTrend)
                     let plan = HomePlanPresenter.yourPlanDestinationPlan(cachedPlan: coachSnapshot.plan)
@@ -412,11 +295,21 @@ struct HomeView: View {
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker(onSaved: workoutSaved)
             }
-            .sheet(item: $cardioType) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR, onSaved: { _ in workoutSaved() }) }
-            .fullScreenCover(item: $outdoorType) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR, onSaved: { _ in workoutSaved() }) }
-            .sheet(item: $timerCardioSetup) { setup in
+            .sheet(isPresented: $selectWorkoutPresented) {
+                SelectWorkoutView(
+                    recommendation: coachRecommendation,
+                    onEditorStart: { plan in selectWorkoutPresented = false; handleEditorStart(plan) },
+                    onSelect: { type in selectWorkoutPresented = false; start(type) },
+                    onOtherCardio: { description, gps in
+                        selectWorkoutPresented = false
+                        startOtherCardio(description: description, gps: gps)
+                    })
+            }
+            .sheet(item: $cardioType, onDismiss: releaseCardioWorkout) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR, onSaved: { _ in workoutSaved(); releaseCardioWorkout() }) }
+            .fullScreenCover(item: $outdoorType, onDismiss: releaseCardioWorkout) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR, onSaved: { _ in workoutSaved(); releaseCardioWorkout() }) }
+            .sheet(item: $timerCardioSetup, onDismiss: releaseCardioWorkout) { setup in
                 TimerCardioSetupView(type: setup.type, suggestedMinutes: setup.suggestedMinutes,
-                                     onSaved: { _ in workoutSaved() })
+                                     onSaved: { _ in workoutSaved(); releaseCardioWorkout() })
             }
             .sheet(isPresented: $showAlternatives) {
                 NavigationStack {
@@ -443,8 +336,39 @@ struct HomeView: View {
                     ContributionSupportView(store: contributions.store, showsDoneButton: true)
                 }
             }
-            .sheet(isPresented: $showPaywall) {
-                PaywallView()
+            .alert("Workout already in progress", isPresented: $showWorkoutConflict) {
+                if active.strengthSession != nil {
+                    Button("Resume") { active.present(); showWorkoutConflict = false }
+                        .accessibilityIdentifier("workoutConflict.resume")
+                    Button("Cancel Previous Workout…", role: .destructive) {
+                        showWorkoutConflict = false
+                        confirmCancelPrevious = true
+                    }
+                    .accessibilityIdentifier("workoutConflict.cancelPrevious")
+                } else {
+                    Button("Keep Current Workout") { showWorkoutConflict = false }
+                        .accessibilityIdentifier("workoutConflict.keepCurrent")
+                }
+                Button("Not Now", role: .cancel) { showWorkoutConflict = false }
+                    .accessibilityIdentifier("workoutConflict.notNow")
+            } message: {
+                Text(active.liveWorkout.active.map { descriptor in
+                    let sets = active.strengthSession?.orderedSets.count ?? 0
+                    return "\(descriptor.name) is active\(sets > 0 ? " with \(sets) logged sets" : ""). Resume it or cancel it before starting another workout."
+                } ?? "Finish or discard the current workout before starting another.")
+            }
+            .alert("Discard this workout?", isPresented: $confirmCancelPrevious) {
+                Button("Discard Workout", role: .destructive) {
+                    guard let session = active.strengthSession else { return }
+                    session.deletedAt = Date()
+                    try? context.save()
+                    active.discardActive()
+                    selectWorkoutPresented = true
+                }
+                .accessibilityIdentifier("workoutConflict.confirmCancel")
+                Button("Keep Workout", role: .cancel) { }
+            } message: {
+                Text("This removes the in-progress workout and its \(active.strengthSession?.orderedSets.count ?? 0) logged sets from your active workout. The record is kept in history and can be restored there.")
             }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
             .sheet(isPresented: $cardioPickerPresented) {
@@ -484,8 +408,8 @@ struct HomeView: View {
                     }
                 }
             }
-            .fullScreenCover(item: $intervalLaunch) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: $0.captureHR, onSaved: { _ in workoutSaved() }) }
-            .fullScreenCover(isPresented: $swimPresented) { SwimRecordView(onSaved: { _ in workoutSaved() }) }
+            .fullScreenCover(item: $intervalLaunch, onDismiss: releaseCardioWorkout) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: $0.captureHR, onSaved: { _ in workoutSaved(); releaseCardioWorkout() }) }
+            .fullScreenCover(isPresented: $swimPresented, onDismiss: releaseCardioWorkout) { SwimRecordView(onSaved: { _ in workoutSaved(); releaseCardioWorkout() }) }
             .confirmationDialog(
                 "This is more load than planned today.",
                 isPresented: Binding(
@@ -520,10 +444,6 @@ struct HomeView: View {
             PreWorkoutHRView(workoutType: kind.cardioType) { source in
                 hrGateKind = nil
                 captureHR = source != .none
-                if source == .watch {
-                    if let type = kind.cardioType { model.startWatchWorkout(type: type) }
-                    else { model.startWatchStrength() }
-                }
                 proceedFromHRGate(kind, useHR: source != .none)
             }
             .transition(.identity)
@@ -641,24 +561,100 @@ struct HomeView: View {
         if inserted > 0 { markWorkoutHistoryChanged() }
     }
 
-    /// The four secondary entry points, demoted from full-width pills to one
-    /// compact row (the primary action now lives inside the Coach card).
-    private var quickActionsRow: some View {
+    private var homeActionRow: some View {
         HStack(spacing: 10) {
-            quickAction("Strength", "dumbbell.fill", id: "home.startWorkout") {
-                weightsStartPresented = true
+            Button {
+                Haptics.selection()
+                if active.liveWorkout.active != nil { showWorkoutConflict = true } else { selectWorkoutPresented = true }
+            } label: {
+                Label("Start Workout", systemImage: "play.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 52)
             }
-            quickAction("Cardio", "figure.run", id: "home.startCardio") {
-                cardioPickerPresented = true
+            .buttonStyle(.borderedProminent).tint(.green)
+            .accessibilityIdentifier("home.startWorkout")
+            Button { Haptics.selection(); logPickerPresented = true } label: {
+                Label("Log Workout", systemImage: "square.and.pencil")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 52)
             }
-            quickAction("Log", "square.and.pencil", id: "home.logWorkout") {
-                logPickerPresented = true
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("home.logWorkout")
+        }
+    }
+
+    private var weekDashboardSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("This Week").font(.title3.bold())
+            progressRow(id: "home.week.strength", title: "Strength", value: dashboard.strength.displayText, progress: dashboard.strength.normalized, tint: .green)
+            progressRow(id: "home.week.cardio", title: "Cardio", value: dashboard.cardio.displayText, progress: dashboard.cardio.normalized, tint: .blue)
+        }
+        .padding()
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
+    }
+
+    private func progressRow(id: String, title: String, value: String, progress: Double, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack { Text(title).font(.headline); Spacer(); Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary) }
+            ProgressView(value: progress).tint(tint)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(id)
+    }
+
+    private var weeklyVolumeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Weekly Volume").font(.title3.bold())
+            ForEach(dashboard.volume) { row in
+                HStack(spacing: 10) {
+                    Text(row.displayName).frame(width: 82, alignment: .leading)
+                    ProgressView(value: row.normalized).tint(row.rangeStatus == "Above recovery range" ? .red : .green)
+                    VStack(alignment: .trailing) {
+                        Text("\(row.sets.formatted(.number.precision(.fractionLength(row.sets.rounded() == row.sets ? 0 : 1)))) sets")
+                            .font(.caption.weight(.semibold))
+                        Text(row.rangeStatus).font(.caption2).foregroundStyle(.secondary)
+                    }.frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("home.volume.\(row.part.rawValue)")
             }
-            quickAction("Programs", "books.vertical", id: "home.planning") {
-                path.append(HomeRoute.planning)
+            Text("Working sets compared with experience-scaled starting ranges.")
+                .font(.caption).foregroundStyle(.secondary)
+            CitationLink(citation: CitationRegistry.volumeDoseResponse, compact: true)
+        }
+        .padding()
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .orange)
+        .accessibilityIdentifier("home.volume")
+    }
+
+    private var coachSuggestionsSection: some View {
+        let items = dashboard.suggestions
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Coach’s suggestions").font(.title3.bold())
+            if let first = items.first {
+                    ForEach((suggestionsExpanded ? items : [first])) { suggestion in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(suggestion.title).font(.headline)
+                            Text(suggestion.message).font(.subheadline)
+                            if suggestion.citationID == CitationRegistry.volumeDoseResponse.id {
+                                CitationLink(citation: CitationRegistry.volumeDoseResponse, compact: true)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("home.suggestion.\(suggestion.id)")
+                    }
+                    if items.count > 1 {
+                        Button(suggestionsExpanded ? "Show less" : "Show more…") { withAnimation { suggestionsExpanded.toggle() } }
+                            .font(.subheadline.weight(.semibold))
+                            .accessibilityIdentifier(suggestionsExpanded ? "home.suggestions.showLess" : "home.suggestions.showMore")
+                    }
+            } else {
+                Text("No new suggestions right now.").font(.subheadline).foregroundStyle(.secondary)
             }
         }
-        .glassGroup(spacing: 10)
+        .padding()
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .purple)
+        .accessibilityIdentifier("coach.card")
     }
 
     /// Quiet trial status shown above the Coach card while on the free trial.
@@ -673,23 +669,6 @@ struct HomeView: View {
         .padding(.horizontal, 12).padding(.vertical, 7)
         .background(.green.opacity(0.10), in: Capsule())
         .accessibilityIdentifier("coach.trialBanner")
-    }
-
-    private func quickAction(_ title: String, _ symbol: String, id: String,
-                             action: @escaping () -> Void) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
-        return Button { Haptics.selection(); action() } label: {
-            VStack(spacing: 6) {
-                Image(systemName: symbol).font(.title3)
-                Text(title).font(.caption).lineLimit(1).minimumScaleFactor(0.8)
-            }
-            .frame(maxWidth: .infinity, minHeight: 64)
-            .padding(.vertical, 8)
-            .foregroundStyle(.tint)
-            .cadenceGlassBackground(in: shape, interactive: true, fallback: AnyShapeStyle(.background.secondary))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(id)
     }
 
     private var weekStripSection: some View {
@@ -863,6 +842,7 @@ struct HomeView: View {
             // branch is normally unreached.
             launchFromPicker(.strength)
         } else if type == .swim {
+            guard acquireCardio(.swim(id: UUID())) else { return }
             swimPresented = true
         } else if type.usesGPS, let c = type.cardioType {
             startOutdoorWithGoal(c)
@@ -924,32 +904,73 @@ struct HomeView: View {
         }
     }
     private func launch(_ kind: PendingWorkout.Kind, startCue: WorkoutStartCue = .countdown) {
+        guard active.liveWorkout.active == nil else { showWorkoutConflict = true; return }
         switch kind {
         case .strength:
             if let plan = pendingPlan {
                 pendingPlan = nil
-                if let s = try? materializePlan(plan) {
-                    active.startStrength(s)
-                    playStartCue(startCue)
-                }
-            } else if let s = try? WorkoutRepository.createSession(title: "Workout", in: context) {
-                active.startStrength(s)
-                playStartCue(startCue)
-            }
+                startStrengthAfterLease(startCue: startCue) { try? materializePlan(plan) }
+            } else { startStrengthAfterLease(startCue: startCue) { try? WorkoutRepository.createSession(title: "Workout", in: context) } }
         case .plan(let plan, let ladder):
-            if let s = try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) {
-                active.startStrength(s)
-                playStartCue(startCue)
-            }
+            startStrengthAfterLease(startCue: startCue) { try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) }
         case .reuse(let past):
-            if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
-                active.startStrength(s)
-                playStartCue(startCue)
-            }
-        case .outdoor(let c): outdoorType = c
-        case .interval(let l): intervalLaunch = l
-        case .timer(let c): cardioType = c
+            startStrengthAfterLease(startCue: startCue) { try? WorkoutRepository.reuseSession(from: past, in: context) }
+        case .outdoor(let c):
+            guard acquireCardio(.outdoorCardio(id: UUID(), type: c)) else { return }
+            outdoorType = c
+        case .interval(let l):
+            guard acquireCardio(.interval(id: UUID(), type: l.saveType)) else { return }
+            intervalLaunch = l
+        case .timer(let c):
+            guard acquireCardio(.timerCardio(id: UUID(), type: c)) else { return }
+            cardioType = c
         }
+    }
+
+    private func startStrengthAfterLease(startCue: WorkoutStartCue,
+                                         create: () -> WorkoutSession?) {
+        let intent = LiveWorkoutStartIntent(kind: .strength(sessionID: UUID()),
+                                             routePayload: "strength",
+                                             origin: .finalCommit)
+        guard case .granted(let lease) = active.liveWorkout.requestStart(intent: intent,
+                                                                            descriptorName: "Workout") else {
+            showWorkoutConflict = true
+            return
+        }
+        guard let session = create(), active.startStrength(session, lease: lease) else {
+            _ = active.liveWorkout.release(lease)
+            return
+        }
+        playStartCue(startCue)
+    }
+
+    private func acquireCardio(_ kind: LiveWorkoutKind) -> Bool {
+        guard active.liveWorkout.active == nil else { showWorkoutConflict = true; return false }
+        let name: String
+        switch kind {
+        case .outdoorCardio(_, let type), .timerCardio(_, let type), .interval(_, let type): name = type.displayName
+        case .swim: name = "Swim"
+        case .strength: name = "Workout"
+        }
+        let intent = LiveWorkoutStartIntent(kind: kind, routePayload: kindName(kind), origin: .homeStart)
+        guard case .granted = active.liveWorkout.requestStart(intent: intent, descriptorName: name) else {
+            showWorkoutConflict = true
+            return false
+        }
+        return true
+    }
+
+    private func kindName(_ kind: LiveWorkoutKind) -> String {
+        switch kind {
+        case .outdoorCardio(_, let type), .timerCardio(_, let type), .interval(_, let type): return type.rawValue
+        case .swim: return "swim"
+        case .strength: return "strength"
+        }
+    }
+
+    private func releaseCardioWorkout() {
+        guard active.strengthSession == nil else { return }
+        if let lease = active.liveWorkout.lease { _ = active.liveWorkout.release(lease) }
     }
 
     private func finishWarmup(elapsedSeconds secs: Int, startCue: WorkoutStartCue) {

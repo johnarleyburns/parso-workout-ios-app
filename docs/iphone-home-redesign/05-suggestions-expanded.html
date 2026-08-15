@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Coach suggestions expanded — iPhone mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a href="02-select-workout.html">Select Workout</a><a href="03-log-workout.html">Log</a><a href="04-plan.html">Plan</a><a class="active" href="05-suggestions-expanded.html">Suggestions</a><a href="06-workout-summary.html">Summary</a><a href="07-active-workout.html">Active</a><a href="08-review-workout.html">Review</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">State 05 · Home after Show more…</div><h1>The ranked list opens in place.</h1><p>No separate Coach hero or paywall screen interrupts Home. The first suggestion retains priority styling; lower-ranked items reveal beneath it with their actions and evidence.</p></header>
+  <section class="stage">
+    <div class="phone"><div class="screen"><div class="island"></div><div class="status"><span>9:41</span><span>●●● Wi-Fi 82%</span></div>
+      <div class="app-scroll"><div class="app-content">
+        <div class="nav-row"><h2>Today</h2><span class="spacer"></span><button class="icon-button">⚙︎</button></div>
+        <div class="date">Friday, August 14</div>
+        <div class="button-row"><a class="button primary" href="02-select-workout.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">▶ Start Workout</a><a class="button secondary" href="03-log-workout.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">✎ Log Workout</a></div>
+        <div class="card soft padded" style="margin-top:16px"><div style="display:flex;align-items:center"><b style="font-size:13px">This Week</b><span class="spacer"></span><span class="pill green">2 strength · 82 cardio min</span></div><div class="row-sub">Weekly volume shown above · Chest and Core below range</div></div>
+
+        <div class="section-title">Coach’s suggestions</div>
+        <div class="card">
+          <article class="suggestion" style="background:var(--green-soft)">
+            <div class="suggestion-head"><span class="pill orange">Highest priority</span><span class="spacer"></span><span style="color:var(--green-dark)">✦</span></div>
+            <h3>Choose cardio next</h3><p>You are 68 moderate-equivalent minutes short of this week’s aerobic baseline. An easy 30-minute ride moves you closer without adding much fatigue.</p>
+            <div class="suggestion-actions"><a href="02-select-workout.html">Choose workout</a><a href="#">The science ›</a></div>
+          </article>
+          <article class="suggestion">
+            <div class="suggestion-head"><span class="pill orange">Volume</span><span class="spacer"></span><span>▥</span></div>
+            <h3>Chest volume is below its starting range</h3><p>You logged 5 chest sets this week. Your intermediate hypertrophy starting range begins near 8; consider 3 more sets if recovery feels normal.</p>
+            <div class="suggestion-actions"><a href="#">Add to plan</a><a href="#">The science ›</a></div>
+          </article>
+          <article class="suggestion">
+            <div class="suggestion-head"><span class="pill blue">Fitness test</span><span class="spacer"></span><span>✓</span></div>
+            <h3>Refresh your plank baseline</h3><p>Your core endurance result is 9 weeks old. A fresh test helps Coach tune core work to your current fitness level.</p>
+            <div class="suggestion-actions"><a href="#">Start test</a><a href="#">Why now? ›</a></div>
+          </article>
+          <article class="suggestion">
+            <div class="suggestion-head"><span class="pill">Progress</span><span class="spacer"></span><span>↗</span></div>
+            <h3>Your bench press is trending up</h3><p>Your estimated 1RM has increased about 4% over the last six weeks. Keep the current progression while reps and effort remain steady.</p>
+            <div class="suggestion-actions"><a href="#">View trend</a><a href="#">The science ›</a></div>
+          </article>
+        </div>
+        <a class="link-button" href="01-home.html" style="display:flex;align-items:center;text-decoration:none">Show less</a>
+
+        <div class="section-title">What you did</div><div class="card"><a class="row" href="06-workout-summary.html" style="color:inherit;text-decoration:none"><span class="round-icon green">▰</span><span class="row-main"><span class="row-title">Upper Body</span><span class="row-sub">Today · 43 min · 14 working sets</span></span><span class="chevron">›</span></a></div>
+      </div></div>
+      <nav class="tabs"><div class="tab active"><b>⌂</b>Home</div><div class="tab"><b>▤</b>Plan</div><div class="tab"><b>✓</b>Tests</div><div class="tab"><b>↗</b>Progress</div></nav>
+    </div></div>
+    <aside class="notes">
+      <div class="note-card"><h2>Ranking contract</h2><p>Suggestions are deterministic and stable for a snapshot: safety/readiness first, then weekly modality deficits, muscle-volume gaps, plan/test actions, and progress observations. Existing engine priority is the first sort key; this UI must not invent a competing scoring system in SwiftUI.</p></div>
+      <div class="note-card"><h2>One section, multiple sources</h2><p>The list may merge <code>Insight</code>, the weekly Coach recommendation, passive readiness, and the fitness-test recommendation into one presentation model. De-duplicate equivalent claims before display.</p></div>
+      <div class="note-card"><h2>Free Coach</h2><p>Every action shown here works on the standard tier, including staged plan changes. There is no locked prescription, “Pro” chip, trial banner, upsell cadence, or entitlement branch.</p></div>
+      <div class="note-card"><h2>Behavior</h2><p>Expansion is local Home state and preserves scroll position. A history refresh re-ranks content but does not force-collapse an already expanded list during the same visit.</p></div>
+    </aside>
+  </section>
+</main></body></html>

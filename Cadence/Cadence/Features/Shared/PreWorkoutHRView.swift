@@ -19,12 +19,14 @@ struct PreWorkoutHRView: View {
 
     @Environment(AppModel.self) private var model
     @Query private var savedDevices: [HRMDevice]
+    @State private var watchSelected = false
+    @State private var freshnessTick = Date()
 
     private var hrm: HeartRateMonitor { model.hrm }
     private var defaultDevice: HRMDevice? { savedDevices.first { $0.isDefault } }
 
     private var strapConnected: Bool {
-        if case .connected = hrm.state { return true }
+        if case .connected = hrm.state, hrm.source == .bluetooth { return true }
         return false
     }
     private var strapName: String {
@@ -32,6 +34,16 @@ struct PreWorkoutHRView: View {
     }
     private var strapBPM: Double? {
         strapConnected ? hrm.currentBPM : nil
+    }
+    private var watchBPM: Int? { model.watchHRRelay.freshBPM(at: freshnessTick) }
+    private var watchStatus: String {
+        switch model.watchHRRelay.state {
+        case .connecting: return "Connecting to Apple Watch…"
+        case .waitingForSample: return "Watch connected · waiting for heart rate…"
+        case .live: return watchBPM == nil ? "Heart rate is stale · retry on Watch" : "Live from Apple Watch"
+        case .timedOut(let message), .failed(let message): return message
+        case .actionRequired(let message), .unavailable(let message): return message
+        }
     }
 
     var body: some View {
@@ -43,7 +55,7 @@ struct PreWorkoutHRView: View {
                 Text("Connect Heart Rate")
                     .font(.title.bold())
                     .accessibilityIdentifier("prehr.title")
-                Text("Connect a Bluetooth chest strap, then start when you see your live heart rate.")
+                Text("Use a Bluetooth chest strap or Apple Watch, then start when you see live heart rate.")
                     .font(.subheadline).foregroundStyle(.secondary)
                     .multilineTextAlignment(.center).padding(.horizontal)
             }
@@ -52,9 +64,32 @@ struct PreWorkoutHRView: View {
                 strapRow
                 if model.watchAvailable {
                     HRSourceCard(icon: "applewatch", title: "Apple Watch", tint: .blue) {
-                        Button("Use Watch") { onContinue(.watch) }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("prehr.useWatch")
+                        Button(watchSelected ? "Check for Live HR" : "Check for Live HR") {
+                            watchSelected = true
+                            if let workoutType { model.startWatchWorkout(type: workoutType) } else { model.startWatchStrength() }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled({ if case .connecting = model.watchHRRelay.state { return true }; if case .waitingForSample = model.watchHRRelay.state { return true }; return false }())
+                            .accessibilityIdentifier("prehr.watch.check")
+                    }
+                    if watchSelected {
+                        Text("Open Cladiron on your Apple Watch and keep it visible.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("prehr.watch.instructions")
+                        if let watchBPM {
+                            HRValueLabel(bpm: watchBPM, note: "LIVE · from Apple Watch", noteColor: .green)
+                                .accessibilityIdentifier("prehr.watchBPM")
+                        } else {
+                            Text(watchStatus).font(.caption).foregroundStyle(.secondary)
+                                .accessibilityIdentifier("prehr.watch.status")
+                        }
+                    }
+                } else {
+                    HRSourceCard(icon: "applewatch.slash", title: "Apple Watch unavailable", tint: .secondary) {
+                        Text("Install or open Cladiron on Watch")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                            .accessibilityIdentifier("prehr.watch.unavailable")
                     }
                 }
             }
@@ -64,11 +99,16 @@ struct PreWorkoutHRView: View {
 
             VStack(spacing: 12) {
                 Button {
-                    onContinue(.bluetooth)
+                    if watchBPM == nil { model.stopWatchWorkout() }
+                    if watchBPM != nil { onContinue(.watch) }
+                    else if strapConnected { onContinue(.bluetooth) }
+                    else { onContinue(.none) }
                 } label: {
-                    Text("Start").frame(maxWidth: .infinity, minHeight: 52)
+                    Text(watchBPM != nil ? "Continue with Apple Watch" : (strapConnected ? "Continue with Bluetooth" : "Continue without heart rate"))
+                        .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .cadenceGlassButton(prominent: true, tint: .green)
+                .disabled(watchSelected && watchBPM == nil && !strapConnected)
                 .accessibilityIdentifier("prehr.start")
             }
             .padding(.horizontal)
@@ -84,6 +124,12 @@ struct PreWorkoutHRView: View {
             if let id = defaultDevice?.id { hrm.connect(id) }
         }
         .onDisappear { hrm.stopScanning() }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                freshnessTick = Date()
+            }
+        }
     }
 
     // MARK: Rows
@@ -100,7 +146,7 @@ struct PreWorkoutHRView: View {
             } else if strapConnected {
                 ProgressView()
             } else {
-                Button("Connect") { connectStrap() }
+                Button("Connect") { model.stopWatchWorkout(); connectStrap() }
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("prehr.connectStrap")
             }

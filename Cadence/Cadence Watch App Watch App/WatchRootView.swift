@@ -42,6 +42,7 @@ struct WatchRootView: View {
         .onChange(of: watchManager.customExercisesUpdatedAt) { _, _ in
             watchManager.applyCustomExercises(watchManager.customExerciseRows, in: context)
         }
+        .accessibilityIdentifier("watch.root")
     }
 
     private var launcher: some View {

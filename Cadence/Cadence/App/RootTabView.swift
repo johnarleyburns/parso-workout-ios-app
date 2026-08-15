@@ -4,15 +4,16 @@ import CadenceCore
 import CadenceFeatures
 
 struct RootTabView: View {
-    enum Tab: Hashable { case workout, tests, progress }
+    enum Tab: Hashable { case home, plan, tests, progress }
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
     @Environment(ActiveWorkoutModel.self) private var active
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
-    @State private var selection: Tab = .workout
+    @State private var selection: Tab = .home
     @State private var showSplash = true
     @State private var watchSyncToast: WatchSyncToast?
+    @State private var reviewExerciseID: UUID?
     /// Liveness heartbeat for crash/upgrade recovery (launch-blockers Phase 1e).
     /// Root-level so it keeps beating while the workout is minimized.
     private let heartbeatTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
@@ -40,10 +41,17 @@ struct RootTabView: View {
             TabView(selection: $selection) {
                 HomeView()
                     .tabItem {
-                        Label("Workout", systemImage: "figure.strengthtraining.traditional")
-                            .accessibilityIdentifier("tab.workout")
+                        Label("Home", systemImage: "house.fill")
+                            .accessibilityIdentifier("tab.home")
                     }
-                    .tag(Tab.workout)
+                    .tag(Tab.home)
+
+                NavigationStack { PlanningView(switchToWorkout: { selection = .home }) }
+                    .tabItem {
+                        Label("Plan", systemImage: "calendar")
+                            .accessibilityIdentifier("tab.plan")
+                    }
+                    .tag(Tab.plan)
 
                 TestsView()
                     .tabItem {
@@ -88,10 +96,16 @@ struct RootTabView: View {
         .fullScreenCover(item: $active.presentedSurface) { surface in
             switch surface {
             case .session(let session):
-                NavigationStack { SessionView(session: session) }
+                NavigationStack { SessionView(session: session, initiallyExpandedExerciseID: reviewExerciseID) }
             case .summary(let finished):
                 WorkoutSummaryView(data: finished.data,
-                                   onDone: { active.finishedSummary = nil })
+                                   onExercise: { id in
+                                       guard let session = finished.session else { return }
+                                       reviewExerciseID = id
+                                       active.finishedSummary = nil
+                                       active.presentedSurface = .session(session)
+                                   },
+                                   onDone: { reviewExerciseID = nil; active.finishedSummary = nil })
             }
         }
         // Keep the screen awake while a workout is active in any navigation

@@ -56,6 +56,7 @@ final class WatchWorkoutManager: NSObject {
     private var extendedSession: WKExtendedRuntimeSession?
     private var ble: WatchHeartRateBLE?
     private var sessionStart: Date?
+    var phoneRequestID: String?
     private var accumulatedHR: Double = 0
     private var hrCount: Int = 0
     private var elapsedTracker = ElapsedTimeTracker()
@@ -127,16 +128,18 @@ final class WatchWorkoutManager: NSObject {
 
     // MARK: Workout control
 
-    func startWorkout(type rawType: String, cardioType: CardioType? = nil, spec: WorkoutConfigurationSpec? = nil) {
-        guard !isActive else { return }
+    @discardableResult
+    func startWorkout(type rawType: String, cardioType: CardioType? = nil, spec: WorkoutConfigurationSpec? = nil) -> Bool {
+        guard !isActive, !isMonitoring else { return false }
         workoutType = rawType
         isActive = true; isMonitoring = false
         let activity = Self.activityType(for: rawType)
-        if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: spec); return }
+        if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: spec); return true }
         Task {
             guard await requestWorkoutAuthorization() else { isActive = false; return }
             await MainActor.run { beginSession(activity: activity, spec: spec) }
         }
+        return true
     }
 
     func startMonitoringSession() {
@@ -295,7 +298,8 @@ final class WatchWorkoutManager: NSObject {
 
     private func relayBPM(_ bpm: Double) {
         guard let session = wcSession, session.isReachable else { return }
-        session.sendMessage(["bpm": bpm, "active": true], replyHandler: nil, errorHandler: nil)
+        guard let requestID = phoneRequestID else { return }
+        session.sendMessage(["bpm": bpm, "active": true, "requestID": requestID], replyHandler: nil, errorHandler: nil)
     }
 
     static func activityType(for rawType: String) -> HKWorkoutActivityType {

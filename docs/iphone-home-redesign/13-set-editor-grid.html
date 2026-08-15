@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Set editor partner and grid — iPhone mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a href="10-active-workout-conflict.html">One workout</a><a href="11-watch-hr-open.html">Watch HR</a><a class="active" href="13-set-editor-grid.html">Set editor</a><a href="14-performer-picker.html">Performer picker</a><a href="15-interval-timing.html">Intervals</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">Field fixes 04, 05 &amp; 07 · Strength set entry</div><h1>The performer is editable; every increment is a true grid cell.</h1><p>“Me” is always an action, even in a solo workout. Set controls update immediately and independently of expensive Session rendering.</p></header>
+  <section class="stage">
+    <div class="phone"><div class="screen"><div class="island"></div><div class="status"><span>9:41</span><span>●●● Wi-Fi 82%</span></div><div class="app-scroll sheet-scroll"><div class="app-content">
+      <div class="nav-row inline"><button class="icon-button" style="font-size:14px">Cancel</button><h2>Machine Fly</h2><button class="icon-button" style="font-size:13px;color:var(--red)">Delete</button></div>
+      <div style="text-align:center"><b>Set 3 of 3</b><div class="row-sub">Last set 100 lb × 11 · RPE 8.5</div></div>
+      <div class="section-title" style="font-size:16px">Who did this set?</div>
+      <div class="performer-row"><span class="person-badge">ME</span><strong>Me</strong><a href="14-performer-picker.html" style="color:var(--blue);text-decoration:none;font-size:13px;font-weight:750">Change ›</a></div>
+      <button class="link-button" style="font-size:12px">＋ Add Partner</button>
+      <div class="card padded" style="margin-top:8px"><strong>Weight</strong><div class="weight-value">100 <small>lb · Type…</small></div><div class="button-row"><button class="button primary">− 5 lb</button><button class="button primary">＋ 5 lb</button></div><div class="weight-grid" style="margin-top:9px"><button class="button">45</button><button class="button">35</button><button class="button">25</button><button class="button">10</button><button class="button selected">5</button><button class="button">2.5</button><button class="button">0.25</button><button class="button">Type…</button></div></div>
+      <div class="card padded" style="margin-top:11px"><strong>Reps</strong><div class="number-stepper" style="margin-top:9px"><button class="button primary">−</button><strong>10</strong><button class="button primary">＋</button></div></div>
+      <div class="card padded" style="margin-top:11px"><strong>Effort</strong><div class="segmented" style="margin-top:9px"><span class="selected">RPE</span><span>RIR</span></div></div>
+    </div></div><div style="position:absolute;left:0;right:0;bottom:0;padding:10px 18px;background:white;border-top:1px solid var(--line)"><div class="button-row"><button class="button">Cancel</button><button class="button primary">Save set</button></div></div></div></div>
+    <aside class="notes">
+      <div class="note-card"><h2>Per-set ownership</h2><p>The draft owns <code>performerID</code>. Add defaults to roster rotation; edit preloads the recorded performer, including an attributed partner no longer active. Switching to Me saves <code>nil</code>. Cancel leaves the stored set unchanged.</p></div>
+      <div class="note-card"><h2>Grid geometry</h2><p>Four equal flexible columns, 8 pt gaps, and exactly equal 48 pt label/control frames. Apply the expanding frame to the Button label before styling. At accessibility sizes use two equal columns; never allow content width to determine cell size.</p></div>
+      <div class="note-card"><h2>Responsiveness budget</h2><p>The visible number/selection must update in the same frame cycle: ≤100 ms p95 from touch-up to committed UI on the oldest supported physical iPhone, with no event above 250 ms and no lost taps during a ten-tap burst.</p></div>
+      <div class="note-card"><h2>Implementation direction</h2><p>Freeze a stable editor context when the cover opens; do not rebuild it from SwiftData on every draft tap. Keep idle-activity tracking off the Session render invalidation path, prewarm/reuse haptics, and signpost tap receipt/state commit. Profile before/after to prove the stall is gone.</p></div>
+    </aside>
+  </section>
+</main></body></html>

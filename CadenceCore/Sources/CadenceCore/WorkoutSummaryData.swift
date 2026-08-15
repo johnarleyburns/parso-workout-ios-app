@@ -16,6 +16,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     /// working (non-warmup) sets only** — partner and warmup sets are excluded
     /// (field-testing §04, decision #13), matching `WorkoutSession.totalVolume`.
     public struct ExerciseLine: Equatable, Sendable {
+        public let sourceExerciseID: UUID?
         public let name: String
         public let setCount: Int
         /// Heaviest working-set weight (kg) for this exercise, if any. For a
@@ -28,7 +29,9 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         public let usesBodyweight: Bool
 
         public init(name: String, setCount: Int, topSetWeightKg: Double?, reps: [Int],
+                    sourceExerciseID: UUID? = nil,
                     usesBodyweight: Bool = false) {
+            self.sourceExerciseID = sourceExerciseID
             self.name = name
             self.setCount = setCount
             self.topSetWeightKg = topSetWeightKg
@@ -213,7 +216,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     /// exercise with ≥1 matching set (working sets summarize the line).
     private static func lines(in session: WorkoutSession,
                              belongs: (SetEntry) -> Bool) -> [ExerciseLine] {
-        session.exercisesInOrder.compactMap { ex in
+        session.exercisesInOrder.compactMap { (ex) -> ExerciseLine? in
             let mine = session.orderedSets.filter { $0.exercise?.id == ex.id && belongs($0) }
             guard !mine.isEmpty else { return nil }
             let working = mine.filter { !$0.isWarmup }
@@ -221,6 +224,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                                 setCount: working.count,
                                 topSetWeightKg: working.map(\.effectiveLoadKg).max(),
                                 reps: working.map(\.reps),
+                                sourceExerciseID: ex.id,
                                 usesBodyweight: working.contains { $0.usesBodyweight })
         }
     }

@@ -195,16 +195,4 @@ public enum HomeCoachModel {
         return CoachTestRecommendationEngine.recommendation(inputs)
     }
 
-    /// Whether Home should render the prominent "Unlock the Coach" CTA.
-    ///
-    /// Wraps `CoachUpsellPolicy` so the entitlement is threaded through exactly
-    /// once, in tested code, rather than at a SwiftUI call site — which is how a
-    /// hardcoded `isPro: false` once shipped an advertisement to paying users.
-    public static func upsellCTAVisible(entitlement: ProEntitlement,
-                                        lastShown: Date?,
-                                        now: Date = Date()) -> Bool {
-        CoachUpsellPolicy.shouldShowCTA(isPro: entitlement.isPro,
-                                        lastShown: lastShown,
-                                        now: now)
-    }
 }

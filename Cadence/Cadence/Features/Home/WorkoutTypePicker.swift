@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 
@@ -53,6 +54,77 @@ struct WorkoutTypePicker: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("startType.cancel")
+                }
+            }
+        }
+    }
+}
+
+/// Unified entry sheet for Home. Strength choices are deliberately explicit;
+/// cardio keeps the existing downstream setup and recorder routes.
+struct SelectWorkoutView: View {
+    let recommendation: Recommendation?
+    let onEditorStart: (EditablePlan) -> Void
+    let onSelect: (WorkoutType) -> Void
+    let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+
+    private var previous: [WorkoutSession] { Array(sessions.filter { !$0.orderedSets.isEmpty }.prefix(20)) }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Strength") {
+                    NavigationLink {
+                        WorkoutPlanEditor(plan: .empty(warmup: 0, cooldown: settings.cooldownMinutes), onStart: onEditorStart)
+                    } label: {
+                        Label("Quick Start", systemImage: "bolt.fill")
+                    }.accessibilityIdentifier("selectWorkout.quickStart")
+                    NavigationLink {
+                        WorkoutPlanEditor(plan: recommendation.map {
+                            .from(recommendation: $0, goal: settings.trainingGoal,
+                                  warmupMinutes: settings.warmupMinutes,
+                                  cooldownMinutes: settings.cooldownMinutes)
+                        } ?? .empty(warmup: settings.warmupMinutes, cooldown: settings.cooldownMinutes), onStart: onEditorStart)
+                    } label: {
+                        Label("Coach’s Workout", systemImage: "wand.and.stars")
+                    }.accessibilityIdentifier("selectWorkout.coach")
+                    if previous.isEmpty {
+                        Label("No previous strength workouts", systemImage: "clock.arrow.circlepath")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(previous) { session in
+                            NavigationLink {
+                                WorkoutPlanEditor(plan: .from(session: session), onStart: onEditorStart)
+                            } label: {
+                                Label(session.title.isEmpty ? "Previous Workout" : session.title,
+                                      systemImage: "clock.arrow.circlepath")
+                            }
+                            .accessibilityIdentifier("selectWorkout.previous")
+                            .accessibilityValue(session.id.uuidString)
+                        }
+                    }
+                }
+                Section("Cardio") {
+                    ForEach([WorkoutType.run, .walk, .cycle, .swim, .hiit, .boxing]) { type in
+                        Button { onSelect(type) } label: {
+                            Label(type.displayName, systemImage: type.symbol)
+                        }
+                        .accessibilityIdentifier("startType.\(type.rawValue)")
+                    }
+                    NavigationLink {
+                        OtherCardioEntryView(onStart: onOtherCardio)
+                    } label: {
+                        Label("Other Cardio", systemImage: WorkoutType.other.symbol)
+                    }
+                }
+            }
+            .navigationTitle("Select Workout")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
                 }
             }
         }

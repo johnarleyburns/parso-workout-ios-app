@@ -33,6 +33,7 @@ public struct IntervalCueDecider {
     public mutating func cues(phaseKind: IntervalPhaseKind?,
                               currentPhaseID: Int?,
                               phaseRemaining: TimeInterval,
+                              phaseDuration: TimeInterval = 180,
                               isPaused: Bool,
                               isComplete: Bool) -> [Cue] {
         guard !isPaused, !isComplete else { return [] }
@@ -48,8 +49,10 @@ public struct IntervalCueDecider {
             lastPhaseID = currentPhaseID
         }
 
-        // 30-second warning (once per work phase)
-        if phaseKind == .work, secs == 30, currentPhaseID != lastWarnedPhase {
+        // Duration-aware warning (once per work phase). Rounded whole seconds
+        // keep cue timing aligned with the visible countdown.
+        let warningSecond = Int(IntervalSignal.warningDuration(forWorkDuration: phaseDuration))
+        if phaseKind == .work, secs == warningSecond, currentPhaseID != lastWarnedPhase {
             out.append(.warning)
             lastWarnedPhase = currentPhaseID
         }

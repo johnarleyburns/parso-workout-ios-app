@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Review Workout — iPhone mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a href="02-select-workout.html">Select Workout</a><a href="03-log-workout.html">Log</a><a href="04-plan.html">Plan</a><a href="05-suggestions-expanded.html">Suggestions</a><a href="06-workout-summary.html">Summary</a><a href="07-active-workout.html">Active</a><a class="active" href="08-review-workout.html">Review</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">View 08 · Review/edit deep-link</div><h1>Machine Fly opens with its actuals visible.</h1><p>This is the normal workout screen in history mode, not a new summary detail. The tapped exercise is expanded on arrival; every set exposes weight, reps, and RPE and can enter the existing editor.</p></header>
+  <section class="stage">
+    <div class="phone"><div class="screen"><div class="island"></div><div class="status"><span>9:41</span><span>●●● Wi-Fi 82%</span></div>
+      <div class="app-scroll sheet-scroll"><div class="app-content">
+        <div class="nav-row inline"><a class="icon-button" href="06-workout-summary.html" style="display:grid;place-items:center;text-decoration:none;font-size:14px">‹ Summary</a><h2>Upper Body</h2><button class="icon-button" style="font-size:14px">Done</button></div>
+        <div class="card blue padded" style="margin:7px 0 12px"><div style="display:flex;align-items:center"><span class="pill blue">Reviewing</span><span class="spacer"></span><span style="font-size:12px;color:var(--muted)">Aug 14 · 43 min</span></div><div class="row-sub">Tap any set to edit its actual values.</div></div>
+
+        <div class="exercise-card"><div class="exercise-head"><span class="round-icon green">✓</span><span class="row-main"><span class="row-title">Bench Press</span><span class="count">4 sets · 135 lb top · RPE 8–9</span></span><span class="chevron">⌄</span></div></div>
+
+        <div class="exercise-card" style="border-color:#9cc9fb;box-shadow:0 0 0 2px var(--blue-soft)">
+          <div class="exercise-head"><span class="round-icon blue">2</span><span class="row-main"><span class="row-title">Machine Fly</span><span class="count">3 sets · opened from Summary</span></span><span class="chevron">⌃</span></div>
+          <div class="exercise-expanded">
+            <div class="current-label" style="color:#0c61bc">ACTUAL SETS · Tap a row to edit</div>
+            <table class="set-table"><thead><tr><th>Set</th><th>Weight</th><th>Reps</th><th>RPE</th><th></th></tr></thead><tbody>
+              <tr><td>1</td><td>100 lb</td><td>12</td><td>8</td><td style="color:var(--blue)">›</td></tr>
+              <tr><td>2</td><td>100 lb</td><td>11</td><td>8.5</td><td style="color:var(--blue)">›</td></tr>
+              <tr><td>3</td><td>100 lb</td><td>10</td><td>9</td><td style="color:var(--blue)">›</td></tr>
+            </tbody></table>
+            <div style="display:flex;gap:8px;margin-top:10px"><span class="pill">Volume 3,300 lb</span><span class="pill orange">Last set hardest</span></div>
+            <div class="exercise-actions"><button class="button">＋ Add Set</button><button class="button secondary">••• Exercise</button></div>
+          </div>
+        </div>
+
+        <div class="exercise-card"><div class="exercise-head"><span class="round-icon green">✓</span><span class="row-main"><span class="row-title">Seated Cable Row</span><span class="count">4 sets · 125 lb top · RPE 7–9</span></span><span class="chevron">⌄</span></div></div>
+        <div class="exercise-card"><div class="exercise-head"><span class="round-icon green">✓</span><span class="row-main"><span class="row-title">Triceps Pushdown</span><span class="count">3 sets · 50 lb top · RPE 8–9</span></span><span class="chevron">⌄</span></div></div>
+      </div></div>
+    </div></div>
+    <aside class="notes">
+      <div class="note-card"><h2>Review-mode default</h2><p>Opening a past workout directly starts with all exercises collapsed. Opening via a Summary exercise row passes a focus ID, scrolls to that card after layout, and expands only it.</p></div>
+      <div class="note-card"><h2>Exact actuals</h2><p>Rows display stored weight, reps, and optional RPE; warm-ups remain labeled and partner sets remain attributed. Never derive the drill-in from summary aggregates because those omit warm-up and partner detail.</p></div>
+      <div class="note-card"><h2>Edit semantics</h2><p>Review mode keeps existing mutations: tapping a set edits the same <code>SetEntry</code> identity, Add Set appends once, Cancel mutates nothing, and deletions keep current confirmation behavior.</p></div>
+      <div class="note-card"><h2>State isolation</h2><p>Accordion state is transient view state keyed by exercise ID. Do not persist expansion in SwiftData or sync it through CloudKit.</p></div>
+    </aside>
+  </section>
+</main></body></html>

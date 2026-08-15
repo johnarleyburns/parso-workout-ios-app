@@ -8,12 +8,10 @@ import CadenceFeatures
 struct OnboardingView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
-    @Environment(StoreService.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     @State private var flow = OnboardingModel()
     @State private var healthRequested = false
-    @State private var showPaywall = false
 
     var body: some View {
         @Bindable var flow = flow
@@ -33,10 +31,6 @@ struct OnboardingView: View {
             footer
         }
         .interactiveDismissDisabled()
-        .sheet(isPresented: $showPaywall, onDismiss: { finish() }) {
-            PaywallView(headline: "Your program is ready",
-                        subheadline: "Start training with the Coach — it adapts every set to what you log and cites the research.")
-        }
         .onAppear {
             flow.goal = settings.trainingGoal
             flow.experience = settings.experienceLevel
@@ -70,7 +64,7 @@ struct OnboardingView: View {
                 Haptics.selection()
                 switch flow.primaryAction {
                 case .complete:
-                    showPaywall = true
+                    finish()
                 case .advance:
                     withAnimation { flow.advance() }
                 }

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Interval color timing — mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a href="10-active-workout-conflict.html">One workout</a><a href="11-watch-hr-open.html">Watch HR</a><a href="13-set-editor-grid.html">Set editor</a><a class="active" href="15-interval-timing.html">Intervals</a><a href="09-watch-launch-recovery.html">Watch launch</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">Field fix 06 · iPhone + Watch intervals</div><h1>Yellow is the final sixth, not a fixed 30 seconds.</h1><p>Both renderers consume the same duration-aware signal. Tabata becomes 15 seconds green plus 5 seconds warning/imminent; boxing remains 150 seconds green plus 30 seconds warning/imminent.</p></header>
+  <section class="stage">
+    <div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;width:413px">
+        <div style="height:380px;border:8px solid #050607;border-radius:38px;overflow:hidden"><div class="interval-surface green" style="padding-top:28px"><b>TABATA · ROUND 3/8</b><div class="phase" style="margin-top:72px;font-size:29px">WORK</div><div class="countdown" style="font-size:65px">14</div><small>GREEN</small></div></div>
+        <div style="height:380px;border:8px solid #050607;border-radius:38px;overflow:hidden"><div class="interval-surface yellow" style="padding-top:28px"><b>TABATA · ROUND 3/8</b><div class="phase" style="margin-top:72px;font-size:29px">WORK</div><div class="countdown" style="font-size:65px">04</div><small>WARNING</small></div></div>
+      </div>
+      <div class="interval-timeline"><div class="timeline-labels"><span>20 s work starts</span><span>ends</span></div><div class="timeline-bar"><span class="green" style="width:75%">15 s GREEN</span><span class="yellow" style="width:10%">2</span><span class="imminent" style="width:15%">3 s</span></div></div>
+      <div class="interval-timeline" style="margin-top:18px"><div class="timeline-labels"><span>180 s boxing round starts</span><span>ends</span></div><div class="timeline-bar"><span class="green" style="width:83.333%">150 s GREEN</span><span class="yellow" style="width:15%">27 s YELLOW</span><span class="imminent" style="width:1.667%"></span></div></div>
+    </div>
+    <aside class="notes">
+      <div class="note-card"><h2>Exact formula</h2><p>For work duration <code>D</code>, warning duration is <code>min(D, ceil((D / 6) / 5) × 5)</code> seconds. State is green when remaining &gt; warning duration, yellow when 3 &lt; remaining ≤ warning duration, and imminent for the final 3 seconds. For 20: 5. For 45: 10. For 180: 30.</p></div>
+      <div class="note-card"><h2>Single source of truth</h2><p><code>IntervalSignal</code> must receive both phase duration and remaining time. <code>IntervalRunner</code> exposes the effective duration. iPhone <code>IntervalView</code> and <code>WatchIntervalView</code> continue mapping the shared state to platform colors; neither owns threshold math.</p></div>
+      <div class="note-card"><h2>Cues align</h2><p>Pass the same warning threshold to <code>IntervalCueDecider</code> so the warning cue starts when yellow starts. Final-three-second ticks remain unchanged. Rest stays red; warm-up/cool-down stay neutral; color-blind mode retains its alternate work/rest palette.</p></div>
+      <div class="note-card"><h2>Scope</h2><p>This applies to every protocol with a timed work phase—HIIT presets, custom intervals, Tabata, boxing, and both phone/Watch runners. A steady-state cardio timer has no work/rest phase and therefore no green-to-yellow interval transition.</p></div>
+    </aside>
+  </section>
+</main></body></html>

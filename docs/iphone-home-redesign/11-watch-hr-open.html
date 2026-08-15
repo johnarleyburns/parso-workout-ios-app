@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Open Watch for HR — iPhone mockup</title><link rel="stylesheet" href="mockups.css"></head>
+<body><main class="page-shell">
+  <nav class="site-nav"><a href="01-home.html">Home</a><a href="10-active-workout-conflict.html">One workout</a><a class="active" href="11-watch-hr-open.html">Watch HR: open</a><a href="12-watch-hr-live.html">Watch HR: live</a><a href="13-set-editor-grid.html">Set editor</a><a href="15-interval-timing.html">Intervals</a><a href="index.html">Index</a></nav>
+  <header class="page-head"><div class="eyebrow">Field fix 03A · Apple Watch action required</div><h1>Do not leave the HR gate on “Use Watch.”</h1><p>Selecting Apple Watch keeps the person on this screen and gives explicit steps. The workout cannot continue as “Watch HR” until a fresh sample actually arrives.</p></header>
+  <section class="stage">
+    <div class="phone"><div class="screen"><div class="island"></div><div class="status"><span>9:41</span><span>●●● Wi-Fi 82%</span></div><div class="app-scroll sheet-scroll"><div class="app-content">
+      <div class="nav-row inline"><button class="icon-button">Cancel</button><h2>Heart Rate</h2><span style="width:44px"></span></div>
+      <div style="text-align:center;margin:22px 0 17px"><div style="font-size:45px;color:#e54878">♥</div><h2 style="margin:5px 0">Connect Heart Rate</h2><p class="section-kicker">Choose one source and verify a live reading before the workout starts.</p></div>
+      <div class="hr-choice"><div class="hr-choice-head"><span class="round-icon">⌁</span><strong>Bluetooth strap</strong><button class="button" style="min-height:39px;padding:0 12px">Connect</button></div></div>
+      <div class="hr-choice selected"><div class="hr-choice-head"><span class="round-icon blue">⌚</span><strong>Apple Watch</strong><span class="pill blue">Selected</span></div><div class="hr-instruction"><b>Open Cladiron on your Apple Watch</b><br>Keep it visible while the Watch starts heart-rate monitoring.</div><ol class="step-list"><li>Open Cladiron from the Watch app grid.</li><li>Allow Health access if the Watch asks.</li><li>Return here and tap Check for Live HR.</li></ol><button class="button secondary wide" style="margin-top:13px">Check for Live HR</button></div>
+      <button class="button primary wide" disabled style="margin-top:18px">Waiting for Watch HR…</button><button class="link-button wide" style="margin-top:5px">Continue without heart rate</button>
+    </div></div></div></div>
+    <aside class="notes">
+      <div class="note-card"><h2>State: action required</h2><p>This state appears when the Watch app is installed but unreachable, or after a start command has not produced a sample. Do not call the Watch active merely because <code>sendMessage</code> was invoked.</p></div>
+      <div class="note-card"><h2>Retry behavior</h2><p>Check for Live HR re-evaluates reachability, sends a typed start request, shows Connecting, consumes a structured acknowledgement, and then waits for the first valid BPM. An acknowledgement proves command receipt; only a sample proves HR.</p></div>
+      <div class="note-card"><h2>Escape routes</h2><p>The user can switch to Bluetooth, retry Watch, cancel the start flow, or continue without HR. Cancel/switch/timeout sends a stop command when needed so a hidden Watch Health workout does not remain active.</p></div>
+    </aside>
+  </section>
+</main></body></html>

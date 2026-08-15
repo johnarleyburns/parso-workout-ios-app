@@ -4,6 +4,8 @@ import CadenceCore
 import CadenceFeatures
 import CoreBluetooth
 
+enum HeartRateSource: Equatable { case none, bluetooth, appleWatch }
+
 /// Observable heart-rate monitor for the iPhone (FR-2.3, FR-4.4). Connects to a
 /// BLE strap exposing the standard Heart Rate Service (0x180D / char 0x2A37),
 /// reconnects with exponential backoff, surfaces battery + signal state, and
@@ -32,6 +34,7 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
     private let criticalBatteryThreshold: Int = 10
 
     private(set) var state: HRMConnectionState = .idle
+    private(set) var source: HeartRateSource = .none
     /// Live BPM, falling back to the last-known value during brief signal drops
     /// (buffered for up to `bufferWindow` seconds — FR-2.3, UC-4 alt 3a).
     private(set) var currentBPM: Double? {
@@ -117,6 +120,7 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
                 try? await Task.sleep(for: .milliseconds(200))
                 guard let self else { return }
                 self.state = .connected(id)
+                self.source = .bluetooth
                 self.battery = 88
                 self.startSimFeed()
             }
@@ -139,11 +143,13 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
             simTimer?.invalidate(); simTimer = nil
             currentBPM = nil; lastKnownBPM = nil; bufferExpiryTime = nil
             state = .idle
+            source = .none
             return
         }
         if let peripheral { central?.cancelPeripheralConnection(peripheral) }
         currentBPM = nil; lastKnownBPM = nil; bufferExpiryTime = nil
         state = .idle
+        source = .none
     }
 
     // MARK: External injection (FR-8 — Watch HR relay)
@@ -159,8 +165,9 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
         bufferExpiryTime = nil
         bufferTimer?.invalidate(); bufferTimer = nil
         battery = nil
+        source = .appleWatch
         if case .connected = state { return }
-        state = .connected(UUID()) // external source placeholder
+        state = .connected(UUID())
     }
 
     // MARK: Internal helpers
@@ -260,6 +267,7 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         state = .connected(peripheral.identifier)
+        source = .bluetooth
         reconnectAttempts = 0
         peripheral.delegate = self
         peripheral.discoverServices([Self.heartRateService, Self.batteryService])

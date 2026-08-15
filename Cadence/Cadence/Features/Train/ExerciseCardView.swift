@@ -9,6 +9,10 @@ struct ExerciseCardView: View {
     let unit: MeasurementUnitPreference
     let prRule: PRRule
     let prescriptionText: String?
+    let isExpanded: Bool
+    let isCurrent: Bool
+    let compactSummary: String
+    let onToggleExpansion: () -> Void
 
     let isInlineActive: Bool
     let inlineEditingSetID: UUID?
@@ -34,24 +38,24 @@ struct ExerciseCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             headerRow
-            contextLines
+            if isExpanded { contextLines }
 
-            if !context.sets.isEmpty || (isInlineActive && inlineEditingSetID == nil) || context.pendingCount > 0 {
+            if isExpanded && (!context.sets.isEmpty || (isInlineActive && inlineEditingSetID == nil) || context.pendingCount > 0) {
                 setColumnHeader
             }
 
-            ForEach(context.sets) { set in
-                completedSetRow(set)
-                Divider()
-            }
+            if isExpanded {
+                ForEach(context.sets) { set in
+                    completedSetRow(set)
+                    Divider()
+                }
 
-            ForEach(0..<context.pendingCount, id: \.self) { offset in
-                pendingRow(offset: offset)
-                Divider()
-            }
+                ForEach(0..<context.pendingCount, id: \.self) { offset in
+                    pendingRow(offset: offset)
+                    Divider()
+                }
 
-            if !isEditing {
-                actionButtons
+                if !isEditing { actionButtons }
             }
         }
         .padding()
@@ -75,8 +79,21 @@ struct ExerciseCardView: View {
 
     private var headerRow: some View {
         HStack {
-            Text(context.name).font(.headline).lineLimit(1)
-                .accessibilityIdentifier("exerciseCard.\(context.name)")
+            Button(action: onToggleExpansion) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(context.name).font(.headline).lineLimit(1)
+                        if isCurrent { Image(systemName: "arrow.right.circle.fill").foregroundStyle(.green).font(.caption) }
+                    }
+                    if !isExpanded { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(isExpanded ? "exercise.expanded" : "exercise.collapsed")
+            .accessibilityValue(context.exerciseID.uuidString)
+            .accessibilityLabel("\(context.name), \(compactSummary), \(isExpanded ? "expanded" : "collapsed")")
+            .accessibilityAddTraits(.isButton)
             Spacer()
             if let exercise {
                 NavigationLink {

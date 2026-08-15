@@ -33,12 +33,11 @@ extension WatchWorkoutManager: @preconcurrency WCSessionDelegate {
     }
 
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        handleMessage(message)
+        _ = handleMessage(message)
     }
 
     func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-        handleMessage(message)
-        replyHandler(["ack": true])
+        replyHandler(handleMessage(message))
     }
 
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
@@ -47,13 +46,32 @@ extension WatchWorkoutManager: @preconcurrency WCSessionDelegate {
         }
     }
 
-    private func handleMessage(_ message: [String: Any]) {
+    private func handleMessage(_ message: [String: Any]) -> [String: Any] {
         if message[WatchSync.Key.command] as? String == "start_workout",
-           let type = message["type"] as? String {
+           let type = message["type"] as? String,
+           let requestID = message["requestID"] as? String,
+           let uuid = UUID(uuidString: requestID) {
+            guard !isActive, !isMonitoring else {
+                return reply(for: uuid, accepted: false, rejection: .alreadyActive)
+            }
+            phoneRequestID = requestID
             startWorkout(type: type)
+            return reply(for: uuid, accepted: true)
         } else if message[WatchSync.Key.command] as? String == "stop_workout" {
+            if let expected = message["requestID"] as? String, expected != phoneRequestID {
+                return ["ack": false]
+            }
             stopWorkout(save: false)
+            phoneRequestID = nil
+            return ["ack": true]
         }
+        return ["ack": false]
+    }
+
+    private func reply(for requestID: UUID, accepted: Bool, rejection: WatchHRRejection? = nil) -> [String: Any] {
+        var result: [String: Any] = ["ack": accepted, "accepted": accepted, "requestID": requestID.uuidString]
+        if let rejection { result["rejection"] = rejection.rawValue }
+        return result
     }
 
     func applySettingsContext(_ applicationContext: [String: Any]) {

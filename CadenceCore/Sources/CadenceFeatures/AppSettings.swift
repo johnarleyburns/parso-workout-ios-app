@@ -31,9 +31,7 @@ public final class AppSettings {
                         "settings.useHRMonitoring",
                         "settings.coachPreferenceProfile",
                         "settings.coachSchedulePreferences",
-                        "settings.lastCoachUpsellShown",
                         "settings.coachHidden",
-                        "settings.coachIntroImpressions",
                         "settings.lastTestRecommendationAt",
                         "settings.testRecommendationSnoozes"] {
                 defaults.removeObject(forKey: key)
@@ -75,9 +73,7 @@ public final class AppSettings {
         self.recoveryAwareCoachV2 = defaults.object(forKey: "settings.recoveryAwareCoachV2") as? Bool ?? true
         self.lastCoachComputeDay = defaults.string(forKey: "settings.lastCoachComputeDay") ?? ""
         self.lastSeenCoachKBVersion = defaults.string(forKey: "settings.lastSeenCoachKBVersion") ?? ""
-        self.lastCoachUpsellShown = defaults.object(forKey: "settings.lastCoachUpsellShown") as? Date
         self.coachHidden = defaults.bool(forKey: "settings.coachHidden")
-        self.coachIntroImpressions = defaults.object(forKey: "settings.coachIntroImpressions") as? Int ?? 0
         self.coachPlanOverrideWeekKey = defaults.string(forKey: "settings.coachPlanOverrideWeekKey")
         self.lastTestRecommendationAt = defaults.object(forKey: "settings.lastTestRecommendationAt") as? Date
         if let data = defaults.data(forKey: "settings.testRecommendationSnoozes"),
@@ -130,11 +126,6 @@ public final class AppSettings {
             if a.contains("-enableHRMonitoring") {
                 self.useHRMonitoring = true
             }
-            // Coach-surface state hooks so ambient/insight/hidden are UI-testable
-            // (a fresh launch is otherwise always `introducing`).
-            if let i = a.firstIndex(of: "-coachImpressions"), i + 1 < a.count, let n = Int(a[i + 1]) {
-                self.coachIntroImpressions = n
-            }
             if a.contains("-coachHidden") {
                 self.coachHidden = true
             }
@@ -183,17 +174,10 @@ public final class AppSettings {
     /// Last Coach knowledge-base version the user has viewed in "Coach research
     /// updates" — drives the "new pack" badge when an app update bumps the KB.
     public var lastSeenCoachKBVersion: String { didSet { defaults.set(lastSeenCoachKBVersion, forKey: "settings.lastSeenCoachKBVersion") } }
-    /// When the prominent "Unlock the Coach" CTA was last shown on the free Coach
-    /// card. Insights update continuously regardless; this only paces the upsell
-    /// billboard so free Home never feels like a running ad (`CoachUpsellPolicy`).
-    public var lastCoachUpsellShown: Date? { didSet { defaults.set(lastCoachUpsellShown, forKey: "settings.lastCoachUpsellShown") } }
     /// User opted out of coach offers on Home ("Hide Coach offers"). The coach is
     /// still reachable from the Programs tab and Settings; insights are never shown
     /// on Home in this state (coach-surface-design.md §2 `hidden`).
     public var coachHidden: Bool { didSet { defaults.set(coachHidden, forKey: "settings.coachHidden") } }
-    /// How many times the full introducing coach card has been shown on Home. After
-    /// `CoachSurfacePresenter.introImpressionCap` it demotes to the compact row.
-    public var coachIntroImpressions: Int { didSet { defaults.set(coachIntroImpressions, forKey: "settings.coachIntroImpressions") } }
     /// The ISO week-start date string ("yyyy-MM-dd") for which the user has asked
     /// Coach to use the `.meetDeficits` constraint policy. When it matches the
     /// current week the coach plans past guardrails; when the week rolls over it

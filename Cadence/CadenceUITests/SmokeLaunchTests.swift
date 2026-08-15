@@ -25,17 +25,63 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["set.add.Bench Press"].waitTap(timeout: 25),
                       "planned Bench Press card did not render")
 
-        let weightField = app.textFields["set.weightField"]
-        XCTAssertTrue(weightField.waitForExistence(timeout: 10),
-                      "inline set editor did not open for planned exercise (add-set regression)")
-        weightField.tap()
-        weightField.typeText("40")
+        XCTAssertTrue(app.descendants(matching: .any)["setEditor.fullScreen"].waitForExistence(timeout: 10),
+                      "expanded set editor did not open")
+        XCTAssertTrue(app.descendants(matching: .any)["setEditor.exerciseName"].waitForExistence(timeout: 5),
+                      "expanded editor did not show exercise name")
+        XCTAssertTrue(app.descendants(matching: .any)["setEditor.setNumber"].waitForExistence(timeout: 5),
+                      "expanded editor did not show set number")
 
-        app.buttons["set.save"].tap()
+        XCTAssertTrue(app.buttons["setEditor.weight.increment.5"].waitTap(timeout: 5),
+                      "5 lb increment was not available")
+        XCTAssertTrue(app.buttons["setEditor.weight.plus"].waitTap(timeout: 5),
+                      "weight plus control did not tap")
+        XCTAssertGreaterThanOrEqual(app.buttons["setEditor.weight.plus"].frame.height, 44,
+                                    "weight plus hit target is too small")
+        let weightAccessibilityValue = app.buttons["setEditor.weightValue"].value as? String
+        XCTAssertTrue(weightAccessibilityValue == "5 kg" || weightAccessibilityValue == "5 lb",
+                      "weight accessibility value did not update: \(weightAccessibilityValue ?? "nil")")
+        XCTAssertTrue(app.buttons["setEditor.reps.minus"].waitTap(timeout: 5),
+                      "reps decrement did not tap")
+        XCTAssertTrue(app.buttons["setEditor.reps.plus"].waitTap(timeout: 5),
+                      "reps increment did not tap")
+        XCTAssertTrue(app.buttons["setEditor.effort.rir"].waitTap(timeout: 5),
+                      "RIR mode did not tap")
+        XCTAssertTrue(app.buttons["setEditor.effort.value.2"].waitTap(timeout: 5),
+                      "RIR value did not tap")
+        XCTAssertTrue(app.buttons["setEditor.save"].waitTap(timeout: 10),
+                      "Save set did not tap")
 
         // The set must land as a completed row on the card.
         XCTAssertTrue(app.buttons["set.editWeight.Bench Press.1"].waitForExistence(timeout: 10),
                       "logged set row did not appear")
+        XCTAssertEqual(app.descendants(matching: .any)["set.rpe.Bench Press.1"].label, "RPE 8",
+                       "RIR selection did not persist as canonical RPE")
+        XCTAssertTrue(app.buttons["exercise.edit.Bench Press"].waitTap(timeout: 5),
+                      "set edit mode did not open")
+        XCTAssertTrue(app.buttons["set.editWeight.Bench Press.1"].waitTap(timeout: 5),
+                      "completed set did not open expanded editor")
+        XCTAssertTrue(app.descendants(matching: .any)["setEditor.fullScreen"].waitForExistence(timeout: 5),
+                      "edit did not use expanded editor")
+        XCTAssertTrue(app.buttons["setEditor.weight.increment.0.25"].waitTap(timeout: 5),
+                      "quarter-pound increment was not available")
+        XCTAssertTrue(app.buttons["setEditor.weight.plus"].waitTap(timeout: 5),
+                      "quarter-pound adjustment did not tap")
+        XCTAssertTrue(app.buttons["setEditor.save"].waitTap(timeout: 10),
+                      "Save changes did not tap")
+        XCTAssertTrue(app.descendants(matching: .any)["set.row.Bench Press.1"].waitForExistence(timeout: 10),
+                      "edited set row did not remain present")
+
+        XCTAssertTrue(app.buttons["set.add.Bench Press"].waitTap(timeout: 5),
+                      "fresh Add Set did not open")
+        XCTAssertTrue(app.descendants(matching: .any)["setEditor.fullScreen"].waitForExistence(timeout: 5),
+                      "fresh set did not use expanded editor")
+        XCTAssertTrue(app.buttons["setEditor.weight.plus"].waitTap(timeout: 5),
+                      "fresh-set weight adjustment did not tap")
+        XCTAssertTrue(app.buttons.matching(identifier: "setEditor.cancel").firstMatch.waitTap(timeout: 5),
+                      "expanded editor cancel did not tap")
+        XCTAssertFalse(app.buttons["set.row.Bench Press.2"].waitForExistence(timeout: 3),
+                       "cancel unexpectedly added a second set")
         app.dismissRestBar()
 
         XCTAssertTrue(app.scrollToHittableAndTap("workout.end"), "End workout button did not tap")

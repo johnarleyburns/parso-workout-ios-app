@@ -109,7 +109,7 @@ extension XCUIApplication {
     func openQuickStartStrengthEditor() -> Bool {
         popToHome()
         guard scrollToHittableAndTap("home.startWorkout") else { return false }
-        guard buttons["weights.quickStart"].waitTap() else { return false }
+        guard scrollToHittableAndTap("weights.quickStart") else { return false }
         return buttons["editor.start"].waitForExistence(timeout: 10)
     }
 
@@ -212,6 +212,10 @@ extension XCUIApplication {
 
     /// Taps Back until the Home launchpad (its Start Workout button) is shown.
     func popToHome() {
+        // Home and Plan are sibling tabs in the current launchpad layout; a
+        // navigation-bar Back tap cannot leave the Plan tab.
+        let homeTab = tabBars.buttons["Home"]
+        if homeTab.exists && homeTab.isHittable { homeTab.tap() }
         let homeMarker = buttons["home.startWorkout"]
         var guardCount = 0
         while !homeMarker.exists && guardCount < 8 {

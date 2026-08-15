@@ -5,6 +5,7 @@ import CadenceFeatures
 import os.log
 
 @main
+@MainActor
 struct CadenceWatchApp: App {
     let bootstrap: WatchStoreBootstrap
 

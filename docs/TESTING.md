@@ -101,10 +101,10 @@ bash scripts/install-git-hooks.sh
 
 Installed hooks:
 
-- `pre-commit`: runs `make pre-commit`, which is the guards, the SwiftPM unit suite, and the single iPhone UI smoke test. The full regression suite (watch smoke + watch unit regressions) is NOT part of the commit gate; run `make all-tests` for it.
+- `pre-commit`: runs `make pre-commit`, which is the guards, the SwiftPM unit suite, the iPhone smoke test, and the Watch unit/UI smoke tests. This keeps both SwiftUI app entry points covered by the commit gate.
 - `pre-push`: runs no tests. Verification happens at the commit gate.
 
-The pre-commit hook includes the iPhone simulator smoke coverage, so it expects
+The pre-commit hook includes iPhone and Watch simulator smoke coverage, so it expects
 the pinned simulator from `Makefile`'s `SMOKE_DEST` to be available locally. For
 exceptional cases, Git's standard `--no-verify` flag bypasses hooks.
 

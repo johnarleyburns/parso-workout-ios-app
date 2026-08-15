@@ -5,6 +5,7 @@ import CadenceCore
 import CadenceFeatures
 
 @main
+@MainActor
 struct CadenceApp: App {
     @State private var model = AppModel()
     @State private var settings = AppSettings()

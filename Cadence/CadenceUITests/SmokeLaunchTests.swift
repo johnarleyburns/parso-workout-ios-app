@@ -4,9 +4,12 @@ import XCTest
 /// needs a real simulator: launch, planning, starting, logging, ending, and the
 /// post-workout summary. Everything else belongs in headless `swift test`.
 final class SmokeLaunchTests: CadenceUITestCase {
+    @MainActor
     func testIPhoneStrengthWorkoutPlansLogsAndCompletes() {
         let app = XCUIApplication.launched()
 
+        XCTAssertEqual(app.state, .runningForeground,
+                       "iPhone app terminated or failed to reach the foreground during cold launch")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
                       "Home did not load")
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10),

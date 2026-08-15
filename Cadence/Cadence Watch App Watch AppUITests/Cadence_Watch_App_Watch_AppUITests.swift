@@ -12,6 +12,8 @@ final class WatchSmokeTests: XCTestCase {
         app.launchArguments = ["-uiTest", "-ApplePersistenceIgnoreState", "YES", "-seed", "person.Sam"]
         app.launch()
 
+        XCTAssertEqual(app.state, .runningForeground,
+                       "Watch app terminated or failed to reach the foreground during cold launch")
         XCTAssertTrue(app.tapButton("watch.startStrength", scrollAttempts: 4),
                       "Watch launcher did not show Strength Workout")
 

@@ -15,6 +15,13 @@
     {
       "target" : {
         "containerPath" : "container:Cadence.xcodeproj",
+        "identifier" : "8D78A5042FD282B700AE7C2F",
+        "name" : "CadenceTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:Cadence.xcodeproj",
         "identifier" : "8D78A50E2FD282B700AE7C2F",
         "name" : "CadenceUITests"
       },

@@ -278,8 +278,8 @@ final class AppModel: NSObject, @unchecked Sendable {
 
 // MARK: - WCSessionDelegate (FR-8)
 
-extension AppModel: @preconcurrency WCSessionDelegate {
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+extension AppModel: WCSessionDelegate {
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if activationState == .activated {
             let installed = session.isWatchAppInstalled
             Task { @MainActor [weak self] in
@@ -290,30 +290,30 @@ extension AppModel: @preconcurrency WCSessionDelegate {
         }
     }
 
-    func sessionDidBecomeInactive(_ session: WCSession) {}
-    func sessionDidDeactivate(_ session: WCSession) {
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
         WCSession.default.activate()
     }
 
-    func sessionWatchStateDidChange(_ session: WCSession) {
+    nonisolated func sessionWatchStateDidChange(_ session: WCSession) {
         let installed = session.isWatchAppInstalled
         Task { @MainActor [weak self] in
             self?.watchAppInstalled = installed
         }
     }
 
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         handleWatchMessage(message)
     }
 
-    func session(_ session: WCSession,
-                 didReceiveMessage message: [String: Any],
-                 replyHandler: @escaping ([String: Any]) -> Void) {
+    nonisolated func session(_ session: WCSession,
+                            didReceiveMessage message: [String: Any],
+                            replyHandler: @escaping ([String: Any]) -> Void) {
         handleWatchMessage(message, replyHandler: replyHandler)
     }
 
-    private func handleWatchMessage(_ message: [String: Any],
-                                    replyHandler: (([String: Any]) -> Void)? = nil) {
+    nonisolated private func handleWatchMessage(_ message: [String: Any],
+                                                replyHandler: (([String: Any]) -> Void)? = nil) {
         if message[WatchSync.Key.command] as? String == WatchSync.Key.requestSettingsSync {
             Task { @MainActor [weak self] in
                 self?.pushSettingsContext(force: true)
@@ -340,17 +340,21 @@ extension AppModel: @preconcurrency WCSessionDelegate {
         replyHandler?(["ack": true])
     }
 
-    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         guard let action = userInfo["action"] as? String else { return }
-        switch action {
-        case "log_set", "end_session", "discard_session", "delete_exercise", "delete_set":
-            handleWatchStrengthMutation(userInfo)
-        case "set_unit":
-            handleWatchSetUnit(userInfo)
-        case "set_distance_unit":
-            handleWatchSetDistanceUnit(userInfo)
-        default:
-            break
+        let payload = UncheckedWatchUserInfo(value: userInfo)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            switch action {
+            case "log_set", "end_session", "discard_session", "delete_exercise", "delete_set":
+                self.handleWatchStrengthMutation(payload.value)
+            case "set_unit":
+                self.handleWatchSetUnit(payload.value)
+            case "set_distance_unit":
+                self.handleWatchSetDistanceUnit(payload.value)
+            default:
+                break
+            }
         }
     }
 
@@ -387,6 +391,13 @@ extension AppModel: @preconcurrency WCSessionDelegate {
               let du = DistanceUnitPreference(rawValue: raw) else { return }
         _settings?.distanceUnit = du
     }
+}
+
+/// `WCSessionDelegate` guarantees property-list payloads, but its Objective-C
+/// API predates `Sendable`. This wrapper documents that framework guarantee so
+/// the callback can hand the immutable dictionary to the main actor.
+private struct UncheckedWatchUserInfo: @unchecked Sendable {
+    let value: [String: Any]
 }
 
 // MARK: - Watch sync notifications

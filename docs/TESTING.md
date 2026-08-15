@@ -75,10 +75,12 @@ make smoke
 make watch-smoke
 ```
 
-The normal simulator UI suite is intentionally tiny: one iPhone smoke test and
-one watch smoke test. `make watch-smoke` also runs the watch-target unit tests,
-including the system-audio mixing regression, against the same build. The App
-Store screenshot XCUITest remains available only via
+The normal simulator suite is intentionally tiny: one iPhone app-target launch
+regression, one iPhone UI smoke test, and one watch smoke test. The app-target
+regression exercises `WCSessionDelegate` delivery from a background queue so a
+Swift actor-isolation trap cannot regress startup. `make watch-smoke` also runs
+the watch-target unit tests, including the system-audio mixing regression,
+against the same build. The App Store screenshot XCUITest remains available only via
 `Cadence/Screenshots.xctestplan`; it is skipped by `Cadence/Cadence.xctestplan`
 and is not run by `make smoke`, `make all-tests`, git hooks, or CI.
 

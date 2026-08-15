@@ -21,8 +21,9 @@ guardrails:
 	bash scripts/check-test-pyramid.sh
 	bash scripts/check-no-network.sh
 
-# iPhone UI smoke gate: build once, then run the single normal smoke test on a
-# pinned simulator. Manual App Store screenshot UI tests stay out of this plan.
+# iPhone smoke gate: build once, then run the app-target launch regression and
+# the single normal UI smoke test on a pinned simulator. Manual App Store
+# screenshot UI tests stay out of this plan.
 SMOKE_SCHEME ?= Cadence
 # Bind by name to the one simulator installed on disk (iPhone 16) so every run
 # uses the same device and xcodebuild never resolves to — or downloads — another.
@@ -32,6 +33,7 @@ smoke:
 	  -testPlan Cadence -derivedDataPath .build/dd -destination '$(SMOKE_DEST)' -quiet
 	xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "$(SMOKE_SCHEME)" \
 	  -testPlan Cadence -derivedDataPath .build/dd -destination '$(SMOKE_DEST)' \
+	  -only-testing:CadenceTests/AppModelWCSessionDelegateTests/testActivationCallbackCanEnterFromWatchConnectivityQueue \
 	  -only-testing:CadenceUITests/SmokeLaunchTests/testIPhoneStrengthWorkoutPlansLogsAndCompletes \
 	  -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1
 

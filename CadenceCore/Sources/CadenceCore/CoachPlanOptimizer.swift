@@ -487,7 +487,8 @@ public enum CoachPlanOptimizer {
                     copy(exercise,
                          sets: min(policy.maxSetsPerExercise, max(1, exercise.sets ?? desiredSetsPerExercise)),
                          goal: trainingFacts.goal,
-                         coachFacts: coachFacts)
+                         coachFacts: coachFacts,
+                         trainingFacts: trainingFacts)
                 }
             if !preserved.isEmpty {
                 return rotatedForVariety(Array(preserved), usedThisWeek: usedThisWeek,
@@ -499,7 +500,8 @@ public enum CoachPlanOptimizer {
                     copy(CoachSession.RecommendedExercise(name: $0),
                          sets: min(policy.maxSetsPerExercise, max(1, desiredSetsPerExercise)),
                          goal: trainingFacts.goal,
-                         coachFacts: coachFacts)
+                         coachFacts: coachFacts,
+                         trainingFacts: trainingFacts)
                 }
         }
 
@@ -533,7 +535,8 @@ public enum CoachPlanOptimizer {
                                    desiredSetsPerExercise: desiredSetsPerExercise,
                                    policy: policy)
             guard sets > 0, sessionSets + sets <= policy.maxTotalSetsPerSession else { continue }
-            let planned = copy(exercise, sets: sets, goal: trainingFacts.goal, coachFacts: coachFacts)
+            let planned = copy(exercise, sets: sets, goal: trainingFacts.goal,
+                               coachFacts: coachFacts, trainingFacts: trainingFacts)
             selected.append(planned)
             sessionSets += sets
             runningProjected = runningProjected.merging(
@@ -569,7 +572,8 @@ public enum CoachPlanOptimizer {
                                    desiredSetsPerExercise: desiredSetsPerExercise,
                                    policy: policy)
             guard sets > 0, sessionSets + sets <= policy.maxTotalSetsPerSession else { break }
-            let planned = copy(next, sets: sets, goal: trainingFacts.goal, coachFacts: coachFacts)
+            let planned = copy(next, sets: sets, goal: trainingFacts.goal,
+                               coachFacts: coachFacts, trainingFacts: trainingFacts)
             selected.append(planned)
             sessionSets += sets
             runningProjected = runningProjected.merging(
@@ -593,7 +597,9 @@ public enum CoachPlanOptimizer {
                     let currentSets = exercise.sets ?? 0
                     guard currentSets < policy.maxSetsPerExercise else { continue }
                     // Only top up while a covered part is still short of productive.
-                    let perSet = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [copy(exercise, sets: 1, goal: trainingFacts.goal)])
+                    let perSet = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [copy(exercise, sets: 1,
+                                                                                          goal: trainingFacts.goal,
+                                                                                          trainingFacts: trainingFacts)])
                     let productiveDeficits = lowDeficits(for: Set(perSet.keys),
                                                          projected: runningProjected,
                                                          experience: trainingFacts.experience,
@@ -608,7 +614,8 @@ public enum CoachPlanOptimizer {
                         }
                         if wouldExceedMRV { continue }
                     }
-                    selected[index] = copy(exercise, sets: currentSets + 1, goal: trainingFacts.goal, coachFacts: coachFacts)
+                    selected[index] = copy(exercise, sets: currentSets + 1, goal: trainingFacts.goal,
+                                           coachFacts: coachFacts, trainingFacts: trainingFacts)
                     sessionSets += 1
                     runningProjected = runningProjected.merging(perSet) { $0 + $1 }
                     madeProgress = true
@@ -779,7 +786,7 @@ public enum CoachPlanOptimizer {
             }
         if let first = existingOptions.first {
             return copy(first, sets: first.sets ?? desiredSetsPerExercise,
-                        goal: facts.goal, coachFacts: coachFacts)
+                        goal: facts.goal, coachFacts: coachFacts, trainingFacts: facts)
         }
 
         let preferred = CoachSession.mostTrainedExercises(facts: coachFacts)
@@ -789,7 +796,7 @@ public enum CoachPlanOptimizer {
                 let exercise = CoachSession.RecommendedExercise(name: name)
                 if isExerciseEligible(exercise, on: slot.date, facts: coachFacts, policy: policy) {
                     return copy(exercise, sets: desiredSetsPerExercise,
-                                goal: facts.goal, coachFacts: coachFacts)
+                                goal: facts.goal, coachFacts: coachFacts, trainingFacts: facts)
                 }
             }
         }
@@ -797,7 +804,8 @@ public enum CoachPlanOptimizer {
         return defaultExerciseNames(for: part)
             .map { CoachSession.RecommendedExercise(name: $0) }
             .first { isExerciseEligible($0, on: slot.date, facts: coachFacts, policy: policy) }
-            .map { copy($0, sets: desiredSetsPerExercise, goal: facts.goal, coachFacts: coachFacts) }
+            .map { copy($0, sets: desiredSetsPerExercise, goal: facts.goal,
+                        coachFacts: coachFacts, trainingFacts: facts) }
     }
 
     private static func defaultExercises(for deficits: [BodyPart: Double],
@@ -1074,7 +1082,8 @@ public enum CoachPlanOptimizer {
     private static func copy(_ exercise: CoachSession.RecommendedExercise,
                              sets: Int? = nil,
                              goal: TrainingGoal? = nil,
-                             coachFacts: CoachFacts? = nil) -> CoachSession.RecommendedExercise {
+                             coachFacts: CoachFacts? = nil,
+                             trainingFacts: TrainingFacts? = nil) -> CoachSession.RecommendedExercise {
         let resolvedSets = sets ?? exercise.sets
         // Working range is bodyweight-aware (issue: 12/10/8 crunches): for a
         // bodyweight/high-rep movement it tracks the user's real logged reps —
@@ -1103,9 +1112,25 @@ public enum CoachPlanOptimizer {
             sets: resolvedSets,
             repsLow: bodyweightAdjusted ? range?.lowerBound : (exercise.repsLow ?? range?.lowerBound),
             repsHigh: bodyweightAdjusted ? range?.upperBound : (exercise.repsHigh ?? range?.upperBound),
-            loadKg: exercise.loadKg,
+            loadKg: exercise.loadKg ?? suggestedLoadKg(for: exercise, trainingFacts: trainingFacts),
             rir: exercise.rir ?? goal?.targetRIR,
             repLadder: ladder)
+    }
+
+    /// Planned previews should carry a useful, history-based load whenever the
+    /// user has trained that movement before. New or bodyweight movements remain
+    /// unweighted instead of inventing a number.
+    private static func suggestedLoadKg(for exercise: CoachSession.RecommendedExercise,
+                                        trainingFacts: TrainingFacts?) -> Double? {
+        guard let facts = trainingFacts,
+              let snapshot = facts.liftSnapshots.first(where: {
+                  $0.key.caseInsensitiveCompare(exercise.name) == .orderedSame
+              })?.value else { return nil }
+        let reps = exercise.repLadder?.first ?? exercise.repsLow ?? snapshot.topSetReps
+        guard reps > 0, snapshot.bestE1RM > 0 else { return nil }
+        let suggested = WeightSuggestion.inverseE1RM(
+            e1rm: snapshot.bestE1RM, reps: reps, formula: .epley)
+        return suggested > 0 ? (suggested * 2).rounded() / 2 : nil
     }
 
     private static func defaultExerciseNames(for part: BodyPart) -> [String] {

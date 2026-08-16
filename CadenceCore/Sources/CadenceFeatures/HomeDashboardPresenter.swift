@@ -97,6 +97,12 @@ public struct HomeSuggestion: Sendable, Equatable, Identifiable {
 }
 
 public enum HomeDashboardPresenter {
+    /// The Home card keeps the first three suggestions compact and reveals the
+    /// remainder only after the user explicitly expands it.
+    public static func visibleSuggestions(_ suggestions: [HomeSuggestion], expanded: Bool) -> [HomeSuggestion] {
+        expanded ? suggestions : Array(suggestions.prefix(3))
+    }
+
     public static func make(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences,
                             goal: TrainingGoal, experience: ExperienceLevel,
                             userAge: Int?) -> HomeDashboardState {

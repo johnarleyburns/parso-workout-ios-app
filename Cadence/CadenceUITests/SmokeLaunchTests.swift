@@ -21,8 +21,35 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "This Week did not offer Show more")
         XCTAssertTrue(app.descendants(matching: .any)["home.thisWeek.expanded"].waitForExistence(timeout: 5),
                       "This Week did not expand in place")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.volume.legs"),
+                      "Expanded This Week did not expose the Legs volume row")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
+                      "Expanded This Week did not label the body-part rows as Volume")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showLess"),
                       "Expanded This Week did not show Show less")
+        if app.buttons["home.suggestions.showMore"].exists {
+            XCTAssertTrue(app.scrollToHittableAndTap("home.suggestions.showMore"),
+                          "Coach's Suggestions did not collapse to three items with Show more...")
+            XCTAssertTrue(app.scrollToHittableAndTap("home.suggestions.showLess"),
+                          "Coach's Suggestions did not put Show less at the bottom")
+        }
+        XCTAssertFalse(app.descendants(matching: .any)["home.workoutHistory"].exists,
+                       "Home still contains the duplicate Workout History card")
+
+        XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
+                      "Home Start Workout did not open")
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
+                      "Start Workout did not offer Start Custom Workout beneath Quick Start")
+        XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10),
+                      "Custom workout did not open the Workout Plan editor")
+        XCTAssertTrue(app.buttons["editor.start"].label.contains("Start Workout"),
+                      "Workout Plan start action is not labeled Start Workout")
+        XCTAssertTrue(app.buttons["editor.addExercise"].waitForExistence(timeout: 5),
+                      "Start Custom Workout did not open in edit mode")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitForExistence(timeout: 5),
+                      "Could not return to Start Workout")
+        app.buttons["selectWorkout.cancel"].tap()
 
         XCTAssertTrue(app.scrollToHittableAndTap("tab.plan"), "Plan tab did not open")
         XCTAssertTrue(app.descendants(matching: .any)["planning"].waitForExistence(timeout: 10),

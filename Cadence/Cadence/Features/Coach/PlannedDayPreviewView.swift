@@ -9,6 +9,7 @@ struct PlannedDayPreviewView: View {
     let day: WeeklyPlan.DayOutline
     let goal: TrainingGoal
     let desiredSetsPerExercise: Int
+    @Environment(AppSettings.self) private var settings
 
     init(day: WeeklyPlan.DayOutline, goal: TrainingGoal, desiredSetsPerExercise: Int = 3) {
         self.day = day
@@ -87,6 +88,9 @@ struct PlannedDayPreviewView: View {
             repsText = "—"
         }
         var line = "\(sets)×\(repsText)"
+        if let loadKg = ex.loadKg, loadKg > 0 {
+            line += " @ \(Format.weight(loadKg, unit: settings.unit, decimals: 0))"
+        }
         if let rir = ex.rir { line += " · ~\(rir) RIR" }
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(ex.name).font(.subheadline)

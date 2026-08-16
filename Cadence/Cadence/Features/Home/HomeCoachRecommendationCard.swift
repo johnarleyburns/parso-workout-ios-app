@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 /// Compact Home presentation for the coach's current gap-closing workout.
 /// Preview and start always use the same immutable CoachSession value.
@@ -8,6 +9,7 @@ struct HomeCoachRecommendationCard: View {
     let isPreviewed: Bool
     let onPreview: () -> Void
     let onStart: () -> Void
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -48,8 +50,16 @@ struct HomeCoachRecommendationCard: View {
         if let exercises = recommendation.exercises, !exercises.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(exercises.prefix(6).enumerated()), id: \.offset) { _, exercise in
-                    Label(exercise.name, systemImage: "dumbbell")
-                        .font(.caption)
+                    HStack(spacing: 6) {
+                        Label(exercise.name, systemImage: "dumbbell")
+                        Spacer(minLength: 4)
+                        if let loadKg = exercise.loadKg, loadKg > 0 {
+                            Text(Format.weight(loadKg, unit: settings.unit, decimals: 0))
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .font(.caption)
                 }
                 if exercises.count > 6 {
                     Text("+\(exercises.count - 6) more")

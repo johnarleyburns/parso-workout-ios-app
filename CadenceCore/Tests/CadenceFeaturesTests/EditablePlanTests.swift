@@ -54,6 +54,7 @@ final class EditablePlanTests: XCTestCase {
         XCTAssertEqual(plan?.warmupMinutes, 5)
         XCTAssertEqual(plan?.exercises.first?.sets.count, 3)
         XCTAssertEqual(plan?.exercises.first?.sets.allSatisfy { $0.targetReps == 8 }, true)
+        XCTAssertEqual(plan?.exercises.first?.sets.allSatisfy { $0.targetWeight == 60 }, true)
         XCTAssertEqual(plan?.exercises.first?.notes, "Target ≤2 RIR")
     }
 

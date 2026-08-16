@@ -42,9 +42,10 @@ struct WorkoutPlanEditor: View {
     @State private var isEditing = false
     @State private var settingsPresented = false
 
-    init(plan: EditablePlan, onStart: @escaping (EditablePlan) -> Void) {
+    init(plan: EditablePlan, startInEditMode: Bool = false, onStart: @escaping (EditablePlan) -> Void) {
         self._plan = State(initialValue: plan)
         self.onStart = onStart
+        self._isEditing = State(initialValue: startInEditMode)
 
         let ws = WorkoutSettings.default
         self._restSeconds = State(initialValue: ws.restSeconds)
@@ -55,13 +56,10 @@ struct WorkoutPlanEditor: View {
         self._plateRounding = State(initialValue: ws.plateRounding)
         self._useHR = State(initialValue: ws.useHRMonitoring)
     }
-
     var body: some View {
         VStack(spacing: 0) {
             List {
-                Section {
-                    startButton
-                }
+                startButton
                 if isEditing {
                     partnerEditorSections
                 } else {
@@ -136,12 +134,14 @@ struct WorkoutPlanEditor: View {
     }
     private var startButton: some View {
         Button(action: { saveAndStart() }) {
-            Label("Start", systemImage: "play.fill")
+            Label("Start Workout", systemImage: "play.fill")
                 .font(.title3.bold())
-                .frame(maxWidth: .infinity, minHeight: 56)
+                .frame(maxWidth: .infinity, minHeight: 56, alignment: .center)
         }
-        .cadenceGlassButton(prominent: true, tint: .green)
-        .padding(.horizontal)
+        .buttonStyle(.borderedProminent)
+        .tint(.green).controlSize(.large)
+        .frame(maxWidth: .infinity)
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .padding(.top, 8)
         .background(.clear)
         .accessibilityIdentifier("editor.start")

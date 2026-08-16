@@ -6,6 +6,7 @@ import CadenceFeatures
 struct WeightsStartView: View {
     let onEditorStart: (EditablePlan) -> Void
     var recommendation: Recommendation? = nil
+    var coachSession: CoachSession? = nil
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(AppSettings.self) private var settings
@@ -19,10 +20,13 @@ struct WeightsStartView: View {
             if let rec = recommendation {
                 Section {
                     NavigationLink {
-                        WorkoutPlanEditor(plan: .from(recommendation: rec,
-                                                          goal: settings.trainingGoal,
-                                                          warmupMinutes: settings.warmupMinutes,
-                                                          cooldownMinutes: settings.cooldownMinutes), onStart: onEditorStart)
+                        WorkoutPlanEditor(
+                            plan: coachSession.flatMap(EditablePlan.from(coach:))
+                                ?? .from(recommendation: rec,
+                                         goal: settings.trainingGoal,
+                                         warmupMinutes: settings.warmupMinutes,
+                                         cooldownMinutes: settings.cooldownMinutes),
+                            onStart: onEditorStart)
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "checklist").font(.title2)

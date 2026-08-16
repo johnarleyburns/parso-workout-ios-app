@@ -127,6 +127,70 @@ final class CoachPlanOptimizerTests: XCTestCase {
         XCTAssertEqual(exercise.repLadder, [5, 5, 3, 3])
     }
 
+    func testOptimizerTargetsOnlyRemainingLowBodyParts() {
+        let now = fixedWednesday()
+        let facts = trainingFacts([
+            .legs: 12, .back: 12, .chest: 12, .shoulders: 12,
+            .abs: 9, .biceps: 0, .triceps: 0, .calves: 0,
+        ])
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1)
+        let plan = weeklyPlan(now: now, days: [(1, [.strength])])
+
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: plan,
+            schedulePreferences: preferences(twoADays: false),
+            candidates: [genericStrengthSession()])
+
+        let names = Set(optimized.plannedStrengthSessions.flatMap { $0.exercises ?? [] }.map(\.name))
+        XCTAssertTrue(names.contains("Barbell Curl"), "Biceps deficit should select direct biceps work")
+        XCTAssertTrue(names.contains("Triceps Pushdown"), "Triceps deficit should select direct triceps work")
+        XCTAssertTrue(names.contains("Standing Calf Raise"), "Calves deficit should select direct calf work")
+        XCTAssertFalse(names.contains("Back Squat"), "Satisfied legs should not drive the recommendation")
+        XCTAssertFalse(names.contains("Bench Press"), "Satisfied chest should not drive the recommendation")
+        XCTAssertFalse(names.contains("Romanian Deadlift"), "Satisfied back/legs should not drive the recommendation")
+    }
+
+    func testOptimizerCarriesHistoryBasedSuggestedWeightIntoPlan() throws {
+        let now = fixedWednesday()
+        let snapshot = LiftSnapshot(exercise: "Bench Press", part: .chest,
+                                    topSetWeightKg: 80, topSetReps: 5,
+                                    bestE1RM: 93.333, trend: nil)
+        var facts = trainingFacts([
+            .legs: 12, .back: 12, .shoulders: 12, .biceps: 14,
+            .triceps: 14, .calves: 12, .abs: 12, .chest: 0,
+        ])
+        facts = TrainingFacts(
+            weeklySetsByPart: facts.weeklySetsByPart,
+            frequencyByPart: facts.frequencyByPart,
+            e1RMTrendByExercise: facts.e1RMTrendByExercise,
+            intensity: facts.intensity,
+            avgRPE: facts.avgRPE,
+            daysSinceLastSession: facts.daysSinceLastSession,
+            totalWorkingSets: facts.totalWorkingSets,
+            allTimeWorkingSets: facts.allTimeWorkingSets,
+            liftSnapshots: ["Bench Press": snapshot],
+            goal: facts.goal,
+            experience: facts.experience)
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 0)
+        let plan = weeklyPlan(now: now, days: [(1, [.strength])])
+        let candidate = CoachSession(
+            id: "strength.bench", kind: .strength, title: "Bench",
+            exercises: [.init(name: "Bench Press", sets: 3, repsLow: 8, repsHigh: 10)],
+            launchPayload: .strengthPlan("bench"))
+
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: plan,
+            schedulePreferences: preferences(twoADays: false),
+            candidates: [candidate])
+        let exercise = try XCTUnwrap(optimized.plannedStrengthSessions.first?.exercises?.first)
+        XCTAssertNotNil(exercise.loadKg)
+        XCTAssertGreaterThan(exercise.loadKg ?? 0, 0)
+    }
+
     func testImpossibleCaseEmitsOneUnresolvedPlanningInsight() {
         let now = fixedWednesday()
         let facts = trainingFacts([

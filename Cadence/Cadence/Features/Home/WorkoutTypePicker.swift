@@ -24,7 +24,8 @@ struct WorkoutTypePicker: View {
                         case .weights:
                             NavigationLink {
                                 WeightsStartView(onEditorStart: onEditorStart,
-                                                 recommendation: recommendation)
+                                                 recommendation: recommendation,
+                                                 coachSession: nil)
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
                                 .tapHaptic()
@@ -64,6 +65,7 @@ struct WorkoutTypePicker: View {
 /// cardio keeps the existing downstream setup and recorder routes.
 struct SelectWorkoutView: View {
     let recommendation: Recommendation?
+    let coachSession: CoachSession?
     let onQuickStart: () -> Void
     let onEditorStart: (EditablePlan) -> Void
     let onSelect: (WorkoutType) -> Void
@@ -88,11 +90,28 @@ struct SelectWorkoutView: View {
                         .accessibilityIdentifier("selectWorkout.quickStart")
 
                         NavigationLink {
-                            WorkoutPlanEditor(plan: recommendation.map {
-                                .from(recommendation: $0, goal: settings.trainingGoal,
-                                      warmupMinutes: settings.warmupMinutes,
-                                      cooldownMinutes: settings.cooldownMinutes)
-                            } ?? .empty(warmup: settings.warmupMinutes, cooldown: settings.cooldownMinutes), onStart: onEditorStart)
+                            WorkoutPlanEditor(
+                                plan: .empty(warmup: settings.warmupMinutes,
+                                             cooldown: settings.cooldownMinutes),
+                                startInEditMode: true,
+                                onStart: onEditorStart)
+                        } label: {
+                            workoutChoiceLabel("Start Custom Workout", symbol: "slider.horizontal.3")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("selectWorkout.custom")
+
+                        NavigationLink {
+                            WorkoutPlanEditor(
+                                plan: coachSession.flatMap(EditablePlan.from(coach:))
+                                    ?? recommendation.map {
+                                        .from(recommendation: $0, goal: settings.trainingGoal,
+                                              warmupMinutes: settings.warmupMinutes,
+                                              cooldownMinutes: settings.cooldownMinutes)
+                                    }
+                                    ?? .empty(warmup: settings.warmupMinutes,
+                                              cooldown: settings.cooldownMinutes),
+                                onStart: onEditorStart)
                         } label: {
                             workoutChoiceLabel("Coach's Workout", symbol: "wand.and.stars")
                         }
@@ -144,6 +163,7 @@ struct SelectWorkoutView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("selectWorkout.cancel")
                 }
             }
         }

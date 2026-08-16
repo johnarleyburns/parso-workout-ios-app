@@ -82,4 +82,15 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertEqual(make(.safety).tone, .warning)
         XCTAssertEqual(make(.planAction).tone, .neutral)
     }
+
+    func testVisibleSuggestionsCapsCollapsedCardAndRestoresExpandedItems() {
+        let items = (0..<5).map { index in
+            HomeSuggestion(id: "suggestion-\(index)", category: .progress,
+                           title: "Suggestion \(index)", message: "Details", citationID: nil,
+                           sourceClaimKey: "suggestion-\(index)", priority: 0, confidence: 100)
+        }
+        XCTAssertEqual(HomeDashboardPresenter.visibleSuggestions(items, expanded: false).map(\.id),
+                       items.prefix(3).map(\.id))
+        XCTAssertEqual(HomeDashboardPresenter.visibleSuggestions(items, expanded: true), items)
+    }
 }

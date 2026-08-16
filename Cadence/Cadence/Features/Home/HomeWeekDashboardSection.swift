@@ -10,7 +10,6 @@ struct HomeWeekDashboardSection: View {
     let totalVolumeKg: Double
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
-    let onViewHistory: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -46,22 +45,11 @@ struct HomeWeekDashboardSection: View {
             workoutGroup(title: "Strength", entries: strengthEntries)
             workoutGroup(title: "Cardio", entries: cardioEntries)
 
-            Button {
-                Haptics.selection()
-                onViewHistory()
-            } label: {
-                HStack(spacing: 4) {
-                    Text("View more…")
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                }
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.tint)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("home.week.viewMoreHistory")
-
             Divider().padding(.top, 2)
+            Text("Volume")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("home.week.volumeHeading")
             ForEach(dashboard.volume) { row in
                 volumeRow(row)
             }
@@ -76,6 +64,7 @@ struct HomeWeekDashboardSection: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("home.volume.total")
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.thisWeek.expanded")
     }
 

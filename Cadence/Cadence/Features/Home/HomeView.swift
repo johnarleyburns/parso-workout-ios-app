@@ -45,6 +45,7 @@ struct HomeView: View {
     @State private var showSupport = false
     @State private var pendingAddGapsDeficits: [BodyPart: Double]?
     @State private var expandedSuggestionIDs = Set<String>()
+    @State private var suggestionsExpanded = false
     @State private var weeklyVolumeExpanded = false
     @State private var coachWorkoutPreviewed = false
     @State private var coachIllustration = HomeCoachIllustration.random()
@@ -216,10 +217,8 @@ struct HomeView: View {
                         cardioEntries: weekActivity.cardio,
                         totalVolumeKg: weeklyVolumeKg,
                         unit: settings.unit,
-                        onOpenWorkout: openWeekWorkout,
-                        onViewHistory: { path.append(HomeRoute.history) })
+                        onOpenWorkout: openWeekWorkout)
                     coachSuggestionsSection
-                    workoutHistorySection
                 }
                 .padding()
             }
@@ -250,7 +249,6 @@ struct HomeView: View {
             }
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {
-                case .history: HistoryView(path: $path)
                 case .settings: SettingsView()
                 case .coach:
                     // Observations are free and continuous for everyone; only the
@@ -299,6 +297,7 @@ struct HomeView: View {
             .sheet(isPresented: $selectWorkoutPresented) {
                 SelectWorkoutView(
                     recommendation: coachRecommendation,
+                    coachSession: coachStrengthSession,
                     onQuickStart: {
                         selectWorkoutPresented = false
                         startQuickStartStrength()
@@ -388,7 +387,8 @@ struct HomeView: View {
                 NavigationStack {
                     WeightsStartView(
                         onEditorStart: { plan in weightsStartPresented = false; handleEditorStart(plan) },
-                        recommendation: coachRecommendation)
+                        recommendation: coachRecommendation,
+                        coachSession: coachStrengthSession)
                 }
             }
             // Optional distance goal before a run/walk/cycle (batch 8).
@@ -590,6 +590,7 @@ struct HomeView: View {
 
     private var coachSuggestionsSection: some View {
         let items = dashboard.suggestions
+        let visibleItems = HomeDashboardPresenter.visibleSuggestions(items, expanded: suggestionsExpanded)
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
                 Text("Coach’s Suggestions").font(.headline)
@@ -597,7 +598,7 @@ struct HomeView: View {
                 HomeCoachIllustrationView(illustration: coachIllustration, compact: true)
             }
             if !items.isEmpty {
-                ForEach(items) { suggestion in
+                ForEach(visibleItems) { suggestion in
                     let isExpanded = expandedSuggestionIDs.contains(suggestion.id)
                     VStack(alignment: .leading, spacing: 6) {
                         Button {
@@ -616,6 +617,8 @@ struct HomeView: View {
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(.secondary)
                             }
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(isExpanded ? "Collapse \(suggestion.title)" : "Expand \(suggestion.title)")
@@ -636,6 +639,24 @@ struct HomeView: View {
                     }
                     .accessibilityElement(children: .contain)
                 }
+                if items.count > 3 {
+                    Button {
+                        withAnimation { suggestionsExpanded.toggle() }
+                    } label: {
+                        HStack {
+                            Text(suggestionsExpanded ? "Show less" : "Show more...")
+                            Spacer()
+                            Image(systemName: suggestionsExpanded ? "chevron.up" : "chevron.down")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                    .accessibilityIdentifier(suggestionsExpanded ? "home.suggestions.showLess" : "home.suggestions.showMore")
+                }
             } else {
                 Text("No new suggestions right now.").font(.subheadline).foregroundStyle(.secondary)
             }
@@ -652,7 +673,6 @@ struct HomeView: View {
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .purple)
         .accessibilityIdentifier("coach.card")
     }
-
     private func suggestionTint(_ suggestion: HomeSuggestion) -> Color {
         switch suggestion.tone {
         case .positive: return .green
@@ -660,13 +680,11 @@ struct HomeView: View {
         case .neutral: return .white
         }
     }
-
     private var hasWeeklyGap: Bool {
         dashboard.strength.completed < dashboard.strength.target
             || dashboard.cardio.completed < dashboard.cardio.target
             || dashboard.volume.contains { $0.status == .belowStartingRange }
     }
-
     private var previewableCoachRecommendation: CoachSession? {
         switch coachDecision.primary.launchPayload {
         case .strengthPlan, .cardio:
@@ -674,6 +692,11 @@ struct HomeView: View {
         case .recovery, .rest, .assessment:
             return nil
         }
+    }
+
+    private var coachStrengthSession: CoachSession? {
+        guard let session = previewableCoachRecommendation, session.kind == .strength else { return nil }
+        return session
     }
 
     /// Quiet trial status shown above the Coach card while on the free trial.
@@ -758,32 +781,9 @@ struct HomeView: View {
         }
     }
 
-    // MARK: Home history sections
-
     private var weekActivity: (strength: [TodayActivityPresenter.Entry], cardio: [TodayActivityPresenter.Entry]) {
         _ = historyRefreshToken
         return TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio)
-    }
-
-    private var workoutHistorySection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Workout History").font(.headline)
-            Button { Haptics.selection(); path.append(HomeRoute.history) } label: {
-                HStack(spacing: 4) {
-                    Text("View history…")
-                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
-                }
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.tint)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("home.viewHistory")
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .teal)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home.workoutHistory")
     }
     private func openWeekWorkout(_ entry: TodayActivityPresenter.Entry) {
         switch entry.kind {

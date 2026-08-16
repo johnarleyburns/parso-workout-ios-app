@@ -2,17 +2,13 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// Extracted "What you did" entry row from `HomeView` to keep it
-/// under the test-pyramid ratchet ceiling.
-struct HomeWhatYouDidRow: View {
+/// Extracted workout row from the expanded Home This Week card to keep the
+/// dashboard view under the test-pyramid ratchet ceiling.
+struct HomeWeekWorkoutRow: View {
     let entry: TodayActivityPresenter.Entry
-    let target: WhatYouDidTarget?
-    let onOpen: (WhatYouDidTarget) -> Void
-
-    enum WhatYouDidTarget { case strength(WorkoutSession), cardio(CardioWorkout) }
+    let onOpen: () -> Void
 
     var body: some View {
-        let hasDestination = target != nil
         let rowContent = HStack(spacing: 8) {
             Image(systemName: entry.kind == .strength ? "dumbbell.fill" : "heart.fill")
                 .font(.caption)
@@ -32,24 +28,16 @@ struct HomeWhatYouDidRow: View {
             Text(entry.value)
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
-            if hasDestination {
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
+            Image(systemName: "chevron.right")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 8)
         .contentShape(Rectangle())
 
-        Group {
-            if hasDestination, let t = target {
-                Button { Haptics.selection(); onOpen(t) } label: { rowContent }
-                    .buttonStyle(.plain)
-            } else {
-                rowContent
-            }
-        }
+        Button { Haptics.selection(); onOpen() } label: { rowContent }
+            .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("home.fact.\(entry.id)")
+        .accessibilityIdentifier("home.week.workout.\(entry.id)")
     }
 }

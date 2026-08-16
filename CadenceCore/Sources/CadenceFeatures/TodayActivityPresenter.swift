@@ -44,11 +44,38 @@ public enum TodayActivityPresenter {
         let today = calendar.startOfDay(for: now)
         let end = calendar.date(byAdding: .day, value: 1, to: today)!
 
+        return entries(sessions: sessions, cardio: cardio, since: today, until: end)
+    }
+
+    /// Returns completed workouts in the Monday–Sunday training week used by
+    /// Home's weekly statistics. The result is split so the expanded This Week
+    /// card can render Strength before Cardio.
+    public static func weekEntries(
+        sessions: [WorkoutSession],
+        cardio: [CardioWorkout],
+        now: Date = Date()
+    ) -> (strength: [Entry], cardio: [Entry]) {
+        let start = WeeklyStats.weekStart(now: now)
+        let end = Calendar.current.date(byAdding: .day, value: 7, to: start)!
+        let all = entries(sessions: sessions, cardio: cardio, since: start, until: end)
+        return (
+            strength: all.filter { $0.kind == .strength },
+            cardio: all.filter { $0.kind == .cardio }
+        )
+    }
+
+    private static func entries(
+        sessions: [WorkoutSession],
+        cardio: [CardioWorkout],
+        since: Date,
+        until: Date
+    ) -> [Entry] {
+
         let strengthEntries = sessions
             .filter { s in
                 s.deletedAt == nil && !s.isResumable
                 && s.endedAt != nil
-                && s.date >= today && s.date < end
+                && s.date >= since && s.date < until
             }
             .map { s -> Entry in
                 let exercises = s.exercisesInOrder.map(\.name)
@@ -69,7 +96,7 @@ public enum TodayActivityPresenter {
         let cardioEntries = cardio
             .filter { c in
                 c.deletedAt == nil
-                && c.start >= today && c.start < end
+                && c.start >= since && c.start < until
             }
             .map { c -> (CardioWorkout, Entry) in
                 let duration = formatDuration(c.duration)

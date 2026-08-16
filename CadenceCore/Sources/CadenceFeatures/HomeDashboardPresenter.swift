@@ -58,6 +58,11 @@ public struct HomeDashboardState: Sendable, Equatable {
 
 public struct HomeSuggestion: Sendable, Equatable, Identifiable {
     public enum Category: Int, Sendable, Equatable { case safety, weeklyDeficit, volumeRecovery, planAction, progress }
+    public enum Tone: String, Sendable, Equatable {
+        case positive
+        case warning
+        case neutral
+    }
     public let id: String
     public let category: Category
     public let title: String
@@ -66,6 +71,29 @@ public struct HomeSuggestion: Sendable, Equatable, Identifiable {
     public let sourceClaimKey: String
     public let priority: Int
     public let confidence: Int
+
+    public init(id: String, category: Category, title: String, message: String,
+                citationID: String?, sourceClaimKey: String, priority: Int, confidence: Int) {
+        self.id = id
+        self.category = category
+        self.title = title
+        self.message = message
+        self.citationID = citationID
+        self.sourceClaimKey = sourceClaimKey
+        self.priority = priority
+        self.confidence = confidence
+    }
+
+    /// Presentation tone for the compact Home card. Safety, stalled targets, and
+    /// volume concerns need a visible warning treatment; progress is affirmative;
+    /// plan/assessment information remains neutral.
+    public var tone: Tone {
+        switch category {
+        case .safety, .weeklyDeficit, .volumeRecovery: return .warning
+        case .progress: return .positive
+        case .planAction: return .neutral
+        }
+    }
 }
 
 public enum HomeDashboardPresenter {

@@ -12,13 +12,14 @@ struct HomeCoachRecommendationCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Divider().padding(.top, 2)
-            Text("Workout created to close gaps for this week")
+            Text("Suggested Workout")
                 .font(.subheadline.weight(.semibold))
-            Text(recommendation.title)
-                .font(.headline)
-            Text(recommendation.subtitle)
+            Text("Coach created a Workout created to close gaps for this week")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text(recommendation.title)
+                .font(.headline)
+                .accessibilityIdentifier("home.suggestedWorkout.title")
 
             if isPreviewed {
                 previewDetails

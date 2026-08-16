@@ -2,7 +2,6 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
-
 /// Home dashboard.
 struct HomeView: View {
     @Environment(\.modelContext) private var context
@@ -45,7 +44,7 @@ struct HomeView: View {
     @State private var showAlternatives = false
     @State private var showSupport = false
     @State private var pendingAddGapsDeficits: [BodyPart: Double]?
-    @State private var suggestionsExpanded = false
+    @State private var expandedSuggestionIDs = Set<String>()
     @State private var weeklyVolumeExpanded = false
     @State private var coachWorkoutPreviewed = false
     @State private var coachIllustration = HomeCoachIllustration.random()
@@ -62,7 +61,6 @@ struct HomeView: View {
                                     goal: settings.trainingGoal, experience: settings.experienceLevel,
                                     userAge: settings.userAge)
     }
-
     private var coachFacts: TrainingFacts { coachSnapshot.facts }
     private var coachInsights: [Insight] { coachSnapshot.insights }
     private var coachRecommendation: Recommendation { coachSnapshot.recommendation }
@@ -71,7 +69,6 @@ struct HomeView: View {
     private var passiveReadinessDisplay: PassiveReadinessPresenter.Display? {
         PassiveReadinessPresenter.display(for: coachSnapshot.readiness)
     }
-
     @State private var testCardOverride: TestRecommendation?
     @State private var testCardDismissed = false
     private var testRecommendation: TestRecommendation? {
@@ -122,7 +119,6 @@ struct HomeView: View {
         model.updateWatchTodayPlan(WatchSync.TodayPlan.from(day: snapshot.plan.today))
         return snapshot
     }
-
     private func handleInsightAction(_ action: Insight.Action) {
         switch action {
         case .addGapsToPlan(let deficits):
@@ -132,13 +128,11 @@ struct HomeView: View {
             Haptics.selection()
         }
     }
-
     private func confirmAddGaps() {
         Haptics.selection()
         settings.coachPlanOverrideWeekKey = AppSettings.weekKey(for: Date())
         pendingAddGapsDeficits = nil
     }
-
 
     @ViewBuilder
     private var testRecommendationCard: some View {
@@ -202,7 +196,6 @@ struct HomeView: View {
             sessions.filter { $0.deletedAt == nil },
             since: WeeklyStats.weekStart())
     }
-
     var body: some View {
         ZStack {
         NavigationStack(path: $path) {
@@ -216,15 +209,17 @@ struct HomeView: View {
 
                     if let s = resumeSession { resumeCard(s) }
                     homeActionRow
-                    HomeWeekDashboardSection(dashboard: dashboard, volumeExpanded: $weeklyVolumeExpanded)
-                    if weeklyVolumeExpanded {
-                        HomeWeeklyVolumeSection(rows: dashboard.volume,
-                                                totalVolumeKg: weeklyVolumeKg,
-                                                unit: settings.unit)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
+                    HomeWeekDashboardSection(
+                        dashboard: dashboard,
+                        volumeExpanded: $weeklyVolumeExpanded,
+                        strengthEntries: weekActivity.strength,
+                        cardioEntries: weekActivity.cardio,
+                        totalVolumeKg: weeklyVolumeKg,
+                        unit: settings.unit,
+                        onOpenWorkout: openWeekWorkout,
+                        onViewHistory: { path.append(HomeRoute.history) })
                     coachSuggestionsSection
-                    whatYouDidSection
+                    workoutHistorySection
                 }
                 .padding()
             }
@@ -304,6 +299,10 @@ struct HomeView: View {
             .sheet(isPresented: $selectWorkoutPresented) {
                 SelectWorkoutView(
                     recommendation: coachRecommendation,
+                    onQuickStart: {
+                        selectWorkoutPresented = false
+                        startQuickStartStrength()
+                    },
                     onEditorStart: { plan in selectWorkoutPresented = false; handleEditorStart(plan) },
                     onSelect: { type in selectWorkoutPresented = false; start(type) },
                     onOtherCardio: { description, gps in
@@ -568,7 +567,7 @@ struct HomeView: View {
     }
 
     private var homeActionRow: some View {
-        HStack(spacing: 10) {
+        VStack(spacing: 10) {
             Button {
                 Haptics.selection()
                 if active.liveWorkout.active != nil { showWorkoutConflict = true } else { selectWorkoutPresented = true }
@@ -580,7 +579,7 @@ struct HomeView: View {
             .buttonStyle(.borderedProminent).tint(.green)
             .accessibilityIdentifier("home.startWorkout")
             Button { Haptics.selection(); logPickerPresented = true } label: {
-                Label("Log Workout", systemImage: "square.and.pencil")
+                Label("Log Previous Workout", systemImage: "square.and.pencil")
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 52)
             }
@@ -593,27 +592,50 @@ struct HomeView: View {
         let items = dashboard.suggestions
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
-                Text("Coach’s suggestions").font(.headline)
+                Text("Coach’s Suggestions").font(.headline)
                 Spacer()
                 HomeCoachIllustrationView(illustration: coachIllustration, compact: true)
             }
-            if let first = items.first {
-                    ForEach((suggestionsExpanded ? items : [first])) { suggestion in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(suggestion.title).font(.headline)
+            if !items.isEmpty {
+                ForEach(items) { suggestion in
+                    let isExpanded = expandedSuggestionIDs.contains(suggestion.id)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Button {
+                            withAnimation {
+                                if isExpanded { expandedSuggestionIDs.remove(suggestion.id) }
+                                else { expandedSuggestionIDs.insert(suggestion.id) }
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(suggestionTint(suggestion))
+                                    .frame(width: 8, height: 8)
+                                Text(suggestion.title).font(.headline)
+                                Spacer()
+                                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(isExpanded ? "Collapse \(suggestion.title)" : "Expand \(suggestion.title)")
+                        .accessibilityIdentifier("home.suggestion.\(suggestion.id)")
+
+                        if isExpanded {
                             Text(suggestion.message).font(.subheadline)
                             if suggestion.citationID == CitationRegistry.volumeDoseResponse.id {
                                 CitationLink(citation: CitationRegistry.volumeDoseResponse, compact: true)
                             }
                         }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("home.suggestion.\(suggestion.id)")
                     }
-                    if items.count > 1 {
-                        Button(suggestionsExpanded ? "Show less" : "Show more…") { withAnimation { suggestionsExpanded.toggle() } }
-                            .font(.subheadline.weight(.semibold))
-                            .accessibilityIdentifier(suggestionsExpanded ? "home.suggestions.showLess" : "home.suggestions.showMore")
+                    .padding(10)
+                    .background(suggestionTint(suggestion).opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(suggestionTint(suggestion).opacity(0.28), lineWidth: 1)
                     }
+                    .accessibilityElement(children: .contain)
+                }
             } else {
                 Text("No new suggestions right now.").font(.subheadline).foregroundStyle(.secondary)
             }
@@ -629,6 +651,14 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .purple)
         .accessibilityIdentifier("coach.card")
+    }
+
+    private func suggestionTint(_ suggestion: HomeSuggestion) -> Color {
+        switch suggestion.tone {
+        case .positive: return .green
+        case .warning: return .yellow
+        case .neutral: return .white
+        }
     }
 
     private var hasWeeklyGap: Bool {
@@ -728,69 +758,41 @@ struct HomeView: View {
         }
     }
 
-    // MARK: Inline sections (surfaced, not hidden)
+    // MARK: Home history sections
 
-    private var todayActivity: [TodayActivityPresenter.Entry] {
+    private var weekActivity: (strength: [TodayActivityPresenter.Entry], cardio: [TodayActivityPresenter.Entry]) {
         _ = historyRefreshToken
-        return TodayActivityPresenter.entries(sessions: sessions, cardio: cardio)
+        return TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio)
     }
 
-    private var whatYouDidSection: some View {
+    private var workoutHistorySection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("What you did").font(.headline)
-
-            let activities = todayActivity
-            if activities.isEmpty {
-                Text("Nothing yet today.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(activities.enumerated()), id: \.element.id) { index, entry in
-                        if index > 0 { Divider().padding(.leading, 40) }
-                        whatYouDidEntryRow(entry)
-                    }
-                }
-            }
-
+            Text("Workout History").font(.headline)
             Button { Haptics.selection(); path.append(HomeRoute.history) } label: {
                 HStack(spacing: 4) {
-                    Text("View more")
+                    Text("View history…")
                     Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
                 }
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.tint)
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("home.train")
+            .accessibilityIdentifier("home.viewHistory")
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .teal)
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home.whatYouDid")
+        .accessibilityIdentifier("home.workoutHistory")
     }
-
-    private func whatYouDidEntryRow(_ entry: TodayActivityPresenter.Entry) -> some View {
-        let target = whatYouDidTarget(entry)
-        return HomeWhatYouDidRow(entry: entry, target: target) { t in
-            switch t {
-            case .strength(let s): path.append(s)
-            case .cardio(let c): path.append(c)
-            }
-        }
-    }
-
-    private func whatYouDidTarget(_ entry: TodayActivityPresenter.Entry) -> HomeWhatYouDidRow.WhatYouDidTarget? {
+    private func openWeekWorkout(_ entry: TodayActivityPresenter.Entry) {
         switch entry.kind {
         case .strength:
-            if let s = sessions.first(where: { $0.id == entry.sourceId }) { return .strength(s) }
+            if let s = sessions.first(where: { $0.id == entry.sourceId }) { path.append(s) }
         case .cardio:
-            if let c = cardio.first(where: { $0.id == entry.sourceId }) { return .cardio(c) }
+            if let c = cardio.first(where: { $0.id == entry.sourceId }) { path.append(c) }
         }
-        return nil
     }
-
     private func resumeCard(_ session: WorkoutSession) -> some View {
         Button {
             Haptics.selection()
@@ -819,12 +821,6 @@ struct HomeView: View {
         }
         .buttonStyle(.plain).accessibilityIdentifier("home.resume")
     }
-
-    // MARK: Routing (countdown gate)
-
-    /// A type was chosen in the Start sheet. Strength launches via the push-behind
-    /// path (handled inside the sheet); cardio dismisses the sheet first, then
-    /// presents its own flow.
     private func start(_ type: WorkoutType) {
         // Only "Other Cardio" carries a custom title; clear any stale one first.
         otherCardioTitle = nil
@@ -841,6 +837,19 @@ struct HomeView: View {
             intervalType = type
         } else if let c = type.cardioType {
             begin(.timer(c))
+        }
+    }
+    private func startQuickStartStrength() {
+        guard active.liveWorkout.active == nil else {
+            showWorkoutConflict = true
+            return
+        }
+        pendingPlan = nil
+        startWarmupAfterHRGate = false
+        if settings.warmupMinutes > 0 {
+            warmupActive = true
+        } else {
+            launch(.strength, startCue: .single)
         }
     }
     /// "Other Cardio" chosen (feedback batch 6 item 3): stash its description, then

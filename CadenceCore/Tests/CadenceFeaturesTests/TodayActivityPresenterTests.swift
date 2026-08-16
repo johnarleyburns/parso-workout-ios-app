@@ -150,4 +150,22 @@ final class TodayActivityPresenterTests: XCTestCase {
         XCTAssertEqual(entries.count, 1)
         // The resumable session is excluded because the Resume card covers it.
     }
+
+    func testWeekEntriesGroupsCompletedWorkoutsAndExcludesPriorWeek() {
+        let weekStrength = WorkoutSession(title: "This Week Strength", date: now.addingTimeInterval(-86_400))
+        weekStrength.endedAt = now.addingTimeInterval(-82_000)
+        let priorStrength = WorkoutSession(title: "Prior Strength", date: now.addingTimeInterval(-8 * 86_400))
+        priorStrength.endedAt = priorStrength.date.addingTimeInterval(3_600)
+        let weekCardio = CardioWorkout(type: .run, start: now.addingTimeInterval(-3_600), end: now.addingTimeInterval(-1_800))
+        let priorCardio = CardioWorkout(type: .cycle, start: now.addingTimeInterval(-8 * 86_400), end: now.addingTimeInterval(-7 * 86_400 + 3_600))
+
+        let result = TodayActivityPresenter.weekEntries(
+            sessions: [weekStrength, priorStrength],
+            cardio: [weekCardio, priorCardio],
+            now: now)
+
+        XCTAssertEqual(result.strength.map(\.title), ["This Week Strength"])
+        XCTAssertEqual(result.cardio.count, 1)
+        XCTAssertEqual(result.cardio.first?.title, "run · Cardio")
+    }
 }

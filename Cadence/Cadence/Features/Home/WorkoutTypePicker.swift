@@ -64,6 +64,7 @@ struct WorkoutTypePicker: View {
 /// cardio keeps the existing downstream setup and recorder routes.
 struct SelectWorkoutView: View {
     let recommendation: Recommendation?
+    let onQuickStart: () -> Void
     let onEditorStart: (EditablePlan) -> Void
     let onSelect: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
@@ -80,9 +81,7 @@ struct SelectWorkoutView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Strength").font(.headline)
-                        NavigationLink {
-                            WorkoutPlanEditor(plan: .empty(warmup: 0, cooldown: settings.cooldownMinutes), onStart: onEditorStart)
-                        } label: {
+                        Button(action: onQuickStart) {
                             workoutChoiceLabel("Quick Start", symbol: "bolt.fill")
                         }
                         .buttonStyle(.plain)

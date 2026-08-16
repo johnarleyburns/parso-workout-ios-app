@@ -64,8 +64,22 @@ final class HomeDashboardPresenterTests: XCTestCase {
 
     func testVolumeCoverageCountsOnlyProductiveGreenBodyParts() throws {
         let state = try dashboard(chestSets: 8, now: Date())
+        XCTAssertEqual(state.volume.first?.displayName, "Legs")
         XCTAssertEqual(state.volumeCoverage.displayText, "1/8 body parts")
         XCTAssertEqual(state.volumeCoverage.completed, 1)
         XCTAssertEqual(state.volumeCoverage.normalized, 0.125, accuracy: 0.001)
+    }
+
+    func testSuggestionToneMapsProgressWarningsAndInformation() {
+        let make: (HomeSuggestion.Category) -> HomeSuggestion = { category in
+            HomeSuggestion(id: "tone-\(category.rawValue)", category: category,
+                           title: "Suggestion", message: "Details", citationID: nil,
+                           sourceClaimKey: "tone-\(category.rawValue)", priority: 0, confidence: 100)
+        }
+        XCTAssertEqual(make(.progress).tone, .positive)
+        XCTAssertEqual(make(.weeklyDeficit).tone, .warning)
+        XCTAssertEqual(make(.volumeRecovery).tone, .warning)
+        XCTAssertEqual(make(.safety).tone, .warning)
+        XCTAssertEqual(make(.planAction).tone, .neutral)
     }
 }

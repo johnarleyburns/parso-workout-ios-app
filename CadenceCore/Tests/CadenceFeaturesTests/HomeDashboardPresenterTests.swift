@@ -61,4 +61,11 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertTrue(atTarget.isAtOrAboveTarget)
         XCTAssertTrue(aboveTarget.isAtOrAboveTarget)
     }
+
+    func testVolumeCoverageCountsOnlyProductiveGreenBodyParts() throws {
+        let state = try dashboard(chestSets: 8, now: Date())
+        XCTAssertEqual(state.volumeCoverage.displayText, "1/8 body parts")
+        XCTAssertEqual(state.volumeCoverage.completed, 1)
+        XCTAssertEqual(state.volumeCoverage.normalized, 0.125, accuracy: 0.001)
+    }
 }

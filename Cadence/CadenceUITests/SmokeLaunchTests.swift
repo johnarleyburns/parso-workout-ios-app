@@ -21,10 +21,25 @@ final class SmokeLaunchTests: CadenceUITestCase {
         app.popToHome()
 
         XCTAssertTrue(app.openQuickStartStrengthEditor(), "Quick Start editor did not open")
+        XCTAssertTrue(app.buttons["editor.edit"].waitForExistence(timeout: 5),
+                      "Workout Plan did not show its Edit action")
+        XCTAssertFalse(app.buttons["editor.addExercise"].exists,
+                       "Workout Plan entered edit mode by default")
+        XCTAssertTrue(app.buttons["editor.showSettings"].waitTap(timeout: 5),
+                      "Workout settings popup did not open")
+        XCTAssertTrue(app.descendants(matching: .any)["editor.settingsSheet"].waitForExistence(timeout: 5),
+                      "Workout settings popup did not render")
+        XCTAssertTrue(app.navigationBars["Workout Settings"].buttons["Done"].waitTap(timeout: 5),
+                      "Workout settings popup did not dismiss")
+        XCTAssertTrue(app.buttons["editor.edit"].waitTap(timeout: 5),
+                      "Workout Plan Edit action did not activate editing")
         XCTAssertTrue(app.addExerciseToOpenWorkoutPlan("Bench Press"),
                       "could not add Bench Press to the workout plan")
 
-        XCTAssertTrue(app.buttons["editor.start"].waitTap(timeout: 10), "planned workout did not start")
+        let editorStart = app.buttons["editor.start"].exists
+            ? app.buttons["editor.start"]
+            : app.descendants(matching: .any)["editor.start"]
+        XCTAssertTrue(editorStart.waitTap(timeout: 10), "planned workout did not start")
         XCTAssertTrue(app.buttons["set.add.Bench Press"].waitTap(timeout: 25),
                       "planned Bench Press card did not render")
 

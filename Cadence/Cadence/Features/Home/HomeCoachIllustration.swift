@@ -36,12 +36,13 @@ enum HomeCoachIllustration: String, CaseIterable, Identifiable {
 
 struct HomeCoachIllustrationView: View {
     let illustration: HomeCoachIllustration
+    var compact = false
 
     var body: some View {
         Image(illustration.imageName)
             .resizable()
-            .aspectRatio(16 / 9, contentMode: .fit)
-            .frame(maxWidth: .infinity)
+            .aspectRatio(compact ? 1 : 16 / 9, contentMode: .fit)
+            .frame(width: compact ? 52 : nil, height: compact ? 52 : nil)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .accessibilityLabel(illustration.accessibilityLabel)
             .accessibilityIdentifier("home.coachIllustration")

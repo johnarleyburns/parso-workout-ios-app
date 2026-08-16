@@ -273,7 +273,7 @@ public enum PlanAwareInsightEngine {
             return [Insight(
                 id: "planning.partialResolved",
                 kind: .volume,
-                title: "Some volume gaps closed",
+                title: "Volume gaps closed",
                 message: "Added to tonight: \(added). Still short: \(short) sets to go.",
                 detail: "\(reason) \(ranges). Coach added what fits safely; the remaining gap needs another eligible slot or a schedule adjustment.",
                 citation: CitationRegistry.volumeDoseResponse,

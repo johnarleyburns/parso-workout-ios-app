@@ -39,6 +39,8 @@ struct WorkoutPlanEditor: View {
     @State private var idleTimeoutMinutes: Int
     @State private var plateRounding: Bool
     @State private var useHR: Bool
+    @State private var isEditing = false
+    @State private var settingsPresented = false
 
     init(plan: EditablePlan, onStart: @escaping (EditablePlan) -> Void) {
         self._plan = State(initialValue: plan)
@@ -58,164 +60,59 @@ struct WorkoutPlanEditor: View {
         VStack(spacing: 0) {
             List {
                 Section {
-                    Stepper("Warm-up: \(plan.warmupMinutes) min", value: $plan.warmupMinutes, in: 0...30)
-                        .accessibilityIdentifier("editor.warmup")
+                    startButton
+                }
+                if isEditing {
+                    partnerEditorSections
+                } else {
+                    partnerSummarySection
                 }
 
-                Section {
-                    Stepper("Get-ready countdown: \(preWorkoutCountdown)s",
-                            value: $preWorkoutCountdown, in: 0...60, step: 5)
-                        .accessibilityIdentifier("editor.countdown")
-                }
-
-                Section {
-                    Stepper("Rest timer: \(restSeconds)s",
-                            value: $restSeconds, in: 15...600, step: 15)
-                        .accessibilityIdentifier("editor.restSeconds")
-                    Toggle("Auto-start rest timer", isOn: $autoStartRest)
-                        .accessibilityIdentifier("editor.autoRest")
-                }
-
-                Section {
-                    Toggle("Round weights to nearest plate", isOn: $plateRounding)
-                        .accessibilityIdentifier("editor.plateRounding")
-                }
-
-                Section {
-                    Toggle("Check in when idle", isOn: $autoEndOnIdle)
-                        .accessibilityIdentifier("editor.autoEndOnIdle")
-                    Stepper("Ask after \(idleTimeoutMinutes) min idle",
-                            value: $idleTimeoutMinutes, in: 2...30)
-                        .disabled(!autoEndOnIdle)
-                        .accessibilityIdentifier("editor.idleTimeout")
-                } header: {
-                    Text("Idle Check-In")
-                } footer: {
-                    Text("If you don't respond, the workout pauses. It never ends on its own.")
-                }
-
-                Section {
-                    ForEach(partnerPeople) { person in
-                        HStack {
-                            Text(person.name)
-                            Spacer()
-                            if plan.partnerIDs.contains(person.id) {
-                                Image(systemName: "checkmark").foregroundStyle(.tint)
-                            }
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if let idx = plan.partnerIDs.firstIndex(of: person.id) {
-                                plan.partnerIDs.remove(at: idx)
-                                plan.partnerIDs = normalizedPartnerIDs(plan.partnerIDs)
-                            } else {
-                                var ids = explicitPartnerIDs()
-                                ids.append(person.id)
-                                plan.partnerIDs = normalizedPartnerIDs(ids)
-                            }
-                        }
-                        .accessibilityIdentifier("editor.partner.\(person.name)")
+                if isEditing {
+                    ForEach($plan.exercises) { $exercise in
+                        exerciseSection($exercise)
                     }
-                    HStack {
-                        TextField("New partner name", text: $newPartnerName)
-                            .accessibilityIdentifier("editor.newPartnerName")
-                        Button("Add") {
-                            let name = newPartnerName.trimmingCharacters(in: .whitespaces)
-                            if !name.isEmpty,
-                               let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: modelContext) {
-                                if !plan.partnerIDs.contains(p.id) {
-                                    var ids = explicitPartnerIDs()
-                                    ids.append(p.id)
-                                    plan.partnerIDs = normalizedPartnerIDs(ids)
-                                }
-                            }
-                            newPartnerName = ""
-                        }
-                        .disabled(newPartnerName.trimmingCharacters(in: .whitespaces).isEmpty)
-                        .accessibilityIdentifier("editor.addPartner")
+                } else {
+                    ForEach(plan.exercises) { exercise in
+                        CompactExerciseRow(exercise: exercise, unit: settings.unit)
                     }
-                } header: {
-                    Text("Training partners")
-                } footer: {
-                    Text("Partners are optional — leave everyone unchecked to train solo.")
                 }
 
-                if !selectedPartnerPeople.isEmpty {
+                if isEditing {
                     Section {
-                        ForEach(Array(editorRoster.enumerated()), id: \.element.id) { index, person in
-                            HStack {
-                                Text(person.isMe ? "Me" : person.name)
-                                Spacer()
-                                Button {
-                                    moveRosterMember(from: index, by: -1)
-                                } label: {
-                                    Image(systemName: "chevron.up")
-                                }
-                                .disabled(index == 0)
-                                .buttonStyle(.borderless)
-                                .accessibilityIdentifier("editor.partnerOrder.up.\(person.isMe ? "Me" : person.name)")
-                                .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) earlier")
-
-                                Button {
-                                    moveRosterMember(from: index, by: 1)
-                                } label: {
-                                    Image(systemName: "chevron.down")
-                                }
-                                .disabled(index >= editorRoster.count - 1)
-                                .buttonStyle(.borderless)
-                                .accessibilityIdentifier("editor.partnerOrder.down.\(person.isMe ? "Me" : person.name)")
-                                .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) later")
-                            }
+                        Button {
+                            exercisePickerIntent = .add
+                        } label: {
+                            Label("Add Exercise", systemImage: "plus.circle.fill")
                         }
-                    } header: {
-                        Text("Performer order")
-                    } footer: {
-                        Text("The logger rotates through this order after each saved set.")
+                        .accessibilityIdentifier("editor.addExercise")
                     }
-                }
-
-                ForEach($plan.exercises) { $exercise in
-                    exerciseSection($exercise)
-                }
-                .onMove { plan.exercises.move(fromOffsets: $0, toOffset: $1) }
-                .onDelete { plan.exercises.remove(atOffsets: $0) }
-
-                Section {
-                    Button {
-                        exercisePickerIntent = .add
-                    } label: {
-                        Label("Add Exercise", systemImage: "plus.circle.fill")
+                } else {
+                    Section {
+                        Button {
+                            settingsPresented = true
+                        } label: {
+                            Label("Show workout settings…", systemImage: "gearshape")
+                        }
+                        .accessibilityIdentifier("editor.showSettings")
                     }
-                    .accessibilityIdentifier("editor.addExercise")
-                }
-
-                Section {
-                    Stepper("Cool-down: \(plan.cooldownMinutes) min", value: $plan.cooldownMinutes, in: 0...30)
-                        .accessibilityIdentifier("editor.cooldown")
-                }
-
-                Section {
-                    Toggle("Use HR monitoring", isOn: $useHR)
-                        .accessibilityIdentifier("editor.hrToggle")
                 }
             }
-            .environment(\.editMode, .constant(.active))
             .onAppear {
                 loadSettings()
                 _ = try? WorkoutRepository.me(in: modelContext)
             }
-
-            Button(action: { saveAndStart() }) {
-                Label("Start", systemImage: "play.fill")
-                    .font(.title3.bold())
-                    .frame(maxWidth: .infinity, minHeight: 56)
-            }
-            .cadenceGlassButton(prominent: true, tint: .green)
-            .padding()
-            .accessibilityIdentifier("editor.start")
         }
         .navigationTitle("Workout Plan")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(isEditing ? "Done" : "Edit") {
+                    withAnimation { isEditing.toggle() }
+                }
+                .accessibilityIdentifier("editor.edit")
+            }
+        }
         .sheet(item: $exercisePickerIntent) { intent in
             NavigationStack {
                 ExercisePickerView(action: intent.pickerAction) { exercise in
@@ -224,8 +121,118 @@ struct WorkoutPlanEditor: View {
                 }
             }
         }
+        .sheet(isPresented: $settingsPresented) {
+            WorkoutSettingsSheet(
+                warmupMinutes: $plan.warmupMinutes,
+                cooldownMinutes: $plan.cooldownMinutes,
+                restSeconds: $restSeconds,
+                autoStartRest: $autoStartRest,
+                preWorkoutCountdown: $preWorkoutCountdown,
+                autoEndOnIdle: $autoEndOnIdle,
+                idleTimeoutMinutes: $idleTimeoutMinutes,
+                plateRounding: $plateRounding,
+                useHR: $useHR)
+        }
+    }
+    private var startButton: some View {
+        Button(action: { saveAndStart() }) {
+            Label("Start", systemImage: "play.fill")
+                .font(.title3.bold())
+                .frame(maxWidth: .infinity, minHeight: 56)
+        }
+        .cadenceGlassButton(prominent: true, tint: .green)
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .background(.clear)
+        .accessibilityIdentifier("editor.start")
+    }
+    private var partnerSummarySection: some View {
+        Section("Training partners") {
+            if selectedPartnerPeople.isEmpty {
+                Text("Solo workout")
+                    .foregroundStyle(.secondary)
+            } else {
+                Text(selectedPartnerPeople.map(\.name).joined(separator: ", "))
+            }
+        }
     }
 
+    @ViewBuilder
+    private var partnerEditorSections: some View {
+        Section {
+            ForEach(partnerPeople) { person in
+                HStack {
+                    Text(person.name)
+                    Spacer()
+                    if plan.partnerIDs.contains(person.id) {
+                        Image(systemName: "checkmark").foregroundStyle(.tint)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if let idx = plan.partnerIDs.firstIndex(of: person.id) {
+                        plan.partnerIDs.remove(at: idx)
+                        plan.partnerIDs = normalizedPartnerIDs(plan.partnerIDs)
+                    } else {
+                        var ids = explicitPartnerIDs()
+                        ids.append(person.id)
+                        plan.partnerIDs = normalizedPartnerIDs(ids)
+                    }
+                }
+                .accessibilityIdentifier("editor.partner.\(person.name)")
+            }
+            HStack {
+                TextField("New partner name", text: $newPartnerName)
+                    .accessibilityIdentifier("editor.newPartnerName")
+                Button("Add") {
+                    let name = newPartnerName.trimmingCharacters(in: .whitespaces)
+                    if !name.isEmpty,
+                       let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: modelContext) {
+                        if !plan.partnerIDs.contains(p.id) {
+                            var ids = explicitPartnerIDs()
+                            ids.append(p.id)
+                            plan.partnerIDs = normalizedPartnerIDs(ids)
+                        }
+                    }
+                    newPartnerName = ""
+                }
+                .disabled(newPartnerName.trimmingCharacters(in: .whitespaces).isEmpty)
+                .accessibilityIdentifier("editor.addPartner")
+            }
+        } header: {
+            Text("Training partners")
+        } footer: {
+            Text("Partners are optional — leave everyone unchecked to train solo.")
+        }
+        if !selectedPartnerPeople.isEmpty {
+            Section {
+                ForEach(Array(editorRoster.enumerated()), id: \.element.id) { index, person in
+                    HStack {
+                        Text(person.isMe ? "Me" : person.name)
+                        Spacer()
+                        Button { moveRosterMember(from: index, by: -1) } label: {
+                            Image(systemName: "chevron.up")
+                        }
+                        .disabled(index == 0)
+                        .buttonStyle(.borderless)
+                        .accessibilityIdentifier("editor.partnerOrder.up.\(person.isMe ? "Me" : person.name)")
+                        .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) earlier")
+                        Button { moveRosterMember(from: index, by: 1) } label: {
+                            Image(systemName: "chevron.down")
+                        }
+                        .disabled(index >= editorRoster.count - 1)
+                        .buttonStyle(.borderless)
+                        .accessibilityIdentifier("editor.partnerOrder.down.\(person.isMe ? "Me" : person.name)")
+                        .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) later")
+                    }
+                }
+            } header: {
+                Text("Performer order")
+            } footer: {
+                Text("The logger rotates through this order after each saved set.")
+            }
+        }
+    }
     private func loadSettings() {
         let ws = settings.lastStrengthSettings
         restSeconds = ws.restSeconds

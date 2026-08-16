@@ -46,7 +46,7 @@ struct HomeView: View {
     @State private var showSupport = false
     @State private var pendingAddGapsDeficits: [BodyPart: Double]?
     @State private var suggestionsExpanded = false
-    @State private var volumeExplanationExpanded = false
+    @State private var weeklyVolumeExpanded = false
     @State private var coachWorkoutPreviewed = false
     @State private var coachIllustration = HomeCoachIllustration.random()
     @State private var showWorkoutConflict = false
@@ -197,6 +197,11 @@ struct HomeView: View {
     }
 
     private var todayStrength: (hasStrength: Bool, exerciseNames: [String]) { TodayLogHelper.completedStrength(sessions: sessions) }
+    private var weeklyVolumeKg: Double {
+        WeeklyStats.volumeKg(
+            sessions.filter { $0.deletedAt == nil },
+            since: WeeklyStats.weekStart())
+    }
 
     var body: some View {
         ZStack {
@@ -211,10 +216,13 @@ struct HomeView: View {
 
                     if let s = resumeSession { resumeCard(s) }
                     homeActionRow
-                    weekDashboardSection
-                    HomeWeeklyVolumeSection(
-                        rows: dashboard.volume,
-                        explanationExpanded: $volumeExplanationExpanded)
+                    HomeWeekDashboardSection(dashboard: dashboard, volumeExpanded: $weeklyVolumeExpanded)
+                    if weeklyVolumeExpanded {
+                        HomeWeeklyVolumeSection(rows: dashboard.volume,
+                                                totalVolumeKg: weeklyVolumeKg,
+                                                unit: settings.unit)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                     coachSuggestionsSection
                     whatYouDidSection
                 }
@@ -581,31 +589,14 @@ struct HomeView: View {
         }
     }
 
-    private var weekDashboardSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("This Week").font(.headline)
-            progressRow(id: "home.week.strength", title: "Strength", value: dashboard.strength.displayText, progress: dashboard.strength.normalized, tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow)
-            progressRow(id: "home.week.cardio", title: "Cardio", value: dashboard.cardio.displayText, progress: dashboard.cardio.normalized, tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
-    }
-
-    private func progressRow(id: String, title: String, value: String, progress: Double, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack { Text(title).font(.headline).foregroundStyle(tint); Spacer(); Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary) }
-            ProgressView(value: progress).tint(tint)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(id)
-    }
-
     private var coachSuggestionsSection: some View {
         let items = dashboard.suggestions
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Coach’s suggestions").font(.headline)
-            HomeCoachIllustrationView(illustration: coachIllustration)
+            HStack(alignment: .top, spacing: 10) {
+                Text("Coach’s suggestions").font(.headline)
+                Spacer()
+                HomeCoachIllustrationView(illustration: coachIllustration, compact: true)
+            }
             if let first = items.first {
                     ForEach((suggestionsExpanded ? items : [first])) { suggestion in
                         VStack(alignment: .leading, spacing: 4) {

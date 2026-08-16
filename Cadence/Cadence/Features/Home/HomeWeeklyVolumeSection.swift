@@ -4,14 +4,15 @@ import CadenceFeatures
 
 struct HomeWeeklyVolumeSection: View {
     let rows: [HomeDashboardState.VolumeRow]
-    @Binding var explanationExpanded: Bool
+    let totalVolumeKg: Double
+    let unit: MeasurementUnitPreference
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Weekly Volume").font(.headline)
             ForEach(rows) { row in
                 HStack(spacing: 10) {
-                    Text(row.displayName).frame(width: 82, alignment: .leading)
+                    Text(row.displayName).frame(width: 116, alignment: .leading)
                     ProgressView(value: row.normalized).tint(tint(for: row))
                     VStack(alignment: .trailing) {
                         Text("\(formattedSets(row.sets)) sets")
@@ -22,26 +23,23 @@ struct HomeWeeklyVolumeSection: View {
                                 .foregroundStyle(.red)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .frame(width: 88, alignment: .trailing)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(row.displayName)
                 .accessibilityValue("\(formattedSets(row.sets)) sets, \(row.rangeStatus)")
                 .accessibilityIdentifier("home.volume.\(row.part.rawValue)")
             }
-            Button(explanationExpanded ? "Show less" : "Show more") {
-                withAnimation { explanationExpanded.toggle() }
-            }
-            .font(.subheadline.weight(.semibold))
-            .accessibilityIdentifier(explanationExpanded ? "home.volume.showLess" : "home.volume.showMore")
-            if explanationExpanded {
-                Text("Productive volume runs from the experience-scaled starting range to the productive ceiling. Below that range may provide less training stimulus; above the recovery range may make recovery harder.")
-                    .font(.caption)
+            Divider()
+            HStack {
+                Text("Total Volume").font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(WorkoutMath.tonnageLabel(volumeKg: totalVolumeKg, unit: unit))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                CitationLink(citation: CitationRegistry.volumeDoseResponse, compact: true)
-                    .accessibilityIdentifier("home.volume.science")
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("home.volume.total")
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)

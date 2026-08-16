@@ -50,6 +50,8 @@ public struct HomeDashboardState: Sendable, Equatable {
     public let profileContext: ProfileContext
     public let strength: Progress
     public let cardio: Progress
+    /// Number of body parts currently in the productive (green) range.
+    public let volumeCoverage: Progress
     public let volume: [VolumeRow]
     public let suggestions: [HomeSuggestion]
 }
@@ -90,9 +92,15 @@ public enum HomeDashboardPresenter {
                          normalized: min(1, max(0, sets / max(1, bands.mav))),
                          citationID: CitationRegistry.volumeDoseResponse.id)
         }
+        let productiveParts = volume.filter { $0.status == .productive }.count
+        let volumeCoverage = HomeDashboardState.Progress(
+            completed: Double(productiveParts), target: 8,
+            displayText: "\(productiveParts)/8 body parts",
+            normalized: min(1, Double(productiveParts) / 8))
         return .init(profileContext: .init(goal: goal.displayName, experience: experience.displayName,
                                            ageText: userAge.map(String.init) ?? "Age not set"),
-                     strength: strength, cardio: cardio, volume: volume,
+                     strength: strength, cardio: cardio, volumeCoverage: volumeCoverage,
+                     volume: volume,
                      suggestions: suggestions(snapshot: snapshot, schedule: schedule))
     }
 

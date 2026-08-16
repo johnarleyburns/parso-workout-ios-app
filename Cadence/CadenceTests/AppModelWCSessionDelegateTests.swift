@@ -1,8 +1,21 @@
 import XCTest
 import WatchConnectivity
+import CadenceFeatures
 @testable import Cadence
 
 final class AppModelWCSessionDelegateTests: XCTestCase {
+    @MainActor
+    func testHomePlanUpdateUsesCacheForLaterForegroundSync() {
+        let model = AppModel()
+        let plan = WatchSync.TodayPlan(sessions: [
+            .init(id: "strength-0", kind: .strength, label: "Upper body")
+        ])
+
+        model.updateWatchTodayPlan(plan)
+
+        XCTAssertEqual(model.cachedTodayPlanForTesting, plan)
+    }
+
     func testActivationCallbackCanEnterFromWatchConnectivityQueue() async {
         let model = await MainActor.run { AppModel() }
         let callbackReturned = expectation(description: "WCSession activation callback returned")

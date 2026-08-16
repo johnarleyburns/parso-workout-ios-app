@@ -12,12 +12,37 @@ public struct HomeDashboardState: Sendable, Equatable {
         public let target: Double
         public let displayText: String
         public let normalized: Double
+
+        public init(completed: Double, target: Double, displayText: String, normalized: Double) {
+            self.completed = completed
+            self.target = target
+            self.displayText = displayText
+            self.normalized = normalized
+        }
+
+        public var isAtOrAboveTarget: Bool { completed >= target }
     }
+
+    public enum VolumeRangeStatus: String, Sendable, Equatable {
+        case belowStartingRange
+        case productive
+        case aboveRecoveryRange
+
+        public var accessibilityText: String {
+            switch self {
+            case .belowStartingRange: return "Below starting range"
+            case .productive: return "Within productive range"
+            case .aboveRecoveryRange: return "Above recovery range"
+            }
+        }
+    }
+
     public struct VolumeRow: Sendable, Equatable, Identifiable {
         public let part: BodyPart
         public let displayName: String
         public let sets: Double
         public let rangeStatus: String
+        public let status: VolumeRangeStatus
         public let normalized: Double
         public let citationID: String
         public var id: BodyPart { part }
@@ -56,13 +81,13 @@ public enum HomeDashboardPresenter {
         let volume = BodyPart.allCases.map { part -> HomeDashboardState.VolumeRow in
             let sets = snapshot.facts.weeklySetsByPart[part] ?? 0
             let bands = VolumeLandmarks.bands(for: part, experience: experience)
-            let status: String
-            if sets == 0 { status = "No working sets yet" }
-            else if sets > bands.mrv { status = "Above recovery range" }
-            else if sets >= bands.mev { status = "Within productive range" }
-            else { status = "Below starting range (\(format(bands.mev))–\(format(bands.mav)) sets)" }
+            let rangeStatus: HomeDashboardState.VolumeRangeStatus
+            if sets > bands.mrv { rangeStatus = .aboveRecoveryRange }
+            else if sets >= bands.mev { rangeStatus = .productive }
+            else { rangeStatus = .belowStartingRange }
             return .init(part: part, displayName: part == .abs ? "Core" : part.displayName, sets: sets,
-                         rangeStatus: status, normalized: min(1, max(0, sets / max(1, bands.mav))),
+                         rangeStatus: rangeStatus.accessibilityText, status: rangeStatus,
+                         normalized: min(1, max(0, sets / max(1, bands.mav))),
                          citationID: CitationRegistry.volumeDoseResponse.id)
         }
         return .init(profileContext: .init(goal: goal.displayName, experience: experience.displayName,

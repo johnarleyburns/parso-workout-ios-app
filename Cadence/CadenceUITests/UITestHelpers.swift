@@ -103,13 +103,13 @@ extension XCUIApplication {
     }
 
     /// Starts a blank strength session the way the app now does it: Home → Start
-    /// Workout → Weights → Quick Start. Lands on the editor first, so callers can
-    /// optionally plan exercises before tapping Start.
+    /// Workout → Quick Start. Lands on the editor first, so callers can optionally
+    /// plan exercises before tapping Start.
     @discardableResult
     func openQuickStartStrengthEditor() -> Bool {
         popToHome()
         guard scrollToHittableAndTap("home.startWorkout") else { return false }
-        guard scrollToHittableAndTap("weights.quickStart") else { return false }
+        guard scrollToHittableAndTap("selectWorkout.quickStart") else { return false }
         return buttons["editor.start"].waitForExistence(timeout: 10)
     }
 

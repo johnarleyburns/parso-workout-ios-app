@@ -206,6 +206,16 @@ struct AboutView: View {
             Link("View on Wikimedia Commons",
                  destination: URL(string: "https://commons.wikimedia.org/wiki/File:Fitness_exercise.jpg")!)
                 .font(.footnote)
+            Text("Coach illustrations: VideoPlasty, licensed under CC BY-SA 4.0. Used unchanged from Wikimedia Commons.")
+                .font(.footnote).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Link("Lifting dumbbells", destination: URL(string: "https://commons.wikimedia.org/wiki/File:Coach_Lifting_Dumbbells_Cartoon.svg")!)
+                Link("Using a stopwatch", destination: URL(string: "https://commons.wikimedia.org/wiki/File:Coach_Using_a_Stopwatch_Cartoon.svg")!)
+                Link("Using a whistle", destination: URL(string: "https://commons.wikimedia.org/wiki/File:Coach_Using_a_Whistle_Cartoon.svg")!)
+                Link("Yelling", destination: URL(string: "https://commons.wikimedia.org/wiki/File:Coach_Yelling_Cartoon.svg")!)
+                Link("CC BY-SA 4.0 license", destination: URL(string: "https://creativecommons.org/licenses/by-sa/4.0/")!)
+            }
+            .font(.footnote)
         }
     }
 }

@@ -46,11 +46,12 @@ struct HomeView: View {
     @State private var showSupport = false
     @State private var pendingAddGapsDeficits: [BodyPart: Double]?
     @State private var suggestionsExpanded = false
+    @State private var volumeExplanationExpanded = false
+    @State private var coachWorkoutPreviewed = false
+    @State private var coachIllustration = HomeCoachIllustration.random()
     @State private var showWorkoutConflict = false
     @State private var confirmCancelPrevious = false
-
     @State private var coachSnapshot: HomeCoachSnapshot = .placeholder
-
     private var dashboard: HomeDashboardState {
         let snapshot = CoachSnapshot(facts: coachSnapshot.facts, coachFacts: coachSnapshot.coachFacts,
                                      insights: coachSnapshot.insights, recommendation: coachSnapshot.recommendation,
@@ -67,14 +68,12 @@ struct HomeView: View {
     private var coachRecommendation: Recommendation { coachSnapshot.recommendation }
     private var coachDecision: CoachDecision { coachSnapshot.decision }
     private var coachPlan: WeeklyPlan { coachSnapshot.plan }
-
     private var passiveReadinessDisplay: PassiveReadinessPresenter.Display? {
         PassiveReadinessPresenter.display(for: coachSnapshot.readiness)
     }
 
     @State private var testCardOverride: TestRecommendation?
     @State private var testCardDismissed = false
-
     private var testRecommendation: TestRecommendation? {
         if testCardDismissed { return nil }
         if let override = testCardOverride { return override }
@@ -84,7 +83,6 @@ struct HomeView: View {
             lastRecommendedAt: settings.lastTestRecommendationAt,
             snoozedUntil: settings.testRecommendationSnoozes)
     }
-
     /// Gates coach recomputation. Deliberately keyed on coarse history counts + the
     /// refresh token + coach-relevant settings — NOT per-set session churn — so
     /// logging a set never re-runs the pipeline. The token is bumped when a workout
@@ -108,7 +106,7 @@ struct HomeView: View {
     }
     private func buildCoachSnapshot() async -> HomeCoachSnapshot {
         let policy: PlanningConstraintPolicy = settings.isPlanOverrideActive() ? .meetDeficits : .safe
-        return HomeCoachSnapshot(await HomeCoachModel.snapshotAsync(
+        let snapshot = HomeCoachSnapshot(await HomeCoachModel.snapshotAsync(
             sessions: sessions,
             cardio: cardio,
             assessments: assessments,
@@ -121,6 +119,8 @@ struct HomeView: View {
             passiveSamples: passiveSamples,
             userAge: settings.userAge,
             constraintPolicy: policy))
+        model.updateWatchTodayPlan(WatchSync.TodayPlan.from(day: snapshot.plan.today))
+        return snapshot
     }
 
     private func handleInsightAction(_ action: Insight.Action) {
@@ -154,7 +154,6 @@ struct HomeView: View {
                 onSnooze: { kind in snoozeTest(kind) })
         }
     }
-
     private func pickDifferentTest() {
         let summaries = AssessmentMath.summaries(from: assessments)
         let inputs = CoachTestRecommendationEngine.Inputs(
@@ -183,16 +182,13 @@ struct HomeView: View {
         testCardOverride = nil
         testCardDismissed = true
     }
-
     private var addOnRecommendation: CoachAddOnRecommendation { coachSnapshot.addOn }
-
     private static let headerDateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.setLocalizedDateFormatFromTemplate("EEEEMMMd")
         return f
     }()
     private var headerDateText: String { Self.headerDateFormatter.string(from: .now) }
-
     /// Phase A (field-test-fixes): resume card from either in-memory active session
     /// or a persisted `isResumable` candidate the coach pipeline detects but
     /// ActiveWorkoutModel hasn't yet adopted.
@@ -216,7 +212,9 @@ struct HomeView: View {
                     if let s = resumeSession { resumeCard(s) }
                     homeActionRow
                     weekDashboardSection
-                    weeklyVolumeSection
+                    HomeWeeklyVolumeSection(
+                        rows: dashboard.volume,
+                        explanationExpanded: $volumeExplanationExpanded)
                     coachSuggestionsSection
                     whatYouDidSection
                 }
@@ -585,52 +583,29 @@ struct HomeView: View {
 
     private var weekDashboardSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("This Week").font(.title3.bold())
-            progressRow(id: "home.week.strength", title: "Strength", value: dashboard.strength.displayText, progress: dashboard.strength.normalized, tint: .green)
-            progressRow(id: "home.week.cardio", title: "Cardio", value: dashboard.cardio.displayText, progress: dashboard.cardio.normalized, tint: .blue)
+            Text("This Week").font(.headline)
+            progressRow(id: "home.week.strength", title: "Strength", value: dashboard.strength.displayText, progress: dashboard.strength.normalized, tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow)
+            progressRow(id: "home.week.cardio", title: "Cardio", value: dashboard.cardio.displayText, progress: dashboard.cardio.normalized, tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow)
         }
         .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
     }
 
     private func progressRow(id: String, title: String, value: String, progress: Double, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack { Text(title).font(.headline); Spacer(); Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary) }
+            HStack { Text(title).font(.headline).foregroundStyle(tint); Spacer(); Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary) }
             ProgressView(value: progress).tint(tint)
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(id)
     }
 
-    private var weeklyVolumeSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Weekly Volume").font(.title3.bold())
-            ForEach(dashboard.volume) { row in
-                HStack(spacing: 10) {
-                    Text(row.displayName).frame(width: 82, alignment: .leading)
-                    ProgressView(value: row.normalized).tint(row.rangeStatus == "Above recovery range" ? .red : .green)
-                    VStack(alignment: .trailing) {
-                        Text("\(row.sets.formatted(.number.precision(.fractionLength(row.sets.rounded() == row.sets ? 0 : 1)))) sets")
-                            .font(.caption.weight(.semibold))
-                        Text(row.rangeStatus).font(.caption2).foregroundStyle(.secondary)
-                    }.frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("home.volume.\(row.part.rawValue)")
-            }
-            Text("Working sets compared with experience-scaled starting ranges.")
-                .font(.caption).foregroundStyle(.secondary)
-            CitationLink(citation: CitationRegistry.volumeDoseResponse, compact: true)
-        }
-        .padding()
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .orange)
-        .accessibilityIdentifier("home.volume")
-    }
-
     private var coachSuggestionsSection: some View {
         let items = dashboard.suggestions
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Coach’s suggestions").font(.title3.bold())
+            Text("Coach’s suggestions").font(.headline)
+            HomeCoachIllustrationView(illustration: coachIllustration)
             if let first = items.first {
                     ForEach((suggestionsExpanded ? items : [first])) { suggestion in
                         VStack(alignment: .leading, spacing: 4) {
@@ -651,10 +626,33 @@ struct HomeView: View {
             } else {
                 Text("No new suggestions right now.").font(.subheadline).foregroundStyle(.secondary)
             }
+            if hasWeeklyGap, let recommendation = previewableCoachRecommendation {
+                HomeCoachRecommendationCard(
+                    recommendation: recommendation,
+                    isPreviewed: coachWorkoutPreviewed,
+                    onPreview: { withAnimation { coachWorkoutPreviewed = true } },
+                    onStart: { launchDecision(recommendation) })
+            }
         }
         .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .purple)
         .accessibilityIdentifier("coach.card")
+    }
+
+    private var hasWeeklyGap: Bool {
+        dashboard.strength.completed < dashboard.strength.target
+            || dashboard.cardio.completed < dashboard.cardio.target
+            || dashboard.volume.contains { $0.status == .belowStartingRange }
+    }
+
+    private var previewableCoachRecommendation: CoachSession? {
+        switch coachDecision.primary.launchPayload {
+        case .strengthPlan, .cardio:
+            return coachDecision.primary
+        case .recovery, .rest, .assessment:
+            return nil
+        }
     }
 
     /// Quiet trial status shown above the Coach card while on the free trial.
@@ -734,6 +732,7 @@ struct HomeView: View {
                 }
             }
             .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
             .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .pink)
         }
     }
@@ -775,6 +774,7 @@ struct HomeView: View {
             .accessibilityIdentifier("home.train")
         }
         .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .teal)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.whatYouDid")

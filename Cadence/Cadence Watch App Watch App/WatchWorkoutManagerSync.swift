@@ -24,28 +24,39 @@ extension WatchWorkoutManager {
     }
 }
 
-extension WatchWorkoutManager: @preconcurrency WCSessionDelegate {
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        guard activationState == .activated, !session.receivedApplicationContext.isEmpty else { return }
-        DispatchQueue.main.async { [weak self] in
-            self?.applySettingsContext(session.receivedApplicationContext)
+extension WatchWorkoutManager: WCSessionDelegate {
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        guard activationState == .activated else { return }
+        let applicationContext = UncheckedWatchPayload(value: session.receivedApplicationContext)
+        guard !applicationContext.value.isEmpty else { return }
+        Task { @MainActor [weak self] in
+            self?.applySettingsContext(applicationContext.value)
         }
     }
 
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        _ = handleMessage(message)
-    }
-
-    func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-        replyHandler(handleMessage(message))
-    }
-
-    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        DispatchQueue.main.async { [weak self] in
-            self?.applySettingsContext(applicationContext)
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        let message = UncheckedWatchPayload(value: message)
+        Task { @MainActor [weak self] in
+            _ = self?.handleMessage(message.value)
         }
     }
 
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+        let message = UncheckedWatchPayload(value: message)
+        let replyHandler = UncheckedWatchReplyHandler(replyHandler)
+        Task { @MainActor [weak self] in
+            replyHandler.call(self?.handleMessage(message.value) ?? ["ack": false])
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        let applicationContext = UncheckedWatchPayload(value: applicationContext)
+        Task { @MainActor [weak self] in
+            self?.applySettingsContext(applicationContext.value)
+        }
+    }
+
+    @MainActor
     private func handleMessage(_ message: [String: Any]) -> [String: Any] {
         if message[WatchSync.Key.command] as? String == "start_workout",
            let type = message["type"] as? String,
@@ -138,5 +149,21 @@ extension WatchWorkoutManager: @preconcurrency WCSessionDelegate {
     private func recordPhoneSyncFailure(_ message: String) {
         lastPhoneSyncError = message
         phoneSyncState = .failed(message, lastPhoneSyncAt)
+    }
+}
+
+/// WatchConnectivity guarantees property-list payloads at this framework
+/// boundary. The framework types predate Swift concurrency annotations, so
+/// carry them across the delegate queue explicitly and consume them once on
+/// MainActor.
+private struct UncheckedWatchPayload: @unchecked Sendable {
+    let value: [String: Any]
+}
+
+private struct UncheckedWatchReplyHandler: @unchecked Sendable {
+    let call: ([String: Any]) -> Void
+
+    init(_ call: @escaping ([String: Any]) -> Void) {
+        self.call = call
     }
 }

@@ -6,12 +6,31 @@
 //
 
 import Testing
+import WatchConnectivity
 @testable import Cadence_Watch_App_Watch_App
 
 struct Cadence_Watch_App_Watch_AppTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func activationCallbackCanEnterFromWatchConnectivityQueue() async {
+        let manager = await MainActor.run {
+            WatchWorkoutManager(uiTestMode: true)
+        }
+        let callbackReturned = await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async { [manager] in
+                // WatchConnectivity delivers delegate callbacks on a private
+                // operation queue. Calling through the protocol existential
+                // mirrors that framework boundary.
+                let delegate: any WCSessionDelegate = manager
+                delegate.session(
+                    WCSession.default,
+                    activationDidCompleteWith: .activated,
+                    error: nil
+                )
+                continuation.resume(returning: true)
+            }
+        }
+
+        #expect(callbackReturned)
     }
 
 }

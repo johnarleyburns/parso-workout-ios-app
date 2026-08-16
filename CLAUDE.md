@@ -120,6 +120,7 @@ outputs are advice *attached to* the plan (e.g. `PlannedSession.adviceNote`/
 surface must leave an escape hatch (alternatives, full cardio picker, strength-anyway).
 
 ## Workflow rules for Claude Code
+- **`current_status.md` is the active task plan and handoff.** At the start of every task, read it and continue from its documented overall position and immediate next task. Before implementing, update it with the intended task/step when the work meaningfully changes the plan. After implementation, update it with what changed, verification results, remaining work, and the next task. Do not rely on stale conversation context instead of this file.
 - For any non-trivial feature, **propose a plan first** (plan mode), wait for approval, then implement.
 - **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test.
 - Scope investigations narrowly; ask before large refactors or new dependencies (this repo aims for zero proprietary deps — see NFR-6).

@@ -98,6 +98,14 @@ final class AppModel: NSObject, @unchecked Sendable {
     private var _settings: AppSettings?
     private var _modelContainer: ModelContainer?
     private var _active: ActiveWorkoutModel?
+    /// The most recently computed Home plan. Foreground/settings sync reuses
+    /// this value rather than walking SwiftData and rebuilding the coach plan
+    /// synchronously during an unlock transition.
+    private var cachedTodayPlan: WatchSync.TodayPlan?
+
+    #if DEBUG
+    var cachedTodayPlanForTesting: WatchSync.TodayPlan? { cachedTodayPlan }
+    #endif
 
     func configureWatchSync(settings: AppSettings, container: ModelContainer,
                             active: ActiveWorkoutModel? = nil) {
@@ -127,7 +135,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             recentPartnerNames: recentPartnerNames()
         )
         var context = WatchSync.Preferences.contextDict(prefs, updatedAt: now)
-        if let todayPlan = watchTodayPlan(settings: settings, updatedAt: now) {
+        if let todayPlan = cachedTodayPlan {
             context.merge(WatchSync.TodayPlan.contextDict(todayPlan)) { _, new in new }
         }
         if let container = _modelContainer {
@@ -138,6 +146,22 @@ final class AppModel: NSObject, @unchecked Sendable {
         do {
             try session.updateApplicationContext(context)
             recordWatchSyncSuccess(now)
+        } catch {
+            recordWatchSyncFailure(error.localizedDescription)
+        }
+    }
+
+    /// Publishes the plan Home already computed asynchronously. This is kept
+    /// separate from settings sync so a foreground transition never has to
+    /// fetch the complete workout history just to update the Watch.
+    func updateWatchTodayPlan(_ plan: WatchSync.TodayPlan) {
+        cachedTodayPlan = plan
+        guard let session = wcSession, session.isWatchAppInstalled else { return }
+        var context = session.applicationContext
+        context.merge(WatchSync.TodayPlan.contextDict(plan)) { _, new in new }
+        do {
+            try session.updateApplicationContext(context)
+            recordWatchSyncSuccess(plan.updatedAt)
         } catch {
             recordWatchSyncFailure(error.localizedDescription)
         }
@@ -231,36 +255,6 @@ final class AppModel: NSObject, @unchecked Sendable {
             .filter { !$0.isMe && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .map(\.name)
             .prefix(3))
-    }
-
-    private func watchTodayPlan(settings: AppSettings, updatedAt: Date) -> WatchSync.TodayPlan? {
-        guard let container = _modelContainer else { return nil }
-        let ctx = ModelContext(container)
-        let sessions = (try? ctx.fetch(FetchDescriptor<WorkoutSession>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        ))) ?? []
-        let cardio = (try? ctx.fetch(FetchDescriptor<CardioWorkout>(
-            sortBy: [SortDescriptor(\.start, order: .reverse)]
-        ))) ?? []
-        let assessments = (try? ctx.fetch(FetchDescriptor<Assessment>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        ))) ?? []
-        let policy: PlanningConstraintPolicy = settings.isPlanOverrideActive(now: updatedAt) ? .meetDeficits : .safe
-        let snapshot = HomeCoachModel.snapshot(
-            sessions: sessions,
-            cardio: cardio,
-            assessments: assessments,
-            readiness: [],
-            goal: settings.trainingGoal,
-            experience: settings.experienceLevel,
-            formula: settings.formula,
-            schedule: settings.coachSchedulePreferences,
-            profile: settings.coachPreferenceProfile,
-            userAge: settings.userAge,
-            now: updatedAt,
-            constraintPolicy: policy
-        )
-        return WatchSync.TodayPlan.from(day: snapshot.plan.today, updatedAt: updatedAt)
     }
 
     private func recordWatchSyncSuccess(_ date: Date) {

@@ -44,6 +44,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         let weightAccessibilityValue = app.buttons["setEditor.weightValue"].value as? String
         XCTAssertTrue(weightAccessibilityValue == "5 kg" || weightAccessibilityValue == "5 lb",
                       "weight accessibility value did not update: \(weightAccessibilityValue ?? "nil")")
+        app.swipeUp()
         XCTAssertTrue(app.buttons["setEditor.reps.minus"].waitTap(timeout: 5),
                       "reps decrement did not tap")
         XCTAssertTrue(app.buttons["setEditor.reps.plus"].waitTap(timeout: 5),
@@ -58,7 +59,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // The set must land as a completed row on the card.
         XCTAssertTrue(app.buttons["set.editWeight.Bench Press.1"].waitForExistence(timeout: 10),
                       "logged set row did not appear")
-        XCTAssertEqual(app.descendants(matching: .any)["set.rpe.Bench Press.1"].label, "RPE 8",
+        XCTAssertEqual(app.descendants(matching: .any)["set.editRPE.Bench Press.1"].label, "RPE 8",
                        "RIR selection did not persist as canonical RPE")
         XCTAssertTrue(app.buttons["exercise.edit.Bench Press"].waitTap(timeout: 5),
                       "set edit mode did not open")
@@ -74,6 +75,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Save changes did not tap")
         XCTAssertTrue(app.descendants(matching: .any)["set.row.Bench Press.1"].waitForExistence(timeout: 10),
                       "edited set row did not remain present")
+        XCTAssertTrue(app.buttons["exercise.edit.Bench Press"].waitTap(timeout: 5),
+                      "set edit mode did not close")
 
         XCTAssertTrue(app.buttons["set.add.Bench Press"].waitTap(timeout: 5),
                       "fresh Add Set did not open")

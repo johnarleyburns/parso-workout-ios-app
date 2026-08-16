@@ -38,4 +38,5 @@ The Home View field test identified these issues, which are the acceptance crite
 - `make ci`: build, 1,318 tests, test-pyramid guardrails, and no-network guardrail passed.
 - `make smoke`: WatchConnectivity regression and iPhone Home/Quick Start smoke passed.
 - `git diff --check`: passed.
-- Commit and push are the final handoff steps for this batch.
+- Commit `ab68140` (`Implement Home field testing fixes`) is pushed to `main`.
+- [GitHub Actions run 31962467272](https://github.com/johnarleyburns/parso-workout-ios-app/actions/runs/31962467272) passed `core-tests`, archive warning checks, IPA export, and TestFlight upload.

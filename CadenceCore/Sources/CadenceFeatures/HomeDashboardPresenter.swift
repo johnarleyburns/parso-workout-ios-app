@@ -89,7 +89,9 @@ public struct HomeSuggestion: Sendable, Equatable, Identifiable {
     /// plan/assessment information remains neutral.
     public var tone: Tone {
         switch category {
-        case .safety, .weeklyDeficit, .volumeRecovery: return .warning
+        case .safety, .weeklyDeficit: return .warning
+        case .volumeRecovery:
+            return title.localizedCaseInsensitiveContains("volume is on track") ? .positive : .warning
         case .progress: return .positive
         case .planAction: return .neutral
         }

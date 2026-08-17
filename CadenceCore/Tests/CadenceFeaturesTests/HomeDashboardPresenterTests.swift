@@ -83,6 +83,15 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertEqual(make(.planAction).tone, .neutral)
     }
 
+    func testSuggestionToneMapsProductiveVolumeToPositive() {
+        let suggestion = HomeSuggestion(
+            id: "volume.chest", category: .volumeRecovery,
+            title: "Chest volume is on track", message: "8 sets this week",
+            citationID: CitationRegistry.volumeDoseResponse.id,
+            sourceClaimKey: "insight:volume.chest", priority: 0, confidence: 100)
+        XCTAssertEqual(suggestion.tone, .positive)
+    }
+
     func testVisibleSuggestionsCapsCollapsedCardAndRestoresExpandedItems() {
         let items = (0..<5).map { index in
             HomeSuggestion(id: "suggestion-\(index)", category: .progress,

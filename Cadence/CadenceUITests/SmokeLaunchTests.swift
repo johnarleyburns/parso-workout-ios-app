@@ -38,14 +38,16 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
                       "Home Start Workout did not open")
+        XCTAssertTrue(app.buttons["selectWorkout.custom"].label.contains("Custom Workout"),
+                      "Start Workout custom action still uses the old label")
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
-                      "Start Workout did not offer Start Custom Workout beneath Quick Start")
+                      "Start Workout did not offer Custom Workout beneath Quick Start")
         XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10),
                       "Custom workout did not open the Workout Plan editor")
         XCTAssertTrue(app.buttons["editor.start"].label.contains("Start Workout"),
                       "Workout Plan start action is not labeled Start Workout")
         XCTAssertTrue(app.buttons["editor.addExercise"].waitForExistence(timeout: 5),
-                      "Start Custom Workout did not open in edit mode")
+                      "Custom Workout did not open in edit mode")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitForExistence(timeout: 5),
                       "Could not return to Start Workout")

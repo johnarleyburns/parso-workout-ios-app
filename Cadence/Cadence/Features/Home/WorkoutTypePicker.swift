@@ -96,7 +96,7 @@ struct SelectWorkoutView: View {
                                 startInEditMode: true,
                                 onStart: onEditorStart)
                         } label: {
-                            workoutChoiceLabel("Start Custom Workout", symbol: "slider.horizontal.3")
+                            workoutChoiceLabel("Custom Workout", symbol: "slider.horizontal.3")
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("selectWorkout.custom")

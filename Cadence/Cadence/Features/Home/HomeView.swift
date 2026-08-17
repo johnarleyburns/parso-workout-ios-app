@@ -567,7 +567,7 @@ struct HomeView: View {
     }
 
     private var homeActionRow: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 20) {
             Button {
                 Haptics.selection()
                 if active.liveWorkout.active != nil { showWorkoutConflict = true } else { selectWorkoutPresented = true }

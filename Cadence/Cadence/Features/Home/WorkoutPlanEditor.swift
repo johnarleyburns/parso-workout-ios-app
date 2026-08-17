@@ -58,8 +58,8 @@ struct WorkoutPlanEditor: View {
     }
     var body: some View {
         VStack(spacing: 0) {
+            startButton
             List {
-                startButton
                 if isEditing {
                     partnerEditorSections
                 } else {
@@ -141,9 +141,8 @@ struct WorkoutPlanEditor: View {
         .buttonStyle(.borderedProminent)
         .tint(.green).controlSize(.large)
         .frame(maxWidth: .infinity)
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        .padding(.top, 8)
-        .background(.clear)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
         .accessibilityIdentifier("editor.start")
     }
     private var partnerSummarySection: some View {

@@ -81,11 +81,14 @@ struct RootTabView: View {
             }
 
             if let watchSyncToast {
-                WatchSyncToastView(toast: watchSyncToast)
-                    .padding(.top, 10)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .zIndex(20)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                VStack(spacing: 0) {
+                    WatchSyncToastView(toast: watchSyncToast)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaPadding(.top, 8)
+                .zIndex(20)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         // The live workout + its finish summary share ONE root-level cover

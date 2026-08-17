@@ -40,6 +40,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     private(set) var watchSyncState: WatchSync.Status = .idle
     private(set) var lastWatchSyncAt: Date? = UserDefaults.standard.object(forKey: "settings.lastWatchSyncAt") as? Date
     private(set) var lastWatchSyncError: String?
+    private let watchSessionDelegate: WatchSessionDelegateProxy
 
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var lastHealthSync: Date? {
@@ -74,8 +75,10 @@ final class AppModel: NSObject, @unchecked Sendable {
         self.hrm = HeartRateMonitor(simulated: uiTest)
         self.location = LocationTracker(simulated: uiTest)
         self.watchHRRelay = WatchHRRelay()
+        self.watchSessionDelegate = WatchSessionDelegateProxy()
 
         super.init()
+        self.watchSessionDelegate.owner = self
     }
 
     // MARK: Watch HR relay (FR-8)
@@ -91,9 +94,15 @@ final class AppModel: NSObject, @unchecked Sendable {
     func activateWCSession() {
         guard Self.liveWatchHREnabled, !isUITestMode, WCSession.isSupported() else { return }
         let session = WCSession.default
-        session.delegate = self
+        // WatchConnectivity invokes its delegate on a private queue. Keep the
+        // Objective-C delegate nonisolated and hop into AppModel's main actor.
+        session.delegate = watchSessionDelegate
         session.activate()
     }
+
+    #if DEBUG
+    var watchSessionDelegateForTesting: any WCSessionDelegate { watchSessionDelegate }
+    #endif
 
     private var _settings: AppSettings?
     private var _modelContainer: ModelContainer?
@@ -192,36 +201,52 @@ final class AppModel: NSObject, @unchecked Sendable {
 
         let requestID = UUID()
         watchHRRelay.begin(requestID: requestID)
-        session.sendMessage([WatchSync.Key.command: "start_workout", "type": rawType, "requestID": requestID.uuidString],
-                            replyHandler: { [weak self] reply in
-                                Task { @MainActor in
-                                    guard let self,
-                                          (reply["requestID"] as? String).flatMap(UUID.init(uuidString:)) == requestID,
-                                          let accepted = reply["accepted"] as? Bool else { return }
-                                    if accepted {
-                                        self.watchHRRelay.acknowledged()
-                                    } else {
-                                        let reason = (reply["rejection"] as? String) ?? "unavailable"
-                                        self.watchHRRelay.fail("Apple Watch rejected heart-rate monitoring (\(reason))")
-                                    }
-                                }
-                            },
-                            errorHandler: { [weak self] error in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.watchActive = false
-                self.watchError = "Watch connection failed — make sure Cladiron is open on your Watch"
-                self.watchTimeout?.invalidate()
-            }
-        })
+        session.sendMessage(
+            [WatchSync.Key.command: "start_workout", "type": rawType, "requestID": requestID.uuidString],
+            replyHandler: Self.watchReplyHandler(owner: self, requestID: requestID),
+            errorHandler: Self.watchErrorHandler(owner: self))
         watchActive = false
-        watchTimeout = Timer.scheduledTimer(withTimeInterval: 15, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self, self.watchHRRelay.freshBPM == nil else { return }
-                self.watchHRRelay.timeout()
-                self.watchActive = false
-                self.watchError = "No heart rate received — check that Cladiron is running on your Watch"
-                self.watchTimeout?.invalidate()
+        watchTimeout = Timer.scheduledTimer(
+            withTimeInterval: 15,
+            repeats: false,
+            block: Self.watchTimeoutHandler(owner: self))
+    }
+
+    nonisolated private static func watchReplyHandler(owner: AppModel, requestID: UUID) -> ([String: Any]) -> Void {
+        { reply in
+            let matchesRequest = (reply["requestID"] as? String).flatMap(UUID.init(uuidString:)) == requestID
+            let accepted = reply["accepted"] as? Bool
+            let reason = (reply["rejection"] as? String) ?? "unavailable"
+            Task { @MainActor [weak owner] in
+                guard let owner, matchesRequest, let accepted else { return }
+                if accepted {
+                    owner.watchHRRelay.acknowledged()
+                } else {
+                    owner.watchHRRelay.fail("Apple Watch rejected heart-rate monitoring (\(reason))")
+                }
+            }
+        }
+    }
+
+    nonisolated private static func watchErrorHandler(owner: AppModel) -> (Error) -> Void {
+        { _ in
+            Task { @MainActor [weak owner] in
+                guard let owner else { return }
+                owner.watchActive = false
+                owner.watchError = "Watch connection failed — make sure Cladiron is open on your Watch"
+                owner.watchTimeout?.invalidate()
+            }
+        }
+    }
+
+    nonisolated private static func watchTimeoutHandler(owner: AppModel) -> @Sendable (Timer) -> Void {
+        { _ in
+            Task { @MainActor [weak owner] in
+                guard let owner, owner.watchHRRelay.freshBPM == nil else { return }
+                owner.watchHRRelay.timeout()
+                owner.watchActive = false
+                owner.watchError = "No heart rate received — check that Cladiron is running on your Watch"
+                owner.watchTimeout?.invalidate()
             }
         }
     }
@@ -270,44 +295,20 @@ final class AppModel: NSObject, @unchecked Sendable {
     }
 }
 
-// MARK: - WCSessionDelegate (FR-8)
+// MARK: - Main-actor WatchConnectivity handlers
 
-extension AppModel: WCSessionDelegate {
-    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        if activationState == .activated {
-            let installed = session.isWatchAppInstalled
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.watchAppInstalled = installed
-                self.pushSettingsContext()
-            }
-        }
+extension AppModel {
+    fileprivate func watchActivationCompleted(installed: Bool) {
+        watchAppInstalled = installed
+        pushSettingsContext()
     }
 
-    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
-    nonisolated func sessionDidDeactivate(_ session: WCSession) {
-        WCSession.default.activate()
+    fileprivate func watchStateChanged(installed: Bool) {
+        watchAppInstalled = installed
     }
 
-    nonisolated func sessionWatchStateDidChange(_ session: WCSession) {
-        let installed = session.isWatchAppInstalled
-        Task { @MainActor [weak self] in
-            self?.watchAppInstalled = installed
-        }
-    }
-
-    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        handleWatchMessage(message)
-    }
-
-    nonisolated func session(_ session: WCSession,
-                            didReceiveMessage message: [String: Any],
-                            replyHandler: @escaping ([String: Any]) -> Void) {
-        handleWatchMessage(message, replyHandler: replyHandler)
-    }
-
-    nonisolated private func handleWatchMessage(_ message: [String: Any],
-                                                replyHandler: (([String: Any]) -> Void)? = nil) {
+    fileprivate func handleWatchMessage(_ message: [String: Any],
+                                         replyHandler: (([String: Any]) -> Void)? = nil) {
         if message[WatchSync.Key.command] as? String == WatchSync.Key.requestSettingsSync {
             Task { @MainActor [weak self] in
                 self?.pushSettingsContext(force: true)
@@ -334,7 +335,7 @@ extension AppModel: WCSessionDelegate {
         replyHandler?(["ack": true])
     }
 
-    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+    fileprivate func handleWatchUserInfo(_ userInfo: [String: Any]) {
         guard let action = userInfo["action"] as? String else { return }
         let payload = UncheckedWatchUserInfo(value: userInfo)
         Task { @MainActor [weak self] in
@@ -387,11 +388,69 @@ extension AppModel: WCSessionDelegate {
     }
 }
 
+/// WatchConnectivity calls its delegate from private queues. This object must
+/// remain nonisolated at the Objective-C boundary; every app-state mutation is
+/// explicitly scheduled on AppModel's main actor.
+private final class WatchSessionDelegateProxy: NSObject, WCSessionDelegate, @unchecked Sendable {
+    weak var owner: AppModel?
+
+    func session(_ session: WCSession,
+                 activationDidCompleteWith activationState: WCSessionActivationState,
+                 error: Error?) {
+        guard activationState == .activated else { return }
+        let installed = session.isWatchAppInstalled
+        Task { @MainActor [weak owner] in
+            owner?.watchActivationCompleted(installed: installed)
+        }
+    }
+
+    func sessionDidBecomeInactive(_ session: WCSession) {}
+
+    func sessionDidDeactivate(_ session: WCSession) {
+        session.activate()
+    }
+
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        let installed = session.isWatchAppInstalled
+        Task { @MainActor [weak owner] in
+            owner?.watchStateChanged(installed: installed)
+        }
+    }
+
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        let payload = UncheckedWatchUserInfo(value: message)
+        Task { @MainActor [weak owner] in
+            owner?.handleWatchMessage(payload.value)
+        }
+    }
+
+    func session(_ session: WCSession,
+                 didReceiveMessage message: [String: Any],
+                 replyHandler: @escaping ([String: Any]) -> Void) {
+        let payload = UncheckedWatchUserInfo(value: message)
+        let reply = UncheckedWatchReplyHandler(value: replyHandler)
+        Task { @MainActor [weak owner] in
+            owner?.handleWatchMessage(payload.value, replyHandler: reply.value)
+        }
+    }
+
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+        let payload = UncheckedWatchUserInfo(value: userInfo)
+        Task { @MainActor [weak owner] in
+            owner?.handleWatchUserInfo(payload.value)
+        }
+    }
+}
+
 /// `WCSessionDelegate` guarantees property-list payloads, but its Objective-C
 /// API predates `Sendable`. This wrapper documents that framework guarantee so
 /// the callback can hand the immutable dictionary to the main actor.
 private struct UncheckedWatchUserInfo: @unchecked Sendable {
     let value: [String: Any]
+}
+
+private struct UncheckedWatchReplyHandler: @unchecked Sendable {
+    let value: ([String: Any]) -> Void
 }
 
 // MARK: - Watch sync notifications

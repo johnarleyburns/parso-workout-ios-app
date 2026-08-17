@@ -25,7 +25,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showMore"),
                       "This Week did not offer Show more")
-        XCTAssertTrue(app.descendants(matching: .any)["home.thisWeek.expanded"].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].waitForExistence(timeout: 5),
                       "This Week did not expand in place")
         XCTAssertTrue(app.scrollToHittableAndTap("home.volume.legs"),
                       "Expanded This Week did not expose the Legs volume row")

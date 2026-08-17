@@ -98,6 +98,7 @@ struct TestsView: View {
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .blue)
+            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             .listRowBackground(Color.clear)
         }
     }

@@ -44,10 +44,8 @@ struct HomeView: View {
     @State private var showAlternatives = false
     @State private var showSupport = false
     @State private var pendingAddGapsDeficits: [BodyPart: Double]?
-    @State private var expandedSuggestionIDs = Set<String>()
     @State private var suggestionsExpanded = false
     @State private var weeklyVolumeExpanded = false
-    @State private var coachWorkoutPreviewed = false
     @State private var coachIllustration = HomeCoachIllustration.random()
     @State private var showWorkoutConflict = false
     @State private var confirmCancelPrevious = false
@@ -597,38 +595,23 @@ struct HomeView: View {
                 Spacer()
                 HomeCoachIllustrationView(illustration: coachIllustration, compact: true)
             }
+            if let recommendation = previewableCoachRecommendation {
+                HomeCoachRecommendationCard(
+                    recommendation: recommendation,
+                    onStart: { launchDecision(recommendation) })
+            }
             if !items.isEmpty {
                 ForEach(visibleItems) { suggestion in
-                    let isExpanded = expandedSuggestionIDs.contains(suggestion.id)
                     VStack(alignment: .leading, spacing: 6) {
-                        Button {
-                            withAnimation {
-                                if isExpanded { expandedSuggestionIDs.remove(suggestion.id) }
-                                else { expandedSuggestionIDs.insert(suggestion.id) }
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(suggestionTint(suggestion))
-                                    .frame(width: 8, height: 8)
-                                Text(suggestion.title).font(.headline)
-                                Spacer()
-                                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                            .contentShape(Rectangle())
+                        HStack(spacing: 8) {
+                            Circle().fill(suggestionTint(suggestion)).frame(width: 8, height: 8)
+                            Text(suggestion.title).font(.headline)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(isExpanded ? "Collapse \(suggestion.title)" : "Expand \(suggestion.title)")
-                        .accessibilityIdentifier("home.suggestion.\(suggestion.id)")
-
-                        if isExpanded {
-                            Text(suggestion.message).font(.subheadline)
-                            if suggestion.citationID == CitationRegistry.volumeDoseResponse.id {
-                                CitationLink(citation: CitationRegistry.volumeDoseResponse, compact: true)
-                            }
+                        Text(suggestion.message).font(.subheadline)
+                        if let citationID = suggestion.citationID,
+                           let citation = CitationRegistry.citation(forId: citationID) {
+                            CitationLink(citation: citation, compact: true)
+                                .accessibilityIdentifier("home.suggestion.\(suggestion.id).science")
                         }
                     }
                     .padding(10)
@@ -639,7 +622,7 @@ struct HomeView: View {
                     }
                     .accessibilityElement(children: .contain)
                 }
-                if items.count > 3 {
+                if items.count > 1 {
                     Button {
                         withAnimation { suggestionsExpanded.toggle() }
                     } label: {
@@ -660,13 +643,6 @@ struct HomeView: View {
             } else {
                 Text("No new suggestions right now.").font(.subheadline).foregroundStyle(.secondary)
             }
-            if hasWeeklyGap, let recommendation = previewableCoachRecommendation {
-                HomeCoachRecommendationCard(
-                    recommendation: recommendation,
-                    isPreviewed: coachWorkoutPreviewed,
-                    onPreview: { withAnimation { coachWorkoutPreviewed = true } },
-                    onStart: { launchDecision(recommendation) })
-            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -679,11 +655,6 @@ struct HomeView: View {
         case .warning: return .yellow
         case .neutral: return .white
         }
-    }
-    private var hasWeeklyGap: Bool {
-        dashboard.strength.completed < dashboard.strength.target
-            || dashboard.cardio.completed < dashboard.cardio.target
-            || dashboard.volume.contains { $0.status == .belowStartingRange }
     }
     private var previewableCoachRecommendation: CoachSession? {
         switch coachDecision.primary.launchPayload {

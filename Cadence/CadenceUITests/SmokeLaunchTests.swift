@@ -16,6 +16,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Coach card did not render on Home")
         XCTAssertTrue(app.buttons["home.logWorkout"].waitForExistence(timeout: 5),
                       "Home did not show the previous-workout log action")
+        if app.descendants(matching: .any)["home.coachRecommendation"].exists {
+            XCTAssertTrue(app.buttons["home.coachRecommendation.start"].waitForExistence(timeout: 5),
+                          "Home did not show Do Coach's Workout at the top of the coach card")
+            XCTAssertFalse(app.buttons["home.coachRecommendation.preview"].exists,
+                           "Coach card still exposes the removed Preview Workout action")
+        }
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showMore"),
                       "This Week did not offer Show more")
@@ -29,7 +35,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Expanded This Week did not show Show less")
         if app.buttons["home.suggestions.showMore"].exists {
             XCTAssertTrue(app.scrollToHittableAndTap("home.suggestions.showMore"),
-                          "Coach's Suggestions did not collapse to three items with Show more...")
+                          "Coach's Suggestions did not show only the first warning before Show more...")
             XCTAssertTrue(app.scrollToHittableAndTap("home.suggestions.showLess"),
                           "Coach's Suggestions did not put Show less at the bottom")
         }

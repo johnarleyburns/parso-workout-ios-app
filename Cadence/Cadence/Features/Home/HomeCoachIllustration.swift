@@ -41,8 +41,8 @@ struct HomeCoachIllustrationView: View {
     var body: some View {
         Image(illustration.imageName)
             .resizable()
-            .aspectRatio(compact ? 1 : 16 / 9, contentMode: .fit)
-            .frame(width: compact ? 52 : nil, height: compact ? 52 : nil)
+            .aspectRatio(contentMode: .fit)
+            .frame(width: compact ? 64 : nil, height: compact ? 64 : nil)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .accessibilityLabel(illustration.accessibilityLabel)
             .accessibilityIdentifier("home.coachIllustration")

@@ -56,23 +56,20 @@ final class InsightEngineTests: XCTestCase {
         XCTAssertEqual(chest?.kind, .volume)
     }
 
-    func testProductiveVolumeIsInfoNotAttention() throws {
+    func testProductiveVolumeDoesNotCreateAHomeSuggestion() throws {
         let facts = try populatedFacts(chestSets: 12, goal: .hypertrophy)
         let chest = InsightEngine.run(facts).first { $0.id == "volume.chest" }
-        XCTAssertEqual(chest?.severity, .info)
+        XCTAssertNil(chest)
     }
 
-    // MARK: every body part is reported (feedback: "told shoulders on track but
-    // nothing about biceps — are they on track or not?")
+    // MARK: only actionable volume warnings are reported
 
-    func testEveryBodyPartProducesAVolumeInsight() throws {
-        // Only chest is trained; every other part has 0 sets this week.
+    func testOnlyActionableBodyPartsProduceVolumeInsights() throws {
+        // Only chest is trained; productive parts and target-status noise stay silent.
         let facts = try populatedFacts(chestSets: 8, goal: .hypertrophy)
         let insights = InsightEngine.run(facts)
-        for part in BodyPart.allCases {
-            XCTAssertNotNil(insights.first { $0.id == "volume.\(part.rawValue)" },
-                            "\(part.displayName) must get a volume insight even with 0 sets")
-        }
+        XCTAssertNil(insights.first { $0.id == "volume.chest" })
+        XCTAssertNotNil(insights.first { $0.id == "volume.biceps" })
     }
 
     func testUntrainedBodyPartIsAttentionLowVolume() throws {
@@ -92,7 +89,7 @@ final class InsightEngineTests: XCTestCase {
     func testUntrainedButPlannedPartIsSuppressed() throws {
         let now = fixedThursday()
         let facts = try populatedFacts(chestSets: 8, goal: .hypertrophy, now: now)
-        XCTAssertEqual(InsightEngine.run(facts).first { $0.id == "volume.chest" }?.severity, .info)
+        XCTAssertNil(InsightEngine.run(facts).first { $0.id == "volume.chest" })
         // A part with 0 completed sets AND 0 planned remaining sets should not
         // produce a per-part "low" nag — the coach never planned it, so the user
         // isn't failing. Genuinely unresolved coverage is reported via the

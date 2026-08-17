@@ -236,20 +236,10 @@ public enum PlanAwareInsightEngine {
                                                     isOverrideActive: Bool = false) -> [Insight] {
         if deficits.isEmpty && resolvedParts.isEmpty { return [] }
 
-        // Fully resolved — positive insight
+        // Fully resolved — no suggestion. A successful plan adjustment is not
+        // actionable feedback and should not become "volume gaps closed" noise.
         if deficits.isEmpty && !resolvedParts.isEmpty {
-            let added = resolvedParts.sorted { partIdx($0) < partIdx($1) }
-                .map { "\($0.displayName) +\(Format.sets(resolvedSets[$0] ?? 0))" }
-                .joined(separator: ", ")
-            return [Insight(
-                id: "planning.volumeResolved",
-                kind: .volume,
-                title: "Volume gaps closed",
-                message: "Added to tonight: \(added).",
-                detail: "Coach routed residual weekly volume into today's session. All targets are now on track.",
-                citation: CitationRegistry.frequencyMeta,
-                severity: .info,
-                action: isOverrideActive ? .revertToSafePlan : nil)]
+            return []
         }
 
         // Partially resolved — note what was added AND what's still short
@@ -273,7 +263,7 @@ public enum PlanAwareInsightEngine {
             return [Insight(
                 id: "planning.partialResolved",
                 kind: .volume,
-                title: "Volume gaps closed",
+                title: "Some volume still needs attention",
                 message: "Added to tonight: \(added). Still short: \(short) sets to go.",
                 detail: "\(reason) \(ranges). Coach added what fits safely; the remaining gap needs another eligible slot or a schedule adjustment.",
                 citation: CitationRegistry.volumeDoseResponse,

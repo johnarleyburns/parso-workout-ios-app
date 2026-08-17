@@ -138,7 +138,7 @@ struct CoachPartVolumeSection: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.green)
             case .onTrack:
-                Text("✓ on track")
+                Text("✓ target range")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.teal)
             case .short(let toGo):
@@ -193,7 +193,7 @@ struct CoachPartVolumeSection: View {
         let statusText: String
         switch row.status {
         case .targetMet: statusText = "target met"
-        case .onTrack: statusText = "on track"
+        case .onTrack: statusText = "within target range"
         case .short(let toGo): statusText = "\(Int(toGo.rounded())) sets to go"
         case .high: statusText = "above maximum recommended"
         }

@@ -84,25 +84,19 @@ public struct HomeSuggestion: Sendable, Equatable, Identifiable {
         self.confidence = confidence
     }
 
-    /// Presentation tone for the compact Home card. Safety, stalled targets, and
-    /// volume concerns need a visible warning treatment; progress is affirmative;
-    /// plan/assessment information remains neutral.
+    /// Presentation tone for the Home warning list.
     public var tone: Tone {
         switch category {
-        case .safety, .weeklyDeficit: return .warning
-        case .volumeRecovery:
-            return title.localizedCaseInsensitiveContains("volume is on track") ? .positive : .warning
-        case .progress: return .positive
-        case .planAction: return .neutral
+        case .safety, .weeklyDeficit, .volumeRecovery: return .warning
+        case .progress, .planAction: return .neutral
         }
     }
 }
 
 public enum HomeDashboardPresenter {
-    /// The Home card keeps the first three suggestions compact and reveals the
-    /// remainder only after the user explicitly expands it.
+    /// The first warning is fully visible; the rest are behind Show more.
     public static func visibleSuggestions(_ suggestions: [HomeSuggestion], expanded: Bool) -> [HomeSuggestion] {
-        expanded ? suggestions : Array(suggestions.prefix(3))
+        expanded ? suggestions : Array(suggestions.prefix(1))
     }
 
     public static func make(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences,
@@ -141,24 +135,14 @@ public enum HomeDashboardPresenter {
     }
 
     private static func suggestions(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences) -> [HomeSuggestion] {
-        let balance = snapshot.decision.weeklyBalance
         var candidates: [HomeSuggestion] = snapshot.decision.warnings.map {
             .init(id: $0.id, category: .safety, title: "Recovery note", message: $0.message,
                   citationID: $0.citationIds.first, sourceClaimKey: "warning:\($0.id)", priority: 100, confidence: 100)
         }
-        if balance.strengthDays < schedule.strengthDaysPerWeek {
-            candidates.append(.init(id: "week-strength", category: .weeklyDeficit, title: "Strength target is not complete",
-                message: "You have completed \(balance.strengthDays) of \(schedule.strengthDaysPerWeek) strength days this week.",
-                citationID: nil, sourceClaimKey: "weekly-strength-deficit", priority: 80, confidence: 100))
-        }
-        if balance.moderateEquivalentMinutes < 150 {
-            candidates.append(.init(id: "week-cardio", category: .weeklyDeficit, title: "Cardio target is not complete",
-                message: "You have \(Int(balance.moderateEquivalentMinutes.rounded())) of 150 moderate-equivalent minutes.",
-                citationID: nil, sourceClaimKey: "weekly-cardio-deficit", priority: 80, confidence: 100))
-        }
-        candidates += snapshot.insights.map { insight in
-            let category: HomeSuggestion.Category = insight.kind == .volume ? .volumeRecovery :
-                (insight.kind == .assessment ? .planAction : .progress)
+        // Keep Home suggestions to evidence-backed warnings. The selected
+        // workout is rendered separately and does not compete with warnings.
+        candidates += snapshot.insights.filter { $0.severity == .attention }.map { insight in
+            let category: HomeSuggestion.Category = .volumeRecovery
             return .init(id: insight.id, category: category, title: insight.title, message: insight.message,
                          citationID: insight.citation.id, sourceClaimKey: "insight:\(insight.id)",
                          priority: insight.severity.rawValue, confidence: snapshot.decision.confidence.rawValue)

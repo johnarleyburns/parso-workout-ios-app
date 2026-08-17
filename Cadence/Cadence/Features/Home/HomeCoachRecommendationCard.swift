@@ -2,12 +2,9 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// Compact Home presentation for the coach's current gap-closing workout.
-/// Preview and start always use the same immutable CoachSession value.
+/// Compact Home presentation for the coach's selected workout of the day.
 struct HomeCoachRecommendationCard: View {
     let recommendation: CoachSession
-    let isPreviewed: Bool
-    let onPreview: () -> Void
     let onStart: () -> Void
     @Environment(AppSettings.self) private var settings
 
@@ -16,30 +13,26 @@ struct HomeCoachRecommendationCard: View {
             Divider().padding(.top, 2)
             Text("Suggested Workout")
                 .font(.subheadline.weight(.semibold))
-            Text("Coach created a Workout created to close gaps for this week")
+            Text("Selected for today based on your recent training and recovery.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Text(recommendation.title)
                 .font(.headline)
                 .accessibilityIdentifier("home.suggestedWorkout.title")
 
-            if isPreviewed {
-                previewDetails
-                Button(action: onStart) {
-                    Label("Start Workout", systemImage: "play.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .accessibilityIdentifier("home.coachRecommendation.start")
-            } else {
-                Button(action: onPreview) {
-                    Label("Preview Workout", systemImage: "eye")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("home.coachRecommendation.preview")
+            Text("Why this workout").font(.subheadline.weight(.semibold))
+            Text(recommendation.subtitle.isEmpty ? "It matches today's recommended training load." : recommendation.subtitle)
+                .font(.caption).foregroundStyle(.secondary)
+            previewDetails
+            ForEach(recommendation.citationIds.compactMap { CitationRegistry.citation(forId: $0) }, id: \.id) { citation in
+                CitationLink(citation: citation, compact: true)
             }
+            Button(action: onStart) {
+                Label("Do Coach's Workout", systemImage: "play.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent).tint(.green)
+            .accessibilityIdentifier("home.coachRecommendation.start")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("home.coachRecommendation")

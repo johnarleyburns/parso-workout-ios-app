@@ -76,20 +76,20 @@ final class HomeDashboardPresenterTests: XCTestCase {
                            title: "Suggestion", message: "Details", citationID: nil,
                            sourceClaimKey: "tone-\(category.rawValue)", priority: 0, confidence: 100)
         }
-        XCTAssertEqual(make(.progress).tone, .positive)
+        XCTAssertEqual(make(.progress).tone, .neutral)
         XCTAssertEqual(make(.weeklyDeficit).tone, .warning)
         XCTAssertEqual(make(.volumeRecovery).tone, .warning)
         XCTAssertEqual(make(.safety).tone, .warning)
         XCTAssertEqual(make(.planAction).tone, .neutral)
     }
 
-    func testSuggestionToneMapsProductiveVolumeToPositive() {
+    func testSuggestionToneMapsProductiveVolumeToNeutral() {
         let suggestion = HomeSuggestion(
             id: "volume.chest", category: .volumeRecovery,
-            title: "Chest volume is on track", message: "8 sets this week",
+            title: "Chest volume is productive", message: "8 sets this week",
             citationID: CitationRegistry.volumeDoseResponse.id,
             sourceClaimKey: "insight:volume.chest", priority: 0, confidence: 100)
-        XCTAssertEqual(suggestion.tone, .positive)
+        XCTAssertEqual(suggestion.tone, .warning)
     }
 
     func testVisibleSuggestionsCapsCollapsedCardAndRestoresExpandedItems() {
@@ -99,7 +99,7 @@ final class HomeDashboardPresenterTests: XCTestCase {
                            sourceClaimKey: "suggestion-\(index)", priority: 0, confidence: 100)
         }
         XCTAssertEqual(HomeDashboardPresenter.visibleSuggestions(items, expanded: false).map(\.id),
-                       items.prefix(3).map(\.id))
+                       items.prefix(1).map(\.id))
         XCTAssertEqual(HomeDashboardPresenter.visibleSuggestions(items, expanded: true), items)
     }
 }

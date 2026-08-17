@@ -79,14 +79,10 @@ public enum KnowledgeBase {
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
             case .productive:
-                out.append(Insight(
-                    id: "volume.\(part.rawValue)",
-                    kind: .volume, part: part,
-                    title: "\(name) volume is on track",
-                    message: "\(name): \(setsText) sets this week — in the starting range.",
-                    detail: "\(name) sits in Coach's evidence-informed starting range (~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week) for your experience level. Keep watching performance and soreness before adding more.",
-                    citation: CitationRegistry.volumeDoseResponse,
-                    severity: .info))
+                // Being within a productive range is not a useful coach
+                // suggestion. Keep the fact available to volume dashboards,
+                // but do not create Home-card noise for it.
+                break
             case .approachingMRV:
                 out.append(Insight(
                     id: "volume.\(part.rawValue)",

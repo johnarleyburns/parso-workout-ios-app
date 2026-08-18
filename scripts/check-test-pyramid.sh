@@ -86,7 +86,7 @@ fi
 # never raise them. Delete a line once the file drops under $MAX_LOC.
 ratchet() {
   case "$1" in
-    "Cadence/Cadence/Features/Train/SessionView.swift") echo 1089 ;;
+    "Cadence/Cadence/Features/Train/SessionView.swift") echo 1085 ;;
     "Cadence/Cadence/Features/Home/HomeView.swift") echo 1110 ;;
     "Cadence/Cadence/Features/Coach/CoachDecisionCardView.swift") echo 570 ;;
     "Cadence/Cadence/Features/Train/ExercisePickerView.swift") echo 532 ;;

@@ -7,19 +7,17 @@ struct CompactExerciseRow: View {
     let unit: MeasurementUnitPreference
 
     var body: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 5) {
-                Text(exercise.name).font(.headline)
-                Text(exercise.sets.map(compactSetLine).joined(separator: "  ·  "))
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("editor.compactExercise.\(exercise.name)")
-            .accessibilityValue(exercise.sets.map(compactSetLine).joined(separator: ", "))
+        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
+            Text(exercise.name).font(.headline)
+            Text(exercise.sets.map(compactSetLine).joined(separator: "  ·  "))
+                .font(.subheadline.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("editor.compactExercise.\(exercise.name)")
+        .accessibilityValue(exercise.sets.map(compactSetLine).joined(separator: ", "))
     }
 
     private func compactSetLine(_ set: EditableSet) -> String {

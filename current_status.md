@@ -2,7 +2,53 @@
 
 Updated: 2026-08-18
 
-## Phase 1 complete — uniform full-width action buttons
+## Phase 2 complete — Home's vertical rhythm on the workout surfaces
+
+Field test 2026-08-18 issue #5. Workout Plan, Start Workout and Workout now read
+their vertical rhythm from `LayoutMetrics` instead of three hand-tuned stacks:
+**20** between sections, **16** page and card padding, **12** between rows in a
+card, **10** between a card heading and its first row.
+
+What changed:
+
+- `WorkoutPlanEditor` is no longer a `List` (decision **D14**) — it is a
+  `ScrollView` + `VStack(spacing: sectionSpacing)` of glass cards, so it can
+  actually honour the rhythm. Split for the 400-LOC budget into
+  `WorkoutPlanEditor.swift` (213), `WorkoutPlanPartnerSection.swift` (174) and
+  `WorkoutPlanExerciseSection.swift` (91). `workoutPlanCard()` applies Home's
+  card treatment.
+- Leaving `List` costs swipe-to-delete, so each set row gains an explicit
+  destructive `minus.circle.fill` button (`editor.removeSet.<name>.<index>`),
+  disabled at one remaining set. Set rows are bound by set **id**, not index, so
+  a delete can never leave a row bound to a stale slot.
+- `Add Exercise` and `Show workout settings…` become secondary
+  `CadenceActionButton`s; `Start Workout` loses its ad-hoc insets and takes the
+  page padding like every other child.
+- The dead reorder handle (`line.3.horizontal`, never wired to `.onMove`) is
+  gone rather than shipped as a dead affordance.
+- `SelectWorkoutView` groups Strength and Cardio into Home-style glass cards;
+  outer spacing 22 → 20, group spacing 10 → 12, `.padding()` → `pagePadding`.
+- `SessionView` outer spacing 16 → 20, `.padding()` → `pagePadding`, and the
+  ad-hoc `.padding(.top, 16/8/4)` on its top-level children are gone.
+- `CompactExerciseRow` no longer wraps itself in a `Section` (it had no `List`
+  left to be in); the caller applies the card.
+
+Verified visually against Home: the new cards use the same tint and saturation
+Home's `Workouts Today` / `This Week` cards already use.
+
+### Verification (Phase 2)
+
+- `make ci`: build + **1,330 tests passed, 0 failures** (the new
+  `testWorkoutSurfacesShareHomeSectionSpacing`), guardrails OK.
+- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
+  **passed**, including the new `editor.partners` card assertion and the Phase 1
+  height assertions.
+- Ratchet lowered in `scripts/check-test-pyramid.sh`: `SessionView.swift`
+  1089 → **1085**.
+- Not pushed, per the batch execution protocol.
+
+<details>
+<summary>Phase 1 — uniform full-width action buttons (shipped, bdc7a83)</summary>
 
 Shipped `feat: single full-width action button geometry` (field test 2026-08-18
 issue #3). `LayoutMetrics` (CadenceFeatures, Foundation-only) is now the single
@@ -52,17 +98,19 @@ is explicitly exempt.
   1115 → **1110**, `SessionView.swift` 1102 → **1089**.
 - Not pushed, per the batch execution protocol.
 
-## Next task — field-test UI batch, Phase 2
+</details>
 
-Execute `docs/field-test-ui-batch-2026-08-18/02-phase2-vertical-rhythm.md`
-(Home's 20 pt section rhythm on Workout Plan / Start Workout / Workout; the plan
-editor's `List` becomes a `ScrollView` of glass cards per decision **D14**).
+## Next task — field-test UI batch, Phase 3
+
+Execute `docs/field-test-ui-batch-2026-08-18/03-phase3-coach-load-fix.md`
+(coach-planned exercises carry real loads instead of `BW x 12`; load resolution
+order per decision **D5**, `BW` semantics per **D4**).
 Read `00-overview.md` and `decisions.md` first.
 
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Uniform full-width action buttons (`LayoutMetrics` + `CadenceActionButton`) | **done** |
-| 2 | Home's vertical rhythm on Workout Plan / Start Workout / Workout | not started |
+| 2 | Home's vertical rhythm on Workout Plan / Start Workout / Workout | **done** |
 | 3 | Coach plans carry real loads instead of `BW x 12` | not started |
 | 4 | Read-only exercise detail in summaries, one row per performer | not started |
 | 5 | One "The science" link, all sources on one screen | not started |

@@ -70,6 +70,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Workout Plan Start Workout is a different height from Start Workout's actions")
         XCTAssertTrue(app.buttons["editor.addExercise"].waitForExistence(timeout: 5),
                       "Custom Workout did not open in edit mode")
+        // Field test 2026-08-18 #5: the plan editor is a Home-rhythm scroll surface.
+        XCTAssertTrue(app.descendants(matching: .any)["editor.partners"].waitForExistence(timeout: 5),
+                      "Workout Plan lost its Training partners card")
+        // Field test 2026-08-18 #5: the plan editor is a Home-rhythm scroll surface.
+        XCTAssertTrue(app.descendants(matching: .any)["editor.partners"].waitForExistence(timeout: 5),
+                      "Workout Plan lost its Training partners card")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitForExistence(timeout: 5),
                       "Could not return to Start Workout")

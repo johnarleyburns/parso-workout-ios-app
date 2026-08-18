@@ -30,7 +30,6 @@ struct WorkoutPlanEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Person.name) private var allPeople: [Person]
     @State private var exercisePickerIntent: ExercisePickerIntent?
-    @State private var newPartnerName = ""
 
     @State private var restSeconds: Int
     @State private var autoStartRest: Bool
@@ -57,49 +56,36 @@ struct WorkoutPlanEditor: View {
         self._useHR = State(initialValue: ws.useHRMonitoring)
     }
     var body: some View {
-        VStack(spacing: 0) {
-            startButton
-            List {
-                if isEditing {
-                    partnerEditorSections
-                } else {
-                    partnerSummarySection
-                }
+        ScrollView {
+            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
+                startButton
+
+                WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
+                                          isEditing: isEditing,
+                                          allPeople: allPeople)
 
                 if isEditing {
                     ForEach($plan.exercises) { $exercise in
-                        exerciseSection($exercise)
+                        WorkoutPlanExerciseSection(
+                            exercise: $exercise,
+                            unit: settings.unit,
+                            onSwap: { exercisePickerIntent = .swap(exercise.id) },
+                            onRemove: { removeExercise(id: exercise.id) })
                     }
+                    addExerciseButton
                 } else {
                     ForEach(plan.exercises) { exercise in
                         CompactExerciseRow(exercise: exercise, unit: settings.unit)
+                            .workoutPlanCard()
                     }
-                }
-
-                if isEditing {
-                    Section {
-                        Button {
-                            exercisePickerIntent = .add
-                        } label: {
-                            Label("Add Exercise", systemImage: "plus.circle.fill")
-                        }
-                        .accessibilityIdentifier("editor.addExercise")
-                    }
-                } else {
-                    Section {
-                        Button {
-                            settingsPresented = true
-                        } label: {
-                            Label("Show workout settings…", systemImage: "gearshape")
-                        }
-                        .accessibilityIdentifier("editor.showSettings")
-                    }
+                    settingsButton
                 }
             }
-            .onAppear {
-                loadSettings()
-                _ = try? WorkoutRepository.me(in: modelContext)
-            }
+            .padding(CGFloat(LayoutMetrics.pagePadding))
+        }
+        .onAppear {
+            loadSettings()
+            _ = try? WorkoutRepository.me(in: modelContext)
         }
         .navigationTitle("Workout Plan")
         .navigationBarTitleDisplayMode(.inline)
@@ -132,101 +118,32 @@ struct WorkoutPlanEditor: View {
                 useHR: $useHR)
         }
     }
+
     private var startButton: some View {
         CadenceActionButton(title: "Start Workout", systemImage: "play.fill") {
             saveAndStart()
         }
         .accessibilityIdentifier("editor.start")
-        .padding(.horizontal, CGFloat(LayoutMetrics.pagePadding))
-        .padding(.vertical, 8)
-    }
-    private var partnerSummarySection: some View {
-        Section("Training partners") {
-            if selectedPartnerPeople.isEmpty {
-                Text("Solo workout")
-                    .foregroundStyle(.secondary)
-            } else {
-                Text(selectedPartnerPeople.map(\.name).joined(separator: ", "))
-            }
-        }
     }
 
-    @ViewBuilder
-    private var partnerEditorSections: some View {
-        Section {
-            ForEach(partnerPeople) { person in
-                HStack {
-                    Text(person.name)
-                    Spacer()
-                    if plan.partnerIDs.contains(person.id) {
-                        Image(systemName: "checkmark").foregroundStyle(.tint)
-                    }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    if let idx = plan.partnerIDs.firstIndex(of: person.id) {
-                        plan.partnerIDs.remove(at: idx)
-                        plan.partnerIDs = normalizedPartnerIDs(plan.partnerIDs)
-                    } else {
-                        var ids = explicitPartnerIDs()
-                        ids.append(person.id)
-                        plan.partnerIDs = normalizedPartnerIDs(ids)
-                    }
-                }
-                .accessibilityIdentifier("editor.partner.\(person.name)")
-            }
-            HStack {
-                TextField("New partner name", text: $newPartnerName)
-                    .accessibilityIdentifier("editor.newPartnerName")
-                Button("Add") {
-                    let name = newPartnerName.trimmingCharacters(in: .whitespaces)
-                    if !name.isEmpty,
-                       let p = try? WorkoutRepository.findOrCreatePerson(named: name, in: modelContext) {
-                        if !plan.partnerIDs.contains(p.id) {
-                            var ids = explicitPartnerIDs()
-                            ids.append(p.id)
-                            plan.partnerIDs = normalizedPartnerIDs(ids)
-                        }
-                    }
-                    newPartnerName = ""
-                }
-                .disabled(newPartnerName.trimmingCharacters(in: .whitespaces).isEmpty)
-                .accessibilityIdentifier("editor.addPartner")
-            }
-        } header: {
-            Text("Training partners")
-        } footer: {
-            Text("Partners are optional — leave everyone unchecked to train solo.")
+    private var addExerciseButton: some View {
+        CadenceActionButton(title: "Add Exercise",
+                            systemImage: "plus.circle.fill",
+                            emphasis: .secondary) {
+            exercisePickerIntent = .add
         }
-        if !selectedPartnerPeople.isEmpty {
-            Section {
-                ForEach(Array(editorRoster.enumerated()), id: \.element.id) { index, person in
-                    HStack {
-                        Text(person.isMe ? "Me" : person.name)
-                        Spacer()
-                        Button { moveRosterMember(from: index, by: -1) } label: {
-                            Image(systemName: "chevron.up")
-                        }
-                        .disabled(index == 0)
-                        .buttonStyle(.borderless)
-                        .accessibilityIdentifier("editor.partnerOrder.up.\(person.isMe ? "Me" : person.name)")
-                        .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) earlier")
-                        Button { moveRosterMember(from: index, by: 1) } label: {
-                            Image(systemName: "chevron.down")
-                        }
-                        .disabled(index >= editorRoster.count - 1)
-                        .buttonStyle(.borderless)
-                        .accessibilityIdentifier("editor.partnerOrder.down.\(person.isMe ? "Me" : person.name)")
-                        .accessibilityLabel("Move \(person.isMe ? "Me" : person.name) later")
-                    }
-                }
-            } header: {
-                Text("Performer order")
-            } footer: {
-                Text("The logger rotates through this order after each saved set.")
-            }
-        }
+        .accessibilityIdentifier("editor.addExercise")
     }
+
+    private var settingsButton: some View {
+        CadenceActionButton(title: "Show workout settings\u{2026}",
+                            systemImage: "gearshape",
+                            emphasis: .secondary) {
+            settingsPresented = true
+        }
+        .accessibilityIdentifier("editor.showSettings")
+    }
+
     private func loadSettings() {
         let ws = settings.lastStrengthSettings
         restSeconds = ws.restSeconds
@@ -268,102 +185,6 @@ struct WorkoutPlanEditor: View {
         onStart(plan)
     }
 
-    @ViewBuilder
-    private func exerciseSection(_ exercise: Binding<EditableExercise>) -> some View {
-        Section {
-            HStack {
-                Image(systemName: "line.3.horizontal")
-                    .foregroundStyle(.secondary)
-                Text(exercise.wrappedValue.name).font(.headline)
-                Spacer()
-                Menu {
-                    Button {
-                        exercisePickerIntent = .swap(exercise.wrappedValue.id)
-                    } label: {
-                        Label("Swap Exercise", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    .accessibilityIdentifier("editor.swapExercise.\(exercise.wrappedValue.name)")
-
-                    Button(role: .destructive) {
-                        removeExercise(id: exercise.wrappedValue.id)
-                    } label: {
-                        Label("Remove Exercise", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundStyle(.secondary)
-                        .frame(width: 36, height: 36)
-                }
-                .accessibilityIdentifier("editor.exerciseMenu.\(exercise.wrappedValue.name)")
-                .accessibilityLabel("Exercise options")
-            }
-            .accessibilityIdentifier("editor.exercise.\(exercise.wrappedValue.name)")
-
-            ForEach(exercise.sets) { $set in
-                setRow($set, unit: settings.unit)
-            }
-            .onDelete { exercise.wrappedValue.sets.remove(atOffsets: $0) }
-
-            Button {
-                let lastReps = exercise.wrappedValue.sets.last?.targetReps ?? 10
-                let lastWeight = exercise.wrappedValue.sets.last?.targetWeight
-                exercise.wrappedValue.sets.append(EditableSet(targetReps: lastReps, targetWeight: lastWeight))
-            } label: {
-                Label("Add Set", systemImage: "plus")
-                    .font(.subheadline)
-            }
-            .accessibilityIdentifier("editor.addSet.\(exercise.wrappedValue.name)")
-        }
-    }
-
-    private var owner: Person? {
-        allPeople.first(where: \.isMe)
-    }
-
-    private var partnerPeople: [Person] {
-        allPeople.filter { !$0.isMe }
-    }
-
-    private var selectedPartnerPeople: [Person] {
-        let ids = Set(plan.partnerIDs)
-        return partnerPeople.filter { ids.contains($0.id) }
-    }
-
-    private var editorRoster: [Person] {
-        guard !selectedPartnerPeople.isEmpty else { return owner.map { [$0] } ?? [] }
-        let peopleByID = Dictionary(allPeople.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let selectedIDs = Set(selectedPartnerPeople.map(\.id))
-        var seen = Set<UUID>()
-        let ordered = plan.partnerIDs.compactMap { id -> Person? in
-            guard seen.insert(id).inserted else { return nil }
-            return peopleByID[id]
-        }
-        if ordered.contains(where: \.isMe) {
-            return ordered.filter { $0.isMe || selectedIDs.contains($0.id) }
-        }
-        return (owner.map { [$0] } ?? []) + selectedPartnerPeople
-    }
-
-    private func explicitPartnerIDs() -> [UUID] {
-        guard !selectedPartnerPeople.isEmpty else {
-            return owner.map { [$0.id] } ?? []
-        }
-        let ids = editorRoster.map(\.id)
-        return ids.isEmpty ? plan.partnerIDs : ids
-    }
-
-    private func normalizedPartnerIDs(_ ids: [UUID]) -> [UUID] {
-        EditablePlan.normalizedPartnerIDs(ids, ownerID: owner?.id)
-    }
-
-    private func moveRosterMember(from index: Int, by offset: Int) {
-        var ids = explicitPartnerIDs()
-        let target = index + offset
-        guard ids.indices.contains(index), ids.indices.contains(target) else { return }
-        ids.swapAt(index, target)
-        plan.partnerIDs = normalizedPartnerIDs(ids)
-    }
-
     private func removeExercise(id: UUID) {
         plan.exercises.removeAll { $0.id == id }
     }
@@ -379,16 +200,14 @@ struct WorkoutPlanEditor: View {
             plan.exercises[index].name = exercise.name
         }
     }
+}
 
-    private func setRow(_ set: Binding<EditableSet>, unit: MeasurementUnitPreference) -> some View {
-        HStack {
-            Stepper("Reps: \(set.wrappedValue.targetReps)", value: set.targetReps, in: 1...100)
-                .frame(maxWidth: .infinity)
-            if let w = set.wrappedValue.targetWeight {
-                Text(Format.weight(w, unit: unit))
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .frame(width: 70, alignment: .trailing)
-            }
-        }
+extension View {
+    /// Home's card treatment (`cardPadding`, corner 16, glass) so the plan
+    /// editor reads exactly like Home once it is no longer a `List`.
+    func workoutPlanCard() -> some View {
+        padding(CGFloat(LayoutMetrics.cardPadding))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
     }
 }

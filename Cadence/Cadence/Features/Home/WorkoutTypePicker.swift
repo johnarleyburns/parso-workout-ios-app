@@ -80,83 +80,11 @@ struct SelectWorkoutView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Strength").font(.headline)
-                        Button(action: onQuickStart) {
-                            workoutChoiceLabel("Quick Start", symbol: "bolt.fill")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("selectWorkout.quickStart")
-
-                        NavigationLink {
-                            WorkoutPlanEditor(
-                                plan: .empty(warmup: settings.warmupMinutes,
-                                             cooldown: settings.cooldownMinutes),
-                                startInEditMode: true,
-                                onStart: onEditorStart)
-                        } label: {
-                            workoutChoiceLabel("Custom Workout", symbol: "slider.horizontal.3")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("selectWorkout.custom")
-
-                        NavigationLink {
-                            WorkoutPlanEditor(
-                                plan: coachSession.flatMap(EditablePlan.from(coach:))
-                                    ?? recommendation.map {
-                                        .from(recommendation: $0, goal: settings.trainingGoal,
-                                              warmupMinutes: settings.warmupMinutes,
-                                              cooldownMinutes: settings.cooldownMinutes)
-                                    }
-                                    ?? .empty(warmup: settings.warmupMinutes,
-                                              cooldown: settings.cooldownMinutes),
-                                onStart: onEditorStart)
-                        } label: {
-                            workoutChoiceLabel("Coach's Workout", symbol: "wand.and.stars")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("selectWorkout.coach")
-
-                        NavigationLink {
-                            PreviousWorkoutsView(onEditorStart: onEditorStart)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text("Start from a previous workout…")
-                                Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
-                            }
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.tint)
-                        }
-                        .padding(.top, 2)
-                        .accessibilityIdentifier("selectWorkout.previousLink")
-                    }
-
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Cardio").font(.headline)
-                        LazyVGrid(columns: columns, spacing: 16) {
-                            ForEach(cardioTypes) { type in
-                                Button { onSelect(type) } label: {
-                                    WorkoutHero(type: type)
-                                }
-                                .buttonStyle(.plain)
-                                .tapHaptic()
-                                .accessibilityIdentifier("startType.\(type.rawValue)")
-                                .accessibilityLabel(type.displayName)
-                            }
-                            NavigationLink {
-                                OtherCardioEntryView(onStart: onOtherCardio)
-                            } label: {
-                                WorkoutHero(type: .other)
-                            }
-                            .buttonStyle(.plain)
-                            .tapHaptic()
-                            .accessibilityIdentifier("startType.other")
-                            .accessibilityLabel("Other Cardio")
-                        }
-                    }
+                VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
+                    strengthCard
+                    cardioCard
                 }
-                .padding()
+                .padding(CGFloat(LayoutMetrics.pagePadding))
             }
             .navigationTitle("Start Workout")
             .navigationBarTitleDisplayMode(.inline)
@@ -167,6 +95,94 @@ struct SelectWorkoutView: View {
                 }
             }
         }
+    }
+
+    /// Home's card rhythm: heading, `cardHeadingSpacing`, then rows separated by
+    /// `cardRowSpacing` (field test 2026-08-18 #5).
+    private var strengthCard: some View {
+        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
+            Text("Strength").font(.headline)
+            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
+                Button(action: onQuickStart) {
+                    workoutChoiceLabel("Quick Start", symbol: "bolt.fill")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("selectWorkout.quickStart")
+
+                NavigationLink {
+                    WorkoutPlanEditor(
+                        plan: .empty(warmup: settings.warmupMinutes,
+                                     cooldown: settings.cooldownMinutes),
+                        startInEditMode: true,
+                        onStart: onEditorStart)
+                } label: {
+                    workoutChoiceLabel("Custom Workout", symbol: "slider.horizontal.3")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("selectWorkout.custom")
+
+                NavigationLink {
+                    WorkoutPlanEditor(
+                        plan: coachSession.flatMap(EditablePlan.from(coach:))
+                            ?? recommendation.map {
+                                .from(recommendation: $0, goal: settings.trainingGoal,
+                                      warmupMinutes: settings.warmupMinutes,
+                                      cooldownMinutes: settings.cooldownMinutes)
+                            }
+                            ?? .empty(warmup: settings.warmupMinutes,
+                                      cooldown: settings.cooldownMinutes),
+                        onStart: onEditorStart)
+                } label: {
+                    workoutChoiceLabel("Coach's Workout", symbol: "wand.and.stars")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("selectWorkout.coach")
+
+                NavigationLink {
+                    PreviousWorkoutsView(onEditorStart: onEditorStart)
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Start from a previous workout…")
+                        Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.tint)
+                }
+                .accessibilityIdentifier("selectWorkout.previousLink")
+            }
+        }
+        .padding(CGFloat(LayoutMetrics.cardPadding))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
+    }
+
+    private var cardioCard: some View {
+        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
+            Text("Cardio").font(.headline)
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(cardioTypes) { type in
+                    Button { onSelect(type) } label: {
+                        WorkoutHero(type: type)
+                    }
+                    .buttonStyle(.plain)
+                    .tapHaptic()
+                    .accessibilityIdentifier("startType.\(type.rawValue)")
+                    .accessibilityLabel(type.displayName)
+                }
+                NavigationLink {
+                    OtherCardioEntryView(onStart: onOtherCardio)
+                } label: {
+                    WorkoutHero(type: .other)
+                }
+                .buttonStyle(.plain)
+                .tapHaptic()
+                .accessibilityIdentifier("startType.other")
+                .accessibilityLabel("Other Cardio")
+            }
+        }
+        .padding(CGFloat(LayoutMetrics.cardPadding))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .blue)
     }
 
     /// Geometry comes from `cadenceActionLabel()` so these match Home's

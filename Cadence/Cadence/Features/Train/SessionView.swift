@@ -276,7 +276,7 @@ struct SessionView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
                 if isManualLog { loggedDateBanner }
                 if active.strengthSession?.id != session.id && !isManualLog {
                     editableMetadataRow
@@ -298,7 +298,6 @@ struct SessionView: View {
                     ContentUnavailableView("Empty workout",
                                            systemImage: "dumbbell",
                                            description: Text("Use a previous workout, or add exercises below."))
-                        .padding(.top, 16)
                 }
 
                 ForEach(cache.state.contexts, id: \.exerciseID) { ctx in
@@ -315,7 +314,6 @@ struct SessionView: View {
                     pickerPresented = true
                 }
                 .accessibilityIdentifier("session.addExercise")
-                .padding(.top, 4)
 
                 if active.strengthSession?.id == session.id {
                     WorkoutControlBar(
@@ -325,16 +323,14 @@ struct SessionView: View {
                         onCoolDown: { coolDownConfirm = true },
                         confirmMessage: "This finishes and saves your workout."
                     )
-                    .padding(.top, 8)
                 } else if isManualLog {
                     CadenceActionButton(title: "Done", systemImage: "checkmark") {
                         finishManualLog()
                     }
                     .accessibilityIdentifier("log.done")
-                    .padding(.top, 8)
                 }
             }
-            .padding()
+            .padding(CGFloat(LayoutMetrics.pagePadding))
         }
         .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
         .navigationBarTitleDisplayMode(.inline)

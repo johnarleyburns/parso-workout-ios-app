@@ -1,23 +1,85 @@
 # Current Status
 
-Updated: 2026-08-17
+Updated: 2026-08-18
 
-## Next task — field-test remediation
+## Phase 1 complete — uniform full-width action buttons
 
-Execute [docs/field-test-remediation-plan.md](docs/field-test-remediation-plan.md).
+Shipped `feat: single full-width action button geometry` (field test 2026-08-18
+issue #3). `LayoutMetrics` (CadenceFeatures, Foundation-only) is now the single
+source of truth for action-button height/corner/spacing and Home's page rhythm;
+`CadenceActionButton` + `cadenceActionLabel()` apply it.
 
-The current working tree contains a partial implementation of the latest field-test feedback, but it is not ready to ship. The next task must:
+What changed:
 
-1. Restore compilation by fixing the extra closing brace in `TestsView.swift`.
-2. Preserve coach prescriptions per exercise and per set, including distinct rep ladders and weights.
-3. Make pending sets performer-specific so adding a partner adds that partner's complete set plan.
-4. Resolve partner defaults from exact exercise history, then the partner's general rep pattern, then the planned fallback—at workout start and after exercise swaps.
-5. Put each Tests category in one glass surface with standard top-level margins.
-6. Complete collapsed strength summaries with reps, weights, and partner names while keeping all controls expansion-only.
-7. Make Workouts Today distinguish completed records from remaining coach plans, including partial two-a-days.
-8. Add focused logic/UI coverage and finish with successful package tests, app build, smoke/guardrail checks, and simulator visual verification.
+- New `CadenceCore/Sources/CadenceFeatures/LayoutMetrics.swift` — action button
+  height 56, corner 16, stack spacing 12; section 20 / page 16 / card row 12 /
+  card heading 10 / card padding 16.
+- New `Cadence/Cadence/Shared/CadenceActionButton.swift` — the one full-width
+  action control, plus `cadenceActionLabel()` for `NavigationLink` labels that
+  keep their gradient/glass fill, and `CadenceActionShape`.
+- Call sites normalized to 56 pt / `.headline`: Home `Start Workout` +
+  `Log Previous Workout`, Start Workout sheet `Quick Start` / `Custom Workout` /
+  `Coach's Workout`, `WeightsStartView` `Coach's Workout` / `Quick Start`,
+  plan editor `Start Workout`, `Do Coach's Workout`, SessionView
+  `Use Previous Workout` / `Add Exercise` / `Done`, and the pre-workout HR
+  `Continue` action. All accessibility identifiers are unchanged.
 
-Do not mark this task complete from the current partial diff. The detailed plan records the known defects, schema approach, implementation phases, acceptance criteria, test matrix, verification commands, and final checklist.
+**Deviation from the phase file (deliberate, verified by the smoke test):**
+`CadenceActionButton` draws its own fill instead of using
+`.borderedProminent`/`.bordered`. Those styles add ~7 pt of their own vertical
+padding *on top of* a `minHeight`, so a bordered button rendered 70 pt while a
+gradient hero label with the same declared height rendered 56 pt — the smoke
+test's new height assertion caught exactly that. Owning the fill makes
+`LayoutMetrics.actionButtonHeight` the real rendered height everywhere and
+delivers the 16 pt corner radius the phase design specifies.
+
+**Out of scope, left alone (not in the phase's call-site table):** full-width
+buttons in `RoutineDetailView`, `TimerCardioSetupView`, `IntervalView`,
+`WeightKeypadSheet`, `InlineSetEditorView`, `SwimRecordView`, and the summary
+`Save to Apple Health` inset still carry their own heights. `WorkoutControlBar`
+is explicitly exempt.
+
+### Verification (Phase 1)
+
+- `make ci`: build + **1,329 tests passed, 0 failures** (baseline 1,324 + the 5
+  new `LayoutMetricsTests`; the "1,318" figure recorded earlier was stale),
+  test-pyramid and no-network guardrails OK.
+- `make smoke`: WatchConnectivity activation regression **passed** and the single
+  iPhone smoke test **passed**, including the new assertions that Quick Start,
+  Custom Workout, Coach's Workout and the plan editor's Start Workout are all the
+  same height.
+- Ratchets lowered in `scripts/check-test-pyramid.sh`: `HomeView.swift`
+  1115 → **1110**, `SessionView.swift` 1102 → **1089**.
+- Not pushed, per the batch execution protocol.
+
+## Next task — field-test UI batch, Phase 2
+
+Execute `docs/field-test-ui-batch-2026-08-18/02-phase2-vertical-rhythm.md`
+(Home's 20 pt section rhythm on Workout Plan / Start Workout / Workout; the plan
+editor's `List` becomes a `ScrollView` of glass cards per decision **D14**).
+Read `00-overview.md` and `decisions.md` first.
+
+| Phase | Scope | State |
+|---|---|---|
+| 1 | Uniform full-width action buttons (`LayoutMetrics` + `CadenceActionButton`) | **done** |
+| 2 | Home's vertical rhythm on Workout Plan / Start Workout / Workout | not started |
+| 3 | Coach plans carry real loads instead of `BW x 12` | not started |
+| 4 | Read-only exercise detail in summaries, one row per performer | not started |
+| 5 | One "The science" link, all sources on one screen | not started |
+| 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | not started |
+| 7 | Workouts Today: tappable detail, `COACH'S PLAN`, start a planned workout | not started |
+| 8 | This Week gear deep-links to Coach & Plan | not started |
+| 9 | Partner-aware Workout Plan (coach fills each partner's plan) | not started |
+
+**Execution protocol for this batch (user instruction, overrides the CLAUDE.md
+post-task checklist steps 6-8):** do ONE phase, run `make ci` and `make smoke`,
+update this file, `git commit` on `main`, **do not push**, report the SHA, and
+stop for review. The pre-commit hook **is** installed and re-runs the guardrails,
+`swift test`, and both smoke tests, so `git commit` takes >10 minutes — run it in
+the background with `git commit -F <message file>`.
+
+The previous batch ([docs/field-test-remediation-plan.md](docs/field-test-remediation-plan.md))
+is complete and shipped as `f809818 Complete field-test workout remediation`.
 
 ## Field-testing follow-up
 

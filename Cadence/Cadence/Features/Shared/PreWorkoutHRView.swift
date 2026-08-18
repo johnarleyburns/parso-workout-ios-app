@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 enum HRSourceChoice { case bluetooth, watch, none }
 
@@ -105,7 +106,9 @@ struct PreWorkoutHRView: View {
                     else { onContinue(.none) }
                 } label: {
                     Text(watchBPM != nil ? "Continue with Apple Watch" : (strapConnected ? "Continue with Bluetooth" : "Continue without heart rate"))
-                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity,
+                               minHeight: CGFloat(LayoutMetrics.actionButtonHeight))
                 }
                 .cadenceGlassButton(prominent: true, tint: .green)
                 .disabled(watchSelected && watchBPM == nil && !strapConnected)

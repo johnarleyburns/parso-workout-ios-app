@@ -46,12 +46,28 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Home Start Workout did not open")
         XCTAssertTrue(app.buttons["selectWorkout.custom"].label.contains("Custom Workout"),
                       "Start Workout custom action still uses the old label")
+
+        // Field test 2026-08-18 #3: the full-width strength actions are one height.
+        let quick = app.buttons["selectWorkout.quickStart"]
+        let custom = app.buttons["selectWorkout.custom"]
+        let coach = app.buttons["selectWorkout.coach"]
+        XCTAssertTrue(quick.waitForExistence(timeout: 5), "Start Workout lost Quick Start")
+        let quickHeight = quick.frame.height
+        XCTAssertEqual(quickHeight, custom.frame.height, accuracy: 1,
+                       "Quick Start and Custom Workout are different heights")
+        if coach.exists {
+            XCTAssertEqual(quickHeight, coach.frame.height, accuracy: 1,
+                           "Coach's Workout is a different height from Quick Start")
+        }
+
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
                       "Start Workout did not offer Custom Workout beneath Quick Start")
         XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10),
                       "Custom workout did not open the Workout Plan editor")
         XCTAssertTrue(app.buttons["editor.start"].label.contains("Start Workout"),
                       "Workout Plan start action is not labeled Start Workout")
+        XCTAssertEqual(app.buttons["editor.start"].frame.height, quickHeight, accuracy: 1,
+                       "Workout Plan Start Workout is a different height from Start Workout's actions")
         XCTAssertTrue(app.buttons["editor.addExercise"].waitForExistence(timeout: 5),
                       "Custom Workout did not open in edit mode")
         app.navigationBars.buttons.element(boundBy: 0).tap()

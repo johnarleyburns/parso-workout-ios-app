@@ -169,20 +169,22 @@ struct SelectWorkoutView: View {
         }
     }
 
+    /// Geometry comes from `cadenceActionLabel()` so these match Home's
+    /// Start Workout and the plan editor exactly (field test 2026-08-18 #3);
+    /// only the gradient fill is local.
     private func workoutChoiceLabel(_ title: String, symbol: String) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: symbol).font(.title2)
-            Text(title).font(.title3.bold())
+            Image(systemName: symbol).font(.headline)
+            Text(title)
             Spacer()
             Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
         }
         .foregroundStyle(.white)
-        .padding(.vertical, 16)
         .padding(.horizontal, 18)
-        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .cadenceActionLabel()
         .background(
             LinearGradient(colors: [.green, .teal], startPoint: .topLeading, endPoint: .bottomTrailing),
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            in: CadenceActionShape.rounded)
     }
 }
 

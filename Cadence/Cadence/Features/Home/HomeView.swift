@@ -564,23 +564,18 @@ struct HomeView: View {
         if inserted > 0 { markWorkoutHistoryChanged() }
     }
     private var homeActionRow: some View {
-        VStack(spacing: 20) {
-            Button {
+        VStack(spacing: CGFloat(LayoutMetrics.actionButtonSpacing)) {
+            CadenceActionButton(title: "Start Workout", systemImage: "play.fill") {
                 Haptics.selection()
                 if active.liveWorkout.active != nil { showWorkoutConflict = true } else { selectWorkoutPresented = true }
-            } label: {
-                Label("Start Workout", systemImage: "play.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 52)
             }
-            .buttonStyle(.borderedProminent).tint(.green)
             .accessibilityIdentifier("home.startWorkout")
-            Button { Haptics.selection(); logPickerPresented = true } label: {
-                Label("Log Previous Workout", systemImage: "square.and.pencil")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 52)
+            CadenceActionButton(title: "Log Previous Workout",
+                                systemImage: "square.and.pencil",
+                                emphasis: .secondary) {
+                Haptics.selection()
+                logPickerPresented = true
             }
-            .buttonStyle(.bordered)
             .accessibilityIdentifier("home.logWorkout")
         }
     }

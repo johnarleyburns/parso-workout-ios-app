@@ -288,14 +288,11 @@ struct SessionView: View {
                 partnerBar
 
                 if isEmptySession {
-                    Button {
+                    CadenceActionButton(title: "Use Previous Workout",
+                                        systemImage: "clock.arrow.circlepath",
+                                        tint: .accentColor) {
                         usePreviousPresented = true
-                    } label: {
-                        Label("Use Previous Workout", systemImage: "clock.arrow.circlepath")
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
                     .accessibilityIdentifier("session.usePrevious")
 
                     ContentUnavailableView("Empty workout",
@@ -312,16 +309,13 @@ struct SessionView: View {
                     plannedCard(name)
                 }
 
-                Button {
+                CadenceActionButton(title: "Add Exercise",
+                                    systemImage: "plus.circle.fill",
+                                    emphasis: .secondary) {
                     pickerPresented = true
-                } label: {
-                    Label("Add Exercise", systemImage: "plus.circle.fill")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .padding(.top, 4)
                 .accessibilityIdentifier("session.addExercise")
+                .padding(.top, 4)
 
                 if active.strengthSession?.id == session.id {
                     WorkoutControlBar(
@@ -333,15 +327,11 @@ struct SessionView: View {
                     )
                     .padding(.top, 8)
                 } else if isManualLog {
-                    Button {
+                    CadenceActionButton(title: "Done", systemImage: "checkmark") {
                         finishManualLog()
-                    } label: {
-                        Label("Done", systemImage: "checkmark")
-                            .font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(.borderedProminent).tint(.green).controlSize(.large)
-                    .padding(.top, 8)
                     .accessibilityIdentifier("log.done")
+                    .padding(.top, 8)
                 }
             }
             .padding()

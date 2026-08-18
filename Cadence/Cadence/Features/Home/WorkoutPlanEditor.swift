@@ -133,17 +133,12 @@ struct WorkoutPlanEditor: View {
         }
     }
     private var startButton: some View {
-        Button(action: { saveAndStart() }) {
-            Label("Start Workout", systemImage: "play.fill")
-                .font(.title3.bold())
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .center)
+        CadenceActionButton(title: "Start Workout", systemImage: "play.fill") {
+            saveAndStart()
         }
-        .buttonStyle(.borderedProminent)
-        .tint(.green).controlSize(.large)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
         .accessibilityIdentifier("editor.start")
+        .padding(.horizontal, CGFloat(LayoutMetrics.pagePadding))
+        .padding(.vertical, 8)
     }
     private var partnerSummarySection: some View {
         Section("Training partners") {

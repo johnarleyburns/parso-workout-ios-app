@@ -27,12 +27,10 @@ struct HomeCoachRecommendationCard: View {
             ForEach(recommendation.citationIds.compactMap { CitationRegistry.citation(forId: $0) }, id: \.id) { citation in
                 CitationLink(citation: citation, compact: true)
             }
-            Button(action: onStart) {
-                Label("Do Coach's Workout", systemImage: "play.fill")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent).tint(.green)
-            .accessibilityIdentifier("home.coachRecommendation.start")
+            CadenceActionButton(title: "Do Coach's Workout",
+                                systemImage: "play.fill",
+                                action: onStart)
+                .accessibilityIdentifier("home.coachRecommendation.start")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityIdentifier("home.coachRecommendation")

@@ -29,15 +29,15 @@ struct WeightsStartView: View {
                             onStart: onEditorStart)
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: "checklist").font(.title2)
-                            Text("Coach's Workout").font(.title3.bold())
+                            Image(systemName: "checklist").font(.headline)
+                            Text("Coach's Workout")
                             Spacer()
                         }
-                        .padding(.vertical, 14).padding(.horizontal, 16)
-                        .frame(maxWidth: .infinity, minHeight: 60)
+                        .padding(.horizontal, 16)
+                        .cadenceActionLabel()
                         .foregroundStyle(.white)
                         .cadenceGlassBackground(
-                            in: RoundedRectangle(cornerRadius: 18, style: .continuous),
+                            in: CadenceActionShape.rounded,
                             tint: .green,
                             interactive: true,
                             fallback: AnyShapeStyle(Color.green))
@@ -59,16 +59,16 @@ struct WeightsStartView: View {
                         onStart: onEditorStart)
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: "bolt.fill").font(.title2)
-                        Text("Quick Start").font(.title3.bold())
+                        Image(systemName: "bolt.fill").font(.headline)
+                        Text("Quick Start")
                         Spacer()
                         Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
                     }
-                    .padding(.vertical, 16).padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity, minHeight: 60)
+                    .padding(.horizontal, 16)
+                    .cadenceActionLabel()
                     .foregroundStyle(.white)
                     .cadenceGlassBackground(
-                        in: RoundedRectangle(cornerRadius: 18, style: .continuous),
+                        in: CadenceActionShape.rounded,
                         tint: .green,
                         interactive: true,
                         fallback: AnyShapeStyle(LinearGradient(

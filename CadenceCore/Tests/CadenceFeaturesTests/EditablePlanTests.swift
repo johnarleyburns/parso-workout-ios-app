@@ -63,6 +63,37 @@ final class EditablePlanTests: XCTestCase {
         XCTAssertNil(EditablePlan.from(coach: session))
     }
 
+    func testApplyPreservesEachExerciseSetLadderAndWeight() {
+        let plan = EditablePlan(
+            title: "Mixed",
+            warmupMinutes: 5,
+            cooldownMinutes: 0,
+            exercises: [
+                EditableExercise(name: "Bench Press", sets: [
+                    EditableSet(targetReps: 8, targetWeight: 60),
+                    EditableSet(targetReps: 6, targetWeight: 62.5)
+                ], notes: ""),
+                EditableExercise(name: "Back Squat", sets: [
+                    EditableSet(targetReps: 5, targetWeight: 100),
+                    EditableSet(targetReps: 5, targetWeight: 100),
+                    EditableSet(targetReps: 3, targetWeight: 105)
+                ], notes: "")
+            ])
+        let session = WorkoutSession(title: plan.title)
+        plan.apply(to: session)
+        XCTAssertEqual(session.plannedPrescriptions, [
+            PlannedExercisePrescription(exerciseName: "Bench Press", sets: [
+                PlannedSetPrescription(targetReps: 8, targetWeightKg: 60),
+                PlannedSetPrescription(targetReps: 6, targetWeightKg: 62.5)
+            ]),
+            PlannedExercisePrescription(exerciseName: "Back Squat", sets: [
+                PlannedSetPrescription(targetReps: 5, targetWeightKg: 100),
+                PlannedSetPrescription(targetReps: 5, targetWeightKg: 100),
+                PlannedSetPrescription(targetReps: 3, targetWeightKg: 105)
+            ])
+        ])
+    }
+
     func testNormalizedPartnerIDsDropsOwnerOnly() {
         let owner = UUID()
         XCTAssertEqual(EditablePlan.normalizedPartnerIDs([owner], ownerID: owner), [])

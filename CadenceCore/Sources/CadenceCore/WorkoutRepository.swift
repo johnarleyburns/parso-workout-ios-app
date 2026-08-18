@@ -1035,7 +1035,8 @@ public enum WorkoutRepository {
                 plannedRepLadder: session.plannedRepLadder.isEmpty ? nil : session.plannedRepLadder,
                 warmupSeconds: session.warmupSeconds, cooldownSeconds: session.cooldownSeconds,
                 prescribedLoadKg: session.prescribedLoadKg,
-                activePartnerIDs: session.activePartnerIDs.isEmpty ? nil : session.activePartnerIDs)
+                activePartnerIDs: session.activePartnerIDs.isEmpty ? nil : session.activePartnerIDs,
+                plannedPrescriptions: session.plannedPrescriptions.isEmpty ? nil : session.plannedPrescriptions)
         }
         let cardio = try allCardio(context).map { c -> ExportCardio in
             ExportCardio(
@@ -1235,6 +1236,7 @@ public enum WorkoutRepository {
             session.planKey = es.planKey
             if let names = es.plannedExerciseNames { session.plannedExerciseNames = canonicalPlannedExerciseNames(names) }
             if let ladder = es.plannedRepLadder { session.plannedRepLadder = ladder }
+            if let prescriptions = es.plannedPrescriptions { session.plannedPrescriptions = prescriptions }
             session.warmupSeconds = es.warmupSeconds ?? 0
             session.cooldownSeconds = es.cooldownSeconds ?? 0
             session.prescribedLoadKg = es.prescribedLoadKg ?? 0

@@ -208,6 +208,7 @@ struct HomeView: View {
 
                     if let s = resumeSession { resumeCard(s) }
                     homeActionRow
+                    workoutsTodaySection
                     HomeWeekDashboardSection(
                         dashboard: dashboard,
                         volumeExpanded: $weeklyVolumeExpanded,
@@ -554,7 +555,6 @@ struct HomeView: View {
         markWorkoutHistoryChanged()
         ContributionCoordinator.recordWorkoutCompleted()
     }
-
     /// Pulls any new Watch/Health-recorded cardio into the local store (FR-2.1).
     /// Formerly auto-run by the now-removed Cardio screen (feedback batch 3).
     private func syncCardioFromHealth() async {
@@ -563,7 +563,6 @@ struct HomeView: View {
         model.lastHealthSync = Date()
         if inserted > 0 { markWorkoutHistoryChanged() }
     }
-
     private var homeActionRow: some View {
         VStack(spacing: 20) {
             Button {
@@ -585,7 +584,55 @@ struct HomeView: View {
             .accessibilityIdentifier("home.logWorkout")
         }
     }
-
+    private var workoutsTodaySection: some View {
+        let cal = Calendar.current
+        let todaySessions = sessions.filter {
+            $0.deletedAt == nil && $0.endedAt != nil && cal.isDateInToday($0.date)
+        }.sorted { ($0.endedAt ?? $0.date) > ($1.endedAt ?? $1.date) }
+        let todayCardio = cardio.filter {
+            $0.deletedAt == nil && $0.end != nil && cal.isDateInToday($0.start)
+        }.sorted { $0.start > $1.start }
+        // Remaining recommendations keep partial two-a-days visible.
+        let planned = coachDecision.todayPlannedRecommendations.filter { $0.kind != .rest }
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Workouts Today").font(.headline)
+            if todaySessions.isEmpty && todayCardio.isEmpty && planned.isEmpty {
+                Text("Nothing completed or planned yet.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            } else {
+                ForEach(todaySessions) { workout in
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                        Text(workout.title.isEmpty ? "Strength" : workout.title)
+                            .font(.subheadline.weight(.medium))
+                        Spacer()
+                        Text("COMPLETED").font(.caption2.weight(.bold)).foregroundStyle(.green)
+                    }
+                }
+                ForEach(todayCardio) { workout in
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                        Text(workout.customTitle?.isEmpty == false ? workout.customTitle! : (CardioType(rawValue: workout.type)?.displayName ?? "Cardio"))
+                            .font(.subheadline.weight(.medium))
+                        Spacer()
+                        Text("COMPLETED").font(.caption2.weight(.bold)).foregroundStyle(.green)
+                    }
+                }
+                ForEach(Array(planned.enumerated()), id: \.offset) { _, workout in
+                    HStack(spacing: 8) {
+                        Image(systemName: "calendar").foregroundStyle(.teal)
+                        Text(workout.title).font(.subheadline.weight(.medium))
+                        Spacer()
+                        Text("PLANNED").font(.caption2.weight(.bold)).foregroundStyle(.teal)
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
+        .accessibilityIdentifier("home.workoutsToday")
+    }
     private var coachSuggestionsSection: some View {
         let items = dashboard.suggestions
         let visibleItems = HomeDashboardPresenter.visibleSuggestions(items, expanded: suggestionsExpanded)
@@ -614,12 +661,7 @@ struct HomeView: View {
                                 .accessibilityIdentifier("home.suggestion.\(suggestion.id).science")
                         }
                     }
-                    .padding(10)
-                    .background(suggestionTint(suggestion).opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(suggestionTint(suggestion).opacity(0.28), lineWidth: 1)
-                    }
+                    .padding(.vertical, 2)
                     .accessibilityElement(children: .contain)
                 }
                 if items.count > 1 {
@@ -1062,24 +1104,11 @@ struct HomeView: View {
 
     private func materializePlan(_ plan: EditablePlan) throws -> WorkoutSession {
         let session = try WorkoutRepository.createSession(title: plan.title, in: context)
-        session.plannedExerciseNames = plan.exercises.map(\.name)
-        if let first = plan.exercises.first, !first.sets.isEmpty {
-            session.plannedRepLadder = first.sets.map(\.targetReps)
-        }
-        let weights = plan.exercises.compactMap(\.sets.first?.targetWeight)
-        if let w = weights.first, w > 0, weights.allSatisfy({ $0 == w }) {
-            session.prescribedLoadKg = w
-        }
+        plan.apply(to: session)
         for name in plan.exercises.map(\.name) {
             _ = try WorkoutRepository.findOrCreateExercise(named: name, in: context)
         }
         session.cooldownSeconds = Double(plan.cooldownMinutes * 60)
-        session.activePartnerIDs = plan.partnerIDs.map(\.uuidString)
-        let rirNotes = plan.exercises.compactMap { ex -> String? in
-            guard !ex.notes.isEmpty, ex.notes.contains("RIR") else { return nil }
-            return ex.notes
-        }
-        if !rirNotes.isEmpty { session.notes = rirNotes.joined(separator: "; ") }
         try context.save()
         return session
     }

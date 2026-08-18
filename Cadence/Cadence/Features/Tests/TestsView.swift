@@ -26,36 +26,39 @@ struct TestsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
                 baselineSection
 
-                Section {
-                    Text("Standardized tests your coach tracks over time. Re-test on the same protocol after a training block to measure real change.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("tests.assessments.intro")
-                        .listRowBackground(Color.clear)
-                }
+                Text("Standardized tests your coach tracks over time. Re-test on the same protocol after a training block to measure real change.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("tests.assessments.intro")
+                    .padding(.horizontal, 4)
 
                 ForEach(AssessmentCategory.allCases) { category in
                     let kinds = AssessmentKind.defaultBattery.filter { $0.category == category }
                     if !kinds.isEmpty {
-                        Section(category.displayName) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(category.displayName).font(.headline).padding(.horizontal, 4)
                             ForEach(kinds) { kind in
                                 NavigationLink {
                                     AssessmentDetailView(kind: kind)
                                 } label: {
                                     batteryRow(kind)
                                 }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
                                 .accessibilityIdentifier("tests.assessment.\(kind.rawValue)")
-                                .listRowBackground(Color.clear)
                             }
                         }
+                        .padding(.vertical, 8)
+                        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .blue)
                     }
                 }
 
                 if !advancedKinds.isEmpty {
-                    Section {
-                        DisclosureGroup("Advanced Tests", isExpanded: $showAdvanced) {
+                    DisclosureGroup(isExpanded: $showAdvanced) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text("These tests require specialized equipment.")
                                 .font(.caption).foregroundStyle(.secondary)
                             ForEach(advancedKinds) { kind in
@@ -64,16 +67,21 @@ struct TestsView: View {
                                 } label: {
                                     batteryRow(kind)
                                 }
+                                .buttonStyle(.plain)
+                                .padding(.horizontal, 12).padding(.vertical, 8)
                                 .accessibilityIdentifier("tests.assessment.\(kind.rawValue)")
-                                .listRowBackground(Color.clear)
                             }
                         }
-                        .listRowBackground(Color.clear)
-                        .accessibilityIdentifier("tests.advanced")
+                    } label: {
+                        Text("Advanced Tests").font(.headline)
                     }
+                    .padding(12)
+                    .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .blue)
+                    .accessibilityIdentifier("tests.advanced")
                 }
+                }
+                .padding(.horizontal, 16).padding(.vertical, 12)
             }
-            .scrollContentBackground(.hidden)
             .background { CadenceGlassBackdrop(tint: .blue) }
             .navigationTitle("Tests")
             .accessibilityIdentifier("tests.assessments.list")
@@ -83,8 +91,7 @@ struct TestsView: View {
     // MARK: - Fitness Baseline Card
 
     private var baselineSection: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
                 Text("Your Fitness").font(.headline)
                     .accessibilityIdentifier("tests.baseline.header")
 
@@ -98,9 +105,6 @@ struct TestsView: View {
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .blue)
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            .listRowBackground(Color.clear)
-        }
     }
 
     @ViewBuilder

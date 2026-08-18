@@ -1,6 +1,23 @@
 # Current Status
 
-Updated: 2026-08-16
+Updated: 2026-08-17
+
+## Next task — field-test remediation
+
+Execute [docs/field-test-remediation-plan.md](docs/field-test-remediation-plan.md).
+
+The current working tree contains a partial implementation of the latest field-test feedback, but it is not ready to ship. The next task must:
+
+1. Restore compilation by fixing the extra closing brace in `TestsView.swift`.
+2. Preserve coach prescriptions per exercise and per set, including distinct rep ladders and weights.
+3. Make pending sets performer-specific so adding a partner adds that partner's complete set plan.
+4. Resolve partner defaults from exact exercise history, then the partner's general rep pattern, then the planned fallback—at workout start and after exercise swaps.
+5. Put each Tests category in one glass surface with standard top-level margins.
+6. Complete collapsed strength summaries with reps, weights, and partner names while keeping all controls expansion-only.
+7. Make Workouts Today distinguish completed records from remaining coach plans, including partial two-a-days.
+8. Add focused logic/UI coverage and finish with successful package tests, app build, smoke/guardrail checks, and simulator visual verification.
+
+Do not mark this task complete from the current partial diff. The detailed plan records the known defects, schema approach, implementation phases, acceptance criteria, test matrix, verification commands, and final checklist.
 
 ## Field-testing follow-up
 

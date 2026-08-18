@@ -5,6 +5,26 @@ import CadenceFeatures
 
 final class SessionRenderModelTests: XCTestCase {
 
+    func testCollapsedSummaryIncludesPrescriptionDimensionsAndPartners() {
+        let partner = UUID()
+        let context = SessionRenderModel.ExerciseContext(
+            exerciseID: UUID(), name: "Bench Press", sets: [], pendingCount: 2,
+            pendingReps: [8, 6], performerContexts: [
+                .init(performerID: nil, label: "Me", isMe: true, lastTimeSets: [], pr: nil,
+                      prRuleName: "", priorSamples: [], firstWorkingWeightKg: nil, repLadders: []),
+                .init(performerID: partner, label: "Sam", isMe: false, lastTimeSets: [], pr: nil,
+                      prRuleName: "", priorSamples: [], firstWorkingWeightKg: nil, repLadders: [])
+            ], pendingSets: [
+                .init(performerID: nil, performerName: "Me", setIndex: 0, targetReps: 8, targetWeightKg: 60),
+                .init(performerID: partner, performerName: "Sam", setIndex: 0, targetReps: 6, targetWeightKg: 60)
+            ])
+        let summary = SessionRenderModel.compactSummary(context: context, unit: .kilograms)
+        XCTAssertTrue(summary.contains("sets"))
+        XCTAssertTrue(summary.contains("reps"))
+        XCTAssertTrue(summary.contains("60"))
+        XCTAssertTrue(summary.contains("Sam"))
+    }
+
     // MARK: - Signature ignores keystroke state
 
     func testSignatureIgnoresKeystrokeState() {

@@ -24,6 +24,7 @@ struct SessionView: View {
     @State private var setEditorIdentity = UUID()
     @State private var setEditorRoute: SetEditorRoute?
     @State private var pendingRepsOverride: Int?
+    @State private var pendingPerformerID: UUID?
     @State private var lastEffortMode: WatchEffortMode = .rpe
     @State private var showWeightInfo = false
     @State private var showDumbbellInfo = false
@@ -121,12 +122,14 @@ struct SessionView: View {
         SessionViewModel.isPrescribedMovement(name, session: session)
     }
 
-    private func openInlineEditor(for exercise: Exercise, editingSetID: UUID? = nil, repsOverride: Int? = nil) {
+    private func openInlineEditor(for exercise: Exercise, editingSetID: UUID? = nil,
+                                  repsOverride: Int? = nil, performerID: UUID? = nil) {
         inlineExerciseID = exercise.id
         inlineExercise = exercise
         inlineEditingSetID = editingSetID
         setEditorIdentity = editingSetID ?? UUID()
         pendingRepsOverride = repsOverride
+        pendingPerformerID = performerID
         setEditorRoute = editingSetID.map { .edit(exerciseID: exercise.id, setID: $0) } ?? .add(exerciseID: exercise.id)
         if !dumbbellInfoShown, case .dumbbell = exercise.equipmentValue {
             dumbbellInfoShown = true
@@ -147,7 +150,7 @@ struct SessionView: View {
         if isEditing, editingSet == nil { return nil }
         let performerID: UUID? = isEditing
             ? (editingSet?.performedBy?.isMe ?? true ? nil : editingSet?.performedBy?.id)
-            : nextPerson().flatMap { $0.isMe ? nil : $0.id }
+            : (pendingPerformerID ?? nextPerson().flatMap { $0.isMe ? nil : $0.id })
 
         let pc = cachedCtx?.performerContexts.first { $0.performerID == performerID }
             ?? cachedCtx?.performerContexts.first { $0.isMe }
@@ -212,6 +215,7 @@ struct SessionView: View {
         inlineExercise = nil
         inlineEditingSetID = nil
         pendingRepsOverride = nil
+        pendingPerformerID = nil
         setEditorRoute = nil
     }
     private func recordInlineSet(for exercise: Exercise, draft: SetDraft) {
@@ -261,7 +265,9 @@ struct SessionView: View {
             $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID)
         })?.reps
         return SessionViewModel.plannedReps(
-            ladder: SessionViewModel.effectiveLadder(session: session),
+            // The coach ladder is the owner's prescription. A returning partner
+            // gets their own established rep pattern instead.
+            ladder: performerID == nil ? SessionViewModel.effectiveLadder(session: session) : nil,
             setIndex: setIndex,
             currentSessionReps: currentReps,
             priorSessionLadders: prior,
@@ -366,16 +372,14 @@ struct SessionView: View {
                                          formula: settings.formula, allPeople: allPeople)
             }
             if expandedExerciseID == nil {
+                // Strength starts compact. Focused history review may opt into
+                // one expanded exercise explicitly.
                 expandedExerciseID = initiallyExpandedExerciseID
-                    ?? cache.state.contexts.first(where: { $0.pendingCount > 0 })?.exerciseID
-                    ?? (active.strengthSession?.id == session.id ? cache.state.contexts.first?.exerciseID : nil)
             }
         }
         .onAppear {
             if expandedExerciseID == nil {
                 expandedExerciseID = initiallyExpandedExerciseID
-                    ?? cache.state.contexts.first(where: { $0.pendingCount > 0 })?.exerciseID
-                    ?? (active.strengthSession?.id == session.id ? cache.state.contexts.first?.exerciseID : nil)
             }
         }
         .sheet(isPresented: $pickerPresented) {
@@ -574,10 +578,10 @@ struct SessionView: View {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 openInlineEditor(for: ex, editingSetID: set.setID)
             },
-            onTapPending: { reps in
+            onTapPending: { pending in
                 expandedExerciseID = ctx.exerciseID
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
-                openInlineEditor(for: ex, repsOverride: reps)
+                openInlineEditor(for: ex, repsOverride: pending.targetReps, performerID: pending.performerID)
             },
             onRepeat: {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
@@ -618,11 +622,7 @@ struct SessionView: View {
     }
 
     private func compactSummary(for ctx: SessionRenderModel.ExerciseContext) -> String {
-        let completed = ctx.sets.count
-        let planned = completed + ctx.pendingCount
-        let count = "\(completed)/\(max(completed, planned)) sets"
-        guard let top = ctx.sets.map(\.weight).max() else { return count }
-        return "\(count) · top \(Format.weightValue(top, unit: settings.unit)) \(settings.unit.abbreviation)"
+        SessionRenderModel.compactSummary(context: ctx, unit: settings.unit)
     }
 
     @ToolbarContentBuilder

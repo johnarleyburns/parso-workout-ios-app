@@ -286,19 +286,11 @@ struct PlanningView: View {
             RoutineDetailView(plan: plan, onEditorStart: { edited in
                 guard active.liveWorkout.active == nil else { return }
                 guard let session = try? WorkoutRepository.createSession(title: edited.title, in: context) else { return }
-                session.plannedExerciseNames = edited.exercises.map(\.name)
-                if let first = edited.exercises.first, !first.sets.isEmpty {
-                    session.plannedRepLadder = first.sets.map(\.targetReps)
-                }
-                let weights = edited.exercises.compactMap(\.sets.first?.targetWeight)
-                if let w = weights.first, w > 0, weights.allSatisfy({ $0 == w }) {
-                    session.prescribedLoadKg = w
-                }
+                edited.apply(to: session)
                 for name in edited.exercises.map(\.name) {
                     _ = try? WorkoutRepository.findOrCreateExercise(named: name, in: context)
                 }
                 session.cooldownSeconds = Double(edited.cooldownMinutes * 60)
-                session.activePartnerIDs = edited.partnerIDs.map(\.uuidString)
                 try? context.save()
                 guard active.startStrength(session) else { session.deletedAt = Date(); return }
                 WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)

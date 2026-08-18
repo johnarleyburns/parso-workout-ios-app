@@ -20,7 +20,7 @@ struct ExerciseCardView: View {
     let wouldBePR: ((Double, Int) -> Bool)?
 
     let onTapSet: (SessionRenderModel.SetDisplay) -> Void
-    let onTapPending: (Int) -> Void
+    let onTapPending: (SessionRenderModel.PendingSetDisplay) -> Void
     let onRepeat: () -> Void
     let onAddSet: () -> Void
     let onChangeExercise: () -> Void
@@ -39,7 +39,6 @@ struct ExerciseCardView: View {
         VStack(alignment: .leading, spacing: 10) {
             headerRow
             if isExpanded { contextLines }
-
             if isExpanded && (!context.sets.isEmpty || (isInlineActive && inlineEditingSetID == nil) || context.pendingCount > 0) {
                 setColumnHeader
             }
@@ -49,9 +48,8 @@ struct ExerciseCardView: View {
                     completedSetRow(set)
                     Divider()
                 }
-
-                ForEach(0..<context.pendingCount, id: \.self) { offset in
-                    pendingRow(offset: offset)
+                ForEach(context.pendingSets.isEmpty ? context.pendingReps.enumerated().map { offset, reps in SessionRenderModel.PendingSetDisplay(performerID: nil, performerName: "Me", setIndex: context.sets.filter { !$0.isWarmup }.count + offset, targetReps: reps, targetWeightKg: nil) } : context.pendingSets) { pending in
+                    pendingRow(pending: pending)
                     Divider()
                 }
 
@@ -80,12 +78,16 @@ struct ExerciseCardView: View {
     private var headerRow: some View {
         HStack {
             Button(action: onToggleExpansion) {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(context.name).font(.headline).lineLimit(1)
-                        if isCurrent { Image(systemName: "arrow.right.circle.fill").foregroundStyle(.green).font(.caption) }
+                HStack(spacing: 8) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption.weight(.bold)).foregroundStyle(.secondary).frame(width: 14)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text(context.name).font(.headline).lineLimit(1)
+                            if isCurrent { Image(systemName: "arrow.right.circle.fill").foregroundStyle(.green).font(.caption) }
+                        }
+                        if !isExpanded { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
                     }
-                    if !isExpanded { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
                 }
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }
@@ -95,7 +97,7 @@ struct ExerciseCardView: View {
             .accessibilityLabel("\(context.name), \(compactSummary), \(isExpanded ? "expanded" : "collapsed")")
             .accessibilityAddTraits(.isButton)
             Spacer()
-            if let exercise {
+            if isExpanded, let exercise {
                 NavigationLink {
                     ExerciseDetailView(exercise: exercise)
                 } label: {
@@ -105,7 +107,7 @@ struct ExerciseCardView: View {
                 .accessibilityIdentifier("exercise.info.\(context.name)")
                 .accessibilityLabel("\(context.name) details")
             }
-            Menu {
+            if isExpanded { Menu {
                 Button { onChangeExercise() } label: {
                     Label("Change exercise", systemImage: "arrow.triangle.2.circlepath")
                 }
@@ -119,7 +121,8 @@ struct ExerciseCardView: View {
             }
             .accessibilityIdentifier("exercise.menu.\(context.name)")
             .accessibilityLabel("Exercise options")
-            if !isInlineActive {
+            }
+            if isExpanded, !isInlineActive {
                 Button {
                     withAnimation { isEditing.toggle() }
                 } label: {
@@ -301,18 +304,21 @@ struct ExerciseCardView: View {
     // MARK: - Pending rows
 
     @ViewBuilder
-    private func pendingRow(offset: Int) -> some View {
-        let reps = offset < context.pendingReps.count ? context.pendingReps[offset] : 5
-        Button { onTapPending(reps) } label: {
+    private func pendingRow(pending: SessionRenderModel.PendingSetDisplay) -> some View {
+        Button { onTapPending(pending) } label: {
             HStack(spacing: SetCol.gap) {
                 if hasPartners {
-                    performerChipView(nil)
+                    performerChipView(pending.performerID.flatMap { id in
+                        context.performerContexts.first { $0.performerID == id }.map {
+                            SessionRenderModel.PerformerRef(personID: id, isMe: $0.isMe, name: $0.label)
+                        }
+                    })
                 } else {
                     setIndexBadge(
-                        String(context.sets.filter { !$0.isWarmup }.count + offset + 1),
+                        String(pending.setIndex + 1),
                         isWarmup: false)
                 }
-                Text("\(reps) reps").font(.subheadline).foregroundStyle(.tertiary)
+                Text("\(pending.targetReps) reps").font(.subheadline).foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity)
                 Color.clear.frame(width: SetCol.reps)
                 Color.clear.frame(width: SetCol.rpe)
@@ -321,7 +327,7 @@ struct ExerciseCardView: View {
             .frame(minHeight: 44).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("set.pending.\(context.name).\(offset + 1)")
+        .accessibilityIdentifier("set.pending.\(context.name).\(pending.setIndex + 1)")
     }
 
     // MARK: - Action buttons

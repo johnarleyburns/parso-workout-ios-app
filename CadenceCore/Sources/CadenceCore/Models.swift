@@ -14,6 +14,28 @@ enum StringArray {
     }
 }
 
+/// The complete coach prescription for one exercise. Stored as JSON in the
+/// session so each exercise can retain its own set ladder and load.
+public struct PlannedSetPrescription: Codable, Equatable, Sendable {
+    public var targetReps: Int
+    public var targetWeightKg: Double?
+
+    public init(targetReps: Int, targetWeightKg: Double? = nil) {
+        self.targetReps = targetReps
+        self.targetWeightKg = targetWeightKg
+    }
+}
+
+public struct PlannedExercisePrescription: Codable, Equatable, Sendable {
+    public var exerciseName: String
+    public var sets: [PlannedSetPrescription]
+
+    public init(exerciseName: String, sets: [PlannedSetPrescription]) {
+        self.exerciseName = exerciseName
+        self.sets = sets
+    }
+}
+
 // MARK: - Models
 //
 // CloudKit compatibility rules (REQUIREMENTS §7, FR-9):
@@ -293,6 +315,9 @@ public final class WorkoutSession {
     /// (feedback batch 3). Empty for fixed presets / ad-hoc sessions.
     /// Delimited-String storage (see `StringArray`).
     private var plannedRepLadderData: String = ""
+    /// JSON encoded per-exercise/per-set prescription. Additive and defaulted
+    /// for CloudKit and legacy sessions.
+    private var plannedPrescriptionsData: String = ""
     public var notes: String?
     /// Name of the template this session was started from, if any (FR-1.6).
     public var templateName: String?
@@ -366,6 +391,31 @@ public final class WorkoutSession {
     public var plannedRepLadder: [Int] {
         get { StringArray.decode(plannedRepLadderData).compactMap(Int.init) }
         set { plannedRepLadderData = StringArray.encode(newValue.map(String.init)) }
+    }
+
+    /// Full prescription when available; otherwise a backward-compatible
+    /// synthesis from the legacy session fields.
+    public var plannedPrescriptions: [PlannedExercisePrescription] {
+        get {
+            if !plannedPrescriptionsData.isEmpty,
+               let data = plannedPrescriptionsData.data(using: .utf8),
+               let value = try? JSONDecoder().decode([PlannedExercisePrescription].self, from: data) {
+                return value
+            }
+            guard !plannedExerciseNames.isEmpty, !plannedRepLadder.isEmpty else { return [] }
+            return plannedExerciseNames.map { name in
+                PlannedExercisePrescription(
+                    exerciseName: name,
+                    sets: plannedRepLadder.map { PlannedSetPrescription(targetReps: $0, targetWeightKg: prescribedLoadKg > 0 ? prescribedLoadKg : nil) })
+            }
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else {
+                plannedPrescriptionsData = ""
+                return
+            }
+            plannedPrescriptionsData = String(decoding: data, as: UTF8.self)
+        }
     }
 
     /// Sets in logged order.

@@ -42,7 +42,7 @@ struct HomeCoachIllustrationView: View {
         Image(illustration.imageName)
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .frame(width: compact ? 64 : nil, height: compact ? 64 : nil)
+            .frame(width: compact ? 88 : nil, height: compact ? 88 : nil)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .accessibilityLabel(illustration.accessibilityLabel)
             .accessibilityIdentifier("home.coachIllustration")

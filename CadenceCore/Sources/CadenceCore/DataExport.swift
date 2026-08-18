@@ -105,18 +105,21 @@ public struct ExportSession: Codable, Equatable, Sendable {
     public var cooldownSeconds: Double?
     public var prescribedLoadKg: Double?
     public var activePartnerIDs: [String]?
+    public var plannedPrescriptions: [PlannedExercisePrescription]?
     public init(id: UUID, title: String, date: Date, notes: String?, sets: [ExportSet],
                 endedAt: Date? = nil, isLogged: Bool? = nil, planKey: String? = nil,
                 templateName: String? = nil, plannedExerciseNames: [String]? = nil,
                 plannedRepLadder: [Int]? = nil, warmupSeconds: Double? = nil,
                 cooldownSeconds: Double? = nil, prescribedLoadKg: Double? = nil,
-                activePartnerIDs: [String]? = nil) {
+                activePartnerIDs: [String]? = nil,
+                plannedPrescriptions: [PlannedExercisePrescription]? = nil) {
         self.id = id; self.title = title; self.date = date; self.notes = notes; self.sets = sets
         self.endedAt = endedAt; self.isLogged = isLogged; self.planKey = planKey
         self.templateName = templateName; self.plannedExerciseNames = plannedExerciseNames
         self.plannedRepLadder = plannedRepLadder; self.warmupSeconds = warmupSeconds
         self.cooldownSeconds = cooldownSeconds; self.prescribedLoadKg = prescribedLoadKg
         self.activePartnerIDs = activePartnerIDs
+        self.plannedPrescriptions = plannedPrescriptions
     }
 }
 

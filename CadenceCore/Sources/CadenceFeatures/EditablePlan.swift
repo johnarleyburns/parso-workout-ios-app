@@ -44,6 +44,29 @@ public struct EditablePlan: Hashable {
         )
     }
 
+    /// Applies the draft's complete prescription to a live session. Keeping
+    /// this operation here prevents Home and Planning from silently reducing
+    /// a multi-exercise plan to the first exercise's ladder.
+    public func apply(to session: WorkoutSession) {
+        session.plannedExerciseNames = exercises.map(\.name)
+        session.plannedPrescriptions = exercises.map { exercise in
+            PlannedExercisePrescription(
+                exerciseName: exercise.name,
+                sets: exercise.sets.map { PlannedSetPrescription(
+                    targetReps: $0.targetReps,
+                    targetWeightKg: $0.targetWeight) })
+        }
+        session.plannedRepLadder = exercises.first?.sets.map(\.targetReps) ?? []
+        let firstWeights = exercises.compactMap { $0.sets.first?.targetWeight }
+        session.prescribedLoadKg = firstWeights.first ?? 0
+        session.activePartnerIDs = partnerIDs.map(\.uuidString)
+        let rirNotes = exercises.compactMap { ex -> String? in
+            guard !ex.notes.isEmpty, ex.notes.contains("RIR") else { return nil }
+            return ex.notes
+        }
+        session.notes = rirNotes.isEmpty ? nil : rirNotes.joined(separator: "; ")
+    }
+
     public static func from(plan: WorkoutPlan, ladder: [Int]?, unit: MeasurementUnitPreference,
                             warmupMinutes: Int = 0, cooldownMinutes: Int = 0) -> EditablePlan {
         let reps = ladder ?? []

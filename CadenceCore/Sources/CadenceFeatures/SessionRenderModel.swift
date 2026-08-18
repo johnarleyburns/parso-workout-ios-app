@@ -6,6 +6,31 @@ import CadenceCore
 /// gates rebuilds; identical signatures skip the work.
 public enum SessionRenderModel {
 
+    /// Compact, collapsed-card copy. It intentionally contains no editing
+    /// affordances; the disclosure control is the only collapsed interaction.
+    public static func compactSummary(context: ExerciseContext,
+                                      unit: MeasurementUnitPreference) -> String {
+        let completed = context.sets.filter { !$0.isWarmup }.count
+        let planned = completed + context.pendingSets.count
+        var parts = ["\(completed)/\(max(completed, planned)) sets"]
+        let reps = (context.sets.filter { !$0.isWarmup }.map(\.reps) + context.pendingSets.map(\.targetReps)).filter { $0 > 0 }
+        if let minReps = reps.min(), let maxReps = reps.max() {
+            parts.append(minReps == maxReps ? "\(minReps) reps" : "\(minReps)–\(maxReps) reps")
+        }
+        let weights = context.sets.filter { !$0.isWarmup && !$0.usesBodyweight }.map(\.weight) +
+            context.pendingSets.compactMap(\.targetWeightKg)
+        if !weights.isEmpty, let minWeight = weights.min(), let maxWeight = weights.max() {
+            let low = Format.weight(minWeight, unit: unit)
+            let high = Format.weight(maxWeight, unit: unit)
+            parts.append(low == high ? low : "\(low)–\(high)")
+        } else if context.sets.contains(where: { !$0.isWarmup && $0.usesBodyweight }) {
+            parts.append("BW")
+        }
+        let partners = context.performerContexts.filter { !$0.isMe }.map(\.label)
+        if !partners.isEmpty { parts.append(partners.joined(separator: ", ")) }
+        return parts.joined(separator: " · ")
+    }
+
     /// A single set as displayed in a completed set row.
     public struct SetDisplay: Equatable, Identifiable {
         public var id: UUID { setID }
@@ -74,6 +99,24 @@ public enum SessionRenderModel {
         }
     }
 
+    public struct PendingSetDisplay: Equatable, Identifiable {
+        public var id: String { "\(performerID?.uuidString ?? "owner")-\(setIndex)" }
+        public var performerID: UUID?
+        public var performerName: String
+        public var setIndex: Int
+        public var targetReps: Int
+        public var targetWeightKg: Double?
+
+        public init(performerID: UUID?, performerName: String, setIndex: Int,
+                    targetReps: Int, targetWeightKg: Double?) {
+            self.performerID = performerID
+            self.performerName = performerName
+            self.setIndex = setIndex
+            self.targetReps = targetReps
+            self.targetWeightKg = targetWeightKg
+        }
+    }
+
     /// Everything needed to render one exercise card.
     public struct ExerciseContext: Equatable {
         public var exerciseID: UUID
@@ -81,18 +124,21 @@ public enum SessionRenderModel {
         public var sets: [SetDisplay] = []
         public var pendingCount: Int = 0
         public var pendingReps: [Int] = []
+        public var pendingSets: [PendingSetDisplay] = []
         public var performerContexts: [PerformerContext] = []
         public var hasPartners: Bool { performerContexts.count > 1 }
 
         public init(exerciseID: UUID, name: String, sets: [SetDisplay],
                     pendingCount: Int, pendingReps: [Int],
-                    performerContexts: [PerformerContext]) {
+                    performerContexts: [PerformerContext],
+                    pendingSets: [PendingSetDisplay] = []) {
             self.exerciseID = exerciseID
             self.name = name
             self.sets = sets
             self.pendingCount = pendingCount
             self.pendingReps = pendingReps
             self.performerContexts = performerContexts
+            self.pendingSets = pendingSets
         }
     }
 
@@ -219,9 +265,11 @@ public enum SessionRenderModel {
                     let pc = performerContext(
                         performerID: partner.id, label: partner.name, isMe: false,
                         exercise: exercise, excluding: session, prRule: prRule, formula: formula)
-                    if !pc.lastTimeSets.isEmpty {
-                        performerContexts.append(pc)
-                    }
+                    // An explicitly added partner is part of set planning even
+                    // before they have history for this movement. Their editor
+                    // can then resolve a general rep pattern (or its fallback)
+                    // independently from the owner's coach ladder.
+                    performerContexts.append(pc)
                 }
             } else {
                 performerContexts.append(performerContext(
@@ -229,28 +277,46 @@ public enum SessionRenderModel {
                     exercise: exercise, excluding: session, prRule: prRule, formula: formula))
             }
 
-            let pending = max(0, plannedSetCount(session: session) - exerciseSets.count)
-            let pendingReps = (0..<pending).map { offset in
-                let setIndex = exerciseSets.count + offset
-                let currentReps = exerciseSets.sorted { $0.order < $1.order }.map(\.reps)
-                let owner = performerContexts.first { $0.isMe }
-                let prior = owner?.repLadders ?? []
-                let lastLogged = exerciseSets.last?.reps
-                return SessionViewModel.plannedReps(
-                    ladder: SessionViewModel.effectiveLadder(session: session),
-                    setIndex: setIndex,
-                    currentSessionReps: currentReps,
-                    priorSessionLadders: prior,
-                    lastLoggedReps: lastLogged)
+            let prescription = session.plannedPrescriptions.first {
+                $0.exerciseName.caseInsensitiveCompare(exercise.name) == .orderedSame
             }
+            let plannedSets = prescription?.sets ?? session.plannedRepLadder.map {
+                PlannedSetPrescription(targetReps: $0, targetWeightKg: session.prescribedLoadKg > 0 ? session.prescribedLoadKg : nil)
+            }
+            var pendingSets: [PendingSetDisplay] = []
+            for performer in performerContexts {
+                let performerSets = exerciseSets.filter { setPerformedBy($0, performerID: performer.performerID) && !$0.isWarmup }
+                let currentReps = performerSets.sorted { $0.order < $1.order }.map(\.reps)
+                let ladders = performer.repLadders.isEmpty
+                    ? generalRepLadderHistory(exercise: exercise, performerID: performer.performerID, excluding: session)
+                    : performer.repLadders
+                if performerSets.count < plannedSets.count {
+                    for index in performerSets.count..<plannedSets.count {
+                    let target = plannedSets[index]
+                    let hasPerformerHistory = !currentReps.isEmpty || !ladders.isEmpty
+                    let reps = hasPerformerHistory
+                        ? SessionViewModel.plannedReps(
+                            ladder: nil, setIndex: index, currentSessionReps: currentReps,
+                            priorSessionLadders: ladders, lastLoggedReps: performerSets.last?.reps)
+                        : target.targetReps
+                        pendingSets.append(PendingSetDisplay(
+                            performerID: performer.performerID, performerName: performer.label,
+                            setIndex: index, targetReps: reps,
+                            targetWeightKg: performer.firstWorkingWeightKg ?? target.targetWeightKg))
+                    }
+                }
+            }
+            let ownerPending = pendingSets.filter { $0.performerID == nil }
+            let pendingReps = ownerPending.map(\.targetReps)
 
             contexts.append(ExerciseContext(
                 exerciseID: exercise.id,
                 name: exercise.name,
                 sets: displayedSets,
-                pendingCount: pending,
+                pendingCount: pendingSets.count,
                 pendingReps: pendingReps,
-                performerContexts: performerContexts
+                performerContexts: performerContexts,
+                pendingSets: pendingSets
             ))
         }
 
@@ -277,15 +343,15 @@ public enum SessionRenderModel {
             firstWeight = WorkoutRepository.firstWorkingSetWeight(for: exercise, performedBy: nil, excluding: session)
             ladders = WorkoutRepository.repLadderHistory(for: exercise, performedBy: nil, excluding: session)
         } else {
-            last = WorkoutRepository.lastTimeSets(for: exercise, performedBy: nil, excluding: session)
-                .filter { $0.performedBy?.id == performerID }
+            let person = (exercise.sets ?? []).compactMap(\.performedBy).first { $0.id == performerID }
+            last = WorkoutRepository.lastTimeSets(for: exercise, performedBy: person, excluding: session)
             // Partner PR not computed — only owner sets count
             pr = nil
             samples = (exercise.sets ?? [])
                 .filter { $0.performedBy?.id == performerID && $0.session?.id != session?.id }
                 .map { SetSample.from($0) }
-            firstWeight = nil
-            ladders = []
+            firstWeight = WorkoutRepository.firstWorkingSetWeight(for: exercise, performedBy: person, excluding: session)
+            ladders = WorkoutRepository.repLadderHistory(for: exercise, performedBy: person, excluding: session)
         }
 
         return PerformerContext(
@@ -303,6 +369,20 @@ public enum SessionRenderModel {
 
     private static func plannedSetCount(session: WorkoutSession) -> Int {
         session.plannedRepLadder.isEmpty ? 0 : session.plannedRepLadder.count
+    }
+
+    private static func generalRepLadderHistory(exercise: Exercise, performerID: UUID?, excluding session: WorkoutSession) -> [[Int]] {
+        let sets = (exercise.sets ?? []).filter {
+            $0.session?.id != session.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID)
+        }
+        let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
+        return grouped.values.sorted { ($0.first?.session?.date ?? .distantPast) < ($1.first?.session?.date ?? .distantPast) }
+            .map { $0.sorted { $0.order < $1.order }.map(\.reps) }
+    }
+
+    private static func setPerformedBy(_ set: SetEntry, performerID: UUID?) -> Bool {
+        guard let performerID else { return set.isOwnerSet }
+        return set.performedBy?.id == performerID
     }
 
     private static func performerRef(_ p: Person?) -> PerformerRef? {

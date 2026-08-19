@@ -13,7 +13,6 @@ struct RootTabView: View {
     @State private var selection: Tab = .home
     @State private var showSplash = true
     @State private var watchSyncToast: WatchSyncToast?
-    @State private var reviewExerciseID: UUID?
     /// Liveness heartbeat for crash/upgrade recovery (launch-blockers Phase 1e).
     /// Root-level so it keeps beating while the workout is minimized.
     private let heartbeatTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
@@ -99,16 +98,21 @@ struct RootTabView: View {
         .fullScreenCover(item: $active.presentedSurface) { surface in
             switch surface {
             case .session(let session):
-                NavigationStack { SessionView(session: session, initiallyExpandedExerciseID: reviewExerciseID) }
+                NavigationStack { SessionView(session: session) }
             case .summary(let finished):
+                // Tapping an exercise expands it read-only in place (field test
+                // 2026-08-18 #1, decision D7). Editing what was just logged stays
+                // reachable through the toolbar's Edit, which reopens the session
+                // — the escape hatch NFR-8 requires.
+                let reviewSession = finished.session
                 WorkoutSummaryView(data: finished.data,
-                                   onExercise: { id in
-                                       guard let session = finished.session else { return }
-                                       reviewExerciseID = id
-                                       active.finishedSummary = nil
-                                       active.presentedSurface = .session(session)
+                                   onEdit: reviewSession.map { session in
+                                       {
+                                           active.finishedSummary = nil
+                                           active.presentedSurface = .session(session)
+                                       }
                                    },
-                                   onDone: { reviewExerciseID = nil; active.finishedSummary = nil })
+                                   onDone: { active.finishedSummary = nil })
             }
         }
         // Keep the screen awake while a workout is active in any navigation

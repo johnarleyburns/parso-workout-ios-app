@@ -287,4 +287,112 @@ final class WorkoutSummaryDataTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: weights, exercise: bench, weightKg: 100, reps: 5, in: ctx)
         XCTAssertEqual(weights.symbol, "dumbbell")
     }
+
+    // MARK: Read-only exercise detail — per-performer lines (field test 2026-08-18 #1)
+
+    func testExerciseLinePutsMeFirst() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Bench", date: Date(timeIntervalSince1970: 8000), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let sam = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        // The partner logs first: "Me" must still lead the performer list.
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 60, reps: 10, performedBy: sam, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+
+        let line = try XCTUnwrap(WorkoutSummaryData.from(session: session).exercises.first)
+        XCTAssertEqual(line.performers.map(\.name), ["Me", "Sam"])
+        XCTAssertEqual(line.performers.first?.isMe, true)
+    }
+
+    func testExerciseLineIncludesEachPartnerOnce() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Bench", date: Date(timeIntervalSince1970: 8100), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let sam = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 60, reps: 10, performedBy: sam, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 65, reps: 8, performedBy: sam, in: ctx)
+
+        let line = try XCTUnwrap(WorkoutSummaryData.from(session: session).exercises.first)
+        XCTAssertEqual(line.performers.map(\.name), ["Me", "Sam"])
+        XCTAssertEqual(line.performers.last?.sets.count, 2)
+    }
+
+    func testPartnersAppearInFirstAppearanceOrder() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Bench", date: Date(timeIntervalSince1970: 8200), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let zoe = try WorkoutRepository.findOrCreatePerson(named: "Zoe", in: ctx)
+        let alex = try WorkoutRepository.findOrCreatePerson(named: "Alex", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 50, reps: 10, performedBy: zoe, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 70, reps: 8, performedBy: alex, in: ctx)
+
+        let line = try XCTUnwrap(WorkoutSummaryData.from(session: session).exercises.first)
+        // First appearance, not alphabetical.
+        XCTAssertEqual(line.performers.map(\.name), ["Me", "Zoe", "Alex"])
+    }
+
+    func testPerformerSetsAreInLoggedOrder() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Bench", date: Date(timeIntervalSince1970: 8300), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 80, reps: 12, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 85, reps: 10, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 90, reps: 8, in: ctx)
+
+        let me = try XCTUnwrap(WorkoutSummaryData.from(session: session).exercises.first?.performers.first)
+        XCTAssertEqual(me.sets.map(\.reps), [12, 10, 8])
+        XCTAssertEqual(me.sets.map(\.weightKg), [80, 85, 90])
+    }
+
+    func testWarmupSetsAreExcludedFromPerformerLines() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Bench", date: Date(timeIntervalSince1970: 8400), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 40, reps: 10, isWarmup: true, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+
+        let me = try XCTUnwrap(WorkoutSummaryData.from(session: session).exercises.first?.performers.first)
+        XCTAssertEqual(me.sets.map(\.reps), [5])
+    }
+
+    func testSoloSessionHasOneOwnerPerformerLine() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Squat", date: Date(timeIntervalSince1970: 8500), in: ctx)
+        let squat = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: squat, weightKg: 140, reps: 5, in: ctx)
+
+        let line = try XCTUnwrap(WorkoutSummaryData.from(session: session).exercises.first)
+        XCTAssertEqual(line.performers.count, 1)
+        XCTAssertEqual(line.performers.first?.name, "Me")
+    }
+
+    func testBodyweightSetCarriesUsesBodyweightAndAddedLoad() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Pull", date: Date(timeIntervalSince1970: 8600), in: ctx)
+        let pullup = try WorkoutRepository.findOrCreateExercise(named: "Pull-Up", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: pullup, weightKg: 10, reps: 8,
+                                         usesBodyweight: true, in: ctx)
+
+        let set = try XCTUnwrap(WorkoutSummaryData.from(session: session).exercises.first?.performers.first?.sets.first)
+        XCTAssertTrue(set.usesBodyweight)
+        XCTAssertEqual(set.weightKg, 10, accuracy: 0.001)
+        XCTAssertEqual(set.reps, 8)
+    }
+
+    /// An exercise only a partner performed stays out of the owner's lines — the
+    /// existing rule — so it has no performer detail either.
+    func testExerciseWithOnlyPartnerSetsIsStillExcludedFromOwnerLines() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(title: "Bench", date: Date(timeIntervalSince1970: 8700), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let curl = try WorkoutRepository.findOrCreateExercise(named: "Barbell Curl", in: ctx)
+        let sam = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: curl, weightKg: 30, reps: 12, performedBy: sam, in: ctx)
+
+        let s = WorkoutSummaryData.from(session: session)
+        XCTAssertEqual(s.exercises.map(\.name), ["Bench Press"])
+    }
 }

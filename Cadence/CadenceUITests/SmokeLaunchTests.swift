@@ -94,6 +94,17 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["summary.title"].waitForExistence(timeout: 15),
                       "post-workout summary did not render")
+
+        // Field test 2026-08-18 #1: the summary expands an exercise read-only.
+        let exerciseRow = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'summary.exercise'")).firstMatch
+        if exerciseRow.exists {
+            exerciseRow.tap()
+            XCTAssertFalse(app.buttons["session.addExercise"].exists,
+                           "Expanding a summary exercise navigated into the editor")
+            XCTAssertTrue(app.descendants(matching: .any)["summary.title"].exists,
+                          "Expanding a summary exercise left the summary")
+        }
         XCTAssertTrue(app.buttons["summary.done"].waitTap(timeout: 10), "summary Done did not tap")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home did not return after summary")

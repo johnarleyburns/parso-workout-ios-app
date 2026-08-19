@@ -46,7 +46,7 @@ struct TrainingProgressView: View {
             .navigationDestination(for: ProgressRoute.self) { _ in HistoryView(path: $path) }
             .navigationDestination(for: HistorySummaryRoute.self) { route in
                 switch route {
-                case .strength(let s): WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) }, onExercise: { id in path.append(HistorySummaryRoute.strengthFocused(s, id)) })
+                case .strength(let s): WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
                 case .strengthFocused(let s, let id): SessionView(session: s, initiallyExpandedExerciseID: id)
                 case .cardio(let c):   CardioDetailView(workout: c)
                 }

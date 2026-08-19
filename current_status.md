@@ -2,6 +2,63 @@
 
 Updated: 2026-08-18
 
+## Phase 4 complete — read-only exercise detail in workout summaries
+
+Field test 2026-08-18 issue #1 (*"I should be able to expand/collapse the
+exercise to see details 'view only' WITHOUT having to edit the workout first…
+one row per partner, 'Me' first"*).
+
+- `WorkoutSummaryData.ExerciseLine` gains `performers: [PerformerLine]` (one
+  additive, defaulted property; new `SetLine`/`PerformerLine` value types). It is
+  built only for the owner's lines — `Me` first, then each partner in
+  first-appearance order, warm-ups excluded, empty performers dropped. No
+  persistence or schema change.
+- `WorkoutSummaryPresenter` gains `setLine`, `performerSetsText`,
+  `orderedPerformers` and `expandedAccessibilityValue` — all pure, all tested.
+  The set format is decision **D8**'s lowercase `x`: `180 lb x 12, 190 lb x 10,
+  200 lb x 8`, with `BW x 12` / `BW + 10 kg x 12` for bodyweight.
+- New `WorkoutSummaryExerciseRow` (96 LOC): the whole card is one plain `Button`
+  with `.contentShape(Rectangle())` (a card with a `Spacer` is otherwise
+  untappable in its gap) and `.accessibilityElement(children: .contain)` **before**
+  its identifier (otherwise the styled card swallows the per-performer ids).
+  Card identifiers are unchanged, so existing tests keep resolving them.
+- `WorkoutSummaryView` (307 LOC) tracks `expandedExerciseIDs: Set<String>`, so
+  several exercises can be open at once, and **drops `partnersSection`**
+  (decision **D6** — those numbers now live in the rows). The hint reads *"Tap an
+  exercise to see every set. Use Edit to change them."*
+- The `onExercise` closure is gone from `WorkoutSummaryView` and all **three**
+  call sites (the phase file listed two — `RootTabView`'s post-workout summary
+  was the third). Tapping an exercise no longer originates
+  `HistorySummaryRoute.strengthFocused`; the route itself stays, because
+  Progress's exercise-trend navigation still uses it.
+
+**Deviation from the phase file (deliberate):** `RootTabView`'s post-workout
+summary had *no* `Edit` button — `onExercise` was its only way back into the
+session. Removing it outright would have left the just-finished workout
+uneditable until the user navigated Home → history, so that summary now passes
+`onEdit`, reopening the session (NFR-8's escape hatch, decision **D7**'s
+"editing stays reachable through Edit"). `reviewExerciseID` and the
+`initiallyExpandedExerciseID:` argument it fed are deleted as now-dead state.
+
+### Verification (Phase 4)
+
+- `make ci`: build + **1,360 tests passed, 0 failures** (baseline 1,344 + 8
+  `WorkoutSummaryDataTests` + 8 `WorkoutSummaryPresenterTests`), guardrails OK.
+- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
+  **passed** (63.7 s).
+- **Honest note on the smoke assertion:** the new `summary.exercise` expansion
+  check is guarded by `if exerciseRow.exists`, and in this run it did **not**
+  fire — the smoke flow's Quick Start workout logs no sets, so the summary has no
+  exercise rows. Real coverage for this phase is headless; the guarded assertion
+  only earns its keep if the smoke flow ever starts logging a set. Left in place
+  rather than grown into a multi-step logging flow, per the fixed-size UI-suite
+  rule.
+- No ratchet change needed: both summary files are under the 400-LOC budget.
+- Not pushed, per the batch execution protocol.
+
+<details>
+<summary>Phase 3 — coach plans carry real loads (shipped, abf1746)</summary>
+
 ## Phase 3 complete — coach plans carry real loads instead of `BW x 12`
 
 Field test 2026-08-18 issue #2 (*"always BWx12 even for non-bodyweight exercises
@@ -50,6 +107,8 @@ The failure was a degraded simulator (machine load 14-17), not the optimizer.
 `recentTopSet` is an O(events) scan per planned exercise; at realistic history
 sizes that is a few tens of milliseconds and was left un-indexed rather than
 optimized against a phantom.
+
+</details>
 
 <details>
 <summary>Phase 2 — Home's vertical rhythm on the workout surfaces (shipped, 7e18583)</summary>
@@ -154,10 +213,11 @@ is explicitly exempt.
 
 </details>
 
-## Next task — field-test UI batch, Phase 4
+## Next task — field-test UI batch, Phase 5
 
-Execute `docs/field-test-ui-batch-2026-08-18/04-phase4-summary-expansion.md`
-(read-only exercise detail in workout summaries, one row per performer).
+Execute `docs/field-test-ui-batch-2026-08-18/05-phase5-single-science-link.md`
+(one `The science ›` row per coach surface, all sources on one screen, per
+decision **D9**).
 Read `00-overview.md` and `decisions.md` first.
 
 | Phase | Scope | State |
@@ -165,7 +225,7 @@ Read `00-overview.md` and `decisions.md` first.
 | 1 | Uniform full-width action buttons (`LayoutMetrics` + `CadenceActionButton`) | **done** |
 | 2 | Home's vertical rhythm on Workout Plan / Start Workout / Workout | **done** |
 | 3 | Coach plans carry real loads instead of `BW x 12` | **done** |
-| 4 | Read-only exercise detail in summaries, one row per performer | not started |
+| 4 | Read-only exercise detail in summaries, one row per performer | **done** |
 | 5 | One "The science" link, all sources on one screen | not started |
 | 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | not started |
 | 7 | Workouts Today: tappable detail, `COACH'S PLAN`, start a planned workout | not started |

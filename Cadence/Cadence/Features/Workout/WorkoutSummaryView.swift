@@ -17,13 +17,15 @@ struct WorkoutSummaryView: View {
     var onSaveHealth: (() async -> Void)? = nil
     /// Strength history only: open the set editor. `nil` ⇒ no Edit button.
     var onEdit: (() -> Void)? = nil
-    var onExercise: ((UUID) -> Void)? = nil
     /// Modal (post-workout) presentation: shows a Done button and wraps itself in
     /// a `NavigationStack`. `nil` ⇒ the view is *pushed* (history), so it relies on
     /// the ambient stack's Back button instead.
     var onDone: (() -> Void)? = nil
 
     @State private var healthSaved = false
+    /// Which exercises are showing their read-only set detail. Per-exercise, so
+    /// several can be open at once (field test 2026-08-18 #1).
+    @State private var expandedExerciseIDs: Set<String> = []
 
     var body: some View {
         if onDone != nil {
@@ -39,7 +41,6 @@ struct WorkoutSummaryView: View {
                 header
                 metricsGrid
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
-                if data.kind == .strength, !data.partners.isEmpty { partnersSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
                 if let interval = data.interval { intervalSection(interval) }
                 if !data.hr.isEmpty { hrChart }
@@ -150,66 +151,33 @@ struct WorkoutSummaryView: View {
 
     // MARK: Strength exercises
 
+    /// Every exercise expands **in place** to a read-only, per-performer set list
+    /// (field test 2026-08-18 #1, decisions **D6**/**D7**): the old bottom
+    /// `Partners` roll-up is gone because those numbers now live in these rows,
+    /// and tapping never pushes the editor — `Edit` in the toolbar does.
     private var strengthSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Exercises").font(.headline)
-            ForEach(data.exercises, id: \.name) { ex in exerciseRow(ex, idPrefix: "summary.exercise") }
-            Text("Tap an exercise to see every set’s weight, reps, and RPE.")
+            ForEach(data.exercises, id: \.name) { ex in
+                let key = ex.sourceExerciseID?.uuidString ?? ex.name
+                WorkoutSummaryExerciseRow(
+                    line: ex,
+                    unit: settings.unit,
+                    isExpanded: expandedExerciseIDs.contains(key),
+                    idPrefix: "summary.exercise",
+                    onToggle: {
+                        withAnimation {
+                            if expandedExerciseIDs.contains(key) {
+                                expandedExerciseIDs.remove(key)
+                            } else {
+                                expandedExerciseIDs.insert(key)
+                            }
+                        }
+                    })
+            }
+            Text("Tap an exercise to see every set. Use Edit to change them.")
                 .font(.caption).foregroundStyle(.secondary)
         }
-    }
-
-    /// Each training partner's roll-up (feedback batch 3) — partnered history
-    /// shows what the partner did, kept separate from the owner's PRs/volume.
-    private var partnersSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Partners").font(.headline)
-            ForEach(data.partners) { partner in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(partner.name).font(.subheadline.weight(.semibold))
-                        .accessibilityIdentifier("summary.partner.\(partner.name)")
-                    ForEach(partner.exercises, id: \.name) { ex in
-                        exerciseRow(ex, idPrefix: "summary.partner.\(partner.name).exercise")
-                    }
-                }
-            }
-        }
-    }
-
-    private func exerciseRow(_ ex: WorkoutSummaryData.ExerciseLine, idPrefix: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-            if let sourceID = ex.sourceExerciseID, let onExercise {
-                Button { onExercise(sourceID) } label: {
-                    Text(ex.name).font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("\(idPrefix).\(sourceID.uuidString)")
-            } else {
-                Text(ex.name).font(.subheadline.weight(.semibold))
-                    .accessibilityIdentifier("\(idPrefix).\(ex.name)")
-            }
-                Spacer()
-                if let top = ex.topSetWeightKg {
-                    Text(topLabel(top, bodyweight: ex.usesBodyweight))
-                        .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                }
-                if onExercise != nil && ex.sourceExerciseID != nil {
-                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
-                }
-            }
-            Text("\(ex.setCount) set\(ex.setCount == 1 ? "" : "s") · reps \(ex.reps.map(String.init).joined(separator: ", "))")
-                .font(.caption).foregroundStyle(.secondary).monospacedDigit()
-        }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-        .padding(12)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    /// "100 kg" (the heaviest set), or for bodyweight: "BW" / "BW + 10 kg".
-    private func topLabel(_ topKg: Double, bodyweight: Bool) -> String {
-        WorkoutSummaryPresenter.topLabel(topKg: topKg, bodyweight: bodyweight, unit: settings.unit)
     }
 
     // MARK: Strength warm-up / cool-down (feedback batch 6)

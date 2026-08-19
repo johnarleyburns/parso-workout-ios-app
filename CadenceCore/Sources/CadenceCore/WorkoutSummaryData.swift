@@ -12,6 +12,35 @@ import Foundation
 public struct WorkoutSummaryData: Equatable, Sendable {
     public enum Kind: String, Sendable { case strength, cardio }
 
+    /// One logged working set, in logged order (field test 2026-08-18 #1).
+    public struct SetLine: Equatable, Sendable {
+        /// Canonical kg. For a bodyweight set this is the *added* load (0 = pure BW).
+        public let weightKg: Double
+        public let reps: Int
+        public let usesBodyweight: Bool
+
+        public init(weightKg: Double, reps: Int, usesBodyweight: Bool) {
+            self.weightKg = weightKg
+            self.reps = reps
+            self.usesBodyweight = usesBodyweight
+        }
+    }
+
+    /// One performer's working sets for an exercise. `isMe` sorts first and is
+    /// labelled "Me"; partners follow in first-appearance order.
+    public struct PerformerLine: Equatable, Sendable, Identifiable {
+        public let name: String
+        public let isMe: Bool
+        public let sets: [SetLine]
+        public var id: String { name }
+
+        public init(name: String, isMe: Bool, sets: [SetLine]) {
+            self.name = name
+            self.isMe = isMe
+            self.sets = sets
+        }
+    }
+
     /// One exercise's roll-up within a strength summary. Reflects the **owner's
     /// working (non-warmup) sets only** — partner and warmup sets are excluded
     /// (field-testing §04, decision #13), matching `WorkoutSession.totalVolume`.
@@ -27,16 +56,23 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         /// True when this exercise's working sets are bodyweight (feedback batch
         /// 3) — the view renders "BW" / "BW + X" rather than a bare weight.
         public let usesBodyweight: Bool
+        /// Every performer's working sets for this exercise — "Me" first, then
+        /// each partner in first-appearance order. Populated for the owner's
+        /// lines so the summary can expand read-only detail without entering the
+        /// editor (field test 2026-08-18 #1); empty on a partner roll-up line.
+        public let performers: [PerformerLine]
 
         public init(name: String, setCount: Int, topSetWeightKg: Double?, reps: [Int],
                     sourceExerciseID: UUID? = nil,
-                    usesBodyweight: Bool = false) {
+                    usesBodyweight: Bool = false,
+                    performers: [PerformerLine] = []) {
             self.sourceExerciseID = sourceExerciseID
             self.name = name
             self.setCount = setCount
             self.topSetWeightKg = topSetWeightKg
             self.reps = reps
             self.usesBodyweight = usesBodyweight
+            self.performers = performers
         }
     }
 
@@ -175,7 +211,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         // owner's working (non-warmup) sets. Partner-only exercises are excluded.
         // Owner lines: every exercise with ≥1 owner set (warmup-only lines keep a
         // setCount of 0 rather than vanishing — round4b feedback #7).
-        let exercises = lines(in: session) { $0.isOwnerSet }
+        let exercises = lines(in: session, includePerformers: true) { $0.isOwnerSet }
         let setCount = exercises.reduce(0) { $0 + $1.setCount }
         let totalReps = exercises.reduce(0) { $0 + $1.reps.reduce(0, +) }
         // Partner lines: grouped by partner name, in first-appearance order
@@ -214,8 +250,11 @@ public struct WorkoutSummaryData: Equatable, Sendable {
 
     /// Builds per-exercise lines for the sets matching `belongs`, keeping any
     /// exercise with ≥1 matching set (working sets summarize the line).
+    /// `includePerformers` attaches every performer's sets to the line — only the
+    /// owner's lines need it; a partner roll-up would otherwise repeat them.
     private static func lines(in session: WorkoutSession,
-                             belongs: (SetEntry) -> Bool) -> [ExerciseLine] {
+                              includePerformers: Bool = false,
+                              belongs: (SetEntry) -> Bool) -> [ExerciseLine] {
         session.exercisesInOrder.compactMap { (ex) -> ExerciseLine? in
             let mine = session.orderedSets.filter { $0.exercise?.id == ex.id && belongs($0) }
             guard !mine.isEmpty else { return nil }
@@ -225,8 +264,35 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                                 topSetWeightKg: working.map(\.effectiveLoadKg).max(),
                                 reps: working.map(\.reps),
                                 sourceExerciseID: ex.id,
-                                usesBodyweight: working.contains { $0.usesBodyweight })
+                                usesBodyweight: working.contains { $0.usesBodyweight },
+                                performers: includePerformers
+                                    ? performerLines(in: session, exerciseID: ex.id) : [])
         }
+    }
+
+    /// Every performer's working sets for one exercise: the owner as "Me" first,
+    /// then each partner in first-appearance order. Warm-ups are excluded, so a
+    /// performer whose only sets were warm-ups is dropped rather than shown empty
+    /// (field test 2026-08-18 #1).
+    private static func performerLines(in session: WorkoutSession,
+                                       exerciseID: UUID) -> [PerformerLine] {
+        let working = session.orderedSets.filter { $0.exercise?.id == exerciseID && !$0.isWarmup }
+        var result: [PerformerLine] = []
+        let owner = working.filter { $0.isOwnerSet }
+        if !owner.isEmpty {
+            result.append(PerformerLine(name: "Me", isMe: true, sets: owner.map(setLine)))
+        }
+        var seen: Set<String> = []
+        for set in working {
+            guard let p = set.performedBy, !p.isMe, seen.insert(p.name).inserted else { continue }
+            let theirs = working.filter { $0.performedBy?.name == p.name && !$0.isOwnerSet }
+            result.append(PerformerLine(name: p.name, isMe: false, sets: theirs.map(setLine)))
+        }
+        return result
+    }
+
+    private static func setLine(_ set: SetEntry) -> SetLine {
+        SetLine(weightKg: set.effectiveLoadKg, reps: set.reps, usesBodyweight: set.usesBodyweight)
     }
 
     /// Builds a cardio summary from a recorded/ingested cardio workout.

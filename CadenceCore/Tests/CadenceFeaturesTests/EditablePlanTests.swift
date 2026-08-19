@@ -45,6 +45,31 @@ final class EditablePlanTests: XCTestCase {
         XCTAssertEqual(plan.exercises.first?.sets.map(\.targetReps), [8, 8, 8])
     }
 
+    /// Field test 2026-08-18 #2: a resolved coach load must survive into the
+    /// editable plan, and a bodyweight movement must stay unweighted (D4).
+    func testCoachPlanCarriesResolvedWeightsIntoEditableSets() {
+        let session = CoachSession(
+            id: "c2", kind: .strength, title: "Pull",
+            exercises: [CoachSession.RecommendedExercise(
+                name: "Standing Dumbbell Upright Row",
+                sets: 3, repsLow: 12, loadKg: 22.5, rir: 2)])
+        let plan = EditablePlan.from(coach: session)
+        let sets = plan?.exercises.first?.sets ?? []
+        XCTAssertEqual(sets.count, 3)
+        XCTAssertEqual(sets.allSatisfy { $0.targetWeight == 22.5 }, true,
+                       "a resolved load must reach every planned set, not render as BW")
+    }
+
+    func testCoachPlanBodyweightExerciseHasNilTargetWeight() {
+        let session = CoachSession(
+            id: "c3", kind: .strength, title: "Push",
+            exercises: [CoachSession.RecommendedExercise(name: "Push-Up", sets: 3, repsLow: 20, rir: 2)])
+        let plan = EditablePlan.from(coach: session)
+        XCTAssertEqual(plan?.exercises.first?.sets.allSatisfy { $0.targetWeight == nil }, true)
+        XCTAssertTrue(ExerciseLoading.isBodyweight(named: "Push-Up"),
+                      "which is why the editor is allowed to print BW for it")
+    }
+
     func testFromCoachSessionMapsExercises() {
         let ex = CoachSession.RecommendedExercise(name: "Bench Press", sets: 3, repsLow: 8, loadKg: 60, rir: 2)
         let session = CoachSession(id: "c1", kind: .strength, title: "Upper", exercises: [ex])

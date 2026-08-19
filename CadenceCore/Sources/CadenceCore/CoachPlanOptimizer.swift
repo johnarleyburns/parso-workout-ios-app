@@ -671,6 +671,7 @@ public enum CoachPlanOptimizer {
             if used.contains(exercise.name),
                let alternative = varietyAlternative(for: exercise,
                                                     avoiding: used.union(result.map(\.name)),
+                                                    trainingFacts: trainingFacts,
                                                     coachFacts: coachFacts,
                                                     slot: slot,
                                                     policy: policy) {
@@ -693,6 +694,7 @@ public enum CoachPlanOptimizer {
     /// rather than degrading coverage.
     private static func varietyAlternative(for exercise: CoachSession.RecommendedExercise,
                                            avoiding used: Set<String>,
+                                           trainingFacts: TrainingFacts,
                                            coachFacts: CoachFacts,
                                            slot: PlanningSlot,
                                            policy: PlanningConstraintPolicy) -> CoachSession.RecommendedExercise? {
@@ -724,14 +726,25 @@ public enum CoachPlanOptimizer {
             let ladder = (exercise.sets).map {
                 RepLadder.ladder(low: range.lowerBound, high: range.upperBound, sets: $0)
             } ?? exercise.repLadder
-            return CoachSession.RecommendedExercise(
+            // Build the candidate first: the load lookup reads its rep target, so
+            // resolving the load before the ladder would price the wrong reps.
+            let replacement = CoachSession.RecommendedExercise(
                 name: name,
                 sets: exercise.sets,
                 repsLow: range.lowerBound,
                 repsHigh: range.upperBound,
-                loadKg: nil,
                 rir: exercise.rir,
                 repLadder: ladder)
+            return CoachSession.RecommendedExercise(
+                name: name,
+                sets: replacement.sets,
+                repsLow: replacement.repsLow,
+                repsHigh: replacement.repsHigh,
+                loadKg: suggestedLoadKg(for: replacement,
+                                        trainingFacts: trainingFacts,
+                                        coachFacts: coachFacts),
+                rir: replacement.rir,
+                repLadder: replacement.repLadder)
         }
         return nil
     }
@@ -1112,7 +1125,9 @@ public enum CoachPlanOptimizer {
             sets: resolvedSets,
             repsLow: bodyweightAdjusted ? range?.lowerBound : (exercise.repsLow ?? range?.lowerBound),
             repsHigh: bodyweightAdjusted ? range?.upperBound : (exercise.repsHigh ?? range?.upperBound),
-            loadKg: exercise.loadKg ?? suggestedLoadKg(for: exercise, trainingFacts: trainingFacts),
+            loadKg: exercise.loadKg ?? suggestedLoadKg(for: exercise,
+                                                       trainingFacts: trainingFacts,
+                                                       coachFacts: coachFacts),
             rir: exercise.rir ?? goal?.targetRIR,
             repLadder: ladder)
     }
@@ -1121,15 +1136,38 @@ public enum CoachPlanOptimizer {
     /// user has trained that movement before. New or bodyweight movements remain
     /// unweighted instead of inventing a number.
     private static func suggestedLoadKg(for exercise: CoachSession.RecommendedExercise,
-                                        trainingFacts: TrainingFacts?) -> Double? {
-        guard let facts = trainingFacts,
-              let snapshot = facts.liftSnapshots.first(where: {
-                  $0.key.caseInsensitiveCompare(exercise.name) == .orderedSame
-              })?.value else { return nil }
-        let reps = exercise.repLadder?.first ?? exercise.repsLow ?? snapshot.topSetReps
-        guard reps > 0, snapshot.bestE1RM > 0 else { return nil }
-        let suggested = WeightSuggestion.inverseE1RM(
-            e1rm: snapshot.bestE1RM, reps: reps, formula: .epley)
+                                        trainingFacts: TrainingFacts?,
+                                        coachFacts: CoachFacts?) -> Double? {
+        // A bodyweight movement genuinely has no external load — never invent one.
+        guard !ExerciseLoading.isBodyweight(named: exercise.name) else { return nil }
+
+        let reps = exercise.repLadder?.first ?? exercise.repsLow
+
+        // 1. Trailing-week snapshot (unchanged behaviour, keeps existing tests green).
+        if let facts = trainingFacts,
+           let snapshot = facts.liftSnapshots.first(where: {
+               $0.key.caseInsensitiveCompare(exercise.name) == .orderedSame
+           })?.value,
+           snapshot.bestE1RM > 0 {
+            let r = reps ?? snapshot.topSetReps
+            if r > 0, let load = load(fromE1RM: snapshot.bestE1RM, reps: r) { return load }
+        }
+
+        // 2. All-history fallback: `liftSnapshots` only covers the trailing week,
+        //    so anything trained 8+ days ago used to render as BW (field test
+        //    2026-08-18 #2).
+        if let coachFacts,
+           let top = CoachSession.recentTopSet(forExerciseNamed: exercise.name, facts: coachFacts),
+           top.bestE1RM > 0 {
+            let r = reps ?? top.reps
+            if r > 0, let load = load(fromE1RM: top.bestE1RM, reps: r) { return load }
+        }
+        return nil
+    }
+
+    /// Inverse-e1RM at the planned rep target, rounded to the nearest half unit.
+    private static func load(fromE1RM e1rm: Double, reps: Int) -> Double? {
+        let suggested = WeightSuggestion.inverseE1RM(e1rm: e1rm, reps: reps, formula: .epley)
         return suggested > 0 ? (suggested * 2).rounded() / 2 : nil
     }
 

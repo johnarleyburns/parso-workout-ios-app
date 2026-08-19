@@ -2,6 +2,58 @@
 
 Updated: 2026-08-18
 
+## Phase 3 complete — coach plans carry real loads instead of `BW x 12`
+
+Field test 2026-08-18 issue #2 (*"always BWx12 even for non-bodyweight exercises
+like Standing Dumbbell Upright Row"*). Three independent causes, all fixed:
+
+- **The load lookup only saw the last 7 days.** `TrainingFacts.liftSnapshots` is
+  built from the trailing week, so any lift last trained 8+ days ago resolved to
+  `nil`. `CoachPlanOptimizer.suggestedLoadKg` now falls back to a new
+  `CoachSession.recentTopSet(forExerciseNamed:facts:)`, which finds the newest
+  logged top set across **all** history by canonical name (decision **D5**
+  resolution order: explicit load → trailing-week snapshot → all-history top set
+  → nothing).
+- **Anti-repeat rotation stripped the load.** `varietyAlternative` hard-coded
+  `loadKg: nil` and `rotatedForVariety` never forwarded `trainingFacts`. The
+  replacement is now built first (so the load is priced at the *replacement's*
+  rep target, not the original's) and then resolved through the same lookup.
+- **The renderer conflated "no load" with "bodyweight".** `BW` is now a statement
+  about the movement, never about missing data (decision **D4**): a loaded lift
+  with no resolvable history renders `—`. Applied in `CompactExerciseRow`,
+  `WorkoutPlanExerciseSection` and `HomeCoachRecommendationCard`, all reading the
+  new public `ExerciseLoading.isBodyweight(named:)` façade — the app does not
+  re-implement keyword matching anywhere.
+
+A bodyweight movement still resolves to no external load, by guard, before any
+history lookup runs — the coach never invents a number for a push-up.
+
+### Verification (Phase 3)
+
+- `make ci`: build + **1,344 tests passed, 0 failures** (baseline 1,330 + 3
+  `ExerciseLoadingTests`, 4 `CoachSessionRecentTopSetTests`, 5
+  `CoachPlanOptimizerTests`, 2 `EditablePlanTests`), guardrails OK.
+- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
+  **passed** (83.6 s).
+- No coach test regressed — `CoachExerciseVarietyTests`,
+  `CoachBodyweightPrescriptionTests`, `RecommendationPrescriptionTests`,
+  `WeightSuggestionTests` and `SameDayLoadRegressionTests` are all green.
+- Also removed a duplicated `editor.partners` assertion left in the smoke test by
+  Phase 2.
+- Not pushed, per the batch execution protocol.
+
+**One retracted diagnosis, recorded so it isn't re-derived:** an intermediate
+smoke run failed at 136 s and a stash-bisect appeared to implicate
+`CoachPlanOptimizer`. It does not — with the change restored the same test passes
+in 72 s against a 71 s bisect baseline, and again at 83.6 s under `make smoke`.
+The failure was a degraded simulator (machine load 14-17), not the optimizer.
+`recentTopSet` is an O(events) scan per planned exercise; at realistic history
+sizes that is a few tens of milliseconds and was left un-indexed rather than
+optimized against a phantom.
+
+<details>
+<summary>Phase 2 — Home's vertical rhythm on the workout surfaces (shipped, 7e18583)</summary>
+
 ## Phase 2 complete — Home's vertical rhythm on the workout surfaces
 
 Field test 2026-08-18 issue #5. Workout Plan, Start Workout and Workout now read
@@ -46,6 +98,8 @@ Home's `Workouts Today` / `This Week` cards already use.
 - Ratchet lowered in `scripts/check-test-pyramid.sh`: `SessionView.swift`
   1089 → **1085**.
 - Not pushed, per the batch execution protocol.
+
+</details>
 
 <details>
 <summary>Phase 1 — uniform full-width action buttons (shipped, bdc7a83)</summary>
@@ -100,18 +154,17 @@ is explicitly exempt.
 
 </details>
 
-## Next task — field-test UI batch, Phase 3
+## Next task — field-test UI batch, Phase 4
 
-Execute `docs/field-test-ui-batch-2026-08-18/03-phase3-coach-load-fix.md`
-(coach-planned exercises carry real loads instead of `BW x 12`; load resolution
-order per decision **D5**, `BW` semantics per **D4**).
+Execute `docs/field-test-ui-batch-2026-08-18/04-phase4-summary-expansion.md`
+(read-only exercise detail in workout summaries, one row per performer).
 Read `00-overview.md` and `decisions.md` first.
 
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Uniform full-width action buttons (`LayoutMetrics` + `CadenceActionButton`) | **done** |
 | 2 | Home's vertical rhythm on Workout Plan / Start Workout / Workout | **done** |
-| 3 | Coach plans carry real loads instead of `BW x 12` | not started |
+| 3 | Coach plans carry real loads instead of `BW x 12` | **done** |
 | 4 | Read-only exercise detail in summaries, one row per performer | not started |
 | 5 | One "The science" link, all sources on one screen | not started |
 | 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | not started |

@@ -610,6 +610,26 @@ extension CoachSession {
         return best
     }
 
+    /// The user's most recent logged top set for a movement across ALL history
+    /// (matched by canonical name), newest first. `liftSnapshots` only covers the
+    /// trailing week, so this is what keeps a plan's weights real for anything
+    /// trained more than seven days ago (field test 2026-08-18 #2).
+    static func recentTopSet(forExerciseNamed name: String,
+                             facts: CoachFacts) -> (weightKg: Double, reps: Int, bestE1RM: Double)? {
+        let target = MuscleCatalog.canonicalName(name)
+        var best: (weightKg: Double, reps: Int, bestE1RM: Double, at: Date)?
+        for event in facts.events {
+            guard case .strength(let details) = event.kind, let d = details else { continue }
+            for ex in d.exercises
+            where MuscleCatalog.canonicalName(ex.exerciseName) == target && ex.topSetWeightKg > 0 {
+                if best == nil || ex.lastWorkingSetAt > best!.at {
+                    best = (ex.topSetWeightKg, ex.topSetReps, ex.bestE1RM, ex.lastWorkingSetAt)
+                }
+            }
+        }
+        return best.map { ($0.weightKg, $0.reps, $0.bestE1RM) }
+    }
+
     private static func generateBeginnerA(facts: CoachFacts,
                                           desiredSetsPerExercise: Int = 3) -> [RecommendedExercise] {
         let preferred = mostTrainedExercises(facts: facts)

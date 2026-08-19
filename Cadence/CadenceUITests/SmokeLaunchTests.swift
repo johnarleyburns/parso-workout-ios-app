@@ -73,9 +73,6 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // Field test 2026-08-18 #5: the plan editor is a Home-rhythm scroll surface.
         XCTAssertTrue(app.descendants(matching: .any)["editor.partners"].waitForExistence(timeout: 5),
                       "Workout Plan lost its Training partners card")
-        // Field test 2026-08-18 #5: the plan editor is a Home-rhythm scroll surface.
-        XCTAssertTrue(app.descendants(matching: .any)["editor.partners"].waitForExistence(timeout: 5),
-                      "Workout Plan lost its Training partners card")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitForExistence(timeout: 5),
                       "Could not return to Start Workout")

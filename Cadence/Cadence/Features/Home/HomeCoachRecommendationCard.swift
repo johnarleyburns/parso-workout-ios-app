@@ -48,6 +48,12 @@ struct HomeCoachRecommendationCard: View {
                             Text(Format.weight(loadKg, unit: settings.unit, decimals: 0))
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.secondary)
+                        } else if ExerciseLoading.isBodyweight(named: exercise.name) {
+                            // Bodyweight is a real prescription; an unresolved load
+                            // on a loaded lift still shows nothing (field test #2).
+                            Text("BW")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .font(.caption)

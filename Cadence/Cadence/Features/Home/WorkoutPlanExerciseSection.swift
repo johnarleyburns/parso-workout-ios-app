@@ -57,6 +57,13 @@ struct WorkoutPlanExerciseSection: View {
         }
     }
 
+    /// `BW` only for movements that really are bodyweight; an unresolved load on a
+    /// loaded lift is an em dash (field test 2026-08-18 #2, decision D4).
+    private func loadLabel(for set: EditableSet) -> String {
+        if let w = set.targetWeight { return Format.weight(w, unit: unit) }
+        return ExerciseLoading.isBodyweight(named: exercise.name) ? "BW" : "—"
+    }
+
     /// Identity-keyed so deleting a set never leaves a row bound to a stale index.
     private func binding(forSet id: UUID) -> Binding<EditableSet> {
         Binding(
@@ -71,11 +78,9 @@ struct WorkoutPlanExerciseSection: View {
         HStack {
             Stepper("Reps: \(set.wrappedValue.targetReps)", value: set.targetReps, in: 1...100)
                 .frame(maxWidth: .infinity)
-            if let w = set.wrappedValue.targetWeight {
-                Text(Format.weight(w, unit: unit))
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .frame(width: 70, alignment: .trailing)
-            }
+            Text(loadLabel(for: set.wrappedValue))
+                .font(.subheadline).foregroundStyle(.secondary)
+                .frame(width: 70, alignment: .trailing)
             Button(role: .destructive) {
                 let id = set.wrappedValue.id
                 exercise.sets.removeAll { $0.id == id }

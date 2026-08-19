@@ -779,7 +779,8 @@ final class CoachPlanOptimizerTests: XCTestCase {
                             completedSets: [BodyPart: Double],
                             strengthDays: Int,
                             cardioDays: Int = 0,
-                            recovery: RecoveryState = .empty) -> CoachFacts {
+                            recovery: RecoveryState = .empty,
+                            events: [TrainingEvent] = []) -> CoachFacts {
         let balance = WeeklyBalance(
             strengthDays: strengthDays,
             cardioDays: cardioDays,
@@ -797,7 +798,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             readinessAvailable: false,
             dataCompleteness: .moderate)
         return CoachFacts(
-            events: [],
+            events: events,
             recovery: recovery,
             weeklyBalance: balance,
             goal: .strength,
@@ -848,6 +849,184 @@ final class CoachPlanOptimizerTests: XCTestCase {
             launchPayload: .strengthPlan("fullBody"),
             systemsTrained: [.maximalStrength, .hypertrophy],
             evidenceCategory: .strengthIntensity)
+    }
+
+    // MARK: - Planned load resolution (field test 2026-08-18 #2)
+
+    /// A movement last trained three weeks ago is absent from `liftSnapshots`
+    /// (trailing week only) and used to render as `BW×12`.
+    func testPlannedLoadResolvesFromHistoryOlderThanOneWeek() {
+        let now = fixedWednesday()
+        let facts = trainingFacts([:])
+        let coach = coachFacts(now: now, completedSets: [:], strengthDays: 0,
+                               events: [strengthEvent("Standing Dumbbell Upright Row",
+                                                      weightKg: 20, reps: 12, e1rm: 28,
+                                                      daysAgo: 21, now: now)])
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: weeklyPlan(now: now, days: [(1, [.strength])]),
+            schedulePreferences: preferences(twoADays: false),
+            candidates: [session(withExercises: ["Standing Dumbbell Upright Row"])])
+
+        let planned = optimized.plannedStrengthSessions
+            .flatMap { $0.exercises ?? [] }
+            .first { $0.name == "Standing Dumbbell Upright Row" }
+        XCTAssertNotNil(planned, "the planned session should still contain the movement")
+        XCTAssertNotNil(planned?.loadKg,
+                        "a lift trained 21 days ago must still carry a real load, not BW")
+        XCTAssertGreaterThan(planned?.loadKg ?? 0, 0)
+    }
+
+    /// Anti-repeat rotation used to hard-code `loadKg: nil`, so every swapped-in
+    /// isolation movement lost its weight.
+    func testVarietyRotationKeepsAResolvedLoad() {
+        let now = fixedWednesday()
+        let facts = trainingFacts([:])
+        let history = ["Barbell Curl", "Dumbbell Curl"].map {
+            strengthEvent($0, weightKg: 30, reps: 10, e1rm: 40, daysAgo: 12, now: now)
+        }
+        let coach = coachFacts(now: now, completedSets: [:], strengthDays: 0, events: history)
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: weeklyPlan(now: now, days: [(1, [.strength]), (2, [.strength])]),
+            schedulePreferences: preferences(twoADays: false),
+            candidates: [session(withExercises: ["Barbell Curl"])])
+
+        let all = optimized.plannedStrengthSessions.flatMap { $0.exercises ?? [] }
+        let withHistory = all.filter {
+            CoachSession.recentTopSet(forExerciseNamed: $0.name, facts: coach) != nil
+        }
+        // Day 2 rotates Barbell Curl out for Dumbbell Curl; both are trained, so
+        // both must be priced. Before the fix the rotated-in one was always nil.
+        XCTAssertGreaterThanOrEqual(withHistory.count, 2,
+                                    "rotation should have placed a second trained curl variant")
+        for exercise in withHistory {
+            XCTAssertNotNil(exercise.loadKg,
+                            "\(exercise.name) has history, so the plan must carry its load")
+        }
+    }
+
+    func testBodyweightMovementKeepsNilLoad() {
+        let now = fixedWednesday()
+        let coach = coachFacts(now: now, completedSets: [:], strengthDays: 0,
+                               events: [strengthEvent("Push-Up", weightKg: 80, reps: 20, e1rm: 120,
+                                                      daysAgo: 4, now: now)])
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: trainingFacts([:]),
+            coachFacts: coach,
+            weeklyPlan: weeklyPlan(now: now, days: [(1, [.strength])]),
+            schedulePreferences: preferences(twoADays: false),
+            candidates: [session(withExercises: ["Push-Up"])])
+
+        let pushUp = optimized.plannedStrengthSessions
+            .flatMap { $0.exercises ?? [] }
+            .first { $0.name == "Push-Up" }
+        XCTAssertNil(pushUp?.loadKg, "a bodyweight movement must never be given an external load")
+    }
+
+    func testUntrainedLoadedMovementKeepsNilLoad() {
+        let now = fixedWednesday()
+        let coach = coachFacts(now: now, completedSets: [:], strengthDays: 0)
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: trainingFacts([:]),
+            coachFacts: coach,
+            weeklyPlan: weeklyPlan(now: now, days: [(1, [.strength])]),
+            schedulePreferences: preferences(twoADays: false),
+            candidates: [session(withExercises: ["Standing Dumbbell Upright Row"])])
+
+        let planned = optimized.plannedStrengthSessions
+            .flatMap { $0.exercises ?? [] }
+            .first { $0.name == "Standing Dumbbell Upright Row" }
+        XCTAssertNil(planned?.loadKg, "we never invent a weight for a movement with no history")
+    }
+
+    /// The trailing-week snapshot still wins over the all-history fallback.
+    func testTrailingWeekSnapshotStillWins() {
+        let now = fixedWednesday()
+        var facts = trainingFacts([:])
+        facts = TrainingFacts(
+            weeklySetsByPart: facts.weeklySetsByPart,
+            frequencyByPart: facts.frequencyByPart,
+            e1RMTrendByExercise: [:],
+            intensity: .empty,
+            avgRPE: nil,
+            daysSinceLastSession: 2,
+            totalWorkingSets: facts.totalWorkingSets,
+            allTimeWorkingSets: facts.allTimeWorkingSets,
+            liftSnapshots: ["Bench Press": LiftSnapshot(exercise: "Bench Press",
+                                                        part: .chest,
+                                                        topSetWeightKg: 100,
+                                                        topSetReps: 5,
+                                                        bestE1RM: 116,
+                                                        trend: nil)],
+            goal: .strength,
+            experience: .intermediate)
+        // Deliberately much lighter, much older history for the same lift.
+        let coach = coachFacts(now: now, completedSets: [:], strengthDays: 0,
+                               events: [strengthEvent("Bench Press", weightKg: 40, reps: 5, e1rm: 46,
+                                                      daysAgo: 40, now: now)])
+        let optimized = CoachPlanOptimizer.optimize(
+            trainingFacts: facts,
+            coachFacts: coach,
+            weeklyPlan: weeklyPlan(now: now, days: [(1, [.strength])]),
+            schedulePreferences: preferences(twoADays: false),
+            candidates: [session(withExercises: ["Bench Press"])])
+
+        let bench = optimized.plannedStrengthSessions
+            .flatMap { $0.exercises ?? [] }
+            .first { $0.name == "Bench Press" }
+        XCTAssertNotNil(bench?.loadKg)
+        XCTAssertGreaterThan(bench?.loadKg ?? 0, 60,
+                             "the trailing-week snapshot (116 e1RM) must win over 40 kg from 40 days ago")
+    }
+
+    private func session(withExercises names: [String]) -> CoachSession {
+        CoachSession(
+            id: "strength.load",
+            kind: .strength,
+            title: "Strength session",
+            subtitle: "Load resolution",
+            durationMinutes: 45,
+            exercises: names.map { .init(name: $0, sets: 3, repsLow: 8, repsHigh: 12) },
+            trainingLoadTags: ["strength"],
+            citationIds: ["schoenfeld2021"],
+            launchPayload: .strengthPlan("fullBody"),
+            systemsTrained: [.hypertrophy],
+            evidenceCategory: .strengthIntensity)
+    }
+
+    private func strengthEvent(_ name: String,
+                               weightKg: Double,
+                               reps: Int,
+                               e1rm: Double,
+                               daysAgo: Int,
+                               now: Date) -> TrainingEvent {
+        let end = now.addingTimeInterval(-Double(daysAgo) * 86_400)
+        let perExercise = StrengthEventDetails.PerExercise(
+            exerciseID: name.lowercased(),
+            exerciseName: name,
+            patterns: [],
+            bodyParts: [],
+            hardSetCount: 3,
+            topSetWeightKg: weightKg,
+            topSetReps: reps,
+            bestE1RM: e1rm,
+            meanRPE: 8,
+            maxRPE: 9,
+            reachedFailure: false,
+            lastWorkingSetAt: end)
+        return TrainingEvent(
+            id: UUID(),
+            start: end.addingTimeInterval(-3600),
+            end: end,
+            kind: .strength(StrengthEventDetails(exercises: [perExercise],
+                                                 totalHardSets: 3,
+                                                 duration: 3600,
+                                                 sessionEnd: end)),
+            source: .appStrength,
+            completion: .completed)
     }
 
     private func makeDayOutline(date: Date, kinds: [CoachSessionKind], cal: Calendar) -> WeeklyPlan.DayOutline {

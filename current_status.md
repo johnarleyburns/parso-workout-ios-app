@@ -2,7 +2,84 @@
 
 Updated: 2026-08-19
 
-## Phase 9 complete — the coach fills each training partner's plan
+## Field-test UI batch: shipped and pushed
+
+All nine phases are on `origin/main` (`f809818..1e0383a`) and CI run
+**32293878105 passed** (12m05s: core tests, both guardrails, archive, TestFlight
+upload). **The CloudKit schema was deployed to Production**, so Phase 9's
+`plannedPerformerPrescriptionsData` syncs — that release gate is closed.
+
+## Current task — watch HealthKit crashes (field report 2026-08-19)
+
+Three crashes reported after the batch, all on the **watch**, all with one root
+cause:
+
+1. Watch → **Live HR → Start monitoring** → immediate crash.
+2. iPhone asking the watch for HR before a cardio workout → crash (the chest
+   strap over BLE was fine, because it never opens an `HKWorkoutSession`).
+3. Tapping the stale **"Resume Strength - Upper Body"** row → crash (it calls
+   `startWorkout`, the same path).
+
+### Root cause — `@preconcurrency` conformance on a `@MainActor` class
+
+`WatchWorkoutManager` is `@MainActor`. Its HealthKit/WatchKit delegates were
+declared `extension … : @preconcurrency HKWorkoutSessionDelegate`, which compiles
+but leaves the witnesses **main-actor-isolated**. Swift 6 then inserts a dynamic
+isolation check at each entry point, and HealthKit calls `didChangeTo` on its own
+queue the instant a session starts — the check traps and the app dies.
+
+The bodies already hopped with `Task { @MainActor in … }`, so the author knew the
+callbacks were off-main; the *annotation* contradicted the code, and the trap
+fires before the body runs. It broke on **2026-08-09** (`e84051e` Swift 6
+migration + `09ec490`), three weeks after the watch shipped — matching "HR broke
+recently". The phone had already been fixed the same way for `WCSession`
+(`bca32c9`); the watch's HealthKit delegates never got that treatment.
+
+**Why no test caught it:** the watch smoke test runs with `uiTestMode`, and both
+`startWorkout` and `beginSession` return before touching HealthKit in that mode,
+so no automated test on any device could ever have reached the crash.
+
+### The fix
+
+- **New `WatchWorkoutManagerHealthKit.swift`** holds all three conformances with
+  every witness `nonisolated`, hopping explicitly onto the main actor — the
+  phone's `WCSession` shape. The builder callback extracts its values on
+  HealthKit's queue into a `Sendable CollectedSample`, so nothing non-`Sendable`
+  crosses. It had to be a new file: `WatchWorkoutManager.swift` was at 396 LOC
+  against the watch's **hard 400 cap** (no ratchet), and is now 355.
+- `WatchWorkoutManager` gained main-actor `apply(_:)`, `applyLapEvent()` and
+  `handleSessionFailure()`, which own all the state mutation.
+- **Swipe-to-delete on the Resume row** (`watch.resumeStrength.delete`): the only
+  way to remove an abandoned session used to be to *open* it, which starts a
+  workout session just to discard one. New
+  `CadenceFeatures/WatchResumableSession.discard(_:in:)` deletes locally and
+  returns the same `discard_session` payload `WatchStrengthFlowModel.cancel()`
+  sends, so both routes behave identically.
+
+### Verification
+
+- **The crash was reproduced in a test, then fixed.** Three new watch unit tests
+  enter each delegate from a background queue. Against the shipped code all three
+  **crash the test host** ("Restarting after unexpected exit, crash, or test
+  timeout"); against the fix all three pass, and the watch unit suite is 6/6.
+  That before/after was run deliberately by reverting the fix, not inferred.
+- `make ci`: **1,445 tests, 0 failures** (1,442 + 3 `WatchResumableSessionTests`),
+  guardrails OK.
+- `make watch-smoke` runs the watch unit tests before the UI smoke, so these
+  regressions are on the commit gate.
+- **Honest gap — not verified on hardware.** The user stopped local device
+  testing before the fixed build reached the watch (the install failed on
+  `John's Apple Watch may need to be unlocked`, a device-pairing state, not a
+  build error). So the evidence is the reproduce-then-fix test above plus green
+  gates — strong, but nobody has yet watched Live HR run on a real wrist. The
+  three reported symptoms should be re-checked on device after this ships.
+
+---
+
+<details>
+<summary>Phase 9 — the coach fills each training partner's plan (shipped, 1e0383a)</summary>
+
+## Phase 9 complete — the coach fills each training partner's plan (shipped, `1e0383a`)
 
 Field test 2026-08-18 issue #4
 (`docs/field-test-ui-batch-2026-08-18/09-phase9-partner-plans.md`) — the largest
@@ -122,6 +199,8 @@ stayed green through that change.
   single `editor.partners` existence check; the standing "guarded assertions are
   worth little" rule made a real add-a-partner-from-view-mode flow the better
   buy.
+
+</details>
 
 ---
 
@@ -713,50 +792,30 @@ is explicitly exempt.
 
 </details>
 
-## Next task — the batch is done; awaiting review and a push
+## Next task
 
-**All nine phases of the field-test UI batch are implemented and committed on
-`main`. Nine commits (Phases 1-9) are unpushed.** There is no Phase 10.
+1. **Confirm the watch fix on hardware** — Live HR → Start monitoring, the
+   phone's pre-cardio HR request, and swipe-deleting the stale
+   "Resume Strength - Upper Body" row. This is the one thing the automated
+   evidence cannot supply, and it is still outstanding.
+2. A field test of the nine shipped batch changes is still the natural next
+   input.
 
-What the next session should do, in order:
+Standing rules from the batch, which outlive it:
 
-1. **Wait for the user's review.** The batch protocol has been "commit, do not
-   push, stop" since Phase 1; nothing leaves this machine until they say so.
-2. When they approve: `git push origin main`, then watch CI
-   (`gh run list --branch main --limit 1`) and report the result — the CLAUDE.md
-   post-task checklist steps 6-8, which this batch suspended, resume here.
-3. **Before any TestFlight/production build**, deploy the CloudKit schema to
-   Production in the Dashboard: Phase 9 added the
-   `plannedPerformerPrescriptionsData` field. Additive and CloudKit-compliant,
-   but it will not sync until the schema is deployed.
-4. A **field test of the nine shipped changes** is the natural next input; the
-   previous two batches both started that way.
-
-Standing rules this batch established, which outlive it:
-
-- **The iPhone UI suite is one test.** New UI coverage extends
-  `testIPhoneStrengthWorkoutPlansLogsAndCompletes`; it never adds a test
-  function (`EXPECTED_IPHONE_SMOKE_TESTS=1`). Prefer a `swift test`.
-- **Assertions behind `if …exists` are worth little.** Phases 4 and 5 shipped
-  guarded assertions that may never have run; Phase 6 proved its guard fired with
-  a temporary hard-assert probe, and Phases 7-9 removed the guards entirely by
-  making the flow do real work. Hold new UI coverage to that standard.
-- **This repo has its own simulator**, `Cadence-iPhone-16`; `make shutdown-sims`
-  never shuts down anything else. If `xcodebuild` reports it cannot find that
-  device while `simctl` lists it as available, that is a CoreSimulatorService
-  hiccup — retry before debugging.
-
-| Phase | Scope | State |
-|---|---|---|
-| 1 | Uniform full-width action buttons (`LayoutMetrics` + `CadenceActionButton`) | **done** |
-| 2 | Home's vertical rhythm on Workout Plan / Start Workout / Workout | **done** |
-| 3 | Coach plans carry real loads instead of `BW x 12` | **done** |
-| 4 | Read-only exercise detail in summaries, one row per performer | **done** |
-| 5 | One "The science" link, all sources on one screen | **done** |
-| 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | **done** |
-| 7 | Workouts Today + smoke logs a real set with partners (§5b) | **done** |
-| 8 | This Week gear deep-links to Coach & Plan | **done** |
-| 9 | Partner-aware Workout Plan (coach fills each partner's plan) | **done** |
+- **The iPhone UI suite is one test**, and the watch UI suite is one test
+  (`EXPECTED_IPHONE_SMOKE_TESTS=1`). New coverage extends the existing flow or
+  goes to `swift test` / the watch unit target.
+- **Assertions behind `if …exists` are worth little** — Phases 7-9 removed them
+  by making the flow do real work.
+- **`uiTestMode` hides whole subsystems.** The watch HR crash lived in code no
+  test could reach because `beginSession` returns early under `uiTestMode`. When
+  a bug is reported in HealthKit/BLE/WatchKit territory, reach for a unit test
+  that crosses the framework boundary (a delegate entered from a background
+  queue), not a UI test.
+- **This repo has its own simulator**, `Cadence-iPhone-16`. If `xcodebuild` says
+  it cannot find that device while `simctl` lists it, retry — it is a
+  CoreSimulatorService hiccup.
 
 **Execution protocol for this batch (user instruction, overrides the CLAUDE.md
 post-task checklist steps 6-8):** do ONE phase, run `make ci` and `make smoke`,

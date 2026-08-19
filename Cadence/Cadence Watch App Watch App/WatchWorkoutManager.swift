@@ -321,76 +321,35 @@ extension WatchWorkoutManager {
     enum BLEConnectionState { case scanning, connected, disconnected }
 }
 
-// MARK: - Session / Builder delegates
-
-extension WatchWorkoutManager: @preconcurrency HKWorkoutSessionDelegate {
-    func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
-                        from fromState: HKWorkoutSessionState, date: Date) {}
-
-    func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
-        stopWorkout(save: false)
+extension WatchWorkoutManager {
+    /// The values one `HKLiveWorkoutBuilder` callback carries, extracted on
+    /// HealthKit's own queue so nothing non-`Sendable` crosses into the main
+    /// actor. See `WatchWorkoutManagerHealthKit.swift` for why that matters.
+    struct CollectedSample: Sendable {
+        var bpm: Double?
+        var distanceMeters: Double?
     }
-}
 
-extension WatchWorkoutManager: @preconcurrency HKLiveWorkoutBuilderDelegate {
-    func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
+    /// Applies one builder callback's values on the main actor.
+    func apply(_ sample: CollectedSample) {
         guard isActive || isMonitoring else { return }
-
-        let hrType = HKQuantityType(.heartRate)
-        if collectedTypes.contains(hrType),
-           let stats = workoutBuilder.statistics(for: hrType),
-           let qty = stats.mostRecentQuantity() {
-            let bpm = qty.doubleValue(for: HKUnit(from: "count/min"))
-            Task { @MainActor in
-                self.currentBPM = bpm
-                self.accumulatedHR += bpm
-                self.hrCount += 1
-                if self.maxHeartRate == nil || bpm > (self.maxHeartRate ?? 0) {
-                    self.maxHeartRate = bpm
-                }
-                if hrSource == .appleWatch {
-                    self.relayBPM(bpm)
-                }
-            }
+        if let bpm = sample.bpm {
+            currentBPM = bpm
+            accumulatedHR += bpm
+            hrCount += 1
+            if maxHeartRate == nil || bpm > (maxHeartRate ?? 0) { maxHeartRate = bpm }
+            if hrSource == .appleWatch { relayBPM(bpm) }
         }
-
-        let distanceTypes: [HKQuantityTypeIdentifier] = [.distanceWalkingRunning, .distanceCycling, .distanceSwimming]
-        for id in distanceTypes {
-            let dt = HKQuantityType(id)
-            if collectedTypes.contains(dt),
-               let stats = workoutBuilder.statistics(for: dt),
-               let qty = stats.sumQuantity() {
-                let m = qty.doubleValue(for: HKUnit.meter())
-                Task { @MainActor in
-                    self.distanceMeters = m
-                    self.evaluateAutoPause(distance: m)
-                }
-            }
+        if let meters = sample.distanceMeters {
+            distanceMeters = meters
+            evaluateAutoPause(distance: meters)
         }
-        if #available(watchOS 11.0, *) {
-            let rowType = HKQuantityType(.distanceRowing)
-            if collectedTypes.contains(rowType),
-               let stats = workoutBuilder.statistics(for: rowType),
-               let qty = stats.sumQuantity() {
-                let m = qty.doubleValue(for: HKUnit.meter())
-                Task { @MainActor in self.distanceMeters = m }
-            }
-        }
-
-        if let elapsedTime = sessionStart {
-            Task { @MainActor in self.elapsed = Date().timeIntervalSince(elapsedTime) }
-        }
+        if let sessionStart { elapsed = Date().timeIntervalSince(sessionStart) }
     }
 
-    func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {
-        guard let event = workoutBuilder.workoutEvents.last else { return }
-        if event.type == .lap || event.type == .segment {
-            Task { @MainActor in self.autoLapCount += 1 }
-        }
-    }
-}
-extension WatchWorkoutManager: @preconcurrency WKExtendedRuntimeSessionDelegate {
-    func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {}
-    func extendedRuntimeSessionDidStart(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}
-    func extendedRuntimeSessionWillExpire(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}
+    /// A lap/segment event the builder reported, applied on the main actor.
+    func applyLapEvent() { autoLapCount += 1 }
+
+    /// The workout session failed; tear everything down (main actor).
+    func handleSessionFailure() { stopWorkout(save: false) }
 }

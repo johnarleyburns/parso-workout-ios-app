@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
 
@@ -62,6 +63,18 @@ struct WatchRootView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                 }
+                            }
+                            .accessibilityIdentifier("watch.resumeStrength")
+                            // Abandoned sessions were previously deletable only by
+                            // opening them, which starts a workout session just to
+                            // throw one away.
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    discardResumable(resume)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                                .accessibilityIdentifier("watch.resumeStrength.delete")
                             }
                     }
                 }
@@ -149,6 +162,15 @@ struct WatchRootView: View {
 
     private var resumableStrengthSession: WorkoutSession? {
         sessions.filter(\.isResumable).first
+    }
+
+    /// Deletes an abandoned watch-only session in place and tells the phone to
+    /// drop its copy, without opening the workout.
+    private func discardResumable(_ session: WorkoutSession) {
+        WatchHaptics.tap()
+        guard let payload = WatchResumableSession.discard(session, in: context) else { return }
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
+        WCSession.default.transferUserInfo(payload)
     }
 
     @ViewBuilder

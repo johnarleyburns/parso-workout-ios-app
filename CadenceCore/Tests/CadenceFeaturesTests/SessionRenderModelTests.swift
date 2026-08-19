@@ -338,4 +338,97 @@ final class SessionRenderModelTests: XCTestCase {
         XCTAssertEqual(sig.exerciseIDs, [UUID]())
         XCTAssertEqual(sig.prRule, PRRule.topWeight)
     }
+
+    // MARK: - Stored partner plans (field test 2026-08-18 #4, decision D11)
+
+    /// A partner with no history of their own: the pending set must come from
+    /// the plan the editor stored for THEM, not from the owner's prescription.
+    func testPendingSetsUseThePerformersStoredPrescriptionWhenPresent() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        session.plannedPrescriptions = [PlannedExercisePrescription(
+            exerciseName: "Bench Press",
+            sets: [PlannedSetPrescription(targetReps: 5, targetWeightKg: 100)])]
+        session.plannedPerformerPrescriptions = [
+            PlannedPerformerPrescription(performerID: nil, exercises: session.plannedPrescriptions),
+            PlannedPerformerPrescription(performerID: partner.id.uuidString, exercises: [
+                PlannedExercisePrescription(
+                    exerciseName: "Bench Press",
+                    sets: [PlannedSetPrescription(targetReps: 12, targetWeightKg: 40)])])
+        ]
+
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        let partnerPending = state.contexts[0].pendingSets.filter { $0.performerID == partner.id }
+        XCTAssertEqual(partnerPending.map(\.targetReps), [12],
+                       "The partner's pending set ignored their own stored plan")
+        XCTAssertEqual(partnerPending.map(\.targetWeightKg), [40],
+                       "The partner's pending set took the owner's weight")
+    }
+
+    func testPendingSetsFallBackToTheOwnerPrescriptionWhenAbsent() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        session.plannedPrescriptions = [PlannedExercisePrescription(
+            exerciseName: "Bench Press",
+            sets: [PlannedSetPrescription(targetReps: 7, targetWeightKg: 100)])]
+
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        let partnerPending = state.contexts[0].pendingSets.filter { $0.performerID == partner.id }
+        XCTAssertEqual(partnerPending.map(\.targetReps), [7],
+                       "A legacy session (no performer data) must behave exactly as before")
+    }
+
+    /// The stored plan is the *starting* target, not a replacement for the
+    /// partner's own logged history: their first set comes from the plan the
+    /// editor filled for them, later sets follow their own rep pattern, and the
+    /// load is always their own working weight.
+    func testPartnerHistoryStillOverridesRepsWithinTheStoredPlan() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+
+        let past = try WorkoutRepository.createSession(title: "Last week", in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 45, reps: 20,
+                                          performedBy: partner, in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 45, reps: 18,
+                                          performedBy: partner, in: ctx)
+
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        session.plannedPerformerPrescriptions = [
+            PlannedPerformerPrescription(performerID: partner.id.uuidString, exercises: [
+                PlannedExercisePrescription(
+                    exerciseName: "Bench Press",
+                    sets: [PlannedSetPrescription(targetReps: 12, targetWeightKg: 40),
+                           PlannedSetPrescription(targetReps: 12, targetWeightKg: 40)])])
+        ]
+
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        let partnerPending = state.contexts[0].pendingSets
+            .filter { $0.performerID == partner.id }
+            .sorted { $0.setIndex < $1.setIndex }
+        XCTAssertEqual(partnerPending.count, 2,
+                       "The stored plan decides how many sets the partner has left")
+        XCTAssertEqual(partnerPending[0].targetReps, 12,
+                       "The partner's first set should come from their stored plan")
+        XCTAssertEqual(partnerPending[1].targetReps, 18,
+                       "Later sets should follow the partner's own logged rep pattern")
+        XCTAssertTrue(partnerPending.allSatisfy { $0.targetWeightKg == 45 },
+                      "The load should be the partner's own working weight, never the plan's 40 or the owner's 100")
+    }
 }

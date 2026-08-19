@@ -62,7 +62,8 @@ struct WorkoutPlanEditor: View {
 
                 WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
                                           isEditing: isEditing,
-                                          allPeople: allPeople)
+                                          allPeople: allPeople,
+                                          onRosterChanged: resolvePartnerPlans)
 
                 if isEditing {
                     ForEach($plan.exercises) { $exercise in
@@ -86,6 +87,7 @@ struct WorkoutPlanEditor: View {
         .onAppear {
             loadSettings()
             _ = try? WorkoutRepository.me(in: modelContext)
+            resolvePartnerPlans()
         }
         .navigationTitle("Workout Plan")
         .navigationBarTitleDisplayMode(.inline)
@@ -189,6 +191,32 @@ struct WorkoutPlanEditor: View {
         plan.exercises.removeAll { $0.id == id }
     }
 
+    /// Fills every partner's plan from *their* history for the owner's
+    /// exercises (field test 2026-08-18 #4). Runs on appear, on roster changes
+    /// and after an exercise is added or swapped — never per keystroke.
+    private func resolvePartnerPlans() {
+        let roster = rosterMembers()
+        guard !plan.exercises.isEmpty else { return }
+        plan = PartnerPlanResolver.fill(plan: plan, roster: roster) { name, performerID in
+            WorkoutPlanPartnerHistory.history(forExerciseNamed: name,
+                                              performerID: performerID,
+                                              people: allPeople,
+                                              context: modelContext)
+        }
+    }
+
+    /// The owner first, then the selected partners in the order the roster card
+    /// records — the same order the logger rotates through.
+    private func rosterMembers() -> [PartnerPlanResolver.RosterMember] {
+        let owner = PartnerPlanResolver.RosterMember(performerID: nil, name: "Me")
+        let peopleByID = Dictionary(allPeople.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let partners = plan.partnerIDs.compactMap { id -> PartnerPlanResolver.RosterMember? in
+            guard let person = peopleByID[id], !person.isMe else { return nil }
+            return PartnerPlanResolver.RosterMember(performerID: person.id, name: person.name)
+        }
+        return [owner] + partners
+    }
+
     private func applyPickedExercise(_ exercise: Exercise, for intent: ExercisePickerIntent) {
         switch intent {
         case .add:
@@ -199,6 +227,7 @@ struct WorkoutPlanEditor: View {
             guard let index = plan.exercises.firstIndex(where: { $0.id == id }) else { return }
             plan.exercises[index].name = exercise.name
         }
+        resolvePartnerPlans()
     }
 }
 

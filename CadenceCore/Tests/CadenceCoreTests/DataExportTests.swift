@@ -776,4 +776,49 @@ final class DataExportTests: XCTestCase {
         // Verify assessment.
         XCTAssertEqual(reExported.assessments.first?.value, 42)
     }
+
+    // MARK: - Per-performer prescriptions (field test 2026-08-18 #4)
+
+    func testExportRoundTripsPerformerPrescriptions() throws {
+        let partnerID = UUID().uuidString
+        let performerPlans = [
+            PlannedPerformerPrescription(performerID: nil, exercises: [
+                PlannedExercisePrescription(exerciseName: "Bench Press",
+                                            sets: [PlannedSetPrescription(targetReps: 8, targetWeightKg: 100)])]),
+            PlannedPerformerPrescription(performerID: partnerID, exercises: [
+                PlannedExercisePrescription(exerciseName: "Bench Press",
+                                            sets: [PlannedSetPrescription(targetReps: 12, targetWeightKg: 60)])])
+        ]
+        let session = ExportSession(id: UUID(), title: "Push Day",
+                                    date: Date(timeIntervalSince1970: 1_700_000_000),
+                                    notes: nil, sets: [],
+                                    plannedPerformerPrescriptions: performerPlans)
+        let original = CadenceExport(sessions: [session])
+
+        let decoded = try DataExport.decodeJSON(DataExport.encodeJSON(original))
+
+        XCTAssertEqual(decoded.sessions.first?.plannedPerformerPrescriptions, performerPlans)
+    }
+
+    func testImportOfALegacyExportWithoutPerformerPrescriptionsSucceeds() throws {
+        // A pre-Phase-9 export simply has no such key: the encoder omits a nil
+        // optional entirely, which is exactly the legacy on-disk shape.
+        let legacy = CadenceExport(sessions: [ExportSession(
+            id: UUID(), title: "Push Day", date: Date(timeIntervalSince1970: 1_700_000_000),
+            notes: nil, sets: [],
+            plannedPrescriptions: [PlannedExercisePrescription(
+                exerciseName: "Bench Press",
+                sets: [PlannedSetPrescription(targetReps: 5, targetWeightKg: 100)])])])
+        let data = try DataExport.encodeJSON(legacy)
+        XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("plannedPerformerPrescriptions"),
+                       "The legacy fixture must not carry the new key at all")
+
+        let decoded = try DataExport.decodeJSON(data)
+
+        XCTAssertEqual(decoded.sessions.count, 1)
+        XCTAssertNil(decoded.sessions.first?.plannedPerformerPrescriptions,
+                     "An export written before this field must decode with it absent")
+        XCTAssertEqual(decoded.sessions.first?.plannedPrescriptions?.first?.sets.first?.targetReps, 5,
+                       "and the owner's plan must survive untouched")
+    }
 }

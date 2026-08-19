@@ -36,6 +36,21 @@ public struct PlannedExercisePrescription: Codable, Equatable, Sendable {
     }
 }
 
+/// One performer's prescription for a session. `performerID` is a `Person.id`
+/// UUID string; nil means the device owner. Additive (decision **D11**): the
+/// owner's plan continues to live in `plannedPrescriptions`, and any performer
+/// without an entry here falls back to it, so every legacy session and every
+/// older JSON export keeps working untouched.
+public struct PlannedPerformerPrescription: Codable, Equatable, Sendable {
+    public var performerID: String?
+    public var exercises: [PlannedExercisePrescription]
+
+    public init(performerID: String?, exercises: [PlannedExercisePrescription]) {
+        self.performerID = performerID
+        self.exercises = exercises
+    }
+}
+
 // MARK: - Models
 //
 // CloudKit compatibility rules (REQUIREMENTS §7, FR-9):
@@ -318,6 +333,10 @@ public final class WorkoutSession {
     /// JSON encoded per-exercise/per-set prescription. Additive and defaulted
     /// for CloudKit and legacy sessions.
     private var plannedPrescriptionsData: String = ""
+    /// JSON encoded per-performer prescriptions (field test 2026-08-18 #4,
+    /// decision **D11**). Additive and defaulted for CloudKit and legacy
+    /// sessions; `plannedPrescriptions` stays the owner's plan and the fallback.
+    private var plannedPerformerPrescriptionsData: String = ""
     public var notes: String?
     /// Name of the template this session was started from, if any (FR-1.6).
     public var templateName: String?
@@ -416,6 +435,35 @@ public final class WorkoutSession {
             }
             plannedPrescriptionsData = String(decoding: data, as: UTF8.self)
         }
+    }
+
+    /// Every performer's prescription, including the owner's (`performerID` nil).
+    /// Empty for any session planned before this field existed.
+    public var plannedPerformerPrescriptions: [PlannedPerformerPrescription] {
+        get {
+            guard !plannedPerformerPrescriptionsData.isEmpty,
+                  let data = plannedPerformerPrescriptionsData.data(using: .utf8),
+                  let value = try? JSONDecoder().decode([PlannedPerformerPrescription].self, from: data)
+            else { return [] }
+            return value
+        }
+        set {
+            guard !newValue.isEmpty, let data = try? JSONEncoder().encode(newValue) else {
+                plannedPerformerPrescriptionsData = ""
+                return
+            }
+            plannedPerformerPrescriptionsData = String(decoding: data, as: UTF8.self)
+        }
+    }
+
+    /// The prescription for one performer, falling back to the owner's plan when
+    /// that performer has no stored entry (legacy sessions, or a partner added
+    /// after planning).
+    public func plannedPrescriptions(forPerformerID id: UUID?) -> [PlannedExercisePrescription] {
+        if let match = plannedPerformerPrescriptions.first(where: { $0.performerID == id?.uuidString }) {
+            return match.exercises
+        }
+        return plannedPrescriptions
     }
 
     /// Sets in logged order.

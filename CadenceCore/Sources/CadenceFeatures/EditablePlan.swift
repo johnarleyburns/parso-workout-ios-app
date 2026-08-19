@@ -27,12 +27,22 @@ public struct EditablePlan: Hashable {
     }
 
     public static func from(session: WorkoutSession) -> EditablePlan {
+        let performerNames = Dictionary(
+            session.orderedSets.compactMap { set -> (String, String)? in
+                guard let person = set.performedBy, !person.isMe else { return nil }
+                return (person.id.uuidString, person.name)
+            },
+            uniquingKeysWith: { first, _ in first })
+        let storedPlans = session.plannedPerformerPrescriptions
         let exercises = session.exercisesInOrder.map { ex -> EditableExercise in
             let sets = session.orderedSets.filter { $0.exercise?.id == ex.id && $0.isOwnerSet }
             return EditableExercise(
                 name: ex.name,
                 sets: sets.map { EditableSet(targetReps: $0.reps, targetWeight: $0.weight > 0 ? $0.weight : nil) },
-                notes: ""
+                notes: "",
+                performerPlans: performerPlans(forExerciseNamed: ex.name,
+                                               stored: storedPlans,
+                                               names: performerNames)
             )
         }
         return EditablePlan(
@@ -42,6 +52,25 @@ public struct EditablePlan: Hashable {
             exercises: exercises,
             partnerIDs: session.activePartnerIDs.compactMap(UUID.init(uuidString:))
         )
+    }
+
+    /// Rebuilds one exercise's per-performer plans from a session's stored
+    /// prescriptions, so "start from a previous workout" keeps partner plans.
+    private static func performerPlans(forExerciseNamed name: String,
+                                       stored: [PlannedPerformerPrescription],
+                                       names: [String: String]) -> [EditablePerformerPlan] {
+        guard !stored.isEmpty else { return [] }
+        return stored.compactMap { performer -> EditablePerformerPlan? in
+            guard let prescription = performer.exercises.first(where: {
+                $0.exerciseName.caseInsensitiveCompare(name) == .orderedSame
+            }) else { return nil }
+            let id = performer.performerID.flatMap(UUID.init(uuidString:))
+            return EditablePerformerPlan(
+                performerID: id,
+                name: id == nil ? "Me" : (names[performer.performerID ?? ""] ?? "Partner"),
+                sets: prescription.sets.map { EditableSet(targetReps: $0.targetReps,
+                                                          targetWeight: $0.targetWeightKg) })
+        }
     }
 
     /// Applies the draft's complete prescription to a live session. Keeping
@@ -60,6 +89,7 @@ public struct EditablePlan: Hashable {
         let firstWeights = exercises.compactMap { $0.sets.first?.targetWeight }
         session.prescribedLoadKg = firstWeights.first ?? 0
         session.activePartnerIDs = partnerIDs.map(\.uuidString)
+        session.plannedPerformerPrescriptions = performerPrescriptions()
         let rirNotes = exercises.compactMap { ex -> String? in
             guard !ex.notes.isEmpty, ex.notes.contains("RIR") else { return nil }
             return ex.notes
@@ -155,6 +185,32 @@ public struct EditablePlan: Hashable {
             launchPayload: .strengthPlan("fullBody")))
     }
 
+    /// Every performer's prescription, grouped by performer in roster order
+    /// (decision **D11**). The owner is **included** so the stored plan and
+    /// `plannedPrescriptions` resolve through one code path; empty when the plan
+    /// is solo, which leaves the session's field empty exactly as before.
+    public func performerPrescriptions() -> [PlannedPerformerPrescription] {
+        var order: [UUID?] = []
+        var byPerformer: [String: [PlannedExercisePrescription]] = [:]
+        for exercise in exercises {
+            for plan in exercise.performerPlans {
+                let key = plan.performerID?.uuidString ?? ""
+                if byPerformer[key] == nil {
+                    byPerformer[key] = []
+                    order.append(plan.performerID)
+                }
+                byPerformer[key]?.append(PlannedExercisePrescription(
+                    exerciseName: exercise.name,
+                    sets: plan.sets.map { PlannedSetPrescription(targetReps: $0.targetReps,
+                                                                 targetWeightKg: $0.targetWeight) }))
+            }
+        }
+        return order.map { performerID in
+            PlannedPerformerPrescription(performerID: performerID?.uuidString,
+                                         exercises: byPerformer[performerID?.uuidString ?? ""] ?? [])
+        }
+    }
+
     /// De-dupes partner ids and drops an owner-only list to empty (solo). Pure
     /// version of the editor's roster normalization.
     public static func normalizedPartnerIDs(_ ids: [UUID], ownerID: UUID?) -> [UUID] {
@@ -169,20 +225,48 @@ public struct EditableExercise: Identifiable, Hashable {
     public var name: String
     public var sets: [EditableSet]
     public var notes: String
+    /// Per-performer plans, "Me" first (field test 2026-08-18 #4). Empty means a
+    /// solo workout; `sets` remains the owner's plan and the source of truth for
+    /// set COUNT for every performer (decision **D12**).
+    public var performerPlans: [EditablePerformerPlan] = []
 
-    public init(name: String, sets: [EditableSet], notes: String) {
+    public init(name: String, sets: [EditableSet], notes: String,
+                performerPlans: [EditablePerformerPlan] = []) {
         self.name = name
         self.sets = sets
         self.notes = notes
+        self.performerPlans = performerPlans
+    }
+}
+
+/// One performer's set plan inside an editable exercise. `performerID == nil`
+/// is the owner ("Me"), always first.
+public struct EditablePerformerPlan: Identifiable, Hashable {
+    public let id: UUID
+    public var performerID: UUID?
+    public var name: String
+    public var sets: [EditableSet]
+
+    public var isMe: Bool { performerID == nil }
+
+    public init(id: UUID = UUID(), performerID: UUID?, name: String, sets: [EditableSet]) {
+        self.id = id
+        self.performerID = performerID
+        self.name = name
+        self.sets = sets
     }
 }
 
 public struct EditableSet: Identifiable, Hashable {
-    public let id = UUID()
+    public let id: UUID
     public var targetReps: Int
     public var targetWeight: Double?
 
-    public init(targetReps: Int, targetWeight: Double?) {
+    /// `id` is settable so a re-resolved partner plan can keep the row identity
+    /// SwiftUI already has (`PartnerPlanResolver.fill`), instead of rebuilding
+    /// every row on each roster change.
+    public init(id: UUID = UUID(), targetReps: Int, targetWeight: Double?) {
+        self.id = id
         self.targetReps = targetReps
         self.targetWeight = targetWeight
     }

@@ -357,4 +357,50 @@ final class WorkoutRepositoryTests: XCTestCase {
         let remaining = try WorkoutRepository.allExercises(ctx)
         XCTAssertNil(remaining.first { $0.name == "rotary torso" })
     }
+
+    // MARK: - Per-performer prescriptions (field test 2026-08-18 #4, decision D11)
+
+    func testPlannedPerformerPrescriptionsEncodeAndDecode() throws {
+        let ctx = try makeContext()
+        let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
+        let partnerID = UUID()
+        session.plannedPerformerPrescriptions = [
+            PlannedPerformerPrescription(performerID: nil, exercises: [
+                PlannedExercisePrescription(exerciseName: "Bench Press",
+                                            sets: [PlannedSetPrescription(targetReps: 8, targetWeightKg: 100)])]),
+            PlannedPerformerPrescription(performerID: partnerID.uuidString, exercises: [
+                PlannedExercisePrescription(exerciseName: "Bench Press",
+                                            sets: [PlannedSetPrescription(targetReps: 12, targetWeightKg: 60)])])
+        ]
+        try ctx.save()
+
+        let stored = session.plannedPerformerPrescriptions
+        XCTAssertEqual(stored.count, 2)
+        XCTAssertEqual(stored[1].exercises.first?.sets.first?.targetWeightKg, 60)
+        XCTAssertEqual(session.plannedPrescriptions(forPerformerID: partnerID).first?.sets.first?.targetReps, 12)
+    }
+
+    func testPlannedPrescriptionsForPerformerFallsBackToTheOwnerPlan() throws {
+        let ctx = try makeContext()
+        let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
+        session.plannedPrescriptions = [PlannedExercisePrescription(
+            exerciseName: "Bench Press",
+            sets: [PlannedSetPrescription(targetReps: 5, targetWeightKg: 100)])]
+        session.plannedPerformerPrescriptions = [
+            PlannedPerformerPrescription(performerID: nil, exercises: session.plannedPrescriptions)]
+
+        let unknown = UUID()
+        XCTAssertEqual(session.plannedPrescriptions(forPerformerID: unknown).first?.sets.first?.targetReps, 5,
+                       "A performer with no stored plan trains on the owner's prescription")
+    }
+
+    func testEmptyPerformerDataDecodesToEmptyArray() throws {
+        let ctx = try makeContext()
+        let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
+
+        XCTAssertTrue(session.plannedPerformerPrescriptions.isEmpty)
+        session.plannedPerformerPrescriptions = []
+        XCTAssertTrue(session.plannedPerformerPrescriptions.isEmpty,
+                      "Storing an empty roster must not leave undecodable data behind")
+    }
 }

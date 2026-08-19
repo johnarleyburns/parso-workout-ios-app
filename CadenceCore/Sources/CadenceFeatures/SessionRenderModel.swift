@@ -277,14 +277,18 @@ public enum SessionRenderModel {
                     exercise: exercise, excluding: session, prRule: prRule, formula: formula))
             }
 
-            let prescription = session.plannedPrescriptions.first {
-                $0.exerciseName.caseInsensitiveCompare(exercise.name) == .orderedSame
-            }
-            let plannedSets = prescription?.sets ?? session.plannedRepLadder.map {
-                PlannedSetPrescription(targetReps: $0, targetWeightKg: session.prescribedLoadKg > 0 ? session.prescribedLoadKg : nil)
-            }
             var pendingSets: [PendingSetDisplay] = []
             for performer in performerContexts {
+                // A partner's plan, when the editor stored one, is that
+                // partner's own starting target (field test 2026-08-18 #4,
+                // decision D11). Absent an entry this resolves to the owner's
+                // prescription, exactly as it did before the field existed.
+                let prescription = session.plannedPrescriptions(forPerformerID: performer.performerID).first {
+                    $0.exerciseName.caseInsensitiveCompare(exercise.name) == .orderedSame
+                }
+                let plannedSets = prescription?.sets ?? session.plannedRepLadder.map {
+                    PlannedSetPrescription(targetReps: $0, targetWeightKg: session.prescribedLoadKg > 0 ? session.prescribedLoadKg : nil)
+                }
                 let performerSets = exerciseSets.filter { setPerformedBy($0, performerID: performer.performerID) && !$0.isWarmup }
                 let currentReps = performerSets.sorted { $0.order < $1.order }.map(\.reps)
                 let ladders = performer.repLadders.isEmpty
@@ -294,10 +298,16 @@ public enum SessionRenderModel {
                     for index in performerSets.count..<plannedSets.count {
                     let target = plannedSets[index]
                     let hasPerformerHistory = !currentReps.isEmpty || !ladders.isEmpty
+                    // The planned target is the LAST resort, not the magic 5 that
+                    // `plannedReps` falls back to: with a stored per-performer
+                    // plan the first set must honour that plan (field test
+                    // 2026-08-18 #4). Later sets still follow the performer's own
+                    // rep pattern.
                     let reps = hasPerformerHistory
                         ? SessionViewModel.plannedReps(
                             ladder: nil, setIndex: index, currentSessionReps: currentReps,
-                            priorSessionLadders: ladders, lastLoggedReps: performerSets.last?.reps)
+                            priorSessionLadders: ladders,
+                            lastLoggedReps: performerSets.last?.reps ?? target.targetReps)
                         : target.targetReps
                         pendingSets.append(PendingSetDisplay(
                             performerID: performer.performerID, performerName: performer.label,

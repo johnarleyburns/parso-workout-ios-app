@@ -2,7 +2,133 @@
 
 Updated: 2026-08-19
 
-## Phase 8 complete — This Week deep-links to Coach & Plan
+## Phase 9 complete — the coach fills each training partner's plan
+
+Field test 2026-08-18 issue #4
+(`docs/field-test-ui-batch-2026-08-18/09-phase9-partner-plans.md`) — the largest
+phase in the batch and **the last one**. The batch is now fully implemented.
+
+### The plan carries every performer
+
+- **New `CadenceFeatures/PartnerPlanResolver.swift`** (190 LOC, pure) fills a
+  partner's plan from *their own* logged history for the **owner's** exercises
+  only. Resolution order (decision **D13**): their logged sets for this exact
+  movement → their rep ladder for it → their general rep pattern across all
+  movements → the owner's reps with no weight. **A partner never inherits the
+  owner's weight** — that is a test, not a comment
+  (`testPartnerWeightNeverInheritsTheOwnersWeight`).
+- **The result always has the owner's set count** (decision **D12**): shorter
+  history repeats their last logged set, longer history truncates. The coach
+  never adds or removes an exercise for a partner — they are working in on the
+  owner's sets.
+- `fill(plan:roster:history:)` **preserves SwiftUI identity**: a re-resolved plan
+  keeps the existing plan/set ids positionally, so re-running it on an unchanged
+  roster returns a value `==` to the one it started from (`testFillIsIdempotent`)
+  and the rows do not churn on every roster change. This is why `EditableSet.id`
+  became a defaulted `init` parameter rather than a fresh `UUID()` per instance.
+- `aligned(_:)` keeps every performer's plan the owner's shape after the owner
+  adds or removes a set, without re-consulting history.
+
+### Persistence — additive, decision D11
+
+- `WorkoutSession` gains **one** stored property,
+  `plannedPerformerPrescriptionsData: String = ""` (JSON, defaulted, no
+  `@Attribute(.unique)`, no new relationship → CloudKit-compliant), plus
+  `plannedPerformerPrescriptions` and
+  `plannedPrescriptions(forPerformerID:)`, which **falls back to the owner's
+  plan** for any performer without an entry. `plannedPrescriptions` is untouched,
+  so every existing reader (watch sync, export, the logger's fallback) keeps
+  working with no knowledge of the new field.
+- `ExportSession.plannedPerformerPrescriptions` is optional and **needs no
+  version bump**: the encoder omits a nil optional entirely, so a pre-Phase-9
+  export is byte-identical to what it always was, and
+  `testImportOfALegacyExportWithoutPerformerPrescriptionsSucceeds` asserts the
+  key is absent *and* that the owner's plan survives.
+- ⚠️ **CloudKit: an additive field still requires a schema deploy to Production**
+  in the CloudKit Dashboard before a TestFlight/production build will sync it.
+  Same rule as any additive field; noted here so it is not discovered at release.
+
+### The logger honours the stored plan
+
+`SessionRenderModel.build` now resolves `plannedSets` **per performer** instead
+of once from the owner's prescription. One real change fell out of this: the
+pending-set reps fell back to `SessionViewModel.plannedReps`'s hard-coded `5`
+whenever the performer had any history, which silently ignored the plan for the
+**first** set. The planned target is now that call's last resort
+(`lastLoggedReps: performerSets.last?.reps ?? target.targetReps`), so set 1 comes
+from the stored plan, later sets still follow the performer's own rep pattern,
+and the load is still their own working weight. All 1,403 pre-existing tests
+stayed green through that change.
+
+### UI
+
+- **`WorkoutPlanPartnerSection`**: the roster is now editable from the plan
+  itself, **not only in Edit mode** — the card heading carries the selected
+  partners as chips (`editor.partnerChip.<name>`, `editor.removePartner.<name>`)
+  and a 44 pt `+` (`editor.showPartnerPicker`) reveals the full picker. Every
+  pre-existing identifier is unchanged, and every roster mutation calls
+  `onRosterChanged`, which re-resolves the plans.
+- **`CompactExerciseRow`** (view mode) renders **one line per performer, Me
+  first** (`editor.exercisePerformer.<exercise>.<performer>`); a solo plan keeps
+  the single unlabelled line it has always had.
+- **`WorkoutPlanExerciseSection`** (edit mode) gains a segmented performer picker
+  (`editor.performerPicker.<exercise>`) defaulting to Me. Only the owner can add
+  or remove sets — a partner works in on the owner's sets (D12) — and their rows
+  say so.
+- **New `Home/WorkoutPlanPartnerHistory.swift`** (66 LOC) gathers the history the
+  resolver consumes. It looks the exercise up **read-only**, so the plan editor
+  never creates an `Exercise` row for a movement merely displayed.
+- **New `CadenceFeatures/PlanFormatting.swift`** is the single formatter for a
+  *planned* set line (`100×8` / `BW×12` / `—×10`, decision **D4**), shared by the
+  compact row and the per-performer lines. Phase 4's `WorkoutSummaryPresenter`
+  remains the formatter for *logged* sets.
+
+### Verification (Phase 9)
+
+- `make ci`: build + **1,442 tests passed, 0 failures** (baseline 1,403 + 39:
+  20 `PartnerPlanResolverTests`, 6 `PlanFormattingTests`, 5 `EditablePlanTests`,
+  3 `WorkoutRepositoryTests`, 2 `DataExportTests`, 3 `SessionRenderModelTests`),
+  guardrails OK. Every touched view is well under 400 LOC
+  (editor 242, partners 236, exercise section 155, compact row 70).
+- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
+  **passed** (170.4 s, up from 142 s for the added flow).
+- **The smoke flow proves issue #4 end-to-end, unguarded.** It adds Bench Press
+  to the plan, taps **Done** to leave Edit mode, opens the partner picker from
+  the read-only plan, adds the seeded partner Sam, then asserts Sam's chip, the
+  partner's own plan line (`editor.exercisePerformer.Bench Press.Sam`) **and**
+  that the owner's line survived. No `if …exists` anywhere — a missing element
+  fails the test.
+- **Honest gap:** verified structurally and end-to-end, **not** visually. No
+  screenshot was taken of the two-performer plan card or the segmented performer
+  picker, so their *appearance* rests on the layout code and the identifier
+  assertions rather than on a photograph.
+- Not pushed, per the batch execution protocol.
+
+**Deviations from the phase file, all deliberate:**
+
+- **No per-performer weight editing.** The phase file's §5 mentions editing
+  "reps/weight" per performer, but the plan editor has never had a weight editor
+  for *anyone* — load is resolved and displayed read-only. Shipping one for
+  partners only would have been a new control and a scope increase; per-performer
+  **reps** are editable, and load stays resolved as it is for the owner.
+- **History gathering lives in its own file** (`WorkoutPlanPartnerHistory.swift`)
+  rather than inside `WorkoutPlanEditor`, keeping the view free of data logic.
+- **`PlanFormatting.swift` is a new file** rather than an addition to
+  `WorkoutSummaryPresenter` — the phase file allowed either; planned vs logged
+  formatting stay separate types.
+- **`aligned(_:)` is new**, not in the phase file: without it, the owner adding a
+  set left partners a set short until the next full re-resolution.
+- **The UI smoke assertion is larger than specified.** The phase file asked for a
+  single `editor.partners` existence check; the standing "guarded assertions are
+  worth little" rule made a real add-a-partner-from-view-mode flow the better
+  buy.
+
+---
+
+<details>
+<summary>Phase 8 — This Week deep-links to Coach & Plan (shipped, b42f816)</summary>
+
+## Phase 8 complete — This Week deep-links to Coach & Plan (shipped, `b42f816`)
 
 Field test 2026-08-18 issue #7
 (`docs/field-test-ui-batch-2026-08-18/08-phase8-week-gear-deeplink.md`). The
@@ -67,6 +193,8 @@ goes to the one iPhone smoke test instead, as the phase file specifies.
   rather than re-debugging it: if xcodebuild lists only `My Mac` and the
   placeholders, retry before suspecting the pinned device name.
 - Not pushed, per the batch execution protocol.
+
+</details>
 
 ---
 
@@ -585,33 +713,38 @@ is explicitly exempt.
 
 </details>
 
-## Next task — field-test UI batch, Phase 9 (the last one)
+## Next task — the batch is done; awaiting review and a push
 
-**HEAD is the Phase 8 commit (`git log --oneline -1`). The working tree is clean
-and nothing is pushed — eight commits (Phases 1-8) now sit unpushed on `main`.**
+**All nine phases of the field-test UI batch are implemented and committed on
+`main`. Nine commits (Phases 1-9) are unpushed.** There is no Phase 10.
 
-**Phase 9: partner-aware Workout Plan**
-(`docs/field-test-ui-batch-2026-08-18/09-phase9-partner-plans.md`, 377 lines —
-the largest phase in the batch, and the last). Field-test issue #4: the Coach's
-Workout Plan must let the user add training partners and default-fill each
-partner's plan from *their* history — the user's exercises, the partner's
-weights/reps as implied preferences. It depends on Phase 2's editor layout and
-Phase 3's load resolution, both shipped, so it starts from `main` as it stands.
-Read `00-overview.md` and `decisions.md` first.
+What the next session should do, in order:
 
-Before starting, note two standing rules this batch acquired late:
+1. **Wait for the user's review.** The batch protocol has been "commit, do not
+   push, stop" since Phase 1; nothing leaves this machine until they say so.
+2. When they approve: `git push origin main`, then watch CI
+   (`gh run list --branch main --limit 1`) and report the result — the CLAUDE.md
+   post-task checklist steps 6-8, which this batch suspended, resume here.
+3. **Before any TestFlight/production build**, deploy the CloudKit schema to
+   Production in the Dashboard: Phase 9 added the
+   `plannedPerformerPrescriptionsData` field. Additive and CloudKit-compliant,
+   but it will not sync until the schema is deployed.
+4. A **field test of the nine shipped changes** is the natural next input; the
+   previous two batches both started that way.
+
+Standing rules this batch established, which outlive it:
 
 - **The iPhone UI suite is one test.** New UI coverage extends
   `testIPhoneStrengthWorkoutPlansLogsAndCompletes`; it never adds a test
   function (`EXPECTED_IPHONE_SMOKE_TESTS=1`). Prefer a `swift test`.
 - **Assertions behind `if …exists` are worth little.** Phases 4 and 5 shipped
   guarded assertions that may never have run; Phase 6 proved its guard fired with
-  a temporary hard-assert probe, and Phase 7 removed the guards entirely by
-  making the flow log real sets, and Phase 8 shipped its whole block unguarded.
-  Hold Phase 9 to that standard.
-
-The batch execution protocol is unchanged: one phase, `make ci` + `make smoke`,
-update this file, commit on `main`, **do not push**, report the SHA, stop.
+  a temporary hard-assert probe, and Phases 7-9 removed the guards entirely by
+  making the flow do real work. Hold new UI coverage to that standard.
+- **This repo has its own simulator**, `Cadence-iPhone-16`; `make shutdown-sims`
+  never shuts down anything else. If `xcodebuild` reports it cannot find that
+  device while `simctl` lists it as available, that is a CoreSimulatorService
+  hiccup — retry before debugging.
 
 | Phase | Scope | State |
 |---|---|---|
@@ -623,7 +756,7 @@ update this file, commit on `main`, **do not push**, report the SHA, stop.
 | 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | **done** |
 | 7 | Workouts Today + smoke logs a real set with partners (§5b) | **done** |
 | 8 | This Week gear deep-links to Coach & Plan | **done** |
-| 9 | Partner-aware Workout Plan (coach fills each partner's plan) | **next** |
+| 9 | Partner-aware Workout Plan (coach fills each partner's plan) | **done** |
 
 **Execution protocol for this batch (user instruction, overrides the CLAUDE.md
 post-task checklist steps 6-8):** do ONE phase, run `make ci` and `make smoke`,

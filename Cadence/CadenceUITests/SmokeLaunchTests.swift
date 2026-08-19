@@ -115,6 +115,29 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // Field test 2026-08-18 #5: the plan editor is a Home-rhythm scroll surface.
         XCTAssertTrue(app.descendants(matching: .any)["editor.partners"].waitForExistence(timeout: 5),
                       "Workout Plan lost its Training partners card")
+
+        // Field test 2026-08-18 #4: a partner is addable from the plan itself —
+        // no Edit mode — and the coach immediately fills THEIR plan for the
+        // owner's exercise. Unguarded: every step below fails if it is missing.
+        XCTAssertTrue(app.buttons["editor.addExercise"].waitTap(timeout: 5),
+                      "Plan editor did not offer Add Exercise")
+        XCTAssertTrue(app.pickExerciseFromPresentedPicker(exerciseName),
+                      "Could not add \(exerciseName) to the plan")
+        XCTAssertTrue(app.buttons["editor.edit"].waitTap(timeout: 5),
+                      "Plan editor did not offer Done")
+        XCTAssertTrue(app.scrollToHittableAndTap("editor.showPartnerPicker"),
+                      "Workout Plan does not expose the partner picker outside Edit mode")
+        XCTAssertTrue(app.scrollToHittableAndTap("editor.partner.Sam"),
+                      "Could not add a partner from the read-only Workout Plan")
+        XCTAssertTrue(app.descendants(matching: .any)["editor.partnerChip.Sam"]
+                        .waitForExistence(timeout: 5),
+                      "The added partner is not shown on the Training partners card")
+        XCTAssertTrue(app.descendants(matching: .any)["editor.exercisePerformer.\(exerciseName).Sam"]
+                        .waitForExistence(timeout: 5),
+                      "The coach did not fill the partner's plan for the owner's exercise")
+        XCTAssertTrue(app.descendants(matching: .any)["editor.exercisePerformer.\(exerciseName).Me"].exists,
+                      "The owner's own line disappeared once a partner was added")
+
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitForExistence(timeout: 5),
                       "Could not return to Start Workout")

@@ -106,13 +106,18 @@ public struct ExportSession: Codable, Equatable, Sendable {
     public var prescribedLoadKg: Double?
     public var activePartnerIDs: [String]?
     public var plannedPrescriptions: [PlannedExercisePrescription]?
+    /// Per-performer prescriptions (field test 2026-08-18 #4, decision D11).
+    /// Optional and additive: an export written before this field decodes it as
+    /// nil and imports exactly as it always did, so no version bump is needed.
+    public var plannedPerformerPrescriptions: [PlannedPerformerPrescription]?
     public init(id: UUID, title: String, date: Date, notes: String?, sets: [ExportSet],
                 endedAt: Date? = nil, isLogged: Bool? = nil, planKey: String? = nil,
                 templateName: String? = nil, plannedExerciseNames: [String]? = nil,
                 plannedRepLadder: [Int]? = nil, warmupSeconds: Double? = nil,
                 cooldownSeconds: Double? = nil, prescribedLoadKg: Double? = nil,
                 activePartnerIDs: [String]? = nil,
-                plannedPrescriptions: [PlannedExercisePrescription]? = nil) {
+                plannedPrescriptions: [PlannedExercisePrescription]? = nil,
+                plannedPerformerPrescriptions: [PlannedPerformerPrescription]? = nil) {
         self.id = id; self.title = title; self.date = date; self.notes = notes; self.sets = sets
         self.endedAt = endedAt; self.isLogged = isLogged; self.planKey = planKey
         self.templateName = templateName; self.plannedExerciseNames = plannedExerciseNames
@@ -120,6 +125,7 @@ public struct ExportSession: Codable, Equatable, Sendable {
         self.cooldownSeconds = cooldownSeconds; self.prescribedLoadKg = prescribedLoadKg
         self.activePartnerIDs = activePartnerIDs
         self.plannedPrescriptions = plannedPrescriptions
+        self.plannedPerformerPrescriptions = plannedPerformerPrescriptions
     }
 }
 

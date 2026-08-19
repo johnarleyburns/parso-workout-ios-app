@@ -152,4 +152,94 @@ final class EditablePlanTests: XCTestCase {
         XCTAssertTrue(reps.allSatisfy { TrainingGoal.strength.repRange.contains($0) },
                       "Rep targets should honor the strength goal's range, got \(reps)")
     }
+
+    // MARK: - Per-performer plans (field test 2026-08-18 #4, decision D11)
+
+    private func planWithPartner(_ partnerID: UUID) -> EditablePlan {
+        let plan = EditablePlan(
+            warmupMinutes: 0, cooldownMinutes: 0,
+            exercises: [EditableExercise(name: "Bench Press",
+                                         sets: [EditableSet(targetReps: 8, targetWeight: 100),
+                                                EditableSet(targetReps: 6, targetWeight: 105)],
+                                         notes: "")],
+            partnerIDs: [partnerID])
+        return PartnerPlanResolver.fill(
+            plan: plan,
+            roster: [.init(performerID: nil, name: "Me"), .init(performerID: partnerID, name: "Alex")],
+            history: { _, _ in .init(lastSets: [.init(weightKg: 60, reps: 12)], firstWorkingWeightKg: 60) })
+    }
+
+    func testApplyWritesPerformerPrescriptionsForEveryRosterMember() throws {
+        let ctx = try makeContext()
+        let partnerID = UUID()
+        let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
+
+        planWithPartner(partnerID).apply(to: session)
+
+        let stored = session.plannedPerformerPrescriptions
+        XCTAssertEqual(stored.count, 2)
+        XCTAssertNil(stored[0].performerID, "The owner is stored first, keyed by nil")
+        XCTAssertEqual(stored[1].performerID, partnerID.uuidString)
+        XCTAssertEqual(stored[1].exercises.first?.sets.map(\.targetReps), [12, 12])
+        XCTAssertEqual(stored[1].exercises.first?.sets.map(\.targetWeightKg), [60, 60])
+    }
+
+    func testApplyStillWritesTheOwnerPlanToPlannedPrescriptions() throws {
+        let ctx = try makeContext()
+        let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
+
+        planWithPartner(UUID()).apply(to: session)
+
+        XCTAssertEqual(session.plannedPrescriptions.first?.exerciseName, "Bench Press")
+        XCTAssertEqual(session.plannedPrescriptions.first?.sets.map(\.targetReps), [8, 6],
+                       "The owner's plan must stay where every existing reader looks for it")
+    }
+
+    func testSoloPlanWritesNoPerformerPrescriptions() throws {
+        let ctx = try makeContext()
+        let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
+
+        EditablePlan(warmupMinutes: 0, cooldownMinutes: 0,
+                     exercises: [EditableExercise(name: "Bench Press",
+                                                  sets: [EditableSet(targetReps: 5, targetWeight: 100)],
+                                                  notes: "")])
+            .apply(to: session)
+
+        XCTAssertTrue(session.plannedPerformerPrescriptions.isEmpty)
+        XCTAssertEqual(session.plannedPrescriptions.count, 1)
+    }
+
+    func testFromSessionRoundTripsPerformerPlans() throws {
+        let ctx = try makeContext()
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
+        let alex = try WorkoutRepository.findOrCreatePerson(named: "Alex", in: ctx)
+        let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
+        ctx.insert(SetEntry(weight: 100, reps: 8, order: 0, completedAt: session.date,
+                            session: session, exercise: bench))
+        let partnerSet = SetEntry(weight: 60, reps: 12, order: 1, completedAt: session.date,
+                                  session: session, exercise: bench)
+        partnerSet.performedBy = alex
+        ctx.insert(partnerSet)
+        planWithPartner(alex.id).apply(to: session)
+        try ctx.save()
+
+        let plans = EditablePlan.from(session: session).exercises.first?.performerPlans ?? []
+        XCTAssertEqual(plans.map(\.name), ["Me", "Alex"])
+        XCTAssertEqual(plans.last?.performerID, alex.id)
+        XCTAssertEqual(plans.last?.sets.map(\.targetReps), [12, 12])
+    }
+
+    func testLegacySessionWithoutPerformerDataResolvesToTheOwnerPlan() throws {
+        let ctx = try makeContext()
+        let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
+        session.plannedPrescriptions = [PlannedExercisePrescription(
+            exerciseName: "Bench Press",
+            sets: [PlannedSetPrescription(targetReps: 5, targetWeightKg: 100)])]
+
+        XCTAssertTrue(session.plannedPerformerPrescriptions.isEmpty)
+        XCTAssertEqual(session.plannedPrescriptions(forPerformerID: nil).first?.sets.count, 1)
+        XCTAssertEqual(session.plannedPrescriptions(forPerformerID: UUID()).first?.sets.first?.targetReps, 5,
+                       "An unknown performer falls back to the owner's plan, as before this field existed")
+        XCTAssertTrue(EditablePlan.from(session: session).exercises.allSatisfy { $0.performerPlans.isEmpty })
+    }
 }

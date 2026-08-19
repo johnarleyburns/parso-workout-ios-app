@@ -9,9 +9,15 @@ struct WorkoutPlanPartnerSection: View {
     @Binding var partnerIDs: [UUID]
     let isEditing: Bool
     let allPeople: [Person]
+    /// Called whenever the roster changes, so the editor can re-resolve every
+    /// partner's plan (field test 2026-08-18 #4).
+    var onRosterChanged: () -> Void = {}
 
     @Environment(\.modelContext) private var modelContext
     @State private var newPartnerName = ""
+    /// The full picker is always open in Edit mode; in view mode the user
+    /// reveals it with `+`, so a read-only plan is not a wall of controls.
+    @State private var pickerRevealed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
@@ -22,8 +28,8 @@ struct WorkoutPlanPartnerSection: View {
 
     private var partnerCard: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
-            Text("Training partners").font(.headline)
-            if isEditing {
+            heading
+            if showsPicker {
                 VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
                     ForEach(partnerPeople) { person in
                         partnerRow(person)
@@ -32,16 +38,69 @@ struct WorkoutPlanPartnerSection: View {
                     Text("Partners are optional — leave everyone unchecked to train solo.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-            } else if selectedPartnerPeople.isEmpty {
-                Text("Solo workout").foregroundStyle(.secondary)
-            } else {
-                Text(selectedPartnerPeople.map(\.name).joined(separator: ", "))
             }
         }
         .workoutPlanCard()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("editor.partners")
     }
+
+    /// `Training partners   Solo  +` / `Training partners   Alex x  +` — the
+    /// roster is editable from the plan itself, not only from Edit mode.
+    private var heading: some View {
+        HStack(spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
+            Text("Training partners").font(.headline)
+            Spacer(minLength: 0)
+            if selectedPartnerPeople.isEmpty {
+                Text("Solo").font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("editor.partnerChip.solo")
+            } else {
+                ForEach(selectedPartnerPeople) { person in
+                    partnerChip(person)
+                }
+            }
+            if !isEditing {
+                Button {
+                    Haptics.selection()
+                    withAnimation { pickerRevealed.toggle() }
+                } label: {
+                    Image(systemName: pickerRevealed ? "minus.circle" : "plus.circle")
+                        .imageScale(.large)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, -8)
+                .padding(.vertical, -8)
+                .accessibilityIdentifier("editor.showPartnerPicker")
+                .accessibilityLabel(pickerRevealed ? "Hide partner picker" : "Add a training partner")
+            }
+        }
+    }
+
+    private func partnerChip(_ person: Person) -> some View {
+        HStack(spacing: 4) {
+            Text(person.name).font(.subheadline)
+            Button {
+                Haptics.selection()
+                toggle(person)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .imageScale(.small)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("editor.removePartner.\(person.name)")
+            .accessibilityLabel("Remove \(person.name)")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(.quaternary))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("editor.partnerChip.\(person.name)")
+    }
+
+    private var showsPicker: Bool { isEditing || pickerRevealed }
 
     private func partnerRow(_ person: Person) -> some View {
         HStack {
@@ -114,6 +173,7 @@ struct WorkoutPlanPartnerSection: View {
             ids.append(person.id)
             partnerIDs = normalizedPartnerIDs(ids)
         }
+        onRosterChanged()
     }
 
     private func addPartner() {
@@ -126,6 +186,7 @@ struct WorkoutPlanPartnerSection: View {
             partnerIDs = normalizedPartnerIDs(ids)
         }
         newPartnerName = ""
+        onRosterChanged()
     }
 
     private var owner: Person? { allPeople.first(where: \.isMe) }
@@ -170,5 +231,6 @@ struct WorkoutPlanPartnerSection: View {
         guard ids.indices.contains(index), ids.indices.contains(target) else { return }
         ids.swapAt(index, target)
         partnerIDs = normalizedPartnerIDs(ids)
+        onRosterChanged()
     }
 }

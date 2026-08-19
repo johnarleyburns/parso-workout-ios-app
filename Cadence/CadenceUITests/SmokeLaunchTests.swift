@@ -42,6 +42,13 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertFalse(app.descendants(matching: .any)["home.workoutHistory"].exists,
                        "Home still contains the duplicate Workout History card")
 
+        // Field test 2026-08-18 #10: at most one science row per coach output.
+        // The bug rendered one row per *citation*, typically 6+.
+        let science = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH 'The science'"))
+        XCTAssertLessThanOrEqual(science.count, 3,
+                                 "Coach surfaces render a separate science row per citation again")
+
         XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
                       "Home Start Workout did not open")
         XCTAssertTrue(app.buttons["selectWorkout.custom"].label.contains("Custom Workout"),

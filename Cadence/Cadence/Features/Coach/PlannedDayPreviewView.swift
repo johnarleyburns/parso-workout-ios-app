@@ -63,11 +63,8 @@ struct PlannedDayPreviewView: View {
 
             if day.sessions.contains(where: { $0.kind == .strength }) || hasPlannedCardio {
                 Section("The science") {
-                    ForEach(scienceCitationIds, id: \.self) { id in
-                        if let citation = CitationRegistry.citation(forId: id) {
-                            CitationLink(citation: citation)
-                        }
-                    }
+                    CoachSourcesLink(citationIds: scienceCitationIds,
+                                     identifier: "plan.day.science")
                 }
             }
         }

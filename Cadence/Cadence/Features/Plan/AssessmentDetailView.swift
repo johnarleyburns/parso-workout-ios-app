@@ -43,9 +43,8 @@ struct AssessmentDetailView: View {
 
             if !kind.citationIds.isEmpty {
                 Section("Evidence") {
-                    ForEach(kind.citationIds.compactMap { CitationRegistry.citation(forId: $0) }, id: \.id) { citation in
-                        CitationLink(citation: citation)
-                    }
+                    CoachSourcesLink(citationIds: kind.citationIds,
+                                     identifier: "assessment.science")
                 }
             }
 

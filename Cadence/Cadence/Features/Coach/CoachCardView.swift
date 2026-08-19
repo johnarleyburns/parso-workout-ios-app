@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceCore
+import CadenceFeatures
 
 /// One insight's body: title, message, and an expandable why + citation. Reused by
 /// the Coach card (headline styling) and the full insights list.
@@ -122,6 +123,38 @@ struct CitationLink: View {
                 .font(.caption2).foregroundStyle(.tint)
             Image(systemName: "chevron.forward")
                 .font(.caption2).foregroundStyle(.tint)
+        }
+    }
+}
+
+/// One `The science ›` row for a coaching output, however many studies back it
+/// (field test 2026-08-18 #10, decision **D9**). It pushes `CoachSourcesView`,
+/// which lists them all vertically — a coach surface never stacks a science row
+/// per citation again.
+struct CoachSourcesLink: View {
+    let citationIds: [String]
+    /// Optional per-id "How this applies" copy; the registry supplies the rest.
+    var contexts: [String: String] = [:]
+    var identifier: String = "coach.sources.link"
+
+    var body: some View {
+        let citations = CitationPresenter.citations(forIds: citationIds)
+        if !citations.isEmpty {
+            NavigationLink {
+                CoachSourcesView(citations: citations, contexts: contexts)
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("The science")
+                    Image(systemName: "chevron.forward")
+                }
+                .font(.caption2)
+                .foregroundStyle(.tint)
+                .frame(minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(identifier)
+            .accessibilityLabel("The science, \(citations.count) source\(citations.count == 1 ? "" : "s")")
         }
     }
 }

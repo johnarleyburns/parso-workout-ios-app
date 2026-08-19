@@ -84,10 +84,8 @@ struct CoachAlternativesView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     pills(for: session)
-                    if let citation = session.citationIds.lazy
-                        .compactMap({ CitationRegistry.citation(forId: $0) }).first {
-                        CitationLink(citation: citation, compact: true)
-                    }
+                    CoachSourcesLink(citationIds: session.citationIds,
+                                     identifier: "coach.alternatives.\(session.id).science")
                     Button {
                         onSelect(session)
                     } label: {

@@ -99,9 +99,8 @@ struct CoachDecisionCardView: View {
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
-                                ForEach(w.citationIds.compactMap { CitationRegistry.citation(forId: $0) }) { citation in
-                                    CitationLink(citation: citation, compact: true)
-                                }
+                                CoachSourcesLink(citationIds: w.citationIds,
+                                                 identifier: "coach.card.warnings.science")
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -135,9 +134,8 @@ struct CoachDecisionCardView: View {
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        ForEach(structure.citationIds.compactMap { CitationRegistry.citation(forId: $0) }) { citation in
-                            CitationLink(citation: citation, compact: true)
-                        }
+                        CoachSourcesLink(citationIds: structure.citationIds,
+                                         identifier: "coach.card.structure.science")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .combine)

@@ -24,9 +24,8 @@ struct HomeCoachRecommendationCard: View {
             Text(recommendation.subtitle.isEmpty ? "It matches today's recommended training load." : recommendation.subtitle)
                 .font(.caption).foregroundStyle(.secondary)
             previewDetails
-            ForEach(recommendation.citationIds.compactMap { CitationRegistry.citation(forId: $0) }, id: \.id) { citation in
-                CitationLink(citation: citation, compact: true)
-            }
+            CoachSourcesLink(citationIds: recommendation.citationIds,
+                             identifier: "home.coachRecommendation.science")
             CadenceActionButton(title: "Do Coach's Workout",
                                 systemImage: "play.fill",
                                 action: onStart)

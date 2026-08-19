@@ -2,6 +2,86 @@
 
 Updated: 2026-08-18
 
+## Phase 5 complete — one "The science" link, all sources on one screen
+
+Field test 2026-08-18 issue #10, decision **D9**
+(`docs/field-test-ui-batch-2026-08-18/05-phase5-single-science-link.md`). Every
+coaching output rendered one `CitationLink` row *per citation* — typically six or
+more stacked rows below a single card. It now renders exactly one
+`The science ›` row that pushes a screen listing every source.
+
+- New `CadenceFeatures/CitationPresenter.swift` — `citations(forIds:)` (ordered,
+  de-duplicated, unknown ids dropped), `unresolvedIds`, `hasScience`,
+  `sourcesTitle(count:)`. The resolution rule is unit-tested, not re-derived per
+  view.
+- New `Coach/CoachSourcesView.swift` — a `List` of every source, one
+  `CitationDetailBody` each; ids `coach.sources` / `coach.sources.<id>` /
+  `coach.sources.<id>.link`.
+- `CitationDetailView` factors out `CitationDetailBody(citation:context:idPrefix:)`
+  so the one-source and many-source screens share markup.
+- `CoachCardView` gains `CoachSourcesLink` beside the untouched `CitationLink`.
+- Converted call sites: `HomeCoachRecommendationCard`
+  (`home.coachRecommendation.science`), `CoachDecisionCardView` (both sites —
+  `coach.card.warnings.science`, `coach.card.structure.science`; 460 → 458 LOC),
+  `PlannedDayPreviewView` (`plan.day.science`), `CoachAlternativesView`
+  (`coach.alternatives.<id>.science`), `CoachTestRecommendationCard`
+  (`coach.test.science`), `AssessmentDetailView` (`assessment.science`),
+  `IntervalSetupView` (`interval.science`).
+- `CoachAlternativesView` previously showed only the *first* citation and
+  silently dropped the rest; it now reaches all of them.
+- `CoachTestRecommendationCard`'s dead `citations` property is removed.
+
+### Verification (Phase 5)
+
+- `make ci`: build + **1,367 tests passed, 0 failures** (baseline 1,360 + 7
+  `CitationPresenterTests`), guardrails OK.
+- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
+  **passed** (65.2 s).
+- Acceptance grep is clean: `grep -rn "ForEach" Cadence/Cadence/Features
+  --include=*.swift -A3 | grep CitationLink` returns only
+  `CoachMethodologyView.swift` and `CoachAboutView.swift`, the two bibliography
+  screens the phase file deliberately exempts.
+- Not pushed, per the batch execution protocol.
+
+**Honest note on the smoke assertion:** the new check is
+`count(label BEGINSWITH 'The science') <= 3` on Home. It passes trivially when
+Home shows no coach output, and this run's log does not prove it was non-zero, so
+the real coverage for this phase is the headless `CitationPresenterTests`. Left
+as-is rather than grown into a coach-navigation flow, per the fixed-size
+UI-suite rule.
+
+**Two failed smoke attempts before the green one, neither a code fault:** the
+first failed to *build* because `CoachCardView.swift` and `CoachSourcesView.swift`
+used `CitationPresenter` without `import CadenceFeatures` (fixed; note `make ci`
+builds only the SwiftPM package, so it cannot catch a missing app-target import —
+only `make smoke` or an `xcodebuild` app build does). The second died with
+`Test crashed with signal term` while waiting for `summary.title`, with **no app
+crash report**: a watchOS 26.5 simulator had auto-booted alongside the iPhone and
+was saturating the machine (load average 38-45, `Carousel`/`healthd`/`diagnosticd`
+from the watch runtime at the top of `ps`). `xcrun simctl shutdown <watch-udid>`
+plus a CoreSimulator restart fixed it and the same tree passed in 65 s. If the
+iPhone smoke hangs, check `xcrun simctl list devices booted` for a stray watch
+sim before suspecting the diff.
+
+**Deviations from the phase file, both deliberate:**
+
+- The phase's call-site table missed `CoachTestRecommendationCard`, which also
+  rendered a `ForEach` of `CitationLink`s. Its own acceptance criterion (the grep
+  above) requires that file to convert, so it did.
+- The two new integrity tests were added to `CitationPresenterTests`
+  (**CadenceFeaturesTests**) rather than to `CitationIntegrityTests`
+  (CadenceCoreTests) as the phase file suggested: `CadenceCoreTests` depends only
+  on `CadenceCore` and therefore cannot see `CitationPresenter` at all. The
+  registry-level equivalents already exist in `CitationIntegrityTests`
+  (`testEveryCoachSessionCandidateHasCitationIdsUnlessRestOrEmptyLaunch`,
+  `testEveryDecisionReasonAndWarningCitationIdResolves`); the new ones assert the
+  same rule through the presenter the UI actually calls.
+
+---
+
+<details>
+<summary>Phase 4 — read-only exercise detail in summaries (shipped, b9474b6)</summary>
+
 ## Phase 4 complete — read-only exercise detail in workout summaries
 
 Field test 2026-08-18 issue #1 (*"I should be able to expand/collapse the
@@ -55,6 +135,8 @@ uneditable until the user navigated Home → history, so that summary now passes
   rule.
 - No ratchet change needed: both summary files are under the 400-LOC budget.
 - Not pushed, per the batch execution protocol.
+
+</details>
 
 <details>
 <summary>Phase 3 — coach plans carry real loads (shipped, abf1746)</summary>
@@ -213,11 +295,10 @@ is explicitly exempt.
 
 </details>
 
-## Next task — field-test UI batch, Phase 5
+## Next task — field-test UI batch, Phase 6
 
-Execute `docs/field-test-ui-batch-2026-08-18/05-phase5-single-science-link.md`
-(one `The science ›` row per coach surface, all sources on one screen, per
-decision **D9**).
+Phase 6: **Coach's Suggestions — floating icon, trimmed copy, CTA below the
+card** (`docs/field-test-ui-batch-2026-08-18/06-phase6-coach-suggestions-card.md`).
 Read `00-overview.md` and `decisions.md` first.
 
 | Phase | Scope | State |
@@ -226,8 +307,8 @@ Read `00-overview.md` and `decisions.md` first.
 | 2 | Home's vertical rhythm on Workout Plan / Start Workout / Workout | **done** |
 | 3 | Coach plans carry real loads instead of `BW x 12` | **done** |
 | 4 | Read-only exercise detail in summaries, one row per performer | **done** |
-| 5 | One "The science" link, all sources on one screen | not started |
-| 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | not started |
+| 5 | One "The science" link, all sources on one screen | **done** |
+| 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | **next** |
 | 7 | Workouts Today: tappable detail, `COACH'S PLAN`, start a planned workout | not started |
 | 8 | This Week gear deep-links to Coach & Plan | not started |
 | 9 | Partner-aware Workout Plan (coach fills each partner's plan) | not started |

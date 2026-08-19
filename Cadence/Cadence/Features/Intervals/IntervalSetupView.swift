@@ -248,13 +248,8 @@ struct IntervalSetupView: View {
                                 .font(.headline)
                                 .padding(.top, 8)
 
-                            ForEach(preset.citationIds.compactMap { CitationRegistry.citation(forId: $0) }) { citation in
-                                CitationLink(
-                                    citation: citation,
-                                    context: CitationRegistry.usageReason(forId: citation.id),
-                                    compact: false
-                                )
-                            }
+                            CoachSourcesLink(citationIds: preset.citationIds,
+                                             identifier: "interval.science")
                         }
                     }
 

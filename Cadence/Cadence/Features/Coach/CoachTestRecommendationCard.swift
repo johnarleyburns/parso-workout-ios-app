@@ -11,10 +11,6 @@ struct CoachTestRecommendationCard: View {
     let onPickDifferent: () -> Void
     let onSnooze: (AssessmentKind) -> Void
 
-    private var citations: [Citation] {
-        recommendation.citationIds.compactMap { CitationRegistry.citation(forId: $0) }
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -37,9 +33,8 @@ struct CoachTestRecommendationCard: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            ForEach(citations, id: \.id) { citation in
-                CitationLink(citation: citation, compact: true)
-            }
+            CoachSourcesLink(citationIds: recommendation.citationIds,
+                             identifier: "coach.test.science")
 
             HStack(spacing: 10) {
                 Button {

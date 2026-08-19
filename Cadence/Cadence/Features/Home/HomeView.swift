@@ -45,6 +45,7 @@ struct HomeView: View {
     @State private var showSupport = false
     @State private var pendingAddGapsDeficits: [BodyPart: Double]?
     @State private var suggestionsExpanded = false
+    @State private var expandedTodayRowIDs: Set<String> = []
     @State private var weeklyVolumeExpanded = false
     @State private var coachIllustration = HomeCoachIllustration.random()
     @State private var showWorkoutConflict = false
@@ -208,7 +209,11 @@ struct HomeView: View {
 
                     if let s = resumeSession { resumeCard(s) }
                     homeActionRow
-                    workoutsTodaySection
+                    HomeWorkoutsTodaySection(
+                        rows: workoutsTodayRows,
+                        expandedRowIDs: $expandedTodayRowIDs,
+                        onOpenCompleted: openTodayWorkout,
+                        onStartPlanned: startPlannedToday)
                     HomeWeekDashboardSection(
                         dashboard: dashboard,
                         volumeExpanded: $weeklyVolumeExpanded,
@@ -588,54 +593,28 @@ struct HomeView: View {
             .accessibilityIdentifier("home.logWorkout")
         }
     }
-    private var workoutsTodaySection: some View {
-        let cal = Calendar.current
-        let todaySessions = sessions.filter {
-            $0.deletedAt == nil && $0.endedAt != nil && cal.isDateInToday($0.date)
-        }.sorted { ($0.endedAt ?? $0.date) > ($1.endedAt ?? $1.date) }
-        let todayCardio = cardio.filter {
-            $0.deletedAt == nil && $0.end != nil && cal.isDateInToday($0.start)
-        }.sorted { $0.start > $1.start }
-        // Remaining recommendations keep partial two-a-days visible.
-        let planned = coachDecision.todayPlannedRecommendations.filter { $0.kind != .rest }
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("Workouts Today").font(.headline)
-            if todaySessions.isEmpty && todayCardio.isEmpty && planned.isEmpty {
-                Text("Nothing completed or planned yet.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                ForEach(todaySessions) { workout in
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                        Text(workout.title.isEmpty ? "Strength" : workout.title)
-                            .font(.subheadline.weight(.medium))
-                        Spacer()
-                        Text("COMPLETED").font(.caption2.weight(.bold)).foregroundStyle(.green)
-                    }
-                }
-                ForEach(todayCardio) { workout in
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                        Text(workout.customTitle?.isEmpty == false ? workout.customTitle! : (CardioType(rawValue: workout.type)?.displayName ?? "Cardio"))
-                            .font(.subheadline.weight(.medium))
-                        Spacer()
-                        Text("COMPLETED").font(.caption2.weight(.bold)).foregroundStyle(.green)
-                    }
-                }
-                ForEach(Array(planned.enumerated()), id: \.offset) { _, workout in
-                    HStack(spacing: 8) {
-                        Image(systemName: "calendar").foregroundStyle(.teal)
-                        Text(workout.title).font(.subheadline.weight(.medium))
-                        Spacer()
-                        Text("PLANNED").font(.caption2.weight(.bold)).foregroundStyle(.teal)
-                    }
-                }
-            }
+    /// Today's completed workouts plus the coach plan still outstanding.
+    /// Ordering, badge vocabulary and planned volume live in the presenter.
+    private var workoutsTodayRows: [WorkoutsTodayPresenter.Row] {
+        WorkoutsTodayPresenter.rows(
+            sessions: sessions,
+            cardio: cardio,
+            plannedToday: coachDecision.todayPlannedRecommendations)
+    }
+    private func openTodayWorkout(_ row: WorkoutsTodayPresenter.Row) {
+        guard let id = UUID(uuidString: row.sourceKey) else { return }
+        switch row.modality {
+        case .strength:
+            if let s = sessions.first(where: { $0.id == id }) { path.append(s) }
+        case .cardio:
+            if let c = cardio.first(where: { $0.id == id }) { path.append(c) }
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
-        .accessibilityIdentifier("home.workoutsToday")
+    }
+    private func startPlannedToday(_ row: WorkoutsTodayPresenter.Row) {
+        guard let session = coachDecision.todayPlannedRecommendations
+            .first(where: { $0.id == row.sourceKey }) else { return }
+        Haptics.selection()
+        launchDecision(session)
     }
     private var previewableCoachRecommendation: CoachSession? {
         switch coachDecision.primary.launchPayload {

@@ -4,9 +4,15 @@ import XCTest
 /// needs a real simulator: launch, Home expansion, planning, Quick Start, ending,
 /// and the post-workout summary. Everything else belongs in headless `swift test`.
 final class SmokeLaunchTests: CadenceUITestCase {
+    /// The exercise the logging flow adds. A catalog staple, so the picker's
+    /// search always resolves it.
+    private let exerciseName = "Bench Press"
+
     @MainActor
     func testIPhoneStrengthWorkoutPlansLogsAndCompletes() {
-        let app = XCUIApplication.launched()
+        // A seeded partner gives the session a real roster, so the flow can log a
+        // set for someone other than the owner (field test 2026-08-18 §5b).
+        let app = XCUIApplication.launched(seeds: ["person.Sam"])
 
         XCTAssertEqual(app.state, .runningForeground,
                        "iPhone app terminated or failed to reach the foreground during cold launch")
@@ -52,6 +58,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
         }
         XCTAssertFalse(app.descendants(matching: .any)["home.workoutHistory"].exists,
                        "Home still contains the duplicate Workout History card")
+
+        // Field test 2026-08-18 #6: Workouts Today rows carry a plan-source badge.
+        XCTAssertTrue(app.descendants(matching: .any)["home.workoutsToday"].waitForExistence(timeout: 10),
+                      "Workouts Today card is missing")
+        XCTAssertFalse(app.staticTexts["PLANNED"].exists,
+                       "Workouts Today still uses the bare PLANNED badge")
 
         // Field test 2026-08-18 #10: at most one science row per coach output.
         // The bug rendered one row per *citation*, typically 6+.
@@ -105,6 +117,18 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertFalse(app.buttons["editor.showSettings"].exists,
                        "Quick Start unexpectedly opened workout settings")
 
+        // Field test 2026-08-18 §5b: the flow logs real sets with a partner, the
+        // way the watch smoke test does. Without this every summary assertion
+        // below is vacuous — the session would contain no exercises at all.
+        XCTAssertTrue(app.addSessionPartner("Sam"), "Could not add a training partner to the session")
+        XCTAssertTrue(app.pickExercise(exerciseName),
+                      "Could not add \(exerciseName) to the live session")
+        XCTAssertTrue(app.saveSetInEditor(), "Owner's set did not save")
+        app.dismissRestBar()
+        XCTAssertTrue(app.logPartnerSet(exercise: exerciseName, partner: "Sam"),
+                      "Partner's set did not save")
+        app.dismissRestBar()
+
         XCTAssertTrue(app.scrollToHittableAndTap("workout.end"), "End workout button did not tap")
         let end = app.dialogButton("workout.endConfirm")
         XCTAssertTrue(end.waitForExistence(timeout: 5), "End confirmation did not appear")
@@ -113,18 +137,36 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["summary.title"].waitForExistence(timeout: 15),
                       "post-workout summary did not render")
 
-        // Field test 2026-08-18 #1: the summary expands an exercise read-only.
+        // Field test 2026-08-18 #1: the summary expands an exercise read-only, one
+        // row per performer. Unguarded — the flow above logged the sets, so an
+        // absent row is a real failure rather than an empty workout.
         let exerciseRow = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH 'summary.exercise'")).firstMatch
-        if exerciseRow.exists {
-            exerciseRow.tap()
-            XCTAssertFalse(app.buttons["session.addExercise"].exists,
-                           "Expanding a summary exercise navigated into the editor")
-            XCTAssertTrue(app.descendants(matching: .any)["summary.title"].exists,
-                          "Expanding a summary exercise left the summary")
-        }
+        XCTAssertTrue(exerciseRow.waitForExistence(timeout: 10),
+                      "Summary has no exercise row for the logged sets")
+        exerciseRow.tap()
+        XCTAssertFalse(app.buttons["session.addExercise"].exists,
+                       "Expanding a summary exercise navigated into the editor")
+        XCTAssertTrue(app.descendants(matching: .any)["summary.title"].exists,
+                      "Expanding a summary exercise left the summary")
+        XCTAssertTrue(app.descendants(matching: .any)
+                        .matching(NSPredicate(format: "identifier ENDSWITH '.performer.Me'"))
+                        .firstMatch.waitForExistence(timeout: 5),
+                      "Expanded summary exercise is missing the owner's per-performer row")
+        XCTAssertTrue(app.descendants(matching: .any)
+                        .matching(NSPredicate(format: "identifier ENDSWITH '.performer.Sam'"))
+                        .firstMatch.exists,
+                      "Expanded summary exercise is missing the partner's per-performer row")
+
         XCTAssertTrue(app.buttons["summary.done"].waitTap(timeout: 10), "summary Done did not tap")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home did not return after summary")
+
+        // Field test 2026-08-18 #6: the finished workout is a tappable Workouts
+        // Today row.
+        let todayRow = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'home.today.row.'")).firstMatch
+        XCTAssertTrue(todayRow.waitForExistence(timeout: 10),
+                      "Completed workout did not appear in Workouts Today")
     }
 }

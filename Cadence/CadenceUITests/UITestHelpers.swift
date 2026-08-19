@@ -154,6 +154,61 @@ extension XCUIApplication {
         return true
     }
 
+    /// Adds a seeded training partner to the live session through the partner
+    /// bar's + button. The seeded person appears either as a "Recent" shortcut or
+    /// as a row in the full list, depending on whether they have trained before.
+    @discardableResult
+    func addSessionPartner(_ name: String) -> Bool {
+        guard buttons["partner.add"].waitTap(timeout: 10) else { return false }
+        let quickAdd = buttons["partner.quick.add.\(name)"]
+        let listRow = buttons["partner.quick.row.\(name)"]
+        if quickAdd.waitForExistence(timeout: 5) {
+            quickAdd.tap()
+        } else if listRow.waitForExistence(timeout: 5) {
+            listRow.tap()
+        } else {
+            return false
+        }
+        if buttons["partner.quick.done"].waitForExistence(timeout: 5) {
+            buttons["partner.quick.done"].tap()
+        }
+        // The partner chip in the session's "With:" bar is the confirmation that
+        // the roster actually took the partner.
+        return descendants(matching: .any)["set.performer.\(name)"].waitForExistence(timeout: 10)
+    }
+
+    /// Saves whatever the inline set editor currently shows. Picking an exercise
+    /// in a live session opens the editor automatically, so the default draft is
+    /// already a loggable set.
+    @discardableResult
+    func saveSetInEditor() -> Bool {
+        guard buttons["setEditor.save"].waitForExistence(timeout: 15) else { return false }
+        buttons["setEditor.save"].tap()
+        return !buttons["setEditor.save"].waitForExistence(timeout: 5)
+    }
+
+    /// Logs one set for `partner` on an exercise already in the session: Add Set →
+    /// "Who did this set?" → the partner → Save. The performer rows are keyed by
+    /// the person's UUID, which the test cannot know, so the partner is resolved
+    /// by name inside the picker sheet.
+    @discardableResult
+    func logPartnerSet(exercise: String, partner: String) -> Bool {
+        // `Add set` lives inside the expanded exercise card, and logging a set
+        // collapses it, so re-expand before looking for the button.
+        if !buttons["set.add.\(exercise)"].exists {
+            let collapsed = buttons.matching(identifier: "exercise.collapsed").firstMatch
+            if collapsed.waitForExistence(timeout: 10) { collapsed.tap() }
+        }
+        guard scrollToHittableAndTap("set.add.\(exercise)") else { return false }
+        guard buttons["setEditor.performer"].waitTap(timeout: 15) else { return false }
+        let row = buttons.matching(identifier: partner).firstMatch
+        let labelled = buttons.containing(NSPredicate(format: "label == %@", partner)).firstMatch
+        if row.waitForExistence(timeout: 5) { row.tap() }
+        else if labelled.waitForExistence(timeout: 5) { labelled.tap() }
+        else { return false }
+        return saveSetInEditor()
+    }
+
     /// Resolves a `.confirmationDialog`/alert button by identifier via `firstMatch`.
     /// On iOS 26 the accessibility tree surfaces confirmation-dialog buttons TWICE
     /// (same identifier + frame), so `buttons[id]` throws "Multiple matching

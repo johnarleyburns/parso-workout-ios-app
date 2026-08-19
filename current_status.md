@@ -1,6 +1,108 @@
 # Current Status
 
-Updated: 2026-08-18
+Updated: 2026-08-19
+
+## Phase 7 complete — Workouts Today opens, expands and starts
+
+Field test 2026-08-18 issue #6
+(`docs/field-test-ui-batch-2026-08-18/07-phase7-workouts-today.md`), plus the
+user's **§5b smoke-flow instruction** — the smoke test now logs real sets with a
+partner, and the iPhone UI suite is back to exactly one test.
+
+### Workouts Today
+
+- **New `CadenceFeatures/WorkoutsTodayPresenter.swift`** turns today's completed
+  workouts plus the outstanding coach plan into one ordered list: completed first
+  (newest first), then planned items in plan order, rest days dropped. Completed
+  rows reuse `TodayActivityPresenter.entries` **verbatim** — "what counts as done
+  today" is not re-implemented. It owns the badge vocabulary (`COACH'S PLAN` /
+  `YOUR PLAN` / `TRAINER'S PLAN`, decision **D10**; only `.coach` is produced
+  today), `repsText` (ladder → `12, 10, 8`, else `8–12`, else `10`),
+  `plannedValueText` (`6 sets · ~45m` / `~30m easy`) and `plannedVolumeKg`.
+- **Planned volume is priced at the bottom of the rep range** when there is no
+  ladder, so the coach never over-promises tonnage. A pure bodyweight plan
+  returns `nil` rather than `0`; a loaded lift with no resolvable load renders
+  `—` while a bodyweight movement renders `BW` (Phase 3's decision **D4**).
+- **New `Home/HomeWorkoutsTodaySection.swift`** (154 LOC) renders it. Completed
+  rows go through the shared `HomeWeekWorkoutRow` and navigate exactly where This
+  Week navigates; planned rows expand in place to why → per-exercise
+  `sets × reps × load` → planned volume → one science link → a 56 pt
+  `Start This Workout`, which routes through the existing `launchDecision` to the
+  plan editor / cardio setup — never straight into a recorder (NFR-8).
+- `HomeWeekWorkoutRow` gained a second initializer (`init(row:)`) plus an
+  optional trailing badge, so Workouts Today and This Week still share **one**
+  implementation of that line and This Week's call site is untouched.
+- Ids: `home.today.row.<key>`, `home.today.badge.<key>`,
+  `home.today.start.<key>`, `home.today.science.<key>`; `home.workoutsToday`
+  unchanged. `grep -rn '"PLANNED"' Cadence/Cadence/Features` is **empty**.
+- `HomeView.swift` 1054 → **1033 LOC**; ratchet lowered to match.
+
+### §5b — the smoke test logs real work now
+
+The iPhone smoke test launches with `-seed person.Sam`, adds the partner to the
+session, adds Bench Press, saves the owner's set, then logs a second set **for
+the partner** through `setEditor.performer`, and asserts the summary's
+`summary.exercise…` row **and both per-performer rows** — with the `if …exists`
+guards **removed**. That is the fix for the Phase 4 assertion that never fired:
+a pass is now proof the assertion ran, because an absent row fails the test.
+New helpers: `addSessionPartner`, `saveSetInEditor`, `logPartnerSet`.
+
+**A real bug the new flow caught on its first run:** `set.add.<name>` only exists
+while the exercise card is **expanded**, and logging a set collapses it, so the
+partner's set could never be started. `logPartnerSet` now re-expands the card via
+`exercise.collapsed` first. The old log-nothing flow could not have surfaced
+this.
+
+The suite is back to **exactly one iPhone test**
+(`EXPECTED_IPHONE_SMOKE_TESTS=1`); the 1-20 cap introduced in `d05c733` is
+reverted, and CLAUDE.md now reads "grow the flow, not the suite". The test costs
+what that honesty is worth: **63 s → 142 s**.
+
+### Simulator teardown — and a hazard worth knowing about
+
+`make shutdown-sims` runs after both smoke gates through a
+`status=0; … || status=$?; $(MAKE) shutdown-sims; exit $status` wrapper, so it
+runs on failure too **without swallowing the exit code** (verified both ways: a
+green run exits 0 with nothing booted; a failing run still surfaced
+`make: *** [smoke] Error 65`).
+
+**It deliberately does NOT `simctl shutdown all`.** This machine runs other Xcode
+projects concurrently — on 2026-08-19 a `xcodebuild test -scheme Voxglass` was
+executing against `platform=iOS Simulator,name=iPhone 16`, **the same device this
+repo pins**, and a global shutdown would have killed it. `shutdown-sims` now
+shuts down only `$(SMOKE_SIM_NAME)` and `$(WATCH_SIM_NAME)` and quits
+`Simulator.app` only when nothing else is left booted.
+
+⚠️ **Residual hazard, unresolved:** scoping is not isolation. While another
+project targets a simulator *named* `iPhone 16`, our teardown still shuts down
+**their** device. The real fix is a dedicated device for this repo
+(`xcrun simctl create "Cadence-iPhone-16" …`, then pin `SMOKE_DEST` to it). Not
+done — it changes the pinned device name that CI also uses, so it needs a
+decision first.
+
+### Verification (Phase 7)
+
+- `make ci`: build + **1,403 tests passed, 0 failures** (baseline 1,380 + 23
+  `WorkoutsTodayPresenterTests`), guardrails OK.
+- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
+  **passed** (141.6 s) with the full logging flow.
+- The new summary assertions are unguarded, so their passing **is** the proof
+  they executed — no probe needed this time.
+- **Honest gap:** the expanded planned row was verified structurally (presenter
+  tests + a clean app build + the smoke flow), **not** visually. The smoke flow's
+  fresh store has no coach-planned item to expand, and the machine was saturated
+  by the concurrent Voxglass run, so no screenshot of the expanded prescription
+  was taken.
+- An earlier run showed `TEST EXECUTE FAILED` while the UI test itself **passed**
+  (136.7 s): the `CadenceTests` runner hung before connecting at load average
+  99-128, with that other project's test session competing for the same
+  simulator. Environmental, not a code failure — the clean re-run above is green.
+- Not pushed, per the batch execution protocol.
+
+---
+
+<details>
+<summary>Phase 6 — Coach's Suggestions restructured (shipped, d05c733)</summary>
 
 ## Phase 6 complete — Coach's Suggestions: floating icon, workout last, CTA below
 
@@ -76,19 +178,18 @@ Field test 2026-08-18 issues #8/#9/#11
   `testWhyFallsBackWhenTheSessionHasNoSubtitle`) cover the two pieces of copy
   logic that moved out of the view with it.
 
-### Also in this commit — the XCUITest cap is now 20 (user instruction)
+### Also in this commit — the XCUITest cap went to 20, then back to 1
 
 `scripts/check-test-pyramid.sh` enforced `EXPECTED_IPHONE_SMOKE_TESTS=1` — exact
-equality, stricter than the "≤12 UI-test cap" CLAUDE.md advertised. It is now a
-range: `MIN_IPHONE_SMOKE_TESTS=1`, `MAX_IPHONE_SMOKE_TESTS=20`. The rule that all
-non-screenshot iPhone UI tests live in `SmokeLaunchTests.swift` is unchanged, and
-the watch suite is still pinned at exactly 1. CLAUDE.md was updated to match.
+equality, stricter than the "≤12 UI-test cap" CLAUDE.md advertised. Commit
+`d05c733` raised it to a 1-20 range at the user's request; **the user reset it to
+exactly 1 the same day** (see the uncommitted work below), choosing to grow the
+single end-to-end flow instead of the suite. `d05c733` therefore contains a cap
+change that the very next commit reverts — deliberate, recorded here so the
+history is not mistaken for a mistake. Phase 6 never spent the headroom; its
+coverage went into the existing test as assertions.
 
-Phase 6 did **not** spend the new headroom: its coverage went into the existing
-test as assertions, because each additional UI test costs a full app launch
-(~60 s) in the pre-commit hook. The cap is a ceiling, not a target.
-
----
+</details>
 
 <details>
 <summary>Phase 5 — one science link per coaching output (shipped, 11fafe7)</summary>
@@ -386,12 +487,14 @@ is explicitly exempt.
 
 </details>
 
-## Next task — field-test UI batch, Phase 7
+## Next task — field-test UI batch, Phase 8
 
-Phase 7: **Workouts Today — tappable detail, `COACH'S PLAN`, start a planned
-workout** (`docs/field-test-ui-batch-2026-08-18/07-phase7-workouts-today.md`).
-Phases 7, 8 and 9 are independent of each other; 7 is the largest of the three
-remaining after 9. Read `00-overview.md` and `decisions.md` first.
+**Phase 8: This Week's gear deep-links to Coach & Plan**
+(`docs/field-test-ui-batch-2026-08-18/08-phase8-week-gear-deeplink.md`, 141
+lines — the smallest of the three remaining). Phase 9 (partner-aware Workout
+Plan, 377 lines) is the largest and can follow. Phases 7, 8 and 9 are independent
+of each other, so 8 branches off whatever is on `main`.
+Read `00-overview.md` and `decisions.md` first.
 
 | Phase | Scope | State |
 |---|---|---|
@@ -401,8 +504,8 @@ remaining after 9. Read `00-overview.md` and `decisions.md` first.
 | 4 | Read-only exercise detail in summaries, one row per performer | **done** |
 | 5 | One "The science" link, all sources on one screen | **done** |
 | 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | **done** |
-| 7 | Workouts Today: tappable detail, `COACH'S PLAN`, start a planned workout | **next** |
-| 8 | This Week gear deep-links to Coach & Plan | not started |
+| 7 | Workouts Today + smoke logs a real set with partners (§5b) | **done** |
+| 8 | This Week gear deep-links to Coach & Plan | **next** |
 | 9 | Partner-aware Workout Plan (coach fills each partner's plan) | not started |
 
 **Execution protocol for this batch (user instruction, overrides the CLAUDE.md

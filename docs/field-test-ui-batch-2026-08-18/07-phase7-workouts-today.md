@@ -262,8 +262,55 @@ XCTAssertTrue(todayRow.waitForExistence(timeout: 10),
               "Completed workout did not appear in Workouts Today")
 ```
 
+## 5b. Smoke-flow extension (user instruction, 2026-08-18)
+
+The iPhone smoke test currently starts a Quick Start workout and ends it without
+logging anything, so every summary/exercise assertion added in Phases 4-6 is
+guarded and can pass vacuously. Phase 7 fixes that. The flow must, in **one**
+test function, mirror what the watch smoke test already does
+(`WatchSmokeTests.testWatchStrengthWorkoutStartsLogsAndCompletes`):
+
+- Launch with a seeded partner — the watch test uses
+  `app.launchArguments = ["-uiTest", "-seed", "person.Sam"]`, and
+  `XCUIApplication.launched(seeds:)` already takes the same argument.
+- Add **at least one exercise** through the picker (`session.addExercise` →
+  category → row → add).
+- Attach **at least one partner** to the session, then **log at least one set**
+  for the owner and one for the partner, so the per-performer rows Phase 4 built
+  actually exist by the time the summary opens.
+- Complete the workout and assert the summary's `summary.exercise…` row and its
+  per-performer detail — the Phase 4 assertion that has never fired.
+
+Constraints:
+
+- **One test function.** All iPhone UI coverage stays inside
+  `testIPhoneStrengthWorkoutPlansLogsAndCompletes`; the flow grows, the suite
+  does not. `scripts/check-test-pyramid.sh` is back to
+  `EXPECTED_IPHONE_SMOKE_TESTS=1` (the 20-test cap introduced with Phase 6 was
+  reset the same day).
+- **Simulators are shut down when a smoke gate finishes**, pass or fail —
+  `make shutdown-sims`, wired into both `smoke` and `watch-smoke`. A booted
+  watchOS runtime starves the iPhone run (2026-08-18: load average 38-45, "Test
+  crashed with signal term", no crash report).
+- The test is expected to get slower. Keep it honest rather than fast: the
+  guarded assertions from Phases 4-6 only earn their keep once this flow logs
+  real sets.
+
 ## 6. Acceptance criteria
 
+- [ ] The iPhone smoke test adds at least one exercise, attaches at least one
+      partner, and logs at least one set for the owner and one for the partner,
+      the way the watch smoke test does.
+- [ ] Phase 4's `summary.exercise` expansion assertion and its per-performer
+      detail now execute for real — verified by temporarily hardening the `if
+      …exists` guard into an `XCTAssertTrue` probe, running `make smoke`, then
+      removing the probe (the technique used to verify Phase 6's CTA
+      assertions).
+- [ ] All iPhone UI coverage lives in exactly **one** test function, and
+      `scripts/check-test-pyramid.sh` enforces `EXPECTED_IPHONE_SMOKE_TESTS=1`.
+- [ ] `make smoke` and `make watch-smoke` leave **no booted simulators** and no
+      running `Simulator.app`, on success and on failure alike
+      (`xcrun simctl list devices booted` is empty afterwards).
 - [ ] Every Workouts Today row is interactive.
 - [ ] A completed strength/cardio row shows title, exercise-name subtitle, and
       `N sets · duration` / `distance · duration`, and tapping it opens the same

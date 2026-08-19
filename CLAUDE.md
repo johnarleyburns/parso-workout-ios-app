@@ -94,12 +94,12 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
   state struct / view-model and render it; the logic is unit-tested in
   `CadenceFeaturesTests` (headless `swift test`). `CadenceFeatures` imports only
   Foundation + SwiftData + Observation — if an extraction wants a `Color`/`View`,
-  return a semantic enum and let the view map it. The XCUITest suite is a small
-  smoke gate, capped at **20 iPhone test functions** (raised from 1 on
-  2026-08-18) plus one watch smoke test — a ceiling, not a target, since each
-  one costs a full app launch in the pre-commit hook. Default new coverage to a
-  `swift test`. `scripts/check-test-pyramid.sh` (CI) enforces all three: the
-  import ban, the UI-test cap, and the 400-LOC-per-Features-file budget
+  return a semantic enum and let the view map it. The XCUITest suite is
+  **exactly one iPhone test and one watch test** — it grows by extending those
+  end-to-end flows, never by adding test functions, because each one costs a full
+  app launch in the pre-commit hook. Default new coverage to a `swift test`.
+  `scripts/check-test-pyramid.sh` (CI) enforces all three: the import ban, the
+  one-test-per-device cap, and the 400-LOC-per-Features-file budget
   (grandfathered large views may only shrink).
 
 ## HARD RULE: Every coaching output MUST cite science

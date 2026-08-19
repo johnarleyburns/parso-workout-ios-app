@@ -220,8 +220,8 @@ struct HomeView: View {
                         strengthEntries: weekActivity.strength,
                         cardioEntries: weekActivity.cardio,
                         totalVolumeKg: weeklyVolumeKg,
-                        unit: settings.unit,
-                        onOpenWorkout: openWeekWorkout)
+                        unit: settings.unit, onOpenWorkout: openWeekWorkout,
+                        onOpenCoachSettings: { path.append(HomeRoute.coachPreferences) })
                     HomeCoachSuggestionsSection(
                         suggestions: dashboard.suggestions,
                         recommendation: previewableCoachRecommendation,

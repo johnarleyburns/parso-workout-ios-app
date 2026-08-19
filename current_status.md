@@ -2,7 +2,78 @@
 
 Updated: 2026-08-19
 
-## Phase 7 complete — Workouts Today opens, expands and starts
+## Phase 8 complete — This Week deep-links to Coach & Plan
+
+Field test 2026-08-18 issue #7
+(`docs/field-test-ui-batch-2026-08-18/08-phase8-week-gear-deeplink.md`). The
+smallest phase in the batch, shipped exactly as designed.
+
+### The deep link
+
+- `Home/HomeWeekDashboardSection.swift` gained a `header` row: the `This Week`
+  headline, a `Spacer`, and a `gearshape` button with a **44x44 hit target**
+  (`.frame(44, 44)` + `.contentShape(Rectangle())` — a `.plain` button beside a
+  `Spacer` is otherwise untappable). Ids/a11y: `home.week.coachSettings`,
+  label `Coach and plan settings`, hint `Opens Coach & Plan preferences`. The
+  gear is a real element in the header `HStack`, **not** an overlay like Phase
+  6's decorative illustration, because it is interactive and must be reachable
+  by VoiceOver and Full Keyboard Access.
+- **Negative padding keeps the header from growing.** The button carries
+  `.padding(.trailing, -8)` and `.padding(.vertical, -8)`, so the *glyph* sits at
+  the card's inset corner while the *target* stays 44 pt and the row occupies
+  ~28 pt — the rows below do not shift. The phase file suggested
+  `.padding(.top, -8)`; vertical is the correct axis, or the header would still
+  stand 8 pt taller than the headline.
+- `HomeView.swift` passes `onOpenCoachSettings: { path.append(HomeRoute.coachPreferences) }`.
+  **That one line is the entire "Back goes to Home" story:** the route and its
+  `navigationDestination` already existed, and pushing onto Home's own
+  `NavigationStack` means Settings was never on the stack to pop back to. No
+  custom back handling. `CoachSchedulePreferencesView` already declares
+  `.navigationTitle("Coach & Plan")`, so it is self-identifying from Home and
+  Settings -> Coach -> Coach & Plan is untouched.
+- **HomeView is at its ratchet, not above it.** Adding the argument pushed the
+  file to 1034 against a shrink-only ceiling of 1033, so `unit:` and
+  `onOpenWorkout:` now share a line in that call (the file already carries lines
+  up to 255 chars). The ratchet was **not** raised.
+  `HomeWeekDashboardSection.swift` is 163 LOC, well under 400.
+
+### No new unit test — deliberate, per the phase file
+
+The deep link is pure navigation wiring with no logic to test headlessly, and
+`HomeRoute` lives in the app target where `swift test` cannot reach it. Coverage
+goes to the one iPhone smoke test instead, as the phase file specifies.
+
+### Verification (Phase 8)
+
+- `make ci`: build + **1,403 tests passed, 0 failures** (unchanged — no new
+  logic), guardrails OK, `HomeView.swift 1033 LOC (grandfathered <=1033)`.
+- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
+  **passed** (143.8 s).
+- **The new assertions are unguarded, so their passing is the proof they ran.**
+  `scrollToHittableAndTap("home.week.coachSettings")` fails the test if the gear
+  is missing or unhittable; the run then asserts the `Coach & Plan` nav bar
+  appears, taps Back, and asserts Home's `home.startWorkout` is back **and** that
+  no `Settings` nav bar exists. No `if ...exists` guard anywhere in the block.
+- **Honest gap:** verified structurally and end-to-end, **not** visually — no
+  screenshot of the gear glyph's resting position was taken, so "the glyph sits
+  at the card's inset corner" rests on the negative-padding geometry and the
+  unchanged row assertions, not on a photograph.
+- **The first `make smoke` failed before running a single test**, with
+  `Unable to find a device matching ... name:Cadence-iPhone-16` while
+  `xcrun simctl list devices available` listed that exact device as available and
+  xcodebuild's own destination list contained **no simulators at all** — a
+  CoreSimulatorService enumeration hiccup (the service had just restarted at
+  13:48). A straight retry passed with no change to the tree. Recognise this one
+  rather than re-debugging it: if xcodebuild lists only `My Mac` and the
+  placeholders, retry before suspecting the pinned device name.
+- Not pushed, per the batch execution protocol.
+
+---
+
+<details>
+<summary>Phase 7 — Workouts Today opens, expands and starts (shipped, 8d46556)</summary>
+
+## Phase 7 complete — Workouts Today opens, expands and starts (shipped, `8d46556`)
 
 Field test 2026-08-18 issue #6
 (`docs/field-test-ui-batch-2026-08-18/07-phase7-workouts-today.md`), plus the
@@ -58,7 +129,7 @@ The suite is back to **exactly one iPhone test**
 reverted, and CLAUDE.md now reads "grow the flow, not the suite". The test costs
 what that honesty is worth: **63 s → 142 s**.
 
-### Simulator teardown — and a hazard worth knowing about
+### Simulator hygiene — teardown + a device of our own
 
 `make shutdown-sims` runs after both smoke gates through a
 `status=0; … || status=$?; $(MAKE) shutdown-sims; exit $status` wrapper, so it
@@ -66,19 +137,26 @@ runs on failure too **without swallowing the exit code** (verified both ways: a
 green run exits 0 with nothing booted; a failing run still surfaced
 `make: *** [smoke] Error 65`).
 
-**It deliberately does NOT `simctl shutdown all`.** This machine runs other Xcode
-projects concurrently — on 2026-08-19 a `xcodebuild test -scheme Voxglass` was
-executing against `platform=iOS Simulator,name=iPhone 16`, **the same device this
-repo pins**, and a global shutdown would have killed it. `shutdown-sims` now
-shuts down only `$(SMOKE_SIM_NAME)` and `$(WATCH_SIM_NAME)` and quits
-`Simulator.app` only when nothing else is left booted.
+**It deliberately does NOT `simctl shutdown all`,** and this repo no longer
+shares a simulator with anything. Both were forced by a real incident: on
+2026-08-19 another project on this machine was running
+`xcodebuild test -scheme Voxglass -only-testing:VoxglassUITests` against
+`platform=iOS Simulator,name=iPhone 16` — **the device this repo used to pin** —
+and the two suites destroyed each other's runs.
 
-⚠️ **Residual hazard, unresolved:** scoping is not isolation. While another
-project targets a simulator *named* `iPhone 16`, our teardown still shuts down
-**their** device. The real fix is a dedicated device for this repo
-(`xcrun simctl create "Cadence-iPhone-16" …`, then pin `SMOKE_DEST` to it). Not
-done — it changes the pinned device name that CI also uses, so it needs a
-decision first.
+- `shutdown-sims` shuts down only `$(SMOKE_SIM_NAME)` and `$(WATCH_SIM_NAME)`,
+  and quits `Simulator.app` only when nothing else is left booted.
+- **`SMOKE_SIM_NAME ?= Cadence-iPhone-16`** — a device created for this repo
+  alone. Recreate it with:
+  `xcrun simctl create "Cadence-iPhone-16" com.apple.CoreSimulator.SimDeviceType.iPhone-16 com.apple.CoreSimulator.SimRuntime.iOS-26-5`
+  Override with `make smoke SMOKE_SIM_NAME='iPhone 16'` if you ever need the
+  shared one. **CI is unaffected** — it never runs the UI smoke and archives
+  against `generic/platform=iOS`, so no workflow references this name.
+
+⚠️ **What this does NOT fix:** a neighbouring session can still `killall` or
+`pkill` `xcodebuild`/`CoreSimulatorService` and take our run down with it (that
+is exactly how commit attempt 2 died, below). Isolation of simulator *state* is
+solved; process-level kills are not.
 
 ### Verification (Phase 7)
 
@@ -93,11 +171,31 @@ decision first.
   fresh store has no coach-planned item to expand, and the machine was saturated
   by the concurrent Voxglass run, so no screenshot of the expanded prescription
   was taken.
-- An earlier run showed `TEST EXECUTE FAILED` while the UI test itself **passed**
-  (136.7 s): the `CadenceTests` runner hung before connecting at load average
-  99-128, with that other project's test session competing for the same
-  simulator. Environmental, not a code failure — the clean re-run above is green.
-- Not pushed, per the batch execution protocol.
+- **Committed as `8d46556`** after the pre-commit hook re-ran everything green:
+  guardrails, 1,403 unit tests, iPhone smoke, **and** the watch smoke (100.7 s).
+- Not pushed, per the batch execution protocol. Seven commits (Phases 1-7) are
+  now unpushed on `main`.
+
+**It took three commit attempts, and neither failure was the diff.** Recorded so
+the next environmental failure is recognised rather than re-debugged:
+
+| Attempt | Outcome |
+|---|---|
+| 1 | Unit tests green, then iPhone smoke `Test crashed with signal term` — device shared with the concurrent `VoxglassUITests` run, load average 99-128 |
+| 2 | Unit tests green (1,403), then `make smoke` **`Terminated: 15`** — an external SIGTERM, i.e. something outside this repo killed our `xcodebuild` |
+| 3 | Everything green on the dedicated device, load ~270 → **`8d46556`** |
+
+Standalone `make ci` and `make smoke` had already passed on this exact tree
+before attempt 1, which is what made the environmental diagnosis safe rather than
+wishful.
+
+**The load was never Xcode.** Five `python3.14` processes sat at ~85% CPU each
+(~425% total) for over an hour, driving load average to 270+ and making every
+simulator run 2-3x its normal length. They belong to neither this repo nor this
+session and were left alone. If simulator gates start hanging again, check
+`ps -Ao pcpu,pid,etime,comm -r | head` **before** suspecting the code.
+
+</details>
 
 ---
 
@@ -487,14 +585,33 @@ is explicitly exempt.
 
 </details>
 
-## Next task — field-test UI batch, Phase 8
+## Next task — field-test UI batch, Phase 9 (the last one)
 
-**Phase 8: This Week's gear deep-links to Coach & Plan**
-(`docs/field-test-ui-batch-2026-08-18/08-phase8-week-gear-deeplink.md`, 141
-lines — the smallest of the three remaining). Phase 9 (partner-aware Workout
-Plan, 377 lines) is the largest and can follow. Phases 7, 8 and 9 are independent
-of each other, so 8 branches off whatever is on `main`.
+**HEAD is the Phase 8 commit (`git log --oneline -1`). The working tree is clean
+and nothing is pushed — eight commits (Phases 1-8) now sit unpushed on `main`.**
+
+**Phase 9: partner-aware Workout Plan**
+(`docs/field-test-ui-batch-2026-08-18/09-phase9-partner-plans.md`, 377 lines —
+the largest phase in the batch, and the last). Field-test issue #4: the Coach's
+Workout Plan must let the user add training partners and default-fill each
+partner's plan from *their* history — the user's exercises, the partner's
+weights/reps as implied preferences. It depends on Phase 2's editor layout and
+Phase 3's load resolution, both shipped, so it starts from `main` as it stands.
 Read `00-overview.md` and `decisions.md` first.
+
+Before starting, note two standing rules this batch acquired late:
+
+- **The iPhone UI suite is one test.** New UI coverage extends
+  `testIPhoneStrengthWorkoutPlansLogsAndCompletes`; it never adds a test
+  function (`EXPECTED_IPHONE_SMOKE_TESTS=1`). Prefer a `swift test`.
+- **Assertions behind `if …exists` are worth little.** Phases 4 and 5 shipped
+  guarded assertions that may never have run; Phase 6 proved its guard fired with
+  a temporary hard-assert probe, and Phase 7 removed the guards entirely by
+  making the flow log real sets, and Phase 8 shipped its whole block unguarded.
+  Hold Phase 9 to that standard.
+
+The batch execution protocol is unchanged: one phase, `make ci` + `make smoke`,
+update this file, commit on `main`, **do not push**, report the SHA, stop.
 
 | Phase | Scope | State |
 |---|---|---|
@@ -505,8 +622,8 @@ Read `00-overview.md` and `decisions.md` first.
 | 5 | One "The science" link, all sources on one screen | **done** |
 | 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | **done** |
 | 7 | Workouts Today + smoke logs a real set with partners (§5b) | **done** |
-| 8 | This Week gear deep-links to Coach & Plan | **next** |
-| 9 | Partner-aware Workout Plan (coach fills each partner's plan) | not started |
+| 8 | This Week gear deep-links to Coach & Plan | **done** |
+| 9 | Partner-aware Workout Plan (coach fills each partner's plan) | **next** |
 
 **Execution protocol for this batch (user instruction, overrides the CLAUDE.md
 post-task checklist steps 6-8):** do ONE phase, run `make ci` and `make smoke`,

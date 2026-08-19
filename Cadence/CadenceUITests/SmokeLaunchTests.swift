@@ -50,6 +50,18 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Expanded This Week did not label the body-part rows as Volume")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showLess"),
                       "Expanded This Week did not show Show less")
+
+        // Field test 2026-08-18 #7: the This Week gear deep-links to Coach & Plan
+        // and backs out to Home, not to Settings.
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.coachSettings"),
+                      "This Week did not offer a Coach & Plan shortcut")
+        XCTAssertTrue(app.navigationBars["Coach & Plan"].waitForExistence(timeout: 10),
+                      "This Week gear did not open Coach & Plan")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Back from Coach & Plan did not return to Home")
+        XCTAssertFalse(app.navigationBars["Settings"].exists,
+                       "Back from Coach & Plan landed on Settings instead of Home")
         if app.buttons["home.suggestions.showMore"].exists {
             XCTAssertTrue(app.scrollToHittableAndTap("home.suggestions.showMore"),
                           "Coach's Suggestions did not show only the first warning before Show more...")

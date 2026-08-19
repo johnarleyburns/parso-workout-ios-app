@@ -10,10 +10,11 @@ struct HomeWeekDashboardSection: View {
     let totalVolumeKg: Double
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
+    let onOpenCoachSettings: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("This Week").font(.headline)
+            header
             progressRow(id: "home.week.strength", title: "Strength", value: dashboard.strength.displayText,
                         progress: dashboard.strength.normalized,
                         tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow)
@@ -37,6 +38,29 @@ struct HomeWeekDashboardSection: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
+    }
+
+    private var header: some View {
+        HStack(spacing: 0) {
+            Text("This Week").font(.headline)
+            Spacer()
+            Button {
+                Haptics.selection()
+                onOpenCoachSettings()
+            } label: {
+                Image(systemName: "gearshape")
+                    .imageScale(.medium)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .padding(.trailing, -8)
+            .padding(.vertical, -8)
+            .accessibilityIdentifier("home.week.coachSettings")
+            .accessibilityLabel("Coach and plan settings")
+            .accessibilityHint("Opens Coach & Plan preferences")
+        }
     }
 
     private var expandedWeek: some View {

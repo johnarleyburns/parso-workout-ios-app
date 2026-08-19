@@ -35,6 +35,11 @@ enum HomeCoachIllustration: String, CaseIterable, Identifiable {
 }
 
 struct HomeCoachIllustrationView: View {
+    /// Compact edge length. 64 rather than the original 88 so the artwork can
+    /// float over the Coach card's top-right corner without colliding with the
+    /// heading at large Dynamic Type (field test 2026-08-18 #8).
+    static let compactSize: CGFloat = 64
+
     let illustration: HomeCoachIllustration
     var compact = false
 
@@ -42,7 +47,7 @@ struct HomeCoachIllustrationView: View {
         Image(illustration.imageName)
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .frame(width: compact ? 88 : nil, height: compact ? 88 : nil)
+            .frame(width: compact ? Self.compactSize : nil, height: compact ? Self.compactSize : nil)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .accessibilityLabel(illustration.accessibilityLabel)
             .accessibilityIdentifier("home.coachIllustration")

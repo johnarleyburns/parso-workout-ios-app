@@ -4,10 +4,13 @@
 # Keeps the pyramid from inverting again:
 #   1. CadenceFeatures must never import SwiftUI/HealthKit/StoreKit/UIKit — that
 #      is what keeps it buildable + testable on macOS under `swift test`.
-#   2. Normal XCUITest coverage is one real smoke test per UI device target.
-#      Manual App Store screenshot generation is allowed, but it must stay out of
-#      the default Cadence test plan. New behavioral coverage goes into
-#      CadenceFeaturesTests (headless `swift test`), not the simulator.
+#   2. Normal XCUITest coverage stays a small, fixed-size smoke gate: at most
+#      MAX_IPHONE_SMOKE_TESTS iPhone test functions (raised 1 -> 20 on
+#      2026-08-18 at the user's request) and one watch smoke test. Manual App
+#      Store screenshot generation is allowed, but it must stay out of the
+#      default Cadence test plan. Each simulator test costs a full app launch in
+#      the pre-commit hook, so this is a ceiling, not a target: new behavioral
+#      coverage still belongs in CadenceFeaturesTests (headless `swift test`).
 #   3. Logic lives in CadenceFeatures, not in a View: no file under Features/
 #      exceeds 400 LOC. A ratchet grandfathers the pre-existing large views whose
 #      *logic* is already extracted (they now carry only SwiftUI markup); each may
@@ -29,7 +32,8 @@ WATCH_SRC="$ROOT/Cadence/Cadence Watch App Watch App"
 WATCH_UITEST_DIR="$ROOT/Cadence/Cadence Watch App Watch AppUITests"
 
 MAX_LOC=400
-EXPECTED_IPHONE_SMOKE_TESTS=1
+MIN_IPHONE_SMOKE_TESTS=1
+MAX_IPHONE_SMOKE_TESTS=20
 EXPECTED_WATCH_SMOKE_TESTS=1
 
 count_tests_in_files() {
@@ -45,10 +49,14 @@ if grep -rEn "$banned" "$FEATURES_SRC" >/dev/null 2>&1; then
   fail=1
 fi
 
-# ── 2. iPhone UI suite is one normal smoke test ─────────────────────────────
+# ── 2. iPhone UI suite is a small, capped smoke gate ────────────────────────
 iphone_smoke_count=$(count_tests_in_files "$IPHONE_SMOKE_FILE")
-if [ "${iphone_smoke_count:-0}" -ne "$EXPECTED_IPHONE_SMOKE_TESTS" ]; then
-  echo "❌ iPhone smoke must have exactly $EXPECTED_IPHONE_SMOKE_TESTS test function in SmokeLaunchTests.swift (found $iphone_smoke_count)."
+if [ "${iphone_smoke_count:-0}" -lt "$MIN_IPHONE_SMOKE_TESTS" ]; then
+  echo "❌ iPhone smoke must have at least $MIN_IPHONE_SMOKE_TESTS test function in SmokeLaunchTests.swift (found $iphone_smoke_count)."
+  fail=1
+fi
+if [ "${iphone_smoke_count:-0}" -gt "$MAX_IPHONE_SMOKE_TESTS" ]; then
+  echo "❌ iPhone smoke has $iphone_smoke_count test functions in SmokeLaunchTests.swift (cap $MAX_IPHONE_SMOKE_TESTS)."
   echo "   Push new behavior coverage into CadenceFeaturesTests (swift test), not the simulator."
   fail=1
 fi
@@ -66,8 +74,8 @@ else
   iphone_other_count=$(count_tests_in_files "${iphone_other_files[@]}")
 fi
 if [ "${iphone_other_count:-0}" -ne 0 ]; then
-  echo "❌ CadenceUITests has $iphone_other_count non-smoke test function(s) outside the manual screenshot generator."
-  echo "   Keep normal UI coverage to the one smoke test; put other coverage in swift test."
+  echo "❌ CadenceUITests has $iphone_other_count test function(s) outside SmokeLaunchTests.swift and the manual screenshot generator."
+  echo "   Normal UI coverage lives in SmokeLaunchTests.swift (cap $MAX_IPHONE_SMOKE_TESTS); put other coverage in swift test."
   printf '   %s\n' "${iphone_other_files[@]#"$ROOT"/}"
   fail=1
 fi
@@ -87,7 +95,7 @@ fi
 ratchet() {
   case "$1" in
     "Cadence/Cadence/Features/Train/SessionView.swift") echo 1085 ;;
-    "Cadence/Cadence/Features/Home/HomeView.swift") echo 1110 ;;
+    "Cadence/Cadence/Features/Home/HomeView.swift") echo 1054 ;;
     "Cadence/Cadence/Features/Coach/CoachDecisionCardView.swift") echo 570 ;;
     "Cadence/Cadence/Features/Train/ExercisePickerView.swift") echo 532 ;;
     "Cadence/Cadence/Features/Plan/RecordAssessmentView.swift") echo 439 ;;
@@ -138,4 +146,4 @@ if [ "$fail" -ne 0 ]; then
   echo "test-pyramid guardrail: FAILED"
   exit 1
 fi
-echo "test-pyramid guardrail: OK (iphone_smoke=$iphone_smoke_count, watch_smoke=$watch_uitest_count; screenshots manual-only)"
+echo "test-pyramid guardrail: OK (iphone_smoke=$iphone_smoke_count/$MAX_IPHONE_SMOKE_TESTS, watch_smoke=$watch_uitest_count; screenshots manual-only)"

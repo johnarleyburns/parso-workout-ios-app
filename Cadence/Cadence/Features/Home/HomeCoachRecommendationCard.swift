@@ -2,44 +2,42 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// Compact Home presentation for the coach's selected workout of the day.
+/// The suggested workout, rendered at the bottom of Home's Coach's Suggestions
+/// card. Body only: field test 2026-08-18 #9 removed the divider and the
+/// "Suggested Workout" blurb, and #11 moved `Do Coach's Workout` out to
+/// `HomeCoachSuggestionsSection` as a sibling of the card.
 struct HomeCoachRecommendationCard: View {
-    let recommendation: CoachSession
-    let onStart: () -> Void
+    let title: String
+    let why: String
+    let exercises: [HomeCoachSectionPresenter.ExercisePreview]
+    let additionalCount: Int
+    let citationIds: [String]
+    let durationMinutes: Int?
     @Environment(AppSettings.self) private var settings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Divider().padding(.top, 2)
-            Text("Suggested Workout")
-                .font(.subheadline.weight(.semibold))
-            Text("Selected for today based on your recent training and recovery.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(recommendation.title)
+            Text(title)
                 .font(.headline)
                 .accessibilityIdentifier("home.suggestedWorkout.title")
 
             Text("Why this workout").font(.subheadline.weight(.semibold))
-            Text(recommendation.subtitle.isEmpty ? "It matches today's recommended training load." : recommendation.subtitle)
+            Text(why)
                 .font(.caption).foregroundStyle(.secondary)
             previewDetails
-            CoachSourcesLink(citationIds: recommendation.citationIds,
+            CoachSourcesLink(citationIds: citationIds,
                              identifier: "home.coachRecommendation.science")
-            CadenceActionButton(title: "Do Coach's Workout",
-                                systemImage: "play.fill",
-                                action: onStart)
-                .accessibilityIdentifier("home.coachRecommendation.start")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.coachRecommendation")
     }
 
     @ViewBuilder
     private var previewDetails: some View {
-        if let exercises = recommendation.exercises, !exercises.isEmpty {
+        if !exercises.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(Array(exercises.prefix(6).enumerated()), id: \.offset) { _, exercise in
+                ForEach(Array(exercises.enumerated()), id: \.offset) { _, exercise in
                     HStack(spacing: 6) {
                         Label(exercise.name, systemImage: "dumbbell")
                         Spacer(minLength: 4)
@@ -57,13 +55,13 @@ struct HomeCoachRecommendationCard: View {
                     }
                     .font(.caption)
                 }
-                if exercises.count > 6 {
-                    Text("+\(exercises.count - 6) more")
+                if additionalCount > 0 {
+                    Text("+\(additionalCount) more")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-        } else if let minutes = recommendation.durationMinutes {
+        } else if let minutes = durationMinutes {
             Text("About \(minutes) minutes")
                 .font(.caption)
                 .foregroundStyle(.secondary)

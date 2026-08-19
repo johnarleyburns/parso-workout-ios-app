@@ -16,9 +16,20 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Coach card did not render on Home")
         XCTAssertTrue(app.buttons["home.logWorkout"].waitForExistence(timeout: 5),
                       "Home did not show the previous-workout log action")
+        // Field test 2026-08-18 #9/#11: the Suggested Workout blurb is gone and the
+        // CTA is a full-width sibling below the card, not a child of it.
+        XCTAssertFalse(app.staticTexts["Suggested Workout"].exists,
+                       "Coach card still shows the removed Suggested Workout blurb")
         if app.descendants(matching: .any)["home.coachRecommendation"].exists {
-            XCTAssertTrue(app.buttons["home.coachRecommendation.start"].waitForExistence(timeout: 5),
-                          "Home did not show Do Coach's Workout at the top of the coach card")
+            let cta = app.buttons["home.coachRecommendation.start"]
+            XCTAssertTrue(cta.waitForExistence(timeout: 5),
+                          "Do Coach's Workout is missing below the coach card")
+            XCTAssertEqual(cta.frame.height, app.buttons["home.startWorkout"].frame.height,
+                           accuracy: 1,
+                           "Do Coach's Workout does not match Home Start Workout's height")
+            XCTAssertGreaterThan(cta.frame.minY,
+                                 app.descendants(matching: .any)["home.coachSuggestions.card"].frame.minY,
+                                 "Do Coach's Workout is not below the Coach's Suggestions card")
             XCTAssertFalse(app.buttons["home.coachRecommendation.preview"].exists,
                            "Coach card still exposes the removed Preview Workout action")
         }

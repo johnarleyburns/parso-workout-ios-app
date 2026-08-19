@@ -2,6 +2,97 @@
 
 Updated: 2026-08-18
 
+## Phase 6 complete — Coach's Suggestions: floating icon, workout last, CTA below
+
+Field test 2026-08-18 issues #8/#9/#11
+(`docs/field-test-ui-batch-2026-08-18/06-phase6-coach-suggestions-card.md`).
+
+- **Floating artwork.** `HomeCoachIllustrationView` is now an
+  `.overlay(alignment: .topTrailing)` on the glass card with a 12 pt inset,
+  `.allowsHitTesting(false)` and `.accessibilityHidden(true)` (it is decorative;
+  no test referenced `home.coachIllustration`). Its compact edge shrank 88 → 64
+  via a new `HomeCoachIllustrationView.compactSize`, which the heading also reads
+  for its trailing padding — one constant, so the heading cannot slide under the
+  artwork at large Dynamic Type.
+- **Trimmed copy.** `HomeCoachRecommendationCard` lost its `Divider()`, the
+  `Suggested Workout` heading and the "Selected for today based on…" subtitle,
+  and is now a pure renderer: it takes `title`/`why`/`exercises`/
+  `additionalCount`/`citationIds`/`durationMinutes` instead of a `CoachSession`.
+- **Workout last, CTA outside.** `Do Coach's Workout` is a sibling of the card in
+  a `VStack(spacing: LayoutMetrics.actionButtonSpacing)`, so it is the same
+  56 pt `CadenceActionButton` as Home's `Start Workout`. `coach.card` moved to
+  that outer container and the glass card took the new
+  `home.coachSuggestions.card` id, which is what makes "the button is below the
+  card" assertable.
+- **Extraction (mandatory — `HomeView` was exactly at its 1110 ratchet).** The
+  whole section moved to `Home/HomeCoachSuggestionsSection.swift` (139 LOC) and
+  `HomeView.swift` fell 1110 → **1054**; the ratchet was lowered to match.
+  `suggestionTint` went with it and now maps
+  `HomeCoachSectionPresenter.ToneRole` rather than reading `HomeSuggestion.tone`
+  directly.
+- **New `CadenceFeatures/HomeCoachSectionPresenter.swift`** owns render order and
+  visibility: `blocks(suggestions:recommendation:expanded:)` returns
+  `[.heading, .suggestion…, .showMore, .divider, .suggestedWorkout]`, with the
+  workout always last, the divider only between a non-empty suggestion list and a
+  workout, and no workout/CTA at all for recovery, rest or assessment days
+  (NFR-8: that advice still renders as suggestions). Also `showsPrimaryAction`,
+  `previewExercises` (cap 6), `additionalExerciseCount`, `toneRole` and the
+  `fallbackWhy` copy.
+
+### Verification (Phase 6)
+
+- `make ci`: build + **1,380 tests passed, 0 failures** (baseline 1,367 + 13
+  `HomeCoachSectionPresenterTests`), guardrails OK.
+- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
+  **passed** (63.0 s), including the new assertions.
+- **The guarded CTA assertions were proved to fire this time.** Phases 4 and 5
+  each shipped an assertion behind an `if …exists` that may never have run, so
+  the guard was temporarily replaced with a hard `XCTAssertTrue` probe and
+  `make smoke` re-run: it **passed**, i.e. `home.coachRecommendation` really does
+  render under `-uiTest` (the coach produces "Boxing conditioning" on an empty
+  in-memory store). So the CTA's height-matches-`home.startWorkout` and
+  minY-below-`home.coachSuggestions.card` assertions genuinely executed. The
+  probe was then removed; the committed file is byte-identical to the one that
+  passed at 22:19.
+- Visually confirmed on the booted simulator (screenshot, and again at
+  `content_size extra-small` to fit more of the page): the artwork floats over
+  the card's top-right corner with the heading full-width beside it, and the card
+  reads heading → "No new suggestions right now." → workout title → "Why this
+  workout" → "The science ›", with no `Suggested Workout` blurb and no divider
+  (correct: the divider only appears when there *are* suggestions). The CTA
+  itself sits below the fold and could not be photographed — synthetic scrolling
+  needs assistive access this shell does not have — so its position rests on the
+  smoke assertion above, which is now known to run.
+- Not pushed, per the batch execution protocol.
+
+**Deviations, both deliberate:**
+
+- `ExercisePreview` carries `sets` and `repsText` per the phase file's struct,
+  but the row still renders only name + load, exactly as the §2 mockup shows.
+  The fields are populated and unit-tested, ready for Phase 7/9; nothing renders
+  them yet.
+- The phase file's test list is 11 names; 13 shipped. The two extras
+  (`testPreviewExerciseCarriesLoadSetsAndReps`,
+  `testWhyFallsBackWhenTheSessionHasNoSubtitle`) cover the two pieces of copy
+  logic that moved out of the view with it.
+
+### Also in this commit — the XCUITest cap is now 20 (user instruction)
+
+`scripts/check-test-pyramid.sh` enforced `EXPECTED_IPHONE_SMOKE_TESTS=1` — exact
+equality, stricter than the "≤12 UI-test cap" CLAUDE.md advertised. It is now a
+range: `MIN_IPHONE_SMOKE_TESTS=1`, `MAX_IPHONE_SMOKE_TESTS=20`. The rule that all
+non-screenshot iPhone UI tests live in `SmokeLaunchTests.swift` is unchanged, and
+the watch suite is still pinned at exactly 1. CLAUDE.md was updated to match.
+
+Phase 6 did **not** spend the new headroom: its coverage went into the existing
+test as assertions, because each additional UI test costs a full app launch
+(~60 s) in the pre-commit hook. The cap is a ceiling, not a target.
+
+---
+
+<details>
+<summary>Phase 5 — one science link per coaching output (shipped, 11fafe7)</summary>
+
 ## Phase 5 complete — one "The science" link, all sources on one screen
 
 Field test 2026-08-18 issue #10, decision **D9**
@@ -77,7 +168,7 @@ sim before suspecting the diff.
   `testEveryDecisionReasonAndWarningCitationIdResolves`); the new ones assert the
   same rule through the presenter the UI actually calls.
 
----
+</details>
 
 <details>
 <summary>Phase 4 — read-only exercise detail in summaries (shipped, b9474b6)</summary>
@@ -295,11 +386,12 @@ is explicitly exempt.
 
 </details>
 
-## Next task — field-test UI batch, Phase 6
+## Next task — field-test UI batch, Phase 7
 
-Phase 6: **Coach's Suggestions — floating icon, trimmed copy, CTA below the
-card** (`docs/field-test-ui-batch-2026-08-18/06-phase6-coach-suggestions-card.md`).
-Read `00-overview.md` and `decisions.md` first.
+Phase 7: **Workouts Today — tappable detail, `COACH'S PLAN`, start a planned
+workout** (`docs/field-test-ui-batch-2026-08-18/07-phase7-workouts-today.md`).
+Phases 7, 8 and 9 are independent of each other; 7 is the largest of the three
+remaining after 9. Read `00-overview.md` and `decisions.md` first.
 
 | Phase | Scope | State |
 |---|---|---|
@@ -308,8 +400,8 @@ Read `00-overview.md` and `decisions.md` first.
 | 3 | Coach plans carry real loads instead of `BW x 12` | **done** |
 | 4 | Read-only exercise detail in summaries, one row per performer | **done** |
 | 5 | One "The science" link, all sources on one screen | **done** |
-| 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | **next** |
-| 7 | Workouts Today: tappable detail, `COACH'S PLAN`, start a planned workout | not started |
+| 6 | Coach's Suggestions: floating icon, trimmed copy, CTA below the card | **done** |
+| 7 | Workouts Today: tappable detail, `COACH'S PLAN`, start a planned workout | **next** |
 | 8 | This Week gear deep-links to Coach & Plan | not started |
 | 9 | Partner-aware Workout Plan (coach fills each partner's plan) | not started |
 

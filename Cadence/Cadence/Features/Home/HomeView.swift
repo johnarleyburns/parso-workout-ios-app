@@ -217,7 +217,16 @@ struct HomeView: View {
                         totalVolumeKg: weeklyVolumeKg,
                         unit: settings.unit,
                         onOpenWorkout: openWeekWorkout)
-                    coachSuggestionsSection
+                    HomeCoachSuggestionsSection(
+                        suggestions: dashboard.suggestions,
+                        recommendation: previewableCoachRecommendation,
+                        illustration: coachIllustration,
+                        expanded: $suggestionsExpanded,
+                        onStartRecommendation: {
+                            if let recommendation = previewableCoachRecommendation {
+                                launchDecision(recommendation)
+                            }
+                        })
                 }
                 .padding()
             }
@@ -627,71 +636,6 @@ struct HomeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
         .accessibilityIdentifier("home.workoutsToday")
-    }
-    private var coachSuggestionsSection: some View {
-        let items = dashboard.suggestions
-        let visibleItems = HomeDashboardPresenter.visibleSuggestions(items, expanded: suggestionsExpanded)
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                Text("Coach’s Suggestions").font(.headline)
-                Spacer()
-                HomeCoachIllustrationView(illustration: coachIllustration, compact: true)
-            }
-            if let recommendation = previewableCoachRecommendation {
-                HomeCoachRecommendationCard(
-                    recommendation: recommendation,
-                    onStart: { launchDecision(recommendation) })
-            }
-            if !items.isEmpty {
-                ForEach(visibleItems) { suggestion in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 8) {
-                            Circle().fill(suggestionTint(suggestion)).frame(width: 8, height: 8)
-                            Text(suggestion.title).font(.headline)
-                        }
-                        Text(suggestion.message).font(.subheadline)
-                        if let citationID = suggestion.citationID,
-                           let citation = CitationRegistry.citation(forId: citationID) {
-                            CitationLink(citation: citation, compact: true)
-                                .accessibilityIdentifier("home.suggestion.\(suggestion.id).science")
-                        }
-                    }
-                    .padding(.vertical, 2)
-                    .accessibilityElement(children: .contain)
-                }
-                if items.count > 1 {
-                    Button {
-                        withAnimation { suggestionsExpanded.toggle() }
-                    } label: {
-                        HStack {
-                            Text(suggestionsExpanded ? "Show less" : "Show more...")
-                            Spacer()
-                            Image(systemName: suggestionsExpanded ? "chevron.up" : "chevron.down")
-                                .font(.caption.weight(.semibold))
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.tint)
-                    .accessibilityIdentifier(suggestionsExpanded ? "home.suggestions.showLess" : "home.suggestions.showMore")
-                }
-            } else {
-                Text("No new suggestions right now.").font(.subheadline).foregroundStyle(.secondary)
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .purple)
-        .accessibilityIdentifier("coach.card")
-    }
-    private func suggestionTint(_ suggestion: HomeSuggestion) -> Color {
-        switch suggestion.tone {
-        case .positive: return .green
-        case .warning: return .yellow
-        case .neutral: return .white
-        }
     }
     private var previewableCoachRecommendation: CoachSession? {
         switch coachDecision.primary.launchPayload {

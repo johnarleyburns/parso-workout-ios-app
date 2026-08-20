@@ -36,7 +36,7 @@ struct ExerciseCardView: View {
     @State private var setToDelete: SessionRenderModel.SetDisplay?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
             headerRow
             if isExpanded { contextLines }
             if isExpanded && (!context.sets.isEmpty || (isInlineActive && inlineEditingSetID == nil) || context.pendingCount > 0) {
@@ -56,9 +56,9 @@ struct ExerciseCardView: View {
                 if !isEditing { actionButtons }
             }
         }
-        .padding()
+        .padding(CGFloat(LayoutMetrics.cardPadding))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+        .cadenceGlassCard(in: CadenceCardShape.rounded)
         .confirmationDialog("Delete this set?", isPresented: Binding(
             get: { setToDelete != nil },
             set: { if !$0 { setToDelete = nil } }
@@ -333,7 +333,7 @@ struct ExerciseCardView: View {
     // MARK: - Action buttons
 
     private var actionButtons: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
             Button { onAddSet() } label: {
                 Label("Add set", systemImage: "plus").frame(maxWidth: .infinity).lineLimit(1)
             }
@@ -349,7 +349,7 @@ struct ExerciseCardView: View {
             }
         }
         .controlSize(.regular)
-        .padding(.top, 2)
+        .padding(.top, CGFloat(LayoutMetrics.cardHeadingSpacing) - 8)
     }
 
     // MARK: - Context menu

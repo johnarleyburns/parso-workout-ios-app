@@ -221,13 +221,26 @@ struct WorkoutPlanEditor: View {
         switch intent {
         case .add:
             plan.exercises.append(
-                EditableExercise(name: exercise.name, sets: [EditableSet(targetReps: 10, targetWeight: nil)], notes: "")
+                EditableExercise(name: exercise.name, sets: ownerSeedSets(for: exercise.name), notes: "")
             )
         case .swap(let id):
             guard let index = plan.exercises.firstIndex(where: { $0.id == id }) else { return }
             plan.exercises[index].name = exercise.name
         }
         resolvePartnerPlans()
+    }
+
+    /// The plan is now the prescription the live session honours (field test
+    /// 2026-08-19 #1), so a newly added exercise has to open with what the user
+    /// would actually be given: their own last session on that lift, or their
+    /// usual reps — not a hard-coded 10 the session then quietly overrode.
+    private func ownerSeedSets(for name: String) -> [EditableSet] {
+        PartnerPlanResolver.ownerSeedSets(
+            history: WorkoutPlanPartnerHistory.history(forExerciseNamed: name,
+                                                       performerID: nil,
+                                                       people: allPeople,
+                                                       context: modelContext),
+            defaultReps: 10)
     }
 }
 
@@ -237,6 +250,6 @@ extension View {
     func workoutPlanCard() -> some View {
         padding(CGFloat(LayoutMetrics.cardPadding))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
+            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
     }
 }

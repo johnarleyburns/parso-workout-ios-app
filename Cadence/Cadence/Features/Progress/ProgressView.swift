@@ -81,7 +81,7 @@ struct TrainingProgressView: View {
         // `equalHeight` fills the row so side-by-side cards match the taller one
         // (issue 12 — Frequency was shorter than Effort).
         .frame(maxWidth: .infinity, maxHeight: equalHeight ? .infinity : nil, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: tint)
+        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: tint)
     }
 
     private func emptyNote(_ text: String) -> some View {

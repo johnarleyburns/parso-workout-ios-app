@@ -33,7 +33,7 @@ struct HomeWorkoutsTodaySection: View {
         }
         .padding(LayoutMetrics.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
+        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
         // `children: .contain` must precede the identifier or the styled card
         // swallows the per-row ids.
         .accessibilityElement(children: .contain)

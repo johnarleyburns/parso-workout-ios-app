@@ -109,6 +109,19 @@ public struct WeeklyBalance: Sendable, Equatable {
     public let vo2maxTrend: TrendDirection?
     public let readinessAvailable: Bool
     public let dataCompleteness: FactConfidence
+    /// Raw wall-clock aerobic minutes by intensity, BEFORE the public-health
+    /// weighting is applied. `moderateMinutes` folds easy work in at half credit
+    /// and `moderateEquivalentMinutes` counts vigorous work double, which is why
+    /// 80 logged minutes can read as 158 "of 150" — surfacing the unweighted
+    /// split is what makes that legible (field test 2026-08-19 #7).
+    public var easyMinutesLogged: Double = 0
+    public var moderateMinutesLogged: Double = 0
+    public var vigorousMinutesLogged: Double = 0
+
+    /// Total minutes actually spent doing aerobic work this week.
+    public var loggedAerobicMinutes: Double {
+        easyMinutesLogged + moderateMinutesLogged + vigorousMinutesLogged
+    }
 
     public static let empty = WeeklyBalance(
         strengthDays: 0, cardioDays: 0, patternsTrained: [], bodyPartsTrained: [],
@@ -476,6 +489,9 @@ public extension CoachFacts {
 
         var moderateMinutes: Double = 0
         var vigorousMinutes: Double = 0
+        var easyLogged: Double = 0
+        var moderateLogged: Double = 0
+        var vigorousLogged: Double = 0
         for event in aerobicEvents {
             let d: AerobicEventDetails
             switch event.kind {
@@ -485,9 +501,9 @@ public extension CoachFacts {
             }
             let mins = d.duration / 60
             switch d.intensity {
-            case .easy: moderateMinutes += mins * 0.5
-            case .moderate: moderateMinutes += mins
-            case .vigorous: vigorousMinutes += mins
+            case .easy: moderateMinutes += mins * 0.5; easyLogged += mins
+            case .moderate: moderateMinutes += mins; moderateLogged += mins
+            case .vigorous: vigorousMinutes += mins; vigorousLogged += mins
             }
         }
         let modEquiv = moderateMinutes + 2 * vigorousMinutes
@@ -527,7 +543,10 @@ public extension CoachFacts {
             vo2maxProtocol: nil,
             vo2maxTrend: nil,
             readinessAvailable: false,
-            dataCompleteness: .moderate
+            dataCompleteness: .moderate,
+            easyMinutesLogged: easyLogged,
+            moderateMinutesLogged: moderateLogged,
+            vigorousMinutesLogged: vigorousLogged
         )
     }
 }

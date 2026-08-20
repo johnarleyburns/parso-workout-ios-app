@@ -25,6 +25,11 @@ struct InlineEditorConfig: Equatable {
     var hasPartners: Bool
     var unit: MeasurementUnitPreference
     var priorWeightHint: Double?
+    /// What each roster member's next set on this exercise should be. Changing
+    /// "Who did this set?" re-targets the editor to that person's own plan (or
+    /// their usual load and reps) instead of leaving the previous performer's
+    /// numbers in place (field test 2026-08-19 #2).
+    var performerDefaults: [PerformerDefault] = []
     var exerciseName: String = ""
     var setNumberText: String = ""
     var contextText: String?
@@ -33,6 +38,16 @@ struct InlineEditorConfig: Equatable {
 
     static func == (lhs: InlineEditorConfig, rhs: InlineEditorConfig) -> Bool {
         lhs.id == rhs.id
+    }
+
+    /// One performer's resolved next set. `weight` is already formatted in the
+    /// display unit; `weightKg` is the canonical value behind it.
+    struct PerformerDefault: Equatable, Identifiable {
+        var id: String { performerID?.uuidString ?? "owner" }
+        var performerID: UUID?
+        var reps: Int
+        var weightKg: Double?
+        var weight: String
     }
 }
 

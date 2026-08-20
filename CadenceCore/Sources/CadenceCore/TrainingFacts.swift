@@ -58,6 +58,11 @@ public struct TrainingFacts: Sendable {
     /// Working sets per body part over the trailing 7 days (primary muscles count
     /// 1.0, secondary 0.5 — see `secondaryWeight`).
     public let weeklySetsByPart: [BodyPart: Double]
+    /// Working sets per *muscle* (`MuscleCatalog` id) over the same window and
+    /// with the same primary/secondary weighting. Body parts group several
+    /// muscles, so this is the resolution the volume literature actually
+    /// prescribes at (field test 2026-08-19 #8).
+    public let weeklySetsByMuscle: [String: Double]
     /// Distinct training days per body part over the trailing 7 days.
     public let frequencyByPart: [BodyPart: Int]
     /// Per exercise name: e1RM trend (recent 7 days vs the prior 7), only for lifts
@@ -124,6 +129,7 @@ public struct TrainingFacts: Sendable {
     static let secondaryWeight = 0.5
 
     public init(weeklySetsByPart: [BodyPart: Double],
+                weeklySetsByMuscle: [String: Double] = [:],
                 frequencyByPart: [BodyPart: Int],
                 e1RMTrendByExercise: [String: TrendDirection],
                 intensity: IntensityDistribution,
@@ -141,6 +147,7 @@ public struct TrainingFacts: Sendable {
                  experience: ExperienceLevel,
                  incompleteCustomExerciseNames: [String] = []) {
         self.weeklySetsByPart = weeklySetsByPart
+        self.weeklySetsByMuscle = weeklySetsByMuscle
         self.frequencyByPart = frequencyByPart
         self.e1RMTrendByExercise = e1RMTrendByExercise
         self.intensity = intensity
@@ -184,9 +191,10 @@ public extension TrainingFacts {
             }
         }
 
-        // Weekly sets + frequency per part.
+        // Weekly sets + frequency per part, and the same tally per muscle.
         var setsByPart: [BodyPart: Double] = [:]
         var daysByPart: [BodyPart: Set<Date>] = [:]
+        var setsByMuscle: [String: Double] = [:]
         for ws in weekSets {
             var primary = BodyPart.parts(forMuscleIDs: ws.exercise.primaryMuscles)
             if primary.isEmpty, let cat = ws.exercise.categoryValue {
@@ -201,6 +209,17 @@ public extension TrainingFacts {
             for p in secondary {
                 setsByPart[p, default: 0] += secondaryWeight
                 daysByPart[p, default: []].insert(day)
+            }
+            var primaryMuscles = Set(ws.exercise.primaryMuscles)
+            if primaryMuscles.isEmpty, let cat = ws.exercise.categoryValue {
+                primaryMuscles = Set(BodyPart.defaultMuscles(forCategory: cat))
+            }
+            for id in primaryMuscles where MuscleCatalog.muscle(id) != nil {
+                setsByMuscle[id, default: 0] += 1.0
+            }
+            for id in Set(ws.exercise.secondaryMuscles).subtracting(primaryMuscles)
+            where MuscleCatalog.muscle(id) != nil {
+                setsByMuscle[id, default: 0] += secondaryWeight
             }
         }
         let frequencyByPart = daysByPart.mapValues { $0.count }
@@ -367,6 +386,7 @@ public extension TrainingFacts {
         let incompleteCustomExerciseNames = incompleteCustom.sorted()
 
         return TrainingFacts(weeklySetsByPart: setsByPart,
+                             weeklySetsByMuscle: setsByMuscle,
                              frequencyByPart: frequencyByPart,
                              e1RMTrendByExercise: trends,
                              intensity: intensity,

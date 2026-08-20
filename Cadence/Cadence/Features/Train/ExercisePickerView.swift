@@ -32,10 +32,12 @@ struct ExercisePickerView: View {
     @Environment(AppModel.self) private var appModel
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var query = ""
-    @State private var debouncedQuery = ""
-    @State private var searchIndex = ExerciseSearchIndex<Exercise>([])
+    /// The snapshot of everything a query implies — results, exact-match flag and
+    /// the "good match" suggestion — recomputed only when the debounced query
+    /// changes, never on a redraw (field test 2026-08-19 #4).
+    @State private var search = ExercisePickerSearch()
+    @State private var outcome = ExercisePickerSearch.Outcome.empty
     @State private var facetIndex = ExerciseFacetIndex<Exercise>([])
-    @State private var indexedCount = -1
     @State private var selectedTab: PickerTab = .recents
     @State private var selectedPart: BodyPart?
     @State private var selectedEquipment: Equipment?
@@ -55,15 +57,12 @@ struct ExercisePickerView: View {
         self.onPick = onPick
     }
 
-    private var trimmedQuery: String { debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var trimmedQuery: String { outcome.query }
 
-    private var popular: [Exercise] {
-        let byName = Dictionary(exercises.map { ($0.name.lowercased(), $0) }, uniquingKeysWith: { a, _ in a })
-        return ExerciseLibrary.popularNames.compactMap { byName[$0.lowercased()] }
-    }
+    private var popular: [Exercise] { search.popular }
 
     private var filtered: [Exercise] {
-        if !trimmedQuery.isEmpty { return searchIndex.rank(trimmedQuery) }
+        if !trimmedQuery.isEmpty { return outcome.results }
         switch selectedTab {
         case .recents: return recents
         case .popular: return browseAll ? exercises : popular
@@ -100,10 +99,9 @@ struct ExercisePickerView: View {
     }
 
     private func rebuildIndexIfNeeded() {
-        guard exercises.count != indexedCount else { return }
-        searchIndex = ExerciseSearchIndex(exercises)
+        guard search.rebuildIfNeeded(exercises) else { return }
         facetIndex = ExerciseFacetIndex(exercises)
-        indexedCount = exercises.count
+        if !query.isEmpty { outcome = search.outcome(for: query) }
     }
 
     private var grouped: [(ExerciseCategory, [Exercise])] {
@@ -114,25 +112,9 @@ struct ExercisePickerView: View {
         }
     }
 
-    private var exactMatchExists: Bool {
-        exercises.contains { $0.name.compare(trimmedQuery, options: .caseInsensitive) == .orderedSame }
-    }
+    private var exactMatchExists: Bool { outcome.exactMatch }
 
-    private var bestLibraryMatch: Exercise? {
-        guard trimmedQuery.count >= 3 else { return nil }
-        let normalized = ExerciseSearch.normalize(trimmedQuery)
-        let builtIns = exercises.filter { !$0.isCustom }
-        let matches = builtIns.filter { ex in
-            let exName = ExerciseSearch.normalize(ex.name)
-            guard exName != normalized else { return false }
-            return exName.contains(normalized) || normalized.contains(exName)
-        }
-        if matches.count == 1 { return matches[0] }
-        if matches.count > 1 {
-            return ExerciseSearchIndex(matches).rank(trimmedQuery).first
-        }
-        return nil
-    }
+    private var bestLibraryMatch: Exercise? { outcome.bestMatch }
 
     private var showsGrouped: Bool {
         selectedTab == .browse && trimmedQuery.isEmpty && selectedPart == nil && selectedEquipment == nil
@@ -281,10 +263,13 @@ struct ExercisePickerView: View {
         }
         .onChange(of: browseMode) { _, _ in selectedEquipment = nil; selectedPart = nil }
         .task(id: query) {
-            if query.isEmpty { debouncedQuery = ""; return }
+            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                outcome = .empty
+                return
+            }
             try? await Task.sleep(nanoseconds: 120_000_000)
             guard !Task.isCancelled else { return }
-            debouncedQuery = query
+            outcome = search.outcome(for: query)
         }
         .sheet(isPresented: $showCreationSheet) { creationSheet }
     }

@@ -47,7 +47,7 @@ struct ConsistencyHeatmapView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
+        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
         .accessibilityIdentifier("progress.consistencyHeatmap")
     }
 

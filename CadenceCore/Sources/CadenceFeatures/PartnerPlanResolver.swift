@@ -79,10 +79,44 @@ public enum PartnerPlanResolver {
                                    targetWeight: history.firstWorkingWeightKg)
             }
             if !general.isEmpty {
-                return EditableSet(targetReps: general[min(index, general.count - 1)],
-                                   targetWeight: nil)
+                // Their most recent general ladder covers this index; past its end
+                // fall to how they usually work rather than repeating a tail set
+                // (field test 2026-08-19 #3).
+                let reps = index < general.count
+                    ? general[index]
+                    : (PerformerSetPlanner.habitualReps(generalRepLadders: history.generalRepLadders)
+                        ?? general[general.count - 1])
+                return EditableSet(targetReps: reps, targetWeight: nil)
+            }
+            if let habit = PerformerSetPlanner.habitualReps(generalRepLadders: history.generalRepLadders) {
+                return EditableSet(targetReps: habit, targetWeight: nil)
             }
             return EditableSet(targetReps: ownerSets[index].targetReps, targetWeight: nil)
+        }
+    }
+
+    /// The plan a newly added exercise should open with for the **owner**.
+    /// Seeding it from their own last session makes the plan editor show what
+    /// they will actually be prescribed, instead of a placeholder the session
+    /// then silently overrides (field test 2026-08-19 #1 — the plan is now the
+    /// prescription, so it has to start out truthful).
+    public static func ownerSeedSets(history: ExerciseHistory,
+                                     defaultReps: Int,
+                                     defaultSetCount: Int = 1) -> [EditableSet] {
+        let logged = history.lastSets.filter { $0.reps > 0 }
+        if !logged.isEmpty {
+            return logged.map { EditableSet(targetReps: $0.reps,
+                                            targetWeight: $0.weightKg > 0 ? $0.weightKg : nil) }
+        }
+        let ladder = (history.repLadders.last ?? []).filter { $0 > 0 }
+        if !ladder.isEmpty {
+            return ladder.map { EditableSet(targetReps: $0,
+                                            targetWeight: history.firstWorkingWeightKg) }
+        }
+        let reps = PerformerSetPlanner.habitualReps(generalRepLadders: history.generalRepLadders)
+            ?? defaultReps
+        return (0..<max(1, defaultSetCount)).map { _ in
+            EditableSet(targetReps: reps, targetWeight: nil)
         }
     }
 

@@ -243,4 +243,46 @@ final class PartnersAndUnitsTests: XCTestCase {
         XCTAssertEqual(session.activePartnerIDs.count, 2)
         XCTAssertEqual(Set(session.activePartnerIDs), Set(ids))
     }
+
+    // MARK: - Explicit plans (field test 2026-08-19 #1)
+
+    /// `explicitPlannedSets` must distinguish "the user planned this" from
+    /// "nobody said" — that is the whole basis for letting a plan outrank history.
+    func testExplicitPlannedSetsDistinguishesPlannedFromAbsent() throws {
+        let ctx = try makeContext()
+        let partnerID = UUID()
+        let other = UUID()
+        let session = try WorkoutRepository.createSession(in: ctx)
+        session.plannedPrescriptions = [PlannedExercisePrescription(
+            exerciseName: "Bench Press",
+            sets: [PlannedSetPrescription(targetReps: 5, targetWeightKg: 100)])]
+        session.plannedPerformerPrescriptions = [
+            PlannedPerformerPrescription(performerID: nil, exercises: session.plannedPrescriptions),
+            PlannedPerformerPrescription(performerID: partnerID.uuidString, exercises: [
+                PlannedExercisePrescription(
+                    exerciseName: "Bench Press",
+                    sets: [PlannedSetPrescription(targetReps: 20, targetWeightKg: 20)])])
+        ]
+
+        XCTAssertEqual(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "bench press")?
+                        .map(\.targetReps), [5], "Matching is case-insensitive")
+        XCTAssertEqual(session.explicitPlannedSets(forPerformerID: partnerID, exerciseName: "Bench Press")?
+                        .map(\.targetWeightKg), [20])
+        XCTAssertNil(session.explicitPlannedSets(forPerformerID: other, exerciseName: "Bench Press"),
+                     "A partner with no stored entry has no explicit plan of their own")
+        XCTAssertNil(session.explicitPlannedSets(forPerformerID: partnerID, exerciseName: "Back Squat"),
+                     "…nor does a movement the plan never mentioned")
+    }
+
+    /// A legacy session with only the owner's plan still reports it as explicit.
+    func testExplicitPlannedSetsFallsBackToTheOwnerPlanForTheOwnerOnly() throws {
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(in: ctx)
+        session.plannedExerciseNames = ["Back Squat"]
+        session.plannedRepLadder = [12, 10, 8]
+
+        XCTAssertEqual(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Back Squat")?
+                        .map(\.targetReps), [12, 10, 8])
+        XCTAssertNil(session.explicitPlannedSets(forPerformerID: UUID(), exerciseName: "Back Squat"))
+    }
 }

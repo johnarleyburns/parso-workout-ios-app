@@ -80,6 +80,18 @@ struct InlineSetEditorView: View {
             .sheet(isPresented: $keypadPresented) { keypad }
         }
         .accessibilityIdentifier("setEditor.fullScreen")
+        // Switching who is doing the set re-targets the entry to THEIR plan, or
+        // failing that their own last/usual load and reps — leaving the previous
+        // performer's numbers in place was field test 2026-08-19 #2. Editing an
+        // already-recorded set only re-attributes it; the logged numbers stand.
+        .onChange(of: performerID) { _, newValue in
+            guard !config.isEditing,
+                  let target = config.performerDefaults.first(where: { $0.performerID == newValue })
+            else { return }
+            draft.setReps(target.reps)
+            draft.setWeight(Double(target.weight.replacingOccurrences(of: ",", with: ".")) ?? 0)
+            typedWeight = target.weight
+        }
     }
 
     private var headerContext: some View {

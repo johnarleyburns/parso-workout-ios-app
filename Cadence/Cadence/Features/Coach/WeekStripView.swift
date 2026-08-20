@@ -30,7 +30,7 @@ struct WeekStripView: View {
                     .foregroundStyle(.secondary)
             }
             .padding()
-            .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .green)
+            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .contain)

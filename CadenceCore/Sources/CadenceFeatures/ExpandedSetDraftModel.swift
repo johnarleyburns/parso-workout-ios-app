@@ -42,6 +42,12 @@ public struct ExpandedSetDraftModel: Equatable, Sendable {
         weight = Self.clampWeight(value)
     }
 
+    /// Retargets the rep count outright — used when the editor switches to a
+    /// different performer mid-entry (field test 2026-08-19 #2).
+    public mutating func setReps(_ value: Int) {
+        reps = min(max(value, Self.minReps), Self.maxReps)
+    }
+
     public mutating func adjustReps(by amount: Int) {
         reps = min(max(reps + amount, Self.minReps), Self.maxReps)
     }

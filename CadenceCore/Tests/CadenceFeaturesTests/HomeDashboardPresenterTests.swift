@@ -92,6 +92,74 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertEqual(suggestion.tone, .warning)
     }
 
+    // MARK: - Muscles (field test 2026-08-19 #8)
+
+    func testMuscleRowsCoverEveryTrackedMuscle() throws {
+        let muscles = try dashboard(chestSets: 4, now: Date()).muscles
+        XCTAssertEqual(Set(muscles.map(\.muscleID)), Set(MuscleCatalog.all.map(\.id)),
+                       "Every catalog muscle needs a line, including the ones at zero")
+    }
+
+    func testMuscleRowReportsPercentOfTheWeeklySetTarget() throws {
+        let muscles = try dashboard(chestSets: 4, now: Date()).muscles
+        let chest = muscles.first { $0.muscleID == "chest" }
+        XCTAssertEqual(chest?.sets, 4)
+        XCTAssertEqual(chest?.target, HomeDashboardPresenter.weeklySetsPerMuscleTarget)
+        XCTAssertEqual(chest?.percentComplete, 50)
+        XCTAssertEqual(chest?.normalized ?? 0, 0.5, accuracy: 0.001)
+        XCTAssertEqual(chest?.displayName, "Chest")
+    }
+
+    func testMuscleRowsAreOrderedMostTrainedFirst() throws {
+        let muscles = try dashboard(chestSets: 4, now: Date()).muscles
+        XCTAssertEqual(muscles.first?.muscleID, "chest")
+        XCTAssertEqual(muscles.map(\.sets), muscles.map(\.sets).sorted(by: >))
+    }
+
+    func testMuscleCoverageCountsMusclesAtOrAboveTheTarget() {
+        let rows = HomeDashboardPresenter.muscleRows(setsByMuscle: ["chest": 8, "lats": 4])
+        XCTAssertEqual(rows.first(where: { $0.muscleID == "chest" })?.percentComplete, 100)
+        XCTAssertEqual(rows.first(where: { $0.muscleID == "lats" })?.percentComplete, 50)
+        XCTAssertEqual(rows.first(where: { $0.muscleID == "glutes" })?.sets, 0)
+    }
+
+    func testMuscleRowsOverTargetReportAboveOneHundredButClampTheBar() {
+        let rows = HomeDashboardPresenter.muscleRows(setsByMuscle: ["chest": 16])
+        let chest = rows.first { $0.muscleID == "chest" }
+        XCTAssertEqual(chest?.percentComplete, 200)
+        XCTAssertEqual(chest?.normalized, 1, "The progress bar never overflows")
+    }
+
+    // MARK: - Cardio minutes (field test 2026-08-19 #7)
+
+    func testCardioDetailExplainsTheModerateEquivalentWeighting() {
+        let detail = HomeDashboardState.CardioDetail(
+            loggedMinutes: 80, easyMinutes: 0, moderateMinutes: 2, vigorousMinutes: 78,
+            moderateEquivalentMinutes: 158, targetMinutes: 150,
+            citationID: CitationRegistry.ekelundActivityMortality2016.id)
+        XCTAssertEqual(detail.summary, "80 min logged counts as 158 moderate-equivalent min.")
+        XCTAssertTrue(detail.explanation.contains("Vigorous work counts double"))
+        XCTAssertEqual(detail.lines.map { $0.label }, ["Moderate", "Vigorous"])
+        XCTAssertEqual(detail.lines.last?.credit, "156 min credited")
+        XCTAssertNotNil(CitationRegistry.citation(forId: detail.citationID),
+                        "The cardio explanation must resolve to a real, navigable study")
+    }
+
+    func testCardioDetailWithOnlyModerateWorkNeedsNoWeightingCaveat() {
+        let detail = HomeDashboardState.CardioDetail(
+            loggedMinutes: 60, easyMinutes: 0, moderateMinutes: 60, vigorousMinutes: 0,
+            moderateEquivalentMinutes: 60, targetMinutes: 150,
+            citationID: CitationRegistry.ekelundActivityMortality2016.id)
+        XCTAssertEqual(detail.summary, "60 min logged this week.")
+    }
+
+    func testCardioDetailIsPopulatedFromTheWeeklyBalance() throws {
+        let dash = try dashboard(chestSets: 1, now: Date())
+        XCTAssertEqual(dash.cardioDetail.targetMinutes, 150)
+        XCTAssertEqual(dash.cardioDetail.loggedMinutes, 0)
+        XCTAssertEqual(dash.cardioDetail.moderateEquivalentMinutes, dash.cardio.completed)
+    }
+
     func testVisibleSuggestionsCapsCollapsedCardAndRestoresExpandedItems() {
         let items = (0..<5).map { index in
             HomeSuggestion(id: "suggestion-\(index)", category: .progress,

@@ -2,7 +2,103 @@
 
 Live handoff/progress tracker.
 
-_Last updated: 2026-08-11 — Cladiron platform spec v2.2 **adopted as the roadmap**, all open decisions resolved (planning only; no app code changed). Previously 2026-08-10: field-test fixes (set-editor crash, set columns, Edit mode) SHIPPED._
+_Last updated: 2026-08-20 — field-test batch 2026-08-19 (8 issues) SHIPPED. Previously 2026-08-11: Cladiron platform spec v2.2 adopted as the roadmap (planning only; no app code changed)._
+
+## Field-test fixes — plan fidelity, partner defaults, live-workout performance, week dashboard — 2026-08-19 — SHIPPED
+
+Eight field-test issues fixed in one pass. Verified: `swift test` **1479 tests, 0
+failures**; `xcodebuild` iOS build clean; `make smoke` **1/1 passed** (183s);
+test-pyramid guardrail OK.
+
+**1. An entered plan is now the prescription (policy reversal).** Per-performer
+reps and weights typed into the plan editor were discarded the moment that
+performer had any history for the movement: `SessionRenderModel` derived reps
+from history first and only fell back to the plan, and the load came from
+`firstWorkingWeightKg ?? plan`. The precedence is inverted — the explicit plan
+wins for every set index it covers, for reps *and* weight; history fills only
+what the plan does not say. This **reverses the 2026-08-18 #4 decision** that the
+stored plan was a "starting target"; `SessionRenderModelTests` was rewritten to
+encode the new rule.
+- New `WorkoutSession.explicitPlannedSets(forPerformerID:exerciseName:)`
+  distinguishes "the user planned this" from "nobody said" — the whole basis for
+  letting a plan outrank history. `plannedPrescriptions(forPerformerID:)` is
+  unchanged for its existing callers.
+- New pure `PerformerSetPlanner` (CadenceFeatures) is the single resolution path
+  shared by the card's pending rows and the set editor's pre-fill, so the editor
+  can no longer disagree with the row the user tapped to open it.
+- The plan editor seeds a newly added exercise from the **owner's** own last
+  session (`PartnerPlanResolver.ownerSeedSets`) instead of a hard-coded 10, so
+  the plan starts out truthful now that the session honours it.
+
+**1b. Pending sets alternate between performers.** They were emitted per
+performer (all of mine, then all of theirs). `SessionRenderModel.interleaved`
+round-robins the *remaining* work by set index in roster order.
+
+**2. Changing "Who did this set?" re-targets the entry.** `InlineEditorConfig`
+carries `performerDefaults` (one resolved next-set per roster member) and
+`InlineSetEditorView` applies it on `onChange(of: performerID)`. Editing an
+already-recorded set only re-attributes it — the logged numbers stand.
+
+**3. A partner's habitual reps beat the generic 5.** A partner who does 20 reps
+on everything fell through to the literal `5` on a movement they had never done,
+because `SessionRenderModel.generalRepLadderHistory` was scoped to the *same*
+exercise (misnamed; deleted). `PerformerSetPlanner.habitualReps` takes the modal
+working rep count across every movement, ties broken by recency;
+`SessionRenderModel.build(recentSessions:)` gathers it over a bounded 20-session
+window, once per structural change. `PartnerPlanResolver` gained the same
+fallback so the plan editor and the live session agree.
+
+**4. Live-workout performance.** Four independent causes, all removed:
+- `SessionView.plannedCard` called `WorkoutRepository.findOrCreateExercise`
+  **twice per planned card per redraw** — a fetch (and a potential insert) inside
+  `body`. Now resolved once per structural change into `plannedExerciseIndex`.
+- The live HR band read `model.hrm` inline, so every heartbeat invalidated the
+  whole session body — every exercise card and every sheet closure, the exercise
+  picker included. Extracted to `SessionLiveHRBand` so observation is scoped.
+- The picker's `filtered` / `exactMatchExists` / `bestLibraryMatch` / `popular`
+  each walked the full `@Query` array of `@Model` rows, folding and comparing
+  names, on *every* redraw. New `ExercisePickerSearch` snapshots all four into
+  `@State` once per debounced keystroke.
+- `ExerciseSearchIndex.rank` tie-broke on `item.name` — a SwiftData property
+  access (and, inside a body, an observation registration) per comparison per
+  sort. It now sorts on the name it already normalized at build time.
+
+**5. One page rhythm everywhere.** `LayoutMetrics.actionButtonSpacing` is now
+`sectionSpacing` (the 2026-08-18 "stacked actions group tighter" rule read as a
+layout bug in the field), and new `LayoutMetrics.cardCornerRadius` +
+`CadenceCardShape` give every bounded card one shape. The live workout's cards
+(`ExerciseCardView`, planned cards, the plan banner) moved off ad-hoc radius-14
+`.background(.background.secondary)` onto `cadenceGlassCard` + `cardPadding`, and
+all 19 `cadenceGlassCard` call sites now name the shared shape.
+
+**6. Saving a set returns you to it.** `SessionView` wraps its scroll view in a
+`ScrollViewReader`; `recordInlineSet` records `pendingScrollExerciseID`, and the
+render-cache refresh expands that exercise and scrolls it to the top — the card
+may only exist on the rebuild the save triggered, so the target is consumed
+there rather than immediately.
+
+**7. "158 of 150 min" from 80 logged minutes is explained.** The number was
+right (vigorous work counts double, easy counts half) but unexplained.
+`WeeklyBalance` now keeps the **raw** per-intensity minutes alongside the
+weighted total, and `HomeDashboardState.CardioDetail` renders a caption on the
+summary row plus an expanded "Cardio Minutes" block — minutes logged → minutes
+credited per intensity, the moderate-equivalent total, and a `CitationLink` to
+Ekelund 2016.
+
+**8. Per-muscle weekly volume; Volume summarises as tonnage.** Body parts were
+too coarse to answer "did I train my adductors this week?".
+`TrainingFacts.weeklySetsByMuscle` tallies at `MuscleCatalog` resolution with the
+same primary-1.0 / secondary-0.5 weighting (a muscle listed both ways counts
+once, at full credit). Home's This Week card gains a **Muscles** row —
+`n/23 at 8 sets` with a progress bar — and the expanded card lists every tracked
+muscle with its percent and set count, cited to the volume dose-response. The
+**Volume** row now reads tonnage (e.g. `27.2t`), with `n/8 body parts` demoted to
+its caption.
+
+**Test-pyramid ratchet lowered:** SessionView 1085 → 1034, ExercisePickerView
+532 → 514 (three new files: `SessionInfoSheets`, `SessionBanners`,
+`ExercisePickerSearch`). The iPhone smoke test was extended in place — still
+exactly one test function.
 
 ## Field-test fixes — set-editor crash, column widths, Edit mode — 2026-08-10 — SHIPPED
 

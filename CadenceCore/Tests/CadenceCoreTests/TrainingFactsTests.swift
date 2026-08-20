@@ -42,6 +42,43 @@ final class TrainingFactsTests: XCTestCase {
         XCTAssertEqual(facts.totalWorkingSets, 4)
     }
 
+    /// Field test 2026-08-19 #8: the same tally at muscle resolution, because a
+    /// body part hides which of its muscles actually got work.
+    func testWeeklySetsAreAlsoTalliedPerMuscle() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(
+            named: "Muscle Tally Bench", primaryMuscles: ["chest"],
+            secondaryMuscles: ["triceps", "front-delts"], in: ctx)
+        for _ in 0..<4 {
+            _ = try WorkoutRepository.addSet(to: s, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        }
+        _ = try WorkoutRepository.addSet(to: s, exercise: bench, weightKg: 40, reps: 5, isWarmup: true, in: ctx)
+
+        let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
+        XCTAssertEqual(facts.weeklySetsByMuscle["chest"] ?? -1, 4.0, accuracy: 0.001)
+        XCTAssertEqual(facts.weeklySetsByMuscle["triceps"] ?? -1, 2.0, accuracy: 0.001)
+        XCTAssertEqual(facts.weeklySetsByMuscle["front-delts"] ?? -1, 2.0, accuracy: 0.001)
+        XCTAssertNil(facts.weeklySetsByMuscle["glutes"], "Untrained muscles stay absent")
+    }
+
+    /// A muscle that is both primary and secondary for the same lift is counted
+    /// once, at full credit — never 1.5 sets.
+    func testAMuscleIsNeverCountedTwiceForOneSet() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-86_400), in: ctx)
+        let ex = try WorkoutRepository.findOrCreateExercise(
+            named: "Overlap Movement", primaryMuscles: ["glutes"],
+            secondaryMuscles: ["glutes", "hamstrings"], in: ctx)
+        _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: 60, reps: 10, in: ctx)
+
+        let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
+        XCTAssertEqual(facts.weeklySetsByMuscle["glutes"] ?? -1, 1.0, accuracy: 0.001)
+        XCTAssertEqual(facts.weeklySetsByMuscle["hamstrings"] ?? -1, 0.5, accuracy: 0.001)
+    }
+
     func testStaleSessionsExcludedFromWeeklyWindow() throws {
         let ctx = try makeContext()
         let now = testNow

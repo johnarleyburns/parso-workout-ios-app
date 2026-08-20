@@ -708,7 +708,7 @@ struct HomeView: View {
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .pink)
+            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .pink)
         }
     }
 

@@ -48,6 +48,15 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Expanded This Week did not expose the Legs volume row")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
                       "Expanded This Week did not label the body-part rows as Volume")
+        // Field test 2026-08-19 #7/#8: the weighted cardio total is explained, and
+        // the per-muscle breakdown lives under Volume.
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscles"].waitForExistence(timeout: 5),
+                      "Expanded This Week is missing the Muscles breakdown")
+        XCTAssertTrue(app.descendants(matching: .any)["home.muscle.chest"].exists,
+                      "Muscles breakdown does not list every tracked muscle")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
+                      "Expanded This Week does not explain the moderate-equivalent cardio total")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscles"].exists)
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showLess"),
                       "Expanded This Week did not show Show less")
 
@@ -159,6 +168,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.pickExercise(exerciseName),
                       "Could not add \(exerciseName) to the live session")
         XCTAssertTrue(app.saveSetInEditor(), "Owner's set did not save")
+        // Field test 2026-08-19 #6: saving returns to the workout with that
+        // exercise still expanded, so the next set is one tap away.
+        XCTAssertTrue(app.buttons["set.add.\(exerciseName)"].waitForExistence(timeout: 10),
+                      "Saving a set collapsed the exercise instead of leaving it open")
         app.dismissRestBar()
         XCTAssertTrue(app.logPartnerSet(exercise: exerciseName, partner: "Sam"),
                       "Partner's set did not save")

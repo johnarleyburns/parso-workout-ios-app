@@ -390,11 +390,11 @@ final class SessionRenderModelTests: XCTestCase {
                        "A legacy session (no performer data) must behave exactly as before")
     }
 
-    /// The stored plan is the *starting* target, not a replacement for the
-    /// partner's own logged history: their first set comes from the plan the
-    /// editor filled for them, later sets follow their own rep pattern, and the
-    /// load is always their own working weight.
-    func testPartnerHistoryStillOverridesRepsWithinTheStoredPlan() throws {
+    /// Field test 2026-08-19 #1 reverses the 2026-08-18 policy: an entered plan
+    /// is the prescription, not merely a starting hint. Every set index the plan
+    /// covers uses the planned reps AND the planned load; history only fills what
+    /// the plan leaves unsaid.
+    func testStoredPlanOutranksThePartnersOwnHistory() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -424,11 +424,97 @@ final class SessionRenderModelTests: XCTestCase {
             .sorted { $0.setIndex < $1.setIndex }
         XCTAssertEqual(partnerPending.count, 2,
                        "The stored plan decides how many sets the partner has left")
-        XCTAssertEqual(partnerPending[0].targetReps, 12,
-                       "The partner's first set should come from their stored plan")
-        XCTAssertEqual(partnerPending[1].targetReps, 18,
-                       "Later sets should follow the partner's own logged rep pattern")
-        XCTAssertTrue(partnerPending.allSatisfy { $0.targetWeightKg == 45 },
-                      "The load should be the partner's own working weight, never the plan's 40 or the owner's 100")
+        XCTAssertEqual(partnerPending.map(\.targetReps), [12, 12],
+                       "Every planned set must honour the plan the user entered")
+        XCTAssertTrue(partnerPending.allSatisfy { $0.targetWeightKg == 40 },
+                      "The entered plan's load was discarded in favour of history")
+    }
+
+    /// Where the plan says nothing — a set index it does not cover — the
+    /// performer's own history still fills in.
+    func testHistoryFillsSetsThePlanDoesNotCover() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+
+        let past = try WorkoutRepository.createSession(title: "Last week", in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 45, reps: 20,
+                                          performedBy: partner, in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 45, reps: 18,
+                                          performedBy: partner, in: ctx)
+
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        session.plannedPrescriptions = [PlannedExercisePrescription(
+            exerciseName: "Bench Press",
+            sets: [PlannedSetPrescription(targetReps: 5, targetWeightKg: 100),
+                   PlannedSetPrescription(targetReps: 5, targetWeightKg: 100)])]
+        session.plannedPerformerPrescriptions = [
+            PlannedPerformerPrescription(performerID: partner.id.uuidString, exercises: [
+                PlannedExercisePrescription(
+                    exerciseName: "Bench Press",
+                    sets: [PlannedSetPrescription(targetReps: 12, targetWeightKg: nil)])])
+        ]
+
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        let partnerPending = state.contexts[0].pendingSets
+            .filter { $0.performerID == partner.id }
+            .sorted { $0.setIndex < $1.setIndex }
+        XCTAssertEqual(partnerPending[0].targetReps, 12, "Planned reps must win at index 0")
+        XCTAssertEqual(partnerPending[0].targetWeightKg, 45,
+                       "A plan with no load falls through to the partner's own working weight")
+    }
+
+    /// Field test 2026-08-19 #3: a partner who has never done THIS lift still has
+    /// hundreds of sets on others. Their habitual rep count beats the generic 5.
+    func testPartnerWithoutMovementHistoryUsesTheirHabitualReps() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
+        let squat = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+
+        let past = try WorkoutRepository.createSession(title: "Last week", in: ctx)
+        for _ in 0..<3 {
+            _ = try WorkoutRepository.addSet(to: past, exercise: squat, weightKg: 30, reps: 20,
+                                              performedBy: partner, in: ctx)
+        }
+
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        session.plannedRepLadder = [5, 5]
+
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx),
+                                             recentSessions: try WorkoutRepository.allSessions(ctx))
+
+        let partnerPending = state.contexts[0].pendingSets.filter { $0.performerID == partner.id }
+        XCTAssertEqual(partnerPending.map(\.targetReps), [20, 20],
+                       "The partner defaulted to the owner's ladder instead of their own usual reps")
+    }
+
+    /// Field test 2026-08-19 #1: partners take turns, so the outstanding rows
+    /// alternate rather than listing everything one person owes first.
+    func testPendingSetsAlternateBetweenPerformers() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        session.plannedRepLadder = [5, 5, 5]
+
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        // The owner has logged set 1, so they owe indices 1 and 2; the partner
+        // owes 0, 1 and 2. The card must read partner-0, me-1, partner-1, …
+        let order = state.contexts[0].pendingSets.map { ($0.performerID == nil, $0.setIndex) }
+        XCTAssertEqual(order.map(\.1), [1, 0, 2, 1, 2],
+                       "Pending rows are not round-robined across performers")
+        XCTAssertEqual(order.map(\.0), [true, false, true, false, false])
     }
 }

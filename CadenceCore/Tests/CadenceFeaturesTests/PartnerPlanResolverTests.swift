@@ -273,4 +273,45 @@ final class PartnerPlanResolverTests: XCTestCase {
         let solo = EditableExercise(name: "Bench Press", sets: ownerSets([8, 6]), notes: "")
         XCTAssertEqual(PartnerPlanResolver.aligned(solo), solo)
     }
+
+    // MARK: - Owner seed (field test 2026-08-19 #1)
+
+    func testOwnerSeedReproducesTheirLastSessionOnTheLift() {
+        let history = PartnerPlanResolver.ExerciseHistory(
+            lastSets: [.init(weightKg: 100, reps: 5), .init(weightKg: 100, reps: 3)],
+            firstWorkingWeightKg: 100)
+        let seed = PartnerPlanResolver.ownerSeedSets(history: history, defaultReps: 10)
+        XCTAssertEqual(seed.map(\.targetReps), [5, 3])
+        XCTAssertEqual(seed.map(\.targetWeight), [100, 100])
+    }
+
+    func testOwnerSeedFallsBackToTheirRepLadderThenTheirHabit() {
+        let ladderOnly = PartnerPlanResolver.ExerciseHistory(
+            repLadders: [[12, 10, 8]], firstWorkingWeightKg: 40)
+        XCTAssertEqual(PartnerPlanResolver.ownerSeedSets(history: ladderOnly, defaultReps: 10)
+                        .map(\.targetReps), [12, 10, 8])
+
+        let habitOnly = PartnerPlanResolver.ExerciseHistory(generalRepLadders: [[20, 20, 20]])
+        let seed = PartnerPlanResolver.ownerSeedSets(history: habitOnly, defaultReps: 10)
+        XCTAssertEqual(seed.map(\.targetReps), [20])
+        XCTAssertEqual(seed.map(\.targetWeight), [nil])
+    }
+
+    func testOwnerSeedWithNoHistoryAtAllUsesTheEditorDefault() {
+        let seed = PartnerPlanResolver.ownerSeedSets(history: .empty, defaultReps: 10,
+                                                     defaultSetCount: 3)
+        XCTAssertEqual(seed.map(\.targetReps), [10, 10, 10])
+    }
+
+    /// A partner who has never done the movement but always works at 20 reps
+    /// gets 20, not the owner's prescription (field test 2026-08-19 #3).
+    func testPartnerWithoutMovementHistoryUsesTheirHabitualReps() {
+        let history = PartnerPlanResolver.ExerciseHistory(
+            generalRepLadders: [[20, 20], [20, 20, 20]])
+        let sets = PartnerPlanResolver.sets(forOwnerSets: ownerSets([5, 5, 5, 5]),
+                                            history: history)
+        XCTAssertEqual(sets.map(\.targetReps), [20, 20, 20, 20],
+                       "Past the end of their last ladder we use how they usually work")
+        XCTAssertEqual(sets.compactMap(\.targetWeight), [], "…but never a made-up load")
+    }
 }

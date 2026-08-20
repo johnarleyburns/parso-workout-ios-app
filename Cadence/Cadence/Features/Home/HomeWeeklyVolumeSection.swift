@@ -43,7 +43,7 @@ struct HomeWeeklyVolumeSection: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .orange)
+        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .orange)
         .accessibilityIdentifier("home.volume")
     }
 

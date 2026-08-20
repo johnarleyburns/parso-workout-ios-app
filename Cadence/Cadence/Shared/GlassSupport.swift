@@ -1,4 +1,5 @@
 import SwiftUI
+import CadenceFeatures
 
 /// Master switch for custom Liquid Glass call sites. iOS 17-25 always use the
 /// material fallback regardless of this flag.
@@ -155,5 +156,14 @@ private enum GlassFactory {
         if let tint { glass = glass.tint(tint) }
         if interactive { glass = glass.interactive() }
         return glass
+    }
+}
+
+/// The shape every bounded card is filled/clipped with. Pairs with
+/// `cadenceGlassCard()` so a card on the live workout screen is the same shape,
+/// padding and material as a card on Home (field test 2026-08-19 #5).
+enum CadenceCardShape {
+    static var rounded: RoundedRectangle {
+        RoundedRectangle(cornerRadius: CGFloat(LayoutMetrics.cardCornerRadius), style: .continuous)
     }
 }

@@ -10,11 +10,23 @@ final class LayoutMetricsTests: XCTestCase {
                                     "Full-width actions must clear the HIG 44pt touch target")
     }
 
-    func testActionButtonSpacingIsPositiveAndSmallerThanSectionSpacing() {
+    /// Field test 2026-08-19 #5 reversed the 2026-08-18 grouping: a tighter gap
+    /// between two stacked Home actions than between the second action and the
+    /// next card read as a layout bug, not as grouping. One page rhythm now.
+    func testActionButtonSpacingMatchesSectionSpacing() {
         XCTAssertGreaterThan(LayoutMetrics.actionButtonSpacing, 0)
-        XCTAssertLessThan(LayoutMetrics.actionButtonSpacing, LayoutMetrics.sectionSpacing,
-                          "Stacked actions read as one group, so they sit tighter than sections")
+        XCTAssertEqual(LayoutMetrics.actionButtonSpacing, LayoutMetrics.sectionSpacing, accuracy: 0.001,
+                       "Buttons and bounding boxes share one gap across every surface")
         XCTAssertGreaterThan(LayoutMetrics.actionButtonCornerRadius, 0)
+    }
+
+    /// Every bounded card is the same shape, so a card on the live workout screen
+    /// cannot drift from a card on Home (field test 2026-08-19 #5).
+    func testCardCornerRadiusIsSingleSourced() {
+        XCTAssertEqual(LayoutMetrics.cardCornerRadius, 16, accuracy: 0.001)
+        XCTAssertEqual(LayoutMetrics.cardCornerRadius, LayoutMetrics.actionButtonCornerRadius,
+                       accuracy: 0.001,
+                       "A card and a full-width action share one corner radius")
     }
 
     func testSectionSpacingMatchesHomeRhythm() {

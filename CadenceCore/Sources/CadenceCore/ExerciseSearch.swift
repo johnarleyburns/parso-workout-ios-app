@@ -98,13 +98,17 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
 
     public var count: Int { indexed.count }
 
+    /// Every candidate's already-normalized name, in index order — lets a caller
+    /// scan for exact/substring matches without re-folding thousands of `@Model`
+    /// name strings on the keystroke path (field test 2026-08-19 #4).
+    public var normalizedNames: [(item: T, name: String, isCustom: Bool)] {
+        indexed.map { ($0.item, $0.name, $0.isCustom) }
+    }
+
     public func rank(_ query: String) -> [T] {
         let terms = ExerciseSearch.terms(query)
         guard !terms.isEmpty else {
-            return indexed.sorted { lhs, rhs in
-                if lhs.isCustom != rhs.isCustom { return !lhs.isCustom }
-                return lhs.item.name.localizedCaseInsensitiveCompare(rhs.item.name) == .orderedAscending
-            }.map(\.item)
+            return indexed.sorted(by: Self.alphabeticalBuiltInsFirst).map(\.item)
         }
         let scored: [(Indexed, Int)] = indexed.compactMap { entry in
             var total = 0
@@ -117,14 +121,17 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
         }
         return scored.sorted { a, b in
             if a.1 != b.1 { return a.1 > b.1 }
-            if a.0.isCustom != b.0.isCustom { return !a.0.isCustom }
-            return a.0.item.name.localizedCaseInsensitiveCompare(b.0.item.name) == .orderedAscending
+            return Self.alphabeticalBuiltInsFirst(a.0, b.0)
         }.map(\.0.item)
     }
 
+    /// Tie-break on the PRE-normalized name. Reading `item.name` here meant a
+    /// SwiftData property access (and, inside a SwiftUI body, an observation
+    /// registration) for every comparison in every sort — the dominant cost once
+    /// the catalog grew (field test 2026-08-19 #4).
     private static func alphabeticalBuiltInsFirst(_ lhs: Indexed, _ rhs: Indexed) -> Bool {
         if lhs.isCustom != rhs.isCustom { return !lhs.isCustom }
-        return lhs.item.name.localizedCaseInsensitiveCompare(rhs.item.name) == .orderedAscending
+        return lhs.name < rhs.name
     }
 }
 

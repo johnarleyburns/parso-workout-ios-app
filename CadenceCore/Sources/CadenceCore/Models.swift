@@ -456,6 +456,28 @@ public final class WorkoutSession {
         }
     }
 
+    /// The sets one performer was **explicitly planned** for on one movement, or
+    /// nil when nothing was planned for them there. Unlike
+    /// `plannedPrescriptions(forPerformerID:)` this never substitutes the owner's
+    /// plan, so a caller can tell "the user asked for this" from "nobody said".
+    /// That distinction is what lets an entered plan outrank logged history
+    /// (field test 2026-08-19 #1).
+    public func explicitPlannedSets(forPerformerID id: UUID?,
+                                    exerciseName: String) -> [PlannedSetPrescription]? {
+        let match: [PlannedExercisePrescription]
+        if let stored = plannedPerformerPrescriptions.first(where: { $0.performerID == id?.uuidString }) {
+            match = stored.exercises
+        } else if id == nil {
+            match = plannedPrescriptions
+        } else {
+            return nil
+        }
+        let sets = match.first {
+            $0.exerciseName.caseInsensitiveCompare(exerciseName) == .orderedSame
+        }?.sets
+        return (sets?.isEmpty ?? true) ? nil : sets
+    }
+
     /// The prescription for one performer, falling back to the owner's plan when
     /// that performer has no stored entry (legacy sessions, or a partner added
     /// after planning).

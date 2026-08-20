@@ -52,7 +52,7 @@ struct TestsView: View {
                             }
                         }
                         .padding(.vertical, 8)
-                        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .blue)
+                        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .blue)
                     }
                 }
 
@@ -76,7 +76,7 @@ struct TestsView: View {
                         Text("Advanced Tests").font(.headline)
                     }
                     .padding(12)
-                    .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .blue)
+                    .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .blue)
                     .accessibilityIdentifier("tests.advanced")
                 }
                 }
@@ -104,7 +104,7 @@ struct TestsView: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .blue)
+            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .blue)
     }
 
     @ViewBuilder

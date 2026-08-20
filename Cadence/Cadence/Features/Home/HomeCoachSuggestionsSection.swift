@@ -45,7 +45,7 @@ struct HomeCoachSuggestionsSection: View {
         }
         .padding(LayoutMetrics.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .purple)
+        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .purple)
         .overlay(alignment: .topTrailing) {
             HomeCoachIllustrationView(illustration: illustration, compact: true)
                 .padding(Self.illustrationInset)

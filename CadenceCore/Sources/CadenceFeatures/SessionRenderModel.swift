@@ -82,11 +82,15 @@ public enum SessionRenderModel {
         public var priorSamples: [SetSample] = []
         public var firstWorkingWeightKg: Double?
         public var repLadders: [[Int]] = []
+        /// This performer's working-set rep ladders across ALL movements, oldest
+        /// first — how they train in general when they have never done THIS lift
+        /// (field test 2026-08-19 #3).
+        public var generalRepLadders: [[Int]] = []
 
         public init(performerID: UUID?, label: String, isMe: Bool,
                     lastTimeSets: [SetDisplay], pr: Double?, prRuleName: String,
                     priorSamples: [SetSample], firstWorkingWeightKg: Double?,
-                    repLadders: [[Int]]) {
+                    repLadders: [[Int]], generalRepLadders: [[Int]] = []) {
             self.performerID = performerID
             self.label = label
             self.isMe = isMe
@@ -96,6 +100,7 @@ public enum SessionRenderModel {
             self.priorSamples = priorSamples
             self.firstWorkingWeightKg = firstWorkingWeightKg
             self.repLadders = repLadders
+            self.generalRepLadders = generalRepLadders
         }
     }
 
@@ -165,6 +170,28 @@ public enum SessionRenderModel {
             return PRCalculator.isNewPR(candidate: candidate, previous: owner.priorSamples,
                                         rule: rule, formula: formula)
         }
+
+        /// The next outstanding set for one performer on one exercise. The set
+        /// editor uses it so switching "Who did this set?" re-targets the reps and
+        /// weight to that person (field test 2026-08-19 #2).
+        public func nextPendingSet(forExerciseID id: UUID,
+                                   performerID: UUID?) -> PendingSetDisplay? {
+            contexts.first { $0.exerciseID == id }?
+                .pendingSets.first { $0.performerID == performerID }
+        }
+
+        /// One performer's precomputed history for an exercise, ready for
+        /// `PerformerSetPlanner` — no SwiftData scan on the editor's hot path.
+        public func performerHistory(forExerciseID id: UUID,
+                                     performerID: UUID?) -> PerformerSetPlanner.History {
+            guard let performer = contexts.first(where: { $0.exerciseID == id })?
+                .performerContexts.first(where: { $0.performerID == performerID })
+            else { return .empty }
+            return PerformerSetPlanner.History(
+                repLadders: performer.repLadders,
+                generalRepLadders: performer.generalRepLadders,
+                firstWorkingWeightKg: performer.firstWorkingWeightKg)
+        }
     }
 
     /// Cache-invalidation key. Keystroke state (weight/reps/RPE fields) is
@@ -214,15 +241,23 @@ public enum SessionRenderModel {
     }
 
     /// Build the full render state. Pure — no side effects.
+    ///
+    /// `recentSessions` is the user's recent training history (any order); it is
+    /// used ONLY to derive each performer's habitual rep pattern across movements
+    /// they have trained, so a partner who has never done *this* lift still gets
+    /// their own usual reps instead of the generic 5 (field test 2026-08-19 #3).
+    /// Passing an empty array reproduces the previous behaviour exactly.
     public static func build(session: WorkoutSession,
                              prRule: PRRule,
                              formula: OneRepMaxFormula,
-                             allPeople: [Person]) -> State {
+                             allPeople: [Person],
+                             recentSessions: [WorkoutSession] = []) -> State {
         var contexts: [ExerciseContext] = []
         var prSetIDs = Set<UUID>()
 
         let hasPartners = SessionRoster.hasPartners(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
         let activePartners = SessionRoster.scopedPartners(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
+        let generalLadders = generalRepLadders(recentSessions: recentSessions, excluding: session)
 
         for exercise in session.exercisesInOrder {
             let exerciseSets = session.orderedSets.filter { $0.exercise?.id == exercise.id }
@@ -256,66 +291,64 @@ public enum SessionRenderModel {
             // Build performer contexts
             var performerContexts: [PerformerContext] = []
 
-            if hasPartners {
-                performerContexts.append(performerContext(
-                    performerID: nil, label: "Me", isMe: true,
-                    exercise: exercise, excluding: session, prRule: prRule, formula: formula))
+            performerContexts.append(performerContext(
+                performerID: nil, label: "Me", isMe: true,
+                exercise: exercise, excluding: session, prRule: prRule, formula: formula,
+                generalRepLadders: generalLadders[performerKey(nil)] ?? []))
 
+            if hasPartners {
                 for partner in activePartners {
-                    let pc = performerContext(
-                        performerID: partner.id, label: partner.name, isMe: false,
-                        exercise: exercise, excluding: session, prRule: prRule, formula: formula)
                     // An explicitly added partner is part of set planning even
                     // before they have history for this movement. Their editor
                     // can then resolve a general rep pattern (or its fallback)
                     // independently from the owner's coach ladder.
-                    performerContexts.append(pc)
+                    performerContexts.append(performerContext(
+                        performerID: partner.id, label: partner.name, isMe: false,
+                        exercise: exercise, excluding: session, prRule: prRule, formula: formula,
+                        generalRepLadders: generalLadders[performerKey(partner.id)] ?? []))
                 }
-            } else {
-                performerContexts.append(performerContext(
-                    performerID: nil, label: "Me", isMe: true,
-                    exercise: exercise, excluding: session, prRule: prRule, formula: formula))
             }
 
-            var pendingSets: [PendingSetDisplay] = []
+            let ownerPlan = plannedSets(forPerformerID: nil, exerciseName: exercise.name, session: session)
+            var pendingByPerformer: [[PendingSetDisplay]] = []
             for performer in performerContexts {
-                // A partner's plan, when the editor stored one, is that
-                // partner's own starting target (field test 2026-08-18 #4,
-                // decision D11). Absent an entry this resolves to the owner's
-                // prescription, exactly as it did before the field existed.
-                let prescription = session.plannedPrescriptions(forPerformerID: performer.performerID).first {
-                    $0.exerciseName.caseInsensitiveCompare(exercise.name) == .orderedSame
-                }
-                let plannedSets = prescription?.sets ?? session.plannedRepLadder.map {
-                    PlannedSetPrescription(targetReps: $0, targetWeightKg: session.prescribedLoadKg > 0 ? session.prescribedLoadKg : nil)
-                }
-                let performerSets = exerciseSets.filter { setPerformedBy($0, performerID: performer.performerID) && !$0.isWarmup }
-                let currentReps = performerSets.sorted { $0.order < $1.order }.map(\.reps)
-                let ladders = performer.repLadders.isEmpty
-                    ? generalRepLadderHistory(exercise: exercise, performerID: performer.performerID, excluding: session)
-                    : performer.repLadders
-                if performerSets.count < plannedSets.count {
-                    for index in performerSets.count..<plannedSets.count {
-                    let target = plannedSets[index]
-                    let hasPerformerHistory = !currentReps.isEmpty || !ladders.isEmpty
-                    // The planned target is the LAST resort, not the magic 5 that
-                    // `plannedReps` falls back to: with a stored per-performer
-                    // plan the first set must honour that plan (field test
-                    // 2026-08-18 #4). Later sets still follow the performer's own
-                    // rep pattern.
-                    let reps = hasPerformerHistory
-                        ? SessionViewModel.plannedReps(
-                            ladder: nil, setIndex: index, currentSessionReps: currentReps,
-                            priorSessionLadders: ladders,
-                            lastLoggedReps: performerSets.last?.reps ?? target.targetReps)
-                        : target.targetReps
-                        pendingSets.append(PendingSetDisplay(
+                // A per-performer plan entered in the editor is that performer's
+                // own target and OUTRANKS their history (field test 2026-08-19
+                // #1). Absent an entry this resolves to the owner's prescription,
+                // exactly as it did before the field existed.
+                let explicitPlan = session.explicitPlannedSets(forPerformerID: performer.performerID,
+                                                               exerciseName: exercise.name)
+                let plan = explicitPlan ?? ownerPlan
+                let performerSets = exerciseSets
+                    .filter { setPerformedBy($0, performerID: performer.performerID) && !$0.isWarmup }
+                    .sorted { $0.order < $1.order }
+                let history = PerformerSetPlanner.History(
+                    repsLoggedThisSession: performerSets.map(\.reps),
+                    repLadders: performer.repLadders,
+                    generalRepLadders: performer.generalRepLadders,
+                    firstWorkingWeightKg: performer.firstWorkingWeightKg)
+                var rows: [PendingSetDisplay] = []
+                if performerSets.count < plan.count {
+                    for index in performerSets.count..<plan.count {
+                        let resolved = PerformerSetPlanner.resolve(
+                            setIndex: index,
+                            performerPlan: explicitPlan,
+                            ownerPlan: ownerPlan,
+                            ownerLadder: nil,
+                            isOwner: performer.isMe,
+                            history: history)
+                        rows.append(PendingSetDisplay(
                             performerID: performer.performerID, performerName: performer.label,
-                            setIndex: index, targetReps: reps,
-                            targetWeightKg: performer.firstWorkingWeightKg ?? target.targetWeightKg))
+                            setIndex: index, targetReps: resolved.reps,
+                            targetWeightKg: resolved.weightKg))
                     }
                 }
+                pendingByPerformer.append(rows)
             }
+            // Partners train the same movement together, so the remaining work
+            // ALTERNATES: my set 1, their set 1, my set 2, … — not everything I
+            // owe followed by everything they owe (field test 2026-08-19 #1).
+            let pendingSets = interleaved(pendingByPerformer)
             let ownerPending = pendingSets.filter { $0.performerID == nil }
             let pendingReps = ownerPending.map(\.targetReps)
 
@@ -337,7 +370,8 @@ public enum SessionRenderModel {
 
     private static func performerContext(performerID: UUID?, label: String, isMe: Bool,
                                           exercise: Exercise, excluding session: WorkoutSession?,
-                                          prRule: PRRule, formula: OneRepMaxFormula) -> PerformerContext {
+                                          prRule: PRRule, formula: OneRepMaxFormula,
+                                          generalRepLadders: [[Int]] = []) -> PerformerContext {
         let last: [SetEntry]
         let pr: Double?
         let samples: [SetSample]
@@ -373,21 +407,67 @@ public enum SessionRenderModel {
             prRuleName: prRule.displayName,
             priorSamples: samples,
             firstWorkingWeightKg: firstWeight,
-            repLadders: ladders
+            repLadders: ladders,
+            generalRepLadders: generalRepLadders
         )
     }
 
-    private static func plannedSetCount(session: WorkoutSession) -> Int {
-        session.plannedRepLadder.isEmpty ? 0 : session.plannedRepLadder.count
+    /// Stable dictionary key for a performer; the owner is `performedBy == nil`.
+    public static func performerKey(_ id: UUID?) -> String { id?.uuidString ?? "owner" }
+
+    /// The prescription stored for one performer, or nil when they have none.
+    /// Unlike `WorkoutSession.plannedPrescriptions(forPerformerID:)` this never
+    /// substitutes the owner's plan, so callers can tell "planned" from "absent".
+    private static func plannedSets(forPerformerID id: UUID?, exerciseName: String,
+                                    session: WorkoutSession) -> [PlannedSetPrescription] {
+        session.explicitPlannedSets(forPerformerID: id, exerciseName: exerciseName)
+            ?? session.plannedRepLadder.map {
+                PlannedSetPrescription(targetReps: $0,
+                                       targetWeightKg: session.prescribedLoadKg > 0 ? session.prescribedLoadKg : nil)
+            }
     }
 
-    private static func generalRepLadderHistory(exercise: Exercise, performerID: UUID?, excluding session: WorkoutSession) -> [[Int]] {
-        let sets = (exercise.sets ?? []).filter {
-            $0.session?.id != session.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID)
+    /// Round-robins the per-performer pending rows so the card reads in the order
+    /// the group will actually train.
+    private static func interleaved(_ groups: [[PendingSetDisplay]]) -> [PendingSetDisplay] {
+        let depth = groups.map(\.count).max() ?? 0
+        var result: [PendingSetDisplay] = []
+        for index in 0..<depth {
+            for group in groups where index < group.count { result.append(group[index]) }
         }
-        let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
-        return grouped.values.sorted { ($0.first?.session?.date ?? .distantPast) < ($1.first?.session?.date ?? .distantPast) }
-            .map { $0.sorted { $0.order < $1.order }.map(\.reps) }
+        return result
+    }
+
+    /// Each performer's working-set rep ladders across every movement in the
+    /// supplied history, oldest first, keyed by `performerKey`. Capped to the most
+    /// recent sessions so a long history costs a bounded walk.
+    public static func generalRepLadders(recentSessions: [WorkoutSession],
+                                         excluding session: WorkoutSession) -> [String: [[Int]]] {
+        guard !recentSessions.isEmpty else { return [:] }
+        var result: [String: [[Int]]] = [:]
+        let window = recentSessions
+            .filter { $0.id != session.id && $0.deletedAt == nil }
+            .sorted { $0.date < $1.date }
+            .suffix(generalHistoryWindow)
+        for past in window {
+            var byPerformer: [String: [Int]] = [:]
+            for set in past.orderedSets where !set.isWarmup && set.reps > 0 {
+                let key = set.isOwnerSet ? performerKey(nil) : performerKey(set.performedBy?.id)
+                byPerformer[key, default: []].append(set.reps)
+            }
+            for (key, reps) in byPerformer where !reps.isEmpty {
+                result[key, default: []].append(reps)
+            }
+        }
+        return result
+    }
+
+    /// Enough sessions to establish a pattern without walking a long history on
+    /// every structural change. Matches `WorkoutPlanPartnerHistory`.
+    private static let generalHistoryWindow = 20
+
+    private static func plannedSetCount(session: WorkoutSession) -> Int {
+        session.plannedRepLadder.isEmpty ? 0 : session.plannedRepLadder.count
     }
 
     private static func setPerformedBy(_ set: SetEntry, performerID: UUID?) -> Bool {

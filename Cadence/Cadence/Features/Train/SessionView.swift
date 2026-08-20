@@ -8,60 +8,74 @@ struct SessionView: View {
     var isManualLog: Bool = false
     var onDone: (() -> Void)? = nil
     var initiallyExpandedExerciseID: UUID? = nil
-    @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
-    @Environment(AppSettings.self) private var settings
-    @Environment(AppModel.self) private var model
-    @Environment(ActiveWorkoutModel.self) private var active
+    @Environment(\.modelContext) var context
+    @Environment(\.dismiss) var dismiss
+    @Environment(AppSettings.self) var settings
+    @Environment(AppModel.self) var model
+    @Environment(ActiveWorkoutModel.self) var active
 
-    @State private var rest = RestTimerModel()
-    @State private var timers = WorkoutTimersModel()
-    @State private var pickerPresented = false
-    @State private var inlineExerciseID: UUID?
-    @State private var expandedExerciseID: UUID?
-    @State private var inlineExercise: Exercise?
-    @State private var inlineEditingSetID: UUID?
-    @State private var setEditorIdentity = UUID()
-    @State private var setEditorRoute: SetEditorRoute?
-    @State private var pendingRepsOverride: Int?
-    @State private var pendingPerformerID: UUID?
-    @State private var lastEffortMode: WatchEffortMode = .rpe
-    @State private var showWeightInfo = false
-    @State private var showDumbbellInfo = false
-    @State private var showKettlebellInfo = false
-    @AppStorage("dumbbellInfoShown") private var dumbbellInfoShown = false
-    @AppStorage("kettlebellInfoShown") private var kettlebellInfoShown = false
-    @State private var showDeleteConfirm = false
-    @State private var healthSaved = false
+    @State var rest = RestTimerModel()
+    @State var timers = WorkoutTimersModel()
+    @State var pickerPresented = false
+    @State var inlineExerciseID: UUID?
+    @State var expandedExerciseID: UUID?
+    @State var inlineExercise: Exercise?
+    @State var inlineEditingSetID: UUID?
+    @State var setEditorIdentity = UUID()
+    @State var setEditorRoute: SetEditorRoute?
+    @State var pendingRepsOverride: Int?
+    @State var pendingPerformerID: UUID?
+    @State var lastEffortMode: WatchEffortMode = .rpe
+    @State var showWeightInfo = false
+    @State var showDumbbellInfo = false
+    @State var showKettlebellInfo = false
+    @AppStorage("dumbbellInfoShown") var dumbbellInfoShown = false
+    @AppStorage("kettlebellInfoShown") var kettlebellInfoShown = false
+    @State var showDeleteConfirm = false
+    @State var healthSaved = false
     @Query(sort: \Person.name) var allPeople: [Person]
     @State var addPartnerPresented = false
     @State var newPartnerName = ""
-    @State private var renamePresented = false
-    @State private var editedTitle = ""
-    @State private var datePickerPresented = false
-    @State private var endDatePickerPresented = false
-    @State private var exerciseToRemove: Exercise?
+    @State var renamePresented = false
+    @State var editedTitle = ""
+    @State var datePickerPresented = false
+    @State var endDatePickerPresented = false
+    @State var exerciseToRemove: Exercise?
     @State var managePartnersPresented = false
-    @State private var watchdog = IdleWatchdog()
-    @State private var idlePromptShown = false
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var usePreviousPresented = false
-    @State private var swapTarget: ExerciseSwap.SwapTarget?
-    @State private var coolingDown = false
-    @State private var coolDownConfirm = false
-    private let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
-    @State private var hrSamples: [HRSamplePoint] = []
-    @State private var cache = SessionHistoryCache()
-    private var refreshSignature: SessionRenderModel.Signature {
+    @State var watchdog = IdleWatchdog()
+    @State var idlePromptShown = false
+    @Environment(\.scenePhase) var scenePhase
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    @State var usePreviousPresented = false
+    @State var swapTarget: ExerciseSwap.SwapTarget?
+    @State var coolingDown = false
+    @State var coolDownConfirm = false
+    let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+    @State var hrSamples: [HRSamplePoint] = []
+    @State var cache = SessionHistoryCache()
+    /// Each performer's rep pattern across every movement they have logged, keyed
+    /// by `SessionRenderModel.performerKey`. Refreshed with the render cache, so a
+    /// partner's usual reps cost one bounded history walk per structural change
+    /// rather than a fetch per keystroke (field test 2026-08-19 #3).
+    @State var generalRepLadders: [String: [[Int]]] = [:]
+    /// Exercise rows resolved by name for the planned-only cards. Looking these up
+    /// with `findOrCreateExercise` inside `body` fetched — and could insert — on
+    /// every redraw (field test 2026-08-19 #4).
+    @State var plannedExerciseIndex: [String: Exercise] = [:]
+    /// Exercise the scroll view should bring to the top on the next redraw.
+    @State var scrollTarget: UUID?
+    /// Set after a save; consumed once the render cache contains the exercise's
+    /// card, which may only appear on the rebuild that the save triggered.
+    @State var pendingScrollExerciseID: UUID?
+    var refreshSignature: SessionRenderModel.Signature {
         SessionRenderModel.signature(session: session, prRule: settings.prRule, formula: settings.formula)
     }
-    private var rosterEntries: [RosterEntry] {
+    var rosterEntries: [RosterEntry] {
         [RosterEntry(personID: nil, name: "Me", isMe: true)]
         + attributablePartners.map { RosterEntry(personID: $0.id, name: $0.name, isMe: false) }
     }
 
-    private var attributedPartnerIDs: [UUID] {
+    var attributedPartnerIDs: [UUID] {
         (session.sets ?? []).compactMap { set in
             guard let p = set.performedBy, !p.isMe else { return nil }
             return p.id
@@ -72,7 +86,7 @@ struct SessionView: View {
         SessionRoster.roster(activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
     }
 
-    private var attributablePartners: [Person] {
+    var attributablePartners: [Person] {
         SessionRoster.attributablePartners(activePartnerIDs: session.activePartnerIDs,
                                            allPeople: allPeople,
                                            includingAttributed: attributedPartnerIDs)
@@ -107,6 +121,19 @@ struct SessionView: View {
 
     private var plannedOnlyNames: [String] {
         SessionViewModel.plannedOnlyNames(session: session)
+    }
+    /// Resolves the planned-only movements to their catalog rows once per
+    /// structural change instead of once per redraw.
+    private func indexedPlannedExercises() -> [String: Exercise] {
+        let names = SessionViewModel.plannedOnlyNames(session: session)
+        guard !names.isEmpty else { return [:] }
+        var index: [String: Exercise] = [:]
+        for name in names {
+            if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
+                index[name] = ex
+            }
+        }
+        return index
     }
     private var isEmptySession: Bool {
         SessionViewModel.isEmptySession(session: session)
@@ -152,35 +179,26 @@ struct SessionView: View {
             ? (editingSet?.performedBy?.isMe ?? true ? nil : editingSet?.performedBy?.id)
             : (pendingPerformerID ?? nextPerson().flatMap { $0.isMe ? nil : $0.id })
 
-        let pc = cachedCtx?.performerContexts.first { $0.performerID == performerID }
-            ?? cachedCtx?.performerContexts.first { $0.isMe }
+        let defaults = performerDefaults(for: exercise)
+        let own = defaults.first { $0.performerID == performerID }
         let weight: String
         let hint: Double?
         if isEditing, let set = editingSet {
             weight = Format.weightValue(set.weight, unit: settings.unit)
             hint = nil
+        } else if let own, !own.weight.isEmpty {
+            weight = own.weight
+            hint = own.weightKg
         } else {
-            if let last = SessionViewModel.lastSessionWeight(session: session, exercise: exercise, performerID: performerID) {
-                weight = Format.weightValue(last, unit: settings.unit)
-                hint = nil
-            } else if let firstPrior = pc?.firstWorkingWeightKg
-                        ?? WorkoutRepository.firstWorkingSetWeight(for: exercise, performedBy: people(for: performerID), excluding: session) {
-                weight = Format.weightValue(firstPrior, unit: settings.unit)
-                hint = firstPrior
-            } else {
-                let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
-                weight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: settings.unit) : ""
-                hint = nil
-            }
+            let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
+            weight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: settings.unit) : ""
+            hint = nil
         }
         let reps: Int
         if isEditing, let set = editingSet {
             reps = set.reps
         } else {
-            let loggedCount = session.orderedSets.filter {
-                $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID)
-            }.count
-            reps = pendingRepsOverride ?? plannedReps(for: exercise, setIndex: loggedCount, performerID: performerID)
+            reps = pendingRepsOverride ?? own?.reps ?? PerformerSetPlanner.defaultReps
         }
         let rpe: Int? = isEditing ? editingSet?.rpe.map { Int($0.rounded()) } : nil
         let bodyweight = isEditing ? (editingSet?.usesBodyweight ?? false) : isBodyweight(exercise)
@@ -203,6 +221,7 @@ struct SessionView: View {
             hasPartners: hasPartners,
             unit: settings.unit,
             priorWeightHint: hint,
+            performerDefaults: defaults,
             exerciseName: exercise.name,
             setNumberText: isEditing ? "Editing set \(number)" : "Set \(number) of \(max(number, session.plannedRepLadder.count))",
             contextText: contextText,
@@ -233,6 +252,8 @@ struct SessionView: View {
             addSet(to: exercise, weightKg: kg, reps: draft.reps, rpe: rpe, isWarmup: false,
                    usesBodyweight: draft.bodyweight, note: nil, performedBy: people(for: draft.performerID))
         }
+        expandedExerciseID = exercise.id
+        pendingScrollExerciseID = exercise.id
         closeInlineEditor()
     }
     private func deleteInlineSet() {
@@ -254,83 +275,147 @@ struct SessionView: View {
     private func setPerformedBy(_ set: SetEntry, person: Person) -> Bool {
         person.isMe ? set.isOwnerSet : (set.performedBy?.id == person.id)
     }
-    private func plannedReps(for exercise: Exercise, setIndex: Int, performerID: UUID?) -> Int {
-        let currentReps = session.orderedSets
+    /// One row per roster member: what THEIR next set on this exercise should be.
+    /// The editor uses it both to pre-fill and to re-target when the user changes
+    /// "Who did this set?" mid-entry (field test 2026-08-19 #2).
+    func performerDefaults(for exercise: Exercise) -> [InlineEditorConfig.PerformerDefault] {
+        rosterEntries.map { entry in
+            let performerID = entry.isMe ? nil : entry.personID
+            let logged = loggedReps(for: exercise, performerID: performerID)
+            let resolved = resolvedSet(for: exercise, setIndex: logged.count, performerID: performerID)
+            return InlineEditorConfig.PerformerDefault(
+                performerID: performerID,
+                reps: resolved.reps,
+                weightKg: resolved.weightKg,
+                weight: resolved.weightKg.map { Format.weightValue($0, unit: settings.unit) } ?? "")
+        }
+    }
+
+    private func loggedReps(for exercise: Exercise, performerID: UUID?) -> [Int] {
+        session.orderedSets
             .filter { $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID) }
             .sorted { $0.order < $1.order }
-            .map { $0.reps }
-        let performer = people(for: performerID)
-        let prior = WorkoutRepository.repLadderHistory(for: exercise, performedBy: performer, excluding: session)
-        let lastLogged = session.orderedSets.last(where: {
-            $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID)
-        })?.reps
-        return SessionViewModel.plannedReps(
+            .map(\.reps)
+    }
+
+    /// The single resolution path shared with the session's pending rows, so the
+    /// editor can never disagree with the row the user tapped to open it.
+    private func resolvedSet(for exercise: Exercise, setIndex: Int,
+                             performerID: UUID?) -> PerformerSetPlanner.Resolved {
+        let explicit = session.explicitPlannedSets(forPerformerID: performerID,
+                                                   exerciseName: exercise.name)
+        let ownerPlan = session.explicitPlannedSets(forPerformerID: nil, exerciseName: exercise.name)
+            ?? session.plannedRepLadder.map {
+                PlannedSetPrescription(targetReps: $0,
+                                       targetWeightKg: session.prescribedLoadKg > 0 ? session.prescribedLoadKg : nil)
+            }
+        var history = cache.state.performerHistory(forExerciseID: exercise.id, performerID: performerID)
+        if history.repLadders.isEmpty {
+            history.repLadders = WorkoutRepository.repLadderHistory(
+                for: exercise, performedBy: people(for: performerID), excluding: session)
+        }
+        if history.firstWorkingWeightKg == nil {
+            history.firstWorkingWeightKg = WorkoutRepository.firstWorkingSetWeight(
+                for: exercise, performedBy: people(for: performerID), excluding: session)
+        }
+        if history.generalRepLadders.isEmpty {
+            history.generalRepLadders = generalRepLadders[SessionRenderModel.performerKey(performerID)] ?? []
+        }
+        history.repsLoggedThisSession = loggedReps(for: exercise, performerID: performerID)
+        // What they lifted for this movement *today* is a better starting load
+        // than what they opened with last time.
+        if let last = SessionViewModel.lastSessionWeight(session: session, exercise: exercise,
+                                                         performerID: performerID) {
+            history.firstWorkingWeightKg = last
+        }
+        return PerformerSetPlanner.resolve(
+            setIndex: setIndex,
+            performerPlan: explicit,
+            ownerPlan: ownerPlan,
             // The coach ladder is the owner's prescription. A returning partner
             // gets their own established rep pattern instead.
-            ladder: performerID == nil ? SessionViewModel.effectiveLadder(session: session) : nil,
-            setIndex: setIndex,
-            currentSessionReps: currentReps,
-            priorSessionLadders: prior,
-            lastLoggedReps: lastLogged)
+            ownerLadder: SessionViewModel.effectiveLadder(session: session),
+            isOwner: performerID == nil,
+            history: history)
+    }
+
+    @ViewBuilder
+    private var scrollContent: some View {
+        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
+            if isManualLog { loggedDateBanner }
+            if active.strengthSession?.id != session.id && !isManualLog {
+                editableMetadataRow
+            }
+            if rest.isRunning {
+                RestTimerBar(model: rest) { Haptics.restComplete() }
+            }
+            if let plan { planBanner(plan) }
+            partnerBar
+
+            if isEmptySession {
+                CadenceActionButton(title: "Use Previous Workout",
+                                    systemImage: "clock.arrow.circlepath",
+                                    tint: .accentColor) {
+                    usePreviousPresented = true
+                }
+                .accessibilityIdentifier("session.usePrevious")
+
+                ContentUnavailableView("Empty workout",
+                                       systemImage: "dumbbell",
+                                       description: Text("Use a previous workout, or add exercises below."))
+            }
+
+            ForEach(cache.state.contexts, id: \.exerciseID) { ctx in
+                exerciseCardView(for: ctx)
+                    .id(ctx.exerciseID)
+            }
+            ForEach(plannedOnlyNames, id: \.self) { name in
+                plannedCard(name)
+            }
+
+            CadenceActionButton(title: "Add Exercise",
+                                systemImage: "plus.circle.fill",
+                                emphasis: .secondary) {
+                pickerPresented = true
+            }
+            .accessibilityIdentifier("session.addExercise")
+
+            if active.strengthSession?.id == session.id {
+                WorkoutControlBar(
+                    isPaused: active.isPaused,
+                    onPauseToggle: togglePause,
+                    onEnd: endWorkout,
+                    onCoolDown: { coolDownConfirm = true },
+                    confirmMessage: "This finishes and saves your workout."
+                )
+            } else if isManualLog {
+                CadenceActionButton(title: "Done", systemImage: "checkmark") {
+                    finishManualLog()
+                }
+                .accessibilityIdentifier("log.done")
+            }
+        }
+        .padding(CGFloat(LayoutMetrics.pagePadding))
+
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                if isManualLog { loggedDateBanner }
-                if active.strengthSession?.id != session.id && !isManualLog {
-                    editableMetadataRow
-                }
-                if rest.isRunning {
-                    RestTimerBar(model: rest) { Haptics.restComplete() }
-                }
-                if let plan { planBanner(plan) }
-                partnerBar
-
-                if isEmptySession {
-                    CadenceActionButton(title: "Use Previous Workout",
-                                        systemImage: "clock.arrow.circlepath",
-                                        tint: .accentColor) {
-                        usePreviousPresented = true
+        ScrollViewReader { proxy in
+            ScrollView { scrollContent }
+                // Saving a set returns here with that exercise expanded and pulled
+                // to the top of the screen, so the next set is always what you are
+                // looking at (field test 2026-08-19 #6).
+                .onChange(of: scrollTarget) { _, target in
+                    guard let target else { return }
+                    if reduceMotion {
+                        proxy.scrollTo(target, anchor: .top)
+                    } else {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            proxy.scrollTo(target, anchor: .top)
+                        }
                     }
-                    .accessibilityIdentifier("session.usePrevious")
-
-                    ContentUnavailableView("Empty workout",
-                                           systemImage: "dumbbell",
-                                           description: Text("Use a previous workout, or add exercises below."))
+                    scrollTarget = nil
                 }
-
-                ForEach(cache.state.contexts, id: \.exerciseID) { ctx in
-                    exerciseCardView(for: ctx)
-                        .id(ctx.exerciseID)
-                }
-                ForEach(plannedOnlyNames, id: \.self) { name in
-                    plannedCard(name)
-                }
-
-                CadenceActionButton(title: "Add Exercise",
-                                    systemImage: "plus.circle.fill",
-                                    emphasis: .secondary) {
-                    pickerPresented = true
-                }
-                .accessibilityIdentifier("session.addExercise")
-
-                if active.strengthSession?.id == session.id {
-                    WorkoutControlBar(
-                        isPaused: active.isPaused,
-                        onPauseToggle: togglePause,
-                        onEnd: endWorkout,
-                        onCoolDown: { coolDownConfirm = true },
-                        confirmMessage: "This finishes and saves your workout."
-                    )
-                } else if isManualLog {
-                    CadenceActionButton(title: "Done", systemImage: "checkmark") {
-                        finishManualLog()
-                    }
-                    .accessibilityIdentifier("log.done")
-                }
-            }
-            .padding(CGFloat(LayoutMetrics.pagePadding))
         }
         .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -338,7 +423,7 @@ struct SessionView: View {
             if active.strengthSession?.id == session.id {
                 VStack(spacing: 0) {
                     WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused, timers: $timers)
-                    if model.hrm.currentBPM != nil { liveHRBand }
+                    SessionLiveHRBand()
                 }
             }
         }
@@ -353,14 +438,25 @@ struct SessionView: View {
         }
         .keepAwake(!isManualLog)
         .task(id: refreshSignature) {
+            let recent = (try? WorkoutRepository.allSessions(context)) ?? []
+            generalRepLadders = SessionRenderModel.generalRepLadders(recentSessions: recent,
+                                                                     excluding: session)
+            plannedExerciseIndex = indexedPlannedExercises()
             cache.refresh(signature: refreshSignature) {
                 SessionRenderModel.build(session: session, prRule: settings.prRule,
-                                         formula: settings.formula, allPeople: allPeople)
+                                         formula: settings.formula, allPeople: allPeople,
+                                         recentSessions: recent)
             }
             if expandedExerciseID == nil {
                 // Strength starts compact. Focused history review may opt into
                 // one expanded exercise explicitly.
                 expandedExerciseID = initiallyExpandedExerciseID
+            }
+            if let target = pendingScrollExerciseID,
+               cache.state.contexts.contains(where: { $0.exerciseID == target }) {
+                pendingScrollExerciseID = nil
+                expandedExerciseID = target
+                scrollTarget = target
             }
         }
         .onAppear {
@@ -662,7 +758,7 @@ struct SessionView: View {
                 Text(name).font(.headline)
                     .accessibilityIdentifier("exerciseCard.\(name)")
                 Spacer()
-                if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
+                if let ex = plannedExerciseIndex[name] {
                     NavigationLink {
                         ExerciseDetailView(exercise: ex)
                     } label: {
@@ -697,7 +793,8 @@ struct SessionView: View {
             }
             if inlineExercise == nil || inlineExercise?.name != name {
                 Button {
-                    if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
+                    if let ex = plannedExerciseIndex[name]
+                        ?? (try? WorkoutRepository.findOrCreateExercise(named: name, in: context)) {
                         openInlineEditor(for: ex)
                     }
                 } label: { Label("Add Set", systemImage: "plus") }
@@ -705,9 +802,9 @@ struct SessionView: View {
                     .accessibilityIdentifier("set.add.\(name)")
             }
         }
-        .padding()
+        .padding(CGFloat(LayoutMetrics.cardPadding))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+        .cadenceGlassCard(in: CadenceCardShape.rounded)
     }
     private var partnerBar: some View {
         HStack(spacing: 8) {
@@ -739,82 +836,6 @@ struct SessionView: View {
             Spacer()
         }
     }
-    private func planBanner(_ plan: WorkoutPlan) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(plan.schemeSummary).font(.headline)
-                .accessibilityIdentifier("session.planBanner")
-            if let notes = plan.notes {
-                Text(notes).font(.caption).foregroundStyle(.secondary)
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 14))
-    }
-
-    private var loggedDateBanner: some View {
-        Button { datePickerPresented = true } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "square.and.pencil")
-                Text("Logging \(session.date.formatted(date: .abbreviated, time: .shortened))")
-                    .font(.subheadline.weight(.medium))
-                Spacer()
-                Image(systemName: "calendar").font(.caption)
-            }
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
-            .background(.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("log.dateBanner")
-    }
-
-    private var editableMetadataRow: some View {
-        HStack(spacing: 16) {
-            Button { datePickerPresented = true } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar").font(.caption)
-                    Text(session.date.formatted(date: .abbreviated, time: .shortened)).font(.subheadline)
-                }.foregroundStyle(.tint)
-            }
-            .buttonStyle(.plain).accessibilityIdentifier("session.editDate")
-            if session.endedAt != nil {
-                Button { endDatePickerPresented = true } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "clock").font(.caption)
-                        if let end = session.endedAt {
-                            Text(Format.duration(end.timeIntervalSince(session.date))).font(.subheadline)
-                        }
-                    }.foregroundStyle(.tint)
-                }
-                .buttonStyle(.plain).accessibilityIdentifier("session.editEndTime")
-            }
-            Spacer()
-        }
-    }
-
-    private var liveHRBand: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "heart.fill").font(.caption).foregroundStyle(.red)
-            if let bpm = model.hrm.currentBPM {
-                Text("\(Int(bpm)) bpm").font(.caption.weight(.medium)).monospacedDigit()
-            }
-            if let battery = model.hrm.battery {
-                Image(systemName: battery <= 10 ? "battery.0" : "battery.75")
-                    .font(.caption2).foregroundStyle(battery <= 10 ? .red : .secondary)
-                Text("\(battery)%").font(.caption2).foregroundStyle(.secondary)
-            }
-            if model.hrm.criticalBattery {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.caption2).foregroundStyle(.red)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 12).padding(.vertical, 4)
-        .cadenceGlass(in: Rectangle(), fallback: .ultraThinMaterial)
-    }
-
     func performerChip(_ p: Person?) -> some View {
         let label = (p?.isMe ?? true) ? "M" : String((p?.name ?? "?").prefix(1)).uppercased()
         let palette: [Color] = [.purple, .teal, .pink, .indigo, .orange, .mint]
@@ -827,78 +848,6 @@ struct SessionView: View {
             .frame(width: 24, height: 24)
             .background(color, in: Circle())
             .accessibilityIdentifier("set.performer.\((p?.isMe ?? true) ? "Me" : (p?.name ?? "?"))")
-    }
-    private var weightInfoSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                if let ex = inlineExercise {
-                    switch ex.resolvedLoadAccountingMode {
-                    case .barbell:
-                        Text("Barbell Weight").font(.headline)
-                        Text("Enter the added plate load only. The bar weight (\(Format.weight(ex.effectiveDefaultBarWeightKg, unit: settings.unit))) is added automatically for calculations.\n\nEnter 0 when using only the bar or bodyweight. Bar weight is added separately for barbell calculations.")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    case .bodyweight:
-                        Text("Bodyweight Exercise").font(.headline)
-                        Text("Enter 0 when using only your bodyweight. Enter a positive value for added weight (e.g., weighted vest, dip belt).\n\nThe app tracks added load; bodyweight is yours alone.")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    case .dualDumbbell, .isolateralDumbbell:
-                        Text("Dumbbell Weight").font(.headline)
-                        Text("Enter the weight of one dumbbell. The app accounts for paired, single, and isolateral dumbbell movements in calculations.\n\nFor standard two-dumbbell exercises (bench press, curls, etc.), your entered weight is doubled automatically.")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    case .singleDumbbell:
-                        Text("Dumbbell Weight").font(.headline)
-                        Text("Enter the weight of the single dumbbell used. This exercise uses one dumbbell at a time (e.g., goblet squat, skullcrusher).\n\nThe entered weight is used as-is for calculations.")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    case .dualKettlebell, .isolateralKettlebell:
-                        Text("Kettlebell Weight").font(.headline)
-                        Text("Enter the weight of one kettlebell. The app accounts for paired and single kettlebell movements in calculations.\n\nFor standard two-kettlebell exercises (double cleans, double presses, front squats, etc.), your entered weight is doubled automatically.")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    case .singleKettlebell:
-                        Text("Kettlebell Weight").font(.headline)
-                        Text("Enter the weight of the single kettlebell used. This exercise uses one kettlebell at a time (e.g., swing, snatch, Turkish get-up).\n\nThe entered weight is used as-is for calculations.")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    case nil:
-                        Text("Weight Entry").font(.headline)
-                        Text("Enter the weight as you would normally. This exercise uses standard weight accounting — what you enter is what's used for PRs, volume, and trends.")
-                            .font(.subheadline).foregroundStyle(.secondary)
-                    }
-                } else {
-                    Text("Weight Entry").font(.headline)
-                    Text("Enter the weight you lifted. For barbell exercises, enter the plate load — the bar weight is added automatically. For dumbbell and kettlebell exercises, enter the weight of one dumbbell or kettlebell.")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                }
-            }
-            .padding()
-            .navigationTitle("Weight Help").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showWeightInfo = false } } }
-        }
-        .presentationDetents([.medium])
-    }
-    private var kettlebellInfoSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Kettlebell Weight Entry").font(.headline)
-                Text("For kettlebell exercises, enter the weight of a single kettlebell — the app handles the accounting automatically:\n\n• **Two-kettlebell exercises** like double kettlebell cleans or presses: your entered weight is doubled for calculations (you're lifting two of them).\n\n• **Single-kettlebell exercises** like swings, snatches, or Turkish get-ups: your entered weight is used as-is.\n\nThis way you can always enter what's printed on the kettlebell, and the math works correctly behind the scenes.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            }
-            .padding()
-            .navigationTitle("Kettlebell Help").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Got it") { showKettlebellInfo = false } } }
-        }
-        .presentationDetents([.medium, .large])
-    }
-    private var dumbbellInfoSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Dumbbell Weight Entry").font(.headline)
-                Text("For dumbbell exercises, enter the weight of a single dumbbell — the app handles the accounting automatically:\n\n• **Two-dumbbell exercises** like bench press or curls: your entered weight is doubled for calculations (you're lifting two of them).\n\n• **Single-dumbbell exercises** like goblet squats or skullcrushers: your entered weight is used as-is.\n\n• **Isolateral exercises** like one-arm rows: your entered weight is doubled for comparison against barbell movements.\n\nThis way you can always enter what's printed on the dumbbell, and the math works correctly behind the scenes.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            }
-            .padding()
-            .navigationTitle("Dumbbell Help").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Got it") { showDumbbellInfo = false } } }
-        }
-        .presentationDetents([.medium, .large])
     }
     private func recordActivity() {
         watchdog.recordActivity()

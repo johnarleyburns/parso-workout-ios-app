@@ -45,7 +45,7 @@ struct PRTimelineView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 16, style: .continuous), tint: .yellow)
+        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .yellow)
         .accessibilityIdentifier("progress.prTimeline")
     }
 

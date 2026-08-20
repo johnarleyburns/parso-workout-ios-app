@@ -107,8 +107,17 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
 
     public func rank(_ query: String) -> [T] {
         let terms = ExerciseSearch.terms(query)
+        // Both tie-breaks compare the PRE-normalized name. Reading `item.name`
+        // here meant a SwiftData property access (and, inside a SwiftUI body, an
+        // observation registration) for every comparison in every sort — the
+        // dominant cost once the catalog grew (field test 2026-08-19 #4). The
+        // comparison is written inline at both sites rather than shared through a
+        // static function value, which would capture the generic metatype.
         guard !terms.isEmpty else {
-            return indexed.sorted(by: Self.alphabeticalBuiltInsFirst).map(\.item)
+            return indexed.sorted { lhs, rhs in
+                if lhs.isCustom != rhs.isCustom { return !lhs.isCustom }
+                return lhs.name < rhs.name
+            }.map(\.item)
         }
         let scored: [(Indexed, Int)] = indexed.compactMap { entry in
             var total = 0
@@ -121,17 +130,9 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
         }
         return scored.sorted { a, b in
             if a.1 != b.1 { return a.1 > b.1 }
-            return Self.alphabeticalBuiltInsFirst(a.0, b.0)
+            if a.0.isCustom != b.0.isCustom { return !a.0.isCustom }
+            return a.0.name < b.0.name
         }.map(\.0.item)
-    }
-
-    /// Tie-break on the PRE-normalized name. Reading `item.name` here meant a
-    /// SwiftData property access (and, inside a SwiftUI body, an observation
-    /// registration) for every comparison in every sort — the dominant cost once
-    /// the catalog grew (field test 2026-08-19 #4).
-    private static func alphabeticalBuiltInsFirst(_ lhs: Indexed, _ rhs: Indexed) -> Bool {
-        if lhs.isCustom != rhs.isCustom { return !lhs.isCustom }
-        return lhs.name < rhs.name
     }
 }
 

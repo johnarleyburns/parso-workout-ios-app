@@ -169,9 +169,7 @@ struct SessionView: View {
         recordActivity()
     }
     private func inlineEditorConfig() -> InlineEditorConfig? {
-        guard let exerciseID = inlineExerciseID,
-              let exercise = inlineExercise else { return nil }
-        let cachedCtx = cache.state.contexts.first(where: { $0.exerciseID == exerciseID })
+        guard inlineExerciseID != nil, let exercise = inlineExercise else { return nil }
         let isEditing = inlineEditingSetID != nil
         let editingSet = isEditing ? session.orderedSets.first(where: { $0.id == inlineEditingSetID }) : nil
         if isEditing, editingSet == nil { return nil }

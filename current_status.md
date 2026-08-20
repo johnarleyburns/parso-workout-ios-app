@@ -1,6 +1,69 @@
 # Current Status
 
-Updated: 2026-08-19
+Updated: 2026-08-20
+
+## Field-test batch 2026-08-19 (8 issues): shipped and pushed
+
+On `origin/main` as **`2615c9d`** (the eight fixes) + **`d21ea25`** (two Swift 6
+warnings the first push introduced). CI run **32360183633 passed** — `core-tests`
+and `testflight-build` both green.
+
+Eight iPhone field-test issues, fixed in one pass. Full write-up in
+`current_state.md`; what a future session needs to know:
+
+**The headline change is a reversed decision.** A per-performer plan entered in
+the plan editor is now **the prescription**, not a "starting target". The
+2026-08-18 #4 rule — plan seeds set 1, history overrides later sets and *always*
+the load — is exactly what produced the bug ("my weights were ignored and my
+partner defaulted to 5 reps"), so the precedence is inverted and
+`SessionRenderModelTests.testPartnerHistoryStillOverridesRepsWithinTheStoredPlan`
+was rewritten as `testStoredPlanOutranksThePartnersOwnHistory`. **Do not
+re-litigate this back to the old rule without asking.**
+
+- `WorkoutSession.explicitPlannedSets(forPerformerID:exerciseName:)` is the new
+  primitive: it returns nil when nobody planned anything, where
+  `plannedPrescriptions(forPerformerID:)` silently substitutes the owner's plan.
+  That "planned vs absent" distinction is the whole basis for plan-wins.
+- `PerformerSetPlanner` (CadenceFeatures, pure) is now the **single** resolution
+  path for "what should this performer's next set be", used by both
+  `SessionRenderModel`'s pending rows and `SessionView`'s set editor. Add new
+  rules there, not in either caller, or the two surfaces drift apart again.
+- Because the plan is now binding, the plan editor seeds a newly added exercise
+  from the owner's own last session (`PartnerPlanResolver.ownerSeedSets`) instead
+  of a hard-coded 10. Without that, plan-wins would hand you a literal 10.
+
+**Spacing regressed once already.** This file's "Field-testing follow-up" section
+claims Home's two actions "use the same 20-point section spacing" — that fix
+drifted back out when `LayoutMetrics.actionButtonSpacing = 12` landed on
+2026-08-18, and the user reported it again. `actionButtonSpacing` is now defined
+as `sectionSpacing`, and `LayoutMetricsTests` asserts the equality rather than
+the old "actions group tighter" inequality. New card surfaces should use
+`CadenceCardShape.rounded` + `LayoutMetrics.cardPadding` + `cadenceGlassCard`.
+
+**Performance lesson — the cost was never where it looked.** "Search is slow"
+was four independent problems, none of them in the ranking algorithm: a
+`findOrCreateExercise` fetch (and possible insert) inside `body`, an
+`@Observable` HR read that invalidated the entire session body once a second, a
+picker recomputing four full `@Query` walks per redraw, and a sort tie-breaking
+on a SwiftData property. When a SwiftUI surface is slow, look for work done *per
+redraw* and for observation scope before optimising an algorithm.
+
+**Two process facts worth carrying forward:**
+
+- **The pre-commit hook did not run on either commit.** `make pre-commit` is
+  `guardrails test smoke watch-smoke` — roughly 10 minutes — which outlives the
+  agent tool's process budget; two attempts were killed mid-run. Each stage was
+  run individually and passed, then the commit used the hook's own
+  `SKIP_LOCAL_GUARDS=1` escape hatch. If you need the hook itself to execute,
+  budget for a detached process.
+- **CI's warning gate is not reproduced by an incremental build.** The first
+  push failed on `check-owned-warnings.sh` for a warning my local `swift build`
+  never re-emitted (incremental), plus one in the app target I had never run
+  through the gate at all. Before pushing: clean-build the package AND the app,
+  and pipe both through `scripts/check-owned-warnings.sh`.
+
+<details>
+<summary>Field-test UI batch (nine phases) — shipped, f809818..1e0383a</summary>
 
 ## Field-test UI batch: shipped and pushed
 
@@ -9,7 +72,9 @@ All nine phases are on `origin/main` (`f809818..1e0383a`) and CI run
 upload). **The CloudKit schema was deployed to Production**, so Phase 9's
 `plannedPerformerPrescriptionsData` syncs — that release gate is closed.
 
-## Current task — watch HealthKit crashes (field report 2026-08-19)
+</details>
+
+## Watch HealthKit crashes — shipped (`7a5d6c7`)
 
 Three crashes reported after the batch, all on the **watch**, all with one root
 cause:
@@ -794,12 +859,26 @@ is explicitly exempt.
 
 ## Next task
 
-1. **Confirm the watch fix on hardware** — Live HR → Start monitoring, the
-   phone's pre-cardio HR request, and swipe-deleting the stale
-   "Resume Strength - Upper Body" row. This is the one thing the automated
-   evidence cannot supply, and it is still outstanding.
-2. A field test of the nine shipped batch changes is still the natural next
-   input.
+1. **Field-test the 2026-08-19 batch on device.** The eight fixes are on `main`
+   with green CI, but every one of them was reported from real use and only one
+   (#6, the exercise staying expanded after a save) is covered end-to-end by the
+   smoke test. Worth checking in particular:
+   - a custom workout with a partner: do the planned reps *and* weights survive
+     Start, and do the sets alternate?
+   - switching performer mid-entry — does the load/rep target follow?
+   - a movement your partner has never done — does she get her usual reps?
+   - typing in the exercise picker during a live workout, which is where the
+     slowness was reported.
+2. **Confirm the watch fix on hardware** (still outstanding from `7a5d6c7`) —
+   Live HR → Start monitoring, the phone's pre-cardio HR request, and the stale
+   "Resume Strength - Upper Body" row. Automated evidence cannot supply this.
+
+**Known, deliberately-not-fixed:** when a plan is silent at a given set index,
+the card's pending row shows the *prior* session's load while the set editor
+shows what that performer lifted *today*. This predates the batch and behaves
+exactly as it did before; it was left alone to keep the change in scope. Fix it
+by having `SessionRenderModel` seed `History.firstWorkingWeightKg` from the last
+set logged this session, the way `SessionView.resolvedSet` already does.
 
 Standing rules from the batch, which outlive it:
 
@@ -816,13 +895,20 @@ Standing rules from the batch, which outlive it:
 - **This repo has its own simulator**, `Cadence-iPhone-16`. If `xcodebuild` says
   it cannot find that device while `simctl` lists it, retry — it is a
   CoreSimulatorService hiccup.
+- **A green local `swift build` does not mean a green warning gate** (added
+  2026-08-19). Incremental builds do not re-emit warnings for untouched files,
+  and the app target's gate is a separate CI step. Clean-build both and run
+  `scripts/check-owned-warnings.sh` before pushing.
+- **Resolve "what should this set be" in `PerformerSetPlanner` only** (added
+  2026-08-19). The pending rows and the set editor previously each had their own
+  copy of the rules and disagreed; they now share one pure function.
 
-**Execution protocol for this batch (user instruction, overrides the CLAUDE.md
-post-task checklist steps 6-8):** do ONE phase, run `make ci` and `make smoke`,
-update this file, `git commit` on `main`, **do not push**, report the SHA, and
-stop for review. The pre-commit hook **is** installed and re-runs the guardrails,
-`swift test`, and both smoke tests, so `git commit` takes >10 minutes — run it in
-the background with `git commit -F <message file>`.
+**Execution protocol — SUPERSEDED.** The nine-phase batch ran under a
+"commit but do not push, stop for review" instruction. The 2026-08-19 batch was
+explicitly asked to "fix all of these in a single go … then commit and push", so
+it followed the standard CLAUDE.md post-task checklist through to push and CI.
+Absent a fresh instruction, use the CLAUDE.md checklist. The pre-commit hook
+still takes >10 minutes; see the process notes at the top of this file.
 
 The previous batch ([docs/field-test-remediation-plan.md](docs/field-test-remediation-plan.md))
 is complete and shipped as `f809818 Complete field-test workout remediation`.

@@ -7,7 +7,7 @@ Updated: 2026-08-20
 ## P1 complete — stable, alternating partner order (shipped, not pushed)
 
 Field test issue 1 (`docs/field-test-batch-2026-08-20/01-phase1-partner-alternation.md`,
-decision **D2**). Committed as **`3aa35e0`** on `main`, **not pushed**, per the
+decision **D2**). Committed as **`2b9ca41`** on `main`, **not pushed**, per the
 batch execution protocol. All four commit-gate stages ran individually and passed.
 
 ### The two bugs, one shared answer

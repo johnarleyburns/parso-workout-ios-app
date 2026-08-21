@@ -86,7 +86,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     // MARK: - Pain concern
 
     func testPainConcernBlocksHardTraining() throws {
-        let ctx = try makeContext()
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
@@ -99,12 +98,10 @@ final class CoachDecisionEngineTests: XCTestCase {
     // MARK: - Beginner
 
     func testBeginnerGetsBeginnerSessions() throws {
-        let ctx = try makeContext()
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .beginner, now: now)
 
-        let decision = CoachDecisionEngine.run(facts)
         let candidates = CoachSession.candidates(for: facts)
         XCTAssertTrue(candidates.contains { $0.id == "strength.beginnerA" })
         XCTAssertTrue(candidates.contains { $0.id == "strength.beginnerB" })
@@ -127,7 +124,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     // MARK: - WeeklyPlan generation
 
     func testWeeklyPlanIncludesSevenDays() throws {
-        let ctx = try makeContext()
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
@@ -300,7 +296,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     }
 
     func testObservedFactsUseStaticSummaryValues() throws {
-        let ctx = try makeContext()
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
@@ -405,7 +400,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     }
 
     func testNoEvidenceDuplicationDataNeededForInlineSources() throws {
-        let ctx = try makeContext()
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
@@ -417,7 +411,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     // MARK: - Expanded alternatives
 
     func testModerateAerobicAlternativesIncludeRunWalkCycleSwimOrRow() throws {
-        let ctx = try makeContext()
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let candidates = CoachSession.candidates(for: facts)
@@ -432,7 +425,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     // MARK: - Preference-aware scoring
 
     func testPreferenceForCyclingReordersEligibleModerateAerobicCandidates() throws {
-        let ctx = try makeContext()
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
 
@@ -709,7 +701,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     // MARK: - WeeklyPlan future days
 
     func testWeeklyPlanIncludesFutureDays() throws {
-        let ctx = try makeContext()
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
@@ -721,7 +712,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     }
 
     func testWeeklyPlanHasTomorrow() throws {
-        let ctx = try makeContext()
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
@@ -769,7 +759,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     // so offset-based indexing crashes at offset >= 7. The fix computes the weekday
     // label from the day's actual date (safe for any array size).
     func testWeeklyPlanDaysExceedSevenSafeWeekdayLookup() throws {
-        let ctx = try makeContext()
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
@@ -794,7 +783,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     }
 
     func testHighImpactAvoidanceKeepsRunOutOfPrimaryWhenLowImpactCanFulfillIntent() throws {
-        let ctx = try makeContext()
         let now = testNow
 
         var profile = CoachPreferenceProfile.empty
@@ -845,7 +833,6 @@ final class CoachDecisionEngineTests: XCTestCase {
     /// The strength candidate no longer cites a mortality/public-health study (P1/P4
     /// no-mortality-for-prescriptions rule).
     func testStrengthCandidateDoesNotCiteMortalityStudy() throws {
-        let ctx = try makeContext()
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let strength = CoachSession.candidates(for: facts).first { $0.id == "strength.general" }

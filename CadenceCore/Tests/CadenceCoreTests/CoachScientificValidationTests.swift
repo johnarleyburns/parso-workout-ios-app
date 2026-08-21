@@ -50,13 +50,13 @@ final class CoachScientificValidationTests: XCTestCase {
     }
 
     /// Helper: assert a citation ID is valid in the registry.
-    private func assertValidCitation(_ id: String, file: StaticString = #file, line: UInt = #line) {
+    private func assertValidCitation(_ id: String, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertNotNil(CitationRegistry.citation(forId: id),
                         "Citation '\(id)' must exist in CitationRegistry", file: file, line: line)
     }
 
     /// Helper: assert all observed citation IDs on a decision resolve.
-    private func assertAllCitationsResolve(_ decision: CoachDecision, file: StaticString = #file, line: UInt = #line) {
+    private func assertAllCitationsResolve(_ decision: CoachDecision, file: StaticString = #filePath, line: UInt = #line) {
         for id in decision.citationIds {
             assertValidCitation(id, file: file, line: line)
         }
@@ -82,7 +82,6 @@ final class CoachScientificValidationTests: XCTestCase {
     /// Science: ECSS/ACSM consensus (meeusenOvertraining2013) states that
     /// pain/illness requires rest or modified training to prevent overtraining.
     func testA1_painConcernBlocksHardTraining() throws {
-        let ctx = try makeContext()
         let now = testNow
 
         // Even with no prior training (cold start), pain should override.
@@ -406,7 +405,6 @@ final class CoachScientificValidationTests: XCTestCase {
     /// C2: HighImpact avoidance tag should keep running out of primary when
     /// low-impact alternatives exist.
     func testC2_highImpactAvoidanceKeepsRunOut() throws {
-        let ctx = try makeContext()
         let now = testNow
 
         var profile = CoachPreferenceProfile.empty
@@ -595,7 +593,6 @@ final class CoachScientificValidationTests: XCTestCase {
     /// Science: schoenfeld2021 — loading recommendations; beginners benefit
     /// from structured full-body programs.
     func testE3_beginnerGetsStructuredSessions() throws {
-        let ctx = try makeContext()
         let now = testNow
 
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .beginner, now: now)

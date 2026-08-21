@@ -333,7 +333,6 @@ final class RecommendationEngineTests: XCTestCase {
     }
 
     func testAerobicBaseUsesActivityCitationsAndNeverCalls150Optimal() throws {
-        let c = try makeContext()
         let now = coachNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let rec = CoachRecommendationEngine.run(facts).first { $0.id == "aerobicBase" }

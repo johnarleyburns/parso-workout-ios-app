@@ -166,7 +166,7 @@ final class CoachFactsTests: XCTestCase {
     func testModerateEquivalentMinutes_respectsMondayWeekBoundary() throws {
         let ctx = try makeContext()
         let cal = Calendar.current
-        var comps = DateComponents(year: 2026, month: 6, day: 23, hour: 12)
+        let comps = DateComponents(year: 2026, month: 6, day: 23, hour: 12)
         let now = cal.date(from: comps)!
         let weekStart = WeeklyStats.weekStart(now: now)
         let prevDay = cal.date(byAdding: .day, value: -1, to: weekStart)!

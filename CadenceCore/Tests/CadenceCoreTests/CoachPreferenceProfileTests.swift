@@ -40,12 +40,6 @@ final class CoachPreferenceProfileTests: XCTestCase {
             modality: .cycle, intensity: .moderate,
             launchPayload: .cardio(type: "cycle", durationMinutes: 35)
         )
-        let runSession = CoachSession(
-            id: "aerobic.moderateRun", kind: .moderateAerobic,
-            title: "Steady run", durationMinutes: 25,
-            modality: .run, intensity: .moderate,
-            launchPayload: .cardio(type: "run", durationMinutes: 25)
-        )
 
         profile.recordSelection(cycleSession, from: [], at: older)
         profile.recordSelection(cycleSession, from: [], at: now)

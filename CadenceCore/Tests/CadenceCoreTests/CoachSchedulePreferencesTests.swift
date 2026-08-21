@@ -82,17 +82,17 @@ final class CoachSchedulePreferencesTests: XCTestCase {
     func testWeekdayFromDate() {
         let cal = Calendar.current
         // Sunday = 1 for Calendar.current .weekday on en_US
-        var sundayComps = DateComponents(year: 2026, month: 1, day: 4, hour: 12) // Sunday
+        let sundayComps = DateComponents(year: 2026, month: 1, day: 4, hour: 12) // Sunday
         if let sunDate = cal.date(from: sundayComps) {
             XCTAssertEqual(Weekday(from: sunDate, calendar: cal), .sunday)
         }
 
-        var mondayComps = DateComponents(year: 2026, month: 1, day: 5, hour: 12) // Monday
+        let mondayComps = DateComponents(year: 2026, month: 1, day: 5, hour: 12) // Monday
         if let monDate = cal.date(from: mondayComps) {
             XCTAssertEqual(Weekday(from: monDate, calendar: cal), .monday)
         }
 
-        var saturdayComps = DateComponents(year: 2026, month: 1, day: 10, hour: 12) // Saturday
+        let saturdayComps = DateComponents(year: 2026, month: 1, day: 10, hour: 12) // Saturday
         if let satDate = cal.date(from: saturdayComps) {
             XCTAssertEqual(Weekday(from: satDate, calendar: cal), .saturday)
         }
@@ -207,7 +207,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         var nowComps = DateComponents()
         nowComps.year = 2026; nowComps.month = 6; nowComps.day = 25; nowComps.hour = 12
         let now = Calendar.current.date(from: nowComps) ?? Date(timeIntervalSince1970: 1_750_000_000)
-        let cal = Calendar.current
 
         // Create a cardio event: 180 min (enough for minutes target)
         func makeCardio(_ type: CardioType, _ daysAgo: Double, _ minutes: Double) -> TrainingEvent {
@@ -508,7 +507,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
                 // Just verify they're not forced to rest by the fixed preference
                 // (they may still be rest for other reasons like recovery).
                 if allRest && (weekday != 4 && weekday != 1) {
-                    let kinds = day.sessions.map(\.kind)
                     // It's acceptable to be rest for recovery reasons; the point is
                     // it wasn't forced by fixed rest preference.
                     XCTAssertTrue(true, "Non-fixed rest day can be rest for recovery")

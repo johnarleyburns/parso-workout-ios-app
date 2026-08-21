@@ -184,7 +184,6 @@ final class CoachSnapshotBuilderTests: XCTestCase {
     // MARK: - Phase F (field-test-fixes): coachFacts exposed
 
     func testCoachFactsExposedAndConsistent() throws {
-        let ctx = try makeContext()
         let now = testNow
         let snap = CoachSnapshotBuilder.build(sessions: [], cardio: [], assessments: [],
                                               hasPainToday: false, goal: .strength,

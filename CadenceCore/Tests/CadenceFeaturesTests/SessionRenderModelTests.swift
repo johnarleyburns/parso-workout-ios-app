@@ -498,6 +498,9 @@ final class SessionRenderModelTests: XCTestCase {
 
     /// Field test 2026-08-19 #1: partners take turns, so the outstanding rows
     /// alternate rather than listing everything one person owes first.
+    /// Field test 2026-08-20 #1 (decision D2): the alternation is a fair queue —
+    /// never two consecutive rows from one performer while the other still owes
+    /// rows. The old column round-robin emitted the buggy `Me,P,Me,P,P` tail.
     func testPendingSetsAlternateBetweenPerformers() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
@@ -511,10 +514,92 @@ final class SessionRenderModelTests: XCTestCase {
                                              allPeople: try WorkoutRepository.allPeople(ctx))
 
         // The owner has logged set 1, so they owe indices 1 and 2; the partner
-        // owes 0, 1 and 2. The card must read partner-0, me-1, partner-1, …
+        // owes 0, 1 and 2. The card must read partner-0, me-1, partner-1, me-2,
+        // partner-2 — strict alternation, no same-name-twice.
         let order = state.contexts[0].pendingSets.map { ($0.performerID == nil, $0.setIndex) }
-        XCTAssertEqual(order.map(\.1), [1, 0, 2, 1, 2],
-                       "Pending rows are not round-robined across performers")
-        XCTAssertEqual(order.map(\.0), [true, false, true, false, false])
+        XCTAssertEqual(order.map(\.1), [0, 1, 1, 2, 2],
+                       "Pending rows are not fairly spread across performers")
+        XCTAssertEqual(order.map(\.0), [false, true, false, true, false],
+                       "Pending rows repeat a performer while the other still owes rows")
+    }
+
+    /// Field test 2026-08-20 #1: the pending alternation is stable — rebuilding
+    /// the same session twice yields identical pending rows.
+    func testPendingAlternationIsDeterministicAcrossRebuilds() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        session.plannedRepLadder = [5, 5, 5]
+        let people = try WorkoutRepository.allPeople(ctx)
+
+        let first = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: people)
+        let second = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                              allPeople: people)
+
+        XCTAssertEqual(first.contexts[0].pendingSets, second.contexts[0].pendingSets,
+                       "Identical sessions must produce identical pending rows")
+    }
+
+    /// Field test 2026-08-20 #1: as the user logs the field sequence (Me, Me, P …)
+    /// every intermediate pending list stays alternating, and its first row is the
+    /// performer who is genuinely next.
+    func testPendingAlternationIsStableAsSetsAreLogged() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        session.plannedRepLadder = [5, 5, 5]
+        let people = try WorkoutRepository.allPeople(ctx)
+
+        func pending(_ state: SessionRenderModel.State) -> [SessionRenderModel.PendingSetDisplay] {
+            state.contexts[0].pendingSets
+        }
+        /// Decision D2: no two consecutive rows from the same performer while at
+        /// least two performers still have outstanding rows. A same-performer
+        /// tail is allowed only once the other performer has nothing left.
+        func isFair(_ rows: [SessionRenderModel.PendingSetDisplay]) -> Bool {
+            var owed: [UUID?: Int] = [:]
+            for row in rows { owed[row.performerID, default: 0] += 1 }
+            var emitted: [UUID?: Int] = [:]
+            for (index, row) in rows.enumerated() {
+                if index > 0, rows[index - 1].performerID == row.performerID {
+                    for (performer, total) in owed where performer != row.performerID {
+                        if total - (emitted[performer, default: 0]) > 0 { return false }
+                    }
+                }
+                emitted[row.performerID, default: 0] += 1
+            }
+            return true
+        }
+
+        // The user logs an owner set first (Me-heavy start, the field report).
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        var rows = pending(SessionRenderModel.build(session: session, prRule: .topWeight,
+                                                    formula: .epley, allPeople: people))
+        XCTAssertTrue(isFair(rows), "Pending rows repeat a performer after the first owner set")
+        XCTAssertEqual(rows.first?.performerID, partner.id,
+                       "The partner is genuinely next after an owner-led start")
+
+        // The user logs a second owner set anyway.
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
+        rows = pending(SessionRenderModel.build(session: session, prRule: .topWeight,
+                                                formula: .epley, allPeople: people))
+        XCTAssertTrue(isFair(rows), "Pending rows repeat a performer after two owner sets")
+        XCTAssertEqual(rows.first?.performerID, partner.id,
+                       "The partner must be next — the card cannot demand the owner again")
+
+        // The user logs the partner's set; alternation continues.
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 60, reps: 10,
+                                         performedBy: partner, in: ctx)
+        rows = pending(SessionRenderModel.build(session: session, prRule: .topWeight,
+                                                formula: .epley, allPeople: people))
+        XCTAssertTrue(isFair(rows), "Pending rows repeat a performer after the partner set")
+        XCTAssertEqual(rows.first?.performerID, partner.id,
+                       "The partner still leads after logging their first set")
     }
 }

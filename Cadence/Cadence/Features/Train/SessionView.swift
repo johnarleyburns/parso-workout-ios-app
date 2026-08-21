@@ -175,7 +175,7 @@ struct SessionView: View {
         if isEditing, editingSet == nil { return nil }
         let performerID: UUID? = isEditing
             ? (editingSet?.performedBy?.isMe ?? true ? nil : editingSet?.performedBy?.id)
-            : (pendingPerformerID ?? nextPerson().flatMap { $0.isMe ? nil : $0.id })
+            : (pendingPerformerID ?? nextPerson(for: exercise).flatMap { $0.isMe ? nil : $0.id })
 
         let defaults = performerDefaults(for: exercise)
         let own = defaults.first { $0.performerID == performerID }
@@ -667,12 +667,12 @@ struct SessionView: View {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 let sets = session.orderedSets.filter { $0.exercise?.id == ex.id }
                 if let last = sets.last(where: {
-                    if let next = nextPerson() { return setPerformedBy($0, person: next) }
+                    if let next = nextPerson(for: ex) { return setPerformedBy($0, person: next) }
                     return $0.isOwnerSet
                 }) ?? sets.last {
                     addSet(to: ex, weightKg: last.weight, reps: last.reps, rpe: last.rpe,
                            isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight,
-                           note: nil, performedBy: nextPerson())
+                           note: nil, performedBy: nextPerson(for: ex))
                 }
             },
             onAddSet: {
@@ -936,16 +936,17 @@ struct SessionView: View {
         var ids = explicitRosterIDs()
         if !ids.contains(p.id.uuidString) { ids.append(p.id.uuidString); session.activePartnerIDs = normalizedRosterIDs(ids); try? context.save() }
     }
-    private func nextPerson() -> Person? {
+    private func nextPerson(for exercise: Exercise) -> Person? {
         guard hasPartners else { return nil }
-        let ordered = roster
-        guard !ordered.isEmpty else { return nil }
-        guard let last = session.orderedSets.reversed().first(where: { set in
-            ordered.contains { setPerformedBy(set, person: $0) }
-        }), let lastIndex = ordered.firstIndex(where: { setPerformedBy(last, person: $0) }) else {
-            return ordered.first
-        }
-        return ordered[(lastIndex + 1) % ordered.count]
+        let ctx = cache.state.contexts.first { $0.exerciseID == exercise.id }
+        let rosterOrder: [UUID?] = rosterEntries.map { $0.isMe ? nil : $0.personID }
+        let lastID = session.orderedSets
+            .filter { $0.exercise?.id == exercise.id && !$0.isWarmup }
+            .last.map { $0.isOwnerSet ? nil : $0.performedBy?.id } ?? nil
+        let id = SetAlternation.nextPerformerID(pendingSets: ctx?.pendingSets ?? [],
+                                                rosterOrder: rosterOrder,
+                                                lastLoggedPerformerID: lastID)
+        return id.flatMap { people(for: $0) } ?? allPeople.first { $0.isMe }
     }
     private func explicitRosterIDs() -> [String] {
         let current = session.activePartnerIDs

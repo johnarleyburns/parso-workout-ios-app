@@ -132,6 +132,10 @@ public enum SessionRenderModel {
         public var pendingSets: [PendingSetDisplay] = []
         public var performerContexts: [PerformerContext] = []
         public var hasPartners: Bool { performerContexts.count > 1 }
+        /// The performer whose pending row leads the card — the alternation
+        /// answer for "who goes next" on this exercise. `nil` is the owner; with
+        /// no pending rows the field is `nil` and callers fall back to rotation.
+        public var nextPerformerID: UUID? { pendingSets.first?.performerID }
 
         public init(exerciseID: UUID, name: String, sets: [SetDisplay],
                     pendingCount: Int, pendingReps: [Int],
@@ -346,9 +350,10 @@ public enum SessionRenderModel {
                 pendingByPerformer.append(rows)
             }
             // Partners train the same movement together, so the remaining work
-            // ALTERNATES: my set 1, their set 1, my set 2, … — not everything I
-            // owe followed by everything they owe (field test 2026-08-19 #1).
-            let pendingSets = interleaved(pendingByPerformer)
+            // ALTERNATES: my set 1, their set 1, my set 2, … — never two
+            // consecutive rows from one performer while the other still owes
+            // rows (field test 2026-08-19 #1; decision D2).
+            let pendingSets = SetAlternation.spread(pendingByPerformer)
             let ownerPending = pendingSets.filter { $0.performerID == nil }
             let pendingReps = ownerPending.map(\.targetReps)
 
@@ -425,17 +430,6 @@ public enum SessionRenderModel {
                 PlannedSetPrescription(targetReps: $0,
                                        targetWeightKg: session.prescribedLoadKg > 0 ? session.prescribedLoadKg : nil)
             }
-    }
-
-    /// Round-robins the per-performer pending rows so the card reads in the order
-    /// the group will actually train.
-    private static func interleaved(_ groups: [[PendingSetDisplay]]) -> [PendingSetDisplay] {
-        let depth = groups.map(\.count).max() ?? 0
-        var result: [PendingSetDisplay] = []
-        for index in 0..<depth {
-            for group in groups where index < group.count { result.append(group[index]) }
-        }
-        return result
     }
 
     /// Each performer's working-set rep ladders across every movement in the

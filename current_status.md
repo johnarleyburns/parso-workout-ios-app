@@ -2,6 +2,69 @@
 
 Updated: 2026-08-20
 
+## Field-test batch 2026-08-20 (8 issues): P1 shipped — next is P2, awaiting review
+
+## P1 complete — stable, alternating partner order (shipped, not pushed)
+
+Field test issue 1 (`docs/field-test-batch-2026-08-20/01-phase1-partner-alternation.md`,
+decision **D2**). Committed as **`3aa35e0`** on `main`, **not pushed**, per the
+batch execution protocol. All four commit-gate stages ran individually and passed.
+
+### The two bugs, one shared answer
+
+- **New `CadenceFeatures/SetAlternation.swift`** (61 LOC, Foundation + CadenceCore
+  only) owns both rules so the card, the set editor and `onRepeat` can never
+  disagree again:
+  - `spread(_:)` — a greedy fair queue: emit the next row from the group with the
+    most outstanding rows that is **not** the group of the last emitted row
+    (caller-order tie-break); when only one performer has rows left, its remainder
+    emits (unavoidable). This replaces the **column-major round-robin** that
+    emitted the buggy `Me,P,Me,P,P` tail — the old
+    `testPendingSetsAlternateBetweenPerformers` *asserted* that bug.
+  - `nextPerformerID(pendingSets:rosterOrder:lastLoggedPerformerID:)` — the first
+    pending row wins when rows exist; empty pending (silent exercise) falls back
+    to a per-exercise roster rotation, defaulting to the owner.
+- **`SessionRenderModel`**: `build` now calls `SetAlternation.spread`; the private
+  `interleaved` round-robin is deleted. `ExerciseContext` gains
+  `nextPerformerID` (`pendingSets.first?.performerID`). No schema change.
+- **`SessionView`**: the session-global `nextPerson()` is gone; its two consumers
+  (editor prefill at `SessionView.swift:178`, `onRepeat` at `:666`) now use
+  `nextPerson(for: exercise)`, which reads the exercise's pending rows through the
+  same pure rule. SessionView held its 1034 ratchet at **1033** by inlining the
+  owner fallback — no ratchet was raised.
+
+### Verification
+
+- `swift test` (full suite): **1,490 passed, 0 failures** (baseline 1,442 + 9
+  `SetAlternationTests` + 2 new `SessionRenderModelTests`; the buggy alternation
+  test was rewritten to assert `P,Me,P,Me,P`).
+- New coverage: the exact field scenario (`spread` alternates `P0,Me1,P1,Me2,P2`),
+  never-repeats-while-two-owe-rows, solo-tail, determinism across rebuilds,
+  stability as the field sequence `Me,Me,P` is logged, and the `nextPerformerID`
+  first-row/rotation/owner-default rules.
+- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
+- `make smoke` (iPhone): WCSession regression + full strength flow **passed**
+  (184.9 s). `make watch-smoke`: **passed** (94.7 s).
+- Guardrails: `check-test-pyramid.sh` OK (`SessionView` 1033 ≤ 1034, one iPhone
+  test, one watch test), `check-no-network.sh` OK.
+- **Honest gap:** verified headlessly + structurally; no screenshot of the
+  alternating card was taken (the phase file makes coverage headless-only for
+  P1 — asserting interleave order in the UI would be fragile).
+- **Env note, not a code fault:** bare `xcodebuild -scheme Cadence …` now fails
+  with "Unable to read project 'WidgetTemplate.xcodeproj'" — an **empty,
+  untracked** `WidgetTemplate.xcodeproj/` directory (no `project.pbxproj`) sits at
+  the repo root and makes xcodebuild's scheme scan trip over it. Use
+  `-project Cadence/Cadence.xcodeproj` (as `make smoke` already does) or delete
+  the stray directory.
+
+### Next
+
+- Await review. Then **P2** (collapsed per-partner last-time, issue 2) — re-read
+  `docs/field-test-batch-2026-08-20/02-phase2-collapsed-partner-history.md` before
+  starting. D1 (P8) and D8 (P3) are still open in `decisions.md`.
+
+---
+
 ## Field-test batch 2026-08-20 (8 issues): plan approved — executing one phase at a time
 
 The full, agent-executable plan is on disk at

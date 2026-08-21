@@ -2,6 +2,72 @@
 
 Updated: 2026-08-21
 
+## P5 complete — watch session leak + live-activity cleanup (shipped, not pushed)
+
+Field test issue 5 (`docs/field-test-batch-2026-08-20/05-phase5-watch-leak-liveactivity.md`).
+Committed as **`d7e4cce`** on `main`, **not pushed**, per the batch execution protocol.
+
+### What changed
+
+- **5A-1 — every cardio terminal path stops the watch session.** `model.stopWatchWorkout()`
+  (already a safe no-op when nothing is running) added to `RecordCardioView.endWorkout` +
+  its Cancel, `OutdoorCardioView.end` + its Cancel, `SwimRecordView.endSwim`, and the
+  catch-all `HomeView.releaseCardioWorkout` (every cardio surface's onDismiss/onSaved, so a
+  future cardio screen can't regress this). A watch `HKWorkoutSession` +
+  `WKExtendedRuntimeSession` started at the HR gate can no longer run for hours after a
+  cardio ends; the relay is cancelled so the next `Check for Live HR` isn't stuck.
+- **5A-2 — `.alreadyActive` recovery: stop, then retry once.** New pure
+  `WatchHRRelay.shouldRetryAfterStop(rejection:)` (only `.alreadyActive` → `true`; permission/
+  unsupported/unavailable never auto-retry). `AppModel` on a rejected start: sends
+  `stop_workout`, waits 1.2 s, retries exactly once with a fresh requestID (`allowsRetry: false`
+  on the retry, so a second rejection surfaces the error text — no loop). The retry is armed
+  only while the user is still on the HR screen: any new start/stop disarms `watchRetryArmed`.
+- **5A-3 — no change.** `handleWatchMessage` already gates BPM injection on the current
+  requestID; the two fixes eliminate the root, so the guard was left alone.
+- **5B — Live Activity stale cleanup.** `WorkoutLiveActivityCoordinator.endAllStale()` ends
+  every `Activity<WorkoutLiveActivityAttributes>`; called on launch (`CadenceApp.task`) and at
+  the top of `start(title:)`. Decisions D4/D7: no widget target, no watch-side auto-tear-down
+  this batch.
+- **UI-test seam + smoke growth.** `-uiTestWatchStop` makes `stopWatchWorkout()` increment
+  `uitest.watchStopCount` (UserDefaults), surfaced by a hidden 1×1 a11y element in
+  `RootTabView` (`@AppStorage`-driven). The smoke test now, after the strength flow, ends a
+  real cardio: `home.startWorkout` → `startType.run` → `goal.none` → HR gate (asserts
+  `prehr.start` is enabled — P6's regression, asserted while the screen is in front of us) →
+  `skipCountdown` → `outdoor.end` → confirm → summary → Home, asserting the counter increased
+  between just-before-End and after the summary. **Deliberate deviation:** the phase file's
+  `record.end` description routes `startType.run` to the *timer* recorder, but run routes to the
+  GPS `OutdoorCardioView`, so the flow uses `outdoor.end` — still one of the listed terminal
+  paths, and `releaseCardioWorkout` covers the record/swim/interval routes as well.
+
+### Verification
+
+- `swift test` (full suite): **1,505 passed, 0 failures** (baseline 1,502 + 3
+  `WatchHRRelayTests`: alreadyActive retries, non-retryable rejections, relay recovery sequence).
+- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
+- `make smoke` (iPhone): **passed** — the added cardio end (goal → HR gate → countdown skip →
+  outdoor end) runs inside the one iPhone test. The committed gate passed on the final tree.
+- `make watch-smoke`: **passed** (watch unit regressions + the one watch UI test).
+- Guardrails: `check-test-pyramid.sh` OK (`HomeView` held at **1033** — the
+  `releaseCardioWorkout` stop was folded onto the existing guard + lease lines so the shrink-only
+  ratchet never moved), `check-no-network.sh` OK.
+- **Honest gap — hardware.** The stop-path wiring + retry test + smoke seam are structural; no
+  real-device run yet. Per the phase file, the user should re-check on the next device run: end a
+  cardio that used watch HR, confirm the watch's workout indicator disappears, then start another
+  and confirm `Check for Live HR` goes live.
+- **First `make smoke` run failed on the countdown skip, not the code:** the helper's confirm
+  `"Skip"` first-match resolved to the countdown's own `countdown.skip` (same label, no id), so
+  the dialog was never confirmed; scoping to `sheets.buttons` fixed it and the next run passed.
+  The trailing "test runner hung before establishing connection" line on that run was the known
+  CoreSimulatorService hiccup (P3 env note), not a code fault.
+
+### Next
+
+- Await review. Then **P6** (HR gate Continue always enabled, issue 6) — re-read
+  `docs/field-test-batch-2026-08-20/06-phase6-hr-gate-continue.md` before starting. **D1**
+  (Rowing-GPS, needed at P8) is still open in `decisions.md`.
+
+---
+
 ## P4 complete — active-workout button spacing matches Home (shipped, not pushed)
 
 Field test issue 4 (`docs/field-test-batch-2026-08-20/04-phase4-session-button-spacing.md`).

@@ -110,8 +110,6 @@ while IFS= read -r f; do
     if [ "$loc" -gt "$ceiling" ]; then
       echo "❌ $rel grew to $loc LOC (ratchet ceiling $ceiling). Grandfathered views may only shrink."
       fail=1
-    else
-      echo "⚠️  $rel is $loc LOC (grandfathered ≤$ceiling; split it down toward $MAX_LOC)."
     fi
   elif [ "$loc" -gt "$MAX_LOC" ]; then
     echo "❌ $rel is $loc LOC (max $MAX_LOC). Move logic to CadenceFeatures and split the view."

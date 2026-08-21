@@ -750,7 +750,7 @@ struct SessionView: View {
     }
     @ViewBuilder
     private func plannedCard(_ name: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
             HStack {
                 Text(name).font(.headline)
                     .accessibilityIdentifier("exerciseCard.\(name)")

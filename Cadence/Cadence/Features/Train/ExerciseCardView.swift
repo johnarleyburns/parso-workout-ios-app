@@ -341,7 +341,7 @@ struct ExerciseCardView: View {
             }
         }
         .controlSize(.regular)
-        .padding(.top, CGFloat(LayoutMetrics.cardHeadingSpacing) - 8)
+        .padding(.top, CGFloat(LayoutMetrics.cardRowSpacing))
     }
 
     // MARK: - Context menu

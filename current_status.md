@@ -2,6 +2,61 @@
 
 Updated: 2026-08-21
 
+## P4 complete — active-workout button spacing matches Home (shipped, not pushed)
+
+Field test issue 4 (`docs/field-test-batch-2026-08-20/04-phase4-session-button-spacing.md`).
+Committed as **`99c497c`** on `main`, **not pushed**, per the batch execution
+protocol.
+
+### What changed
+
+- **`ExerciseCardView.actionButtons`** — the one spacing anomaly on the
+  active-workout surface: the in-card `Add set`/`Repeat` row padded its top with
+  the ad-hoc `.padding(.top, cardHeadingSpacing - 8)` (10 − 8 = **2 pt** — no
+  breathing room). Replaced with
+  `.padding(.top, CGFloat(LayoutMetrics.cardRowSpacing))` (**12 pt**, the same
+  token used between rows inside a card), so the row boundary reads like every
+  other card row. The `HStack(spacing: cardRowSpacing)` between the two buttons
+  was already the card-row token and is unchanged.
+- **`SessionView.plannedCard`** — the phase file's optional audit item: its inner
+  `VStack(spacing: 8)` (a hard-coded 8 on a Home-rhythm card) is now
+  `spacing: CGFloat(LayoutMetrics.cardRowSpacing)`.
+- **Audit sweep result** — `grep 'padding(.top,'` across `Train/` shows only the
+  fixed site plus two deliberate leaves: `ExerciseDetailView.swift:142`
+  ("Also works" heading, the detail screen not the active workout) and
+  `InlineSetEditorView.swift:68` (P3's own surface, explicitly exempt).
+  `WorkoutControlBar` is exempt per the 2026-08-18 P1 scope note. No new token
+  was introduced, so no `LayoutMetricsTests` extension was needed — the existing
+  equality contract (`actionButtonSpacing == sectionSpacing` + the Home-surface
+  token tests) covers it.
+
+### Verification
+
+- `swift test` (full suite): **1,502 passed, 0 failures**.
+- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
+- `make smoke` (iPhone): **passed** (189.9 s), including the whole strength flow
+  with partner logging.
+- Guardrails: `check-test-pyramid.sh` OK (`SessionView` 1032 ≤ 1034 — the
+  spacing change is a same-line swap), `check-no-network.sh` OK.
+- **Visual record:** a temporary screenshot UI test (deleted before commit — the
+  suite stays at exactly one test) captured `p4-home.png` and
+  `p4-active-workout-buttons.png` (Home + the expanded Bench Press card after the
+  owner's set, with the `Add set`/`Repeat` row and 12 pt top padding). **Honest
+  gap:** the author's model cannot view images, so the *visual* read is the
+  user's; the structural evidence is the smoke flow + token equality, and the
+  screenshots are on disk for review.
+
+### Next
+
+- Await review. Then **P5** (watch session leak + Live Activity cleanup, issue
+  5) — re-read `docs/field-test-batch-2026-08-20/05-phase5-watch-leak-liveactivity.md`
+  before starting. **D1** (Rowing-GPS, needed at P8) is still open in
+  `decisions.md`.
+
+---
+
+## Field-test batch 2026-08-20 (8 issues): P1–P3 shipped — next was P4
+
 ## P3 complete — set editor always shows per-partner history (shipped, not pushed)
 
 Field test issue 3 (`docs/field-test-batch-2026-08-20/03-phase3-set-entry-history.md`,

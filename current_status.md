@@ -5,7 +5,7 @@ Updated: 2026-08-21
 ## P3 complete — set editor always shows per-partner history (shipped, not pushed)
 
 Field test issue 3 (`docs/field-test-batch-2026-08-20/03-phase3-set-entry-history.md`,
-decision **D8**). Committed as **`<SHA>`** on `main`, **not pushed**, per the
+decision **D8**). Committed as **`f1f5d36`** on `main`, **not pushed**, per the
 batch execution protocol.
 
 ### What changed

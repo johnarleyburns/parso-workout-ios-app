@@ -26,6 +26,7 @@ final class WorkoutLiveActivityCoordinator {
     private var activity: Activity<WorkoutLiveActivityAttributes>?
 
     func start(title: String) {
+        endAllStale()
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let attributes = WorkoutLiveActivityAttributes(workoutTitle: title)
         let state = WorkoutLiveActivityAttributes.ContentState(status: "Active", elapsedSeconds: 0)
@@ -49,5 +50,17 @@ final class WorkoutLiveActivityCoordinator {
         Task { @MainActor [activity] in
             await activity.end(nil, dismissalPolicy: .immediate)
         }
+    }
+
+    /// Ends every Live Activity this app owns. Called on launch and at the top
+    /// of every `start` so an activity orphaned by a kill/background can never
+    /// keep a stale timer on the lock screen (field-test batch 2026-08-20
+    /// issue 5, 5B). `Activity.activities` returns only our own type and is
+    /// harmless when empty.
+    func endAllStale() {
+        for activity in Activity<WorkoutLiveActivityAttributes>.activities {
+            Task { @MainActor in await activity.end(nil, dismissalPolicy: .immediate) }
+        }
+        activity = nil
     }
 }

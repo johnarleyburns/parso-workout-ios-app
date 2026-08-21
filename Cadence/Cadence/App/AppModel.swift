@@ -33,6 +33,17 @@ final class AppModel: NSObject, @unchecked Sendable {
     private(set) var watchError: String?
     let watchHRRelay: WatchHRRelay
     private var watchTimeout: Timer?
+    /// When a `start_workout` is rejected `.alreadyActive`, this is armed for the
+    /// 1.2 s teardown window so the stop-then-retry-once fires only while the
+    /// user is still on the HR screen (any new start/stop disarms it).
+    private var watchRetryArmed = false
+    /// UI-test seam (`-uiTestWatchStop`): record every `stopWatchWorkout()` call
+    /// into `UserDefaults("uitest.watchStopCount")` so the iPhone smoke test can
+    /// assert the cardio end paths actually stop the watch session.
+    private let recordsWatchStop: Bool
+    /// Only meaningful while `recordsWatchStop`; the running call count surfaced
+    /// to the smoke test through the same UserDefaults key.
+    private var watchStopCount: Int = 0
 
     /// Cached once at launch — avoids hitting `WCSession.default.isWatchAppInstalled`
     /// (a synchronous IPC call) from SwiftUI body evaluation.
@@ -75,6 +86,10 @@ final class AppModel: NSObject, @unchecked Sendable {
         self.hrm = HeartRateMonitor(simulated: uiTest)
         self.location = LocationTracker(simulated: uiTest)
         self.watchHRRelay = WatchHRRelay()
+        self.recordsWatchStop = args.contains("-uiTestWatchStop")
+        self.watchStopCount = self.recordsWatchStop
+            ? UserDefaults.standard.integer(forKey: "uitest.watchStopCount")
+            : 0
         self.watchSessionDelegate = WatchSessionDelegateProxy()
 
         super.init()
@@ -190,6 +205,11 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Tells the Apple Watch to start an `HKWorkoutSession` for the given
     /// raw type string and begin streaming live heart rate.
     func startWatchWorkout(rawType: String) {
+        watchRetryArmed = false
+        performWatchStart(rawType: rawType, retryType: rawType, allowsRetry: true)
+    }
+
+    private func performWatchStart(rawType: String, retryType: String, allowsRetry: Bool) {
         guard watchAvailable, let session = wcSession else { return }
         watchError = nil
         watchTimeout?.invalidate()
@@ -203,7 +223,8 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchHRRelay.begin(requestID: requestID)
         session.sendMessage(
             [WatchSync.Key.command: "start_workout", "type": rawType, "requestID": requestID.uuidString],
-            replyHandler: Self.watchReplyHandler(owner: self, requestID: requestID),
+            replyHandler: Self.watchReplyHandler(owner: self, requestID: requestID,
+                                                 retryType: retryType, allowsRetry: allowsRetry),
             errorHandler: Self.watchErrorHandler(owner: self))
         watchActive = false
         watchTimeout = Timer.scheduledTimer(
@@ -212,19 +233,45 @@ final class AppModel: NSObject, @unchecked Sendable {
             block: Self.watchTimeoutHandler(owner: self))
     }
 
-    nonisolated private static func watchReplyHandler(owner: AppModel, requestID: UUID) -> ([String: Any]) -> Void {
+    nonisolated private static func watchReplyHandler(owner: AppModel, requestID: UUID,
+                                                      retryType: String, allowsRetry: Bool) -> ([String: Any]) -> Void {
         { reply in
             let matchesRequest = (reply["requestID"] as? String).flatMap(UUID.init(uuidString:)) == requestID
             let accepted = reply["accepted"] as? Bool
             let reason = (reply["rejection"] as? String) ?? "unavailable"
+            let rejection = WatchHRRejection(rawValue: reason)
             Task { @MainActor [weak owner] in
                 guard let owner, matchesRequest, let accepted else { return }
-                if accepted {
-                    owner.watchHRRelay.acknowledged()
-                } else {
-                    owner.watchHRRelay.fail("Apple Watch rejected heart-rate monitoring (\(reason))")
-                }
+                owner.handleWatchStartReply(accepted: accepted, rejection: rejection,
+                                            retryType: retryType, allowsRetry: allowsRetry)
             }
+        }
+    }
+
+    /// Reacts to a `start_workout` reply. A stale `.alreadyActive` rejection is
+    /// the failure this phase fixes: tear the leaked watch session down and
+    /// start once more with a fresh requestID after a short beat. Any other
+    /// rejection — including a second `.alreadyActive` on the retry — surfaces
+    /// the error text so the user sees a real message instead of a silent hang.
+    private func handleWatchStartReply(accepted: Bool, rejection: WatchHRRejection?,
+                                       retryType: String, allowsRetry: Bool) {
+        if accepted {
+            watchHRRelay.acknowledged()
+            watchRetryArmed = false
+            return
+        }
+        guard WatchHRRelay.shouldRetryAfterStop(rejection: rejection),
+              allowsRetry, !watchRetryArmed else {
+            watchHRRelay.fail("Apple Watch rejected heart-rate monitoring (\(rejection?.rawValue ?? "unavailable"))")
+            return
+        }
+        stopWatchWorkout()
+        watchRetryArmed = true
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(1.2))
+            guard let self, self.watchRetryArmed else { return }
+            self.watchRetryArmed = false
+            self.performWatchStart(rawType: retryType, retryType: retryType, allowsRetry: false)
         }
     }
 
@@ -253,8 +300,13 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     /// Tells the Apple Watch to end the `HKWorkoutSession` and stop streaming.
     func stopWatchWorkout() {
+        watchRetryArmed = false
         watchTimeout?.invalidate(); watchTimeout = nil
         watchHRRelay.cancel()
+        if recordsWatchStop {
+            watchStopCount += 1
+            UserDefaults.standard.set(watchStopCount, forKey: "uitest.watchStopCount")
+        }
         guard watchAvailable, let session = wcSession else { return }
         var message: [String: Any] = [WatchSync.Key.command: "stop_workout"]
         if let requestID = watchHRRelay.activeRequestID { message["requestID"] = requestID.uuidString }

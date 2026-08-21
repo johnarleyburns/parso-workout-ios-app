@@ -107,7 +107,7 @@ struct OutdoorCardioView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { _ = recorder?.end(); dismiss() }
+                    Button("Cancel") { model.stopWatchWorkout(); _ = recorder?.end(); dismiss() }
                         .accessibilityIdentifier("outdoor.cancel")
                 }
             }
@@ -158,6 +158,9 @@ struct OutdoorCardioView: View {
 
     private func end() async {
         guard let r = recorder else { dismiss(); return }
+        // A watch session started at the HR gate outlives the recorder unless we
+        // tear it down here (field-test batch 2026-08-20 issue 5).
+        model.stopWatchWorkout()
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         clock.end()
         var summary = r.end()

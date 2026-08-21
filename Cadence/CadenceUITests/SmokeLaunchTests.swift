@@ -11,8 +11,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
     @MainActor
     func testIPhoneStrengthWorkoutPlansLogsAndCompletes() {
         // A seeded partner gives the session a real roster, so the flow can log a
-        // set for someone other than the owner (field test 2026-08-18 §5b).
-        let app = XCUIApplication.launched(seeds: ["person.Sam"])
+        // set for someone other than the owner (field test 2026-08-18 §5b). The
+        // watch-stop seam makes the cardio end below provable, not vacuous.
+        let app = XCUIApplication.launched(seeds: ["person.Sam"],
+                                           extraArgs: ["-uiTestWatchStop"])
 
         XCTAssertEqual(app.state, .runningForeground,
                        "iPhone app terminated or failed to reach the foreground during cold launch")
@@ -249,5 +251,41 @@ final class SmokeLaunchTests: CadenceUITestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH 'home.today.row.'")).firstMatch
         XCTAssertTrue(todayRow.waitForExistence(timeout: 10),
                       "Completed workout did not appear in Workouts Today")
+
+        // Field test 2026-08-20 issue 5: ending a cardio workout must stop the
+        // watch's workout session — the leak behind the "live activity that never
+        // stops". Under -uiTestWatchStop every stopWatchWorkout() call lands in
+        // uitest.watchStopCount, so the counter read right before the End button
+        // proves the cardio terminal path itself stops the watch. The HR gate's
+        // Continue must also be enabled on a fresh cardio start (P6's regression,
+        // asserted here while the screen is in front of us).
+        XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
+                      "Home Start Workout did not reopen for the cardio flow")
+        XCTAssertTrue(app.scrollToHittableAndTap("startType.run"),
+                      "Start Workout did not offer the Run cardio tile")
+        XCTAssertTrue(app.scrollToHittableAndTap("goal.none"),
+                      "Cardio goal sheet did not offer start-without-goal")
+        let continueButton = app.buttons["prehr.start"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 10),
+                      "HR gate did not appear before the cardio workout")
+        XCTAssertTrue(continueButton.isEnabled,
+                      "HR gate Continue is disabled on a fresh cardio start")
+        continueButton.tap()
+        app.skipCountdown()
+        XCTAssertTrue(app.scrollToHittableAndTap("outdoor.end"),
+                      "Outdoor cardio did not offer End")
+        let stopsBeforeEnd = app.watchStopCount()
+        XCTAssertGreaterThan(stopsBeforeEnd, 0,
+                             "No watch stop was recorded before the cardio ended")
+        XCTAssertTrue(app.dialogButton("workout.endConfirm").waitTap(timeout: 5),
+                      "Cardio end confirmation did not appear")
+        XCTAssertTrue(app.descendants(matching: .any)["summary.title"].waitForExistence(timeout: 15),
+                      "Cardio workout did not reach its summary")
+        XCTAssertTrue(app.buttons["summary.done"].waitTap(timeout: 10),
+                      "Cardio summary Done did not dismiss")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Home did not return after the cardio summary")
+        XCTAssertGreaterThan(app.watchStopCount(), stopsBeforeEnd,
+                             "Ending the cardio workout did not stop the watch workout session")
     }
 }

@@ -235,6 +235,33 @@ extension XCUIApplication {
         }
     }
 
+    /// Skips the get-ready countdown (and its "Skip countdown?" confirm) so a
+    /// workout start never waits on the 10 s timer in the smoke flow. No-op when
+    /// no countdown is showing. The confirm dialog's destructive "Skip" has no
+    /// id, so it is resolved by label inside the presented sheet — the
+    /// countdown's own Skip button shares the label and would otherwise match
+    /// first.
+    func skipCountdown() {
+        let skip = buttons["countdown.skip"]
+        guard skip.waitForExistence(timeout: 3) else { return }
+        if skip.isHittable { skip.tap() }
+        let confirm = sheets.buttons.matching(identifier: "Skip").firstMatch
+        if confirm.waitForExistence(timeout: 3) { confirm.tap() }
+        XCTAssertFalse(buttons["countdown.cancel"].waitForExistence(timeout: 2),
+                       "get-ready countdown did not dismiss after Skip")
+    }
+
+    /// Reads the `-uiTestWatchStop` counter surfaced by the app (each call to
+    /// `stopWatchWorkout()` in that mode increments `uitest.watchStopCount`).
+    /// Returns -1 if the seam element is missing, which must fail any caller.
+    func watchStopCount() -> Int {
+        let el = descendants(matching: .any)["uitest.watchStopCount"]
+        guard el.waitForExistence(timeout: 5) else { return -1 }
+        // Let the @AppStorage-driven hidden text flush before reading its label.
+        Thread.sleep(forTimeInterval: 0.4)
+        return Int(el.label) ?? -1
+    }
+
     /// The destructive "Skip" button inside the rest-timer "Skip rest?" confirm
     /// dialog. It carries no accessibility id (it's a plain dialog button), so
     /// resolve it by label via `firstMatch` (iOS 26 duplicates dialog buttons in

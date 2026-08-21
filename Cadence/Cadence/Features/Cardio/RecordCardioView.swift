@@ -45,7 +45,7 @@ struct RecordCardioView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { dismiss() }.accessibilityIdentifier("record.cancel")
+                            Button("Cancel") { model.stopWatchWorkout(); dismiss() }.accessibilityIdentifier("record.cancel")
                         }
                     }
                 }
@@ -141,6 +141,9 @@ struct RecordCardioView: View {
     }
 
     private func endWorkout(_ recorder: CardioRecorder) async {
+        // A watch session started at the HR gate outlives the recorder unless we
+        // tear it down here (field-test batch 2026-08-20 issue 5).
+        model.stopWatchWorkout()
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         var summary = recorder.end()
         summary.customTitle = customTitle

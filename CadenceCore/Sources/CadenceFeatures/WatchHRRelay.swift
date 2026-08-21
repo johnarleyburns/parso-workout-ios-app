@@ -51,6 +51,14 @@ public final class WatchHRRelay {
         default: return false
         }
     }
+    /// Whether a rejected `start_workout` should be followed by an automatic
+    /// stop-then-retry. Only `.alreadyActive` means the watch still owns a
+    /// (probably stale) session the phone can tear down and start fresh; the
+    /// other rejections are user/permission problems a retry would just hammer.
+    public static func shouldRetryAfterStop(rejection: WatchHRRejection?) -> Bool {
+        rejection == .alreadyActive
+    }
+
     public func timeout() { state = .timedOut(message: "No live heart rate arrived. Open Cladiron on your Watch and retry.") }
     public func fail(_ message: String) { state = .failed(message: message) }
     public func cancel() { state = .actionRequired(message: "Apple Watch HR is not connected") }

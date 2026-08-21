@@ -25,4 +25,34 @@ final class WatchHRRelayTests: XCTestCase {
         XCTAssertEqual(relay.freshBPM(at: start.addingTimeInterval(11)), 132)
         XCTAssertNil(relay.freshBPM(at: start.addingTimeInterval(11.01)))
     }
+
+    func testAlreadyActiveShouldRetryAfterStop() {
+        XCTAssertTrue(WatchHRRelay.shouldRetryAfterStop(rejection: .alreadyActive))
+    }
+
+    func testNonRetryableRejectionsShouldNotRetry() {
+        let nonRetryable: [WatchHRRejection?] = [.healthPermissionDenied, .unsupported,
+                                                 .unavailable, .sessionStartFailed, nil]
+        for rejection in nonRetryable {
+            XCTAssertFalse(WatchHRRelay.shouldRetryAfterStop(rejection: rejection),
+                           "rejection \(String(describing: rejection)) must not auto-retry")
+        }
+    }
+
+    func testRelayRecoverySequence() {
+        // The stop-then-retry path: first request fails "already active", the
+        // phone tears the stale session down and begins a fresh request which
+        // the watch acknowledges and feeds samples to.
+        let relay = WatchHRRelay()
+        let first = UUID()
+        let retry = UUID()
+        let start = Date(timeIntervalSince1970: 300)
+        relay.begin(requestID: first, now: start)
+        relay.fail("Apple Watch rejected heart-rate monitoring (alreadyActive)")
+        relay.begin(requestID: retry, now: start.addingTimeInterval(2))
+        relay.acknowledged(now: start.addingTimeInterval(3))
+        XCTAssertTrue(relay.receive(bpm: 138, requestID: retry, now: start.addingTimeInterval(4)))
+        XCTAssertEqual(relay.freshBPM(at: start.addingTimeInterval(5)), 138)
+        XCTAssertEqual(relay.activeRequestID, retry)
+    }
 }

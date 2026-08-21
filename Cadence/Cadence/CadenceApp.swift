@@ -72,6 +72,7 @@ struct CadenceApp: App {
                 .environment(store)
                 .environment(\.cadenceModelContainer, container)
                 .task { model.activateWCSession() }
+                .task { WorkoutLiveActivityCoordinator.shared.endAllStale() }
                 .task { model.configureWatchSync(settings: settings, container: container, active: active) }
                 .task { contributions.beginSession() }
                 .task { await store.start() }

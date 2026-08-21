@@ -900,8 +900,8 @@ struct HomeView: View {
     }
 
     private func releaseCardioWorkout() {
-        guard active.strengthSession == nil else { return }
-        if let lease = active.liveWorkout.lease { _ = active.liveWorkout.release(lease) }
+        guard active.strengthSession == nil else { return } // Every cardio dismiss here stops the watch session (2026-08-20 #5).
+        model.stopWatchWorkout(); if let lease = active.liveWorkout.lease { _ = active.liveWorkout.release(lease) }
     }
 
     private func finishWarmup(elapsedSeconds secs: Int, startCue: WorkoutStartCue) {

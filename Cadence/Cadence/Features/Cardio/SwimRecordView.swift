@@ -117,6 +117,9 @@ struct SwimRecordView: View {
     }
 
     private func endSwim() {
+        // A watch session started at the HR gate outlives the recorder unless we
+        // tear it down here (field-test batch 2026-08-20 issue 5).
+        model.stopWatchWorkout()
         let end = Date()
         let summary = CardioWorkoutSummary(id: UUID(), type: .swim, start: startDate, end: end,
                                            hrSamples: [], route: [])

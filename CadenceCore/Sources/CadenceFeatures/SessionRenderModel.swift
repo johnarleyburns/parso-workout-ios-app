@@ -8,7 +8,29 @@ public enum SessionRenderModel {
 
     /// Compact, collapsed-card copy. It intentionally contains no editing
     /// affordances; the disclosure control is the only collapsed interaction.
+    ///
+    /// With partners the combined `6/6 sets` line is dropped in favour of one
+    /// per-performer prior-session segment (`Me: …; Sam: …`, owner first, roster
+    /// order); a performer with no prior sets contributes nothing, and when
+    /// nobody has history the counts summary returns so the card is never blank
+    /// (field test 2026-08-20 issue 2, decision D5).
     public static func compactSummary(context: ExerciseContext,
+                                      unit: MeasurementUnitPreference) -> String {
+        guard context.hasPartners else {
+            return countsSummary(context: context, unit: unit)
+        }
+        let segments = context.performerContexts.compactMap {
+            lastTimeSegment(label: $0.label, sets: $0.lastTimeSets, unit: unit)
+        }
+        guard !segments.isEmpty else {
+            return countsSummary(context: context, unit: unit)
+        }
+        return segments.joined(separator: "; ")
+    }
+
+    /// The combined `6/6 sets · reps · weight · BW` summary, used solo and as
+    /// the fallback when no partner performer has prior-session history.
+    private static func countsSummary(context: ExerciseContext,
                                       unit: MeasurementUnitPreference) -> String {
         let completed = context.sets.filter { !$0.isWarmup }.count
         let planned = completed + context.pendingSets.count
@@ -29,6 +51,24 @@ public enum SessionRenderModel {
         let partners = context.performerContexts.filter { !$0.isMe }.map(\.label)
         if !partners.isEmpty { parts.append(partners.joined(separator: ", ")) }
         return parts.joined(separator: " · ")
+    }
+
+    /// One performer's collapsed "last time" segment, e.g. `Me: 185 lb × 5, 190 lb × 6`.
+    /// `nil` when the performer has no prior-session sets — never a fake 0.
+    public static func lastTimeSegment(label: String, sets: [SetDisplay],
+                                       unit: MeasurementUnitPreference) -> String? {
+        guard !sets.isEmpty else { return nil }
+        return "\(label): " + sets.map { setLineText($0, unit: unit) }.joined(separator: ", ")
+    }
+
+    /// One prior set as text, shared by the collapsed and expanded cards and the
+    /// set editor: `180 lb × 8`, `BW × 12`, `BW + 10 kg × 12`.
+    public static func setLineText(_ set: SetDisplay, unit: MeasurementUnitPreference) -> String {
+        if set.usesBodyweight {
+            let added = set.weight > 0 ? " + \(Format.weightValue(set.weight, unit: unit)) \(unit.abbreviation)" : ""
+            return "BW\(added) × \(set.reps)"
+        }
+        return "\(Format.weightValue(set.weight, unit: unit)) \(unit.abbreviation) × \(set.reps)"
     }
 
     /// A single set as displayed in a completed set row.
@@ -393,7 +433,10 @@ public enum SessionRenderModel {
             ladders = WorkoutRepository.repLadderHistory(for: exercise, performedBy: nil, excluding: session)
         } else {
             let person = (exercise.sets ?? []).compactMap(\.performedBy).first { $0.id == performerID }
-            last = WorkoutRepository.lastTimeSets(for: exercise, performedBy: person, excluding: session)
+            // A partner with no sets on this movement has no "last time" — the
+            // repository's nil-person query means the owner, so guard on the
+            // person actually existing (field test 2026-08-20 issue 2, D5).
+            last = person.map { WorkoutRepository.lastTimeSets(for: exercise, performedBy: $0, excluding: session) } ?? []
             // Partner PR not computed — only owner sets count
             pr = nil
             samples = (exercise.sets ?? [])

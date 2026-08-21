@@ -602,4 +602,137 @@ final class SessionRenderModelTests: XCTestCase {
         XCTAssertEqual(rows.first?.performerID, partner.id,
                        "The partner still leads after logging their first set")
     }
+
+    // MARK: - Collapsed per-partner "last time" (field test 2026-08-20 issue 2, decision D5)
+
+    private func display(_ weight: Double, _ reps: Int, bodyweight: Bool = false) -> SessionRenderModel.SetDisplay {
+        SessionRenderModel.SetDisplay(
+            setID: UUID(), weight: weight, reps: reps, rpe: nil, isWarmup: false,
+            usesBodyweight: bodyweight, isOwnerSet: true, performedBy: nil, isAllTimePR: false)
+    }
+
+    /// Two prior sessions — the owner and the partner each logged Bench Press —
+    /// then a fresh partner session. The collapsed summary must show one segment
+    /// per performer, owner first, in roster order, with NO combined `x/y sets`.
+    func testCompactSummaryWithPartnersShowsPerPerformerLastTime() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+
+        let past = try WorkoutRepository.createSession(in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 90, reps: 6, in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 55, reps: 20,
+                                          performedBy: partner, in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 60, reps: 15,
+                                          performedBy: partner, in: ctx)
+
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
+        XCTAssertEqual(summary, "Me: 80 kg × 5, 90 kg × 6; Sam: 55 kg × 20, 60 kg × 15",
+                       "The collapsed card must show per-performer prior sets, owner first")
+    }
+
+    func testCompactSummaryWithPartnersNeverCombinesSetCounts() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+
+        let past = try WorkoutRepository.createSession(in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 60, reps: 15,
+                                          performedBy: partner, in: ctx)
+
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
+        XCTAssertFalse(summary.contains("sets"),
+                       "The combined `6/6 sets` count must not appear when partners have history")
+        XCTAssertTrue(summary.contains("; "),
+                       "Partner segments must be joined, not combined")
+    }
+
+    func testCompactSummaryOmitsPartnerWithNoHistory() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+
+        let past = try WorkoutRepository.createSession(in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: past, exercise: bench, weightKg: 90, reps: 6, in: ctx)
+
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
+        XCTAssertEqual(summary, "Me: 80 kg × 5, 90 kg × 6",
+                       "A partner with no prior sets contributes no segment")
+    }
+
+    func testCompactSummaryFallsBackWhenNobodyHasHistory() throws {
+        let ctx = try makeContext()
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+
+        let session = try WorkoutRepository.createSession(title: "Test",
+                                                          partnerIDs: [partner.id.uuidString], in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        session.plannedRepLadder = [5, 5]
+
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
+        XCTAssertTrue(summary.contains("sets"),
+                       "With no prior history the card must fall back to the counts summary, never blank")
+        XCTAssertTrue(summary.contains("Sam"),
+                       "The fallback keeps the partner label, as the old summary did")
+    }
+
+    func testCompactSummarySoloUnchanged() throws {
+        let ctx = try makeContext()
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+
+        let session = try WorkoutRepository.createSession(in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 80, reps: 5, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 90, reps: 6, in: ctx)
+
+        let state = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
+                                             allPeople: try WorkoutRepository.allPeople(ctx))
+
+        let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
+        XCTAssertEqual(summary, "2/2 sets · 5–6 reps · 80 kg–90 kg",
+                       "Solo sessions must keep the exact existing combined summary")
+    }
+
+    func testLastTimeSegmentBodyweightFormat() {
+        XCTAssertEqual(SessionRenderModel.lastTimeSegment(
+            label: "Me", sets: [display(0, 12, bodyweight: true)], unit: .kilograms),
+            "Me: BW × 12")
+        XCTAssertEqual(SessionRenderModel.lastTimeSegment(
+            label: "Me", sets: [display(10, 12, bodyweight: true)], unit: .kilograms),
+            "Me: BW + 10 kg × 12")
+        XCTAssertNil(SessionRenderModel.lastTimeSegment(label: "Me", sets: [], unit: .kilograms),
+                     "No prior sets → no segment, never a fake 0")
+    }
+
+    func testSetLineTextUnitAndRoundtrip() {
+        XCTAssertEqual(SessionRenderModel.setLineText(display(100, 5), unit: .kilograms), "100 kg × 5")
+        XCTAssertEqual(SessionRenderModel.setLineText(display(100, 5), unit: .pounds), "220.5 lb × 5")
+        XCTAssertEqual(SessionRenderModel.setLineText(display(90.7185, 8), unit: .kilograms), "90.7 kg × 8")
+        XCTAssertEqual(SessionRenderModel.setLineText(display(100, 5, bodyweight: true), unit: .pounds),
+                       "BW + 220.5 lb × 5")
+    }
 }

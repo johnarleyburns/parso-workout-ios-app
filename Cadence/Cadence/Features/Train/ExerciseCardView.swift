@@ -86,7 +86,7 @@ struct ExerciseCardView: View {
                             Text(context.name).font(.headline).lineLimit(1)
                             if isCurrent { Image(systemName: "arrow.right.circle.fill").foregroundStyle(.green).font(.caption) }
                         }
-                        if !isExpanded { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                        if !isExpanded { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(context.hasPartners ? 3 : 2) }
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -161,7 +161,7 @@ struct ExerciseCardView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(pc.label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 if !pc.lastTimeSets.isEmpty {
-                    Text("Last time: " + pc.lastTimeSets.map { setDisplayLine($0) }.joined(separator: ", "))
+                    Text("Last time: " + pc.lastTimeSets.map { SessionRenderModel.setLineText($0, unit: unit) }.joined(separator: ", "))
                         .font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("exercise.lastTime.\(pc.label)")
                 }
@@ -173,7 +173,7 @@ struct ExerciseCardView: View {
             }
         } else {
             if !pc.lastTimeSets.isEmpty {
-                Text("Last time: " + pc.lastTimeSets.map { setDisplayLine($0) }.joined(separator: ", "))
+                Text("Last time: " + pc.lastTimeSets.map { SessionRenderModel.setLineText($0, unit: unit) }.joined(separator: ", "))
                     .font(.caption).foregroundStyle(.secondary)
                     .accessibilityIdentifier("exercise.lastTime")
             }
@@ -183,14 +183,6 @@ struct ExerciseCardView: View {
                     .accessibilityIdentifier("exercise.pr")
             }
         }
-    }
-
-    private func setDisplayLine(_ set: SessionRenderModel.SetDisplay) -> String {
-        if set.usesBodyweight {
-            let added = set.weight > 0 ? " + \(Format.weightValue(set.weight, unit: unit)) \(unit.abbreviation)" : ""
-            return "BW\(added) × \(set.reps)"
-        }
-        return "\(Format.weightValue(set.weight, unit: unit)) \(unit.abbreviation) × \(set.reps)"
     }
 
     // MARK: - Column header

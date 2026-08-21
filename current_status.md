@@ -2,6 +2,59 @@
 
 Updated: 2026-08-20
 
+## Field-test batch 2026-08-20 (8 issues): PLAN WRITTEN, awaiting review
+
+Eight iPhone field-test issues reported 2026-08-20. A full, agent-executable
+plan is on disk at **`docs/field-test-batch-2026-08-20/`** (`00-overview.md`,
+`01`–`08` phase files, `decisions.md`). **No code has changed.** The user must
+review the plan and answer the `decisions.md` sheet (esp. **D1** Rowing-GPS
+treatment and **D8** no-history copy) and set the execution protocol (one-phase
+stop vs one-pass push) before implementation.
+
+Skim of what the plan says (details in the phase files):
+
+- **P1 (issue 1)** partner alternation is two bugs: `SessionRenderModel.interleaved`
+  (`SessionRenderModel.swift:432-439`) is a column round-robin that emits
+  `Me,P,Me,P,P` (the old `testPendingSetsAlternateBetweenPerformers` *asserts*
+  the bug), and `SessionView.nextPerson()` (`SessionView.swift:939-949`) is a
+  **session-global** rotation decoupled from each exercise's pending rows. Fix:
+  new pure `CadenceFeatures/SetAlternation.swift` (fair-queue spread + per-
+  exercise `nextPerformerID`), used by the card, editor prefill, and `onRepeat`.
+- **P2 (issue 2)** collapsed card: `compactSummary` combines performers into
+  `6/6 sets`; per-performer `lastTimeSets` already exist per performer. Change:
+  with partners, render `Me: …; Sam: …` from prior-session sets; solo unchanged.
+- **P3 (issue 3)** set editor shows only a static "Last set" (`SessionView.swift:203-209`),
+  no prior history, not per selected partner. Change: `PerformerDefault` gains
+  `lastTimeText` + `lastSetThisSession`; editor renders a history card driven by
+  the selected performer (updates on change by SwiftUI recompute) + smoke steps.
+- **P4 (issue 4)** the only spacing anomaly on the active-workout surface is
+  `ExerciseCardView.actionButtons` `.padding(.top, cardHeadingSpacing - 8)` == 2pt;
+  make it `cardRowSpacing` (12) to match Home's rhythm.
+- **P5 (issue 5)** the "never-stops live activity" is the **watch** session
+  leaking: `model.stopWatchWorkout()` is called from only 4 sites; every cardio
+  recorder end/cancel never stops the watch, so `HKWorkoutSession` +
+  `WKExtendedRuntimeSession` run for hours and the next `start_workout` is
+  rejected `.alreadyActive` (`WatchWorkoutManagerSync.swift:65-67`). Fix: stop in
+  all cardio terminal paths (incl. `HomeView.releaseCardioWorkout`), add
+  `.alreadyActive` stop-then-retry-once, and `WorkoutLiveActivityCoordinator.endAllStale()`
+  on launch + `start`.
+- **P6 (issue 6)** `PreWorkoutHRView.swift:114` disables Continue forever after
+  "Check for Live HR" with a flaky watch. Fix: Continue always enabled; extract a
+  pure `PreWorkoutHRPresenter` (label/action/enabled) + tests.
+- **P7 (issue 7)** HR shown as small grid text (`RecordCardioView.swift:109-111`,
+  `OutdoorCardioView.swift:94`). Fix: shared `LiveHRBigView` — huge bold zone-
+  colored number (watch scheme Z1 cyan→Z5 red), zone + avg beneath — on the three
+  cardio live screens; semantic `HRZoneTint` in CadenceFeatures.
+- **P8 (issue 8)** `CardioType.rowing` already exists everywhere; missing the
+  `WorkoutType` entry case, the three picker arrays (want rowing after Cycle),
+  `WorkoutHero.colors`, and `HealthKitProvider.distanceType` (`.distanceRowing`).
+  Fix per **D1**; smoke asserts `startType.rowing` below `startType.cycle`.
+
+Smoke-test growth is deliberately small: P3 (history updates on performer
+switch), P5+P6 (cardio end → `stop_workout` seam; `prehr.start` enabled),
+P8 (`startType.rowing` after `startType.cycle`) — all inside the one iPhone
+test. Everything else is headless `swift test`.
+
 ## Field-test batch 2026-08-19 (8 issues): shipped and pushed
 
 On `origin/main` as **`2615c9d`** (the eight fixes) + **`d21ea25`** (two Swift 6

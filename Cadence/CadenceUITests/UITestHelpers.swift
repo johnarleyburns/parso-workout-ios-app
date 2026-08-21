@@ -56,6 +56,20 @@ extension XCUIApplication {
         return true
     }
 
+    /// Scrolls a (scrollable) screen until `id` exists in the accessibility tree
+    /// (lazy grids don't materialize off-screen cells). Returns whether it was
+    /// found. Does NOT tap — for assertions that only need existence/frame.
+    @discardableResult
+    func scrollToElement(_ id: String, maxSwipes: Int = 8) -> Bool {
+        let el = descendants(matching: .any)[id]
+        if el.waitForExistence(timeout: 3) { return true }
+        for _ in 0..<maxSwipes {
+            swipeUp()
+            if el.waitForExistence(timeout: 1) { return true }
+        }
+        return false
+    }
+
     /// Taps `sourceID` and waits until it reveals `destID`, re-tapping if the tap
     /// is dropped on a slow/degraded simulator (the element is tapped but the
     /// resulting sheet/overlay never opens). Re-taps only while the source is

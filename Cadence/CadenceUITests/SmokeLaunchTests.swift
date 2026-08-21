@@ -113,6 +113,26 @@ final class SmokeLaunchTests: CadenceUITestCase {
                            "Coach's Workout is a different height from Quick Start")
         }
 
+        // Field test 2026-08-20 issue 8: Rowing is a cardio box in the entry
+        // taxonomy, placed after Cycle in the cardio grid. The 2-column grid
+        // renders Cycle + Rowing on the same row (Cycle left, Rowing right), so
+        // "after Cycle" is a horizontal comparison; Rowing must also sit above
+        // the next row (Swim).
+        XCTAssertTrue(app.scrollToElement("startType.rowing"),
+                      "Start Workout did not offer Rowing")
+        let cycle = app.buttons["startType.cycle"]
+        XCTAssertTrue(cycle.exists, "Start Workout lost Cycle")
+        let rowing = app.buttons["startType.rowing"]
+        XCTAssertGreaterThan(rowing.frame.minX, cycle.frame.minX,
+                             "Rowing is not after Cycle in the cardio grid")
+        let swim = app.buttons["startType.swim"]
+        XCTAssertTrue(swim.exists, "Start Workout lost Swim")
+        XCTAssertLessThan(rowing.frame.minY, swim.frame.minY,
+                          "Rowing is not before Swim in the cardio grid")
+        // Return to the top of the sheet for the strength-flow steps that follow.
+        app.swipeDown()
+        app.swipeDown()
+
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
                       "Start Workout did not offer Custom Workout beneath Quick Start")
         XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10),

@@ -60,9 +60,9 @@ final class SessionEngineTests: XCTestCase {
         XCTAssertEqual(WorkoutType.swim.cardioType, .swim)
         XCTAssertTrue(WorkoutType.run.usesGPS)
         XCTAssertTrue(WorkoutType.cycle.usesGPS)
+        XCTAssertTrue(WorkoutType.rowing.usesGPS)
         XCTAssertFalse(WorkoutType.boxing.usesGPS)
         XCTAssertFalse(WorkoutType.swim.usesGPS)
-        // 8 types after the strength-pivot removal of CrossFit (P1).
-        XCTAssertEqual(WorkoutType.allCases.count, 8)
+        XCTAssertEqual(WorkoutType.allCases.count, 9)
     }
 }

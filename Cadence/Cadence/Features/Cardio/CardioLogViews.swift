@@ -45,7 +45,7 @@ struct LogWorkoutPicker: View {
     var onSaved: () -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
-    private let types: [CardioType] = [.run, .walk, .cycle, .swim, .hiit, .boxing]
+    private let types: [CardioType] = [.run, .walk, .cycle, .rowing, .swim, .hiit, .boxing]
     private let columns = [GridItem(.flexible(), spacing: 16),
                            GridItem(.flexible(), spacing: 16)]
 

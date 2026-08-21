@@ -341,12 +341,16 @@ final class HealthKitProvider: HealthDataProviding {
     }
 
     /// Maps a cardio type to the appropriate HealthKit distance quantity type.
+    /// Resolves through the semantic `CardioDistanceKind` so the mapping is
+    /// headlessly testable (field-test batch 2026-08-20 P8).
     static func distanceType(for t: CardioType) -> HKQuantityTypeIdentifier {
-        switch t {
-        case .run, .walk: return .distanceWalkingRunning
-        case .cycle: return .distanceCycling
-        case .swim: return .distanceSwimming
-        default: return .distanceWalkingRunning
+        switch t.distanceKind {
+        case .walkingRunning: return .distanceWalkingRunning
+        case .cycling: return .distanceCycling
+        case .swimming: return .distanceSwimming
+        case .rowing:
+            if #available(iOS 18, *) { return .distanceRowing }
+            return HKQuantityTypeIdentifier(rawValue: "HKQuantityTypeIdentifierDistanceRowing")
         }
     }
 

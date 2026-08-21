@@ -26,7 +26,7 @@ struct RecordCardioView: View {
     @State private var finishedSummary: WorkoutSummaryData?
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    private let types: [CardioType] = [.run, .cycle, .walk, .boxing, .hiit, .rowing]
+    private let types: [CardioType] = [.run, .cycle, .rowing, .walk, .boxing, .hiit]
 
     var body: some View {
         Group {

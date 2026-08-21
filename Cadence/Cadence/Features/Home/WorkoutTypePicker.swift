@@ -73,7 +73,7 @@ struct SelectWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
 
-    private let cardioTypes: [WorkoutType] = [.run, .walk, .cycle, .swim, .hiit, .boxing]
+    private let cardioTypes: [WorkoutType] = [.run, .walk, .cycle, .rowing, .swim, .hiit, .boxing]
     private let columns = [GridItem(.flexible(), spacing: 16),
                            GridItem(.flexible(), spacing: 16)]
 
@@ -279,6 +279,7 @@ struct WorkoutHero: View {
         case .run: return [.blue, .teal]
         case .walk: return [.teal, .green]
         case .cycle: return [.orange, .yellow]
+        case .rowing: return [.purple, .indigo]
         case .swim: return [.cyan, .blue]
         case .hiit: return [.pink, .red]
         case .boxing: return [.red, .orange]

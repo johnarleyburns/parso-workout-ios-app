@@ -3,16 +3,16 @@
 Every question below needs the user's answer **before implementation**. Once
 answered, record verbatim here and do not re-litigate (repository rule).
 
-## D1 — Rowing "optional GPS" treatment (P8)
+## D1 — Rowing "optional GPS" treatment (P8) — **DECIDED 2026-08-21: Option A**
 
-**Recommended: Option A — treat Rowing like Cycle.** `WorkoutType.rowing.usesGPS = true`
+**Option A — treat Rowing like Cycle.** `WorkoutType.rowing.usesGPS = true`
 routes it through the existing `startOutdoorWithGoal` → OutdoorCardioView flow.
 "Optional" is satisfied by the optional distance-goal chooser, GPS needing
 authorization (recorder tolerates no fixes), and the GPS-less Manual Log path.
 Zero new routing code.
 
-- **Option A** (recommended): Rowing = GPS box like Cycle; no new setup screen.
-- **Option B**: new `RowingSetupSheet` with a GPS toggle, routing
+- **Option A** (decided): Rowing = GPS box like Cycle; no new setup screen.
+- Option B (not chosen): new `RowingSetupSheet` with a GPS toggle, routing
   `.outdoor(.rowing)` or `.timer(.rowing)`.
 
 ## D2 — Alternation rule (P1)

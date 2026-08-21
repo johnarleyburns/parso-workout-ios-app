@@ -9,6 +9,7 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
     case run
     case walk
     case cycle
+    case rowing
     case swim
     case hiit
     case boxing
@@ -22,6 +23,7 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .run: return "Run"
         case .walk: return "Walk"
         case .cycle: return "Cycle"
+        case .rowing: return "Rowing"
         case .swim: return "Swim"
         case .hiit: return "HIIT"
         case .boxing: return "Boxing"
@@ -35,6 +37,7 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .run: return "figure.run"
         case .walk: return "figure.walk"
         case .cycle: return "figure.outdoor.cycle"
+        case .rowing: return "figure.rower"
         case .swim: return "figure.pool.swim"
         case .hiit: return "figure.highintensity.intervaltraining"
         case .boxing: return "figure.boxing"
@@ -45,7 +48,7 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
     /// Outdoor types that record a GPS route (field-testing §05).
     public var usesGPS: Bool {
         switch self {
-        case .run, .walk, .cycle: return true
+        case .run, .walk, .cycle, .rowing: return true
         default: return false
         }
     }
@@ -62,6 +65,7 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .run: return .run
         case .walk: return .walk
         case .cycle: return .cycle
+        case .rowing: return .rowing
         case .swim: return .swim
         case .hiit: return .hiit
         case .boxing: return .boxing

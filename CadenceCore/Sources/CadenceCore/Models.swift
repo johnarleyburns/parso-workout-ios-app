@@ -920,8 +920,26 @@ public enum CardioType: String, CaseIterable, Codable, Sendable, Identifiable {
     /// Outdoor types benefit from GPS route tracking (FR-2.2).
     public var usesGPS: Bool {
         switch self {
-        case .run, .cycle, .walk: return true
+        case .run, .cycle, .walk, .rowing: return true
         default: return false
+        }
+    }
+}
+
+/// The HealthKit distance quantity a cardio type maps to, decoupled from
+/// HealthKit so it is headlessly testable (field-test batch 2026-08-20 P8).
+public enum CardioDistanceKind: Equatable, Sendable {
+    case walkingRunning, cycling, swimming, rowing
+}
+
+public extension CardioType {
+    var distanceKind: CardioDistanceKind {
+        switch self {
+        case .run, .walk: .walkingRunning
+        case .cycle: .cycling
+        case .swim: .swimming
+        case .rowing: .rowing
+        case .boxing, .hiit, .other: .walkingRunning
         }
     }
 }

@@ -5,6 +5,16 @@ import CadenceFeatures
 
 enum HRSourceChoice { case bluetooth, watch, none }
 
+extension HRSourceChoice {
+    init(_ source: PreWorkoutHRContinue) {
+        switch source {
+        case .watch: self = .watch
+        case .bluetooth: self = .bluetooth
+        case .none: self = .none
+        }
+    }
+}
+
 /// Pre-workout heart-rate connection screen.
 /// Shown before cardio/interval/strength workouts so the user can connect a
 /// Bluetooth chest strap, see live HR, then press Start when ready.
@@ -37,6 +47,21 @@ struct PreWorkoutHRView: View {
         strapConnected ? hrm.currentBPM : nil
     }
     private var watchBPM: Int? { model.watchHRRelay.freshBPM(at: freshnessTick) }
+
+    /// The pure, headless-tested state the Continue/Check buttons render from
+    /// (field test 2026-08-20 issue 6). `watchRequested` is this view's
+    /// `watchSelected`; `relayBusy` is the mid-connection relay states.
+    private var hrState: PreWorkoutHRState {
+        let relay = model.watchHRRelay.state
+        var busy = false
+        if case .connecting = relay { busy = true }
+        if case .waitingForSample = relay { busy = true }
+        return PreWorkoutHRState(watchBPM: watchBPM,
+                                 strapConnected: strapConnected,
+                                 watchRequested: watchSelected,
+                                 relayBusy: busy)
+    }
+
     private var watchStatus: String {
         switch model.watchHRRelay.state {
         case .connecting: return "Connecting to Apple Watch…"
@@ -70,7 +95,7 @@ struct PreWorkoutHRView: View {
                             if let workoutType { model.startWatchWorkout(type: workoutType) } else { model.startWatchStrength() }
                         }
                         .buttonStyle(.bordered)
-                        .disabled({ if case .connecting = model.watchHRRelay.state { return true }; if case .waitingForSample = model.watchHRRelay.state { return true }; return false }())
+                        .disabled(!PreWorkoutHRPresenter.checkEnabled(hrState))
                             .accessibilityIdentifier("prehr.watch.check")
                     }
                     if watchSelected {
@@ -101,17 +126,15 @@ struct PreWorkoutHRView: View {
             VStack(spacing: 12) {
                 Button {
                     if watchBPM == nil { model.stopWatchWorkout() }
-                    if watchBPM != nil { onContinue(.watch) }
-                    else if strapConnected { onContinue(.bluetooth) }
-                    else { onContinue(.none) }
+                    onContinue(HRSourceChoice(PreWorkoutHRPresenter.continueAction(hrState)))
                 } label: {
-                    Text(watchBPM != nil ? "Continue with Apple Watch" : (strapConnected ? "Continue with Bluetooth" : "Continue without heart rate"))
+                    Text(PreWorkoutHRPresenter.continueLabel(hrState))
                         .font(.headline)
                         .frame(maxWidth: .infinity,
                                minHeight: CGFloat(LayoutMetrics.actionButtonHeight))
                 }
                 .cadenceGlassButton(prominent: true, tint: .green)
-                .disabled(watchSelected && watchBPM == nil && !strapConnected)
+                .disabled(!PreWorkoutHRPresenter.continueEnabled(hrState))
                 .accessibilityIdentifier("prehr.start")
             }
             .padding(.horizontal)

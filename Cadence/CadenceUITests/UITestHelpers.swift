@@ -328,11 +328,16 @@ extension XCUIElement {
     }
 }
 
+@MainActor
 class CadenceUITestCase: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         // Keep every test in a known portrait orientation so one test can't
-        // leave the simulator rotated and break the next.
-        XCUIDevice.shared.orientation = .portrait
+        // leave the simulator rotated and break the next. `XCTestCase.setUpWithError`
+        // is nonisolated, so the override must stay nonisolated even though the
+        // class is @MainActor — hop explicitly (UI tests run on the main thread).
+        MainActor.assumeIsolated {
+            XCUIDevice.shared.orientation = .portrait
+        }
     }
 }

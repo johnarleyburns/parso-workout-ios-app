@@ -2,14 +2,23 @@
 
 Updated: 2026-08-20
 
-## Field-test batch 2026-08-20 (8 issues): PLAN WRITTEN, awaiting review
+## Field-test batch 2026-08-20 (8 issues): plan approved — executing one phase at a time
 
-Eight iPhone field-test issues reported 2026-08-20. A full, agent-executable
-plan is on disk at **`docs/field-test-batch-2026-08-20/`** (`00-overview.md`,
-`01`–`08` phase files, `decisions.md`). **No code has changed.** The user must
-review the plan and answer the `decisions.md` sheet (esp. **D1** Rowing-GPS
-treatment and **D8** no-history copy) and set the execution protocol (one-phase
-stop vs one-pass push) before implementation.
+The full, agent-executable plan is on disk at
+**`docs/field-test-batch-2026-08-20/`** (`00-overview.md`, `01`–`08` phase
+files, `decisions.md`). It is the source of truth for this batch; re-read the
+relevant phase file before each phase.
+
+**Execution protocol (set 2026-08-20): do ONE phase at a time, starting with
+P1.** Each phase follows the 2026-08-18 batch protocol: implement → verify
+(`swift test`, build, phase-specific smoke/visual checks) → update
+`current_status.md` → `git commit` → **do not push** → report the SHA and pause
+for review. Do not start the next phase until the user says to continue.
+Amend this line if the user changes the protocol.
+
+Decisions still open in `decisions.md` (answer before the phase that needs
+them): **D1** Rowing-GPS treatment (needed at P8), **D8** no-history copy
+(needed at P3). D2–D7 use their recommended options unless overridden.
 
 Skim of what the plan says (details in the phase files):
 

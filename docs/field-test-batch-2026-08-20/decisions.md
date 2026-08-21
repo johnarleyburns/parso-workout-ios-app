@@ -68,9 +68,9 @@ prior-session sets, the history card shows "No previous history for <name>"
 rather than absent text, so the "always show (if any)" requirement is visibly
 satisfied and assertable in the smoke test.
 
-## Execution protocol — NOT yet set
+## Execution protocol — SET 2026-08-20
 
-The previous two batches used different protocols (one-phase-stop vs
-one-pass-push). This plan is written for review; **the user should state the
-protocol before implementation** (e.g. "one phase, stop, wait" or "fix all,
-commit and push"). Once stated, update `current_status.md` with it.
+**One phase at a time, starting with P1.** Follow the 2026-08-18 batch protocol
+per phase: implement → verify → update `current_status.md` → `git commit` →
+**do not push** → report the SHA and pause for review. Start the next phase only
+when the user says to continue. Amended by the user only.

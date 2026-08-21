@@ -1,8 +1,60 @@
 # Current Status
 
-Updated: 2026-08-20
+Updated: 2026-08-21
 
-## Field-test batch 2026-08-20 (8 issues): P1 shipped — next is P2, awaiting review
+## P2 complete — collapsed card shows per-partner "last time" (shipped, not pushed)
+
+Field test issue 2 (`docs/field-test-batch-2026-08-20/02-phase2-collapsed-partner-history.md`,
+decision **D5**). Committed as **`9e4dbce`** on `main`, **not pushed**, per the
+batch execution protocol.
+
+### What changed
+
+- **`SessionRenderModel.compactSummary`** now branches on `context.hasPartners`:
+  with partners it drops the combined `6/6 sets` and renders one segment per
+  performer, owner first, in roster order, from `lastTimeSets`
+  (`Me: 80 kg × 5, 90 kg × 6; Sam: 55 kg × 20, 60 kg × 15`). A performer with no
+  prior-session sets contributes no segment; when nobody has history it falls
+  back to the existing counts summary (never blank). Solo output byte-identical.
+  The old body moved verbatim into a private `countsSummary`.
+- **New shared formatters in `SessionRenderModel`**: `setLineText(_:unit:)`
+  (extracted from `ExerciseCardView.setDisplayLine`, deleted there) and
+  `lastTimeSegment(label:sets:unit:)`. P3's editor reuses these.
+- **`ExerciseCardView`**: uses `SessionRenderModel.setLineText` and relaxes the
+  collapsed `lineLimit` to 3 for partner sessions. `SessionView` call site
+  unchanged (still delegates to the model).
+- **Data fix surfaced by P2:** `performerContext` queried the partner's
+  `lastTimeSets` with the `Person` looked up from the exercise's sets — when the
+  partner had never performed the movement that lookup returned `nil`, which the
+  repository treats as *the owner*, so the partner's "last time" wrongly showed
+  the owner's sets (a latent bug also affecting the expanded card). Now guarded:
+  no person → empty last-time. No schema change.
+
+### Verification
+
+- `swift test` (full suite): **1,497 passed, 0 failures** (baseline 1,490 + 7
+  new `SessionRenderModelTests`: per-performer segments in roster order, no
+  combined set counts, partner-with-no-history omitted, no-history fallback,
+  solo byte-identical, bodyweight segment format, unit/roundtrip `setLineText`).
+- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
+- `make smoke` (iPhone): **passed** (645.7 s — machine was loaded; P1 was 185 s).
+- Guardrails: `check-test-pyramid.sh` OK (`SessionView` 1033 ≤ 1034; the LOC
+  budget covers the app Features dir only, and `ExerciseCardView` shrank 400 →
+  393), `check-no-network.sh` OK.
+- **Honest gap:** headless + structural only, per the phase file. The smoke
+  flow's fresh store has no prior-session history, so no "last time" segment
+  would render; asserting it would be vacuous.
+
+### Next
+
+- Await review. Then **P3** (set editor always shows per-partner history, issue
+  3) — re-read `docs/field-test-batch-2026-08-20/03-phase3-set-entry-history.md`
+  before starting. It reuses P2's formatters. D8 (P3 copy) and D1 (P8) are still
+  open in `decisions.md`.
+
+---
+
+## Field-test batch 2026-08-20 (8 issues): P1 shipped — next was P2
 
 ## P1 complete — stable, alternating partner order (shipped, not pushed)
 

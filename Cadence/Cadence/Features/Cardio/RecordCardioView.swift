@@ -101,15 +101,14 @@ struct RecordCardioView: View {
                 .monospacedDigit()
                 .accessibilityIdentifier("record.elapsed")
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                if recorder.type.usesGPS {
+            if recorder.type.usesGPS {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                     metric("Distance", Format.distance(recorder.distanceMeters), id: "record.distance")
                     metric("Pace", CardioMath.formatPace(secPerKm: recorder.pace), id: "record.pace")
                 }
-                metric("Heart Rate", Format.heartRate(recorder.currentBPM), id: "record.hr")
-                metric("Zone", recorder.currentBPM == nil ? "—" : "Z\(recorder.zone) · \(CardioMath.zoneName(recorder.zone))", id: "record.zone")
-                metric("Avg HR", Format.heartRate(recorder.avgHR), id: "record.avgHr")
             }
+            LiveHRBigView(bpm: recorder.currentBPM, zone: recorder.zone, avgHR: recorder.avgHR,
+                          idPrefix: "record")
 
             if recorder.strapConnected {
                 Label("Strap connected", systemImage: "checkmark.circle.fill")

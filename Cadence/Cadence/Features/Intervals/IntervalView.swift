@@ -43,6 +43,21 @@ struct IntervalView: View {
     private var state: FullScreenColorState { runner.colorState }
     private var isImminent: Bool { state == .imminent }
 
+    /// Live HR zone from the strap/watch BPM, using the same default HRmax the
+    /// cardio recorder uses (190) so the interval readout matches the other
+    /// cardio surfaces.
+    private var liveZone: Int {
+        guard let bpm = model.hrm.currentBPM, bpm > 0 else { return 0 }
+        return CardioMath.hrZone(bpm: bpm, maxHR: CardioMath.defaultMaxHR(age: nil))
+    }
+
+    /// Running average of this session's sampled HR (the same numbers saved on
+    /// finish, pre-downsample).
+    private var liveAvgHR: Double? {
+        let v = hrSamples.map(\.bpm).filter { $0 > 0 }
+        return v.isEmpty ? nil : v.reduce(0, +) / Double(v.count)
+    }
+
     var body: some View {
         if let finishedSummary {
             WorkoutSummaryView(data: finishedSummary, onDone: { dismiss() })
@@ -84,11 +99,8 @@ struct IntervalView: View {
                     .accessibilityIdentifier("interval.countdown")
                 Text("Total left \(Format.duration(runner.overallRemaining))")
                     .font(.headline).opacity(0.85)
-                if let bpm = model.hrm.currentBPM, bpm > 0 {
-                    Label("\(Int(bpm)) bpm", systemImage: "heart.fill")
-                        .font(.headline).opacity(0.9)
-                        .accessibilityIdentifier("interval.bpm")
-                }
+                LiveHRBigView(bpm: model.hrm.currentBPM, zone: liveZone, avgHR: liveAvgHR,
+                              idPrefix: "interval", label: "Interval heart rate")
                 Spacer()
 
                 // Skip the current phase (warm-up/work/rest/cool-down) — feedback

@@ -91,7 +91,8 @@ struct OutdoorCardioView: View {
                     .padding(.horizontal, 4)
                     .accessibilityIdentifier("outdoor.goal")
                 }
-                bigMetric(Format.heartRate(recorder?.currentBPM), "Heart Rate", id: "outdoor.hr")
+                LiveHRBigView(bpm: recorder?.currentBPM, zone: recorder?.zone ?? 0,
+                              avgHR: recorder?.avgHR, idPrefix: "outdoor")
 
                 Spacer()
 

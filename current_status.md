@@ -2,6 +2,75 @@
 
 Updated: 2026-08-21
 
+## P3 complete — set editor always shows per-partner history (shipped, not pushed)
+
+Field test issue 3 (`docs/field-test-batch-2026-08-20/03-phase3-set-entry-history.md`,
+decision **D8**). Committed as **`<SHA>`** on `main`, **not pushed**, per the
+batch execution protocol.
+
+### What changed
+
+- **New `CadenceFeatures/SetHistoryText.swift`** (pure, headless-testable):
+  `lastSetThisSession(_:unit:)` formats "Last set 185 lb × 8 · RPE 7" from a
+  `SetEntry`; `nil` for a performer's first set of the movement — never a
+  fabricated default. The SwiftData lookups that feed it stay in the view.
+- **`InlineEditorConfig.PerformerDefault`** (`SessionViewShared.swift`) gains two
+  additive optional `String`s: `lastTimeText` (prior-session sets for THIS
+  performer via P2's `SessionRenderModel.lastTimeSegment`) and
+  `lastSetThisSession` (this-session last working set for THIS performer).
+- **`SessionView.performerDefaults(for:)`** populates both per roster member from
+  `cache.state` performer contexts + `session.orderedSets`. The repeated
+  filter/logged-set lookup is now the shared `loggedSets(for:performerID:)`
+  helper, and `loggedReps` derives from it.
+- **`InlineSetEditorView`** gains a `historySection` card between "Who did this
+  set?" and Weight: `History` heading, `Last time: …` (`setEditor.history.lastTime`)
+  or decision **D8**'s explicit `No previous history for <name>`
+  (`setEditor.history.noHistory`) in secondary, and `Last set today: …`
+  (`setEditor.history.lastSet`) only when the performer has a set this session.
+  The section reads `selectedDefault` (the roster entry for the current
+  `performerID` `@State`), so it **re-derives by SwiftUI recompute on performer
+  switch** — no `.onChange` wiring.
+- **Deliberate deviation:** the old global `contextText` ("Last set …" computed
+  once per editor open from the whole exercise's last set, *not* per selected
+  performer) is **removed** — the header caption now shows only `recordedText`
+  ("Recorded") in edit mode. Leaving it would have re-introduced the exact bug:
+  with Sam selected, the header would still show the owner's stale "Last set".
+  The History card owns all per-performer last-set copy now.
+
+### Verification
+
+- `swift test` (full suite): **1,502 passed, 0 failures** (baseline 1,497 + 5:
+  4 `SetHistoryTextTests` + `testLastTimeSegmentPerSelectedPerformer`).
+- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
+- `make smoke` (iPhone): **passed** (227 s — the history flow added ~40 s to the
+  185 s P2 run; the phase file's estimate was +8–12 s, but the extra runtime buys
+  the end-to-end proof of the core requirement, so the full block stayed).
+- Guardrails: `check-test-pyramid.sh` OK (`SessionView` 1032 ≤ 1034 — held the
+  ratchet by extracting `loggedSets`; `InlineSetEditorView` 270 < 400),
+  `check-no-network.sh` OK.
+- **The smoke flow proves issue 3 end-to-end, unguarded:** after the owner's set
+  saves, reopening the editor asserts `setEditor.history` renders and
+  `setEditor.history.lastSet` shows the owner's just-logged reps (`× 5`); switching
+  "Who did this set?" to Sam asserts `lastSet` is **gone** and
+  `setEditor.history.noHistory` names Sam. Every step fails the test if missing.
+- **Real bug found by the new flow:** `setEditor.cancel` exists **twice** in the
+  tree (toolbar + footer buttons share the id); the test now taps it via
+  `firstMatch` like the confirmation-dialog buttons. Pre-existing duplication,
+  first exercised by this block.
+- **Env note:** one `make smoke` run died with "test runner hung before
+  establishing connection" — a CoreSimulatorService hiccup, not a code fault;
+  `killall -9 com.apple.CoreSimulator.CoreSimulatorService` + retry passed.
+
+### Next
+
+- Await review. Then **P4** (action-button top spacing 2 → 12, issue 4) — re-read
+  `docs/field-test-batch-2026-08-20/04-phase4-session-button-spacing.md` before
+  starting. **D1** (Rowing-GPS, needed at P8) is still open in `decisions.md`.
+
+---
+
+## Field-test batch 2026-08-20 (8 issues): P1–P2 shipped — next was P3
+
 ## P2 complete — collapsed card shows per-partner "last time" (shipped, not pushed)
 
 Field test issue 2 (`docs/field-test-batch-2026-08-20/02-phase2-collapsed-partner-history.md`,

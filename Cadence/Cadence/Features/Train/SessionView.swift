@@ -202,11 +202,6 @@ struct SessionView: View {
         let bodyweight = isEditing ? (editingSet?.usesBodyweight ?? false) : isBodyweight(exercise)
         let workingSets = session.orderedSets.filter { $0.exercise?.id == exercise.id && !$0.isWarmup }
         let number = isEditing ? (workingSets.firstIndex(where: { $0.id == editingSet?.id }).map { $0 + 1 } ?? workingSets.count + 1) : workingSets.count + 1
-        let contextText: String? = {
-            guard !isEditing, let prior = workingSets.last else { return nil }
-            let effort = prior.rpe.map { " · RPE \(Int($0.rounded()))" } ?? ""
-            return "Last set \(Format.setLine(prior, unit: settings.unit))\(effort)"
-        }()
         return InlineEditorConfig(
             id: isEditing ? (editingSet?.id ?? setEditorIdentity) : setEditorIdentity,
             isEditing: isEditing,
@@ -222,7 +217,6 @@ struct SessionView: View {
             performerDefaults: defaults,
             exerciseName: exercise.name,
             setNumberText: isEditing ? "Editing set \(number)" : "Set \(number) of \(max(number, session.plannedRepLadder.count))",
-            contextText: contextText,
             recordedText: isEditing ? "Recorded" : nil,
             effortMode: lastEffortMode
         )
@@ -273,27 +267,32 @@ struct SessionView: View {
     private func setPerformedBy(_ set: SetEntry, person: Person) -> Bool {
         person.isMe ? set.isOwnerSet : (set.performedBy?.id == person.id)
     }
-    /// One row per roster member: what THEIR next set on this exercise should be.
-    /// The editor uses it both to pre-fill and to re-target when the user changes
-    /// "Who did this set?" mid-entry (field test 2026-08-19 #2).
+    /// One row per roster member: what THEIR next set on this exercise should be,
+    /// plus their own prior-session and this-session history so the editor's
+    /// History card re-derives when the selected performer changes (2026-08-19 #2,
+    /// 2026-08-20 issue 3).
     func performerDefaults(for exercise: Exercise) -> [InlineEditorConfig.PerformerDefault] {
-        rosterEntries.map { entry in
+        let ctx = cache.state.contexts.first { $0.exerciseID == exercise.id }
+        return rosterEntries.map { entry in
             let performerID = entry.isMe ? nil : entry.personID
             let logged = loggedReps(for: exercise, performerID: performerID)
             let resolved = resolvedSet(for: exercise, setIndex: logged.count, performerID: performerID)
+            let pc = ctx?.performerContexts.first { $0.performerID == performerID }
+            let lastTime = pc.flatMap { SessionRenderModel.lastTimeSegment(label: $0.label, sets: $0.lastTimeSets, unit: settings.unit) }
+            let lastSet = SetHistoryText.lastSetThisSession(loggedSets(for: exercise, performerID: performerID).last, unit: settings.unit)
             return InlineEditorConfig.PerformerDefault(
-                performerID: performerID,
-                reps: resolved.reps,
-                weightKg: resolved.weightKg,
-                weight: resolved.weightKg.map { Format.weightValue($0, unit: settings.unit) } ?? "")
+                performerID: performerID, reps: resolved.reps, weightKg: resolved.weightKg,
+                weight: resolved.weightKg.map { Format.weightValue($0, unit: settings.unit) } ?? "",
+                lastTimeText: lastTime, lastSetThisSession: lastSet)
         }
     }
 
+    private func loggedSets(for exercise: Exercise, performerID: UUID?) -> [SetEntry] {
+        session.orderedSets.filter { $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID) }.sorted { $0.order < $1.order }
+    }
+
     private func loggedReps(for exercise: Exercise, performerID: UUID?) -> [Int] {
-        session.orderedSets
-            .filter { $0.exercise?.id == exercise.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID) }
-            .sorted { $0.order < $1.order }
-            .map(\.reps)
+        loggedSets(for: exercise, performerID: performerID).map(\.reps)
     }
 
     /// The single resolution path shared with the session's pending rows, so the

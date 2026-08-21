@@ -32,7 +32,6 @@ struct InlineEditorConfig: Equatable {
     var performerDefaults: [PerformerDefault] = []
     var exerciseName: String = ""
     var setNumberText: String = ""
-    var contextText: String?
     var recordedText: String?
     var effortMode: WatchEffortMode = .rpe
 
@@ -48,6 +47,14 @@ struct InlineEditorConfig: Equatable {
         var reps: Int
         var weightKg: Double?
         var weight: String
+        /// Prior-session sets on this movement for THIS performer, already
+        /// formatted (`185 lb × 5, 190 lb × 6`); nil when they have never done it
+        /// (field test 2026-08-20 issue 3).
+        var lastTimeText: String? = nil
+        /// "Last set … · RPE n" for THIS performer's most recent working set this
+        /// session; nil on their first set of the movement (field test 2026-08-20
+        /// issue 3).
+        var lastSetThisSession: String? = nil
     }
 }
 

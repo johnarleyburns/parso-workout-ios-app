@@ -728,6 +728,19 @@ final class SessionRenderModelTests: XCTestCase {
                      "No prior sets → no segment, never a fake 0")
     }
 
+    func testLastTimeSegmentPerSelectedPerformer() {
+        // The set editor's History card builds one "Last time" line from the
+        // SELECTED performer's own prior sets (field test 2026-08-20 issue 3).
+        let me = SessionRenderModel.lastTimeSegment(
+            label: "Me", sets: [display(80, 5), display(90, 6)], unit: .kilograms)
+        let sam = SessionRenderModel.lastTimeSegment(
+            label: "Sam", sets: [display(55, 20), display(60, 15)], unit: .kilograms)
+        XCTAssertEqual(me, "Me: 80 kg × 5, 90 kg × 6")
+        XCTAssertEqual(sam, "Sam: 55 kg × 20, 60 kg × 15")
+        XCTAssertNil(SessionRenderModel.lastTimeSegment(label: "Sam", sets: [], unit: .kilograms),
+                     "A performer with no prior sets on the movement gets no segment")
+    }
+
     func testSetLineTextUnitAndRoundtrip() {
         XCTAssertEqual(SessionRenderModel.setLineText(display(100, 5), unit: .kilograms), "100 kg × 5")
         XCTAssertEqual(SessionRenderModel.setLineText(display(100, 5), unit: .pounds), "220.5 lb × 5")

@@ -60,6 +60,7 @@ struct InlineSetEditorView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     headerContext
                     performerSection
+                    historySection
                     weightSection
                     repsSection
                     effortSection
@@ -100,8 +101,42 @@ struct InlineSetEditorView: View {
                 .accessibilityIdentifier("setEditor.exerciseName")
             Text(config.setNumberText).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                 .accessibilityIdentifier("setEditor.setNumber")
-            if let context = config.contextText ?? config.recordedText { Text(context).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
+            if let context = config.recordedText { Text(context).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
         }
+    }
+
+    /// The roster entry for whoever is currently selected. The History card reads
+    /// this, so it re-derives by SwiftUI recompute whenever "Who did this set?"
+    /// changes — the field-test issue 3 requirement.
+    private var selectedDefault: InlineEditorConfig.PerformerDefault? {
+        config.performerDefaults.first { $0.performerID == performerID }
+    }
+
+    /// Per-selected-performer history: prior-session sets on this movement
+    /// ("Last time") and the most recent set logged today ("Last set today").
+    /// Decision D8: an explicit "No previous history for <name>" line satisfies
+    /// "always show (if any)" and is assertable in the smoke test.
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("History").font(.headline)
+            if let lastTime = selectedDefault?.lastTimeText {
+                Text("Last time: \(lastTime)")
+                    .accessibilityIdentifier("setEditor.history.lastTime")
+            } else {
+                Text("No previous history for \(selectedPerformerName)")
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("setEditor.history.noHistory")
+            }
+            if let lastSet = selectedDefault?.lastSetThisSession {
+                Text("Last set today: \(lastSet)")
+                    .accessibilityIdentifier("setEditor.history.lastSet")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.background, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("setEditor.history")
     }
 
     private var selectedPerformerName: String {

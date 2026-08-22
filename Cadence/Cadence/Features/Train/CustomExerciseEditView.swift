@@ -1,7 +1,7 @@
 import SwiftUI
 import CadenceCore
 
-/// Lets users tag a custom exercise with body region, muscles, equipment, and category
+/// Lets users tag a custom exercise with muscle group, muscles, equipment, and category
 /// (Phase 5). Opened from ExerciseDetailView when the exercise is user-created.
 struct CustomExerciseEditView: View {
     let exercise: Exercise
@@ -23,9 +23,9 @@ struct CustomExerciseEditView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Body Regions") {
+                Section("Muscle Groups") {
                     bodyPartChips
-                    Text("Tap a region to select its primary muscles. Fine-tune in the Muscles section below.")
+                    Text("Tap a muscle group to select its primary muscles. Fine-tune in the Muscles section below.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
 

@@ -2,7 +2,7 @@ import XCTest
 import CadenceCore
 @testable import CadenceFeatures
 
-/// Field test 2026-08-18 #8/#9/#11: the Coach's Suggestions card's block order,
+/// Field test 2026-08-18 #8/#9/#11: the Observations card's block order,
 /// visibility and CTA rule. The view renders whatever this returns, so "the
 /// suggested workout is last" is asserted here rather than in the simulator.
 final class HomeCoachSectionPresenterTests: XCTestCase {

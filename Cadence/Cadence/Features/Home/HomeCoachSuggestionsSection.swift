@@ -2,11 +2,11 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// Home's Coach's Suggestions card plus the full-width action beneath it.
+/// Home's Observations card plus the full-width action beneath it.
 ///
 /// Field test 2026-08-18 #8/#9/#11: the coach artwork floats over the card's
 /// top-right corner instead of taking layout space, the suggested workout moved
-/// to the bottom of the card, and `Do Coach's Workout` is a sibling of the card
+/// to the bottom of the card, and `Suggest a Workout` is a sibling of the card
 /// rather than a child so it matches Home's `Start Workout` exactly.
 /// The render order itself lives in `HomeCoachSectionPresenter`.
 struct HomeCoachSuggestionsSection: View {
@@ -25,10 +25,10 @@ struct HomeCoachSuggestionsSection: View {
         VStack(spacing: LayoutMetrics.actionButtonSpacing) {
             card
             if HomeCoachSectionPresenter.showsPrimaryAction(recommendation: recommendation) {
-                CadenceActionButton(title: "Do Coach's Workout",
+                CadenceActionButton(title: "Suggest a Workout",
                                     systemImage: "play.fill",
                                     action: onStartRecommendation)
-                    .accessibilityIdentifier("home.coachRecommendation.start")
+                    .accessibilityIdentifier("home.suggestWorkout")
             }
         }
         // `children: .contain` must precede the identifier or the container
@@ -53,7 +53,7 @@ struct HomeCoachSuggestionsSection: View {
                 .accessibilityHidden(true)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home.coachSuggestions.card")
+        .accessibilityIdentifier("home.observations.card")
     }
 
     private var blocks: [HomeCoachSectionPresenter.Block] {
@@ -67,7 +67,7 @@ struct HomeCoachSuggestionsSection: View {
         switch block {
         case .heading:
             VStack(alignment: .leading, spacing: 6) {
-                Text("Coach’s Suggestions")
+                Text("Observations")
                     .font(.headline)
                     .padding(.trailing, Self.illustrationSize + Self.illustrationInset)
                 if suggestions.isEmpty {
@@ -126,7 +126,7 @@ struct HomeCoachSuggestionsSection: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.tint)
-        .accessibilityIdentifier(expandedNow ? "home.suggestions.showLess" : "home.suggestions.showMore")
+        .accessibilityIdentifier(expandedNow ? "home.observations.showLess" : "home.observations.showMore")
     }
 
     private func tint(_ suggestion: HomeSuggestion) -> Color {

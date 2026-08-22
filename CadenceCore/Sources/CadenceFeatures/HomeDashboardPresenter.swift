@@ -138,10 +138,10 @@ public struct HomeDashboardState: Sendable, Equatable {
     public let profileContext: ProfileContext
     public let strength: Progress
     public let cardio: Progress
-    /// Number of body parts currently in the productive (green) range.
+    /// Number of muscle groups currently in the productive (green) range.
     public let volumeCoverage: Progress
     public let volume: [VolumeRow]
-    /// Every tracked muscle, ordered most-complete first then alphabetically.
+    /// Every tracked muscle, ordered alphabetically by its displayed name.
     public let muscles: [MuscleRow]
     /// Share of tracked muscles that have reached the weekly set target.
     public let muscleCoverage: Progress
@@ -214,11 +214,14 @@ public enum HomeDashboardPresenter {
                          rangeStatus: rangeStatus.accessibilityText, status: rangeStatus,
                          normalized: min(1, max(0, sets / max(1, bands.mav))),
                          citationID: CitationRegistry.volumeDoseResponse.id)
+        }.sorted { lhs, rhs in
+            let order = lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName)
+            return order == .orderedSame ? lhs.part.rawValue < rhs.part.rawValue : order == .orderedAscending
         }
         let productiveParts = volume.filter { $0.status == .productive }.count
         let volumeCoverage = HomeDashboardState.Progress(
             completed: Double(productiveParts), target: 8,
-            displayText: "\(productiveParts)/8 body parts",
+            displayText: "\(productiveParts)/8 muscle groups",
             normalized: min(1, Double(productiveParts) / 8))
         let muscles = muscleRows(setsByMuscle: snapshot.facts.weeklySetsByMuscle)
         let atTarget = muscles.filter { $0.sets >= $0.target }.count
@@ -250,9 +253,7 @@ public enum HomeDashboardPresenter {
     /// minimum effective dose for most muscles.
     public static let weeklySetsPerMuscleTarget: Double = 8
 
-    /// Every muscle in `MuscleCatalog`, most-complete first, so the muscles the
-    /// user is actually hitting lead and the neglected ones are findable at the
-    /// bottom rather than hidden behind an arbitrary cut-off.
+    /// Every muscle in `MuscleCatalog`, alphabetically by displayed name.
     public static func muscleRows(setsByMuscle: [String: Double]) -> [HomeDashboardState.MuscleRow] {
         let target = weeklySetsPerMuscleTarget
         return MuscleCatalog.all.map { muscle -> HomeDashboardState.MuscleRow in
@@ -266,14 +267,14 @@ public enum HomeDashboardPresenter {
                          percentComplete: Int((sets / target * 100).rounded()))
         }
         .sorted {
-            if $0.sets != $1.sets { return $0.sets > $1.sets }
-            return $0.displayName < $1.displayName
+            let order = $0.displayName.localizedCaseInsensitiveCompare($1.displayName)
+            return order == .orderedSame ? $0.muscleID < $1.muscleID : order == .orderedAscending
         }
     }
 
     /// Title-cased from the catalog id ("rear-delts" → "Rear Delts"), so the list
     /// reads the way the picker's muscle filters already do.
-    private static func displayName(for muscle: Muscle) -> String {
+    public static func displayName(for muscle: Muscle) -> String {
         muscle.id.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
     }
 

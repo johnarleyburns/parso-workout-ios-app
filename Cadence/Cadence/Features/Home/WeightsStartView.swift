@@ -30,7 +30,7 @@ struct WeightsStartView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "checklist").font(.headline)
-                            Text("Coach's Workout")
+                            Text("Suggest a Workout")
                             Spacer()
                         }
                         .padding(.horizontal, 16)
@@ -45,8 +45,8 @@ struct WeightsStartView: View {
                     .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
                     .listRowBackground(Color.clear)
-                    .accessibilityIdentifier("weights.coachStart")
-                    .accessibilityLabel("Coach's Workout")
+                    .accessibilityIdentifier("weights.suggestWorkout")
+                    .accessibilityLabel("Suggest a Workout")
                 } footer: {
                     Text(rec.title)
                 }

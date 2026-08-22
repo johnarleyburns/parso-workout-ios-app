@@ -133,10 +133,10 @@ struct SelectWorkoutView: View {
                                       cooldown: settings.cooldownMinutes),
                         onStart: onEditorStart)
                 } label: {
-                    workoutChoiceLabel("Coach's Workout", symbol: "wand.and.stars")
+                    workoutChoiceLabel("Suggest a Workout", symbol: "wand.and.stars")
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("selectWorkout.coach")
+                .accessibilityIdentifier("selectWorkout.suggestWorkout")
 
                 NavigationLink {
                     PreviousWorkoutsView(onEditorStart: onEditorStart)

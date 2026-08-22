@@ -6,7 +6,7 @@ import CadenceFeatures
 extension ExercisePickerView {
     var browseModePicker: some View {
         Picker("Browse by", selection: $browseMode) {
-            Text("By Body Part").tag(BrowseMode.byBodyPart)
+            Text("By Muscle Group").tag(BrowseMode.byBodyPart)
             Text("By Equipment").tag(BrowseMode.byEquipment)
         }
         .pickerStyle(.segmented)
@@ -58,7 +58,7 @@ extension ExercisePickerView {
         .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 0))
     }
 
-    // MARK: Sub-filter chips (byBodyPart: equipment, byEquipment: body part)
+    // MARK: Sub-filter chips (byBodyPart: equipment, byEquipment: muscle group)
 
     var equipmentChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -192,7 +192,7 @@ extension ExercisePickerView {
                 }
 
                 if !selectedCreationParts.isEmpty {
-                    Section("Body Parts (auto-filled from category)") {
+                    Section("Muscle Groups (auto-filled from category)") {
                         Text(selectedCreationParts.sorted { $0.rawValue < $1.rawValue }
                             .map(\.displayName).joined(separator: ", "))
                             .font(.caption)

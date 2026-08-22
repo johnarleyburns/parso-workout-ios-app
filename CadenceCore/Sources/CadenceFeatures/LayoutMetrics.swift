@@ -5,14 +5,14 @@ import Foundation
 /// "these surfaces share Home's spacing" are unit-tested facts, not visual
 /// claims. The app maps these `Double`s to `CGFloat` at the call site.
 ///
-/// Field test 2026-08-18 issue 3: Quick Start / Custom Workout / Coach's Workout /
+/// Field test 2026-08-18 issue 3: Quick Start / Custom Workout / Suggest a Workout /
 /// Start Workout each carried their own hard-coded height (52/56/60/64) and font.
 public enum LayoutMetrics {
     // MARK: Full-width actions
 
     /// Height of every primary full-width action button (Home Start Workout,
-    /// Quick Start, Custom Workout, Coach's Workout, plan-editor Start Workout,
-    /// Do Coach's Workout).
+    /// Quick Start, Custom Workout, Suggest a Workout, plan-editor Start Workout,
+    /// and the Home Suggest a Workout action).
     public static let actionButtonHeight: Double = 56
     /// Corner radius of a full-width action button.
     public static let actionButtonCornerRadius: Double = 16

@@ -113,8 +113,8 @@ struct CoachMethodologyView: View {
     private var volumeWarnings: some View {
         principleRow(
             icon: "chart.bar.xaxis.ascending",
-            title: "Per-body-part volume warnings",
-            description: "When a single body part exceeds 20 working sets in a week, the coach warns about diminishing returns. The dose-response evidence supports a graded benefit up to this range; exceeding it yields smaller additional gains for most lifters.",
+            title: "Per-muscle-group volume warnings",
+            description: "When a single muscle group exceeds 20 working sets in a week, the coach warns about diminishing returns. The dose-response evidence supports a graded benefit up to this range; exceeding it yields smaller additional gains for most lifters.",
             citations: ["pellandDoseResponse2026", "volumeDoseResponse"]
         )
     }
@@ -152,7 +152,7 @@ struct CoachMethodologyView: View {
         principleRow(
             icon: "calendar.badge.plus",
             title: "Strength volume distributed across the week",
-            description: "The weekly plan spreads your remaining strength sessions across distinct days rather than stacking them on one day. Spreading weekly volume across multiple sessions improves per-set quality and recovery. The plan also auto-balances body-part coverage so you hit everything in a week.",
+            description: "The weekly plan spreads your remaining strength sessions across distinct days rather than stacking them on one day. Spreading weekly volume across multiple sessions improves per-set quality and recovery. The plan also auto-balances muscle-group coverage so you hit everything in a week.",
             citations: ["frequencyMeta", "ramosCampoSplit2024"]
         )
     }

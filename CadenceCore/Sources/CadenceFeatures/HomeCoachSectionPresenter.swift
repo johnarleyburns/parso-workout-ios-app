@@ -1,7 +1,7 @@
 import Foundation
 import CadenceCore
 
-/// Render order and visibility for Home's Coach's Suggestions card.
+/// Render order and visibility for Home's Observations card.
 ///
 /// Field test 2026-08-18 #8/#9/#11: the suggested workout used to render *above*
 /// the suggestion list behind a "Suggested Workout" blurb, and its CTA lived
@@ -71,7 +71,7 @@ public enum HomeCoachSectionPresenter {
         return blocks
     }
 
-    /// Whether the external "Do Coach's Workout" button renders.
+    /// Whether the external "Suggest a Workout" button renders.
     public static func showsPrimaryAction(recommendation: CoachSession?) -> Bool {
         launchableSession(recommendation) != nil
     }

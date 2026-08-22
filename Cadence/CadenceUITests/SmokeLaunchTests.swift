@@ -28,16 +28,22 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // CTA is a full-width sibling below the card, not a child of it.
         XCTAssertFalse(app.staticTexts["Suggested Workout"].exists,
                        "Coach card still shows the removed Suggested Workout blurb")
+        XCTAssertTrue(app.staticTexts["Observations"].waitForExistence(timeout: 5),
+                      "Coach's Suggestions heading was not renamed to Observations")
+        XCTAssertFalse(app.staticTexts["Coach’s Suggestions"].exists)
+        XCTAssertFalse(app.staticTexts["Coach's Suggestions"].exists)
+        XCTAssertFalse(app.staticTexts["Coach's Workout"].exists)
+        XCTAssertFalse(app.staticTexts["Do Coach's Workout"].exists)
         if app.descendants(matching: .any)["home.coachRecommendation"].exists {
-            let cta = app.buttons["home.coachRecommendation.start"]
+            let cta = app.buttons["home.suggestWorkout"]
             XCTAssertTrue(cta.waitForExistence(timeout: 5),
-                          "Do Coach's Workout is missing below the coach card")
+                          "Suggest a Workout is missing below the observations card")
             XCTAssertEqual(cta.frame.height, app.buttons["home.startWorkout"].frame.height,
                            accuracy: 1,
                            "Do Coach's Workout does not match Home Start Workout's height")
             XCTAssertGreaterThan(cta.frame.minY,
-                                 app.descendants(matching: .any)["home.coachSuggestions.card"].frame.minY,
-                                 "Do Coach's Workout is not below the Coach's Suggestions card")
+                                 app.descendants(matching: .any)["home.observations.card"].frame.minY,
+                                 "Suggest a Workout is not below the Observations card")
             XCTAssertFalse(app.buttons["home.coachRecommendation.preview"].exists,
                            "Coach card still exposes the removed Preview Workout action")
         }
@@ -73,11 +79,11 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Back from Coach & Plan did not return to Home")
         XCTAssertFalse(app.navigationBars["Settings"].exists,
                        "Back from Coach & Plan landed on Settings instead of Home")
-        if app.buttons["home.suggestions.showMore"].exists {
-            XCTAssertTrue(app.scrollToHittableAndTap("home.suggestions.showMore"),
-                          "Coach's Suggestions did not show only the first warning before Show more...")
-            XCTAssertTrue(app.scrollToHittableAndTap("home.suggestions.showLess"),
-                          "Coach's Suggestions did not put Show less at the bottom")
+        if app.buttons["home.observations.showMore"].exists {
+            XCTAssertTrue(app.scrollToHittableAndTap("home.observations.showMore"),
+                          "Observations did not show only the first warning before Show more...")
+            XCTAssertTrue(app.scrollToHittableAndTap("home.observations.showLess"),
+                          "Observations did not put Show less at the bottom")
         }
         XCTAssertFalse(app.descendants(matching: .any)["home.workoutHistory"].exists,
                        "Home still contains the duplicate Workout History card")
@@ -103,14 +109,17 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // Field test 2026-08-18 #3: the full-width strength actions are one height.
         let quick = app.buttons["selectWorkout.quickStart"]
         let custom = app.buttons["selectWorkout.custom"]
-        let coach = app.buttons["selectWorkout.coach"]
+        let coach = app.buttons["selectWorkout.suggestWorkout"]
         XCTAssertTrue(quick.waitForExistence(timeout: 5), "Start Workout lost Quick Start")
         let quickHeight = quick.frame.height
         XCTAssertEqual(quickHeight, custom.frame.height, accuracy: 1,
                        "Quick Start and Custom Workout are different heights")
         if coach.exists {
+            XCTAssertTrue(coach.label.contains("Suggest a Workout"),
+                          "Suggested-workout action still uses the old visible label")
+            XCTAssertFalse(app.buttons["selectWorkout.coach"].exists)
             XCTAssertEqual(quickHeight, coach.frame.height, accuracy: 1,
-                           "Coach's Workout is a different height from Quick Start")
+                           "Suggest a Workout is a different height from Quick Start")
         }
 
         // Field test 2026-08-20 issue 8: Rowing is a cardio box in the entry

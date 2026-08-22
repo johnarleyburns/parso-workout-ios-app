@@ -11,7 +11,7 @@ struct CoachAboutView: View {
 
             Section("What it analyzes") {
                 row("calendar.badge.clock", "Rolling 72 hours",
-                    "Exact recovery windows per exercise, movement pattern, and body part — unlike calendar-week snapshots, these don't shift at midnight Monday.")
+                    "Exact recovery windows per exercise, movement pattern, and muscle group — unlike calendar-week snapshots, these don't shift at midnight Monday.")
                 row("clock.arrow.circlepath", "Rolling 7 days",
                     "Weekly dose: strength days, pattern coverage, moderate-equivalent aerobic minutes vs the 150 min public-health floor.")
                 row("tray.full", "Rolling 28 days",
@@ -52,7 +52,7 @@ struct CoachAboutView: View {
                 row("target", "Training goal",
                     "Strength: favors heavy loads (>=80% e1RM). Hypertrophy: targets moderate loads with controlled RIR. Endurance: flags excessive heavy work.")
                 row("person.fill", "Experience level",
-                    "Scales weekly starting volume ranges per body part. Beginners usually need fewer sets; advanced lifters often tolerate more.")
+                    "Scales weekly starting volume ranges per muscle group. Beginners usually need fewer sets; advanced lifters often tolerate more.")
             }
 
             Section {

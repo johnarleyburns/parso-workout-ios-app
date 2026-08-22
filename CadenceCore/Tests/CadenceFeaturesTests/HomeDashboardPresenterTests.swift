@@ -62,10 +62,10 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertTrue(aboveTarget.isAtOrAboveTarget)
     }
 
-    func testVolumeCoverageCountsOnlyProductiveGreenBodyParts() throws {
+    func testVolumeCoverageCountsOnlyProductiveGreenMuscleGroups() throws {
         let state = try dashboard(chestSets: 8, now: Date())
-        XCTAssertEqual(state.volume.first?.displayName, "Legs")
-        XCTAssertEqual(state.volumeCoverage.displayText, "1/8 body parts")
+        XCTAssertEqual(state.volume.map(\.displayName), ["Back", "Biceps", "Calves", "Chest", "Core", "Legs", "Shoulders", "Triceps"])
+        XCTAssertEqual(state.volumeCoverage.displayText, "1/8 muscle groups")
         XCTAssertEqual(state.volumeCoverage.completed, 1)
         XCTAssertEqual(state.volumeCoverage.normalized, 0.125, accuracy: 0.001)
     }
@@ -110,10 +110,10 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertEqual(chest?.displayName, "Chest")
     }
 
-    func testMuscleRowsAreOrderedMostTrainedFirst() throws {
+    func testMuscleRowsAreOrderedAlphabeticallyAndTitleCased() throws {
         let muscles = try dashboard(chestSets: 4, now: Date()).muscles
-        XCTAssertEqual(muscles.first?.muscleID, "chest")
-        XCTAssertEqual(muscles.map(\.sets), muscles.map(\.sets).sorted(by: >))
+        XCTAssertEqual(muscles.map(\.displayName), ["Abductors", "Abs", "Adductors", "Biceps", "Calves", "Chest", "Delts", "Forearms", "Front Delts", "Glutes", "Hamstrings", "Hip Flexors", "Lats", "Lower Back", "Obliques", "Quads", "Rear Delts", "Rhomboids", "Traps", "Triceps", "Upper Chest"])
+        XCTAssertTrue(muscles.allSatisfy { $0.displayName.first?.isUppercase == true })
     }
 
     func testMuscleCoverageCountsMusclesAtOrAboveTheTarget() {

@@ -2,8 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 
-/// Quick-start that targets the body parts you haven't trained this week (feedback
-/// batch 8 — tapping the Home "body parts" tile). It first lists your **past
+/// Quick-start that targets the muscle groups you haven't trained this week (feedback
+/// batch 8 — tapping the Home "muscle groups" tile). It first lists your **past
 /// workouts** ranked by how many of the missing parts they cover (tap → reuse it),
 /// then offers a fresh session built from catalog **suggestions** that fill the gaps.
 struct BodyPartQuickStartView: View {
@@ -27,7 +27,7 @@ struct BodyPartQuickStartView: View {
             List {
                 Section {
                     Text(missing.isEmpty
-                         ? "You've hit every body part this week 💪"
+                         ? "You've hit every muscle group this week 💪"
                          : "Missing: " + missing.map(\.displayName).joined(separator: ", "))
                         .font(.subheadline).foregroundStyle(.secondary)
                         .accessibilityIdentifier("bodyQuick.missing")

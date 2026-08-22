@@ -2,7 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// Body-part volume vs plan section (§1). Rendered as a standalone
+/// Muscle-group volume vs plan section (§1). Rendered as a standalone
 /// SwiftUI view to keep `YourWeekView` under the ratchet ceiling.
 struct CoachPartVolumeSection: View {
     let trainingFacts: TrainingFacts
@@ -19,7 +19,7 @@ struct CoachPartVolumeSection: View {
             }
             .padding(.vertical, 4)
         } header: {
-            Text("Body-part volume vs plan")
+            Text("Muscle-group volume vs plan")
         } footer: {
             if let citation = CitationRegistry.citation(forId: "volumeDoseResponse") {
                 CitationLink(citation: citation, compact: true)

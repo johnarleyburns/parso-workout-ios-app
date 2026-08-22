@@ -258,7 +258,7 @@ extension HomeView {
     }
 
     /// Swap one component of a two-a-day plan: strength → the strength start
-    /// surface (Coach's Workout / presets / reuse); cardio → the full picker.
+    /// surface (Suggest a Workout / presets / reuse); cardio → the full picker.
     func swapComponent(_ session: CoachSession) {
         if session.kind == .strength { weightsStartPresented = true }
         else { cardioPickerPresented = true }

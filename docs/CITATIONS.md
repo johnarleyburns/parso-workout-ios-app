@@ -38,6 +38,16 @@ resistance training volume and increases in muscle mass.* **J Sports Sci 35(11).
 - **Caveat:** the MEV/MAV/MRV bands are practical training heuristics scaled by
   experience, not values read directly from one trial; treated as conservative defaults.
 
+### `iversenTimeEfficient2021` — weekly-set display scale
+Iversen, Norum, Schoenfeld & Fimland (2021). *No Time to Lift? Designing
+Time-Efficient Training Programs for Strength and Hypertrophy: A Narrative Review.*
+**Sports Medicine.** <https://pmc.ncbi.nlm.nih.gov/articles/PMC8449772/>
+
+- **Used by:** Home's shared 4-to-12 weekly-set display for muscle groups and
+  individual muscles.
+- **What it supports:** presenting weekly resistance-training volume as a practical,
+  bounded set range rather than an achieved/not-achieved binary.
+
 ### `frequencyMeta` — training frequency
 Schoenfeld, Grgic & Krieger (2019). *How many times per week should a muscle be trained
 to maximize muscle hypertrophy?* **J Sports Sci 37(11).**
@@ -269,6 +279,17 @@ Muscle Hypertrophy and Strength Gains.* **Sports Medicine.**
 - **What it supports:** graded dose-response with diminishing returns; frequency more
   useful for volume distribution than as an independent hypertrophy driver.
 - **Metadata corrected (2026-06-25):** authors and title updated to match PMID 41343037.
+
+### `pellandFractionalSets2024` — fractional indirect-set accounting
+Pelland, Remmert, Robinson, Hinson & Zourdos (2024). *The Resistance Training
+Dose-Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency
+on Muscle Hypertrophy and Strength Gain.* **SportRxiv.**
+<https://sportrxiv.org/index.php/server/preprint/view/460/967>
+
+- **Used by:** the weekly-set accounting explanation and generated-plan results.
+- **What it supports:** Cladiron's fractional model counts a primary set as **1.0**
+  and an indirect/secondary set as **0.5**; this is a transparent modeling choice,
+  not a claim that every exercise has identical secondary-muscle loading.
 
 ### `parejaBlancoRecovery2020` — recovery after training to failure
 Pareja-Blanco et al. (2020). *Recovery of neuromuscular performance after resistance
@@ -596,7 +617,7 @@ citation pool via `CitationRegistry.citationPool(for:)`. A pool curated for one 
 | `stepsHealth` | stepsHealthPool | saintMauriceSteps2020, leeAccelerometer2019 |
 | `aerobicBase` | aerobicBasePool | ekelundActivityMortality2016, mooreLeisureActivity2012, aremDoseResponse2015 |
 | `strengthFrequency` | strengthFrequencyPool | frequencyMeta |
-| `strengthVolume` | strengthVolumePool | volumeDoseResponse, pellandDoseResponse2026 |
+| `strengthVolume` | strengthVolumePool | volumeDoseResponse, iversenTimeEfficient2021, pellandDoseResponse2026, pellandFractionalSets2024 |
 | `strengthIntensity` | strengthIntensityPool | schoenfeld2021, zourdosRIR2016, rpeAutoregulation |
 | `periodization` | periodizationPool | williamsLinearPeriodization, rheaPeriodization |
 | `vo2Training` | vo2TrainingPool | crowleyVO2Intensity2022, poonHIIT2024, milanovicHIIT2015, hiitVo2max |

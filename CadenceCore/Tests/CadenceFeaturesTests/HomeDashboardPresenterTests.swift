@@ -31,23 +31,20 @@ final class HomeDashboardPresenterTests: XCTestCase {
             experience: .intermediate, userAge: nil)
     }
 
-    func testVolumeStatusUsesBelowProductiveBoundary() throws {
-        let row = try dashboard(chestSets: 7, now: Date()).volume.first { $0.part == .chest }
-        XCTAssertEqual(row?.status, .belowStartingRange)
-        XCTAssertEqual(row?.rangeStatus, "Below starting range")
-    }
+    func testVolumeRowsUseTheSharedWeeklySetZonesAndCitation() throws {
+        let below = try dashboard(chestSets: 3, now: Date()).volume.first { $0.part == .chest }
+        let building = try dashboard(chestSets: 4, now: Date()).volume.first { $0.part == .chest }
+        let productive = try dashboard(chestSets: 8, now: Date()).volume.first { $0.part == .chest }
+        let above = try dashboard(chestSets: 13, now: Date()).volume.first { $0.part == .chest }
 
-    func testVolumeStatusUsesProductiveBoundaryIncludingMAV() throws {
-        let atStarting = try dashboard(chestSets: 8, now: Date()).volume.first { $0.part == .chest }
-        let atProductiveCeiling = try dashboard(chestSets: 16, now: Date()).volume.first { $0.part == .chest }
-        XCTAssertEqual(atStarting?.status, .productive)
-        XCTAssertEqual(atProductiveCeiling?.status, .productive)
-    }
-
-    func testVolumeStatusFlagsAboveRecoveryBoundary() throws {
-        let row = try dashboard(chestSets: 23, now: Date()).volume.first { $0.part == .chest }
-        XCTAssertEqual(row?.status, .aboveRecoveryRange)
-        XCTAssertEqual(row?.rangeStatus, "Above recovery range")
+        XCTAssertEqual(below?.zone, .belowMinimum)
+        XCTAssertEqual(building?.zone, .building)
+        XCTAssertEqual(productive?.zone, .productive)
+        XCTAssertEqual(above?.zone, .aboveMaximum)
+        XCTAssertEqual(above?.rangeText, "Above 12-set maximum")
+        XCTAssertEqual(productive?.normalized ?? 0, 8.0 / 12.0, accuracy: 0.001)
+        XCTAssertEqual(above?.normalized, 1)
+        XCTAssertNotNil(CitationRegistry.citation(forId: productive?.citationID ?? ""))
     }
 
     func testProgressStatusChangesOnlyAtTarget() {
@@ -62,12 +59,12 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertTrue(aboveTarget.isAtOrAboveTarget)
     }
 
-    func testVolumeCoverageCountsOnlyProductiveGreenMuscleGroups() throws {
+    func testVolumeSummaryUsesMeanCappedSetsAcrossMuscleGroups() throws {
         let state = try dashboard(chestSets: 8, now: Date())
         XCTAssertEqual(state.volume.map(\.displayName), ["Back", "Biceps", "Calves", "Chest", "Core", "Legs", "Shoulders", "Triceps"])
-        XCTAssertEqual(state.volumeCoverage.displayText, "1/8 muscle groups")
+        XCTAssertEqual(state.volumeCoverage.displayText, "1 avg sets")
         XCTAssertEqual(state.volumeCoverage.completed, 1)
-        XCTAssertEqual(state.volumeCoverage.normalized, 0.125, accuracy: 0.001)
+        XCTAssertEqual(state.volumeCoverage.normalized, 1.0 / 12.0, accuracy: 0.001)
     }
 
     func testSuggestionToneMapsProgressWarningsAndInformation() {
@@ -100,14 +97,19 @@ final class HomeDashboardPresenterTests: XCTestCase {
                        "Every catalog muscle needs a line, including the ones at zero")
     }
 
-    func testMuscleRowReportsPercentOfTheWeeklySetTarget() throws {
-        let muscles = try dashboard(chestSets: 4, now: Date()).muscles
-        let chest = muscles.first { $0.muscleID == "chest" }
-        XCTAssertEqual(chest?.sets, 4)
-        XCTAssertEqual(chest?.target, HomeDashboardPresenter.weeklySetsPerMuscleTarget)
-        XCTAssertEqual(chest?.percentComplete, 50)
-        XCTAssertEqual(chest?.normalized ?? 0, 0.5, accuracy: 0.001)
-        XCTAssertEqual(chest?.displayName, "Chest")
+    func testMuscleRowsUseTheSharedZonesAndKeepFractionalSets() {
+        let rows = HomeDashboardPresenter.muscleRows(setsByMuscle: [
+            "chest": 3.5, "lats": 4, "glutes": 8, "quads": 12.5,
+        ])
+        XCTAssertEqual(rows.first { $0.muscleID == "chest" }?.zone, .belowMinimum)
+        XCTAssertEqual(rows.first { $0.muscleID == "lats" }?.zone, .building)
+        XCTAssertEqual(rows.first { $0.muscleID == "glutes" }?.zone, .productive)
+        let quads = rows.first { $0.muscleID == "quads" }
+        XCTAssertEqual(quads?.zone, .aboveMaximum)
+        XCTAssertEqual(quads?.normalized, 1)
+        XCTAssertEqual(rows.first { $0.muscleID == "chest" }?.sets, 3.5)
+        XCTAssertEqual(rows.first { $0.muscleID == "chest" }?.normalized ?? 0, 3.5 / 12, accuracy: 0.001)
+        XCTAssertNotNil(CitationRegistry.citation(forId: quads?.citationID ?? ""))
     }
 
     func testMuscleRowsAreOrderedAlphabeticallyAndTitleCased() throws {
@@ -116,18 +118,11 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertTrue(muscles.allSatisfy { $0.displayName.first?.isUppercase == true })
     }
 
-    func testMuscleCoverageCountsMusclesAtOrAboveTheTarget() {
-        let rows = HomeDashboardPresenter.muscleRows(setsByMuscle: ["chest": 8, "lats": 4])
-        XCTAssertEqual(rows.first(where: { $0.muscleID == "chest" })?.percentComplete, 100)
-        XCTAssertEqual(rows.first(where: { $0.muscleID == "lats" })?.percentComplete, 50)
-        XCTAssertEqual(rows.first(where: { $0.muscleID == "glutes" })?.sets, 0)
-    }
-
-    func testMuscleRowsOverTargetReportAboveOneHundredButClampTheBar() {
-        let rows = HomeDashboardPresenter.muscleRows(setsByMuscle: ["chest": 16])
-        let chest = rows.first { $0.muscleID == "chest" }
-        XCTAssertEqual(chest?.percentComplete, 200)
-        XCTAssertEqual(chest?.normalized, 1, "The progress bar never overflows")
+    func testMuscleSummaryUsesMeanCappedSetsAcrossEveryMuscle() throws {
+        let state = try dashboard(chestSets: 12, now: Date())
+        XCTAssertEqual(state.muscleCoverage.completed, 12.0 / Double(MuscleCatalog.all.count), accuracy: 0.001)
+        XCTAssertEqual(state.muscleCoverage.displayText, "0.6 avg sets")
+        XCTAssertEqual(state.muscleCoverage.normalized, 1.0 / Double(MuscleCatalog.all.count), accuracy: 0.001)
     }
 
     // MARK: - Cardio minutes (field test 2026-08-19 #7)

@@ -77,6 +77,17 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1080/02640414.2016.1210197"
     )
 
+    /// Time-efficient resistance training review — anchors Home's shared weekly
+    /// four-to-twelve-set volume display.
+    public static let iversenTimeEfficient2021 = Citation(
+        id: "iversenTimeEfficient2021",
+        authors: "Iversen, Norum, Schoenfeld & Fimland",
+        year: 2021,
+        title: "No Time to Lift? Designing Time-Efficient Training Programs for Strength and Hypertrophy: A Narrative Review",
+        source: "Sports Medicine",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC8449772/"
+    )
+
     /// Training-frequency meta-analysis — anchors the ≥2 sessions/muscle/week rule.
     public static let frequencyMeta = Citation(
         id: "frequencyMeta",
@@ -249,6 +260,17 @@ public enum CitationRegistry {
         title: "The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains",
         source: "Sports Medicine",
         url: "https://doi.org/10.1007/s40279-025-02344-w"
+    )
+
+    /// Preprint meta-regression used for the Home accounting explanation: a
+    /// primary set contributes 1.0 and an indirect set contributes 0.5.
+    public static let pellandFractionalSets2024 = Citation(
+        id: "pellandFractionalSets2024",
+        authors: "Pelland, Remmert, Robinson, Hinson & Zourdos",
+        year: 2024,
+        title: "The Resistance Training Dose-Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gain",
+        source: "SportRxiv",
+        url: "https://sportrxiv.org/index.php/server/preprint/view/460/967"
     )
 
     public static let ramosCampoSplit2024 = Citation(
@@ -634,13 +656,13 @@ public enum CitationRegistry {
     // MARK: - All citations registry
 
     public static let all: [Citation] = [
-        schoenfeld2021, volumeDoseResponse, frequencyMeta, oneRMEstimation,
+        schoenfeld2021, volumeDoseResponse, iversenTimeEfficient2021, frequencyMeta, oneRMEstimation,
         rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max,
         rockportWalk, queensCollegeStep,
         krieger2010, rheaPeriodization, calatayudBodyweight, channellOlympic,
         zourdosDUP, amirthalingamGVT, williamsLinearPeriodization, tufanoCluster,
         ekelundActivityMortality2016,
-        pellandDoseResponse2026, ramosCampoSplit2024, parejaBlancoRecovery2020,
+        pellandDoseResponse2026, pellandFractionalSets2024, ramosCampoSplit2024, parejaBlancoRecovery2020,
         sawMonitoring2016, meeusenOvertraining2013, schumannConcurrent2022,
         crowleyVO2Intensity2022, poonHIIT2024,
         mooreLeisureActivity2012, aremDoseResponse2015, saintMauriceSteps2020,
@@ -669,6 +691,7 @@ public enum CitationRegistry {
     public static let usageReasons: [String: String] = [
         "schoenfeld2021": "Loading recommendations — anchors the rep continuum for strength, hypertrophy, and endurance prescriptions.",
         "volumeDoseResponse": "Weekly sets-per-muscle dose-response — backs volume add/trim recommendations and per-part progress.",
+        "iversenTimeEfficient2021": "Time-efficient resistance training review — backs Home's shared 4-to-12 weekly-set scale for muscle groups and individual muscles.",
         "frequencyMeta": "Spreading weekly volume across ≥2 sessions per week improves per-set quality and recovery.",
         "oneRMEstimation": "Prediction equations for estimated 1RM — backs the e1RM formula picker and assessment retest prompts.",
         "rpeAutoregulation": "RIR-based RPE scale — backs autoregulation for load selection and proximity-to-failure prescriptions.",
@@ -687,6 +710,7 @@ public enum CitationRegistry {
         "tufanoCluster": "Cluster set training — backs the cluster-set program routine.",
         "ekelundActivityMortality2016": "Physical activity attenuates sitting-time mortality risk — backs aerobic-base recommendations and the 150-min floor.",
         "pellandDoseResponse2026": "Resistance training dose-response meta-regression — backs volume personalization and over-MRV trim warnings.",
+        "pellandFractionalSets2024": "Resistance-training dose-response preprint — backs the fractional weekly-set model where primary sets count 1.0 and indirect sets count 0.5.",
         "ramosCampoSplit2024": "Full-body vs split routine effects on strength and hypertrophy — backs session-structure choices in the weekly plan.",
         "parejaBlancoRecovery2020": "48-hour same-lift recovery window after training to failure — backs the session eligibility deferral gates.",
         "sawMonitoring2016": "Self-reported measures trump objective monitoring — backs the readiness check-in system, recovery recommendations, and the passive-readiness FUSION rule (self-report wins wherever present; passive signals only fill the gap).",
@@ -810,7 +834,9 @@ public enum CitationRegistry {
 
     public static let strengthVolumePool = CitationPool(id: "strengthVolume", citationIds: [
         "volumeDoseResponse",
+        "iversenTimeEfficient2021",
         "pellandDoseResponse2026",
+        "pellandFractionalSets2024",
     ])
 
     public static let strengthIntensityPool = CitationPool(id: "strengthIntensity", citationIds: [

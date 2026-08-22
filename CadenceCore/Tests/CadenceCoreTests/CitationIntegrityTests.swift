@@ -9,6 +9,7 @@ final class CitationIntegrityTests: XCTestCase {
 
         let required = [
             "ekelundActivityMortality2016",
+            "iversenTimeEfficient2021", "pellandFractionalSets2024",
             "pellandDoseResponse2026", "ramosCampoSplit2024",
             "parejaBlancoRecovery2020", "sawMonitoring2016", "meeusenOvertraining2013",
             "schumannConcurrent2022", "crowleyVO2Intensity2022", "poonHIIT2024",
@@ -185,6 +186,15 @@ final class CitationIntegrityTests: XCTestCase {
         let saw = CitationRegistry.citation(forId: "sawMonitoring2016")
         XCTAssertTrue(saw?.source.contains("British Journal of Sports Medicine") == true,
                       "Saw source not corrected: \(saw?.source ?? "nil")")
+
+        let iversen = CitationRegistry.citation(forId: "iversenTimeEfficient2021")
+        XCTAssertEqual(iversen?.url, "https://pmc.ncbi.nlm.nih.gov/articles/PMC8449772/")
+        XCTAssertTrue(CitationRegistry.usageReason(forId: "iversenTimeEfficient2021")?.contains("4-to-12") == true)
+
+        let fractional = CitationRegistry.citation(forId: "pellandFractionalSets2024")
+        XCTAssertEqual(fractional?.url, "https://sportrxiv.org/index.php/server/preprint/view/460/967")
+        let reason = CitationRegistry.usageReason(forId: "pellandFractionalSets2024") ?? ""
+        XCTAssertTrue(reason.contains("1.0") && reason.contains("0.5"))
     }
 
     func testEveryPoolIdResolves() {

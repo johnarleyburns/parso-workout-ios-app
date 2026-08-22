@@ -54,6 +54,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "This Week did not expand in place")
         XCTAssertTrue(app.scrollToHittableAndTap("home.volume.legs"),
                       "Expanded This Week did not expose the Legs volume row")
+        let legsVolume = app.descendants(matching: .any)["home.volume.legs"]
+        XCTAssertTrue((legsVolume.value as? String)?.contains("0 sets, Below 4-set minimum") == true,
+                      "A zero-set muscle group is not exposed as below the red-facing minimum")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
                       "Expanded This Week did not label the body-part rows as Volume")
         // Field test 2026-08-19 #7/#8: the weighted cardio total is explained, and
@@ -65,6 +68,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
                       "Expanded This Week does not explain the moderate-equivalent cardio total")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscles"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["progress.card.citation"].exists,
+                      "Weekly volume does not expose a navigable science link")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showLess"),
                       "Expanded This Week did not show Show less")
 

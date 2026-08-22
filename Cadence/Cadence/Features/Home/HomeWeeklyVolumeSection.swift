@@ -10,6 +10,9 @@ struct HomeWeeklyVolumeSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Weekly Volume").font(.headline)
+            Text("4 minimum · 8+ productive · 12 maximum")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             ForEach(rows) { row in
                 HStack(spacing: 10) {
                     Text(row.displayName).frame(width: 116, alignment: .leading)
@@ -17,8 +20,8 @@ struct HomeWeeklyVolumeSection: View {
                     VStack(alignment: .trailing) {
                         Text("\(formattedSets(row.sets)) sets")
                             .font(.caption.weight(.semibold))
-                        if row.status == .aboveRecoveryRange {
-                            Label("Above recovery range", systemImage: "exclamationmark.triangle.fill")
+                        if row.zone == .aboveMaximum {
+                            Label("Above 12-set maximum", systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(.red)
                         }
@@ -27,8 +30,13 @@ struct HomeWeeklyVolumeSection: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(row.displayName)
-                .accessibilityValue("\(formattedSets(row.sets)) sets, \(row.rangeStatus)")
+                .accessibilityValue("\(formattedSets(row.sets)) sets, \(row.rangeText)")
                 .accessibilityIdentifier("home.volume.\(row.part.rawValue)")
+            }
+            if let citation = CitationRegistry.citation(forId: CitationRegistry.iversenTimeEfficient2021.id) {
+                CitationLink(citation: citation,
+                             context: "Weekly set volume is shown on a shared 4-to-12-set scale for each muscle group.",
+                             compact: true)
             }
             Divider()
             HStack {
@@ -52,10 +60,10 @@ struct HomeWeeklyVolumeSection: View {
     }
 
     private func tint(for row: HomeDashboardState.VolumeRow) -> Color {
-        switch row.status {
-        case .belowStartingRange: return .yellow
-        case .productive: return .green
-        case .aboveRecoveryRange: return .red
+        switch row.zone.tintRole {
+        case .red: return .red
+        case .yellow: return .yellow
+        case .green: return .green
         }
     }
 }

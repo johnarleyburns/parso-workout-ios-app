@@ -23,15 +23,15 @@ struct HomeWeekDashboardSection: View {
                         tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
                         caption: dashboard.cardioDetail.summary)
             progressRow(id: "home.week.volume", title: "Volume",
-                        value: WorkoutMath.tonnageLabel(volumeKg: totalVolumeKg, unit: unit),
+                        value: dashboard.volumeCoverage.displayText,
                         progress: dashboard.volumeCoverage.normalized,
-                        tint: dashboard.volumeCoverage.isAtOrAboveTarget ? .green : .yellow,
-                        caption: dashboard.volumeCoverage.displayText + " in the productive range")
+                        tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
+                        caption: weeklySetCaption)
             progressRow(id: "home.week.muscles", title: "Muscles",
                         value: dashboard.muscleCoverage.displayText,
                         progress: dashboard.muscleCoverage.normalized,
-                        tint: dashboard.muscleCoverage.isAtOrAboveTarget ? .green : .yellow,
-                        caption: "Weekly sets per muscle, \(Int(HomeDashboardPresenter.weeklySetsPerMuscleTarget)) is the target")
+                        tint: tint(for: WeeklySetProgress.zone(for: dashboard.muscleCoverage.completed)),
+                        caption: weeklySetCaption)
 
             if volumeExpanded {
                 expandedWeek
@@ -87,6 +87,11 @@ struct HomeWeekDashboardSection: View {
                 .accessibilityIdentifier("home.week.volumeHeading")
             ForEach(dashboard.volume) { row in
                 volumeRow(row)
+            }
+            if let citation = CitationRegistry.citation(forId: CitationRegistry.iversenTimeEfficient2021.id) {
+                CitationLink(citation: citation,
+                             context: "Weekly set volume is shown on a shared 4-to-12-set scale for each muscle group.",
+                             compact: true)
             }
             Divider()
             HStack {
@@ -147,7 +152,7 @@ struct HomeWeekDashboardSection: View {
         .accessibilityIdentifier("home.week.cardioMinutes")
     }
 
-    /// Field test 2026-08-19 #8: body parts are too coarse to answer "have I
+    /// Field test 2026-08-19 #8: muscle groups are too coarse to answer "have I
     /// trained my adductors this week?". Every catalog muscle gets a line.
     private var muscles: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -155,14 +160,14 @@ struct HomeWeekDashboardSection: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.purple)
                 .accessibilityIdentifier("home.week.musclesHeading")
-            Text("Percent of the \(Int(HomeDashboardPresenter.weeklySetsPerMuscleTarget)) weekly sets each muscle needs.")
+            Text(weeklySetCaption)
                 .font(.caption2).foregroundStyle(.secondary)
             ForEach(dashboard.muscles) { row in
                 muscleRow(row)
             }
-            if let citation = CitationRegistry.citation(forId: CitationRegistry.volumeDoseResponse.id) {
+            if let citation = CitationRegistry.citation(forId: CitationRegistry.iversenTimeEfficient2021.id) {
                 CitationLink(citation: citation,
-                             context: "Weekly sets per muscle drive hypertrophy in a dose-response fashion; \(Int(HomeDashboardPresenter.weeklySetsPerMuscleTarget)) sets is the low end of the reliably productive range.",
+                             context: "Weekly set volume is shown on a shared 4-to-12-set scale for each tracked muscle.",
                              compact: true)
             }
         }
@@ -175,20 +180,20 @@ struct HomeWeekDashboardSection: View {
             Text(row.displayName)
                 .font(.caption)
                 .frame(width: 116, alignment: .leading)
-                .foregroundStyle(row.sets >= row.target ? .green : .secondary)
+                .foregroundStyle(tint(for: row.zone))
             ProgressView(value: row.normalized)
-                .tint(row.sets >= row.target ? .green : .yellow)
+                .tint(tint(for: row.zone))
             VStack(alignment: .trailing, spacing: 1) {
-                Text("\(row.percentComplete)%")
-                    .font(.caption.weight(.semibold).monospacedDigit())
                 Text("\(formattedSets(row.sets)) sets")
-                    .font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                Text(row.rangeText)
+                    .font(.caption2).foregroundStyle(.secondary)
             }
             .frame(width: 88, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(row.displayName)
-        .accessibilityValue("\(row.percentComplete) percent of the weekly target, \(formattedSets(row.sets)) sets")
+        .accessibilityValue("\(formattedSets(row.sets)) sets, \(row.rangeText)")
         .accessibilityIdentifier("home.muscle.\(row.muscleID)")
     }
 
@@ -217,22 +222,22 @@ struct HomeWeekDashboardSection: View {
         HStack(spacing: 10) {
             Text(row.displayName)
                 .frame(width: 116, alignment: .leading)
-                .foregroundStyle(tint(for: row))
-            ProgressView(value: row.normalized).tint(tint(for: row))
+                .foregroundStyle(tint(for: row.zone))
+            ProgressView(value: row.normalized).tint(tint(for: row.zone))
             VStack(alignment: .trailing) {
                 Text("\(formattedSets(row.sets)) sets")
                     .font(.caption.weight(.semibold))
-                if row.status == .aboveRecoveryRange {
-                    Label("Above recovery range", systemImage: "exclamationmark.triangle.fill")
+                if row.zone == .aboveMaximum {
+                    Label("Above 12-set maximum", systemImage: "exclamationmark.triangle.fill")
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.yellow)
+                        .foregroundStyle(.red)
                 }
             }
             .frame(width: 88, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(row.displayName)
-        .accessibilityValue("\(formattedSets(row.sets)) sets, \(row.rangeStatus)")
+        .accessibilityValue("\(formattedSets(row.sets)) sets, \(row.rangeText)")
         .accessibilityIdentifier("home.volume.\(row.part.rawValue)")
     }
 
@@ -259,10 +264,15 @@ struct HomeWeekDashboardSection: View {
         sets.formatted(.number.precision(.fractionLength(sets.rounded() == sets ? 0 : 1)))
     }
 
-    private func tint(for row: HomeDashboardState.VolumeRow) -> Color {
-        switch row.status {
-        case .belowStartingRange, .aboveRecoveryRange: return .yellow
-        case .productive: return .green
+    private var weeklySetCaption: String {
+        "4 minimum · 8+ productive · 12 maximum"
+    }
+
+    private func tint(for zone: WeeklySetZone) -> Color {
+        switch zone.tintRole {
+        case .red: return .red
+        case .yellow: return .yellow
+        case .green: return .green
         }
     }
 }

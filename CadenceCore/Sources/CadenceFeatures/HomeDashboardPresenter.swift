@@ -23,26 +23,12 @@ public struct HomeDashboardState: Sendable, Equatable {
         public var isAtOrAboveTarget: Bool { completed >= target }
     }
 
-    public enum VolumeRangeStatus: String, Sendable, Equatable {
-        case belowStartingRange
-        case productive
-        case aboveRecoveryRange
-
-        public var accessibilityText: String {
-            switch self {
-            case .belowStartingRange: return "Below starting range"
-            case .productive: return "Within productive range"
-            case .aboveRecoveryRange: return "Above recovery range"
-            }
-        }
-    }
-
     public struct VolumeRow: Sendable, Equatable, Identifiable {
         public let part: BodyPart
         public let displayName: String
         public let sets: Double
-        public let rangeStatus: String
-        public let status: VolumeRangeStatus
+        public let zone: WeeklySetZone
+        public let rangeText: String
         public let normalized: Double
         public let citationID: String
         public var id: BodyPart { part }
@@ -57,22 +43,24 @@ public struct HomeDashboardState: Sendable, Equatable {
         /// Scientific name, e.g. "Gluteus Maximus".
         public let scientificName: String
         public let sets: Double
-        public let target: Double
-        /// 0…1, clamped — the fraction of the weekly target completed.
+        public let zone: WeeklySetZone
+        public let rangeText: String
+        /// 0…1, clamped — the fraction of the 12-set scale completed.
         public let normalized: Double
-        /// 0…∞, unclamped, for the "142%" style label.
-        public let percentComplete: Int
+        public let citationID: String
         public var id: String { muscleID }
 
         public init(muscleID: String, displayName: String, scientificName: String,
-                    sets: Double, target: Double, normalized: Double, percentComplete: Int) {
+                    sets: Double, zone: WeeklySetZone, rangeText: String,
+                    normalized: Double, citationID: String) {
             self.muscleID = muscleID
             self.displayName = displayName
             self.scientificName = scientificName
             self.sets = sets
-            self.target = target
+            self.zone = zone
+            self.rangeText = rangeText
             self.normalized = normalized
-            self.percentComplete = percentComplete
+            self.citationID = citationID
         }
     }
 
@@ -205,30 +193,26 @@ public enum HomeDashboardPresenter {
             normalized: min(1, max(0, balance.moderateEquivalentMinutes / 150)))
         let volume = BodyPart.allCases.map { part -> HomeDashboardState.VolumeRow in
             let sets = snapshot.facts.weeklySetsByPart[part] ?? 0
-            let bands = VolumeLandmarks.bands(for: part, experience: experience)
-            let rangeStatus: HomeDashboardState.VolumeRangeStatus
-            if sets > bands.mrv { rangeStatus = .aboveRecoveryRange }
-            else if sets >= bands.mev { rangeStatus = .productive }
-            else { rangeStatus = .belowStartingRange }
+            let zone = WeeklySetProgress.zone(for: sets)
             return .init(part: part, displayName: part == .abs ? "Core" : part.displayName, sets: sets,
-                         rangeStatus: rangeStatus.accessibilityText, status: rangeStatus,
-                         normalized: min(1, max(0, sets / max(1, bands.mav))),
-                         citationID: CitationRegistry.volumeDoseResponse.id)
+                         zone: zone, rangeText: zone.displayText,
+                         normalized: WeeklySetProgress.normalized(sets),
+                         citationID: CitationRegistry.iversenTimeEfficient2021.id)
         }.sorted { lhs, rhs in
             let order = lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName)
             return order == .orderedSame ? lhs.part.rawValue < rhs.part.rawValue : order == .orderedAscending
         }
-        let productiveParts = volume.filter { $0.status == .productive }.count
+        let averagePartSets = averageCappedSets(volume.map(\.sets))
         let volumeCoverage = HomeDashboardState.Progress(
-            completed: Double(productiveParts), target: 8,
-            displayText: "\(productiveParts)/8 muscle groups",
-            normalized: min(1, Double(productiveParts) / 8))
+            completed: averagePartSets, target: WeeklySetProgress.maximum,
+            displayText: "\(format(averagePartSets)) avg sets",
+            normalized: WeeklySetProgress.normalized(averagePartSets))
         let muscles = muscleRows(setsByMuscle: snapshot.facts.weeklySetsByMuscle)
-        let atTarget = muscles.filter { $0.sets >= $0.target }.count
+        let averageMuscleSets = averageCappedSets(muscles.map(\.sets))
         let muscleCoverage = HomeDashboardState.Progress(
-            completed: Double(atTarget), target: Double(max(1, muscles.count)),
-            displayText: "\(atTarget)/\(muscles.count) at \(Int(weeklySetsPerMuscleTarget)) sets",
-            normalized: muscles.isEmpty ? 0 : min(1, Double(atTarget) / Double(muscles.count)))
+            completed: averageMuscleSets, target: WeeklySetProgress.maximum,
+            displayText: "\(format(averageMuscleSets)) avg sets",
+            normalized: WeeklySetProgress.normalized(averageMuscleSets))
         let cardioDetail = HomeDashboardState.CardioDetail(
             loggedMinutes: balance.loggedAerobicMinutes,
             easyMinutes: balance.easyMinutesLogged,
@@ -247,24 +231,19 @@ public enum HomeDashboardPresenter {
                      suggestions: suggestions(snapshot: snapshot, schedule: schedule))
     }
 
-    /// Weekly hard sets per muscle the dashboard measures against. Eight is the
-    /// low end of the range where the dose-response meta-analyses still show
-    /// reliable hypertrophy, and is the figure the volume landmarks treat as a
-    /// minimum effective dose for most muscles.
-    public static let weeklySetsPerMuscleTarget: Double = 8
-
     /// Every muscle in `MuscleCatalog`, alphabetically by displayed name.
     public static func muscleRows(setsByMuscle: [String: Double]) -> [HomeDashboardState.MuscleRow] {
-        let target = weeklySetsPerMuscleTarget
         return MuscleCatalog.all.map { muscle -> HomeDashboardState.MuscleRow in
             let sets = setsByMuscle[muscle.id] ?? 0
+            let zone = WeeklySetProgress.zone(for: sets)
             return .init(muscleID: muscle.id,
                          displayName: displayName(for: muscle),
                          scientificName: muscle.scientific,
                          sets: sets,
-                         target: target,
-                         normalized: min(1, max(0, sets / target)),
-                         percentComplete: Int((sets / target * 100).rounded()))
+                         zone: zone,
+                         rangeText: zone.displayText,
+                         normalized: WeeklySetProgress.normalized(sets),
+                         citationID: CitationRegistry.iversenTimeEfficient2021.id)
         }
         .sorted {
             let order = $0.displayName.localizedCaseInsensitiveCompare($1.displayName)
@@ -300,5 +279,10 @@ public enum HomeDashboardPresenter {
 
     private static func format(_ value: Double) -> String {
         value.rounded() == value ? String(Int(value)) : String(format: "%.1f", value)
+    }
+
+    private static func averageCappedSets(_ sets: [Double]) -> Double {
+        guard !sets.isEmpty else { return 0 }
+        return sets.map { min(max($0, 0), WeeklySetProgress.maximum) }.reduce(0, +) / Double(sets.count)
     }
 }

@@ -37,6 +37,10 @@ struct SuggestedWorkoutMuscleSpace: Sendable {
     func dictionary(_ values: [Double]) -> [String: Double] {
         Dictionary(uniqueKeysWithValues: muscleIDs.indices.map { (muscleIDs[$0], values[$0]) })
     }
+
+    func massPriority(of dimension: Int) -> Int {
+        MuscleCatalog.massPriority(for: muscleIDs[dimension])
+    }
 }
 
 struct SuggestedWorkoutIndexedExercise: Sendable {
@@ -134,6 +138,7 @@ struct SuggestedWorkoutDeficitHeap {
     struct Entry {
         let deficit: Double
         let dimension: Int
+        let massPriority: Int
         let generation: Int
     }
 
@@ -171,6 +176,7 @@ struct SuggestedWorkoutDeficitHeap {
 
     private static func precedes(_ lhs: Entry, _ rhs: Entry) -> Bool {
         if lhs.deficit != rhs.deficit { return lhs.deficit > rhs.deficit }
+        if lhs.massPriority != rhs.massPriority { return lhs.massPriority < rhs.massPriority }
         if lhs.dimension != rhs.dimension { return lhs.dimension < rhs.dimension }
         return lhs.generation > rhs.generation
     }

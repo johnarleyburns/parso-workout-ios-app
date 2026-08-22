@@ -7,6 +7,7 @@ struct WorkoutTypePicker: View {
     let onSelect: (WorkoutType) -> Void
     let onEditorStart: (EditablePlan) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
+    var onSuggestedWorkout: (() -> Void)? = nil
     var recommendation: Recommendation? = nil
     var types: [WorkoutType] = WorkoutType.allCases
     var title: String = "Start Workout"
@@ -24,6 +25,10 @@ struct WorkoutTypePicker: View {
                         case .weights:
                             NavigationLink {
                                 WeightsStartView(onEditorStart: onEditorStart,
+                                                 onSuggestedWorkout: {
+                                                    dismiss()
+                                                    onSuggestedWorkout?()
+                                                 },
                                                  recommendation: recommendation,
                                                  coachSession: nil)
                             } label: { WorkoutHero(type: type) }
@@ -67,6 +72,7 @@ struct SelectWorkoutView: View {
     let recommendation: Recommendation?
     let coachSession: CoachSession?
     let onQuickStart: () -> Void
+    let onSuggestedWorkout: () -> Void
     let onEditorStart: (EditablePlan) -> Void
     let onSelect: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
@@ -121,18 +127,7 @@ struct SelectWorkoutView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("selectWorkout.custom")
 
-                NavigationLink {
-                    WorkoutPlanEditor(
-                        plan: coachSession.flatMap(EditablePlan.from(coach:))
-                            ?? recommendation.map {
-                                .from(recommendation: $0, goal: settings.trainingGoal,
-                                      warmupMinutes: settings.warmupMinutes,
-                                      cooldownMinutes: settings.cooldownMinutes)
-                            }
-                            ?? .empty(warmup: settings.warmupMinutes,
-                                      cooldown: settings.cooldownMinutes),
-                        onStart: onEditorStart)
-                } label: {
+                Button(action: onSuggestedWorkout) {
                     workoutChoiceLabel("Suggest a Workout", symbol: "wand.and.stars")
                 }
                 .buttonStyle(.plain)

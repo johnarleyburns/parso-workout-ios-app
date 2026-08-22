@@ -45,6 +45,7 @@ struct HomeView: View {
     @State var showSupport = false
     @State var pendingAddGapsDeficits: [BodyPart: Double]?
     @State var suggestionsExpanded = false
+    @State var suggestedWorkoutRequest: SuggestedWorkoutRequest?
     @State var expandedTodayRowIDs: Set<String> = []
     @State var weeklyVolumeExpanded = false
     @State var coachIllustration = HomeCoachIllustration.random()

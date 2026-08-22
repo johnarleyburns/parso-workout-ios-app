@@ -115,33 +115,41 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         XCTAssertEqual(option.unresolvedDeficits["lats"], 4)
     }
 
-    func testTieBreakPrefersLeadingDeficitCreditBeforeCoverage() {
+    func testEqualDeficitsPrioritizeLargerMusclesBeforeCatalogOrder() {
         var completed = satisfied(at: 4)
-        completed["chest"] = 0
-        completed["lats"] = 0
-        let leading = candidate("leading", "Zulu", primary: ["chest"])
-        let spread = candidate("spread", "Alpha", secondary: ["chest", "lats"])
+        completed["biceps"] = 0
+        completed["quads"] = 0
+        let biceps = candidate("biceps", "Alpha Biceps", primary: ["biceps"])
+        let quads = candidate("quads", "Zulu Quads", primary: ["quads"])
 
-        let option = generate(completed: completed, candidates: [spread, leading]).minimum
+        let option = generate(completed: completed, candidates: [biceps, quads]).minimum
 
-        XCTAssertEqual(option.exercises.first?.selectionScore, 3)
-        XCTAssertEqual(option.exercises.first?.candidateID, "leading")
+        XCTAssertEqual(option.exercises.map(\.candidateID), ["quads", "biceps"])
+        XCTAssertLessThan(MuscleCatalog.massPriority(for: "quads"), MuscleCatalog.massPriority(for: "biceps"))
     }
 
-    func testTieBreakPrefersMoreDeficientMusclesCovered() {
+    func testSameMuscleEqualScorePrefersCompoundBeforeOtherTieBreaks() {
         var completed = satisfied(at: 4)
         completed["chest"] = 0
-        completed["lats"] = 3
-        completed["upper-chest"] = 3.5
-        completed["rear-delts"] = 3.5
-        let fewer = candidate("fewer", "Alpha", primary: ["chest", "lats"])
-        let more = candidate("more", "Zulu", primary: ["chest"],
-                             secondary: ["upper-chest", "rear-delts"])
+        let isolation = candidate("isolation", "Alpha", mechanics: .isolation, primary: ["chest"])
+        let compound = candidate("compound", "Zulu", primary: ["chest"])
 
-        let option = generate(completed: completed, candidates: [fewer, more]).minimum
+        let option = generate(completed: completed, candidates: [isolation, compound]).minimum
 
-        XCTAssertEqual(option.exercises.first?.selectionScore, 4)
-        XCTAssertEqual(option.exercises.first?.candidateID, "more")
+        XCTAssertEqual(option.exercises.first?.selectionScore, 3)
+        XCTAssertEqual(option.exercises.first?.candidateID, "compound")
+    }
+
+    func testSameMuscleAndMechanicsPrefersBroaderMuscleInvolvementEvenWhenSatisfied() {
+        var completed = satisfied(at: 4)
+        completed["chest"] = 0
+        let narrow = candidate("narrow", "Alpha", primary: ["chest"])
+        let broad = candidate("broad", "Zulu", primary: ["chest"], secondary: ["biceps"])
+
+        let option = generate(completed: completed, candidates: [narrow, broad]).minimum
+
+        XCTAssertEqual(option.exercises.first?.selectionScore, 3)
+        XCTAssertEqual(option.exercises.first?.candidateID, "broad")
     }
 
     func testTieBreakPrefersCompoundThenLocalizedName() {
@@ -223,11 +231,13 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         XCTAssertEqual(bundle.options.map(\.plannedSetTotal), [18, 30, 39])
         XCTAssertEqual(bundle.options.map(\.capTrimmingOccurred), [true, true, true])
         XCTAssertTrue(zip(bundle.options, [20, 30, 40]).allSatisfy { $0.plannedSetTotal <= $1 })
-        XCTAssertEqual(bundle.minimum.exercises.map(\.candidateID),
-                       Array(candidates.prefix(6)).map(\.id))
-        XCTAssertEqual(bundle.minimum.remainingDeficits[MuscleCatalog.all[0].id], 1)
-        XCTAssertEqual(bundle.minimum.remainingDeficits[MuscleCatalog.all[5].id], 1)
-        XCTAssertEqual(bundle.minimum.remainingDeficits[MuscleCatalog.all[6].id], 4)
+        let expectedIDs = MuscleCatalog.descendingMassOrder.prefix(6).compactMap { muscleID in
+            candidates.first { $0.primaryMuscles == [muscleID] }?.id
+        }
+        XCTAssertEqual(bundle.minimum.exercises.map(\.candidateID), expectedIDs)
+        XCTAssertEqual(bundle.minimum.remainingDeficits["glutes"], 1)
+        XCTAssertEqual(bundle.minimum.remainingDeficits["traps"], 1)
+        XCTAssertEqual(bundle.minimum.remainingDeficits["delts"], 4)
     }
 
     func testAlreadySatisfiedTiersAreEmptyAndNonLaunchable() {

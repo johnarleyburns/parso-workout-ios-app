@@ -34,19 +34,17 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertFalse(app.staticTexts["Coach's Suggestions"].exists)
         XCTAssertFalse(app.staticTexts["Coach's Workout"].exists)
         XCTAssertFalse(app.staticTexts["Do Coach's Workout"].exists)
-        if app.descendants(matching: .any)["home.coachRecommendation"].exists {
-            let cta = app.buttons["home.suggestWorkout"]
-            XCTAssertTrue(cta.waitForExistence(timeout: 5),
-                          "Suggest a Workout is missing below the observations card")
-            XCTAssertEqual(cta.frame.height, app.buttons["home.startWorkout"].frame.height,
-                           accuracy: 1,
-                           "Do Coach's Workout does not match Home Start Workout's height")
-            XCTAssertGreaterThan(cta.frame.minY,
-                                 app.descendants(matching: .any)["home.observations.card"].frame.minY,
-                                 "Suggest a Workout is not below the Observations card")
-            XCTAssertFalse(app.buttons["home.coachRecommendation.preview"].exists,
-                           "Coach card still exposes the removed Preview Workout action")
-        }
+        let cta = app.buttons["home.suggestWorkout"]
+        XCTAssertTrue(cta.waitForExistence(timeout: 5),
+                      "Suggest a Workout is missing below the observations card")
+        XCTAssertEqual(cta.frame.height, app.buttons["home.startWorkout"].frame.height,
+                       accuracy: 1,
+                       "Suggest a Workout does not match Home Start Workout's height")
+        XCTAssertGreaterThan(cta.frame.minY,
+                             app.descendants(matching: .any)["home.observations.card"].frame.minY,
+                             "Suggest a Workout is not below the Observations card")
+        XCTAssertFalse(app.buttons["home.coachRecommendation.preview"].exists,
+                       "Coach card still exposes the removed Preview Workout action")
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showMore"),
                       "This Week did not offer Show more")
@@ -127,6 +125,41 @@ final class SmokeLaunchTests: CadenceUITestCase {
                            "Suggest a Workout is a different height from Quick Start")
         }
 
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.suggestWorkout"),
+                      "Start Workout did not open suggested workouts")
+        XCTAssertTrue(app.descendants(matching: .any)["suggestedWorkout.ready"].waitForExistence(timeout: 15),
+                      "Suggested workouts did not become ready")
+        XCTAssertTrue(app.navigationBars["View Suggested Workout"].exists,
+                      "Suggested-workout chooser has the wrong title")
+        XCTAssertTrue(app.buttons["suggestedWorkout.minimum"].exists)
+        XCTAssertTrue(app.buttons["suggestedWorkout.medium"].exists)
+        XCTAssertTrue(app.buttons["suggestedWorkout.maximal"].exists)
+        XCTAssertTrue(app.buttons["suggestedWorkout.about"].waitTap(timeout: 5),
+                      "Suggested-workout chooser lacks its About button")
+        XCTAssertTrue(app.staticTexts["No Time to Lift? Designing Time-Efficient Training Programs for Strength and Hypertrophy: A Narrative Review"].waitForExistence(timeout: 5),
+                      "About suggested workouts does not show the Iversen study title")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "The Resistance Training Dose-Response")).firstMatch.exists,
+                      "About suggested workouts does not show the Pelland study title")
+        XCTAssertTrue(app.scrollToElement("suggestedWorkout.about.science.iversenTimeEfficient2021"))
+        XCTAssertTrue(app.scrollToElement("suggestedWorkout.about.science.pellandFractionalSets2024"),
+                      "About suggested workouts does not expose both science links")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["suggestedWorkout.medium"].waitTap(timeout: 5),
+                      "Medium Workout did not open")
+        XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
+                      "Medium Workout did not open the plan editor")
+        XCTAssertTrue(app.buttons["editor.start"].exists,
+                      "Suggested plan editor lacks Start Workout")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["View Suggested Workout"].waitForExistence(timeout: 5),
+                      "Back did not return to suggested workouts")
+        app.buttons["suggestedWorkout.close"].tap()
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Suggested-workout sheet did not dismiss back to Home")
+
+        XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
+                      "Home Start Workout did not reopen after suggested workouts")
+
         // Field test 2026-08-20 issue 8: Rowing is a cardio box in the entry
         // taxonomy, placed after Cycle in the cardio grid. The 2-column grid
         // renders Cycle + Rowing on the same row (Cycle left, Rowing right), so
@@ -144,8 +177,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertLessThan(rowing.frame.minY, swim.frame.minY,
                           "Rowing is not before Swim in the cardio grid")
         // Return to the top of the sheet for the strength-flow steps that follow.
-        app.swipeDown()
-        app.swipeDown()
+        app.scrollViews.firstMatch.swipeDown()
+        app.scrollViews.firstMatch.swipeDown()
 
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
                       "Start Workout did not offer Custom Workout beneath Quick Start")

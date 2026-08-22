@@ -102,6 +102,25 @@ public enum MuscleCatalog {
 
     private static let byID: [String: Muscle] = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
 
+    /// Strict, deterministic descending mass order used only when equally-sized
+    /// weekly deficits need a next muscle. This is an anatomical planning
+    /// heuristic for the average adult, not a claim about any individual's body.
+    public static let descendingMassOrder = [
+        "glutes", "quads", "lats", "chest", "hamstrings", "traps", "delts",
+        "calves", "lower-back", "adductors", "triceps", "abs", "biceps",
+        "forearms", "obliques", "rhomboids", "abductors", "hip-flexors",
+        "upper-chest", "front-delts", "rear-delts"
+    ]
+
+    private static let massPriorityByID = Dictionary(
+        uniqueKeysWithValues: descendingMassOrder.enumerated().map { ($0.element, $0.offset) }
+    )
+
+    /// Lower values are larger muscles. Unknown IDs deliberately sort last.
+    public static func massPriority(for id: String) -> Int {
+        massPriorityByID[id] ?? Int.max
+    }
+
     public static func muscle(_ id: String) -> Muscle? { byID[id] }
 
     /// All searchable terms for a muscle id (id + scientific + synonyms + region).

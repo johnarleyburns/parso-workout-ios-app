@@ -2,19 +2,12 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// Home's Observations card plus the full-width action beneath it.
-///
-/// Field test 2026-08-18 #8/#9/#11: the coach artwork floats over the card's
-/// top-right corner instead of taking layout space, the suggested workout moved
-/// to the bottom of the card, and `Suggest a Workout` is a sibling of the card
-/// rather than a child so it matches Home's `Start Workout` exactly.
-/// The render order itself lives in `HomeCoachSectionPresenter`.
+/// Home's Observations card plus the independent weekly-gap action beneath it.
 struct HomeCoachSuggestionsSection: View {
     let suggestions: [HomeSuggestion]
-    let recommendation: CoachSession?
     let illustration: HomeCoachIllustration
     @Binding var expanded: Bool
-    let onStartRecommendation: () -> Void
+    let onRequestSuggestedWorkout: () -> Void
 
     /// The heading reserves the artwork's width so it cannot slide under the
     /// floating illustration at large Dynamic Type.
@@ -24,12 +17,10 @@ struct HomeCoachSuggestionsSection: View {
     var body: some View {
         VStack(spacing: LayoutMetrics.actionButtonSpacing) {
             card
-            if HomeCoachSectionPresenter.showsPrimaryAction(recommendation: recommendation) {
-                CadenceActionButton(title: "Suggest a Workout",
-                                    systemImage: "play.fill",
-                                    action: onStartRecommendation)
-                    .accessibilityIdentifier("home.suggestWorkout")
-            }
+            CadenceActionButton(title: "Suggest a Workout",
+                                systemImage: "wand.and.stars",
+                                action: onRequestSuggestedWorkout)
+                .accessibilityIdentifier("home.suggestWorkout")
         }
         // `children: .contain` must precede the identifier or the container
         // swallows the inner ids the smoke test resolves.
@@ -57,9 +48,7 @@ struct HomeCoachSuggestionsSection: View {
     }
 
     private var blocks: [HomeCoachSectionPresenter.Block] {
-        HomeCoachSectionPresenter.blocks(suggestions: suggestions,
-                                         recommendation: recommendation,
-                                         expanded: expanded)
+        HomeCoachSectionPresenter.blocks(suggestions: suggestions, expanded: expanded)
     }
 
     @ViewBuilder
@@ -80,16 +69,6 @@ struct HomeCoachSuggestionsSection: View {
             suggestionRow(suggestion)
         case let .showMore(expandedNow):
             showMoreButton(expandedNow)
-        case .divider:
-            Divider()
-        case let .suggestedWorkout(title, why, exercises):
-            HomeCoachRecommendationCard(
-                title: title,
-                why: why,
-                exercises: exercises,
-                additionalCount: recommendation.map(HomeCoachSectionPresenter.additionalExerciseCount) ?? 0,
-                citationIds: recommendation?.citationIds ?? [],
-                durationMinutes: recommendation?.durationMinutes)
         }
     }
 

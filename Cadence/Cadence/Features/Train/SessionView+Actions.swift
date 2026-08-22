@@ -174,10 +174,7 @@ extension SessionView {
         }
         active.endStrength()
         try? context.save()
-        Task { @MainActor in
-            await Task.yield()
-            active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples), session: session)
-        }
+        active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples), session: session)
     }
 
     func sampleHR() {

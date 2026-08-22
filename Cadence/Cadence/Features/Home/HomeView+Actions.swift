@@ -91,6 +91,59 @@ extension HomeView {
         return session
     }
 
+    /// Captures SwiftData values on the main actor, then lets the sheet run the
+    /// pure, Sendable generator without carrying managed objects across actors.
+    func requestSuggestedWorkout() {
+        Haptics.selection()
+        do {
+            let candidates = try SuggestedWorkoutSignposts.exerciseFetchAndMap {
+                try WorkoutRepository.allExercises(context).map { exercise in
+                    SuggestedExerciseCandidate(
+                        id: exercise.id.uuidString,
+                        name: exercise.name,
+                        mechanics: exercise.mechanicsValue ?? .compound,
+                        primaryMuscles: exercise.primaryMuscles,
+                        secondaryMuscles: exercise.secondaryMuscles)
+                }
+            }
+            let request = SuggestedWorkoutRequest(
+                input: SuggestedWorkoutInput(
+                    completedSetsByMuscle: coachFacts.weeklySetsByMuscle,
+                    candidates: candidates,
+                    preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
+                    trainingGoal: settings.trainingGoal),
+                unit: settings.unit,
+                warmupMinutes: settings.warmupMinutes,
+                cooldownMinutes: settings.cooldownMinutes)
+            presentSuggestedWorkout(request)
+        } catch {
+            // The chooser renders a recoverable failure state for generator work;
+            // a fetch failure has no safe partial candidate snapshot to present.
+            suggestedWorkoutRequest = SuggestedWorkoutRequest(
+                input: SuggestedWorkoutInput(completedSetsByMuscle: coachFacts.weeklySetsByMuscle,
+                                              candidates: [],
+                                              preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
+                                              trainingGoal: settings.trainingGoal),
+                unit: settings.unit,
+                warmupMinutes: settings.warmupMinutes,
+                cooldownMinutes: settings.cooldownMinutes,
+                failureMessage: "Exercise data could not be read. Retry to try again.")
+        }
+    }
+
+    private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {
+        if selectWorkoutPresented || weightsStartPresented {
+            selectWorkoutPresented = false
+            weightsStartPresented = false
+            Task { @MainActor in
+                await Task.yield()
+                suggestedWorkoutRequest = request
+            }
+        } else {
+            suggestedWorkoutRequest = request
+        }
+    }
+
     /// Quiet trial status shown above the Coach card while on the free trial.
     func trialBanner(daysLeft: Int) -> some View {
         HStack(spacing: 8) {

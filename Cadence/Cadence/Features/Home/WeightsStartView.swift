@@ -5,6 +5,7 @@ import CadenceFeatures
 
 struct WeightsStartView: View {
     let onEditorStart: (EditablePlan) -> Void
+    let onSuggestedWorkout: () -> Void
     var recommendation: Recommendation? = nil
     var coachSession: CoachSession? = nil
 
@@ -17,39 +18,29 @@ struct WeightsStartView: View {
 
     var body: some View {
         List {
-            if let rec = recommendation {
-                Section {
-                    NavigationLink {
-                        WorkoutPlanEditor(
-                            plan: coachSession.flatMap(EditablePlan.from(coach:))
-                                ?? .from(recommendation: rec,
-                                         goal: settings.trainingGoal,
-                                         warmupMinutes: settings.warmupMinutes,
-                                         cooldownMinutes: settings.cooldownMinutes),
-                            onStart: onEditorStart)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "checklist").font(.headline)
-                            Text("Suggest a Workout")
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .cadenceActionLabel()
-                        .foregroundStyle(.white)
-                        .cadenceGlassBackground(
-                            in: CadenceActionShape.rounded,
-                            tint: .green,
-                            interactive: true,
-                            fallback: AnyShapeStyle(Color.green))
+            Section {
+                Button(action: onSuggestedWorkout) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "wand.and.stars").font(.headline)
+                        Text("Suggest a Workout")
+                        Spacer()
                     }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
-                    .listRowBackground(Color.clear)
-                    .accessibilityIdentifier("weights.suggestWorkout")
-                    .accessibilityLabel("Suggest a Workout")
-                } footer: {
-                    Text(rec.title)
+                    .padding(.horizontal, 16)
+                    .cadenceActionLabel()
+                    .foregroundStyle(.white)
+                    .cadenceGlassBackground(
+                        in: CadenceActionShape.rounded,
+                        tint: .green,
+                        interactive: true,
+                        fallback: AnyShapeStyle(Color.green))
                 }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
+                .listRowBackground(Color.clear)
+                .accessibilityIdentifier("weights.suggestWorkout")
+                .accessibilityLabel("Suggest a Workout")
+            } footer: {
+                Text("Build a plan from this week's muscle-group gaps, then review and edit it.")
             }
 
             Section {

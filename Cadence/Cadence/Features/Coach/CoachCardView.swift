@@ -94,15 +94,18 @@ struct CitationLink: View {
     let citation: Citation
     var context: String?
     var compact: Bool = false
+    var identifier: String?
 
     var body: some View {
+        let accessibilityID = identifier ?? (compact ? "progress.card.citation" : "coach.card.citation")
         NavigationLink {
             CitationDetailView(citation: citation, context: context)
         } label: {
-            compact ? AnyView(compactLabel) : AnyView(label)
+            (compact ? AnyView(compactLabel) : AnyView(label))
+                .accessibilityIdentifier(accessibilityID)
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier(compact ? "progress.card.citation" : "coach.card.citation")
+        .accessibilityIdentifier(accessibilityID)
         .accessibilityLabel("Source: \(citation.shortText)")
     }
 

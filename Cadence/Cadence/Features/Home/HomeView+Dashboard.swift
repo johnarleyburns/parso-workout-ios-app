@@ -32,14 +32,9 @@ extension HomeView {
                         onOpenCoachSettings: { path.append(HomeRoute.coachPreferences) })
                     HomeCoachSuggestionsSection(
                         suggestions: dashboard.suggestions,
-                        recommendation: previewableCoachRecommendation,
                         illustration: coachIllustration,
                         expanded: $suggestionsExpanded,
-                        onStartRecommendation: {
-                            if let recommendation = previewableCoachRecommendation {
-                                launchDecision(recommendation)
-                            }
-                        })
+                        onRequestSuggestedWorkout: requestSuggestedWorkout)
                 }
                 .padding()
             }
@@ -123,6 +118,7 @@ extension HomeView {
                         selectWorkoutPresented = false
                         startQuickStartStrength()
                     },
+                    onSuggestedWorkout: { requestSuggestedWorkout() },
                     onEditorStart: { plan in selectWorkoutPresented = false; handleEditorStart(plan) },
                     onSelect: { type in selectWorkoutPresented = false; start(type) },
                     onOtherCardio: { description, gps in
@@ -200,6 +196,7 @@ extension HomeView {
                 WorkoutTypePicker(onSelect: { cardioPickerPresented = false; start($0) },
                                   onEditorStart: { _ in },
                                   onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
+                                  onSuggestedWorkout: { requestSuggestedWorkout() },
                                   types: [.run, .walk, .cycle, .rowing, .swim, .hiit, .boxing, .other],
                                   title: "Start Cardio")
             }
@@ -208,9 +205,16 @@ extension HomeView {
                 NavigationStack {
                     WeightsStartView(
                         onEditorStart: { plan in weightsStartPresented = false; handleEditorStart(plan) },
+                        onSuggestedWorkout: { requestSuggestedWorkout() },
                         recommendation: coachRecommendation,
                         coachSession: coachStrengthSession)
                 }
+            }
+            .sheet(item: $suggestedWorkoutRequest) { request in
+                SuggestedWorkoutView(request: request, onStart: { plan in
+                    suggestedWorkoutRequest = nil
+                    handleEditorStart(plan)
+                }, onRetry: requestSuggestedWorkout)
             }
             // Optional distance goal before a run/walk/cycle (batch 8).
             .sheet(item: $cardioGoalFor) { type in

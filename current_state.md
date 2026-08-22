@@ -2,6 +2,34 @@
 
 Live handoff/progress tracker.
 
+## Suggested weekly workouts — 2026-08-21 — SHIPPED
+
+Home now presents cited **Observations** independently from an always-available
+**Suggest a Workout** action. It captures a main-actor SwiftData exercise
+snapshot, performs the Sendable 21-muscle vector calculation off the main actor,
+and offers editable Minimum/Medium/Maximal plans for 4/8/12 weekly sets. The
+chooser renders a real calculating state, handles recoverable fetch failures,
+reports unresolved gaps and 20/30/40-set cap trims, provides an About sheet with
+pseudocode and both evidence links (`iversenTimeEfficient2021` and
+`pellandFractionalSets2024`), and routes a selected plan through the existing
+Workout Plan editor/start path.
+
+The shared generator reuses one sparse inverted vector index for all three tiers.
+For equal deficits it uses a strict descending average-muscle-mass order; for an
+equal score on the same leading muscle it chooses compound before isolation, then
+the movement involving more canonical muscles, followed by deterministic name/ID
+fallbacks. Main-actor fetch/map and background generation emit privacy-safe
+`exerciseFetchAndMap`, `vectorIndexBuild`, and `threeTierGeneration` signposts;
+no exercise names or history are logged.
+
+Verification: `swift test --package-path CadenceCore` (1,546 tests, 0 failures),
+guardrails, clean iOS/watch builds, watch smoke, and `git diff --check`.
+The expanded iPhone smoke covers the suggested-workout chooser through plan
+editing and returning Home; its later, existing workout-summary query intermittently
+timed out in this simulator. The simulator and headless measurements verify
+structure and algorithm behavior; the requested Release oldest-device p95 timing
+capture remains a hardware follow-up.
+
 _Last updated: 2026-08-20 — field-test batch 2026-08-19 (8 issues) SHIPPED. Previously 2026-08-11: Cladiron platform spec v2.2 adopted as the roadmap (planning only; no app code changed)._
 
 ## Field-test fixes — plan fidelity, partner defaults, live-workout performance, week dashboard — 2026-08-19 — SHIPPED

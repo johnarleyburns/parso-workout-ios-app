@@ -54,6 +54,12 @@ public struct SuggestedMuscleContribution: Equatable, Sendable {
     public let muscleID: String
     public let weight: Double
     public let plannedSetContribution: Double
+
+    public init(muscleID: String, weight: Double, plannedSetContribution: Double) {
+        self.muscleID = muscleID
+        self.weight = weight
+        self.plannedSetContribution = plannedSetContribution
+    }
 }
 
 public struct SuggestedWorkoutExercise: Equatable, Sendable {
@@ -64,6 +70,18 @@ public struct SuggestedWorkoutExercise: Equatable, Sendable {
     public let repRange: ClosedRange<Int>
     public let contributions: [SuggestedMuscleContribution]
     public let selectionScore: Double
+
+    public init(candidateID: String, name: String, mechanics: Mechanics, plannedSets: Int,
+                repRange: ClosedRange<Int>, contributions: [SuggestedMuscleContribution],
+                selectionScore: Double) {
+        self.candidateID = candidateID
+        self.name = name
+        self.mechanics = mechanics
+        self.plannedSets = plannedSets
+        self.repRange = repRange
+        self.contributions = contributions
+        self.selectionScore = selectionScore
+    }
 }
 
 public struct SuggestedWorkoutOption: Equatable, Sendable {
@@ -75,6 +93,20 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
     public let plannedSetTotal: Int
     public let capTrimmingOccurred: Bool
     public let citationIDs: [String]
+
+    public init(tier: SuggestedWorkoutTier, plan: WorkoutPlan,
+                exercises: [SuggestedWorkoutExercise], initialDeficits: [String: Double],
+                remainingDeficits: [String: Double], plannedSetTotal: Int,
+                capTrimmingOccurred: Bool, citationIDs: [String]) {
+        self.tier = tier
+        self.plan = plan
+        self.exercises = exercises
+        self.initialDeficits = initialDeficits
+        self.remainingDeficits = remainingDeficits
+        self.plannedSetTotal = plannedSetTotal
+        self.capTrimmingOccurred = capTrimmingOccurred
+        self.citationIDs = citationIDs
+    }
 
     public var isLaunchable: Bool { !exercises.isEmpty }
     public var unresolvedDeficits: [String: Double] {
@@ -91,11 +123,30 @@ public struct SuggestedWorkoutDiagnostics: Equatable, Sendable {
     public let fullCatalogScanCount: Int
     public let vectorIndexBuildDuration: Duration
     public let threeTierGenerationDuration: Duration
+
+    public init(rawCandidateCount: Int, indexedCandidateCount: Int, indexBuildCount: Int,
+                invertedListLookupCount: Int, invertedCandidateVisitCount: Int,
+                fullCatalogScanCount: Int, vectorIndexBuildDuration: Duration,
+                threeTierGenerationDuration: Duration) {
+        self.rawCandidateCount = rawCandidateCount
+        self.indexedCandidateCount = indexedCandidateCount
+        self.indexBuildCount = indexBuildCount
+        self.invertedListLookupCount = invertedListLookupCount
+        self.invertedCandidateVisitCount = invertedCandidateVisitCount
+        self.fullCatalogScanCount = fullCatalogScanCount
+        self.vectorIndexBuildDuration = vectorIndexBuildDuration
+        self.threeTierGenerationDuration = threeTierGenerationDuration
+    }
 }
 
 public struct SuggestedWorkoutBundle: Equatable, Sendable {
     public let options: [SuggestedWorkoutOption]
     public let diagnostics: SuggestedWorkoutDiagnostics
+
+    public init(options: [SuggestedWorkoutOption], diagnostics: SuggestedWorkoutDiagnostics) {
+        self.options = options
+        self.diagnostics = diagnostics
+    }
 
     public var minimum: SuggestedWorkoutOption { options[0] }
     public var medium: SuggestedWorkoutOption { options[1] }
@@ -160,8 +211,6 @@ public enum SuggestedWorkoutGenerator {
 
     private struct Score {
         let total: Double
-        let leadingCredit: Double
-        let coveredDeficits: Int
     }
 
     private struct Selection {
@@ -181,7 +230,8 @@ public enum SuggestedWorkoutGenerator {
         var heap = SuggestedWorkoutDeficitHeap()
         for dimension in deficits.indices where deficits[dimension] > epsilon {
             activeMask |= UInt32(1) << UInt32(dimension)
-            heap.push(.init(deficit: deficits[dimension], dimension: dimension, generation: 0))
+            heap.push(.init(deficit: deficits[dimension], dimension: dimension,
+                            massPriority: index.muscleSpace.massPriority(of: dimension), generation: 0))
         }
 
         var selected = Array(repeating: false, count: index.exercises.count)
@@ -197,9 +247,7 @@ public enum SuggestedWorkoutGenerator {
                 counters.visits += 1
                 let exercise = index.exercises[candidateIndex]
                 guard exercise.coverageMask & activeMask != 0 else { continue }
-                let score = score(exercise, deficits: deficits,
-                                  leadingDimension: entry.dimension,
-                                  preferredSets: preferredSets)
+                let score = score(exercise, deficits: deficits, preferredSets: preferredSets)
                 guard score.total > epsilon else { continue }
                 let selection = Selection(candidateIndex: candidateIndex, score: score)
                 if best == nil || isBetter(selection, than: best!, index: index) {
@@ -227,6 +275,7 @@ public enum SuggestedWorkoutGenerator {
                 if deficits[element.dimension] > epsilon {
                     heap.push(.init(deficit: deficits[element.dimension],
                                     dimension: element.dimension,
+                                    massPriority: index.muscleSpace.massPriority(of: element.dimension),
                                     generation: generations[element.dimension]))
                 } else {
                     activeMask &= ~(UInt32(1) << UInt32(element.dimension))
@@ -264,18 +313,13 @@ public enum SuggestedWorkoutGenerator {
     }
 
     private static func score(_ exercise: SuggestedWorkoutIndexedExercise,
-                              deficits: [Double], leadingDimension: Int,
-                              preferredSets: Int) -> Score {
+                              deficits: [Double], preferredSets: Int) -> Score {
         var total = 0.0
-        var leadingCredit = 0.0
-        var covered = 0
         for element in exercise.elements where deficits[element.dimension] > epsilon {
             let credit = min(deficits[element.dimension], Double(preferredSets) * element.weight)
             total += credit
-            covered += 1
-            if element.dimension == leadingDimension { leadingCredit = credit }
         }
-        return Score(total: total, leadingCredit: leadingCredit, coveredDeficits: covered)
+        return Score(total: total)
     }
 
     private static func isBetter(_ lhs: Selection, than rhs: Selection,
@@ -283,15 +327,12 @@ public enum SuggestedWorkoutGenerator {
         if abs(lhs.score.total - rhs.score.total) > epsilon {
             return lhs.score.total > rhs.score.total
         }
-        if abs(lhs.score.leadingCredit - rhs.score.leadingCredit) > epsilon {
-            return lhs.score.leadingCredit > rhs.score.leadingCredit
-        }
-        if lhs.score.coveredDeficits != rhs.score.coveredDeficits {
-            return lhs.score.coveredDeficits > rhs.score.coveredDeficits
-        }
         let left = index.exercises[lhs.candidateIndex].candidate
         let right = index.exercises[rhs.candidateIndex].candidate
         if left.mechanics != right.mechanics { return left.mechanics == .compound }
+        let leftCoverage = index.exercises[lhs.candidateIndex].elements.count
+        let rightCoverage = index.exercises[rhs.candidateIndex].elements.count
+        if leftCoverage != rightCoverage { return leftCoverage > rightCoverage }
         let nameOrder = left.name.localizedCaseInsensitiveCompare(right.name)
         if nameOrder != .orderedSame { return nameOrder == .orderedAscending }
         return left.id < right.id

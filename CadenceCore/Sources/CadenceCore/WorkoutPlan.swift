@@ -6,10 +6,10 @@ import Foundation
 // additive `planKey` and resolves it here, so there is no SwiftData schema for
 // plans and nothing to migrate.
 
-/// Where a plan came from (decision: builtin catalog only for v1; `.user` is
-/// reserved for the future custom-plan store).
+/// Where a plan came from. `.user` remains reserved for the future custom-plan
+/// store; generated coach suggestions use their own non-persisted source.
 public enum PlanSource: String, Codable, Sendable {
-    case strengthPreset, user
+    case strengthPreset, coachSuggested, user
 }
 
 /// The prescribed scheme — how the work is structured + timed. Strength is the

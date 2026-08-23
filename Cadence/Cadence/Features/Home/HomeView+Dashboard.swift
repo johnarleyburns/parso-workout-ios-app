@@ -112,8 +112,6 @@ extension HomeView {
             }
             .sheet(isPresented: $selectWorkoutPresented) {
                 SelectWorkoutView(
-                    recommendation: coachRecommendation,
-                    coachSession: coachStrengthSession,
                     onQuickStart: {
                         selectWorkoutPresented = false
                         startQuickStartStrength()
@@ -205,9 +203,7 @@ extension HomeView {
                 NavigationStack {
                     WeightsStartView(
                         onEditorStart: { plan in weightsStartPresented = false; handleEditorStart(plan) },
-                        onSuggestedWorkout: { requestSuggestedWorkout() },
-                        recommendation: coachRecommendation,
-                        coachSession: coachStrengthSession)
+                        onSuggestedWorkout: { requestSuggestedWorkout() })
                 }
             }
             .sheet(item: $suggestedWorkoutRequest) { request in

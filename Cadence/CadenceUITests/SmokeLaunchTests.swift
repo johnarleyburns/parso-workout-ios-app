@@ -131,9 +131,21 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Suggested workouts did not become ready")
         XCTAssertTrue(app.navigationBars["View Suggested Workout"].exists,
                       "Suggested-workout chooser has the wrong title")
-        XCTAssertTrue(app.buttons["suggestedWorkout.minimum"].exists)
-        XCTAssertTrue(app.buttons["suggestedWorkout.medium"].exists)
-        XCTAssertTrue(app.buttons["suggestedWorkout.maximal"].exists)
+        let minimum = app.buttons["suggestedWorkout.minimum"]
+        let medium = app.buttons["suggestedWorkout.medium"]
+        let maximal = app.buttons["suggestedWorkout.maximal"]
+        XCTAssertTrue(minimum.exists)
+        XCTAssertTrue(medium.exists)
+        XCTAssertTrue(maximal.exists)
+        XCTAssertEqual(minimum.label, "Minimum Workout")
+        XCTAssertEqual(medium.label, "Medium Workout")
+        XCTAssertEqual(maximal.label, "Maximal Workout")
+        XCTAssertLessThan(minimum.frame.minY, medium.frame.minY)
+        XCTAssertLessThan(medium.frame.minY, maximal.frame.minY)
+        XCTAssertTrue(app.scrollToElement("suggestedWorkout.science.iversenTimeEfficient2021"),
+                      "Chooser result does not expose the Iversen citation link")
+        XCTAssertTrue(app.scrollToElement("suggestedWorkout.science.pellandFractionalSets2024"),
+                      "Chooser result does not expose the Pelland citation link")
         XCTAssertTrue(app.buttons["suggestedWorkout.about"].waitTap(timeout: 5),
                       "Suggested-workout chooser lacks its About button")
         XCTAssertTrue(app.staticTexts["No Time to Lift? Designing Time-Efficient Training Programs for Strength and Hypertrophy: A Narrative Review"].waitForExistence(timeout: 5),
@@ -153,9 +165,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.navigationBars["View Suggested Workout"].waitForExistence(timeout: 5),
                       "Back did not return to suggested workouts")
-        app.buttons["suggestedWorkout.close"].tap()
+        app.navigationBars["View Suggested Workout"].swipeDown()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
-                      "Suggested-workout sheet did not dismiss back to Home")
+                      "Suggested-workout sheet did not swipe-dismiss back to Home")
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
                       "Home Start Workout did not reopen after suggested workouts")

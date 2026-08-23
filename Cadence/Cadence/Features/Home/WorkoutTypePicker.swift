@@ -8,7 +8,6 @@ struct WorkoutTypePicker: View {
     let onEditorStart: (EditablePlan) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     var onSuggestedWorkout: (() -> Void)? = nil
-    var recommendation: Recommendation? = nil
     var types: [WorkoutType] = WorkoutType.allCases
     var title: String = "Start Workout"
     @Environment(\.dismiss) private var dismiss
@@ -28,9 +27,7 @@ struct WorkoutTypePicker: View {
                                                  onSuggestedWorkout: {
                                                     dismiss()
                                                     onSuggestedWorkout?()
-                                                 },
-                                                 recommendation: recommendation,
-                                                 coachSession: nil)
+                                                 })
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
                                 .tapHaptic()
@@ -69,8 +66,6 @@ struct WorkoutTypePicker: View {
 /// Unified entry sheet for Home. Strength choices are deliberately explicit;
 /// cardio keeps the existing downstream setup and recorder routes.
 struct SelectWorkoutView: View {
-    let recommendation: Recommendation?
-    let coachSession: CoachSession?
     let onQuickStart: () -> Void
     let onSuggestedWorkout: () -> Void
     let onEditorStart: (EditablePlan) -> Void

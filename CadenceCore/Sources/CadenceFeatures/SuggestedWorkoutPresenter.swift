@@ -92,6 +92,13 @@ public enum SuggestedWorkoutPresenter {
         citationIDs.allSatisfy { CitationRegistry.citation(forId: $0) != nil }
     }
 
+    /// UI-facing source content is deliberately citation-neutral. Views resolve
+    /// the IDs through `CitationRegistry` and render the resulting `CitationLink`.
+    public static var aboutContentContainsRawCitationID: Bool {
+        let content = (aboutSteps + pseudocode).joined(separator: " ")
+        return citationIDs.contains(where: content.contains)
+    }
+
     private static func displayName(_ identifier: String) -> String {
         identifier
             .replacingOccurrences(of: "-", with: " ")

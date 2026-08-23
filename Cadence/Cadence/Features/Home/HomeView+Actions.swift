@@ -77,20 +77,6 @@ extension HomeView {
         Haptics.selection()
         launchDecision(session)
     }
-    var previewableCoachRecommendation: CoachSession? {
-        switch coachDecision.primary.launchPayload {
-        case .strengthPlan, .cardio:
-            return coachDecision.primary
-        case .recovery, .rest, .assessment:
-            return nil
-        }
-    }
-
-    var coachStrengthSession: CoachSession? {
-        guard let session = previewableCoachRecommendation, session.kind == .strength else { return nil }
-        return session
-    }
-
     /// Captures SwiftData values on the main actor, then lets the sheet run the
     /// pure, Sendable generator without carrying managed objects across actors.
     func requestSuggestedWorkout() {

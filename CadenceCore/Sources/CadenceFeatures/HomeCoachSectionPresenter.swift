@@ -8,7 +8,7 @@ import CadenceCore
 /// daily Coach decision (including rest and recovery days).
 public enum HomeCoachSectionPresenter {
 
-    /// The card's blocks, in render order. The suggested workout is always last.
+    /// The card's observation blocks, in render order.
     public enum Block: Equatable {
         case heading
         case suggestion(HomeSuggestion)

@@ -70,5 +70,30 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
         XCTAssertTrue(SuggestedWorkoutPresenter.pseudocode.joined(separator: " ").contains("descending muscle mass"))
         XCTAssertTrue(SuggestedWorkoutPresenter.pseudocode.joined(separator: " ").contains("compound > isolation"))
         XCTAssertTrue(SuggestedWorkoutPresenter.pseudocode.joined(separator: " ").contains("more muscles involved"))
+        XCTAssertFalse(SuggestedWorkoutPresenter.aboutContentContainsRawCitationID,
+                      "UI-facing algorithm copy must not expose raw citation IDs")
+    }
+
+    func testCalculationContractCoversIdleCalculatingReadyFailedAndRetry() async {
+        var state: SuggestedWorkoutState = .idle
+        XCTAssertEqual(state, .idle)
+
+        state = .calculating
+        XCTAssertEqual(state, .calculating)
+
+        let input = SuggestedWorkoutInput(completedSetsByMuscle: [:], candidates: [],
+                                          preferredSetsPerExercise: 3, trainingGoal: .strength)
+        let bundle = SuggestedWorkoutGenerator.generate(input: input)
+        state = .ready(bundle)
+        if case .ready(let result) = state {
+            XCTAssertEqual(result.options.count, 3)
+        } else {
+            XCTFail("Calculation did not reach ready")
+        }
+
+        state = .failed(message: "temporary failure")
+        XCTAssertEqual(state, .failed(message: "temporary failure"))
+        state = .calculating // Retry returns to the same calculating path.
+        XCTAssertEqual(state, .calculating)
     }
 }

@@ -6,8 +6,6 @@ import CadenceFeatures
 struct WeightsStartView: View {
     let onEditorStart: (EditablePlan) -> Void
     let onSuggestedWorkout: () -> Void
-    var recommendation: Recommendation? = nil
-    var coachSession: CoachSession? = nil
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(AppSettings.self) private var settings

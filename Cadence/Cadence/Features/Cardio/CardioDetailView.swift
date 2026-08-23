@@ -9,7 +9,9 @@ import SwiftData
 struct CardioDetailView: View {
     @Bindable var workout: CardioWorkout
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     @State private var datePickerPresented = false
+    @State private var deletePresented = false
     @State private var titleEditorPresented = false
     @State private var editedTitle = ""
 
@@ -80,12 +82,33 @@ struct CardioDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { datePickerPresented = true } label: {
-                    Image(systemName: "calendar")
+                HStack(spacing: 14) {
+                    Button { datePickerPresented = true } label: {
+                        Image(systemName: "calendar")
+                    }
+                    .accessibilityLabel("Edit workout date")
+                    .accessibilityIdentifier("cardioDetail.editDate")
+
+                    Button(role: .destructive) { deletePresented = true } label: {
+                        Image(systemName: "trash")
+                    }
+                    .foregroundStyle(.red)
+                    .accessibilityLabel("Delete workout")
+                    .accessibilityIdentifier("cardioDetail.delete")
                 }
-                .accessibilityLabel("Edit workout date")
-                .accessibilityIdentifier("cardioDetail.editDate")
             }
+        }
+        .confirmationDialog("Delete this cardio workout?", isPresented: $deletePresented,
+                            titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                try? WorkoutRepository.softDeleteCardio(workout, in: context)
+                NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
+                dismiss()
+            }
+            .accessibilityIdentifier("cardioDetail.deleteConfirm")
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This removes the cardio workout. You can restore it from History → View Deleted.")
         }
         .sheet(isPresented: $datePickerPresented) {
             NavigationStack {

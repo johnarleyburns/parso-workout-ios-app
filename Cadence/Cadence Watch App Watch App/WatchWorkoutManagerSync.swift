@@ -56,32 +56,64 @@ extension WatchWorkoutManager: WCSessionDelegate {
         }
     }
 
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+        let message = UncheckedWatchPayload(value: userInfo)
+        Task { @MainActor [weak self] in
+            _ = self?.handleMessage(message.value)
+        }
+    }
+
     @MainActor
-    private func handleMessage(_ message: [String: Any]) -> [String: Any] {
-        if message[WatchSync.Key.command] as? String == "start_workout",
+    func handleMessage(_ message: [String: Any]) -> [String: Any] {
+        guard let rawAction = message[WatchSync.Key.command] as? String,
+              let action = WatchHRCommand.Action(rawValue: rawAction) else { return ["ack": false] }
+        let command = WatchHRCommand(payload: message)
+        if let command, !command.isNewer(than: lastAppliedWatchHRCommandAt) {
+            return ["ack": true]
+        }
+
+        if action == .start,
            let type = message["type"] as? String,
            let requestID = message["requestID"] as? String,
            let uuid = UUID(uuidString: requestID) {
             guard !isActive, !isMonitoring else {
-                return reply(for: uuid, accepted: false, rejection: .alreadyActive)
+                return phoneRequestID == nil
+                    ? reply(for: uuid, accepted: false, rejection: .watchWorkoutActive)
+                    : reply(for: uuid, accepted: false, rejection: .alreadyActive,
+                            activeRequestID: phoneRequestID.flatMap(UUID.init(uuidString:)))
             }
-            phoneRequestID = requestID
-            startWorkout(type: type)
+            guard startWorkout(type: type, phoneRequestID: uuid) else {
+                return reply(for: uuid, accepted: false, rejection: .sessionStartFailed)
+            }
+            if let command { lastAppliedWatchHRCommandAt = command.issuedAt }
             return reply(for: uuid, accepted: true)
-        } else if message[WatchSync.Key.command] as? String == "stop_workout" {
+        } else if action == .stop {
+            // A stop may only own a phone-started session. Legacy unscoped stop
+            // messages remain compatible, but can never kill a watch-only one.
+            guard let phoneRequestID else { return ["ack": true] }
             if let expected = message["requestID"] as? String, expected != phoneRequestID {
                 return ["ack": false]
             }
+            if let command { lastAppliedWatchHRCommandAt = command.issuedAt }
             stopWorkout(save: false)
-            phoneRequestID = nil
             return ["ack": true]
         }
         return ["ack": false]
     }
 
-    private func reply(for requestID: UUID, accepted: Bool, rejection: WatchHRRejection? = nil) -> [String: Any] {
+    private var lastAppliedWatchHRCommandAt: TimeInterval? {
+        get {
+            let value = UserDefaults.standard.double(forKey: "watchHR.lastAppliedCommandAt")
+            return value == 0 ? nil : value
+        }
+        set { UserDefaults.standard.set(newValue, forKey: "watchHR.lastAppliedCommandAt") }
+    }
+
+    private func reply(for requestID: UUID, accepted: Bool, rejection: WatchHRRejection? = nil,
+                       activeRequestID: UUID? = nil) -> [String: Any] {
         var result: [String: Any] = ["ack": accepted, "accepted": accepted, "requestID": requestID.uuidString]
         if let rejection { result["rejection"] = rejection.rawValue }
+        if let activeRequestID { result["activeRequestID"] = activeRequestID.uuidString }
         return result
     }
 

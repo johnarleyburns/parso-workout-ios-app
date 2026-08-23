@@ -3,6 +3,7 @@ import Observation
 
 public enum WatchHRRejection: String, Codable, Sendable {
     case alreadyActive
+    case watchWorkoutActive
     case unavailable
     case unsupported
     case healthPermissionDenied
@@ -34,8 +35,14 @@ public enum WatchHRConnectionState: Equatable, Sendable {
 @MainActor @Observable
 public final class WatchHRRelay {
     public private(set) var state: WatchHRConnectionState
+    /// Kept independently from `state` so a timeout still retains enough
+    /// identity to stop the Watch session that may be running remotely.
+    private var requestID: UUID?
     public init(initial: WatchHRConnectionState = .actionRequired(message: "Open Cladiron on your Apple Watch")) { state = initial }
-    public func begin(requestID: UUID = UUID(), now: Date = Date()) { state = .connecting(requestID: requestID, startedAt: now) }
+    public func begin(requestID: UUID = UUID(), now: Date = Date()) {
+        self.requestID = requestID
+        state = .connecting(requestID: requestID, startedAt: now)
+    }
     public func acknowledged(now: Date = Date()) {
         if case .connecting(let id, _) = state { state = .waitingForSample(requestID: id, acknowledgedAt: now) }
     }
@@ -61,12 +68,12 @@ public final class WatchHRRelay {
 
     public func timeout() { state = .timedOut(message: "No live heart rate arrived. Open Cladiron on your Watch and retry.") }
     public func fail(_ message: String) { state = .failed(message: message) }
-    public func cancel() { state = .actionRequired(message: "Apple Watch HR is not connected") }
+    public func cancel() {
+        requestID = nil
+        state = .actionRequired(message: "Apple Watch HR is not connected")
+    }
     public var activeRequestID: UUID? {
-        switch state {
-        case .connecting(let id, _), .waitingForSample(let id, _), .live(let id, _, _): return id
-        default: return nil
-        }
+        requestID
     }
     public func freshBPM(at now: Date = Date()) -> Int? {
         guard case .live(_, let bpm, let receivedAt) = state, now.timeIntervalSince(receivedAt) <= 10 else { return nil }

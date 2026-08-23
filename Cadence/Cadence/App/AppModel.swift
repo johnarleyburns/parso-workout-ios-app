@@ -33,6 +33,10 @@ final class AppModel: NSObject, @unchecked Sendable {
     private(set) var watchError: String?
     let watchHRRelay: WatchHRRelay
     private var watchTimeout: Timer?
+    /// Monotonic stamp shared by immediate and guaranteed-background control
+    /// messages. The Watch uses it to ignore a delayed stop from an older
+    /// workout after a newer workout has already begun.
+    private var lastWatchHRCommandIssuedAt = UserDefaults.standard.double(forKey: "watchHR.lastCommandIssuedAt")
     /// When a `start_workout` is rejected `.alreadyActive`, this is armed for the
     /// 1.2 s teardown window so the stop-then-retry-once fires only while the
     /// user is still on the HR screen (any new start/stop disarms it).
@@ -221,8 +225,10 @@ final class AppModel: NSObject, @unchecked Sendable {
 
         let requestID = UUID()
         watchHRRelay.begin(requestID: requestID)
+        let command = WatchHRCommand(action: .start, requestID: requestID,
+                                     workoutType: rawType, issuedAt: nextWatchHRCommandIssuedAt())
         session.sendMessage(
-            [WatchSync.Key.command: "start_workout", "type": rawType, "requestID": requestID.uuidString],
+            command.payload,
             replyHandler: Self.watchReplyHandler(owner: self, requestID: requestID,
                                                  retryType: retryType, allowsRetry: allowsRetry),
             errorHandler: Self.watchErrorHandler(owner: self))
@@ -240,9 +246,11 @@ final class AppModel: NSObject, @unchecked Sendable {
             let accepted = reply["accepted"] as? Bool
             let reason = (reply["rejection"] as? String) ?? "unavailable"
             let rejection = WatchHRRejection(rawValue: reason)
+            let activeRequestID = (reply["activeRequestID"] as? String).flatMap(UUID.init(uuidString:))
             Task { @MainActor [weak owner] in
                 guard let owner, matchesRequest, let accepted else { return }
                 owner.handleWatchStartReply(accepted: accepted, rejection: rejection,
+                                            activeRequestID: activeRequestID,
                                             retryType: retryType, allowsRetry: allowsRetry)
             }
         }
@@ -254,6 +262,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// rejection — including a second `.alreadyActive` on the retry — surfaces
     /// the error text so the user sees a real message instead of a silent hang.
     private func handleWatchStartReply(accepted: Bool, rejection: WatchHRRejection?,
+                                       activeRequestID: UUID?,
                                        retryType: String, allowsRetry: Bool) {
         if accepted {
             watchHRRelay.acknowledged()
@@ -261,11 +270,11 @@ final class AppModel: NSObject, @unchecked Sendable {
             return
         }
         guard WatchHRRelay.shouldRetryAfterStop(rejection: rejection),
-              allowsRetry, !watchRetryArmed else {
+              let activeRequestID, allowsRetry, !watchRetryArmed else {
             watchHRRelay.fail("Apple Watch rejected heart-rate monitoring (\(rejection?.rawValue ?? "unavailable"))")
             return
         }
-        stopWatchWorkout()
+        stopWatchWorkout(targetRequestID: activeRequestID)
         watchRetryArmed = true
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(1.2))
@@ -300,6 +309,12 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     /// Tells the Apple Watch to end the `HKWorkoutSession` and stop streaming.
     func stopWatchWorkout() {
+        stopWatchWorkout(targetRequestID: watchHRRelay.activeRequestID)
+    }
+
+    /// Sends both an immediate stop and an ordered, guaranteed-background copy.
+    /// The request ID scopes a delayed copy to the session it was meant for.
+    private func stopWatchWorkout(targetRequestID: UUID?) {
         watchRetryArmed = false
         watchTimeout?.invalidate(); watchTimeout = nil
         watchHRRelay.cancel()
@@ -307,13 +322,26 @@ final class AppModel: NSObject, @unchecked Sendable {
             watchStopCount += 1
             UserDefaults.standard.set(watchStopCount, forKey: "uitest.watchStopCount")
         }
-        guard watchAvailable, let session = wcSession else { return }
-        var message: [String: Any] = [WatchSync.Key.command: "stop_workout"]
-        if let requestID = watchHRRelay.activeRequestID { message["requestID"] = requestID.uuidString }
-        session.sendMessage(message,
-                            replyHandler: nil, errorHandler: nil)
         watchActive = false
         watchError = nil
+        guard let targetRequestID, let session = wcSession else { return }
+        let command = WatchHRCommand(action: .stop, requestID: targetRequestID,
+                                     issuedAt: nextWatchHRCommandIssuedAt())
+        // Apple guarantees queued user-info delivery even if either app is
+        // suspended or temporarily unreachable. The matching request ID and
+        // command timestamp make the immediate/background duplicate harmless.
+        session.transferUserInfo(command.payload)
+        if session.isReachable {
+            session.sendMessage(command.payload, replyHandler: nil, errorHandler: nil)
+        }
+    }
+
+    private func nextWatchHRCommandIssuedAt(now: Date = Date()) -> TimeInterval {
+        let next = WatchHRCommand.nextIssuedAt(now: now.timeIntervalSince1970,
+                                               after: lastWatchHRCommandIssuedAt == 0 ? nil : lastWatchHRCommandIssuedAt)
+        lastWatchHRCommandIssuedAt = next
+        UserDefaults.standard.set(next, forKey: "watchHR.lastCommandIssuedAt")
+        return next
     }
 
     private var wcSession: WCSession? {

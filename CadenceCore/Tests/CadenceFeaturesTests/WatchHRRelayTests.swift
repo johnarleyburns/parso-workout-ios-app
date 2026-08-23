@@ -32,11 +32,24 @@ final class WatchHRRelayTests: XCTestCase {
 
     func testNonRetryableRejectionsShouldNotRetry() {
         let nonRetryable: [WatchHRRejection?] = [.healthPermissionDenied, .unsupported,
-                                                 .unavailable, .sessionStartFailed, nil]
+                                                 .unavailable, .sessionStartFailed,
+                                                 .watchWorkoutActive, nil]
         for rejection in nonRetryable {
             XCTAssertFalse(WatchHRRelay.shouldRetryAfterStop(rejection: rejection),
                            "rejection \(String(describing: rejection)) must not auto-retry")
         }
+    }
+
+    func testTimeoutRetainsRequestIdentityUntilCancelled() {
+        let relay = WatchHRRelay()
+        let request = UUID()
+        relay.begin(requestID: request)
+        relay.timeout()
+
+        XCTAssertEqual(relay.activeRequestID, request,
+                       "the phone still needs the request ID to stop a timed-out remote session")
+        relay.cancel()
+        XCTAssertNil(relay.activeRequestID)
     }
 
     func testRelayRecoverySequence() {

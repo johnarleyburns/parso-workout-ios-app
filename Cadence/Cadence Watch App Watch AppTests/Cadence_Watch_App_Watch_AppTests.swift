@@ -7,8 +7,8 @@
 
 import Testing
 import HealthKit
-import WatchKit
 import WatchConnectivity
+import CadenceFeatures
 @testable import Cadence_Watch_App_Watch_App
 
 struct Cadence_Watch_App_Watch_AppTests {
@@ -81,18 +81,72 @@ struct Cadence_Watch_App_Watch_AppTests {
         #expect(callbackReturned)
     }
 
-    /// WatchKit delivers extended-runtime callbacks off the main actor too.
-    @Test func extendedRuntimeCallbackCanEnterFromWatchKitQueue() async {
-        let manager = await MainActor.run { WatchWorkoutManager(uiTestMode: true) }
-        let callbackReturned = await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { [manager] in
-                let delegate: any WKExtendedRuntimeSessionDelegate = manager
-                delegate.extendedRuntimeSessionDidStart(WKExtendedRuntimeSession())
-                continuation.resume(returning: true)
-            }
-        }
+    @Test func pollingRefreshDoesNotDoubleCountHeartRateAggregate() async {
+        await MainActor.run {
+            let manager = WatchWorkoutManager(uiTestMode: true)
+            #expect(manager.startWorkout(type: "run"))
+            manager.handleSessionStateChange(.running)
+            #expect(manager.isHeartRatePollingForTesting)
+            manager.apply(.init(bpm: 120, distanceMeters: nil))
+            manager.applyPolledHeartRate(124)
+            manager.applyPolledHeartRate(124)
 
-        #expect(callbackReturned)
+            #expect(manager.currentBPM == 124)
+            #expect(manager.liveSummary().avgHR == 120)
+            manager.stopWorkout(save: false)
+            #expect(!manager.isHeartRatePollingForTesting)
+        }
+    }
+
+    @Test func visibleStopEndsPhoneStartedWorkout() async {
+        await MainActor.run {
+            let manager = WatchWorkoutManager(uiTestMode: true)
+            #expect(manager.startWorkout(type: "run", phoneRequestID: UUID()))
+            #expect(manager.isActive)
+            manager.stopWorkout(save: false)
+            #expect(!manager.isActive)
+            #expect(!manager.isMonitoring)
+        }
+    }
+
+    @Test func delayedQueuedStopCannotEndNewerPhoneWorkout() async {
+        await MainActor.run {
+            UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
+            let manager = WatchWorkoutManager(uiTestMode: true)
+            let firstID = UUID()
+            let secondID = UUID()
+            let start1 = WatchHRCommand(action: .start, requestID: firstID,
+                                        workoutType: "run", issuedAt: 100)
+            let stop1 = WatchHRCommand(action: .stop, requestID: firstID, issuedAt: 101)
+            let start2 = WatchHRCommand(action: .start, requestID: secondID,
+                                        workoutType: "cycle", issuedAt: 102)
+
+            #expect(manager.handleMessage(start1.payload)["accepted"] as? Bool == true)
+            #expect(manager.handleMessage(stop1.payload)["ack"] as? Bool == true)
+            #expect(manager.handleMessage(start2.payload)["accepted"] as? Bool == true)
+            #expect(manager.handleMessage(stop1.payload)["ack"] as? Bool == true)
+            #expect(manager.isActive, "the delayed duplicate belongs to the older session")
+            #expect(manager.workoutType == "cycle")
+            manager.stopWorkout(save: false)
+            UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
+        }
+    }
+
+    @Test func phoneRequestDoesNotTakeOverWatchOnlyWorkout() async {
+        await MainActor.run {
+            UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
+            let manager = WatchWorkoutManager(uiTestMode: true)
+            #expect(manager.startWorkout(type: "strength"))
+            let requestID = UUID()
+            let command = WatchHRCommand(action: .start, requestID: requestID,
+                                         workoutType: "run", issuedAt: 200)
+            let reply = manager.handleMessage(command.payload)
+
+            #expect(reply["accepted"] as? Bool == false)
+            #expect(reply["rejection"] as? String == WatchHRRejection.watchWorkoutActive.rawValue)
+            manager.stopWorkout(save: false)
+            UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
+        }
     }
 
 }

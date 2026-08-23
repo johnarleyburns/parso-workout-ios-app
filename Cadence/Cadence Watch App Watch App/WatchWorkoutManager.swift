@@ -53,7 +53,7 @@ final class WatchWorkoutManager: NSObject {
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
-    private var extendedSession: WKExtendedRuntimeSession?
+    private var hrPollTimer: Timer?
     private var ble: WatchHeartRateBLE?
     private var sessionStart: Date?
     var phoneRequestID: String?
@@ -129,14 +129,18 @@ final class WatchWorkoutManager: NSObject {
     // MARK: Workout control
 
     @discardableResult
-    func startWorkout(type rawType: String, cardioType: CardioType? = nil, spec: WorkoutConfigurationSpec? = nil) -> Bool {
+    func startWorkout(type rawType: String, cardioType: CardioType? = nil,
+                      spec: WorkoutConfigurationSpec? = nil, phoneRequestID: UUID? = nil) -> Bool {
         guard !isActive, !isMonitoring else { return false }
+        self.phoneRequestID = phoneRequestID?.uuidString
         workoutType = rawType
         isActive = true; isMonitoring = false
         let activity = Self.activityType(for: rawType)
         if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: spec); return true }
         Task {
-            guard await requestWorkoutAuthorization() else { isActive = false; return }
+            guard await requestWorkoutAuthorization() else {
+                isActive = false; self.phoneRequestID = nil; return
+            }
             await MainActor.run { beginSession(activity: activity, spec: spec) }
         }
         return true
@@ -144,6 +148,7 @@ final class WatchWorkoutManager: NSObject {
 
     func startMonitoringSession() {
         guard !isActive, !isMonitoring else { return }
+        phoneRequestID = nil
         isMonitoring = true; workoutType = "monitoring"
         if uiTestMode { sessionStart = Date(); beginSession(activity: .other); return }
         Task {
@@ -158,16 +163,18 @@ final class WatchWorkoutManager: NSObject {
     }
 
     func stopWorkout(save: Bool = true) {
-        guard isActive || isMonitoring else { return }
+        guard isActive || isMonitoring else { phoneRequestID = nil; return }
         if save {
             elapsed = effectiveElapsed
             let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
             savedSummary = SavedWorkoutSummary(duration: elapsed, avgHR: avg, maxHR: maxHeartRate, distanceMeters: distanceMeters)
         }
         let b = builder; let s = session
-        builder = nil; session = nil; extendedSession?.invalidate(); extendedSession = nil
+        hrPollTimer?.invalidate(); hrPollTimer = nil
+        builder = nil; session = nil
         ble?.disconnect(); ble = nil; currentBPM = nil
         isActive = false; isMonitoring = false; workoutType = nil; bleState = nil
+        phoneRequestID = nil
         sessionStart = nil; accumulatedHR = 0; hrCount = 0
         isSwimSession = false; isOutdoorSession = false
         autoPauseDetector.reset(); lastAutoPauseDistance = 0
@@ -289,8 +296,6 @@ final class WatchWorkoutManager: NSObject {
             b.delegate = self; self.builder = b; s.delegate = self
             s.startActivity(with: Date())
             b.beginCollection(withStart: Date(), completion: { _, _ in })
-            extendedSession = WKExtendedRuntimeSession()
-            extendedSession?.delegate = self; extendedSession?.start()
             if hrSource == .bluetooth { startBLE() }
             if isSwimSession { enableWaterLock() }
         } catch { isActive = false; isMonitoring = false; session = nil; builder = nil; sessionStart = nil }
@@ -300,6 +305,38 @@ final class WatchWorkoutManager: NSObject {
         guard let session = wcSession, session.isReachable else { return }
         guard let requestID = phoneRequestID else { return }
         session.sendMessage(["bpm": bpm, "active": true, "requestID": requestID], replyHandler: nil, errorHandler: nil)
+    }
+
+    /// HealthKit's builder delegate may batch callbacks for tens of seconds.
+    /// Polling the live builder's latest statistics restores the one-second UI
+    /// and phone relay cadence used by the original, responsive implementation.
+    func startHeartRatePolling() {
+        hrPollTimer?.invalidate()
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.pollHeartRate() }
+        }
+        hrPollTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    #if DEBUG
+    var isHeartRatePollingForTesting: Bool { hrPollTimer?.isValid == true }
+    #endif
+
+    private func pollHeartRate() {
+        guard isActive || isMonitoring, let builder else { return }
+        let hrType = HKQuantityType(.heartRate)
+        guard let bpm = builder.statistics(for: hrType)?.mostRecentQuantity()?
+            .doubleValue(for: HKUnit(from: "count/min")) else { return }
+        applyPolledHeartRate(bpm)
+    }
+
+    /// A poll refreshes the display/relay but deliberately does not add another
+    /// aggregate sample; the builder delegate owns avg/max accounting.
+    func applyPolledHeartRate(_ bpm: Double) {
+        guard isActive || isMonitoring, hrSource == .appleWatch, bpm > 0 else { return }
+        currentBPM = bpm
+        relayBPM(bpm)
     }
 
     static func activityType(for rawType: String) -> HKWorkoutActivityType {
@@ -352,4 +389,9 @@ extension WatchWorkoutManager {
 
     /// The workout session failed; tear everything down (main actor).
     func handleSessionFailure() { stopWorkout(save: false) }
+
+    func handleSessionStateChange(_ state: HKWorkoutSessionState) {
+        if state == .running { startHeartRatePolling() }
+        else if state == .ended, isActive || isMonitoring { stopWorkout(save: false) }
+    }
 }

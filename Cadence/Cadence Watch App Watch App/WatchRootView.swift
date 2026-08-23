@@ -311,7 +311,7 @@ private struct LiveHRView: View {
                     .padding(.top, 0)
                 Text(zoneLabel).font(.caption.bold()).foregroundStyle(zoneColor)
                 HStack(spacing: 3) { ForEach(1...5, id: \.self) { z in RoundedRectangle(cornerRadius: 2).fill(z <= zone ? zoneColor : .gray.opacity(0.25)).frame(width: 28, height: 6) } }
-                Button("Stop") { watchManager.stopMonitoringSession() }.buttonStyle(.bordered).padding(.top, 10)
+                Button("Stop") { watchManager.stopWorkout(save: false) }.buttonStyle(.bordered).padding(.top, 10)
             } else {
                 Text("--")
                     .font(.system(size: 56, weight: .bold, design: .monospaced))

@@ -1,6 +1,5 @@
 import Foundation
 import HealthKit
-import WatchKit
 
 // MARK: - HealthKit / WatchKit session delegates
 //
@@ -25,7 +24,9 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate {
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,
                                     didChangeTo toState: HKWorkoutSessionState,
                                     from fromState: HKWorkoutSessionState,
-                                    date: Date) {}
+                                    date: Date) {
+        Task { @MainActor [weak self] in self?.handleSessionStateChange(toState) }
+    }
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
         Task { @MainActor [weak self] in self?.handleSessionFailure() }
@@ -62,12 +63,4 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
         guard let type = workoutBuilder.workoutEvents.last?.type, type == .lap || type == .segment else { return }
         Task { @MainActor [weak self] in self?.applyLapEvent() }
     }
-}
-
-extension WatchWorkoutManager: WKExtendedRuntimeSessionDelegate {
-    nonisolated func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession,
-                                            didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason,
-                                            error: Error?) {}
-    nonisolated func extendedRuntimeSessionDidStart(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}
-    nonisolated func extendedRuntimeSessionWillExpire(_ extendedRuntimeSession: WKExtendedRuntimeSession) {}
 }

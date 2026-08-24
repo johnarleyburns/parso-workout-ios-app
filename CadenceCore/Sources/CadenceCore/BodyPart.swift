@@ -81,9 +81,17 @@ public enum BodyPart: String, CaseIterable, Sendable, Identifiable, Codable {
         MuscleGroup.defaults(forCategory: cat).map(\.rawValue)
     }
 
-    /// Guess an ExerciseCategory from a raw name using common fitness naming
-    /// conventions observed across ExerciseLibrary + free-exercise-db.
+    /// Guess an ExerciseCategory from a raw name. Forwards to
+    /// `ExerciseCategory.guess(fromName:)`, which is where it lives now.
     public static func guessCategory(from name: String) -> ExerciseCategory? {
+        ExerciseCategory.guess(fromName: name)
+    }
+}
+
+public extension ExerciseCategory {
+    /// Guess a category from a raw exercise name using common fitness naming
+    /// conventions observed across `ExerciseLibrary` and free-exercise-db++.
+    static func guess(fromName name: String) -> ExerciseCategory? {
         let lower = name.lowercased()
         if lower.contains("press") || lower.contains("push") || lower.contains("extension")
             || lower.contains("fly") || lower.contains("raise") || lower.contains("overhead") {

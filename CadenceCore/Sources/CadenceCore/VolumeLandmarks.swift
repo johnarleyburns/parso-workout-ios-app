@@ -29,27 +29,62 @@ public enum VolumeZone: String, Sendable, Equatable {
 
 public enum VolumeLandmarks {
 
-    /// Baseline (intermediate) weekly working-set bands per coarse `BodyPart`.
-    /// Smaller muscles (arms, calves, abs) sit a touch lower than large compound
-    /// regions, but the spread is deliberately gentle — these are starting points.
-    static func baseline(for part: BodyPart) -> VolumeBands {
-        switch part {
-        case .legs, .back, .chest:
+    /// Baseline (intermediate) weekly working-set bands per `MuscleGroup`.
+    ///
+    /// These preserve the spread the coarse body-part table had — large regions
+    /// 8/16/22, arms 6/14/20, small muscles 6/12/18 — and extend it to the groups
+    /// `BodyPart` used to hide inside `legs` and `back`. The groups the coach does
+    /// not target by default (`MuscleGroup.defaultTracked` excludes them) get
+    /// deliberately low bands, so a user who opts one in is not told to run a
+    /// training block for it.
+    ///
+    /// Conservative starting points anchored on the weekly-volume dose-response
+    /// work (`volumeDoseResponse`, `pellandDoseResponse2026`), not validated
+    /// physiological thresholds for any individual.
+    static func baseline(for group: MuscleGroup) -> VolumeBands {
+        switch group {
+        case .chest, .lats, .quadriceps:
             return VolumeBands(mev: 8, mav: 16, mrv: 22)
         case .shoulders:
             return VolumeBands(mev: 8, mav: 16, mrv: 24)
-        case .biceps, .triceps:
+        case .middleBack, .biceps, .triceps, .glutes, .hamstrings:
             return VolumeBands(mev: 6, mav: 14, mrv: 20)
-        case .calves, .abs:
+        case .traps:
+            return VolumeBands(mev: 4, mav: 12, mrv: 20)
+        case .abdominals, .calves:
             return VolumeBands(mev: 6, mav: 12, mrv: 18)
+        case .forearms, .lowerBack, .adductors, .abductors:
+            return VolumeBands(mev: 4, mav: 10, mrv: 16)
+        case .hipFlexors, .neck, .rotatorCuff, .tibialis:
+            return VolumeBands(mev: 2, mav: 6, mrv: 12)
         }
     }
 
-    /// Experience-scaled bands for a body part. Beginners get lower volume,
+    /// Experience-scaled bands for a muscle group. Beginners get lower volume,
     /// advanced lifters higher (per `ExperienceLevel.volumeScale`), keeping the
     /// MEV < MAV < MRV ordering.
+    public static func bands(for group: MuscleGroup, experience: ExperienceLevel) -> VolumeBands {
+        scaled(baseline(for: group), experience: experience)
+    }
+
+    /// Bands for a coarse body part: the widest of its member groups, so a part
+    /// that contains a large muscle is not judged against a small one's ceiling.
+    ///
+    /// Transitional, like `TrainingFacts.weeklySetsByPart` — removed with
+    /// `BodyPart` in phase 6 of the DB++ adoption.
     public static func bands(for part: BodyPart, experience: ExperienceLevel) -> VolumeBands {
-        let base = baseline(for: part)
+        let members = MuscleGroup.allCases.filter { BodyPart.part(forGroup: $0) == part }
+        let baselines = members.map(baseline(for:))
+        guard !baselines.isEmpty else {
+            return scaled(VolumeBands(mev: 6, mav: 12, mrv: 18), experience: experience)
+        }
+        return scaled(VolumeBands(mev: baselines.map(\.mev).max() ?? 0,
+                                  mav: baselines.map(\.mav).max() ?? 0,
+                                  mrv: baselines.map(\.mrv).max() ?? 0),
+                      experience: experience)
+    }
+
+    private static func scaled(_ base: VolumeBands, experience: ExperienceLevel) -> VolumeBands {
         let s = experience.volumeScale
         return VolumeBands(mev: (base.mev * s).rounded(),
                            mav: (base.mav * s).rounded(),
@@ -58,7 +93,14 @@ public enum VolumeLandmarks {
 
     /// Classify a measured weekly set count against the (experience-scaled) bands.
     public static func zone(sets: Double, for part: BodyPart, experience: ExperienceLevel) -> VolumeZone {
-        let b = bands(for: part, experience: experience)
+        zone(sets: sets, bands: bands(for: part, experience: experience))
+    }
+
+    public static func zone(sets: Double, for group: MuscleGroup, experience: ExperienceLevel) -> VolumeZone {
+        zone(sets: sets, bands: bands(for: group, experience: experience))
+    }
+
+    private static func zone(sets: Double, bands b: VolumeBands) -> VolumeZone {
         if sets < b.mev { return .belowMEV }
         if sets < b.mav { return .productive }
         if sets < b.mrv { return .approachingMRV }
@@ -73,6 +115,11 @@ public enum VolumeLandmarks {
     /// (`volumeDoseResponse`) that the coach already surfaces for volume claims.
     public static func productiveTarget(for part: BodyPart, experience: ExperienceLevel) -> Double {
         let b = bands(for: part, experience: experience)
+        return ((b.mev + b.mav) / 2).rounded()
+    }
+
+    public static func productiveTarget(for group: MuscleGroup, experience: ExperienceLevel) -> Double {
+        let b = bands(for: group, experience: experience)
         return ((b.mev + b.mav) / 2).rounded()
     }
 }

@@ -1,53 +1,86 @@
 import Foundation
 
 public struct PlanAwareWeeklyAccounting: Sendable, Equatable {
+    public let completedSetsByGroup: [MuscleGroup: Double]
+    public let plannedRemainingSetsByGroup: [MuscleGroup: Double]
+    public let projectedSetsByGroup: [MuscleGroup: Double]
+    /// Transitional body-part rollups, derived from the group tallies. Removed
+    /// with `BodyPart` in phase 6 of the DB++ adoption.
     public let completedSetsByPart: [BodyPart: Double]
     public let plannedRemainingSetsByPart: [BodyPart: Double]
     public let projectedSetsByPart: [BodyPart: Double]
     public let plannedStrengthSessionCount: Int
 
     public init(completed: TrainingFacts, plannedStrengthSessions: [CoachSession]) {
+        self.completedSetsByGroup = completed.weeklySetsByGroup
+        self.plannedRemainingSetsByGroup = Self.plannedSetsByGroup(from: plannedStrengthSessions)
+        self.projectedSetsByGroup = completedSetsByGroup
+            .merging(plannedRemainingSetsByGroup) { $0 + $1 }
         self.completedSetsByPart = completed.weeklySetsByPart
-        self.plannedRemainingSetsByPart = Self.plannedSetsByPart(from: plannedStrengthSessions)
-        self.projectedSetsByPart = completed.weeklySetsByPart.merging(plannedRemainingSetsByPart) { $0 + $1 }
+        self.plannedRemainingSetsByPart = Self.rollUp(plannedRemainingSetsByGroup)
+        self.projectedSetsByPart = completed.weeklySetsByPart
+            .merging(plannedRemainingSetsByPart) { $0 + $1 }
         self.plannedStrengthSessionCount = plannedStrengthSessions.filter { $0.kind == .strength }.count
     }
 
-    public static func plannedSetsByPart(from sessions: [CoachSession]) -> [BodyPart: Double] {
-        plannedSetsByPart(from: sessions.flatMap { session -> [CoachSession.RecommendedExercise] in
+    /// Sums group credit into coarse parts. Unlike the completed tally this cannot
+    /// take the per-set maximum — planned sets arrive already aggregated — so it
+    /// caps each part at the largest single member so a leg session is not counted
+    /// several times over.
+    static func rollUp(_ byGroup: [MuscleGroup: Double]) -> [BodyPart: Double] {
+        var result: [BodyPart: Double] = [:]
+        for (group, sets) in byGroup {
+            guard let part = BodyPart.part(forGroup: group) else { continue }
+            result[part] = max(result[part] ?? 0, sets)
+        }
+        return result
+    }
+
+    public static func plannedSetsByGroup(from sessions: [CoachSession]) -> [MuscleGroup: Double] {
+        plannedSetsByGroup(from: sessions.flatMap { session -> [CoachSession.RecommendedExercise] in
             guard session.kind == .strength else { return [] }
             return session.exercises ?? []
         })
     }
 
-    public static func plannedSetsByPart(from exercises: [CoachSession.RecommendedExercise]) -> [BodyPart: Double] {
-        var result: [BodyPart: Double] = [:]
+    public static func plannedSetsByGroup(from exercises: [CoachSession.RecommendedExercise]) -> [MuscleGroup: Double] {
+        var result: [MuscleGroup: Double] = [:]
         for exercise in exercises {
             let sets = Double(max(1, exercise.sets ?? 3))
-            let muscles = muscleIDs(for: exercise)
-            let primary = BodyPart.parts(forMuscleIDs: muscles.primary)
-            let secondary = BodyPart.parts(forMuscleIDs: muscles.secondary).subtracting(primary)
-            for part in primary {
-                result[part, default: 0] += sets
-            }
-            for part in secondary {
-                result[part, default: 0] += sets * TrainingFacts.secondaryWeight
+            for (group, weight) in credits(for: exercise) {
+                result[group, default: 0] += sets * weight
             }
         }
         return result
     }
 
-    private static func muscleIDs(for exercise: CoachSession.RecommendedExercise) -> (primary: [String], secondary: [String]) {
-        if !exercise.primaryMuscles.isEmpty {
-            return (exercise.primaryMuscles, [])
-        }
+    public static func plannedSetsByPart(from sessions: [CoachSession]) -> [BodyPart: Double] {
+        rollUp(plannedSetsByGroup(from: sessions))
+    }
+
+    public static func plannedSetsByPart(from exercises: [CoachSession.RecommendedExercise]) -> [BodyPart: Double] {
+        rollUp(plannedSetsByGroup(from: exercises))
+    }
+
+    /// The credit one planned set of this recommendation gives each muscle group.
+    ///
+    /// A recommendation carries only a name and (sometimes) a primary muscle list,
+    /// so resolve it to a catalog template first — that is where the DB++ roles and
+    /// volume eligibility live. Falls back to the recommendation's own muscles, then
+    /// to a category guess from the name.
+    static func credits(for exercise: CoachSession.RecommendedExercise) -> [MuscleGroup: Double] {
         if let template = ExerciseLibrary.byName[exercise.name.lowercased()] {
-            return (template.primaryMuscles, template.secondaryMuscles)
+            return VolumeCredit.credits(for: template)
         }
-        if let cat = BodyPart.guessCategory(from: exercise.name) {
-            return (BodyPart.defaultMuscles(forCategory: cat), [])
+        if !exercise.primaryMuscles.isEmpty {
+            return VolumeCredit.credits(direct: MuscleGroup.canonicalize(exercise.primaryMuscles),
+                                        indirect: [], volumeEligible: true)
         }
-        return ([], [])
+        if let category = ExerciseCategory.guess(fromName: exercise.name) {
+            return VolumeCredit.credits(direct: MuscleGroup.defaults(forCategory: category),
+                                        indirect: [], volumeEligible: true)
+        }
+        return [:]
     }
 }
 

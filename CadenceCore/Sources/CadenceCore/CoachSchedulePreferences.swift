@@ -66,11 +66,17 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public var dailyStepTarget: Int
     public var excludedCoverageParts: Set<BodyPart>
     public var desiredSetsPerExercise: Int
+    /// The muscle groups the coach programs toward and Home always shows a row
+    /// for. Defaults to `MuscleGroup.defaultTracked` — the 13 groups the catalog
+    /// can actually satisfy a weekly target for (decision D4). Anyone who wants to
+    /// program adductors, the neck or the rotator cuff can add them here.
+    public var trackedMuscleGroups: Set<MuscleGroup>
 
     private enum CodingKeys: String, CodingKey {
         case strengthDaysPerWeek, cardioDaysPerWeek, restPreference
         case allowsTwoADays, sameDayCardioTiming, dailyStepTarget
         case excludedCoverageParts, desiredSetsPerExercise
+        case trackedMuscleGroups
     }
 
     public static let `default` = CoachSchedulePreferences(
@@ -80,7 +86,8 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         allowsTwoADays: false,
         sameDayCardioTiming: .afterStrength,
         excludedCoverageParts: [],
-        desiredSetsPerExercise: 3)
+        desiredSetsPerExercise: 3,
+        trackedMuscleGroups: MuscleGroup.defaultTracked)
 
     public init(strengthDaysPerWeek: Int = 2,
                 cardioDaysPerWeek: Int = 3,
@@ -89,7 +96,8 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
                 sameDayCardioTiming: SameDayCardioTiming = .afterStrength,
                 dailyStepTarget: Int = 8_000,
                 excludedCoverageParts: Set<BodyPart> = [],
-                desiredSetsPerExercise: Int = 3) {
+                desiredSetsPerExercise: Int = 3,
+                trackedMuscleGroups: Set<MuscleGroup> = MuscleGroup.defaultTracked) {
         self.strengthDaysPerWeek = min(5, max(2, strengthDaysPerWeek))
         self.cardioDaysPerWeek = min(7, max(0, cardioDaysPerWeek))
         self.restPreference = restPreference
@@ -98,6 +106,8 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         self.dailyStepTarget = min(20_000, max(2_000, dailyStepTarget))
         self.excludedCoverageParts = excludedCoverageParts
         self.desiredSetsPerExercise = Self.clampDesiredSets(desiredSetsPerExercise)
+        self.trackedMuscleGroups = trackedMuscleGroups.isEmpty
+            ? MuscleGroup.defaultTracked : trackedMuscleGroups
     }
 
     public init(from decoder: Decoder) throws {
@@ -112,6 +122,20 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         desiredSetsPerExercise = Self.clampDesiredSets(
             try c.decodeIfPresent(Int.self, forKey: .desiredSetsPerExercise) ?? 3
         )
+        // Carry a pre-DB++ user's coverage opt-outs across: every group belonging
+        // to an excluded body part drops out of the tracked set.
+        if let stored = try c.decodeIfPresent(Set<MuscleGroup>.self, forKey: .trackedMuscleGroups),
+           !stored.isEmpty {
+            trackedMuscleGroups = stored
+        } else if excludedCoverageParts.isEmpty {
+            trackedMuscleGroups = MuscleGroup.defaultTracked
+        } else {
+            let excluded = excludedCoverageParts
+            trackedMuscleGroups = MuscleGroup.defaultTracked.filter { group in
+                guard let part = BodyPart.part(forGroup: group) else { return true }
+                return !excluded.contains(part)
+            }
+        }
     }
 
     // MARK: Constrained setters for use in UI

@@ -883,7 +883,11 @@ final class CoachPlanOptimizerTests: XCTestCase {
     func testVarietyRotationKeepsAResolvedLoad() {
         let now = fixedWednesday()
         let facts = trainingFacts([:])
-        let history = ["Barbell Curl", "Dumbbell Curl"].map {
+        // Both curl variants and both row variants are trained, so whichever the
+        // day-2 rotation swaps in must still be priced. (Before the DB++ adoption
+        // the coach put a curl on both days; rows credit the biceps indirectly now,
+        // so it rotates a row variant instead — the defect under test is the same.)
+        let history = ["Barbell Curl", "Dumbbell Curl", "Barbell Row", "Seated Cable Row"].map {
             strengthEvent($0, weightKg: 30, reps: 10, e1rm: 40, daysAgo: 12, now: now)
         }
         let coach = coachFacts(now: now, completedSets: [:], strengthDays: 0, events: history)
@@ -898,10 +902,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let withHistory = all.filter {
             CoachSession.recentTopSet(forExerciseNamed: $0.name, facts: coach) != nil
         }
-        // Day 2 rotates Barbell Curl out for Dumbbell Curl; both are trained, so
-        // both must be priced. Before the fix the rotated-in one was always nil.
+        // Day 2 rotates a trained movement out for a trained variant, so both must
+        // be priced. Before the fix the rotated-in one was always nil.
         XCTAssertGreaterThanOrEqual(withHistory.count, 2,
-                                    "rotation should have placed a second trained curl variant")
+                                    "rotation should have placed a second trained variant")
         for exercise in withHistory {
             XCTAssertNotNil(exercise.loadKg,
                             "\(exercise.name) has history, so the plan must carry its load")

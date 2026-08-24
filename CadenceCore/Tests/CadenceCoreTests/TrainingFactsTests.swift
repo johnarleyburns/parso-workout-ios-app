@@ -59,7 +59,10 @@ final class TrainingFactsTests: XCTestCase {
         let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
         XCTAssertEqual(facts.weeklySetsByMuscle["chest"] ?? -1, 4.0, accuracy: 0.001)
         XCTAssertEqual(facts.weeklySetsByMuscle["triceps"] ?? -1, 2.0, accuracy: 0.001)
-        XCTAssertEqual(facts.weeklySetsByMuscle["front-delts"] ?? -1, 2.0, accuracy: 0.001)
+        // "front-delts" canonicalizes onto shoulders: DB++ has no evidence that
+        // separates deltoid heads, so the old split was a phantom dimension.
+        XCTAssertEqual(facts.weeklySetsByMuscle["shoulders"] ?? -1, 2.0, accuracy: 0.001)
+        XCTAssertNil(facts.weeklySetsByMuscle["front-delts"])
         XCTAssertNil(facts.weeklySetsByMuscle["glutes"], "Untrained muscles stay absent")
     }
 

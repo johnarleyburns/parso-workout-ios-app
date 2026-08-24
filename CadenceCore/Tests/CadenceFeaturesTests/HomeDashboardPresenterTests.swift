@@ -98,13 +98,15 @@ final class HomeDashboardPresenterTests: XCTestCase {
     }
 
     func testMuscleRowsUseTheSharedZonesAndKeepFractionalSets() {
+        // "quads" is a retired id: rows are keyed by MuscleGroup now, and a caller
+        // passing a historical id still lands on the right row.
         let rows = HomeDashboardPresenter.muscleRows(setsByMuscle: [
             "chest": 3.5, "lats": 4, "glutes": 8, "quads": 12.5,
         ])
         XCTAssertEqual(rows.first { $0.muscleID == "chest" }?.zone, .belowMinimum)
         XCTAssertEqual(rows.first { $0.muscleID == "lats" }?.zone, .building)
         XCTAssertEqual(rows.first { $0.muscleID == "glutes" }?.zone, .productive)
-        let quads = rows.first { $0.muscleID == "quads" }
+        let quads = rows.first { $0.muscleID == "quadriceps" }
         XCTAssertEqual(quads?.zone, .aboveMaximum)
         XCTAssertEqual(quads?.normalized, 1)
         XCTAssertEqual(rows.first { $0.muscleID == "chest" }?.sets, 3.5)
@@ -114,7 +116,7 @@ final class HomeDashboardPresenterTests: XCTestCase {
 
     func testMuscleRowsAreOrderedAlphabeticallyAndTitleCased() throws {
         let muscles = try dashboard(chestSets: 4, now: Date()).muscles
-        XCTAssertEqual(muscles.map(\.displayName), ["Abductors", "Abs", "Adductors", "Biceps", "Calves", "Chest", "Delts", "Forearms", "Front Delts", "Glutes", "Hamstrings", "Hip Flexors", "Lats", "Lower Back", "Obliques", "Quads", "Rear Delts", "Rhomboids", "Traps", "Triceps", "Upper Chest"])
+        XCTAssertEqual(muscles.map(\.displayName), ["Abductors", "Abs", "Adductors", "Biceps", "Calves", "Chest", "Forearms", "Glutes", "Hamstrings", "Hip Flexors", "Lats", "Lower Back", "Mid Back", "Neck", "Quads", "Rotator Cuff", "Shoulders", "Tibialis", "Traps", "Triceps"])
         XCTAssertTrue(muscles.allSatisfy { $0.displayName.first?.isUppercase == true })
     }
 

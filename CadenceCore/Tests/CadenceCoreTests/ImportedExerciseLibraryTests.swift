@@ -30,8 +30,10 @@ final class ImportedExerciseLibraryTests: XCTestCase {
 
     // Mapping spot-checks: their strings → our ids/enums.
     func testMappingTables() {
-        XCTAssertEqual(ImportedExerciseLibrary.muscleIDs(["middle back", "lower back", "quadriceps"]),
-                       ["rhomboids", "lower-back", "quads"])
+        // The hand-written muscle table is gone — MuscleGroup canonicalizes upstream
+        // spellings directly, which is also what ends `neck` being folded into traps.
+        XCTAssertEqual(MuscleGroup.canonicalize(["middle back", "lower back", "quadriceps"]),
+                       [.middleBack, .lowerBack, .quadriceps])
         XCTAssertEqual(ImportedExerciseLibrary.equipmentMap["e-z curl bar"], .barbell)
         XCTAssertEqual(ImportedExerciseLibrary.equipmentMap["body only"], .bodyweight)
         XCTAssertNil(ImportedExerciseLibrary.equipmentMap["foam roll"], "unmapped equipment stays nil")
@@ -39,14 +41,14 @@ final class ImportedExerciseLibraryTests: XCTestCase {
 
     // Category derivation: cardio/plyo carry over; strength splits by region + force.
     func testCategoryDerivation() {
-        XCTAssertEqual(ImportedExerciseLibrary.category(primaryIDs: ["chest"], force: .push, rawCategory: "strength"), .push)
-        XCTAssertEqual(ImportedExerciseLibrary.category(primaryIDs: ["lats"], force: .pull, rawCategory: "strength"), .pull)
-        XCTAssertEqual(ImportedExerciseLibrary.category(primaryIDs: ["quads"], force: .push, rawCategory: "strength"), .legs)
-        XCTAssertEqual(ImportedExerciseLibrary.category(primaryIDs: ["abs"], force: nil, rawCategory: "strength"), .core)
-        XCTAssertEqual(ImportedExerciseLibrary.category(primaryIDs: ["quads"], force: nil, rawCategory: "cardio"), .cardio)
-        XCTAssertEqual(ImportedExerciseLibrary.category(primaryIDs: ["glutes"], force: nil, rawCategory: "plyometrics"), .plyometrics)
+        XCTAssertEqual(ImportedExerciseLibrary.category(primaryGroups: [.chest], force: .push, rawCategory: "strength"), .push)
+        XCTAssertEqual(ImportedExerciseLibrary.category(primaryGroups: [.lats], force: .pull, rawCategory: "strength"), .pull)
+        XCTAssertEqual(ImportedExerciseLibrary.category(primaryGroups: [.quadriceps], force: .push, rawCategory: "strength"), .legs)
+        XCTAssertEqual(ImportedExerciseLibrary.category(primaryGroups: [.abdominals], force: nil, rawCategory: "strength"), .core)
+        XCTAssertEqual(ImportedExerciseLibrary.category(primaryGroups: [.quadriceps], force: nil, rawCategory: "cardio"), .cardio)
+        XCTAssertEqual(ImportedExerciseLibrary.category(primaryGroups: [.glutes], force: nil, rawCategory: "plyometrics"), .plyometrics)
         // No-force back movement falls back to pull by region.
-        XCTAssertEqual(ImportedExerciseLibrary.category(primaryIDs: ["lats"], force: nil, rawCategory: "strength"), .pull)
+        XCTAssertEqual(ImportedExerciseLibrary.category(primaryGroups: [.lats], force: nil, rawCategory: "strength"), .pull)
     }
 
     // The merge keeps every curated entry (curated wins on a name collision) and adds

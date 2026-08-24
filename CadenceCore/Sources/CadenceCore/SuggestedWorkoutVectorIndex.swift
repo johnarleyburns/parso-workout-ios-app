@@ -11,12 +11,13 @@ struct SuggestedWorkoutMuscleSpace: Sendable {
         )
     }
 
+    /// Resolves any historical or canonical muscle string onto a dimension, so a
+    /// candidate or a completed-set tally written before the DB++ adoption still
+    /// lands on the right muscle group.
     func normalizedMuscleID(_ value: String) -> String? {
-        let normalized = value
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-        guard !normalized.isEmpty, dimensionByID[normalized] != nil else { return nil }
-        return normalized
+        guard let group = MuscleGroup.canonical(value),
+              dimensionByID[group.rawValue] != nil else { return nil }
+        return group.rawValue
     }
 
     func completedVector(_ completed: [String: Double]) -> [Double] {

@@ -155,7 +155,7 @@ final class DataExportTests: XCTestCase {
         let exportA = try WorkoutRepository.buildExport(ctxA, preferences: prefs)
         let json = try DataExport.encodeJSON(exportA)
         let decoded = try DataExport.decodeJSON(json)
-        XCTAssertEqual(decoded.version, 5)
+        XCTAssertEqual(decoded.version, 6)
 
         // Merge into a brand-new store, then re-export.
         let ctxB = try makeStore()
@@ -315,10 +315,11 @@ final class DataExportTests: XCTestCase {
         try ctx.save()
 
         let export = try WorkoutRepository.buildExport(ctx)
-        XCTAssertEqual(export.version, 5)
+        XCTAssertEqual(export.version, 6)
         XCTAssertEqual(export.exercises.count, 1)
         XCTAssertEqual(export.exercises.first?.name, "rotary torso")
-        XCTAssertEqual(export.exercises.first?.primaryMuscles, ["abs"])
+        XCTAssertEqual(export.exercises.first?.primaryMuscles, ["abs"],
+                       "the export carries the row exactly as stored")
 
         let data = try DataExport.encodeJSON(export)
         let decoded = try DataExport.decodeJSON(data)
@@ -329,12 +330,14 @@ final class DataExportTests: XCTestCase {
         let imported = try WorkoutRepository.allExercises(newCtx)
         let rotary = imported.first { $0.name == "rotary torso" }
         XCTAssertNotNil(rotary)
-        XCTAssertEqual(rotary?.primaryMuscles, ["abs"])
+        // Import canonicalizes onto the MuscleGroup vocabulary, so a custom
+        // exercise written before the DB++ adoption keeps counting (decision D7).
+        XCTAssertEqual(rotary?.primaryMuscles, ["abdominals"])
         XCTAssertTrue(rotary?.isCustom ?? false)
 
         let reexport = try WorkoutRepository.buildExport(newCtx)
         XCTAssertEqual(reexport.exercises.count, 1)
-        XCTAssertEqual(reexport.exercises.first?.primaryMuscles, ["abs"])
+        XCTAssertEqual(reexport.exercises.first?.primaryMuscles, ["abdominals"])
     }
 
     func testV4BackwardCompat() throws {
@@ -734,7 +737,7 @@ final class DataExportTests: XCTestCase {
 
         // Phase 2: decode & verify.
         let decoded = try DataExport.decodeJSON(encodedJSON)
-        XCTAssertEqual(decoded.version, 5)
+        XCTAssertEqual(decoded.version, 6)
         XCTAssertEqual(decoded.sessions.count, 2)
         XCTAssertEqual(decoded.cardio.count, 1)
         XCTAssertEqual(decoded.assessments.count, 1)

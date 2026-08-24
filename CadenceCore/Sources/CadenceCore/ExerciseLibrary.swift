@@ -19,6 +19,28 @@ public struct ExerciseTemplate: Equatable, Sendable, Identifiable, ExerciseSearc
     public var imageName: String?
     public var level: String?
 
+    // free-exercise-db++ annotation (DB++ adoption phase 3). All defaulted, so the
+    // curated literal catalog compiles unchanged and picks these up from `starter`.
+
+    /// Muscles the movement trains directly — 1.0 set credit (DB++ `direct`).
+    public var directMuscles: [MuscleGroup]
+    /// Muscles trained indirectly — 0.5 set credit (DB++ `indirect`).
+    public var indirectMuscles: [MuscleGroup]
+    /// Muscles that stabilise but are not trained — 0.0 credit (DB++ `stabilizers`).
+    public var stabilizerMuscles: [MuscleGroup]
+    /// False for stretching, plyometrics, cardio and the two strength entries DB++
+    /// excludes: the movement contributes NO weekly volume (decision D3).
+    public var volumeEligible: Bool
+    public var trainingTypes: [ExerciseTrainingType]
+    public var modalities: [ExerciseModality]
+    public var sportContexts: [ExerciseSportContext]
+    /// DB++ movement pattern ids — the join key to the muscle-role literature.
+    public var movementPatternIDs: [String]
+    /// `nil` means these roles are our own mapping, not a DB++ annotation.
+    public var annotationConfidence: AnnotationConfidence?
+    /// The free-exercise-db(++) `exerciseId`: the join key for evidence and imagery.
+    public var sourceExerciseID: String?
+
     public var id: String { name }
     public var isCustom: Bool { false }
     /// Legacy flat tags (kept for back-compat).
@@ -31,21 +53,66 @@ public struct ExerciseTemplate: Equatable, Sendable, Identifiable, ExerciseSearc
     }
 
     /// Concise positional initializer for the literal catalog.
+    ///
+    /// Muscle ids are **canonicalized here** (DB++ adoption phase 3): the curated
+    /// literals were written against the retired `MuscleCatalog` ids, and running
+    /// them through `MuscleGroup` at construction guarantees no template can carry
+    /// a muscle string the volume engine cannot resolve. It also collapses the
+    /// duplicates that creates — `["chest", "upper-chest"]` becomes `[.chest]` —
+    /// and drops any secondary muscle that is already primary.
+    ///
+    /// `direct`/`indirect`/`stabilizers` default to the primary/secondary split.
+    /// `ExerciseLibrary.starter` overwrites them with the DB++ annotation wherever
+    /// a curated entry resolves to a database record.
     public init(_ name: String, _ category: ExerciseCategory, _ equipment: Equipment?,
                 _ force: Force?, _ mechanics: Mechanics,
                 primary: [String], secondary: [String] = [], lateral: Bool = false,
-                instructions: [String] = [], imageName: String? = nil, level: String? = nil) {
+                instructions: [String] = [], imageName: String? = nil, level: String? = nil,
+                direct: [MuscleGroup]? = nil, indirect: [MuscleGroup]? = nil,
+                stabilizers: [MuscleGroup] = [], volumeEligible: Bool = true,
+                trainingTypes: [ExerciseTrainingType]? = nil,
+                modalities: [ExerciseModality]? = nil,
+                sportContexts: [ExerciseSportContext] = [.generalFitness],
+                movementPatternIDs: [String] = [],
+                annotationConfidence: AnnotationConfidence? = nil,
+                sourceExerciseID: String? = nil) {
+        // The browse/search lists always come from `primary`/`secondary`. The role
+        // lists default to them, but a caller that has a real DB++ annotation passes
+        // both: a stretch has no `direct` muscles yet must stay browsable by muscle.
+        let primaryGroups = MuscleGroup.canonicalize(primary)
+        let secondaryGroups = MuscleGroup.canonicalize(secondary)
+            .filter { !primaryGroups.contains($0) }
+        let directGroups = direct ?? primaryGroups
+        let indirectGroups = (indirect ?? secondaryGroups).filter { !directGroups.contains($0) }
         self.name = name
         self.category = category
         self.equipment = equipment
         self.force = force
         self.mechanics = mechanics
         self.isLateral = lateral
-        self.primaryMuscles = primary
-        self.secondaryMuscles = secondary
+        self.primaryMuscles = primaryGroups.map(\.rawValue)
+        self.secondaryMuscles = secondaryGroups.map(\.rawValue)
         self.instructions = instructions
         self.imageName = imageName
         self.level = level
+        self.directMuscles = directGroups
+        self.indirectMuscles = indirectGroups
+        self.stabilizerMuscles = stabilizers
+            .filter { !directGroups.contains($0) && !indirectGroups.contains($0) }
+        self.volumeEligible = volumeEligible
+        self.trainingTypes = trainingTypes ?? [.strength]
+        self.modalities = modalities ?? ExerciseModality.implied(by: equipment)
+        self.sportContexts = sportContexts
+        self.movementPatternIDs = movementPatternIDs
+        self.annotationConfidence = annotationConfidence
+        self.sourceExerciseID = sourceExerciseID
+    }
+
+    /// The per-set weekly-volume credit this movement gives each muscle group.
+    /// Empty when the movement is not volume-eligible (decision D3).
+    public var volumeCredits: [MuscleGroup: Double] {
+        VolumeCredit.credits(direct: directMuscles, indirect: indirectMuscles,
+                             volumeEligible: volumeEligible)
     }
 }
 
@@ -53,7 +120,7 @@ public enum ExerciseLibrary {
 
     /// Built-in catalog seeded on first launch and version-upgraded thereafter.
     /// Bump `seedVersion` when entries are added so existing stores backfill.
-    public static let seedVersion = 8
+    public static let seedVersion = 9
 
     /// Our hand-curated catalog — the authoritative facet source (our muscle ids,
     /// movement-split categories, the "popular" shortlist all reference these).
@@ -62,9 +129,19 @@ public enum ExerciseLibrary {
         + plyometrics + accessories
 
     /// The full seeded catalog: curated entries plus every public-domain
-    /// free-exercise-db movement not already covered by name (P2). Curated facets
-    /// win on a name collision — we trust our `MuscleCatalog` mapping over their
-    /// coarser strings.
+    /// free-exercise-db++ movement not already covered by name (P2).
+    ///
+    /// **The muscle-role reversal (DB++ adoption phase 3).** Curated facets used to
+    /// win outright, on the reasoning that our hand mapping beat upstream's coarse
+    /// strings. That is no longer true: DB++'s direct/indirect/stabilizer roles are
+    /// audited against cited EMG and intervention literature, and our hand mapping
+    /// was a guess at a coarser source. So where a curated entry resolves to a
+    /// database record, **the DB++ annotation wins** for muscle roles, volume
+    /// eligibility and classification, while the curated entry keeps its name,
+    /// category, equipment, force and laterality — the facets we curate on purpose.
+    /// Curated entries with no database counterpart keep their hand mapping and
+    /// carry `annotationConfidence == nil`, which the UI surfaces rather than
+    /// implying evidence that does not exist.
     public static let starter: [ExerciseTemplate] = {
         let importedByName = Dictionary(
             ImportedExerciseLibrary.templates.map { ($0.name.lowercased(), $0) },
@@ -87,6 +164,19 @@ public enum ExerciseLibrary {
             if enriched.instructions.isEmpty { enriched.instructions = imp.instructions }
             if enriched.imageName == nil { enriched.imageName = imp.imageName }
             if enriched.level == nil { enriched.level = imp.level }
+            // The audited annotation wins over our hand mapping (see above).
+            enriched.primaryMuscles = imp.primaryMuscles
+            enriched.secondaryMuscles = imp.secondaryMuscles
+            enriched.directMuscles = imp.directMuscles
+            enriched.indirectMuscles = imp.indirectMuscles
+            enriched.stabilizerMuscles = imp.stabilizerMuscles
+            enriched.volumeEligible = imp.volumeEligible
+            enriched.trainingTypes = imp.trainingTypes
+            enriched.modalities = imp.modalities
+            enriched.sportContexts = imp.sportContexts
+            enriched.movementPatternIDs = imp.movementPatternIDs
+            enriched.annotationConfidence = imp.annotationConfidence
+            enriched.sourceExerciseID = imp.sourceExerciseID
             return enriched
         }
         var seen = Set(curated.map { $0.name.lowercased() })
@@ -485,6 +575,13 @@ public enum ExerciseLibrary {
                  loadAccountingMode: Exercise.defaultLoadAccountingMode(equipment: t.equipment,
                                                                          isLateral: t.isLateral,
                                                                          name: t.name),
-                 defaultBarWeightKg: t.equipment == .barbell ? Exercise.defaultBarWeightKg : 0)
+                 defaultBarWeightKg: t.equipment == .barbell ? Exercise.defaultBarWeightKg : 0,
+                 directMuscles: t.directMuscles, indirectMuscles: t.indirectMuscles,
+                 stabilizerMuscles: t.stabilizerMuscles,
+                 trainingTypes: t.trainingTypes, modalities: t.modalities,
+                 sportContexts: t.sportContexts, movementPatternIDs: t.movementPatternIDs,
+                 volumeEligible: t.volumeEligible,
+                 annotationConfidence: t.annotationConfidence,
+                 sourceExerciseID: t.sourceExerciseID)
     }
 }

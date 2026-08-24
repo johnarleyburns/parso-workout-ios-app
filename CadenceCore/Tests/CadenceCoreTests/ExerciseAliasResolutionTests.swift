@@ -15,7 +15,7 @@ final class ExerciseAliasResolutionTests: XCTestCase {
     func testCommonAliasesResolveToBuiltInTemplates() {
         let lateral = ExerciseLibrary.template(matching: "Lateral Raise")
         XCTAssertEqual(lateral?.name, "Dumbbell Lateral Raise")
-        XCTAssertEqual(lateral?.primaryMuscles, ["delts"])
+        XCTAssertEqual(lateral?.primaryMuscles, ["shoulders"])
 
         let pushdown = ExerciseLibrary.template(matching: "Tricep Pushdown")
         XCTAssertEqual(pushdown?.name, "Triceps Pushdown")
@@ -28,7 +28,7 @@ final class ExerciseAliasResolutionTests: XCTestCase {
         let lateral = try WorkoutRepository.findOrCreateExercise(named: "Lateral Raise", in: context)
         XCTAssertEqual(lateral.name, "Dumbbell Lateral Raise")
         XCTAssertFalse(lateral.isCustom)
-        XCTAssertEqual(lateral.primaryMuscles, ["delts"])
+        XCTAssertEqual(lateral.primaryMuscles, ["shoulders"])
 
         let pushdown = try WorkoutRepository.findOrCreateExercise(named: "Tricep Pushdown", in: context)
         XCTAssertEqual(pushdown.name, "Triceps Pushdown")
@@ -100,7 +100,7 @@ final class ExerciseAliasResolutionTests: XCTestCase {
         let exercises = try WorkoutRepository.allExercises(context)
         XCTAssertFalse(exercises.contains { $0.isCustom && $0.name == "Lateral Raise" })
         let builtIn = try XCTUnwrap(exercises.first { !$0.isCustom && $0.name == "Dumbbell Lateral Raise" })
-        XCTAssertEqual(builtIn.primaryMuscles, ["delts"])
+        XCTAssertEqual(builtIn.primaryMuscles, ["shoulders"])
         XCTAssertEqual(builtIn.sets?.count, 1)
 
         let session = try XCTUnwrap(try WorkoutRepository.allSessions(context).first)

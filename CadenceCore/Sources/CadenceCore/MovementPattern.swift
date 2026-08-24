@@ -43,9 +43,16 @@ public enum MovementPattern: String, CaseIterable, Sendable, Codable {
 
     public static func patterns(forExerciseNamed name: String,
                                  primaryMuscles: [String],
-                                 category: String? = nil) -> Set<MovementPattern> {
+                                 category: String? = nil,
+                                 databasePatternIDs: [String] = []) -> Set<MovementPattern> {
+        // free-exercise-db++ classifies every movement against a canonical pattern
+        // vocabulary that was derived from the literature rather than from the
+        // movement's name. When we have one, trust it over the keyword heuristic.
+        let annotated = Set(databasePatternIDs.compactMap(MovementPattern.init(databasePatternID:)))
+        if !annotated.isEmpty { return annotated }
+
         let lower = name.lowercased()
-        let muscles = Set(primaryMuscles)
+        let muscles = Set(MuscleGroup.canonicalize(primaryMuscles).map(\.rawValue))
         var patterns = Set<MovementPattern>()
 
         let squatKeywords = ["squat", "lunge", "leg press", "bulgarian", "step-up", "step up"]
@@ -82,19 +89,21 @@ public enum MovementPattern: String, CaseIterable, Sendable, Codable {
         }
 
         if patterns.isEmpty {
-            let legMuscles: Set<String> = ["quadriceps", "hamstrings", "glutes", "adductors", "abductors", "hip-flexors"]
-            let pushMuscles: Set<String> = ["chest", "triceps", "front-delts"]
-            let pullMuscles: Set<String> = ["lats", "biceps", "traps", "rhomboids", "rear-delts"]
-            let shoulderMuscles: Set<String> = ["delts"]
-            let coreMuscles: Set<String> = ["abs", "obliques", "lower-back"]
+            // Muscle sets are canonical `MuscleGroup` raw values (DB++ adoption).
+            let legMuscles: Set<String> = ["quadriceps", "hamstrings", "glutes", "adductors",
+                                           "abductors", "hip_flexors", "tibialis"]
+            let pushMuscles: Set<String> = ["chest", "triceps"]
+            let pullMuscles: Set<String> = ["lats", "biceps", "traps", "middle_back"]
+            let shoulderMuscles: Set<String> = ["shoulders", "rotator_cuff"]
+            let coreMuscles: Set<String> = ["abdominals", "lower_back"]
 
             if !muscles.isDisjoint(with: legMuscles) && muscles.isDisjoint(with: pullMuscles) {
                 patterns.insert(.squat)
             }
-            if muscles.contains("lower-back") || (muscles.contains("hamstrings") && muscles.contains("glutes")) {
+            if muscles.contains("lower_back") || (muscles.contains("hamstrings") && muscles.contains("glutes")) {
                 patterns.insert(.hinge)
             }
-            if !muscles.isDisjoint(with: pushMuscles) && !muscles.contains("delts") {
+            if !muscles.isDisjoint(with: pushMuscles) && !muscles.contains("shoulders") {
                 patterns.insert(.horizontalPush)
             }
             if !muscles.isDisjoint(with: pullMuscles) && !muscles.contains("biceps") {
@@ -110,5 +119,49 @@ public enum MovementPattern: String, CaseIterable, Sendable, Codable {
 
         if patterns.isEmpty { patterns.insert(.other) }
         return patterns
+    }
+}
+
+public extension MovementPattern {
+    /// Maps a free-exercise-db++ movement pattern id onto our coarse pattern.
+    ///
+    /// Isolation and single-joint patterns (`elbow_flexion`, `knee_extension`,
+    /// `grip`, the neck and forearm patterns …) deliberately return `nil`: our
+    /// vocabulary has no bucket for them, and the caller's keyword heuristic gives
+    /// a better answer than forcing them into one.
+    init?(databasePatternID id: String) {
+        switch id {
+        case "squat", "squat_quad_bias", "leg_press", "step_up", "lunge":
+            self = .squat
+        case "hip_hinge", "conventional_deadlift", "sumo_deadlift", "rack_pull",
+             "hip_extension", "glute_ham_raise", "kettlebell_swing", "olympic_clean",
+             "olympic_snatch", "olympic_clean_pull", "olympic_snatch_pull",
+             "olympic_clean_and_jerk", "kettlebell_clean", "kettlebell_snatch",
+             "kettlebell_sumo_high_pull":
+            self = .hinge
+        case "horizontal_press", "incline_press", "decline_press",
+             "horizontal_press_triceps_bias", "chest_fly", "dip_chest_bias":
+            self = .horizontalPush
+        case "horizontal_pull", "reverse_fly", "face_pull", "upright_row", "shrug":
+            self = .horizontalPull
+        case "vertical_press", "push_press", "olympic_jerk", "kettlebell_jerk",
+             "strongman_overhead", "thruster", "snatch_balance", "dip_triceps_bias",
+             "bent_press":
+            self = .verticalPush
+        case "vertical_pull", "muscle_up", "rope_climb", "pullover":
+            self = .verticalPull
+        case "loaded_carry", "farmer_carry", "strongman_carry", "sled_push", "sled_pull",
+             "drag_with_press", "power_stairs", "atlas_stone_load", "loaded_object_load",
+             "tire_flip":
+            self = .carry
+        case "spider_crawl", "battle_ropes", "medicine_ball_slam":
+            self = .locomotion
+        case "trunk_flexion", "trunk_extension", "trunk_rotation", "lateral_flexion",
+             "anti_extension", "anti_rotation", "kettlebell_windmill",
+             "kettlebell_figure8", "kettlebell_pirate_ships":
+            self = .core
+        default:
+            return nil
+        }
     }
 }

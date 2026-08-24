@@ -231,10 +231,17 @@ public enum HomeDashboardPresenter {
                      suggestions: suggestions(snapshot: snapshot, schedule: schedule))
     }
 
-    /// Every muscle in `MuscleCatalog`, alphabetically by displayed name.
+    /// Every tracked muscle group, alphabetically by displayed name.
     public static func muscleRows(setsByMuscle: [String: Double]) -> [HomeDashboardState.MuscleRow] {
+        // Tally through `MuscleGroup` so a caller passing historical ids (a store
+        // that has not been re-seeded, or an older export) still lands on a row.
+        var setsByGroup: [String: Double] = [:]
+        for (id, sets) in setsByMuscle {
+            guard let group = MuscleGroup.canonical(id) else { continue }
+            setsByGroup[group.rawValue, default: 0] += sets
+        }
         return MuscleCatalog.all.map { muscle -> HomeDashboardState.MuscleRow in
-            let sets = setsByMuscle[muscle.id] ?? 0
+            let sets = setsByGroup[muscle.id] ?? 0
             let zone = WeeklySetProgress.zone(for: sets)
             return .init(muscleID: muscle.id,
                          displayName: displayName(for: muscle),
@@ -251,10 +258,10 @@ public enum HomeDashboardPresenter {
         }
     }
 
-    /// Title-cased from the catalog id ("rear-delts" → "Rear Delts"), so the list
+    /// The muscle group's display name ("lower_back" → "Lower Back"), so the list
     /// reads the way the picker's muscle filters already do.
     public static func displayName(for muscle: Muscle) -> String {
-        muscle.id.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
+        muscle.displayName
     }
 
     private static func suggestions(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences) -> [HomeSuggestion] {

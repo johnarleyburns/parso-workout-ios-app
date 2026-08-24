@@ -66,8 +66,11 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         let exercise = try! XCTUnwrap(option.exercises.first)
 
         XCTAssertEqual(exercise.selectionScore, 4.5, accuracy: 1e-12)
-        XCTAssertEqual(exercise.contributions.map(\.muscleID), ["chest", "lats"])
-        XCTAssertEqual(exercise.contributions.map(\.weight), [1.0, 0.5])
+        // Contributions are emitted in dimension order, which is now
+        // MuscleGroup.canonicalOrder — descending muscle mass, tracked groups
+        // first — so lats precedes chest.
+        XCTAssertEqual(exercise.contributions.map(\.muscleID), ["lats", "chest"])
+        XCTAssertEqual(exercise.contributions.map(\.weight), [0.5, 1.0])
         XCTAssertEqual(option.remainingDeficits["chest"] ?? .nan, 1, accuracy: 1e-12)
         XCTAssertEqual(option.remainingDeficits["lats"] ?? .nan, 2.5, accuracy: 1e-12)
     }
@@ -118,14 +121,15 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
     func testEqualDeficitsPrioritizeLargerMusclesBeforeCatalogOrder() {
         var completed = satisfied(at: 4)
         completed["biceps"] = 0
-        completed["quads"] = 0
+        completed["quadriceps"] = 0
         let biceps = candidate("biceps", "Alpha Biceps", primary: ["biceps"])
-        let quads = candidate("quads", "Zulu Quads", primary: ["quads"])
+        let quads = candidate("quads", "Zulu Quads", primary: ["quadriceps"])
 
         let option = generate(completed: completed, candidates: [biceps, quads]).minimum
 
         XCTAssertEqual(option.exercises.map(\.candidateID), ["quads", "biceps"])
-        XCTAssertLessThan(MuscleCatalog.massPriority(for: "quads"), MuscleCatalog.massPriority(for: "biceps"))
+        XCTAssertLessThan(MuscleCatalog.massPriority(for: "quadriceps"),
+                          MuscleCatalog.massPriority(for: "biceps"))
     }
 
     func testSameMuscleEqualScorePrefersCompoundBeforeOtherTieBreaks() {
@@ -185,7 +189,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
 
         XCTAssertEqual(exercise.candidateID, "a-id")
         XCTAssertEqual(exercise.name, "press")
-        XCTAssertEqual(exercise.contributions.map(\.muscleID), ["chest", "lats"])
+        XCTAssertEqual(exercise.contributions.map(\.muscleID), ["lats", "chest"])
         XCTAssertEqual(option.exercises.count, 1)
     }
 
@@ -237,7 +241,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         XCTAssertEqual(bundle.minimum.exercises.map(\.candidateID), expectedIDs)
         XCTAssertEqual(bundle.minimum.remainingDeficits["glutes"], 1)
         XCTAssertEqual(bundle.minimum.remainingDeficits["traps"], 1)
-        XCTAssertEqual(bundle.minimum.remainingDeficits["delts"], 4)
+        XCTAssertEqual(bundle.minimum.remainingDeficits["shoulders"], 4)
     }
 
     func testAlreadySatisfiedTiersAreEmptyAndNonLaunchable() {

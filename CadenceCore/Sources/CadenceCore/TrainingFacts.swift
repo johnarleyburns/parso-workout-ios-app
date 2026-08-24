@@ -210,16 +210,18 @@ public extension TrainingFacts {
                 setsByPart[p, default: 0] += secondaryWeight
                 daysByPart[p, default: []].insert(day)
             }
-            var primaryMuscles = Set(ws.exercise.primaryMuscles)
-            if primaryMuscles.isEmpty, let cat = ws.exercise.categoryValue {
-                primaryMuscles = Set(BodyPart.defaultMuscles(forCategory: cat))
+            // Muscle ids are canonicalized here as well as at rest, so a store that
+            // has not been re-seeded yet still tallies onto the right groups.
+            var primaryGroups = Set(MuscleGroup.canonicalize(ws.exercise.primaryMuscles))
+            if primaryGroups.isEmpty, let cat = ws.exercise.categoryValue {
+                primaryGroups = Set(MuscleGroup.defaults(forCategory: cat))
             }
-            for id in primaryMuscles where MuscleCatalog.muscle(id) != nil {
-                setsByMuscle[id, default: 0] += 1.0
+            for group in primaryGroups {
+                setsByMuscle[group.rawValue, default: 0] += 1.0
             }
-            for id in Set(ws.exercise.secondaryMuscles).subtracting(primaryMuscles)
-            where MuscleCatalog.muscle(id) != nil {
-                setsByMuscle[id, default: 0] += secondaryWeight
+            for group in Set(MuscleGroup.canonicalize(ws.exercise.secondaryMuscles))
+                .subtracting(primaryGroups) {
+                setsByMuscle[group.rawValue, default: 0] += secondaryWeight
             }
         }
         let frequencyByPart = daysByPart.mapValues { $0.count }

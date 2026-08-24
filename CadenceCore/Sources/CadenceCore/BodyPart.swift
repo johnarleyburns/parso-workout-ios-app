@@ -22,22 +22,30 @@ public enum BodyPart: String, CaseIterable, Sendable, Identifiable, Codable {
         }
     }
 
-    /// Maps a fine-grained `MuscleCatalog` id to its coarse body part, if any.
-    /// Forearms/grip and hip-flexors-only work map to legs where appropriate;
-    /// muscles with no coarse bucket (e.g. forearms) return nil and don't count.
-    public static func part(forMuscleID id: String) -> BodyPart? {
-        switch id {
-        case "chest", "upper-chest": return .chest
-        case "lats", "traps", "rhomboids", "lower-back": return .back
-        case "delts", "front-delts", "rear-delts": return .shoulders
-        case "biceps": return .biceps
-        case "triceps": return .triceps
-        case "calves": return .calves
-        case "abs", "obliques": return .abs
-        case "quads", "quadriceps", "hamstrings", "glutes", "adductors", "abductors", "hip-flexors":
+    /// Maps a `MuscleGroup` to its coarse body part, if any. Forearms have no
+    /// coarse bucket and deliberately return nil, exactly as before.
+    ///
+    /// Transitional: this rollup exists only so the coach optimizer and the rule
+    /// engine keep their `BodyPart` dimension while weekly volume moves onto
+    /// `MuscleGroup`. Both it and `BodyPart` are deleted in phase 6.
+    public static func part(forGroup group: MuscleGroup) -> BodyPart? {
+        switch group {
+        case .chest: return .chest
+        case .lats, .middleBack, .lowerBack, .traps, .neck: return .back
+        case .shoulders, .rotatorCuff: return .shoulders
+        case .biceps: return .biceps
+        case .triceps: return .triceps
+        case .calves, .tibialis: return .calves
+        case .abdominals: return .abs
+        case .quadriceps, .hamstrings, .glutes, .adductors, .abductors, .hipFlexors:
             return .legs
-        default: return nil
+        case .forearms: return nil
         }
+    }
+
+    /// Resolves any historical or canonical muscle string to its coarse part.
+    public static func part(forMuscleID id: String) -> BodyPart? {
+        MuscleGroup.canonical(id).flatMap(part(forGroup:))
     }
 
     /// The body parts hit by one exercise, given its muscle ids (primary + secondary).
@@ -70,13 +78,7 @@ public enum BodyPart: String, CaseIterable, Sendable, Identifiable, Codable {
     /// Default primary muscle IDs for an exercise category. Used when creating
     /// a custom exercise where no template exists but a category is provided.
     public static func defaultMuscles(forCategory cat: ExerciseCategory) -> [String] {
-        switch cat {
-        case .push: return ["chest", "delts", "triceps"]
-        case .pull: return ["lats", "biceps"]
-        case .legs: return ["quads", "hamstrings", "glutes"]
-        case .core: return ["abs"]
-        case .cardio, .plyometrics, .other: return []
-        }
+        MuscleGroup.defaults(forCategory: cat).map(\.rawValue)
     }
 
     /// Guess an ExerciseCategory from a raw name using common fitness naming

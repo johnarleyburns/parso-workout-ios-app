@@ -34,6 +34,11 @@ public enum WorkoutRepository {
         var byName: [String: Exercise] = [:]
         for ex in existing { byName[ex.name.lowercased()] = ex }
 
+        // DB++ adoption phase 3: bring every stored row onto the canonical
+        // `MuscleGroup` vocabulary. Runs for custom exercises too, since a user's
+        // own movement written as "quads" must keep counting.
+        if canonicalizeStoredMuscleIDs(existing) { changed = true }
+
         for t in ExerciseLibrary.starter {
             if let ex = byName[t.name.lowercased()] {
                 guard !ex.isCustom else { continue }
@@ -65,6 +70,13 @@ public enum WorkoutRepository {
                     ex.level = lvl
                     ex.updatedAt = Date(); changed = true
                 }
+                // DB++ annotation: muscle roles, volume eligibility and movement
+                // classification are refreshed from the template unconditionally,
+                // because a data refresh must be able to correct a previous
+                // annotation. `updatedAt` moves only when a value actually changed,
+                // so a second run is a no-op.
+                if applyAnnotation(of: t, to: ex) { changed = true }
+
                 // Backfill load accounting defaults on built-in exercises.
                 if ex.loadAccountingMode == nil, !ex.loadAccountingUserOverride {
                     if let mode = Exercise.defaultLoadAccountingMode(equipment: ex.equipmentValue,
@@ -87,6 +99,72 @@ public enum WorkoutRepository {
             changed = true
         }
         if changed { try context.save() }
+        return changed
+    }
+
+    /// Rewrites any stored muscle id that is not already a `MuscleGroup` raw value
+    /// onto the canonical vocabulary, for built-in and custom rows alike.
+    ///
+    /// The pre-migration ids are preserved in the legacy `muscleGroups` tag field
+    /// before anything is rewritten, so nothing the user entered is destroyed and
+    /// the migration stays reversible (decision D7). Idempotent: a row whose ids are
+    /// already canonical is left untouched, including its `updatedAt`.
+    @discardableResult
+    static func canonicalizeStoredMuscleIDs(_ exercises: [Exercise]) -> Bool {
+        var changed = false
+        for ex in exercises {
+            let stored = ex.primaryMuscles + ex.secondaryMuscles
+            guard stored.contains(where: { MuscleGroup(rawValue: $0) == nil }) else { continue }
+
+            if ex.muscleGroups.isEmpty { ex.muscleGroups = stored }
+            let primary = MuscleGroup.canonicalize(ex.primaryMuscles)
+            let secondary = MuscleGroup.canonicalize(ex.secondaryMuscles)
+                .filter { !primary.contains($0) }
+            ex.primaryMuscles = primary.map(\.rawValue)
+            ex.secondaryMuscles = secondary.map(\.rawValue)
+            ex.searchKeywords = ExerciseSearch.keywords(
+                name: ex.name, equipment: ex.equipmentValue, isLateral: ex.isLateral,
+                force: ex.forceValue, mechanics: ex.mechanicsValue,
+                primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles)
+            ex.updatedAt = Date()
+            changed = true
+        }
+        return changed
+    }
+
+    /// Copies a template's DB++ annotation onto a built-in row. Returns whether
+    /// anything actually changed, so an idempotent re-run reports no change.
+    @discardableResult
+    static func applyAnnotation(of t: ExerciseTemplate, to ex: Exercise) -> Bool {
+        var changed = false
+        func assign<T: Equatable>(_ new: T, _ current: T, _ apply: (T) -> Void) {
+            guard new != current else { return }
+            apply(new)
+            changed = true
+        }
+        assign(t.directMuscles, ex.directMuscles) { ex.directMuscles = $0 }
+        assign(t.indirectMuscles, ex.indirectMuscles) { ex.indirectMuscles = $0 }
+        assign(t.stabilizerMuscles, ex.stabilizerMuscles) { ex.stabilizerMuscles = $0 }
+        assign(t.trainingTypes, ex.trainingTypes) { ex.trainingTypes = $0 }
+        assign(t.modalities, ex.modalities) { ex.modalities = $0 }
+        assign(t.sportContexts, ex.sportContexts) { ex.sportContexts = $0 }
+        assign(t.movementPatternIDs, ex.movementPatternIDs) { ex.movementPatternIDs = $0 }
+        assign(t.volumeEligible, ex.volumeEligible) { ex.volumeEligible = $0 }
+        assign(t.annotationConfidence, ex.annotationConfidenceValue) { ex.annotationConfidenceValue = $0 }
+        assign(t.sourceExerciseID, ex.sourceExerciseID) { ex.sourceExerciseID = $0 }
+        // The annotation is also the authority on which muscles the movement
+        // trains, so a stale primary/secondary list is corrected with it.
+        let musclesChanged = t.primaryMuscles != ex.primaryMuscles
+            || t.secondaryMuscles != ex.secondaryMuscles
+        assign(t.primaryMuscles, ex.primaryMuscles) { ex.primaryMuscles = $0 }
+        assign(t.secondaryMuscles, ex.secondaryMuscles) { ex.secondaryMuscles = $0 }
+        if musclesChanged {
+            ex.searchKeywords = ExerciseSearch.keywords(
+                name: ex.name, equipment: ex.equipmentValue, isLateral: ex.isLateral,
+                force: ex.forceValue, mechanics: ex.mechanicsValue,
+                primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles)
+        }
+        if changed { ex.updatedAt = Date() }
         return changed
     }
 
@@ -1078,7 +1156,17 @@ public enum WorkoutRepository {
                     level: ex.level,
                     instructions: ex.instructions,
                     defaultBarWeightKg: ex.defaultBarWeightKg,
-                    loadAccountingMode: ex.loadAccountingMode)
+                    loadAccountingMode: ex.loadAccountingMode,
+                    directMuscles: ex.directMuscles.map(\.rawValue),
+                    indirectMuscles: ex.indirectMuscles.map(\.rawValue),
+                    stabilizerMuscles: ex.stabilizerMuscles.map(\.rawValue),
+                    trainingTypes: ex.trainingTypes.map(\.rawValue),
+                    modalities: ex.modalities.map(\.rawValue),
+                    sportContexts: ex.sportContexts.map(\.rawValue),
+                    movementPatternIDs: ex.movementPatternIDs,
+                    volumeEligible: ex.volumeEligible,
+                    annotationConfidence: ex.annotationConfidence,
+                    sourceExerciseID: ex.sourceExerciseID)
             }
         return CadenceExport(sessions: sessions, cardio: cardio, assessments: assessments,
                              exercises: customExercises,
@@ -1141,12 +1229,23 @@ public enum WorkoutRepository {
                 isLateral: exportEx.isLateral,
                 mechanics: exportEx.mechanics.flatMap(Mechanics.init(rawValue:)),
                 force: exportEx.force.flatMap(Force.init(rawValue:)),
-                primaryMuscles: exportEx.primaryMuscles,
-                secondaryMuscles: exportEx.secondaryMuscles,
+                primaryMuscles: MuscleGroup.canonicalize(exportEx.primaryMuscles).map(\.rawValue),
+                secondaryMuscles: MuscleGroup.canonicalize(exportEx.secondaryMuscles).map(\.rawValue),
                 instructions: exportEx.instructions,
                 level: exportEx.level,
                 loadAccountingMode: exportEx.loadAccountingMode.flatMap(LoadAccountingMode.init(rawValue:)),
-                defaultBarWeightKg: exportEx.defaultBarWeightKg)
+                defaultBarWeightKg: exportEx.defaultBarWeightKg,
+                directMuscles: MuscleGroup.canonicalize(exportEx.directMuscles ?? []),
+                indirectMuscles: MuscleGroup.canonicalize(exportEx.indirectMuscles ?? []),
+                stabilizerMuscles: MuscleGroup.canonicalize(exportEx.stabilizerMuscles ?? []),
+                trainingTypes: ExerciseTrainingType.decode(exportEx.trainingTypes ?? []),
+                modalities: ExerciseModality.decode(exportEx.modalities ?? []),
+                sportContexts: ExerciseSportContext.decode(exportEx.sportContexts ?? []),
+                movementPatternIDs: exportEx.movementPatternIDs ?? [],
+                volumeEligible: exportEx.volumeEligible ?? true,
+                annotationConfidence: exportEx.annotationConfidence
+                    .flatMap(AnnotationConfidence.init(rawValue:)),
+                sourceExerciseID: exportEx.sourceExerciseID)
             context.insert(ex)
             exerciseByName[key] = ex
         }

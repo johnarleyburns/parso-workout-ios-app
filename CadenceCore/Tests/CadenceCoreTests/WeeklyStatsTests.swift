@@ -37,9 +37,12 @@ final class WeeklyStatsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: session, exercise: squat, weightKg: 140, reps: 5, in: ctx)
         let since = WeeklyStats.weekStart()
         let (hit, missing) = WeeklyStats.bodyParts([session], since: since)
-        // Back Squat primary quads/glutes (legs) + secondary hamstrings/lower-back (back).
+        // Back Squat trains quadriceps and glutes directly and the adductors
+        // indirectly — all legs. The lower back, hamstrings and calves only
+        // stabilise, so the squat no longer credits the back (DB++ adoption).
         XCTAssertTrue(hit.contains(.legs))
-        XCTAssertTrue(hit.contains(.back))
+        XCTAssertFalse(hit.contains(.back))
+        XCTAssertTrue(missing.contains(.back))
         XCTAssertTrue(missing.contains(.chest))
     }
 

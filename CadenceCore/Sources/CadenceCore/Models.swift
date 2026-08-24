@@ -110,6 +110,29 @@ public final class Exercise {
     /// True when the user has explicitly set the accounting mode, overriding the seed.
     public var loadAccountingUserOverride: Bool = false
 
+    // free-exercise-db++ annotation (DB++ adoption phase 3). All optional or
+    // defaulted, so CloudKit mirrors them as new nullable columns and an older
+    // store keeps opening (decision D7/D12).
+    /// `MuscleGroup` raw values the movement trains directly — 1.0 set credit.
+    private var directMusclesData: String = ""
+    /// Trained indirectly — 0.5 set credit.
+    private var indirectMusclesData: String = ""
+    /// Stabilise but are not trained — 0.0 credit.
+    private var stabilizerMusclesData: String = ""
+    /// Raw `ExerciseTrainingType` / `ExerciseModality` / `ExerciseSportContext` values.
+    private var trainingTypesData: String = ""
+    private var modalitiesData: String = ""
+    private var sportContextsData: String = ""
+    /// DB++ movement pattern ids — the join key to the muscle-role literature.
+    private var movementPatternIDsData: String = ""
+    /// False for stretching, plyometrics and cardio: contributes no weekly volume.
+    public var volumeEligible: Bool = true
+    /// Raw `AnnotationConfidence`. `nil` means these roles are our own mapping,
+    /// not a DB++ annotation — the UI says so rather than implying evidence.
+    public var annotationConfidence: String?
+    /// The free-exercise-db(++) `exerciseId`, for evidence and imagery lookups.
+    public var sourceExerciseID: String?
+
     @Relationship(deleteRule: .nullify, inverse: \SetEntry.exercise)
     public var sets: [SetEntry]? = []
 
@@ -134,7 +157,17 @@ public final class Exercise {
                 originDevice: String = "",
                 loadAccountingMode: LoadAccountingMode? = nil,
                 defaultBarWeightKg: Double = 0,
-                loadAccountingUserOverride: Bool = false) {
+                loadAccountingUserOverride: Bool = false,
+                directMuscles: [MuscleGroup] = [],
+                indirectMuscles: [MuscleGroup] = [],
+                stabilizerMuscles: [MuscleGroup] = [],
+                trainingTypes: [ExerciseTrainingType] = [],
+                modalities: [ExerciseModality] = [],
+                sportContexts: [ExerciseSportContext] = [],
+                movementPatternIDs: [String] = [],
+                volumeEligible: Bool = true,
+                annotationConfidence: AnnotationConfidence? = nil,
+                sourceExerciseID: String? = nil) {
         self.id = id
         self.name = name
         self.category = category?.rawValue
@@ -157,11 +190,76 @@ public final class Exercise {
         self.loadAccountingMode = loadAccountingMode?.rawValue
         self.defaultBarWeightKg = defaultBarWeightKg
         self.loadAccountingUserOverride = loadAccountingUserOverride
+        self.directMusclesData = StringArray.encode(directMuscles.map(\.rawValue))
+        self.indirectMusclesData = StringArray.encode(indirectMuscles.map(\.rawValue))
+        self.stabilizerMusclesData = StringArray.encode(stabilizerMuscles.map(\.rawValue))
+        self.trainingTypesData = StringArray.encode(trainingTypes.map(\.rawValue))
+        self.modalitiesData = StringArray.encode(modalities.map(\.rawValue))
+        self.sportContextsData = StringArray.encode(sportContexts.map(\.rawValue))
+        self.movementPatternIDsData = StringArray.encode(movementPatternIDs)
+        self.volumeEligible = volumeEligible
+        self.annotationConfidence = annotationConfidence?.rawValue
+        self.sourceExerciseID = sourceExerciseID
     }
 
     public var muscleGroups: [String] {
         get { StringArray.decode(muscleGroupsData) }
         set { muscleGroupsData = StringArray.encode(newValue) }
+    }
+    public var directMuscles: [MuscleGroup] {
+        get { MuscleGroup.canonicalize(StringArray.decode(directMusclesData)) }
+        set { directMusclesData = StringArray.encode(newValue.map(\.rawValue)) }
+    }
+    public var indirectMuscles: [MuscleGroup] {
+        get { MuscleGroup.canonicalize(StringArray.decode(indirectMusclesData)) }
+        set { indirectMusclesData = StringArray.encode(newValue.map(\.rawValue)) }
+    }
+    public var stabilizerMuscles: [MuscleGroup] {
+        get { MuscleGroup.canonicalize(StringArray.decode(stabilizerMusclesData)) }
+        set { stabilizerMusclesData = StringArray.encode(newValue.map(\.rawValue)) }
+    }
+    public var trainingTypes: [ExerciseTrainingType] {
+        get { ExerciseTrainingType.decode(StringArray.decode(trainingTypesData)) }
+        set { trainingTypesData = StringArray.encode(newValue.map(\.rawValue)) }
+    }
+    public var modalities: [ExerciseModality] {
+        get { ExerciseModality.decode(StringArray.decode(modalitiesData)) }
+        set { modalitiesData = StringArray.encode(newValue.map(\.rawValue)) }
+    }
+    public var sportContexts: [ExerciseSportContext] {
+        get { ExerciseSportContext.decode(StringArray.decode(sportContextsData)) }
+        set { sportContextsData = StringArray.encode(newValue.map(\.rawValue)) }
+    }
+    public var movementPatternIDs: [String] {
+        get { StringArray.decode(movementPatternIDsData) }
+        set { movementPatternIDsData = StringArray.encode(newValue) }
+    }
+    public var annotationConfidenceValue: AnnotationConfidence? {
+        get { annotationConfidence.flatMap(AnnotationConfidence.init(rawValue:)) }
+        set { annotationConfidence = newValue?.rawValue }
+    }
+
+    /// The per-set weekly-volume credit this movement gives each muscle group.
+    ///
+    /// Falls back to primary/secondary when the DB++ role arrays are empty, which
+    /// is what keeps custom exercises and a store that has not been re-seeded yet
+    /// counting correctly.
+    public var volumeCredits: [MuscleGroup: Double] {
+        let direct = directMuscles
+        if !direct.isEmpty || !indirectMuscles.isEmpty {
+            return VolumeCredit.credits(direct: direct, indirect: indirectMuscles,
+                                        volumeEligible: volumeEligible)
+        }
+        let primary = MuscleGroup.canonicalize(primaryMuscles)
+        let secondary = MuscleGroup.canonicalize(secondaryMuscles)
+            .filter { !primary.contains($0) }
+        return VolumeCredit.credits(direct: primary, indirect: secondary,
+                                    volumeEligible: volumeEligible)
+    }
+
+    /// Weekly-volume credit for one muscle group, honouring `volumeEligible`.
+    public func setCredit(for group: MuscleGroup) -> Double {
+        volumeCredits[group] ?? 0
     }
     public var primaryMuscles: [String] {
         get { StringArray.decode(primaryMusclesData) }

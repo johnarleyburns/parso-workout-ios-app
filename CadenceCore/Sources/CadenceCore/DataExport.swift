@@ -55,7 +55,10 @@ public struct CadenceExport: Codable, Equatable, Sendable {
 
     /// v5 adds full custom exercise catalog export (primary/secondary muscles,
     /// category, equipment, etc.) — a fully lossless round-trip.
-    public static let currentVersion = 5
+    /// v6 adds the free-exercise-db++ annotation on exported exercises: muscle
+    /// roles, volume eligibility, classification and movement patterns. Every new
+    /// field is optional, so a v1–v5 file still imports exactly as it always did.
+    public static let currentVersion = 6
 }
 
 public struct ExportExercise: Codable, Equatable, Sendable {
@@ -72,19 +75,42 @@ public struct ExportExercise: Codable, Equatable, Sendable {
     public var instructions: [String]
     public var defaultBarWeightKg: Double
     public var loadAccountingMode: String?
+    // v6 (free-exercise-db++ annotation). All optional: an older file decodes them
+    // as nil and imports exactly as before.
+    public var directMuscles: [String]?
+    public var indirectMuscles: [String]?
+    public var stabilizerMuscles: [String]?
+    public var trainingTypes: [String]?
+    public var modalities: [String]?
+    public var sportContexts: [String]?
+    public var movementPatternIDs: [String]?
+    public var volumeEligible: Bool?
+    public var annotationConfidence: String?
+    public var sourceExerciseID: String?
 
     public init(id: UUID, name: String, category: String? = nil,
                 primaryMuscles: [String] = [], secondaryMuscles: [String] = [],
                 equipment: String? = nil, isLateral: Bool = false,
                 mechanics: String? = nil, force: String? = nil,
                 level: String? = nil, instructions: [String] = [],
-                defaultBarWeightKg: Double = 0, loadAccountingMode: String? = nil) {
+                defaultBarWeightKg: Double = 0, loadAccountingMode: String? = nil,
+                directMuscles: [String]? = nil, indirectMuscles: [String]? = nil,
+                stabilizerMuscles: [String]? = nil, trainingTypes: [String]? = nil,
+                modalities: [String]? = nil, sportContexts: [String]? = nil,
+                movementPatternIDs: [String]? = nil, volumeEligible: Bool? = nil,
+                annotationConfidence: String? = nil, sourceExerciseID: String? = nil) {
         self.id = id; self.name = name; self.category = category
         self.primaryMuscles = primaryMuscles; self.secondaryMuscles = secondaryMuscles
         self.equipment = equipment; self.isLateral = isLateral
         self.mechanics = mechanics; self.force = force
         self.level = level; self.instructions = instructions
         self.defaultBarWeightKg = defaultBarWeightKg; self.loadAccountingMode = loadAccountingMode
+        self.directMuscles = directMuscles; self.indirectMuscles = indirectMuscles
+        self.stabilizerMuscles = stabilizerMuscles; self.trainingTypes = trainingTypes
+        self.modalities = modalities; self.sportContexts = sportContexts
+        self.movementPatternIDs = movementPatternIDs; self.volumeEligible = volumeEligible
+        self.annotationConfidence = annotationConfidence
+        self.sourceExerciseID = sourceExerciseID
     }
 }
 

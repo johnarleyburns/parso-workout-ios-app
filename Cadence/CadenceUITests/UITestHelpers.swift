@@ -47,8 +47,16 @@ extension XCUIApplication {
         let el = button.exists ? button : descendants(matching: .any)[id]
         guard el.waitForExistence(timeout: 6) else { return false }
         if el.isHittable { el.tap(); return true }
+        // Swipe both ways. An element parked under the top scroll-edge glass band
+        // is not hittable there, and swiping up only pushes it further under —
+        // which is exactly how a returning-from-a-sheet scroll offset used to make
+        // Home's Start Workout permanently untappable (2026-08-23).
         for _ in 0..<maxSwipes {
             swipeUp()
+            if el.isHittable { el.tap(); return true }
+        }
+        for _ in 0..<maxSwipes {
+            swipeDown()
             if el.isHittable { el.tap(); return true }
         }
         // Fall back to a direct tap (XCUITest will attempt to scroll into view).

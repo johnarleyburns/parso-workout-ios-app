@@ -7,8 +7,9 @@
 #   CadenceCore/Sources/CadenceCore/Resources/ExerciseImages/<id>/{0,1}.heic
 # It is NOT run at build time and NOT run in CI.
 #
-# Source: free-exercise-db, pinned to the SAME commit as free-exercise-db.json
-# (b0eed06) so the JSON and the imagery can never drift.
+# Source: free-exercise-db, pinned to commit b0eed06 — the same upstream data
+# free-exercise-db++ carries verbatim under each record's `source` field, so the
+# JSON and the imagery can never drift.
 #
 # Downscale + re-encode with `sips` (ships with macOS — no new dependency, per
 # the repo's zero-proprietary-deps rule NFR-6).
@@ -23,7 +24,7 @@ BASE_URL="https://raw.githubusercontent.com/yuhonas/free-exercise-db/${COMMIT}/e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DB_JSON="${REPO_ROOT}/CadenceCore/Sources/CadenceCore/Resources/free-exercise-db.json"
+DB_JSON="${REPO_ROOT}/CadenceCore/Sources/CadenceCore/Resources/free-exercise-db-plusplus.json"
 OUT_DIR="${REPO_ROOT}/CadenceCore/Sources/CadenceCore/Resources/ExerciseImages"
 
 command -v sips >/dev/null 2>&1 || { echo "error: sips not found (macOS only)"; exit 1; }
@@ -36,8 +37,8 @@ mkdir -p "${OUT_DIR}"
 IMAGE_PATHS="$(python3 -c "
 import json
 d = json.load(open('${DB_JSON}'))
-for e in d:
-    for img in e.get('images', []):
+for e in d['exercises'].values():
+    for img in e['source'].get('images', []):
         print(img)
 ")"
 

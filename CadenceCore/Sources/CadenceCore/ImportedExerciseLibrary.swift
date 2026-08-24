@@ -1,32 +1,22 @@
 import Foundation
 
-/// Public-domain exercise data (free-exercise-db, Unlicense — see `CREDITS.md`)
-/// transformed **on-device** into our own taxonomy. The raw JSON ships as a bundled
-/// package resource; the transform is a pure, `swift test`-verifiable function that
-/// maps their coarse strings (muscles, equipment, category) onto our `MuscleCatalog`
-/// ids, `Equipment`, and movement-split `ExerciseCategory`. Strength-pivot P2 (D2).
+/// Public-domain exercise data (free-exercise-db++, Unlicense — see `CREDITS.md`)
+/// transformed **on-device** into our own taxonomy. The document ships as a bundled
+/// package resource and is decoded by `ExerciseDatabase`; the transform here is a
+/// pure, `swift test`-verifiable function that maps the upstream record DB++ carries
+/// under `source` onto our `MuscleCatalog` ids, `Equipment`, and movement-split
+/// `ExerciseCategory`. Strength-pivot P2 (D2).
+///
+/// DB++'s own annotation layer — direct/indirect/stabilizer muscle roles, volume
+/// eligibility, movement classification — is decoded and available on
+/// `ExerciseDatabase.Record`, and is consumed from phase 3 of the DB++ adoption
+/// onward. This file deliberately still reads only `source`, which is byte-identical
+/// to the free-exercise-db snapshot it replaced.
 public enum ImportedExerciseLibrary {
-
-    // MARK: Raw schema (as published by free-exercise-db)
-
-    /// One record from `free-exercise-db.json`. Only the fields we consume.
-    struct RawEntry: Decodable {
-        let id: String
-        let name: String
-        let force: String?
-        let level: String?
-        let mechanic: String?
-        let equipment: String?
-        let primaryMuscles: [String]
-        let secondaryMuscles: [String]
-        let instructions: [String]
-        let category: String
-        let images: [String]
-    }
 
     // MARK: Mapping tables (their coarse taxonomy → ours)
 
-    /// free-exercise-db muscle string → our `MuscleCatalog` id. Their taxonomy is
+    /// upstream muscle string → our `MuscleCatalog` id. Their taxonomy is
     /// coarser (17 buckets); this hand-checked table is the curation step (plan §02).
     /// "middle back" → rhomboids and "neck" → traps are the only non-obvious calls.
     static let muscleMap: [String: String] = [
@@ -38,7 +28,7 @@ public enum ImportedExerciseLibrary {
         "traps": "traps", "triceps": "triceps",
     ]
 
-    /// free-exercise-db equipment → our `Equipment`. "e-z curl bar" folds into
+    /// upstream equipment → our `Equipment`. "e-z curl bar" folds into
     /// barbell; "foam roll" / "exercise ball" / "medicine ball" / "other" / null have
     /// no faithful facet and stay `nil` (equipment is optional) rather than mislabel.
     static let equipmentMap: [String: Equipment] = [
@@ -96,10 +86,11 @@ public enum ImportedExerciseLibrary {
             || n.contains("one-leg") || n.contains("one leg")
     }
 
-    /// Transform one raw record into our `ExerciseTemplate`, or `nil` if it maps to no
-    /// known muscle (so every imported entry is guaranteed to have ≥1 `MuscleCatalog`
-    /// id, satisfying catalog integrity).
-    static func template(from e: RawEntry) -> ExerciseTemplate? {
+    /// Transform one database record into our `ExerciseTemplate`, or `nil` if it maps
+    /// to no known muscle (so every imported entry is guaranteed to have ≥1
+    /// `MuscleCatalog` id, satisfying catalog integrity).
+    static func template(from record: ExerciseDatabase.Record) -> ExerciseTemplate? {
+        let e = record.source
         let primary = muscleIDs(e.primaryMuscles)
         guard !primary.isEmpty else { return nil }
         let secondary = muscleIDs(e.secondaryMuscles).filter { !primary.contains($0) }
@@ -120,21 +111,21 @@ public enum ImportedExerciseLibrary {
 
     /// The transformed public-domain catalog (lazy; decoded once from the bundled
     /// resource). Empty if the resource is missing/corrupt so the app still seeds the
-    /// curated catalog. Order follows the source file for stable merges.
-    public static let templates: [ExerciseTemplate] = {
-        guard let url = Bundle.module.url(forResource: "free-exercise-db", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
-              let raw = try? JSONDecoder().decode([RawEntry].self, from: data) else {
-            return []
-        }
-        return raw.compactMap(template(from:))
-    }()
+    /// curated catalog. Order follows `ExerciseDatabase.records`, which is sorted by
+    /// `exerciseId`, so merges stay stable.
+    public static let templates: [ExerciseTemplate] =
+        ExerciseDatabase.records.compactMap(template(from:))
 }
 
 public extension ExerciseLibrary {
     /// The upstream repository, shown as a tappable attribution link and opened in
     /// Safari on tap. This is displayed, never fetched by the app (NFR-3).
     static let exerciseRepoURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!
+
+    /// The annotation layer we actually vendor, which carries the upstream data
+    /// verbatim and adds the evidence-audited muscle roles. Displayed, never fetched.
+    static let exerciseAnnotationRepoURL =
+        URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
 
     /// Local file URLs for an exercise's bundled images, in display order.
     /// Resolves from `Bundle.module` via `ExerciseImageCatalog` — there is no

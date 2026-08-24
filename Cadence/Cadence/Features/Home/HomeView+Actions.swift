@@ -89,13 +89,18 @@ extension HomeView {
                         name: exercise.name,
                         mechanics: exercise.mechanicsValue ?? .compound,
                         primaryMuscles: exercise.primaryMuscles,
-                        secondaryMuscles: exercise.secondaryMuscles)
+                        secondaryMuscles: exercise.secondaryMuscles,
+                        volumeEligible: exercise.volumeEligible,
+                        trainingTypes: exercise.trainingTypes,
+                        modalities: exercise.modalities,
+                        sportContexts: exercise.sportContexts)
                 }
             }
             let request = SuggestedWorkoutRequest(
                 input: SuggestedWorkoutInput(
                     completedSetsByMuscle: coachFacts.weeklySetsByMuscle,
                     candidates: candidates,
+                    trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
                     preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
                     trainingGoal: settings.trainingGoal),
                 unit: settings.unit,
@@ -108,6 +113,7 @@ extension HomeView {
             suggestedWorkoutRequest = SuggestedWorkoutRequest(
                 input: SuggestedWorkoutInput(completedSetsByMuscle: coachFacts.weeklySetsByMuscle,
                                               candidates: [],
+                                              trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
                                               preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
                                               trainingGoal: settings.trainingGoal),
                 unit: settings.unit,

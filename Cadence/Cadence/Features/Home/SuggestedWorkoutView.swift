@@ -35,9 +35,9 @@ enum SuggestedWorkoutSignposts {
         os_signpost(.event, log: log, name: "vectorIndexBuild", "%.3f ms",
                     Double(bundle.diagnostics.vectorIndexBuildDuration.components.attoseconds) / 1e15
                     + Double(bundle.diagnostics.vectorIndexBuildDuration.components.seconds) * 1e3)
-        os_signpost(.event, log: log, name: "threeTierGeneration", "%.3f ms",
-                    Double(bundle.diagnostics.threeTierGenerationDuration.components.attoseconds) / 1e15
-                    + Double(bundle.diagnostics.threeTierGenerationDuration.components.seconds) * 1e3)
+        os_signpost(.event, log: log, name: "allStylesGeneration", "%.3f ms",
+                    Double(bundle.diagnostics.allStylesGenerationDuration.components.attoseconds) / 1e15
+                    + Double(bundle.diagnostics.allStylesGenerationDuration.components.seconds) * 1e3)
     }
 }
 
@@ -118,7 +118,7 @@ struct SuggestedWorkoutView: View {
     private func choices(_ bundle: SuggestedWorkoutBundle) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Choose the weekly set target that fits today. You can review and edit every plan before starting.")
+                Text(SuggestedWorkoutPresenter.chooserIntro)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 ForEach(SuggestedWorkoutPresenter.choices(for: bundle)) { choice in
@@ -143,7 +143,8 @@ struct SuggestedWorkoutView: View {
         } label: {
             VStack(alignment: .leading, spacing: 5) {
                 Text(choice.title).font(.headline)
-                Text(choice.subtitle).font(.caption).foregroundStyle(.secondary)
+                Text(choice.styleDescription).font(.caption).foregroundStyle(.secondary)
+                Text(choice.subtitle).font(.caption2).foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
@@ -151,9 +152,9 @@ struct SuggestedWorkoutView: View {
         }
         .buttonStyle(.plain)
         .disabled(choice.isDisabled)
-        .accessibilityIdentifier("suggestedWorkout.\(choice.option.tier.rawValue)")
+        .accessibilityIdentifier("suggestedWorkout.style.\(choice.option.style.rawValue)")
         .accessibilityLabel(choice.title)
-        .accessibilityValue(choice.subtitle)
+        .accessibilityValue("\(choice.styleDescription) \(choice.subtitle)")
     }
 
     @ViewBuilder

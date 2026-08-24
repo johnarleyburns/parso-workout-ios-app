@@ -19,7 +19,15 @@ struct AboutSuggestedWorkoutsView: View {
                 }
             }
             Section("Choosing a plan") {
-                Text("Minimum aims for 4 sets per muscle, Medium for 8, and Maximal for 12. Each plan has a 20, 30, or 40 total-set safety cap, so a capped plan can still show remaining gaps.")
+                Text(SuggestedWorkoutPresenter.choosingAPlan)
+                ForEach(SuggestedWorkoutStyle.allCases, id: \.self) { style in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(style.displayName).font(.subheadline.weight(.semibold))
+                        Text(style.subtitle).font(.caption).foregroundStyle(.secondary)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("suggestedWorkout.about.style.\(style.rawValue)")
+                }
             }
             Section("Scientific backing") {
                 ForEach(SuggestedWorkoutPresenter.citationIDs, id: \.self) { id in

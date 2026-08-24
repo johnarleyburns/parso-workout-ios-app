@@ -4,8 +4,12 @@ struct SuggestedWorkoutMuscleSpace: Sendable {
     let muscleIDs: [String]
     let dimensionByID: [String: Int]
 
-    init() {
-        muscleIDs = MuscleCatalog.all.map(\.id)
+    /// One dimension per **tracked** muscle group, in `MuscleGroup.canonicalOrder`.
+    /// Untracked groups are deliberately absent: a deficit the catalog cannot close
+    /// is not a deficit worth planning around (decision D4).
+    init(tracked: Set<MuscleGroup> = MuscleGroup.defaultTracked) {
+        let groups = MuscleGroup.canonicalOrder.filter(tracked.contains)
+        muscleIDs = groups.map(\.rawValue)
         dimensionByID = Dictionary(
             uniqueKeysWithValues: muscleIDs.enumerated().map { ($0.element, $0.offset) }
         )
@@ -60,9 +64,13 @@ struct SuggestedWorkoutVectorIndex: Sendable {
     let exercises: [SuggestedWorkoutIndexedExercise]
     let inverted: [[Int]]
     let rawCandidateCount: Int
+    /// Per style, whether each indexed exercise belongs to its pool. Precomputed
+    /// so five styles still cost exactly one index build.
+    let styleMembership: [SuggestedWorkoutStyle: [Bool]]
 
-    init(candidates: [SuggestedExerciseCandidate]) {
-        let space = SuggestedWorkoutMuscleSpace()
+    init(candidates: [SuggestedExerciseCandidate],
+         tracked: Set<MuscleGroup> = MuscleGroup.defaultTracked) {
+        let space = SuggestedWorkoutMuscleSpace(tracked: tracked)
         muscleSpace = space
         rawCandidateCount = candidates.count
 
@@ -70,32 +78,52 @@ struct SuggestedWorkoutVectorIndex: Sendable {
             var identity: SuggestedExerciseCandidate
             var primaryMuscles: [String]
             var secondaryMuscles: [String]
+            var volumeEligible: Bool
+            var trainingTypes: [ExerciseTrainingType]
+            var modalities: [ExerciseModality]
+            var sportContexts: [ExerciseSportContext]
         }
 
         var groups: [String: CandidateGroup] = [:]
-        for candidate in candidates {
+        // A movement that earns no weekly volume can never be suggested as
+        // strength work, whatever muscles it lists (decision D3). This is what
+        // keeps stretches and plyometric drills out of a strength suggestion.
+        for candidate in candidates where candidate.volumeEligible {
             let trimmedName = candidate.name.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmedName.isEmpty else { continue }
             let key = trimmedName.lowercased()
-            let normalizedCandidate = SuggestedExerciseCandidate(
-                id: candidate.id,
-                name: trimmedName,
-                mechanics: candidate.mechanics,
-                primaryMuscles: candidate.primaryMuscles,
-                secondaryMuscles: candidate.secondaryMuscles
-            )
             if var group = groups[key] {
-                if normalizedCandidate.id < group.identity.id {
-                    group.identity = normalizedCandidate
-                }
+                if candidate.id < group.identity.id { group.identity = candidate }
                 group.primaryMuscles.append(contentsOf: candidate.primaryMuscles)
                 group.secondaryMuscles.append(contentsOf: candidate.secondaryMuscles)
+                // Two rows of one movement collapse to the union of what each knew.
+                group.volumeEligible = group.volumeEligible || candidate.volumeEligible
+                for type in candidate.trainingTypes where !group.trainingTypes.contains(type) {
+                    group.trainingTypes.append(type)
+                }
+                for modality in candidate.modalities where !group.modalities.contains(modality) {
+                    group.modalities.append(modality)
+                }
+                for context in candidate.sportContexts where !group.sportContexts.contains(context) {
+                    group.sportContexts.append(context)
+                }
                 groups[key] = group
             } else {
                 groups[key] = CandidateGroup(
-                    identity: normalizedCandidate,
+                    identity: SuggestedExerciseCandidate(
+                        id: candidate.id, name: trimmedName, mechanics: candidate.mechanics,
+                        primaryMuscles: candidate.primaryMuscles,
+                        secondaryMuscles: candidate.secondaryMuscles,
+                        volumeEligible: candidate.volumeEligible,
+                        trainingTypes: candidate.trainingTypes,
+                        modalities: candidate.modalities,
+                        sportContexts: candidate.sportContexts),
                     primaryMuscles: candidate.primaryMuscles,
-                    secondaryMuscles: candidate.secondaryMuscles
+                    secondaryMuscles: candidate.secondaryMuscles,
+                    volumeEligible: candidate.volumeEligible,
+                    trainingTypes: candidate.trainingTypes,
+                    modalities: candidate.modalities,
+                    sportContexts: candidate.sportContexts
                 )
             }
         }
@@ -114,16 +142,28 @@ struct SuggestedWorkoutVectorIndex: Sendable {
             for dimension in space.muscleIDs.indices {
                 let muscleID = space.muscleIDs[dimension]
                 if primary.contains(muscleID) {
-                    elements.append(.init(dimension: dimension, weight: 1.0))
+                    elements.append(.init(dimension: dimension, weight: VolumeCredit.direct))
                 } else if secondary.contains(muscleID) {
-                    elements.append(.init(dimension: dimension, weight: 0.5))
+                    elements.append(.init(dimension: dimension, weight: VolumeCredit.indirect))
                 }
             }
             guard !elements.isEmpty else { continue }
             let mask = elements.reduce(UInt32(0)) { $0 | (UInt32(1) << UInt32($1.dimension)) }
-            built.append(.init(candidate: group.identity, elements: elements, coverageMask: mask))
+            let identity = SuggestedExerciseCandidate(
+                id: group.identity.id, name: group.identity.name,
+                mechanics: group.identity.mechanics,
+                primaryMuscles: group.primaryMuscles, secondaryMuscles: group.secondaryMuscles,
+                volumeEligible: group.volumeEligible, trainingTypes: group.trainingTypes,
+                modalities: group.modalities, sportContexts: group.sportContexts)
+            built.append(.init(candidate: identity, elements: elements, coverageMask: mask))
         }
         exercises = built
+
+        var membership: [SuggestedWorkoutStyle: [Bool]] = [:]
+        for style in SuggestedWorkoutStyle.allCases {
+            membership[style] = built.map { $0.candidate.matches(style) }
+        }
+        styleMembership = membership
 
         var lists = Array(repeating: [Int](), count: space.muscleIDs.count)
         for (candidateIndex, exercise) in built.enumerated() {

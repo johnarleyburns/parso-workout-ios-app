@@ -134,17 +134,27 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Suggested workouts did not become ready")
         XCTAssertTrue(app.navigationBars["View Suggested Workout"].exists,
                       "Suggested-workout chooser has the wrong title")
-        let minimum = app.buttons["suggestedWorkout.minimum"]
-        let medium = app.buttons["suggestedWorkout.medium"]
-        let maximal = app.buttons["suggestedWorkout.maximal"]
-        XCTAssertTrue(minimum.exists)
-        XCTAssertTrue(medium.exists)
-        XCTAssertTrue(maximal.exists)
-        XCTAssertEqual(minimum.label, "Minimum Workout")
-        XCTAssertEqual(medium.label, "Medium Workout")
-        XCTAssertEqual(maximal.label, "Maximal Workout")
-        XCTAssertLessThan(minimum.frame.minY, medium.frame.minY)
-        XCTAssertLessThan(medium.frame.minY, maximal.frame.minY)
+        // Five training styles at one set target, not three lengths of the same
+        // workout (DB++ adoption, decision D6).
+        let fitness = app.buttons["suggestedWorkout.style.fitness"]
+        let bodyweight = app.buttons["suggestedWorkout.style.bodyweight"]
+        let powerlifting = app.buttons["suggestedWorkout.style.powerlifting"]
+        let olympic = app.buttons["suggestedWorkout.style.olympic"]
+        let strongman = app.buttons["suggestedWorkout.style.strongman"]
+        XCTAssertTrue(fitness.exists)
+        XCTAssertTrue(bodyweight.exists)
+        XCTAssertTrue(powerlifting.exists)
+        XCTAssertEqual(fitness.label, "Fitness")
+        XCTAssertEqual(bodyweight.label, "Bodyweight")
+        XCTAssertEqual(powerlifting.label, "Powerlifting")
+        XCTAssertLessThan(fitness.frame.minY, bodyweight.frame.minY)
+        XCTAssertLessThan(bodyweight.frame.minY, powerlifting.frame.minY)
+        XCTAssertTrue(app.scrollToElement("suggestedWorkout.style.olympic"))
+        XCTAssertEqual(olympic.label, "Olympic Weightlifting")
+        XCTAssertTrue(app.scrollToElement("suggestedWorkout.style.strongman"))
+        XCTAssertEqual(strongman.label, "Strongman")
+        XCTAssertFalse(app.buttons["suggestedWorkout.minimum"].exists,
+                       "The retired minimum/medium/maximal tiers are still on screen")
         XCTAssertTrue(app.scrollToElement("suggestedWorkout.science.iversenTimeEfficient2021"),
                       "Chooser result does not expose the Iversen citation link")
         XCTAssertTrue(app.scrollToElement("suggestedWorkout.science.pellandFractionalSets2024"),
@@ -158,11 +168,13 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.scrollToElement("suggestedWorkout.about.science.iversenTimeEfficient2021"))
         XCTAssertTrue(app.scrollToElement("suggestedWorkout.about.science.pellandFractionalSets2024"),
                       "About suggested workouts does not expose both science links")
+        XCTAssertTrue(app.scrollToElement("suggestedWorkout.about.style.strongman"),
+                      "About suggested workouts does not explain what each style is")
         app.buttons["Done"].tap()
-        XCTAssertTrue(app.buttons["suggestedWorkout.medium"].waitTap(timeout: 5),
-                      "Medium Workout did not open")
+        XCTAssertTrue(app.buttons["suggestedWorkout.style.fitness"].waitTap(timeout: 5),
+                      "The Fitness plan did not open")
         XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
-                      "Medium Workout did not open the plan editor")
+                      "The Fitness plan did not open the plan editor")
         XCTAssertTrue(app.buttons["editor.start"].exists,
                       "Suggested plan editor lacks Start Workout")
         app.navigationBars.buttons.element(boundBy: 0).tap()

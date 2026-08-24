@@ -50,22 +50,25 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "This Week did not offer Show more")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].waitForExistence(timeout: 5),
                       "This Week did not expand in place")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.volume.legs"),
-                      "Expanded This Week did not expose the Legs volume row")
-        let legsVolume = app.descendants(matching: .any)["home.volume.legs"]
-        XCTAssertTrue((legsVolume.value as? String)?.contains("0 sets, Below 4-set minimum") == true,
+        XCTAssertTrue(app.scrollToHittableAndTap("home.volume.quadriceps"),
+                      "Expanded This Week did not expose the Quads volume row")
+        let quadsVolume = app.descendants(matching: .any)["home.volume.quadriceps"]
+        XCTAssertTrue((quadsVolume.value as? String)?.contains("0 sets, Below 4-set minimum") == true,
                       "A zero-set muscle group is not exposed as below the red-facing minimum")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
-                      "Expanded This Week did not label the body-part rows as Volume")
-        // Field test 2026-08-19 #7/#8: the weighted cardio total is explained, and
-        // the per-muscle breakdown lives under Volume.
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscles"].waitForExistence(timeout: 5),
-                      "Expanded This Week is missing the Muscles breakdown")
-        XCTAssertTrue(app.descendants(matching: .any)["home.muscle.chest"].exists,
-                      "Muscles breakdown does not list every tracked muscle")
+                      "Expanded This Week did not label the muscle-group rows as Volume")
+        // DB++ adoption: Volume carries the per-muscle-group breakdown, and the
+        // redundant Muscles row and section are gone.
+        XCTAssertTrue(app.descendants(matching: .any)["home.volume.chest"].exists,
+                      "Volume does not list every tracked muscle group")
+        XCTAssertTrue(app.descendants(matching: .any)["home.volume.lats"].exists,
+                      "Volume does not list muscle groups the old body parts hid")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.muscles"].exists,
+                       "The redundant Muscles breakdown is still on Home")
+        XCTAssertFalse(app.descendants(matching: .any)["home.muscle.chest"].exists,
+                       "The old per-muscle row identifiers are still present")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
                       "Expanded This Week does not explain the moderate-equivalent cardio total")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscles"].exists)
         XCTAssertTrue(app.descendants(matching: .any)["progress.card.citation"].exists,
                       "Weekly volume does not expose a navigable science link")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showLess"),

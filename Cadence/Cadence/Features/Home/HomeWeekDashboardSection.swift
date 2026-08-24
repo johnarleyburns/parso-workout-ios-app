@@ -27,11 +27,6 @@ struct HomeWeekDashboardSection: View {
                         progress: dashboard.volumeCoverage.normalized,
                         tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
                         caption: weeklySetCaption)
-            progressRow(id: "home.week.muscles", title: "Muscles",
-                        value: dashboard.muscleCoverage.displayText,
-                        progress: dashboard.muscleCoverage.normalized,
-                        tint: tint(for: WeeklySetProgress.zone(for: dashboard.muscleCoverage.completed)),
-                        caption: weeklySetCaption)
 
             if volumeExpanded {
                 expandedWeek
@@ -85,12 +80,19 @@ struct HomeWeekDashboardSection: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier("home.week.volumeHeading")
+            Text(weeklySetCaption)
+                .font(.caption2).foregroundStyle(.secondary)
             ForEach(dashboard.volume) { row in
                 volumeRow(row)
             }
             if let citation = CitationRegistry.citation(forId: CitationRegistry.iversenTimeEfficient2021.id) {
                 CitationLink(citation: citation,
                              context: "Weekly set volume is shown on a shared 4-to-12-set scale for each muscle group.",
+                             compact: true)
+            }
+            if let citation = CitationRegistry.citation(forId: VolumeCredit.citationID) {
+                CitationLink(citation: citation,
+                             context: "A set counts once for a muscle the movement trains directly and half for one it trains indirectly. A muscle that only stabilises does not count.",
                              compact: true)
             }
             Divider()
@@ -103,9 +105,6 @@ struct HomeWeekDashboardSection: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("home.volume.total")
-
-            Divider().padding(.top, 2)
-            muscles
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.thisWeek.expanded")
@@ -152,51 +151,6 @@ struct HomeWeekDashboardSection: View {
         .accessibilityIdentifier("home.week.cardioMinutes")
     }
 
-    /// Field test 2026-08-19 #8: muscle groups are too coarse to answer "have I
-    /// trained my adductors this week?". Every catalog muscle gets a line.
-    private var muscles: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Muscles")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.purple)
-                .accessibilityIdentifier("home.week.musclesHeading")
-            Text(weeklySetCaption)
-                .font(.caption2).foregroundStyle(.secondary)
-            ForEach(dashboard.muscles) { row in
-                muscleRow(row)
-            }
-            if let citation = CitationRegistry.citation(forId: CitationRegistry.iversenTimeEfficient2021.id) {
-                CitationLink(citation: citation,
-                             context: "Weekly set volume is shown on a shared 4-to-12-set scale for each tracked muscle.",
-                             compact: true)
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home.week.muscles")
-    }
-
-    private func muscleRow(_ row: HomeDashboardState.MuscleRow) -> some View {
-        HStack(spacing: 10) {
-            Text(row.displayName)
-                .font(.caption)
-                .frame(width: 116, alignment: .leading)
-                .foregroundStyle(tint(for: row.zone))
-            ProgressView(value: row.normalized)
-                .tint(tint(for: row.zone))
-            VStack(alignment: .trailing, spacing: 1) {
-                Text("\(formattedSets(row.sets)) sets")
-                    .font(.caption.weight(.semibold).monospacedDigit())
-                Text(row.rangeText)
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
-            .frame(width: 88, alignment: .trailing)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(row.displayName)
-        .accessibilityValue("\(formattedSets(row.sets)) sets, \(row.rangeText)")
-        .accessibilityIdentifier("home.muscle.\(row.muscleID)")
-    }
-
     @ViewBuilder
     private func workoutGroup(title: String, entries: [TodayActivityPresenter.Entry]) -> some View {
         Text(title)
@@ -218,19 +172,33 @@ struct HomeWeekDashboardSection: View {
         }
     }
 
+    /// One muscle group's weekly sets. This is the resolution that answers "did I
+    /// actually train my adductors this week?" — the coarse eight-bucket row it
+    /// replaced could not (DB++ adoption, decision D5).
     private func volumeRow(_ row: HomeDashboardState.VolumeRow) -> some View {
         HStack(spacing: 10) {
-            Text(row.displayName)
-                .frame(width: 116, alignment: .leading)
-                .foregroundStyle(tint(for: row.zone))
+            HStack(spacing: 4) {
+                if !row.isTracked {
+                    Image(systemName: "circle.dashed")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Text(row.displayName)
+                    .font(.caption)
+                    .foregroundStyle(row.isTracked ? tint(for: row.zone) : .secondary)
+            }
+            .frame(width: 116, alignment: .leading)
             ProgressView(value: row.normalized).tint(tint(for: row.zone))
-            VStack(alignment: .trailing) {
+            VStack(alignment: .trailing, spacing: 1) {
                 Text("\(formattedSets(row.sets)) sets")
-                    .font(.caption.weight(.semibold))
+                    .font(.caption.weight(.semibold).monospacedDigit())
                 if row.zone == .aboveMaximum {
                     Label("Above 12-set maximum", systemImage: "exclamationmark.triangle.fill")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.red)
+                } else {
+                    Text(row.rangeText)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
             .frame(width: 88, alignment: .trailing)
@@ -238,7 +206,8 @@ struct HomeWeekDashboardSection: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(row.displayName)
         .accessibilityValue("\(formattedSets(row.sets)) sets, \(row.rangeText)")
-        .accessibilityIdentifier("home.volume.\(row.part.rawValue)")
+        .accessibilityHint(row.isTracked ? "" : "Not a tracked muscle group")
+        .accessibilityIdentifier("home.volume.\(row.group.rawValue)")
     }
 
     private func progressRow(id: String, title: String, value: String,

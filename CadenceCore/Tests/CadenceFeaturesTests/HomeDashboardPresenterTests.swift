@@ -32,10 +32,10 @@ final class HomeDashboardPresenterTests: XCTestCase {
     }
 
     func testVolumeRowsUseTheSharedWeeklySetZonesAndCitation() throws {
-        let below = try dashboard(chestSets: 3, now: Date()).volume.first { $0.part == .chest }
-        let building = try dashboard(chestSets: 4, now: Date()).volume.first { $0.part == .chest }
-        let productive = try dashboard(chestSets: 8, now: Date()).volume.first { $0.part == .chest }
-        let above = try dashboard(chestSets: 13, now: Date()).volume.first { $0.part == .chest }
+        let below = try dashboard(chestSets: 3, now: Date()).volume.first { $0.group == .chest }
+        let building = try dashboard(chestSets: 4, now: Date()).volume.first { $0.group == .chest }
+        let productive = try dashboard(chestSets: 8, now: Date()).volume.first { $0.group == .chest }
+        let above = try dashboard(chestSets: 13, now: Date()).volume.first { $0.group == .chest }
 
         XCTAssertEqual(below?.zone, .belowMinimum)
         XCTAssertEqual(building?.zone, .building)
@@ -59,12 +59,13 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertTrue(aboveTarget.isAtOrAboveTarget)
     }
 
-    func testVolumeSummaryUsesMeanCappedSetsAcrossMuscleGroups() throws {
+    func testVolumeSummaryUsesMeanCappedSetsAcrossTrackedMuscleGroups() throws {
         let state = try dashboard(chestSets: 8, now: Date())
-        XCTAssertEqual(state.volume.map(\.displayName), ["Back", "Biceps", "Calves", "Chest", "Core", "Legs", "Shoulders", "Triceps"])
-        XCTAssertEqual(state.volumeCoverage.displayText, "1 avg sets")
-        XCTAssertEqual(state.volumeCoverage.completed, 1)
-        XCTAssertEqual(state.volumeCoverage.normalized, 1.0 / 12.0, accuracy: 0.001)
+        let tracked = Double(MuscleGroup.defaultTracked.count)
+        XCTAssertEqual(state.volume.count, MuscleGroup.defaultTracked.count)
+        XCTAssertEqual(state.volumeCoverage.completed, 8.0 / tracked, accuracy: 0.001)
+        XCTAssertEqual(state.volumeCoverage.displayText, "0.6 avg sets")
+        XCTAssertEqual(state.volumeCoverage.normalized, 8.0 / tracked / 12.0, accuracy: 0.001)
     }
 
     func testSuggestionToneMapsProgressWarningsAndInformation() {
@@ -89,42 +90,71 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertEqual(suggestion.tone, .warning)
     }
 
-    // MARK: - Muscles (field test 2026-08-19 #8)
+    // MARK: - Weekly volume (DB++ adoption, decision D5)
+    //
+    // Home used to carry two rows measuring the same thing at two resolutions: a
+    // coarse eight-bucket `Volume` and a fine `Muscles`. There is one now, keyed by
+    // MuscleGroup.
 
-    func testMuscleRowsCoverEveryTrackedMuscle() throws {
-        let muscles = try dashboard(chestSets: 4, now: Date()).muscles
-        XCTAssertEqual(Set(muscles.map(\.muscleID)), Set(MuscleCatalog.all.map(\.id)),
-                       "Every catalog muscle needs a line, including the ones at zero")
+    func testVolumeRowsCoverEveryTrackedGroup() throws {
+        let rows = try dashboard(chestSets: 4, now: Date()).volume
+        let tracked = rows.filter(\.isTracked).map(\.group)
+        XCTAssertEqual(Set(tracked), MuscleGroup.defaultTracked,
+                       "every tracked group needs a line, including the ones at zero")
     }
 
-    func testMuscleRowsUseTheSharedZonesAndKeepFractionalSets() {
+    /// An untracked group is noise at zero and information once it has work in it.
+    func testUntrackedGroupAppearsOnlyOnceTrained() {
+        let quiet = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4])
+        XCTAssertFalse(quiet.contains { $0.group == .neck })
+        XCTAssertFalse(quiet.contains { $0.group == .tibialis })
+
+        let trained = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4, .neck: 2])
+        let neck = trained.first { $0.group == .neck }
+        XCTAssertNotNil(neck)
+        XCTAssertEqual(neck?.sets, 2)
+        XCTAssertFalse(neck?.isTracked ?? true)
+    }
+
+    func testVolumeRowsUseTheSharedZonesAndKeepFractionalSets() {
         // "quads" is a retired id: rows are keyed by MuscleGroup now, and a caller
         // passing a historical id still lands on the right row.
-        let rows = HomeDashboardPresenter.muscleRows(setsByMuscle: [
+        let rows = HomeDashboardPresenter.volumeRows(setsByMuscle: [
             "chest": 3.5, "lats": 4, "glutes": 8, "quads": 12.5,
         ])
-        XCTAssertEqual(rows.first { $0.muscleID == "chest" }?.zone, .belowMinimum)
-        XCTAssertEqual(rows.first { $0.muscleID == "lats" }?.zone, .building)
-        XCTAssertEqual(rows.first { $0.muscleID == "glutes" }?.zone, .productive)
-        let quads = rows.first { $0.muscleID == "quadriceps" }
+        XCTAssertEqual(rows.first { $0.group == .chest }?.zone, .belowMinimum)
+        XCTAssertEqual(rows.first { $0.group == .lats }?.zone, .building)
+        XCTAssertEqual(rows.first { $0.group == .glutes }?.zone, .productive)
+        let quads = rows.first { $0.group == .quadriceps }
         XCTAssertEqual(quads?.zone, .aboveMaximum)
         XCTAssertEqual(quads?.normalized, 1)
-        XCTAssertEqual(rows.first { $0.muscleID == "chest" }?.sets, 3.5)
-        XCTAssertEqual(rows.first { $0.muscleID == "chest" }?.normalized ?? 0, 3.5 / 12, accuracy: 0.001)
+        XCTAssertEqual(rows.first { $0.group == .chest }?.sets, 3.5)
+        XCTAssertEqual(rows.first { $0.group == .chest }?.normalized ?? 0, 3.5 / 12, accuracy: 0.001)
         XCTAssertNotNil(CitationRegistry.citation(forId: quads?.citationID ?? ""))
     }
 
-    func testMuscleRowsAreOrderedAlphabeticallyAndTitleCased() throws {
-        let muscles = try dashboard(chestSets: 4, now: Date()).muscles
-        XCTAssertEqual(muscles.map(\.displayName), ["Abductors", "Abs", "Adductors", "Biceps", "Calves", "Chest", "Forearms", "Glutes", "Hamstrings", "Hip Flexors", "Lats", "Lower Back", "Mid Back", "Neck", "Quads", "Rotator Cuff", "Shoulders", "Tibialis", "Traps", "Triceps"])
-        XCTAssertTrue(muscles.allSatisfy { $0.displayName.first?.isUppercase == true })
+    func testVolumeRowsAreOrderedAlphabeticallyAndTitleCased() throws {
+        let rows = try dashboard(chestSets: 4, now: Date()).volume
+        XCTAssertEqual(rows.map(\.displayName),
+                       ["Abs", "Biceps", "Calves", "Chest", "Forearms", "Glutes",
+                        "Hamstrings", "Lats", "Mid Back", "Quads", "Shoulders",
+                        "Traps", "Triceps"])
+        XCTAssertTrue(rows.allSatisfy { $0.displayName.first?.isUppercase == true })
+        XCTAssertTrue(rows.allSatisfy { !$0.displayName.contains("_") })
     }
 
-    func testMuscleSummaryUsesMeanCappedSetsAcrossEveryMuscle() throws {
+    func testVolumeRowsCarryTheScientificName() throws {
+        let rows = try dashboard(chestSets: 4, now: Date()).volume
+        XCTAssertEqual(rows.first { $0.group == .chest }?.scientificName, "Pectoralis Major")
+    }
+
+    /// Averaged over tracked rows only, so incidental work in an untracked group
+    /// cannot move the headline number.
+    func testVolumeCoverageAveragesTrackedRowsOnly() throws {
         let state = try dashboard(chestSets: 12, now: Date())
-        XCTAssertEqual(state.muscleCoverage.completed, 12.0 / Double(MuscleCatalog.all.count), accuracy: 0.001)
-        XCTAssertEqual(state.muscleCoverage.displayText, "0.6 avg sets")
-        XCTAssertEqual(state.muscleCoverage.normalized, 1.0 / Double(MuscleCatalog.all.count), accuracy: 0.001)
+        let tracked = Double(MuscleGroup.defaultTracked.count)
+        XCTAssertEqual(state.volumeCoverage.completed, 12.0 / tracked, accuracy: 0.001)
+        XCTAssertEqual(state.volumeCoverage.normalized, 1.0 / tracked, accuracy: 0.001)
     }
 
     // MARK: - Cardio minutes (field test 2026-08-19 #7)

@@ -23,22 +23,14 @@ public struct HomeDashboardState: Sendable, Equatable {
         public var isAtOrAboveTarget: Bool { completed >= target }
     }
 
+    /// One muscle group's progress toward the weekly set target.
+    ///
+    /// This is the only per-muscle list Home shows. It replaced the pair of rows
+    /// that measured the same thing at two resolutions — a coarse eight-bucket
+    /// `Volume` and a fine `Muscles` — with the one resolution the evidence
+    /// actually supports (DB++ adoption, decision D5).
     public struct VolumeRow: Sendable, Equatable, Identifiable {
-        public let part: BodyPart
-        public let displayName: String
-        public let sets: Double
-        public let zone: WeeklySetZone
-        public let rangeText: String
-        public let normalized: Double
-        public let citationID: String
-        public var id: BodyPart { part }
-    }
-
-    /// One tracked muscle's progress toward the weekly set target. Body parts
-    /// group several muscles, so this is the resolution that answers "did I
-    /// actually train my adductors this week?" (field test 2026-08-19 #8).
-    public struct MuscleRow: Sendable, Equatable, Identifiable {
-        public let muscleID: String
+        public let group: MuscleGroup
         public let displayName: String
         /// Scientific name, e.g. "Gluteus Maximus".
         public let scientificName: String
@@ -47,19 +39,23 @@ public struct HomeDashboardState: Sendable, Equatable {
         public let rangeText: String
         /// 0…1, clamped — the fraction of the 12-set scale completed.
         public let normalized: Double
+        /// False for a group the user does not track: shown because it has volume,
+        /// not because the coach targets it (decision D4).
+        public let isTracked: Bool
         public let citationID: String
-        public var id: String { muscleID }
+        public var id: MuscleGroup { group }
 
-        public init(muscleID: String, displayName: String, scientificName: String,
+        public init(group: MuscleGroup, displayName: String, scientificName: String,
                     sets: Double, zone: WeeklySetZone, rangeText: String,
-                    normalized: Double, citationID: String) {
-            self.muscleID = muscleID
+                    normalized: Double, isTracked: Bool, citationID: String) {
+            self.group = group
             self.displayName = displayName
             self.scientificName = scientificName
             self.sets = sets
             self.zone = zone
             self.rangeText = rangeText
             self.normalized = normalized
+            self.isTracked = isTracked
             self.citationID = citationID
         }
     }
@@ -126,13 +122,11 @@ public struct HomeDashboardState: Sendable, Equatable {
     public let profileContext: ProfileContext
     public let strength: Progress
     public let cardio: Progress
-    /// Number of muscle groups currently in the productive (green) range.
+    /// Mean capped weekly sets across the tracked muscle groups.
     public let volumeCoverage: Progress
+    /// Every tracked muscle group, plus any untracked one the user actually
+    /// trained this week, ordered alphabetically by displayed name.
     public let volume: [VolumeRow]
-    /// Every tracked muscle, ordered alphabetically by its displayed name.
-    public let muscles: [MuscleRow]
-    /// Share of tracked muscles that have reached the weekly set target.
-    public let muscleCoverage: Progress
     public let cardioDetail: CardioDetail
     public let suggestions: [HomeSuggestion]
 }
@@ -191,28 +185,15 @@ public enum HomeDashboardPresenter {
         let cardio = HomeDashboardState.Progress(completed: balance.moderateEquivalentMinutes, target: 150,
             displayText: "\(Int(balance.moderateEquivalentMinutes.rounded())) of 150 min",
             normalized: min(1, max(0, balance.moderateEquivalentMinutes / 150)))
-        let volume = BodyPart.allCases.map { part -> HomeDashboardState.VolumeRow in
-            let sets = snapshot.facts.weeklySetsByPart[part] ?? 0
-            let zone = WeeklySetProgress.zone(for: sets)
-            return .init(part: part, displayName: part == .abs ? "Core" : part.displayName, sets: sets,
-                         zone: zone, rangeText: zone.displayText,
-                         normalized: WeeklySetProgress.normalized(sets),
-                         citationID: CitationRegistry.iversenTimeEfficient2021.id)
-        }.sorted { lhs, rhs in
-            let order = lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName)
-            return order == .orderedSame ? lhs.part.rawValue < rhs.part.rawValue : order == .orderedAscending
-        }
-        let averagePartSets = averageCappedSets(volume.map(\.sets))
+        let volume = volumeRows(setsByGroup: snapshot.facts.weeklySetsByGroup,
+                                tracked: schedule.trackedMuscleGroups)
+        // Averaged over the TRACKED rows only, so half a set of incidental neck
+        // work cannot drag the headline number down.
+        let averageSets = averageCappedSets(volume.filter(\.isTracked).map(\.sets))
         let volumeCoverage = HomeDashboardState.Progress(
-            completed: averagePartSets, target: WeeklySetProgress.maximum,
-            displayText: "\(format(averagePartSets)) avg sets",
-            normalized: WeeklySetProgress.normalized(averagePartSets))
-        let muscles = muscleRows(setsByMuscle: snapshot.facts.weeklySetsByMuscle)
-        let averageMuscleSets = averageCappedSets(muscles.map(\.sets))
-        let muscleCoverage = HomeDashboardState.Progress(
-            completed: averageMuscleSets, target: WeeklySetProgress.maximum,
-            displayText: "\(format(averageMuscleSets)) avg sets",
-            normalized: WeeklySetProgress.normalized(averageMuscleSets))
+            completed: averageSets, target: WeeklySetProgress.maximum,
+            displayText: "\(format(averageSets)) avg sets",
+            normalized: WeeklySetProgress.normalized(averageSets))
         let cardioDetail = HomeDashboardState.CardioDetail(
             loggedMinutes: balance.loggedAerobicMinutes,
             easyMinutes: balance.easyMinutesLogged,
@@ -225,43 +206,49 @@ public enum HomeDashboardPresenter {
                                            ageText: userAge.map(String.init) ?? "Age not set"),
                      strength: strength, cardio: cardio, volumeCoverage: volumeCoverage,
                      volume: volume,
-                     muscles: muscles,
-                     muscleCoverage: muscleCoverage,
                      cardioDetail: cardioDetail,
                      suggestions: suggestions(snapshot: snapshot, schedule: schedule))
     }
 
-    /// Every tracked muscle group, alphabetically by displayed name.
-    public static func muscleRows(setsByMuscle: [String: Double]) -> [HomeDashboardState.MuscleRow] {
-        // Tally through `MuscleGroup` so a caller passing historical ids (a store
-        // that has not been re-seeded, or an older export) still lands on a row.
-        var setsByGroup: [String: Double] = [:]
-        for (id, sets) in setsByMuscle {
-            guard let group = MuscleGroup.canonical(id) else { continue }
-            setsByGroup[group.rawValue, default: 0] += sets
-        }
-        return MuscleCatalog.all.map { muscle -> HomeDashboardState.MuscleRow in
-            let sets = setsByGroup[muscle.id] ?? 0
+    /// Every tracked muscle group, plus any untracked group the user has actually
+    /// trained, alphabetically by displayed name.
+    public static func volumeRows(setsByGroup: [MuscleGroup: Double],
+                                  tracked: Set<MuscleGroup> = MuscleGroup.defaultTracked)
+    -> [HomeDashboardState.VolumeRow] {
+        MuscleGroup.allCases.compactMap { group -> HomeDashboardState.VolumeRow? in
+            let sets = setsByGroup[group] ?? 0
+            let isTracked = tracked.contains(group)
+            // An untracked group with no work is noise: the coach does not target
+            // it and the user has not trained it, so it does not need a row.
+            guard isTracked || sets > 0 else { return nil }
             let zone = WeeklySetProgress.zone(for: sets)
-            return .init(muscleID: muscle.id,
-                         displayName: displayName(for: muscle),
-                         scientificName: muscle.scientific,
+            return .init(group: group,
+                         displayName: group.displayName,
+                         scientificName: group.scientificName,
                          sets: sets,
                          zone: zone,
                          rangeText: zone.displayText,
                          normalized: WeeklySetProgress.normalized(sets),
+                         isTracked: isTracked,
                          citationID: CitationRegistry.iversenTimeEfficient2021.id)
         }
         .sorted {
             let order = $0.displayName.localizedCaseInsensitiveCompare($1.displayName)
-            return order == .orderedSame ? $0.muscleID < $1.muscleID : order == .orderedAscending
+            return order == .orderedSame ? $0.group.rawValue < $1.group.rawValue
+                                         : order == .orderedAscending
         }
     }
 
-    /// The muscle group's display name ("lower_back" → "Lower Back"), so the list
-    /// reads the way the picker's muscle filters already do.
-    public static func displayName(for muscle: Muscle) -> String {
-        muscle.displayName
+    /// Convenience for callers holding a raw-value-keyed tally.
+    public static func volumeRows(setsByMuscle: [String: Double],
+                                  tracked: Set<MuscleGroup> = MuscleGroup.defaultTracked)
+    -> [HomeDashboardState.VolumeRow] {
+        var byGroup: [MuscleGroup: Double] = [:]
+        for (id, sets) in setsByMuscle {
+            guard let group = MuscleGroup.canonical(id) else { continue }
+            byGroup[group, default: 0] += sets
+        }
+        return volumeRows(setsByGroup: byGroup, tracked: tracked)
     }
 
     private static func suggestions(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences) -> [HomeSuggestion] {

@@ -1,10 +1,10 @@
 import SwiftUI
 import CadenceCore
 
-/// One muscle's weekly working-set count placed against experience-scaled volume bands.
-/// Zone color encodes `VolumeZone`; the marker is the user's set count.
+/// One muscle group's weekly working-set count placed against experience-scaled
+/// volume bands. Zone color encodes `VolumeZone`; the marker is the user's set count.
 struct VolumeLandmarkBar: View {
-    let part: BodyPart
+    let group: MuscleGroup
     let sets: Double
     let bands: VolumeBands
     let zone: VolumeZone
@@ -15,7 +15,7 @@ struct VolumeLandmarkBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(part.displayName).font(.caption)
+                Text(group.displayName).font(.caption)
                 Spacer()
                 Text("\(setsText) sets \u{00b7} \(zone.label)")
                     .font(.caption).foregroundStyle(zone.tint)
@@ -39,8 +39,8 @@ struct VolumeLandmarkBar: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("progress.volume.\(part.rawValue)")
-        .accessibilityLabel("\(part.displayName): \(setsText) sets, \(zone.label)")
+        .accessibilityIdentifier("progress.volume.\(group.rawValue)")
+        .accessibilityLabel("\(group.displayName): \(setsText) sets, \(zone.label)")
     }
 
     private var setsText: String {

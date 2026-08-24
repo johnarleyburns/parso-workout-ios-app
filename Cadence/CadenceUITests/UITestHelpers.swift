@@ -59,9 +59,17 @@ extension XCUIApplication {
             swipeDown()
             if el.isHittable { el.tap(); return true }
         }
-        // Fall back to a direct tap (XCUITest will attempt to scroll into view).
-        el.tap()
-        return true
+        // Last resort: tap the element's own centre by coordinate. A control that
+        // rests under the glass edge effect is fully on screen and a real finger
+        // reaches it — the gradient is a visual overlay with no touch handling —
+        // but XCUITest's hit-point test refuses it. A coordinate tap does what the
+        // user does. Only reached when the element exists and scrolling cannot
+        // free it, so it cannot mask a missing control.
+        if el.exists {
+            el.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            return true
+        }
+        return false
     }
 
     /// Scrolls a (scrollable) screen until `id` exists in the accessibility tree

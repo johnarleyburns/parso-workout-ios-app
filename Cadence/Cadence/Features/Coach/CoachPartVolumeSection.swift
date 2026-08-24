@@ -71,7 +71,7 @@ struct CoachPartVolumeSection: View {
     private func partVolumeRow(_ row: WeekVolumePresenter.PartRow) -> some View {
         VStack(spacing: 4) {
             HStack {
-                Text(row.part.displayName).font(.subheadline)
+                Text(row.displayName).font(.subheadline)
                     .accessibilityHidden(true)
                 Spacer()
                 Group {
@@ -87,7 +87,7 @@ struct CoachPartVolumeSection: View {
                 statusChip(row.status)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("yourPlan.partVolume.\(row.part.rawValue)")
+            .accessibilityIdentifier("yourPlan.partVolume.\(row.group.rawValue)")
             .accessibilityLabel(accessibilityLabel(for: row))
 
             GeometryReader { geo in
@@ -197,6 +197,6 @@ struct CoachPartVolumeSection: View {
         case .short(let toGo): statusText = "\(Int(toGo.rounded())) sets to go"
         case .high: statusText = "above maximum recommended"
         }
-        return "\(row.part.displayName): \(Format.sets(row.doneSets)) sets done, \(Format.sets(row.plannedSets)) planned, \(statusText). Recommended \(Int(row.band.lowerBound.rounded())) to \(Int(row.band.upperBound.rounded()))."
+        return "\(row.displayName): \(Format.sets(row.doneSets)) sets done, \(Format.sets(row.plannedSets)) planned, \(statusText). Recommended \(Int(row.band.lowerBound.rounded())) to \(Int(row.band.upperBound.rounded()))."
     }
 }

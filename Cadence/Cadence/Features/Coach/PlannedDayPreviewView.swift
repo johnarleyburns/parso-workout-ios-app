@@ -35,6 +35,21 @@ struct PlannedDayPreviewView: View {
                                 ForEach(Array(exercises.enumerated()), id: \.offset) { _, ex in
                                     exerciseRow(ex)
                                 }
+                                if let exercises = session.exercises,
+                                   let editable = EditablePlan.from(coach: CoachSession(
+                                    id: session.id,
+                                    kind: session.kind,
+                                    title: session.label,
+                                    exercises: exercises,
+                                    launchPayload: .strengthPlan("plannedDay"))) {
+                                    NavigationLink {
+                                        WorkoutPlanEditor(plan: editable, startInEditMode: true,
+                                                          allowsStart: false, onStart: { _ in })
+                                    } label: {
+                                        Label("Edit workout plan", systemImage: "slider.horizontal.3")
+                                    }
+                                    .accessibilityIdentifier("plannedDay.editWorkout.\(session.id)")
+                                }
                             } else {
                                 Text(strengthPrescription)
                                     .font(.subheadline).foregroundStyle(.secondary)

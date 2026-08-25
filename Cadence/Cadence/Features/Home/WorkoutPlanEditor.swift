@@ -41,11 +41,14 @@ struct WorkoutPlanEditor: View {
     @State private var useHR: Bool
     @State private var isEditing = false
     @State private var settingsPresented = false
+    let allowsStart: Bool
 
-    init(plan: EditablePlan, startInEditMode: Bool = false, onStart: @escaping (EditablePlan) -> Void) {
+    init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
+         onStart: @escaping (EditablePlan) -> Void) {
         self._plan = State(initialValue: plan)
         self.onStart = onStart
         self._isEditing = State(initialValue: startInEditMode)
+        self.allowsStart = allowsStart
 
         let ws = WorkoutSettings.default
         self._restSeconds = State(initialValue: ws.restSeconds)
@@ -59,7 +62,7 @@ struct WorkoutPlanEditor: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                startButton
+                if allowsStart { startButton }
 
                 WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
                                           isEditing: isEditing,
@@ -71,6 +74,7 @@ struct WorkoutPlanEditor: View {
                         WorkoutPlanExerciseSection(
                             exercise: $exercise,
                             unit: settings.unit,
+                            exerciseInfo: allExercises.first { $0.name == exercise.name },
                             onSwap: { exercisePickerIntent = .swap(exercise.id) },
                             onRemove: { removeExercise(id: exercise.id) })
                     }

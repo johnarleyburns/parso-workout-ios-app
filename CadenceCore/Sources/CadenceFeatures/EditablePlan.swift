@@ -69,7 +69,9 @@ public struct EditablePlan: Hashable {
                 performerID: id,
                 name: id == nil ? "Me" : (names[performer.performerID ?? ""] ?? "Partner"),
                 sets: prescription.sets.map { EditableSet(targetReps: $0.targetReps,
-                                                          targetWeight: $0.targetWeightKg) })
+                                                          targetWeight: $0.targetWeightKg,
+                                                          loadMode: EditableLoadMode(rawValue: $0.targetLoadMode ?? "straight") ?? .straight,
+                                                          oneRepMaxPercent: $0.oneRepMaxPercent) })
         }
     }
 
@@ -83,7 +85,9 @@ public struct EditablePlan: Hashable {
                 exerciseName: exercise.name,
                 sets: exercise.sets.map { PlannedSetPrescription(
                     targetReps: $0.targetReps,
-                    targetWeightKg: $0.targetWeight) })
+                    targetWeightKg: $0.targetWeight,
+                    targetLoadMode: $0.loadMode == .straight ? nil : $0.loadMode.rawValue,
+                    oneRepMaxPercent: $0.oneRepMaxPercent) })
         }
         session.plannedRepLadder = exercises.first?.sets.map(\.targetReps) ?? []
         let firstWeights = exercises.compactMap { $0.sets.first?.targetWeight }
@@ -202,7 +206,9 @@ public struct EditablePlan: Hashable {
                 byPerformer[key]?.append(PlannedExercisePrescription(
                     exerciseName: exercise.name,
                     sets: plan.sets.map { PlannedSetPrescription(targetReps: $0.targetReps,
-                                                                 targetWeightKg: $0.targetWeight) }))
+                                                                 targetWeightKg: $0.targetWeight,
+                                                                 targetLoadMode: $0.loadMode == .straight ? nil : $0.loadMode.rawValue,
+                                                                 oneRepMaxPercent: $0.oneRepMaxPercent) }))
             }
         }
         return order.map { performerID in
@@ -261,13 +267,26 @@ public struct EditableSet: Identifiable, Hashable {
     public let id: UUID
     public var targetReps: Int
     public var targetWeight: Double?
+    public var loadMode: EditableLoadMode
+    public var oneRepMaxPercent: Double?
 
     /// `id` is settable so a re-resolved partner plan can keep the row identity
     /// SwiftUI already has (`PartnerPlanResolver.fill`), instead of rebuilding
     /// every row on each roster change.
-    public init(id: UUID = UUID(), targetReps: Int, targetWeight: Double?) {
+    public init(id: UUID = UUID(), targetReps: Int, targetWeight: Double?,
+                loadMode: EditableLoadMode = .straight,
+                oneRepMaxPercent: Double? = nil) {
         self.id = id
         self.targetReps = targetReps
         self.targetWeight = targetWeight
+        self.loadMode = loadMode
+        self.oneRepMaxPercent = oneRepMaxPercent
     }
+}
+
+/// How a planned set's load should be interpreted before it is started.
+public enum EditableLoadMode: String, CaseIterable, Hashable, Sendable {
+    case straight
+    case percentageOfOneRepMax
+    case bodyweight
 }

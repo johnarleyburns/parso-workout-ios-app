@@ -195,7 +195,9 @@ public enum PartnerPlanResolver {
             var sets = Array(plan.sets.prefix(exercise.sets.count))
             while sets.count < exercise.sets.count {
                 let last = sets.last ?? exercise.sets[sets.count]
-                sets.append(EditableSet(targetReps: last.targetReps, targetWeight: last.targetWeight))
+                sets.append(EditableSet(targetReps: last.targetReps, targetWeight: last.targetWeight,
+                                        loadMode: last.loadMode,
+                                        oneRepMaxPercent: last.oneRepMaxPercent))
             }
             return EditablePerformerPlan(id: plan.id, performerID: plan.performerID,
                                          name: plan.name, sets: sets)

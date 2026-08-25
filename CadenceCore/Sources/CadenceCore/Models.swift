@@ -19,10 +19,15 @@ enum StringArray {
 public struct PlannedSetPrescription: Codable, Equatable, Sendable {
     public var targetReps: Int
     public var targetWeightKg: Double?
+    public var targetLoadMode: String?
+    public var oneRepMaxPercent: Double?
 
-    public init(targetReps: Int, targetWeightKg: Double? = nil) {
+    public init(targetReps: Int, targetWeightKg: Double? = nil,
+                targetLoadMode: String? = nil, oneRepMaxPercent: Double? = nil) {
         self.targetReps = targetReps
         self.targetWeightKg = targetWeightKg
+        self.targetLoadMode = targetLoadMode
+        self.oneRepMaxPercent = oneRepMaxPercent
     }
 }
 

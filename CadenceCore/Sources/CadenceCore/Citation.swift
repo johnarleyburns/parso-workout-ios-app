@@ -23,6 +23,7 @@ public struct Citation: Equatable, Hashable, Sendable, Identifiable {
 
     /// A compact one-line attribution, e.g. "Schoenfeld et al. (2021), Sports".
     public var shortText: String {
+        guard !authors.isEmpty else { return "\(source) (\(year))" }
         let lead = authors.contains("&") || authors.contains(",")
             ? "\(authors.split(separator: " ").first.map(String.init) ?? authors) et al."
             : authors
@@ -679,8 +680,11 @@ public enum CitationRegistry {
         cravenSleep2022,
     ]
 
+    /// `all` is the curated coaching bibliography with hand-written usage
+    /// reasons. Movement evidence is generated from DB++ and resolves through
+    /// this fall-through without changing that curated one-to-one contract.
     public static func citation(forId id: String) -> Citation? {
-        all.first { $0.id == id }
+        all.first { $0.id == id } ?? ExerciseEvidence.citationsByID[id]
     }
 
     // MARK: - Bibliography (Coach Research Updates)

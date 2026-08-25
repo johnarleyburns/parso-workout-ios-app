@@ -682,3 +682,69 @@ is tappable science:
 - **Safety-first** — `CoachAboutView` "How it decides" cites `injuryPreventionPool`
   (`lauersenInjuryPrevention2014`) for the coach's exercise-based injury-prevention
   philosophy — never for a flexibility/ROM claim.
+## Movement evidence (generated — do not hand-edit)
+
+These references back the DB++ muscle-role attributions, rather than coaching decisions. This block is regenerated from the bundled snapshot.
+
+<!-- BEGIN exercise-evidence -->
+- `exdb.atlas_stone_2021` — Atlas stone biomechanics. **Experimental study**, 34557349, https://pubmed.ncbi.nlm.nih.gov/34557349/
+- `exdb.back_extension_comparison_2021` — Comparison of Muscle Activity in Three Single-Joint, Hip Extension Exercises in Resistance-Trained Women. **Experimental study**, 33948095, https://pubmed.ncbi.nlm.nih.gov/33948095/
+- `exdb.back_extension_roman_chair_2014` — Effects of hand and knee positions on muscular activity during trunk extension exercise with the Roman chair. **Experimental study**, 25245250, https://pubmed.ncbi.nlm.nih.gov/25245250/
+- `exdb.battle_rope_emg_2015` — Muscle Activity During Unilateral vs. Bilateral Battle Rope Exercises. **Experimental study**, 25853917, https://pubmed.ncbi.nlm.nih.gov/25853917/
+- `exdb.battle_rope_wbv_emg_2015` — The addition of synchronous whole-body vibration to battling rope exercise increases skeletal muscle activity. **Experimental study**, 26350942, https://pubmed.ncbi.nlm.nih.gov/26350942/
+- `exdb.bench_inclination_2020` — Effect of Five Bench Inclinations on EMG Activity during Bench Press. **Experimental study**, 33049982, https://pubmed.ncbi.nlm.nih.gov/33049982/
+- `exdb.bench_systematic_review_2017` — A systematic review of surface electromyography analyses of the bench press movement task. **Systematic review**, 28170449, https://pubmed.ncbi.nlm.nih.gov/28170449/
+- `exdb.biceps_curl_emg_2013` — Effect of the shoulder position on the biceps brachii EMG in different dumbbell curls. **Experimental study**, 24150552, https://pubmed.ncbi.nlm.nih.gov/24150552/
+- `exdb.bridge_stabilization_emg_2012` — Trunk muscle activation during stabilization exercises with single and double leg support. **Experimental study**, 22436839, https://pubmed.ncbi.nlm.nih.gov/22436839/
+- `exdb.bridge_surface_emg_2013` — Abdominal muscle EMG-activity during bridge exercises on stable and unstable surfaces. **Experimental study**, 24268641, https://pubmed.ncbi.nlm.nih.gov/24268641/
+- `exdb.calf_raise_emg_2021` — Myoelectric activity of the gastrocnemius during plantar flexion in a standing versus seated position. **Experimental study**, 33992275, https://pubmed.ncbi.nlm.nih.gov/33992275/
+- `exdb.calf_raise_hypertrophy_2023` — Triceps surae muscle hypertrophy is greater after standing versus seated calf-raise training. **Training intervention**, 38156065, https://pubmed.ncbi.nlm.nih.gov/38156065/
+- `exdb.calf_raise_swelling_2023` — Muscle Swelling of the Triceps Surae in Response to Straight-Leg and Bent-Leg Calf Raise Exercises in Young Women. **Experimental study**, 37015022, https://pubmed.ncbi.nlm.nih.gov/37015022/
+- `exdb.crunch_loaded_emg_2009` — EMG activation of abdominal muscles in the crunch exercise performed with different external loads. **Experimental study**, 19376473, https://pubmed.ncbi.nlm.nih.gov/19376473/
+- `exdb.curl_variants_emg_2018` — Differences in electromyographic activity of biceps brachii and brachioradialis while performing three variants of curl. **Experimental study**, 30013836, https://pubmed.ncbi.nlm.nih.gov/30013836/
+- `exdb.deadlift_systematic_review_2020` — Electromyographic activity in deadlift exercise and its variants. A systematic review. **Systematic review**, 32107499, https://pubmed.ncbi.nlm.nih.gov/32107499/
+- `exdb.external_rotation_emg_2004` — Electromyographic analysis of the rotator cuff and deltoid musculature during common shoulder external rotation exercises. **Experimental study**, 15296366, https://pubmed.ncbi.nlm.nih.gov/15296366/
+- `exdb.external_rotation_roles_2012` — Rotator cuff muscles perform different functional roles during shoulder external rotation exercises. **Experimental study**, 22836526, https://pubmed.ncbi.nlm.nih.gov/22836526/
+- `exdb.flexion_rotation_emg_2020` — Electromyographic and Kinematic Analysis of the Flexion-Rotation Trunk Test. **Experimental study**, 28796125, https://pubmed.ncbi.nlm.nih.gov/28796125/
+- `exdb.forearm_grip_emg_2019` — The influence of simultaneous handgrip and wrist force on forearm muscle activity. **Experimental study**, 30822679, https://pubmed.ncbi.nlm.nih.gov/30822679/
+- `exdb.forearm_pronation_supination_emg_2026` — An Electromyographic Study Comparing Muscle Function During Supination and Pronation of the Forearm. **Experimental study**, 41674760, https://pubmed.ncbi.nlm.nih.gov/41674760/
+- `exdb.fractional_sets_meta_regression_2025` — The Resistance Training Dose Response: Meta-Regressions Exploring Weekly Volume and Frequency. **Meta-regression**, 41343037, https://pubmed.ncbi.nlm.nih.gov/41343037/
+- `exdb.glute_strength_review_2020` — Gluteus Maximus Activation during Common Strength and Hypertrophy Exercises: A Systematic Review. **Systematic review**, 32132843, https://pubmed.ncbi.nlm.nih.gov/32132843/
+- `exdb.hamstring_exercises_2014` — Muscle activation during various hamstring exercises. **Experimental study**, 24149748, https://pubmed.ncbi.nlm.nih.gov/24149748/
+- `exdb.hip_abduction_review_2015` — An examination of gluteal muscle activity associated with dynamic hip abduction and hip external rotation exercise: a systematic review. **Systematic review**, 26491608, https://pubmed.ncbi.nlm.nih.gov/26491608/
+- `exdb.hip_flexor_systematic_review_2024` — Hip Flexor Muscle Activation During Common Rehabilitation and Strength Exercises. **Systematic review**, 39518756, https://pubmed.ncbi.nlm.nih.gov/39518756/
+- `exdb.hip_thrust_systematic_review_2019` — Barbell Hip Thrust, Muscular Activation and Performance: A Systematic Review. **Systematic review**, 31191088, https://pubmed.ncbi.nlm.nih.gov/31191088/
+- `exdb.internal_rotation_emg_2003` — Electromyographic analysis of internal rotational motion of the shoulder in various arm positions. **Experimental study**, 14564277, https://pubmed.ncbi.nlm.nih.gov/14564277/
+- `exdb.inverted_row_emg_2015` — Activation of Spinal Stabilizers and Shoulder Complex Muscles During an Inverted Row Using a Portable Pull-up Device and Body Weight Resistance. **Experimental study**, 26422610, https://pubmed.ncbi.nlm.nih.gov/26422610/
+- `exdb.kettlebell_emg_2017` — Kettlebell swing, clean, and snatch muscle activation. **Experimental study**, 28394829, https://pubmed.ncbi.nlm.nih.gov/28394829/
+- `exdb.kettlebell_swing_2012` — Kettlebell swing biomechanics and muscle activation. **Experimental study**, 21997449, https://pubmed.ncbi.nlm.nih.gov/21997449/
+- `exdb.lateral_raise_emg_2020` — An Electromyographic Analysis of Lateral Raise Variations and Frontal Raise in Competitive Bodybuilders. **Experimental study**, 32824894, https://pubmed.ncbi.nlm.nih.gov/32824894/
+- `exdb.leg_extension_comparison_2026` — Comparison of Muscle Hypertrophy and Strength Adaptations Induced by Back Squat and Leg Extension Resistance Exercises. **Training intervention**, 41379528, https://pubmed.ncbi.nlm.nih.gov/41379528/
+- `exdb.leg_extension_hypertrophy_2021` — Drop-Set Training Elicits Differential Increases in Non-Uniform Hypertrophy of the Quadriceps in Leg Extension Exercise. **Training intervention**, 34564324, https://pubmed.ncbi.nlm.nih.gov/34564324/
+- `exdb.neck_conditioning_emg_2008` — An electromyographic comparison of neck conditioning exercises in healthy controls. **Experimental study**, 18550959, https://pubmed.ncbi.nlm.nih.gov/18550959/
+- `exdb.neck_isometric_emg_2002` — Electromyography of superficial cervical muscles with exertion in the sagittal, coronal and oblique planes. **Experimental study**, 11931061, https://pubmed.ncbi.nlm.nih.gov/11931061/
+- `exdb.olympic_emg_2026` — Olympic weightlifting neuromuscular activation study. **Experimental study**, 41352184, https://pubmed.ncbi.nlm.nih.gov/41352184/
+- `exdb.olympic_kinetics_2012` — Olympic lifting phase biomechanics. **Experimental study**, 21975459, https://pubmed.ncbi.nlm.nih.gov/21975459/
+- `exdb.olympic_position_2023` — Olympic weightlifting derivatives / position statement evidence. **Review / position statement**, 36952649, https://pubmed.ncbi.nlm.nih.gov/36952649/
+- `exdb.pallof_press_postural_2025` — Effect of Body Position and Support Surface on the Postural Control Challenge During the Pallof Press Exercise. **Experimental study**, 40005429, https://pubmed.ncbi.nlm.nih.gov/40005429/
+- `exdb.power_grip_emg_2015` — Evaluating protocols for normalizing forearm electromyograms during power grip. **Experimental study**, 26589588, https://pubmed.ncbi.nlm.nih.gov/26589588/
+- `exdb.prone_barbell_row_emg_2025` — Impact of different ranges of motion in the prone barbell row on muscle excitation. **Experimental study**, 40513198, https://pubmed.ncbi.nlm.nih.gov/40513198/
+- `exdb.psoas_aslr_emg_2010` — Is the psoas a hip flexor in the active straight leg raise?. **Experimental study**, 20625774, https://pubmed.ncbi.nlm.nih.gov/20625774/
+- `exdb.pullover_emg_2011` — Effects of the pullover exercise on the pectoralis major and latissimus dorsi muscles as evaluated by EMG. **Experimental study**, 21975179, https://pubmed.ncbi.nlm.nih.gov/21975179/
+- `exdb.pullup_emg_2017` — Electromyographical Comparison of a Traditional, Suspension Device, and Towel Pull-Up. **Experimental study**, 28828073, https://pubmed.ncbi.nlm.nih.gov/28828073/
+- `exdb.shoulder_press_emg_2013` — Effects of body position and loading modality on muscle activity and strength in shoulder presses. **Experimental study**, 23096062, https://pubmed.ncbi.nlm.nih.gov/23096062/
+- `exdb.shoulder_training_emg_2012` — Evaluation of muscle activity during a standardized shoulder resistance training bout in novice individuals. **Experimental study**, 22067242, https://pubmed.ncbi.nlm.nih.gov/22067242/
+- `exdb.side_bridge_asymmetry_2022` — Side-To-Side Difference in Electromyographic Activity of Abdominal Muscles during Asymmetric Exercises. **Experimental study**, 36523892, https://pubmed.ncbi.nlm.nih.gov/36523892/
+- `exdb.side_bridge_oblique_emg_2020` — Surface Electromyography of the Internal and External Oblique Muscles During Isometric Tasks Targeting the Lateral Trunk. **Experimental study**, 32369764, https://pubmed.ncbi.nlm.nih.gov/32369764/
+- `exdb.situp_curlup_emg_2008` — The effects of different sit- and curl-up positions on activation of abdominal and hip flexor musculature. **Experimental study**, 18923563, https://pubmed.ncbi.nlm.nih.gov/18923563/
+- `exdb.sled_push_emg_2021` — Electromyography, Stiffness and Kinematics of Resisted Sprint Training Using Different Load Conditions. **Experimental study**, 34833557, https://pubmed.ncbi.nlm.nih.gov/34833557/
+- `exdb.strongman_review_2019` — Strongman exercise systematic review. **Systematic review**, 31820223, https://pubmed.ncbi.nlm.nih.gov/31820223/
+- `exdb.strongman_trunk_2009` — Strongman trunk loading. **Experimental study**, 19528856, https://pubmed.ncbi.nlm.nih.gov/19528856/
+- `exdb.strongman_trunk_events_2009` — Comparison of different strongman events: trunk muscle activation and lumbar spine motion, load, and stiffness. **Experimental study**, 19528856, https://pubmed.ncbi.nlm.nih.gov/19528856/
+- `exdb.subscapularis_exercise_2003` — Subscapularis muscle activity during selected rehabilitation exercises. **Experimental study**, 12531769, https://pubmed.ncbi.nlm.nih.gov/12531769/
+- `exdb.suspension_row_emg_2020` — Recruitment of Shoulder Complex and Torso Stabilizer Muscles With Rowing Exercises Using a Suspension Strap Training System. **Experimental study**, 32940548, https://pubmed.ncbi.nlm.nih.gov/32940548/
+- `exdb.tire_flip_2010` — Tire flip biomechanics. **Experimental study**, 20386131, https://pubmed.ncbi.nlm.nih.gov/20386131/
+- `exdb.triceps_extension_emg_2017` — Effect of shoulder position on triceps brachii heads activity in dumbbell elbow extension exercises. **Experimental study**, 28677940, https://pubmed.ncbi.nlm.nih.gov/28677940/
+- `exdb.trunk_rotation_rct_2021` — The influence of rotational movement exercise on the abdominal muscle thickness and trunk mobility. **Randomized controlled trial**, 34391272, https://pubmed.ncbi.nlm.nih.gov/34391272/
+- `exdb.upright_row_grip_emg_2012` — Effect of grip width on electromyographic activity during the upright row. **Experimental study**, 22362088, https://pubmed.ncbi.nlm.nih.gov/22362088/
+<!-- END exercise-evidence -->

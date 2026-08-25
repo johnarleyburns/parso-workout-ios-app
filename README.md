@@ -71,7 +71,7 @@ core-tests job and ≥10 min for any local smoke/xcodebuild jobs.
 
 ## Status
 
-Active development. The app ships a full recovery-aware coaching engine with 30+ peer-reviewed citations, 1,000+ exercises, and 28+ preset routines. See `PLAN_STATUS.md` for detailed phase tracking and `docs/CITATIONS.md` for the evidence base.
+Active development. The app ships a recovery-aware coaching engine with 60 movement-evidence references, 873 DB++ exercises, a normalized 20-muscle ontology, direct/indirect/stabilizer set credits, and five suggested-workout styles. See `current_status.md` and `docs/CITATIONS.md` for details.
 
 **Coach scientific validation:** A 21-test black-box suite (`CoachScientificValidationTests`) verifies every coaching rule against published exercise science — recovery gates, balance priorities, preference learning, assessment prompts, and edge cases. Each test carries a `CitationRegistry` reference. The full list of validated rules is accessible in-app under Settings → Coach → Coach Methodology. Run with `swift test --package-path CadenceCore --filter CoachScientificValidationTests`.
 

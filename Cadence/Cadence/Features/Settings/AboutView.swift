@@ -9,6 +9,7 @@ struct AboutView: View {
     private let sourceURL = URL(string: "https://github.com/johnarleyburns/parso-workout-ios-app")!
     private let siteURL = URL(string: "https://www.parso.guru")!
     private let exerciseDBURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!
+    private let exerciseAnnotationURL = URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
 
     var body: some View {
         ScrollView {
@@ -137,11 +138,18 @@ struct AboutView: View {
     private var exerciseLibrary: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Exercise Library").font(.title3.bold())
-            Text("Exercise names, instructions, muscle groups, and demonstration images are from the free-exercise-db \u{2014} an open, public-domain dataset of 800+ exercises. Images load from the network and are cached on your device.")
+            Text("Exercise source data and imagery come from free-exercise-db; DB++ adds evidence-audited annotations, a 20-muscle ontology, and movement classifications. Everything is bundled on-device.")
                 .font(.body).foregroundStyle(.secondary)
             Link(destination: exerciseDBURL) {
                 HStack(spacing: 6) {
                     Text("View on GitHub")
+                    Image(systemName: "arrow.up.right").font(.caption2)
+                }
+                .font(.body)
+            }
+            Link(destination: exerciseAnnotationURL) {
+                HStack(spacing: 6) {
+                    Text("View free-exercise-db++ annotations on GitHub")
                     Image(systemName: "arrow.up.right").font(.caption2)
                 }
                 .font(.body)

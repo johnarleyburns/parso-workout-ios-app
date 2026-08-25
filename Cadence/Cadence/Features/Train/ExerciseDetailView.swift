@@ -26,9 +26,11 @@ struct ExerciseDetailView: View {
 
                 facets
 
-                if !primaryMuscles.isEmpty || !secondaryMuscles.isEmpty {
+                if !exercise.directMuscles.isEmpty || !exercise.indirectMuscles.isEmpty || !exercise.stabilizerMuscles.isEmpty {
                     muscles
                 }
+
+                evidence
 
                 if !exercise.instructions.isEmpty {
                     instructions
@@ -133,18 +135,49 @@ struct ExerciseDetailView: View {
 
     private var muscles: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if !primaryMuscles.isEmpty {
-                Text("Targets").font(.headline)
-                Text(primaryMuscles.joined(separator: ", "))
-                    .foregroundStyle(.secondary)
-            }
-            if !secondaryMuscles.isEmpty {
-                Text("Also works").font(.subheadline.weight(.semibold)).padding(.top, 2)
-                Text(secondaryMuscles.joined(separator: ", "))
-                    .font(.subheadline).foregroundStyle(.secondary)
+            Text("Muscle roles").font(.headline)
+            roleRow("Trains directly", exercise.directMuscles)
+            roleRow("Trains indirectly", exercise.indirectMuscles)
+            if !exercise.stabilizerMuscles.isEmpty { roleRow("Stabilises", exercise.stabilizerMuscles) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var evidence: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if exercise.annotationConfidenceValue == nil {
+                Text("Muscle roles for this movement are Cladiron’s own mapping — no published movement analysis is attached.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("Direct sets count once toward weekly volume, indirect sets count half, and stabilisers count zero.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    CitationLink(citation: CitationRegistry.pellandDoseResponse2026, compact: true)
+                }
+                if exercise.annotationConfidenceValue == .medium {
+                    Text("Attribution confidence: medium.").font(.caption).foregroundStyle(.secondary)
+                }
+                ForEach(ExerciseEvidence.evidence(forPatternIDs: exercise.movementPatternIDs)) { item in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.displayName).font(.subheadline.weight(.semibold))
+                        Text(item.summary).font(.caption).foregroundStyle(.secondary)
+                        HStack { ForEach(item.citationIDs, id: \.self) { id in
+                            if let citation = CitationRegistry.citation(forId: id) {
+                                CitationLink(citation: citation, compact: true, identifier: "exercise.evidence.\(item.id)")
+                            }
+                        }}
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func roleRow(_ label: String, _ groups: [MuscleGroup]) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label).font(.subheadline.weight(.semibold)).frame(width: 130, alignment: .leading)
+            Text(groups.map(\.displayName).joined(separator: ", ")).foregroundStyle(.secondary)
+        }
     }
 
     private var instructions: some View {
@@ -164,21 +197,15 @@ struct ExerciseDetailView: View {
         HStack(spacing: 4) {
             Text("Exercise data:")
                 .font(.caption2).foregroundStyle(.tertiary)
-            Link("free-exercise-db", destination: ExerciseLibrary.exerciseRepoURL)
+            Link("free-exercise-db (source data and imagery)", destination: ExerciseLibrary.exerciseRepoURL)
                 .font(.caption2)
-            Text("(public domain)")
+            Text("/").font(.caption2).foregroundStyle(.tertiary)
+            Link("free-exercise-db++ (annotations)", destination: ExerciseLibrary.exerciseAnnotationRepoURL)
                 .font(.caption2).foregroundStyle(.tertiary)
         }
     }
 
     // MARK: Helpers
-
-    private var primaryMuscles: [String] { exercise.primaryMuscles.map(Self.display) }
-    private var secondaryMuscles: [String] { exercise.secondaryMuscles.map(Self.display) }
-
-    static func display(_ id: String) -> String {
-        id.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
-    }
 
     private func tag(_ text: String) -> some View {
         Text(text)

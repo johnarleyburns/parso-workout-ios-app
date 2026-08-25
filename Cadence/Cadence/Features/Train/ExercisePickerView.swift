@@ -3,7 +3,7 @@ import SwiftData
 import CadenceCore
 
 struct ExercisePickerView: View {
-    enum PickAction {
+    enum PickAction: Equatable {
         case add, swap, use
 
         var navigationTitle: String {
@@ -49,10 +49,12 @@ struct ExercisePickerView: View {
     @State var selectedCreationMuscles: Set<String> = []
     @State var selectedCreationSecondary: Set<String> = []
     let action: PickAction
+    let source: Exercise?
     let onPick: (Exercise) -> Void
 
-    init(action: PickAction = .add, onPick: @escaping (Exercise) -> Void) {
+    init(action: PickAction = .add, source: Exercise? = nil, onPick: @escaping (Exercise) -> Void) {
         self.action = action
+        self.source = source
         self.onPick = onPick
     }
 
@@ -159,7 +161,16 @@ struct ExercisePickerView: View {
         }
     }
 
+    @ViewBuilder
     var body: some View {
+        if action == .swap, let source {
+            ExerciseSwapView(source: source, exercises: exercises, onPick: onPick)
+        } else {
+            standardBody
+        }
+    }
+
+    private var standardBody: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("Tab", selection: $selectedTab) {

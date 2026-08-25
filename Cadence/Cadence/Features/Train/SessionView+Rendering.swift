@@ -146,7 +146,12 @@ extension SessionView {
                 case .planned: return .swap
                 }
             }()
-            ExercisePickerView(action: pickAction) { picked in
+            ExercisePickerView(action: pickAction, source: {
+                switch target {
+                case .logged(let exerciseID): return exerciseForID(exerciseID)
+                case .planned(let oldName): return session.exercisesInOrder.first { $0.name == oldName }
+                }
+            }()) { picked in
                 switch target {
                 case .planned(let oldName):
                     swapPlannedExercise(oldName: oldName, newName: picked.name)

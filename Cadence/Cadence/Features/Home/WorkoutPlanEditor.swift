@@ -29,6 +29,7 @@ struct WorkoutPlanEditor: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Person.name) private var allPeople: [Person]
+    @Query(sort: \Exercise.name) private var allExercises: [Exercise]
     @State private var exercisePickerIntent: ExercisePickerIntent?
 
     @State private var restSeconds: Int
@@ -101,7 +102,13 @@ struct WorkoutPlanEditor: View {
         }
         .sheet(item: $exercisePickerIntent) { intent in
             NavigationStack {
-                ExercisePickerView(action: intent.pickerAction) { exercise in
+                ExercisePickerView(action: intent.pickerAction, source: {
+                    if case .swap(let id) = intent,
+                       let name = plan.exercises.first(where: { $0.id == id })?.name {
+                        return allExercises.first { $0.name == name }
+                    }
+                    return nil
+                }()) { exercise in
                     applyPickedExercise(exercise, for: intent)
                     exercisePickerIntent = nil
                 }

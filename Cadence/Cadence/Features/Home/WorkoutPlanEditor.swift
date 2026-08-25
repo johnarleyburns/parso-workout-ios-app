@@ -212,16 +212,22 @@ struct WorkoutPlanEditor: View {
         }
     }
 
-    /// The owner first, then the selected partners in the order the roster card
-    /// records — the same order the logger rotates through.
+    /// The roster card's persisted order, including a partner-before-owner plan.
+    /// Legacy drafts that do not explicitly contain the owner remain owner-first.
     private func rosterMembers() -> [PartnerPlanResolver.RosterMember] {
-        let owner = PartnerPlanResolver.RosterMember(performerID: nil, name: "Me")
         let peopleByID = Dictionary(allPeople.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let partners = plan.partnerIDs.compactMap { id -> PartnerPlanResolver.RosterMember? in
-            guard let person = peopleByID[id], !person.isMe else { return nil }
-            return PartnerPlanResolver.RosterMember(performerID: person.id, name: person.name)
+        let ordered = plan.partnerIDs.compactMap { id -> PartnerPlanResolver.RosterMember? in
+            guard let person = peopleByID[id] else { return nil }
+            return PartnerPlanResolver.RosterMember(
+                performerID: person.isMe ? nil : person.id,
+                name: person.isMe ? "Me" : person.name)
         }
-        return [owner] + partners
+        let hasPartner = ordered.contains { $0.performerID != nil }
+        guard hasPartner else {
+            return [PartnerPlanResolver.RosterMember(performerID: nil, name: "Me")]
+        }
+        if ordered.contains(where: { $0.performerID == nil }) { return ordered }
+        return [PartnerPlanResolver.RosterMember(performerID: nil, name: "Me")] + ordered
     }
 
     private func applyPickedExercise(_ exercise: Exercise, for intent: ExercisePickerIntent) {

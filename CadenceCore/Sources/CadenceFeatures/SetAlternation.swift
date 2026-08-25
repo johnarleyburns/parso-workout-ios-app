@@ -43,8 +43,8 @@ public enum SetAlternation {
     /// - `pendingSets` non-empty → the performer of the first pending row (the
     ///   card's alternation answer).
     /// - `pendingSets` empty (silent/unplanned exercise) → the next member in
-    ///   `rosterOrder` after `lastLoggedPerformerID`, defaulting to the owner
-    ///   (nil) when there is nothing to rotate from.
+    ///   `rosterOrder` after `lastLoggedPerformerID`, defaulting to the first
+    ///   configured roster member when there is nothing to rotate from.
     /// The owner is represented by `nil` throughout.
     public static func nextPerformerID(pendingSets: [SessionRenderModel.PendingSetDisplay],
                                        rosterOrder: [UUID?],
@@ -54,7 +54,7 @@ public enum SetAlternation {
         }
         guard let lastLoggedPerformerID,
               let lastIndex = rosterOrder.firstIndex(of: lastLoggedPerformerID) else {
-            return nil
+            return rosterOrder.first ?? nil
         }
         return rosterOrder[(lastIndex + 1) % rosterOrder.count]
     }

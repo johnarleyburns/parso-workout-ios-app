@@ -6,6 +6,7 @@ struct WatchRestView: View {
     let model: WatchStrengthFlowModel
 
     @Environment(AppSettings.self) private var watchSettings
+    @Environment(WatchWorkoutManager.self) private var watchManager
     @State private var timer: Timer?
     @State private var cues = WatchIntervalCuePlayer()
 
@@ -15,6 +16,11 @@ struct WatchRestView: View {
             Text("REST").font(.caption.bold()).foregroundStyle(.secondary)
             Text(formatTime(TimeInterval(model.restTimer.remaining)))
                 .font(.system(size: 52, weight: .heavy, design: .monospaced))
+
+            Label(watchManager.currentBPM.map { "\(Int($0)) BPM" } ?? "-- BPM",
+                  systemImage: "heart.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.red)
 
             if model.restTimer.isRunning {
                 ProgressView(value: model.restTimer.progress)

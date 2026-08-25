@@ -26,6 +26,7 @@
 	<string>Cladiron saves workout summaries to Apple Health so they appear system-wide and close your Activity rings.</string>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>audio</string>
 		<string>workout-processing</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>

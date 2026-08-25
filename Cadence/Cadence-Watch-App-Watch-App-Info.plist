@@ -12,6 +12,7 @@
 	<string>Cladiron saves your workout summary to Health.</string>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>audio</string>
 		<string>remote-notification</string>
 		<string>workout-processing</string>
 	</array>

@@ -164,22 +164,29 @@ jobs:
         if: success()
         run: bash scripts/check-owned-warnings.sh build.log
 
-      - name: Strip workout-processing from watch Info.plist
+      - name: Normalize watch background modes
         if: success()
         run: |
           set -eo pipefail
-          # Xcode auto-adds workout-processing to watch Info.plist (invalid for watchOS < 27.0).
-          # Strip it from the archived bundle before export.
+          # Keep the two modes required by the live watch experience. The
+          # previous step deleted UIBackgroundModes wholesale, which disabled
+          # both background HR delivery and short workout audio clips.
           WATCH_PLIST="./build/Cadence.xcarchive/Products/Applications/Cadence.app/Watch/Cadence Watch App Watch App.app/Info.plist"
           if [ -f "$WATCH_PLIST" ]; then
             /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$WATCH_PLIST" 2>/dev/null || true
-            echo "Stripped UIBackgroundModes from watch Info.plist"
+            /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$WATCH_PLIST"
+            /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" "$WATCH_PLIST"
+            /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:1 string workout-processing" "$WATCH_PLIST"
+            echo "Preserved audio and workout-processing in watch Info.plist"
           else
             echo "Watch Info.plist not found at expected path, trying alternate..."
             WATCH_PLIST=$(find ./build/Cadence.xcarchive -name "Info.plist" -path "*/Watch/*" | head -1)
             if [ -f "$WATCH_PLIST" ]; then
               /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$WATCH_PLIST" 2>/dev/null || true
-              echo "Stripped UIBackgroundModes from $WATCH_PLIST"
+              /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$WATCH_PLIST"
+              /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" "$WATCH_PLIST"
+              /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:1 string workout-processing" "$WATCH_PLIST"
+              echo "Preserved audio and workout-processing in $WATCH_PLIST"
             fi
           fi
 

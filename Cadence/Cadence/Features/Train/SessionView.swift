@@ -71,8 +71,11 @@ struct SessionView: View {
         SessionRenderModel.signature(session: session, prRule: settings.prRule, formula: settings.formula)
     }
     var rosterEntries: [RosterEntry] {
-        [RosterEntry(personID: nil, name: "Me", isMe: true)]
-        + attributablePartners.map { RosterEntry(personID: $0.id, name: $0.name, isMe: false) }
+        roster.map { person in
+            RosterEntry(personID: person.isMe ? nil : person.id,
+                        name: person.isMe ? "Me" : person.name,
+                        isMe: person.isMe)
+        }
     }
 
     var attributedPartnerIDs: [UUID] {

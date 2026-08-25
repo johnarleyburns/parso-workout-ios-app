@@ -102,12 +102,12 @@ final class SetAlternationTests: XCTestCase {
         XCTAssertNil(id, "After a partner, the rotation falls back to the owner")
     }
 
-    func testNextPerformerIDDefaultsToOwner() {
+    func testNextPerformerIDDefaultsToFirstConfiguredPerformer() {
         let partner = UUID()
         let id = SetAlternation.nextPerformerID(
             pendingSets: [],
-            rosterOrder: [nil, partner],
+            rosterOrder: [partner, nil],
             lastLoggedPerformerID: nil)
-        XCTAssertNil(id, "Nothing logged → the owner leads a silent exercise")
+        XCTAssertEqual(id, partner, "Nothing logged → the configured first performer leads")
     }
 }

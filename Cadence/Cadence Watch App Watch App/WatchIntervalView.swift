@@ -13,6 +13,7 @@ struct WatchIntervalView: View {
     @State private var showSummary = false
 
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchAppSettings
 
@@ -42,9 +43,10 @@ struct WatchIntervalView: View {
         .onAppear {
             watchManager.resetSavedSummary()
             watchManager.startWorkout(type: kind.lowercased(), cardioType: kind == "HIIT" ? .hiit : .boxing)
+            watchManager.startHeartRatePolling()
         }
         .onDisappear {
-            if watchManager.isActive {
+            if scenePhase != .background, watchManager.isActive {
                 watchManager.stopWorkout(save: false)
             }
             haptics.stop()
@@ -102,17 +104,17 @@ struct WatchIntervalView: View {
 
     private var metricStrip: some View {
         HStack(spacing: 7) {
-            if let bpm = watchManager.currentBPM {
-                Label("\(Int(bpm))", systemImage: "heart.fill")
-                    .labelStyle(.titleAndIcon)
-                    .accessibilityLabel("\(Int(bpm)) BPM")
-            }
+            let bpmText = watchManager.currentBPM.map { "\(Int($0))" } ?? "--"
+            Label(bpmText, systemImage: "heart.fill")
+                .labelStyle(.titleAndIcon)
+                .foregroundStyle(.red.opacity(0.95))
+                .accessibilityLabel(watchManager.currentBPM.map { "\(Int($0)) BPM" } ?? "Heart rate unavailable")
             Text("Tot \(formatTime(runner.overallRemaining))")
                 .monospacedDigit()
         }
         .font(.caption2.weight(.semibold))
         .lineLimit(1)
-        .minimumScaleFactor(0.75)
+        .minimumScaleFactor(0.7)
         .foregroundStyle(fgColor.opacity(0.62))
     }
 

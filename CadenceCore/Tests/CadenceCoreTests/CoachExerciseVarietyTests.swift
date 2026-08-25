@@ -49,13 +49,13 @@ final class CoachExerciseVarietyTests: XCTestCase {
         let coach = CoachFacts.make(from: events, goal: .hypertrophy, experience: .intermediate,
                                     now: now, recoveryAwareCoachV2: true)
 
-        // Abs is the only body part below its starting range; everything else is
-        // already well covered, so both planned strength days route to abs.
-        let facts = trainingFacts([
-            .legs: 16, .back: 16, .chest: 16, .shoulders: 16,
-            .biceps: 14, .triceps: 14, .calves: 12,
-            .abs: 1,
-        ])
+        // Abdominals are the only tracked group below their starting range;
+        // everything else is already well covered, so both planned strength days
+        // route to abs. Every tracked group has to be named — DB++ tracks 13, and an
+        // unnamed group would read as a zero-volume deficit and out-rank abs.
+        var sets = Dictionary(uniqueKeysWithValues: MuscleGroup.defaultTracked.map { ($0, 16.0) })
+        sets[.abdominals] = 1
+        let facts = trainingFacts(sets)
         let plan = weeklyPlan(now: now, days: [(1, [.strength]), (3, [.strength])])
 
         let optimized = CoachPlanOptimizer.optimize(
@@ -83,13 +83,14 @@ final class CoachExerciseVarietyTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// True when a recommended exercise covers exactly the abs body part.
+    /// True when a recommended exercise trains the abdominals.
     private func CoachPlanOptimizer_partsCoveredIsAbs(_ ex: CoachSession.RecommendedExercise) -> Bool {
         let ids = ex.primaryMuscles.isEmpty
             ? (ExerciseLibrary.byName[ex.name.lowercased()]?.primaryMuscles
-               ?? BodyPart.guessCategory(from: ex.name).map(BodyPart.defaultMuscles(forCategory:)) ?? [])
+               ?? ExerciseCategory.guess(fromName: ex.name)
+                    .map { MuscleGroup.defaults(forCategory: $0).map(\.rawValue) } ?? [])
             : ex.primaryMuscles
-        return BodyPart.parts(forMuscleIDs: ids).contains(.abs)
+        return MuscleGroup.canonicalize(ids).contains(.abdominals)
     }
 
     private func coreHistory(context: ModelContext, now: Date) throws -> [TrainingEvent] {
@@ -132,10 +133,10 @@ final class CoachExerciseVarietyTests: XCTestCase {
             allowsTwoADays: twoADays)
     }
 
-    private func trainingFacts(_ sets: [BodyPart: Double]) -> TrainingFacts {
+    private func trainingFacts(_ sets: [MuscleGroup: Double]) -> TrainingFacts {
         TrainingFacts(
-            weeklySetsByPart: sets,
-            frequencyByPart: sets.mapValues { _ in 1 },
+            weeklySetsByGroup: sets,
+            frequencyByGroup: sets.mapValues { _ in 1 },
             e1RMTrendByExercise: [:],
             intensity: .empty,
             avgRPE: nil,

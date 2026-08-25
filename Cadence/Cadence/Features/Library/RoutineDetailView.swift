@@ -32,14 +32,14 @@ struct RoutineDetailView: View {
         }
     }
 
-    private var bodyParts: [BodyPart] {
-        var parts = Set<BodyPart>()
+    private var muscleGroups: [MuscleGroup] {
+        var parts = Set<MuscleGroup>()
         for name in plan.movementNames {
             if let t = ExerciseLibrary.byName[name.lowercased()] {
-                parts.formUnion(ExerciseLibrary.bodyParts(of: t))
+                parts.formUnion(ExerciseLibrary.muscleGroups(of: t))
             }
         }
-        return BodyPart.allCases.filter { parts.contains($0) }
+        return MuscleGroup.sorted(parts)
     }
 
     var body: some View {
@@ -50,13 +50,13 @@ struct RoutineDetailView: View {
                     if plan.flexibleScheme { tag("Flexible") }
                 }
 
-                if !bodyParts.isEmpty {
+                if !muscleGroups.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Targets").font(.subheadline.weight(.semibold))
-                        Text(bodyParts.map(\.displayName).joined(separator: ", "))
+                        Text(muscleGroups.map(\.displayName).joined(separator: ", "))
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
-                    .accessibilityIdentifier("routine.bodyParts")
+                    .accessibilityIdentifier("routine.muscleGroups")
                 }
 
                 VStack(alignment: .leading, spacing: 12) {

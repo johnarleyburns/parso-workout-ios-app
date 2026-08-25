@@ -25,7 +25,7 @@ struct ExercisePickerView: View {
 
     enum PickerTab: String, CaseIterable { case recents, popular, browse }
 
-    enum BrowseMode: String, CaseIterable { case byBodyPart, byEquipment }
+    enum BrowseMode: String, CaseIterable { case byMuscleGroup, byEquipment }
 
     @Environment(\.modelContext) var context
     @Environment(\.dismiss) var dismiss
@@ -39,16 +39,15 @@ struct ExercisePickerView: View {
     @State var outcome = ExercisePickerSearch.Outcome.empty
     @State var facetIndex = ExerciseFacetIndex<Exercise>([])
     @State var selectedTab: PickerTab = .recents
-    @State var selectedPart: BodyPart?
+    @State var selectedGroup: MuscleGroup?
     @State var selectedEquipment: Equipment?
-    @State var browseMode: BrowseMode = .byBodyPart
+    @State var browseMode: BrowseMode = .byMuscleGroup
     @State var browseAll = false
     @State var recents: [Exercise] = []
     @State var showCreationSheet = false
     @State var selectedCreationCategory: ExerciseCategory = .other
     @State var selectedCreationMuscles: Set<String> = []
     @State var selectedCreationSecondary: Set<String> = []
-    @State var selectedCreationParts: Set<BodyPart> = []
     let action: PickAction
     let onPick: (Exercise) -> Void
 
@@ -68,11 +67,11 @@ struct ExercisePickerView: View {
         case .popular: return browseAll ? exercises : popular
         case .browse:
             switch browseMode {
-            case .byBodyPart:
-                if let part = selectedPart { return facetIndex.exercises(for: part, equipment: selectedEquipment) }
+            case .byMuscleGroup:
+                if let group = selectedGroup { return facetIndex.exercises(for: group, equipment: selectedEquipment) }
                 return exercises
             case .byEquipment:
-                if let eq = selectedEquipment { return facetIndex.exercises(forEquipment: eq, bodyPart: selectedPart) }
+                if let eq = selectedEquipment { return facetIndex.exercises(forEquipment: eq, group: selectedGroup) }
                 return exercises
             }
         }
@@ -80,21 +79,24 @@ struct ExercisePickerView: View {
 
     var availableEquipment: [Equipment] {
         switch browseMode {
-        case .byBodyPart:
-            guard let part = selectedPart else { return [] }
-            return facetIndex.equipment(for: part)
+        case .byMuscleGroup:
+            guard let group = selectedGroup else { return [] }
+            return facetIndex.equipment(for: group)
         case .byEquipment:
             return Equipment.allCases.filter { !facetIndex.exercises(forEquipment: $0).isEmpty }
         }
     }
 
-    var availableParts: [BodyPart] {
+    /// The groups offered in the browse chip row. Tracked groups lead (they are
+    /// what most people browse for); the rest follow in canonical order rather than
+    /// being hidden, since browsing is discovery, not programming.
+    var availableGroups: [MuscleGroup] {
         switch browseMode {
-        case .byBodyPart:
-            return BodyPart.allCases
+        case .byMuscleGroup:
+            return MuscleGroup.canonicalOrder.filter { !facetIndex.exercises(for: $0).isEmpty }
         case .byEquipment:
             guard let eq = selectedEquipment else { return [] }
-            return facetIndex.bodyParts(forEquipment: eq)
+            return facetIndex.muscleGroups(forEquipment: eq)
         }
     }
 
@@ -117,7 +119,7 @@ struct ExercisePickerView: View {
     var bestLibraryMatch: Exercise? { outcome.bestMatch }
 
     var showsGrouped: Bool {
-        selectedTab == .browse && trimmedQuery.isEmpty && selectedPart == nil && selectedEquipment == nil
+        selectedTab == .browse && trimmedQuery.isEmpty && selectedGroup == nil && selectedEquipment == nil
     }
 
     var showsFilterChips: Bool {
@@ -125,13 +127,13 @@ struct ExercisePickerView: View {
     }
 
     var showsSubFilter: Bool {
-        showsFilterChips && browseMode == .byBodyPart
-            && selectedPart != nil && availableEquipment.count > 1
+        showsFilterChips && browseMode == .byMuscleGroup
+            && selectedGroup != nil && availableEquipment.count > 1
     }
 
     var showsSubFilterInverted: Bool {
         showsFilterChips && browseMode == .byEquipment
-            && selectedEquipment != nil && availableParts.count > 0
+            && selectedEquipment != nil && availableGroups.count > 0
     }
 
     var sectionTitle: String {
@@ -141,15 +143,15 @@ struct ExercisePickerView: View {
         case .popular: return browseAll ? "All" : "Popular"
         case .browse:
             switch browseMode {
-            case .byBodyPart:
-                if let part = selectedPart {
-                    if let eq = selectedEquipment { return "\(part.displayName)  \(eq.displayName)" }
-                    return part.displayName
+            case .byMuscleGroup:
+                if let group = selectedGroup {
+                    if let eq = selectedEquipment { return "\(group.displayName)  \(eq.displayName)" }
+                    return group.displayName
                 }
                 return "All"
             case .byEquipment:
                 if let eq = selectedEquipment {
-                    if let part = selectedPart { return "\(eq.displayName)  \(part.displayName)" }
+                    if let group = selectedGroup { return "\(eq.displayName)  \(group.displayName)" }
                     return eq.displayName
                 }
                 return "All"
@@ -174,7 +176,7 @@ struct ExercisePickerView: View {
                         browseModePicker
                         filterChips
                         if showsSubFilter { equipmentChips }
-                        if showsSubFilterInverted { bodyPartSubChips }
+                        if showsSubFilterInverted { muscleGroupSubChips }
                     }
 
                     if !trimmedQuery.isEmpty && !exactMatchExists {
@@ -255,13 +257,13 @@ struct ExercisePickerView: View {
             if recents.isEmpty { selectedTab = .popular }
         }
         .onChange(of: exercises.count) { _, _ in rebuildIndexIfNeeded() }
-        .onChange(of: selectedPart) { _, _ in selectedEquipment = nil }
+        .onChange(of: selectedGroup) { _, _ in selectedEquipment = nil }
         .onChange(of: selectedTab) { _, newTab in
-            if newTab == .browse { selectedEquipment = nil; selectedPart = nil }
-            if newTab != .browse { selectedPart = nil; selectedEquipment = nil }
+            if newTab == .browse { selectedEquipment = nil; selectedGroup = nil }
+            if newTab != .browse { selectedGroup = nil; selectedEquipment = nil }
             if newTab == .recents { loadRecents() }
         }
-        .onChange(of: browseMode) { _, _ in selectedEquipment = nil; selectedPart = nil }
+        .onChange(of: browseMode) { _, _ in selectedEquipment = nil; selectedGroup = nil }
         .task(id: query) {
             if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 outcome = .empty

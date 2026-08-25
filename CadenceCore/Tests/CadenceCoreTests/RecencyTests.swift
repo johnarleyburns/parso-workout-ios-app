@@ -99,7 +99,7 @@ final class RecencyTests: XCTestCase {
             exercise: "Deadlift",
             patterns: MovementPattern.patterns(forExerciseNamed: "Deadlift",
                                                 primaryMuscles: ["hamstrings", "lower-back"]),
-            bodyParts: BodyPart.parts(forMuscleIDs: ["hamstrings", "lower-back"]),
+            muscleGroups: Set(MuscleGroup.canonicalize(["hamstrings", "lower-back"])),
             now: now)
         XCTAssertFalse(eligible, "Hard block prevents Deadlift re-selection 1h after RPE 9 work")
     }

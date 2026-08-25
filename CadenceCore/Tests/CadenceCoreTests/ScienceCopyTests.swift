@@ -11,9 +11,9 @@ final class ScienceCopyTests: XCTestCase {
     }
 
     func testDeloadDoesNotClaimOvertrainingDiagnosis() {
-        let snap = LiftSnapshot(exercise: "Squat", part: .legs,
+        let snap = LiftSnapshot(exercise: "Squat", group: .quadriceps,
                                  topSetWeightKg: 100, topSetReps: 5, bestE1RM: 100, trend: .declining)
-        let facts = TrainingFacts(weeklySetsByPart: [:], frequencyByPart: [:],
+        let facts = TrainingFacts(weeklySetsByGroup: [:], frequencyByGroup: [:],
                                    e1RMTrendByExercise: [:], intensity: .empty, avgRPE: nil,
                                    daysSinceLastSession: nil, totalWorkingSets: 5,
                                    liftSnapshots: ["Squat": snap],
@@ -27,7 +27,7 @@ final class ScienceCopyTests: XCTestCase {
     }
 
     func testCardioModerateDoesNotCall150MinOptimal() {
-        let facts = TrainingFacts(weeklySetsByPart: [:], frequencyByPart: [:],
+        let facts = TrainingFacts(weeklySetsByGroup: [:], frequencyByGroup: [:],
                                    e1RMTrendByExercise: [:], intensity: .empty, avgRPE: nil,
                                    daysSinceLastSession: nil, totalWorkingSets: 1,
                                    goal: .strength, experience: .beginner)
@@ -38,9 +38,9 @@ final class ScienceCopyTests: XCTestCase {
     }
 
     func testRecommendationEngineAllOutputsCited() {
-        let snap = LiftSnapshot(exercise: "Squat", part: .legs,
+        let snap = LiftSnapshot(exercise: "Squat", group: .quadriceps,
                                  topSetWeightKg: 100, topSetReps: 4, bestE1RM: 100, trend: .flat)
-        let facts = TrainingFacts(weeklySetsByPart: [.chest: 2], frequencyByPart: [:],
+        let facts = TrainingFacts(weeklySetsByGroup: [.chest: 2], frequencyByGroup: [:],
                                    e1RMTrendByExercise: [:], intensity: .empty, avgRPE: nil,
                                    daysSinceLastSession: nil, totalWorkingSets: 5,
                                    liftSnapshots: ["Squat": snap],

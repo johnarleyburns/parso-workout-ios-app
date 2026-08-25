@@ -30,16 +30,16 @@ public struct Insight: Identifiable, Sendable, Equatable {
     /// A user-invokable action attached to an insight (e.g. "add these gaps to plan").
     /// Semantic only — the view maps it to a button + sheet.
     public enum Action: Equatable, Sendable {
-        /// Offer to fold the listed per-part gaps into this week's planned
+        /// Offer to fold the listed per-group gaps into this week's planned
         /// strength sessions, relaxing safe-planning guardrails.
-        case addGapsToPlan(deficits: [BodyPart: Double])
+        case addGapsToPlan(deficits: [MuscleGroup: Double])
         /// Offer to restore the safe-planning guardrails for this week.
         case revertToSafePlan
     }
 
     public let id: String
     public let kind: InsightKind
-    public let part: BodyPart?      // the body part this concerns, if any
+    public let group: MuscleGroup?  // the muscle group this concerns, if any
     public let exercise: String?    // the lift this concerns, if any
     public let title: String        // short headline, e.g. "Chest volume is low"
     public let message: String      // one-line takeaway shown on the card
@@ -51,7 +51,7 @@ public struct Insight: Identifiable, Sendable, Equatable {
 
     public init(id: String,
                 kind: InsightKind,
-                part: BodyPart? = nil,
+                group: MuscleGroup? = nil,
                 exercise: String? = nil,
                 title: String,
                 message: String,
@@ -61,7 +61,7 @@ public struct Insight: Identifiable, Sendable, Equatable {
                 action: Action? = nil) {
         self.id = id
         self.kind = kind
-        self.part = part
+        self.group = group
         self.exercise = exercise
         self.title = title
         self.message = message

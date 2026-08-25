@@ -200,16 +200,16 @@ public final class WatchStrengthFlowModel {
         refreshExerciseList()
     }
 
-    /// Creates a named exercise from the watch's compact body-part pills, then
+    /// Creates a named exercise from the watch's compact muscle-group pills, then
     /// adds it to the current workout exactly like a built-in search result.
     @discardableResult
-    public func addCustomExercise(named name: String, bodyParts: Set<BodyPart>) -> Exercise? {
+    public func addCustomExercise(named name: String, muscleGroups: Set<MuscleGroup>) -> Exercise? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !bodyParts.isEmpty else { return nil }
+        guard !trimmed.isEmpty, !muscleGroups.isEmpty else { return nil }
         guard let exercise = try? WorkoutRepository.findOrCreateExercise(
             named: trimmed,
-            category: WatchCustomExerciseDefinition.category(for: bodyParts),
-            primaryMuscles: WatchCustomExerciseDefinition.primaryMuscles(for: bodyParts),
+            category: WatchCustomExerciseDefinition.category(for: muscleGroups),
+            primaryMuscles: WatchCustomExerciseDefinition.primaryMuscles(for: muscleGroups),
             in: context
         ) else { return nil }
         exerciseCache?[exercise.name] = exercise

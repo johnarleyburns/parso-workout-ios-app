@@ -8,7 +8,7 @@ import CadenceCore
 /// to keep it under the test-pyramid ratchet ceiling.
 extension View {
     func coachOverrideConfirmation(
-        pending: Binding<[BodyPart: Double]?>,
+        pending: Binding<[MuscleGroup: Double]?>,
         guardrails: @escaping () -> [String],
         onConfirm: @escaping () -> Void
     ) -> some View {

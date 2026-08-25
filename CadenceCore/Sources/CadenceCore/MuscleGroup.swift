@@ -189,6 +189,28 @@ public enum MuscleGroup: String, CaseIterable, Codable, Sendable, Identifiable, 
         descendingMassOrder.filter { defaultTracked.contains($0) }
         + descendingMassOrder.filter { !defaultTracked.contains($0) }
 
+    private static let canonicalIndexByGroup: [MuscleGroup: Int] = Dictionary(
+        uniqueKeysWithValues: canonicalOrder.enumerated().map { ($0.element, $0.offset) }
+    )
+
+    /// Position in `canonicalOrder` — the tie-break every list, deficit sort and
+    /// diagnostic ordering uses, so two surfaces can never disagree about order.
+    public static func canonicalIndex(_ group: MuscleGroup) -> Int {
+        canonicalIndexByGroup[group] ?? Int.max
+    }
+
+    /// Groups sorted into `canonicalOrder`.
+    public static func sorted(_ groups: some Sequence<MuscleGroup>) -> [MuscleGroup] {
+        groups.sorted { canonicalIndex($0) < canonicalIndex($1) }
+    }
+
+    /// The lower body, for the optimizer's upper/lower split classification.
+    /// `abdominals` is deliberately absent: core work is treated as neutral.
+    public static let lowerBody: Set<MuscleGroup> = [
+        .quadriceps, .hamstrings, .glutes, .calves, .adductors, .abductors,
+        .hipFlexors, .tibialis
+    ]
+
     // MARK: Canonicalization
 
     /// Every string that resolves to a group: DB++ raw values, the retired

@@ -174,7 +174,7 @@ struct CustomExerciseListView: View {
                                 .foregroundStyle(categoryColor(cat))
                         }
 
-                        ForEach(Array(BodyPart.parts(forMuscleIDs: ex.primaryMuscles).sorted { $0.rawValue < $1.rawValue }.prefix(3)), id: \.self) { part in
+                        ForEach(Array(MuscleGroup.canonicalize(ex.primaryMuscles).prefix(3)), id: \.self) { part in
                             Text(part.displayName)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)

@@ -31,17 +31,20 @@ public enum WeeklyStats {
         sessions.filter { $0.date >= since }.reduce(0.0) { $0 + $1.totalVolume }
     }
 
-    /// Body-part coverage from the week's strength sessions: every exercise the
+    /// Muscle-group coverage from the week's strength sessions: every exercise the
     /// owner logged a set for (dated `>= since`), read by primary+secondary
-    /// muscles. Returns parts hit + parts missing (canonical order).
-    public static func bodyParts(_ sessions: [WorkoutSession], since: Date) -> (hit: Set<BodyPart>, missing: [BodyPart]) {
-        var lists: [[String]] = []
+    /// muscles. Returns groups hit + tracked groups missing (canonical order).
+    public static func muscleGroups(_ sessions: [WorkoutSession], since: Date,
+                                    tracked: Set<MuscleGroup> = MuscleGroup.defaultTracked)
+        -> (hit: Set<MuscleGroup>, missing: [MuscleGroup]) {
+        var hit = Set<MuscleGroup>()
         for session in sessions where session.date >= since {
             for ex in session.exercisesInOrder {
                 guard session.orderedSets.contains(where: { $0.exercise?.id == ex.id && $0.isOwnerSet }) else { continue }
-                lists.append(ex.primaryMuscles + ex.secondaryMuscles)
+                hit.formUnion(MuscleGroup.canonicalize(ex.primaryMuscles + ex.secondaryMuscles))
             }
         }
-        return BodyPart.coverage(forMuscleLists: lists)
+        let missing = MuscleGroup.canonicalOrder.filter { tracked.contains($0) && !hit.contains($0) }
+        return (hit, missing)
     }
 }

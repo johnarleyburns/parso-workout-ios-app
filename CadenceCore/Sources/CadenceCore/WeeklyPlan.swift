@@ -30,13 +30,16 @@ public enum StrengthFocus: String, Sendable, Equatable {
         }
     }
 
-    /// Body parts this focus loads — consulted against per-body-part recovery windows
-    /// so a focus can't be scheduled while its muscles are still recovering.
-    var bodyParts: Set<BodyPart> {
+    /// Muscle groups this focus loads — consulted against per-group recovery windows
+    /// so a focus can't be scheduled while its muscles are still recovering. Only the
+    /// groups the coach programs by default are listed: an untracked group is never
+    /// what makes a split day ineligible.
+    var muscleGroups: Set<MuscleGroup> {
         switch self {
-        case .fullBody: return Set(BodyPart.allCases)
-        case .upper: return [.chest, .back, .shoulders, .biceps, .triceps]
-        case .lower: return [.legs, .calves]
+        case .fullBody: return MuscleGroup.defaultTracked
+        case .upper: return [.chest, .lats, .middleBack, .traps, .shoulders,
+                             .biceps, .triceps, .forearms]
+        case .lower: return [.quadriceps, .hamstrings, .glutes, .calves]
         }
     }
 }
@@ -581,15 +584,15 @@ public struct WeeklyPlan: Sendable, Equatable {
         return deficit >= remaining
     }
 
-    /// A split focus is eligible on a date when none of the body parts it trains are
-    /// still inside their per-part recovery window (parejaBlancoRecovery2020). This
+    /// A split focus is eligible on a date when none of the muscle groups it trains
+    /// are still inside their per-group recovery window (parejaBlancoRecovery2020). This
     /// lets an upper day follow a lower day (different muscles) while still blocking a
     /// same-muscle repeat before it has recovered.
     private static func focusRecoveryEligible(_ focus: StrengthFocus, on date: Date,
                                               facts: CoachFacts, calendar: Calendar) -> Bool {
         let plannedMidday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
-        for part in focus.bodyParts {
-            if let window = facts.recovery.byBodyPart[part], plannedMidday < window.hardEligibleAt {
+        for group in focus.muscleGroups {
+            if let window = facts.recovery.byGroup[group], plannedMidday < window.hardEligibleAt {
                 return false
             }
         }

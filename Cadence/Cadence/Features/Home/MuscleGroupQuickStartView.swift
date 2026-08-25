@@ -4,10 +4,10 @@ import CadenceCore
 
 /// Quick-start that targets the muscle groups you haven't trained this week (feedback
 /// batch 8 — tapping the Home "muscle groups" tile). It first lists your **past
-/// workouts** ranked by how many of the missing parts they cover (tap → reuse it),
+/// workouts** ranked by how many of the missing groups they cover (tap → reuse it),
 /// then offers a fresh session built from catalog **suggestions** that fill the gaps.
-struct BodyPartQuickStartView: View {
-    let missing: [BodyPart]
+struct MuscleGroupQuickStartView: View {
+    let missing: [MuscleGroup]
     /// Hands a ready-to-start session back to Home to launch (live) + dismiss.
     let onStart: (WorkoutSession) -> Void
 
@@ -15,7 +15,7 @@ struct BodyPartQuickStartView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
-    private var ranked: [(session: WorkoutSession, covered: [BodyPart])] {
+    private var ranked: [(session: WorkoutSession, covered: [MuscleGroup])] {
         WorkoutRepository.workoutsByMissingCoverage(sessions, missing: missing)
     }
     private var suggestions: [ExerciseTemplate] {
@@ -30,7 +30,7 @@ struct BodyPartQuickStartView: View {
                          ? "You've hit every muscle group this week 💪"
                          : "Missing: " + missing.map(\.displayName).joined(separator: ", "))
                         .font(.subheadline).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("bodyQuick.missing")
+                        .accessibilityIdentifier("groupQuick.missing")
                 }
 
                 if !ranked.isEmpty {
@@ -46,7 +46,7 @@ struct BodyPartQuickStartView: View {
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                             }
-                            .accessibilityIdentifier("bodyQuick.past")
+                            .accessibilityIdentifier("groupQuick.past")
                         }
                     }
                 }
@@ -57,7 +57,7 @@ struct BodyPartQuickStartView: View {
                             HStack {
                                 Text(t.name)
                                 Spacer()
-                                Text(ExerciseLibrary.bodyParts(of: t)
+                                Text(ExerciseLibrary.muscleGroups(of: t)
                                         .filter { missing.contains($0) }
                                         .map(\.displayName).joined(separator: ", "))
                                     .font(.caption).foregroundStyle(.secondary)
@@ -70,7 +70,7 @@ struct BodyPartQuickStartView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .cadenceGlassButton(prominent: true, tint: .green)
-                        .accessibilityIdentifier("bodyQuick.buildStart")
+                        .accessibilityIdentifier("groupQuick.buildStart")
                     }
                 }
             }
@@ -78,7 +78,7 @@ struct BodyPartQuickStartView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("bodyQuick.cancel")
+                    Button("Cancel") { dismiss() }.accessibilityIdentifier("groupQuick.cancel")
                 }
             }
         }

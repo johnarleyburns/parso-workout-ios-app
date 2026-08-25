@@ -599,11 +599,11 @@ extension CoachSession {
     /// window (matched by canonical name), or nil when they've never trained it.
     /// Drives history-aware bodyweight rep prescription.
     static func recentTopReps(forExerciseNamed name: String, facts: CoachFacts) -> Int? {
-        let target = MuscleCatalog.canonicalName(name)
+        let target = ExerciseNameCanonicalizer.canonicalName(name)
         var best: Int?
         for event in facts.rolling28dCompletedEvents {
             guard case .strength(let details) = event.kind, let d = details else { continue }
-            for ex in d.exercises where MuscleCatalog.canonicalName(ex.exerciseName) == target {
+            for ex in d.exercises where ExerciseNameCanonicalizer.canonicalName(ex.exerciseName) == target {
                 if ex.topSetReps > (best ?? 0) { best = ex.topSetReps }
             }
         }
@@ -616,12 +616,12 @@ extension CoachSession {
     /// trained more than seven days ago (field test 2026-08-18 #2).
     static func recentTopSet(forExerciseNamed name: String,
                              facts: CoachFacts) -> (weightKg: Double, reps: Int, bestE1RM: Double)? {
-        let target = MuscleCatalog.canonicalName(name)
+        let target = ExerciseNameCanonicalizer.canonicalName(name)
         var best: (weightKg: Double, reps: Int, bestE1RM: Double, at: Date)?
         for event in facts.events {
             guard case .strength(let details) = event.kind, let d = details else { continue }
             for ex in d.exercises
-            where MuscleCatalog.canonicalName(ex.exerciseName) == target && ex.topSetWeightKg > 0 {
+            where ExerciseNameCanonicalizer.canonicalName(ex.exerciseName) == target && ex.topSetWeightKg > 0 {
                 if best == nil || ex.lastWorkingSetAt > best!.at {
                     best = (ex.topSetWeightKg, ex.topSetReps, ex.bestE1RM, ex.lastWorkingSetAt)
                 }

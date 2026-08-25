@@ -348,7 +348,7 @@ public enum WorkoutRepository {
         } else if let tp = template?.primaryMuscles, !tp.isEmpty {
             resolvedPrimary = tp
         } else if let cat = resolvedCategory {
-            resolvedPrimary = BodyPart.defaultMuscles(forCategory: cat)
+            resolvedPrimary = MuscleGroup.defaults(forCategory: cat).map(\.rawValue)
         } else {
             resolvedPrimary = []
         }

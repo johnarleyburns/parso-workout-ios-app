@@ -72,7 +72,7 @@ public enum SessionEligibilityPolicy {
         for ex in exercises {
             let exerciseName = ex.name
             let patterns = MovementPattern.patterns(forExerciseNamed: exerciseName, primaryMuscles: ex.primaryMuscles)
-            let bodyParts = BodyPart.parts(forMuscleIDs: ex.primaryMuscles)
+            let groups = MuscleGroup.canonicalize(ex.primaryMuscles)
 
             if let window = recovery.byExercise[exerciseName], now < window.hardEligibleAt {
                 let hrs = Int(window.hardEligibleAt.timeIntervalSince(now) / 3600) + 1
@@ -94,12 +94,12 @@ public enum SessionEligibilityPolicy {
                 }
             }
 
-            for part in bodyParts {
-                if let window = recovery.byBodyPart[part], now < window.hardEligibleAt {
+            for group in groups {
+                if let window = recovery.byGroup[group], now < window.hardEligibleAt {
                     let hrs = Int(window.hardEligibleAt.timeIntervalSince(now) / 3600) + 1
                     reasons.append(DecisionReason(
-                        id: "bodyPart.\(part.rawValue)",
-                        message: "\(part.displayName) muscles are recovering — eligible in about \(hrs)h.",
+                        id: "muscleGroup.\(group.rawValue)",
+                        message: "\(group.displayName) muscles are recovering — eligible in about \(hrs)h.",
                         citationIds: ["parejaBlancoRecovery2020"]
                     ))
                 }
@@ -116,7 +116,7 @@ public enum SessionEligibilityPolicy {
             for ex in exercises {
                 let patterns = MovementPattern.patterns(forExerciseNamed: ex.name,
                                                         primaryMuscles: ex.primaryMuscles)
-                let bodyParts = BodyPart.parts(forMuscleIDs: ex.primaryMuscles)
+                let groups = MuscleGroup.canonicalize(ex.primaryMuscles)
                 if let w = facts.recovery.byExercise[ex.name], now < w.hardEligibleAt {
                     dates.append(w.hardEligibleAt)
                 }
@@ -125,8 +125,8 @@ public enum SessionEligibilityPolicy {
                         dates.append(w.hardEligibleAt)
                     }
                 }
-                for part in bodyParts {
-                    if let w = facts.recovery.byBodyPart[part], now < w.hardEligibleAt {
+                for group in groups {
+                    if let w = facts.recovery.byGroup[group], now < w.hardEligibleAt {
                         dates.append(w.hardEligibleAt)
                     }
                 }

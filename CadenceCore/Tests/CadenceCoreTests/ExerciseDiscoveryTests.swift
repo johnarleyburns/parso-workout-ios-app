@@ -12,7 +12,7 @@ final class ExerciseDiscoveryTests: XCTestCase {
         for t in ExerciseLibrary.starter {
             XCTAssertTrue(seen.insert(t.name.lowercased()).inserted, "duplicate exercise \(t.name)")
             for m in t.muscleGroups {
-                XCTAssertNotNil(MuscleCatalog.muscle(m), "\(t.name) has unknown muscle id \(m)")
+                XCTAssertNotNil(MuscleGroup.canonical(m), "\(t.name) has unknown muscle id \(m)")
             }
         }
         XCTAssertTrue(ExerciseLibrary.starter.contains { $0.category == .plyometrics },
@@ -20,13 +20,15 @@ final class ExerciseDiscoveryTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(ExerciseLibrary.seedVersion, 5, "seedVersion bumped for the expansion")
     }
 
-    // The index reaches every body part, and entries are compound-first.
-    func testByBodyPartIndexCoversAllParts() {
-        for part in BodyPart.allCases {
-            let list = ExerciseLibrary.byBodyPart[part] ?? []
+    // The index reaches every group the coach programs toward, compound-first.
+    // The untracked seven (neck, tibialis, rotator cuff, …) are deliberately not
+    // guaranteed coverage — decision D4 is that the catalog cannot fill them.
+    func testByMuscleGroupIndexCoversTrackedGroups() {
+        for part in MuscleGroup.canonicalOrder.filter(\.isTrackedByDefault) {
+            let list = ExerciseLibrary.byMuscleGroup[part] ?? []
             XCTAssertFalse(list.isEmpty, "no exercises indexed for \(part.displayName)")
             // Each listed exercise really trains that part.
-            for t in list { XCTAssertTrue(ExerciseLibrary.bodyParts(of: t).contains(part)) }
+            for t in list { XCTAssertTrue(ExerciseLibrary.muscleGroups(of: t).contains(part)) }
         }
     }
 
@@ -38,11 +40,11 @@ final class ExerciseDiscoveryTests: XCTestCase {
 
     // Suggestions cover all missing parts when the catalog can, fewest movements first.
     func testSuggestionsCoverMissingParts() {
-        let missing: [BodyPart] = [.back, .legs, .calves]
+        let missing: [MuscleGroup] = [.lats, .quadriceps, .calves]
         let picks = ExerciseLibrary.suggestions(forMissing: missing, limit: 6)
         XCTAssertFalse(picks.isEmpty)
-        var covered = Set<BodyPart>()
-        for t in picks { covered.formUnion(ExerciseLibrary.bodyParts(of: t)) }
+        var covered = Set<MuscleGroup>()
+        for t in picks { covered.formUnion(ExerciseLibrary.muscleGroups(of: t)) }
         XCTAssertTrue(Set(missing).isSubset(of: covered), "suggestions should cover all the missing parts")
         XCTAssertLessThanOrEqual(picks.count, 6)
     }

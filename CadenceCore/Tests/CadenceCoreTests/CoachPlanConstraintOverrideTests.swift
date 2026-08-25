@@ -78,11 +78,11 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
         // caps (5 exercises / 16 sets) can't cover every part in one session; the
         // override's larger caps can.
         let facts = trainingFacts([
-            .legs: 2, .back: 2, .chest: 2, .shoulders: 2,
-            .biceps: 2, .triceps: 2, .calves: 2, .abs: 2,
+            .quadriceps: 2, .lats: 2, .chest: 2, .shoulders: 2,
+            .biceps: 2, .triceps: 2, .calves: 2, .abdominals: 2,
         ])
         let plan = weeklyPlan(now: now, days: [(1, [.strength])])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 0)
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 0)
 
         let safe = CoachPlanOptimizer.optimize(
             trainingFacts: facts, coachFacts: coach, weeklyPlan: plan,
@@ -142,13 +142,13 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
         let recovery = RecoveryState(
             byExercise: [:],
             byPattern: [:],
-            byBodyPart: [:],
+            byGroup: [:],
             wholeBody: RecoveryWindow(
                 lastExposedAt: now,
                 hardEligibleAt: recoveryEnd,
                 reason: .fatigue,
                 confidence: .moderate))
-        return coachFacts(now: now, completedSets: facts.weeklySetsByPart,
+        return coachFacts(now: now, completedSets: facts.weeklySetsByGroup,
                           strengthDays: 1, recovery: recovery)
     }
 
@@ -170,10 +170,10 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
             allowsTwoADays: false)
     }
 
-    private func trainingFacts(_ sets: [BodyPart: Double]) -> TrainingFacts {
+    private func trainingFacts(_ sets: [MuscleGroup: Double]) -> TrainingFacts {
         TrainingFacts(
-            weeklySetsByPart: sets,
-            frequencyByPart: sets.mapValues { _ in 1 },
+            weeklySetsByGroup: sets,
+            frequencyByGroup: sets.mapValues { _ in 1 },
             e1RMTrendByExercise: [:],
             intensity: .empty,
             avgRPE: nil,
@@ -184,7 +184,7 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
     }
 
     private func coachFacts(now: Date,
-                            completedSets: [BodyPart: Double],
+                            completedSets: [MuscleGroup: Double],
                             strengthDays: Int,
                             cardioDays: Int = 0,
                             recovery: RecoveryState = .empty) -> CoachFacts {
@@ -192,7 +192,7 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
             strengthDays: strengthDays,
             cardioDays: cardioDays,
             patternsTrained: [],
-            bodyPartsTrained: Set(completedSets.keys),
+            muscleGroupsTrained: Set(completedSets.keys),
             fractionalSets: completedSets,
             moderateMinutes: Double(cardioDays * 35),
             vigorousMinutes: 0,

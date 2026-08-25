@@ -44,21 +44,32 @@ public enum KnowledgeBase {
     /// Every active rule, run by the engine.
     public static let activeRules: [InsightRule] = p3Rules + p4Rules + p6InsightRules
 
+    /// The muscle groups a per-group insight may speak about, in canonical order:
+    /// the groups the coach programs by default, plus any other group the user has
+    /// actually trained this week. An untracked group with no volume is silent —
+    /// the catalog cannot satisfy a weekly target for it (decision D4), so nagging
+    /// about it would be advice the user cannot act on.
+    static func surfacedGroups(_ facts: TrainingFacts) -> [MuscleGroup] {
+        MuscleGroup.canonicalOrder.filter {
+            $0.isTrackedByDefault || (facts.weeklySetsByGroup[$0] ?? 0) > 0
+        }
+    }
+
     // MARK: - Rule 1: weekly volume vs evidence-informed starting ranges
 
     static let volumeVsLandmarks = InsightRule(id: "volume", priority: 100) { facts in
         var out: [Insight] = []
-        for part in BodyPart.allCases {
-            let name = part.displayName
-            let bands = VolumeLandmarks.bands(for: part, experience: facts.experience)
-            guard let sets = facts.weeklySetsByPart[part], sets > 0 else {
-                // No training volume for this body part this week. Surface it so the
-                // user can tell the difference between "biceps is on track" and
+        for group in KnowledgeBase.surfacedGroups(facts) {
+            let name = group.displayName
+            let bands = VolumeLandmarks.bands(for: group, experience: facts.experience)
+            guard let sets = facts.weeklySetsByGroup[group], sets > 0 else {
+                // No training volume for this muscle group this week. Surface it so
+                // the user can tell the difference between "biceps is on track" and
                 // "biceps was never trained and may need attention." (Feedback:
-                // end-of-week silence on untrained parts left users uncertain.)
+                // end-of-week silence on untrained groups left users uncertain.)
                 out.append(Insight(
-                    id: "volume.\(part.rawValue)",
-                    kind: .volume, part: part,
+                    id: "volume.\(group.rawValue)",
+                    kind: .volume, group: group,
                     title: "\(name) volume is low",
                     message: "\(name): \(Format.progress(done: 0, target: bands.mev, unit: "sets")) this week to reach Coach's starting range.",
                     detail: "\(name) has not been trained this week. Meta-analyses show a graded dose-response between weekly sets per muscle and growth; Coach's starting range is ~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week for your experience. This may be intentional (a rest week or a focused block), but if it isn't, add 1–2 sets and adjust by feel and performance.",
@@ -66,13 +77,13 @@ public enum KnowledgeBase {
                     severity: .attention))
                 continue
             }
-            let zone = VolumeLandmarks.zone(sets: sets, for: part, experience: facts.experience)
+            let zone = VolumeLandmarks.zone(sets: sets, for: group, experience: facts.experience)
             let setsText = Format.sets(sets)
             switch zone {
             case .belowMEV:
                 out.append(Insight(
-                    id: "volume.\(part.rawValue)",
-                    kind: .volume, part: part,
+                    id: "volume.\(group.rawValue)",
+                    kind: .volume, group: group,
                     title: "\(name) volume is low",
                     message: "\(name): \(Format.progress(done: sets, target: bands.mev, unit: "sets")) this week to reach the starting range.",
                     detail: "Meta-analyses show a graded dose-response between weekly sets per muscle and growth, but the exact useful dose varies by person. \(name) is below Coach's starting range (~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week); add a set or two and judge by performance and recovery.",
@@ -85,8 +96,8 @@ public enum KnowledgeBase {
                 break
             case .approachingMRV:
                 out.append(Insight(
-                    id: "volume.\(part.rawValue)",
-                    kind: .volume, part: part,
+                    id: "volume.\(group.rawValue)",
+                    kind: .volume, group: group,
                     title: "\(name) volume is high",
                     message: "\(name): \(setsText) sets this week — approaching the high end.",
                     detail: "\(name) is above Coach's starting range and approaching the high end (~\(Format.sets(bands.mrv)) sets/week). It may still be useful if performance is improving, but watch recovery and session quality before adding more.",
@@ -94,8 +105,8 @@ public enum KnowledgeBase {
                     severity: .info))
             case .overMRV:
                 out.append(Insight(
-                    id: "volume.\(part.rawValue)",
-                    kind: .volume, part: part,
+                    id: "volume.\(group.rawValue)",
+                    kind: .volume, group: group,
                     title: "\(name) volume may be too high",
                     message: "\(name): \(setsText)/\(Format.sets(bands.mrv)) sets this week · \(Format.sets(sets - bands.mrv)) over the high end.",
                     detail: "\(name) is above Coach's high-end starting point (~\(Format.sets(bands.mrv)) sets/week). More sets have diminishing returns and only help if you recover from them; consider holding or taking a lighter week.",
@@ -148,16 +159,16 @@ public enum KnowledgeBase {
 
     static let frequency = InsightRule(id: "frequency", priority: 80) { facts in
         var out: [Insight] = []
-        for part in BodyPart.allCases {
-            guard let sets = facts.weeklySetsByPart[part], sets > 0,
-                  let days = facts.frequencyByPart[part], days == 1 else { continue }
-            let bands = VolumeLandmarks.bands(for: part, experience: facts.experience)
+        for group in KnowledgeBase.surfacedGroups(facts) {
+            guard let sets = facts.weeklySetsByGroup[group], sets > 0,
+                  let days = facts.frequencyByGroup[group], days == 1 else { continue }
+            let bands = VolumeLandmarks.bands(for: group, experience: facts.experience)
             // Only worth flagging once there's meaningful volume to split.
             guard sets >= bands.mev else { continue }
-            let name = part.displayName
+            let name = group.displayName
             out.append(Insight(
-                id: "frequency.\(part.rawValue)",
-                kind: .frequency, part: part,
+                id: "frequency.\(group.rawValue)",
+                kind: .frequency, group: group,
                 title: "Split your \(name.lowercased()) volume",
                 message: "\(name): \(Format.sets(sets)) sets in a single day this week.",
                 detail: "When weekly volume is high, spreading it across two or more sessions tends to produce at least as much growth as cramming it into one — likely through better per-set quality. Consider training \(name.lowercased()) on a second day.",

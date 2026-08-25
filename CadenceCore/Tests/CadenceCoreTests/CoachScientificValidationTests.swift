@@ -561,7 +561,7 @@ final class CoachScientificValidationTests: XCTestCase {
             schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
 
         // PREDICT: Weekly chest sets = 0 (deleted session excluded).
-        XCTAssertEqual(snap.facts.weeklySetsByPart[.chest] ?? 0, 0,
+        XCTAssertEqual(snap.facts.weeklySetsByGroup[.chest] ?? 0, 0,
                        "E1 FAIL: Deleted session should not count toward weekly volume")
     }
 

@@ -36,9 +36,9 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: bench, weightKg: 40, reps: 5, isWarmup: true, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(facts.weeklySetsByPart[.chest] ?? -1, 4.0, accuracy: 0.001)      // primary
-        XCTAssertEqual(facts.weeklySetsByPart[.triceps] ?? -1, 2.0, accuracy: 0.001)    // secondary 0.5×4
-        XCTAssertEqual(facts.weeklySetsByPart[.shoulders] ?? -1, 2.0, accuracy: 0.001)  // front-delts → shoulders
+        XCTAssertEqual(facts.weeklySetsByGroup[.chest] ?? -1, 4.0, accuracy: 0.001)      // primary
+        XCTAssertEqual(facts.weeklySetsByGroup[.triceps] ?? -1, 2.0, accuracy: 0.001)    // secondary 0.5×4
+        XCTAssertEqual(facts.weeklySetsByGroup[.shoulders] ?? -1, 2.0, accuracy: 0.001)  // front-delts → shoulders
         XCTAssertEqual(facts.totalWorkingSets, 4)
     }
 
@@ -90,7 +90,7 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: old, exercise: squat, weightKg: 100, reps: 5, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [old], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertNil(facts.weeklySetsByPart[.legs])
+        XCTAssertNil(facts.weeklySetsByGroup[.quadriceps])
         XCTAssertEqual(facts.totalWorkingSets, 0)
         XCTAssertEqual(facts.allTimeWorkingSets, 1, "all-time should count sets regardless of week window")
     }
@@ -121,7 +121,7 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: day3, exercise: squat, weightKg: 100, reps: 5, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [day1, day3], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.frequencyByPart[.legs], 2)
+        XCTAssertEqual(facts.frequencyByGroup[.quadriceps], 2)
     }
 
     func testE1RMTrendRisingAcrossWindows() throws {
@@ -213,7 +213,7 @@ final class TrainingFactsTests: XCTestCase {
         for _ in 0..<3 { _ = try WorkoutRepository.addSet(to: cur, exercise: benchC, weightKg: 60, reps: 5, in: ctx) }
 
         let facts = TrainingFacts.make(sessions: [prior, cur], now: now, goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(facts.volumeTrendByPart[.chest], .rising)
+        XCTAssertEqual(facts.volumeTrendByGroup[.chest], .rising)
     }
 
     func testRepeatedDeclineCountsConsecutiveWeeklyDrops() throws {

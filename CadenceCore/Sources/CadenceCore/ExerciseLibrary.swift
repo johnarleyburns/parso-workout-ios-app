@@ -55,7 +55,7 @@ public struct ExerciseTemplate: Equatable, Sendable, Identifiable, ExerciseSearc
     /// Concise positional initializer for the literal catalog.
     ///
     /// Muscle ids are **canonicalized here** (DB++ adoption phase 3): the curated
-    /// literals were written against the retired `MuscleCatalog` ids, and running
+    /// literals were written against the retired fine muscle ids, and running
     /// them through `MuscleGroup` at construction guarantees no template can carry
     /// a muscle string the volume engine cannot resolve. It also collapses the
     /// duplicates that creates — `["chest", "upper-chest"]` becomes `[.chest]` —

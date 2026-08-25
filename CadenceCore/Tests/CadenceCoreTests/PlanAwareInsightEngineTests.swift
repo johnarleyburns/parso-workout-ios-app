@@ -63,7 +63,7 @@ final class PlanAwareInsightEngineTests: XCTestCase {
             plannedStrengthSessions: [absPlannedSession(sets: 6)],
             now: now)
 
-        let absInsight = insights.first { $0.id == "volume.abs" }
+        let absInsight = insights.first { $0.id == "volume.abdominals" }
         XCTAssertNil(absInsight,
                      "Abs with 0 done + 6 planned = 6 projected (MEV 6 for intermediate) should NOT produce a projected-low nag")
     }
@@ -88,7 +88,7 @@ final class PlanAwareInsightEngineTests: XCTestCase {
             plannedStrengthSessions: [absPlannedSession(sets: 3)],
             now: now)
 
-        let absInsight = insights.first { $0.id == "volume.abs" }
+        let absInsight = insights.first { $0.id == "volume.abdominals" }
         XCTAssertNotNil(absInsight,
                         "Abs with 0 done + 3 planned = 3 projected (MEV 6) should produce a projected-low nag")
         XCTAssertTrue(absInsight?.message.contains("to go") ?? false,
@@ -117,7 +117,7 @@ final class PlanAwareInsightEngineTests: XCTestCase {
             plannedStrengthSessions: [absPlannedSession(sets: 6)],
             now: now)
 
-        let absInsight = insights.first { $0.id == "volume.abs" }
+        let absInsight = insights.first { $0.id == "volume.abdominals" }
         XCTAssertNil(absInsight,
                      "Abs 0 done + 6 planned = 6 projected vs MEV 6 should NOT produce any insight — regression test for contradictory 'projected low … target met'")
     }
@@ -142,7 +142,7 @@ final class PlanAwareInsightEngineTests: XCTestCase {
             plannedStrengthSessions: [absPlannedSession(sets: 2)],
             now: now)
 
-        let absInsight = insights.first { $0.id == "volume.abs" }
+        let absInsight = insights.first { $0.id == "volume.abdominals" }
         let chestInsight = insights.first { $0.id == "volume.chest" }
         XCTAssertNotNil(absInsight,
                         "Late week: Abs projected below MEV should still produce a projected-low insight")
@@ -171,7 +171,7 @@ final class PlanAwareInsightEngineTests: XCTestCase {
             plannedStrengthSessions: [absPlannedSession(sets: 8)],
             now: now)
 
-        let absInsight = insights.first { $0.id == "volume.abs" }
+        let absInsight = insights.first { $0.id == "volume.abdominals" }
         XCTAssertNil(absInsight,
                      "Late week: Abs 0 done + 8 planned = 8 projected (MEV 6) should NOT produce a projected-low nag — plan covers it")
     }

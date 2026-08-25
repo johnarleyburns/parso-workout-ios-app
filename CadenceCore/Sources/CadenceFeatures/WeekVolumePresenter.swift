@@ -50,11 +50,8 @@ public enum WeekVolumePresenter {
         var active = tracked
         for (group, sets) in accounting.completedSetsByGroup where sets > 0 { active.insert(group) }
         for (group, sets) in accounting.plannedRemainingSetsByGroup where sets > 0 { active.insert(group) }
-        for part in optimized.unresolvedDeficits.keys {
-            for group in MuscleGroup.allCases
-            where BodyPart.part(forGroup: group) == part && tracked.contains(group) {
-                active.insert(group)
-            }
+        for (group, deficit) in optimized.unresolvedDeficits where deficit > 0 {
+            active.insert(group)
         }
 
         return MuscleGroup.canonicalOrder.filter { active.contains($0) }.map { group in
@@ -82,10 +79,9 @@ public enum WeekVolumePresenter {
                 status = .onTrack
             } else {
                 // Exact nag parity: prefer the plan's own unresolved deficit for
-                // this group's part, fall back to the gap calculation.
-                let part = BodyPart.part(forGroup: group)
+                // this group, fall back to the gap calculation.
                 let toGo: Double
-                if let part, let deficit = optimized.unresolvedDeficits[part], deficit > 0 {
+                if let deficit = optimized.unresolvedDeficits[group], deficit > 0 {
                     toGo = min(deficit, max(0, mev - projected))
                 } else {
                     toGo = max(0, mev - projected)

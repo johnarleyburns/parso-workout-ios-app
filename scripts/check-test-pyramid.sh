@@ -90,14 +90,10 @@ fi
 # ── 3. Views hold no logic (400-LOC budget, with a shrink-only ratchet) ──────
 # Grandfathered files: "relative/path=current-ceiling". Lower these as you split;
 # never raise them. Delete a line once the file drops under $MAX_LOC.
+# Empty as of the DB++ migration (2026-08-24): every previously grandfathered view
+# now fits the plain $MAX_LOC budget, so none of them may grow again.
 ratchet() {
   case "$1" in
-    "Cadence/Cadence/Features/Train/SessionView.swift") echo 1034 ;;
-    "Cadence/Cadence/Features/Home/HomeView.swift") echo 1033 ;;
-    "Cadence/Cadence/Features/Coach/CoachDecisionCardView.swift") echo 570 ;;
-    "Cadence/Cadence/Features/Train/ExercisePickerView.swift") echo 514 ;;
-    "Cadence/Cadence/Features/Plan/RecordAssessmentView.swift") echo 439 ;;
-    "Cadence/Cadence/Features/Coach/YourWeekView.swift") echo 406 ;;
     *) echo "" ;;
   esac
 }

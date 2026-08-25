@@ -12,12 +12,12 @@ final class RecommendationEngineTests: XCTestCase {
     /// Build a synthetic facts snapshot directly (bypassing the store) for
     /// table-driven rule tests, mirroring how `TrainingFacts.make` would fill it.
     private func facts(snapshots: [LiftSnapshot] = [],
-                       weeklySets: [BodyPart: Double] = [:],
+                       weeklySets: [MuscleGroup: Double] = [:],
                        goal: TrainingGoal = .strength,
                        experience: ExperienceLevel = .intermediate) -> TrainingFacts {
         TrainingFacts(
-            weeklySetsByPart: weeklySets,
-            frequencyByPart: [:],
+            weeklySetsByGroup: weeklySets,
+            frequencyByGroup: [:],
             e1RMTrendByExercise: [:],
             intensity: .empty,
             avgRPE: nil,
@@ -29,8 +29,8 @@ final class RecommendationEngineTests: XCTestCase {
     }
 
     private func snapshot(_ name: String, weight: Double, reps: Int,
-                          trend: TrendDirection?, part: BodyPart? = .legs) -> LiftSnapshot {
-        LiftSnapshot(exercise: name, part: part, topSetWeightKg: weight,
+                          trend: TrendDirection?, group: MuscleGroup? = .quadriceps) -> LiftSnapshot {
+        LiftSnapshot(exercise: name, group: group, topSetWeightKg: weight,
                      topSetReps: reps, bestE1RM: weight, trend: trend)
     }
 
@@ -103,7 +103,7 @@ final class RecommendationEngineTests: XCTestCase {
         let f = facts(weeklySets: [.chest: 2], goal: .hypertrophy)
         let rec = RecommendationEngine.run(f).first { $0.id == "addVolume.chest" }
         XCTAssertEqual(rec?.kind, .addVolume)
-        XCTAssertEqual(rec?.part, .chest)
+        XCTAssertEqual(rec?.group, .chest)
         XCTAssertNil(rec?.target?.loadKg)               // volume, not a specific load
         XCTAssertGreaterThanOrEqual(rec?.target?.sets ?? 0, 1)
         XCTAssertEqual(rec?.citation.id, CitationRegistry.volumeDoseResponse.id)
@@ -243,7 +243,7 @@ final class RecommendationEngineTests: XCTestCase {
     func testAddVolumeCappedAtFourSets() {
         let f = facts(weeklySets: [.chest: 3], goal: .strength)
         let recs = RecommendationEngine.run(f)
-        let chestRecs = recs.filter { $0.id.hasPrefix("addVolume.") && $0.part == .chest }
+        let chestRecs = recs.filter { $0.id.hasPrefix("addVolume.") && $0.group == .chest }
         XCTAssertFalse(chestRecs.isEmpty, "Should recommend volume for chest below MEV")
         for rec in chestRecs {
             if let target = rec.target, let sets = target.sets {

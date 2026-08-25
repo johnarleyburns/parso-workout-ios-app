@@ -87,8 +87,7 @@ extension CoachDecisionCardView {
     var recoveryChips: [(String, String)] {
         let deferredExercises = decision.deferred.compactMap { d -> String? in
             guard d.session.kind == .strength, let ex = d.session.exercises?.first else { return nil }
-            let parts = BodyPart.parts(forMuscleIDs: ex.primaryMuscles)
-            return parts.first?.displayName
+            return MuscleGroup.canonicalize(ex.primaryMuscles).first?.displayName
         }
         let unique = Array(Set(deferredExercises)).prefix(3)
         return unique.map { ($0, "recovering") }

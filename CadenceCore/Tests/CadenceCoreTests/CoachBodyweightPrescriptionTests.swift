@@ -76,9 +76,9 @@ final class CoachBodyweightPrescriptionTests: XCTestCase {
                                     now: now, recoveryAwareCoachV2: true)
         // Abs is the only deficit so the single strength slot routes there.
         let facts = trainingFacts([
-            .legs: 16, .back: 16, .chest: 16, .shoulders: 16,
+            .quadriceps: 16, .lats: 16, .chest: 16, .shoulders: 16,
             .biceps: 14, .triceps: 14, .calves: 12,
-            .abs: 1,
+            .abdominals: 1,
         ])
         let plan = weeklyPlan(now: now, days: [(1, [.strength])])
 
@@ -126,10 +126,10 @@ final class CoachBodyweightPrescriptionTests: XCTestCase {
             allowsTwoADays: twoADays)
     }
 
-    private func trainingFacts(_ sets: [BodyPart: Double]) -> TrainingFacts {
+    private func trainingFacts(_ sets: [MuscleGroup: Double]) -> TrainingFacts {
         TrainingFacts(
-            weeklySetsByPart: sets,
-            frequencyByPart: sets.mapValues { _ in 1 },
+            weeklySetsByGroup: sets,
+            frequencyByGroup: sets.mapValues { _ in 1 },
             e1RMTrendByExercise: [:],
             intensity: .empty,
             avgRPE: nil,

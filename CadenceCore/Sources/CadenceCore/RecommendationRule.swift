@@ -93,7 +93,7 @@ public extension KnowledgeBase {
             }
             out.append(Recommendation(
                 id: "progression.\(lift)",
-                kind: .progression, part: snap.part, exercise: lift,
+                kind: .progression, group: snap.group, exercise: lift,
                 title: "Progress your \(lift.lowercased())",
                 action: action,
                 detail: "Progressive overload drives strength and size: within a rep range, add reps to the top of the range first, then add load and reset — autoregulated by reps in reserve (RIR). Your \(facts.goal.displayName.lowercased()) range is \(range.lowerBound)–\(range.upperBound) reps at about \(rir) RIR.\(assessedE1RM != nil ? " Your assessed 1RM informs the load, but Coach still limits the jump so the next session confirms it." : "")",
@@ -124,7 +124,7 @@ public extension KnowledgeBase {
                                    loadKg: backedOff, rir: easierRIR)
             out.append(Recommendation(
                 id: "deload.\(lift)",
-                kind: .deload, part: snap.part, exercise: lift,
+                kind: .deload, group: snap.group, exercise: lift,
                 title: "\(lift) trending down — monitor recovery",
                 action: "Your estimated 1RM is slightly lower this week. This could be fatigue, or it could be noise. If it drops again next week, take a lighter session.",
                 detail: "A single-week decline can be normal variation — sleep, exercise order, technique, and measurement noise can all cause it. Coach flags this for monitoring. A deload is suggested only if the decline repeats or readiness is poor. This is a coaching cue, not a medical one.",
@@ -136,21 +136,21 @@ public extension KnowledgeBase {
         return out
     }
 
-    // MARK: - Rule: add weekly sets for a body part below MEV
+    // MARK: - Rule: add weekly sets for a muscle group below MEV
 
     static let addVolume = RecommendationRule(id: "addVolume", priority: 90) { facts in
         let range = facts.goal.repRange
         let rir = facts.goal.targetRIR
         var out: [Recommendation] = []
-        for part in BodyPart.allCases {
-            guard let current = facts.weeklySetsByPart[part], current > 0 else { continue }
-            let bands = VolumeLandmarks.bands(for: part, experience: facts.experience)
+        for group in KnowledgeBase.surfacedGroups(facts) {
+            guard let current = facts.weeklySetsByGroup[group], current > 0 else { continue }
+            let bands = VolumeLandmarks.bands(for: group, experience: facts.experience)
             guard current < bands.mev else { continue }
             let toAdd = min(4, max(1, Int((bands.mev - current).rounded(.up))))
-            let name = part.displayName
+            let name = group.displayName
             out.append(Recommendation(
-                id: "addVolume.\(part.rawValue)",
-                kind: .addVolume, part: part,
+                id: "addVolume.\(group.rawValue)",
+                kind: .addVolume, group: group,
                 title: "Add \(name.lowercased()) volume",
                 action: "\(name): \(Format.progress(done: current, target: bands.mev, unit: "sets")) this week. Add ~\(toAdd) set\(toAdd == 1 ? "" : "s") to start closing it.",
                 detail: "Weekly sets per muscle drive growth in a graded dose-response, but the exact useful dose varies by person. \(name) is on the low side of the starting range for your experience level (~\(PrescriptionMath.sets(bands.mev)) sets/week); add a couple of sets, then judge by performance and recovery.",

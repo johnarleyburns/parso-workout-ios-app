@@ -44,7 +44,8 @@ struct SuggestedWorkoutMuscleSpace: Sendable {
     }
 
     func massPriority(of dimension: Int) -> Int {
-        MuscleCatalog.massPriority(for: muscleIDs[dimension])
+        guard let group = MuscleGroup.canonical(muscleIDs[dimension]) else { return Int.max }
+        return MuscleGroup.massPriority(for: group)
     }
 }
 

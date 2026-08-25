@@ -4,11 +4,6 @@ public struct PlanAwareWeeklyAccounting: Sendable, Equatable {
     public let completedSetsByGroup: [MuscleGroup: Double]
     public let plannedRemainingSetsByGroup: [MuscleGroup: Double]
     public let projectedSetsByGroup: [MuscleGroup: Double]
-    /// Transitional body-part rollups, derived from the group tallies. Removed
-    /// with `BodyPart` in phase 6 of the DB++ adoption.
-    public let completedSetsByPart: [BodyPart: Double]
-    public let plannedRemainingSetsByPart: [BodyPart: Double]
-    public let projectedSetsByPart: [BodyPart: Double]
     public let plannedStrengthSessionCount: Int
 
     public init(completed: TrainingFacts, plannedStrengthSessions: [CoachSession]) {
@@ -16,24 +11,7 @@ public struct PlanAwareWeeklyAccounting: Sendable, Equatable {
         self.plannedRemainingSetsByGroup = Self.plannedSetsByGroup(from: plannedStrengthSessions)
         self.projectedSetsByGroup = completedSetsByGroup
             .merging(plannedRemainingSetsByGroup) { $0 + $1 }
-        self.completedSetsByPart = completed.weeklySetsByPart
-        self.plannedRemainingSetsByPart = Self.rollUp(plannedRemainingSetsByGroup)
-        self.projectedSetsByPart = completed.weeklySetsByPart
-            .merging(plannedRemainingSetsByPart) { $0 + $1 }
         self.plannedStrengthSessionCount = plannedStrengthSessions.filter { $0.kind == .strength }.count
-    }
-
-    /// Sums group credit into coarse parts. Unlike the completed tally this cannot
-    /// take the per-set maximum — planned sets arrive already aggregated — so it
-    /// caps each part at the largest single member so a leg session is not counted
-    /// several times over.
-    static func rollUp(_ byGroup: [MuscleGroup: Double]) -> [BodyPart: Double] {
-        var result: [BodyPart: Double] = [:]
-        for (group, sets) in byGroup {
-            guard let part = BodyPart.part(forGroup: group) else { continue }
-            result[part] = max(result[part] ?? 0, sets)
-        }
-        return result
     }
 
     public static func plannedSetsByGroup(from sessions: [CoachSession]) -> [MuscleGroup: Double] {
@@ -52,14 +30,6 @@ public struct PlanAwareWeeklyAccounting: Sendable, Equatable {
             }
         }
         return result
-    }
-
-    public static func plannedSetsByPart(from sessions: [CoachSession]) -> [BodyPart: Double] {
-        rollUp(plannedSetsByGroup(from: sessions))
-    }
-
-    public static func plannedSetsByPart(from exercises: [CoachSession.RecommendedExercise]) -> [BodyPart: Double] {
-        rollUp(plannedSetsByGroup(from: exercises))
     }
 
     /// The credit one planned set of this recommendation gives each muscle group.
@@ -88,7 +58,7 @@ public enum PlanAwareInsightEngine {
     public static func run(completed facts: TrainingFacts,
                            plan: WeeklyPlan,
                            plannedStrengthSessions: [CoachSession],
-                           unresolvedDeficits: [BodyPart: Double] = [:],
+                           unresolvedDeficits: [MuscleGroup: Double] = [:],
                            diagnostics: [PlanningDiagnostic] = [],
                            isBehindPlan: Bool = false,
                            now: Date = Date(),
@@ -100,16 +70,16 @@ public enum PlanAwareInsightEngine {
                                                    plannedStrengthSessions: plannedStrengthSessions)
         guard accounting.plannedStrengthSessionCount > 0 else {
             guard !unresolvedDeficits.isEmpty else { return base }
-            let unresolvedParts = Set(unresolvedDeficits.keys)
+            let unresolvedGroups = Set(unresolvedDeficits.keys)
             let filtered = base.filter { insight in
                 guard insight.kind == .volume,
                       insight.severity == .attention,
                       insight.title.localizedCaseInsensitiveContains("low"),
-                      let part = insight.part else { return true }
-                // Suppress for unresolved parts AND for parts with 0 completed
+                      let group = insight.group else { return true }
+                // Suppress for unresolved groups AND for groups with 0 completed
                 // sets — the user can't address new muscle groups mid-week.
-                if unresolvedParts.contains(part) { return false }
-                return (facts.weeklySetsByPart[part] ?? 0) > 0
+                if unresolvedGroups.contains(group) { return false }
+                return (facts.weeklySetsByGroup[group] ?? 0) > 0
             }
             return ranked(filtered + unresolvedPlanningInsights(deficits: unresolvedDeficits,
                                                                 diagnostics: diagnostics,
@@ -117,32 +87,32 @@ public enum PlanAwareInsightEngine {
                                                                 isOverrideActive: isOverrideActive))
         }
 
-        let unresolvedParts = Set(unresolvedDeficits.keys)
+        let unresolvedGroups = Set(unresolvedDeficits.keys)
         let earlyWeek = isEarlyWeek(plan: plan, now: now)
         let filtered = base.compactMap { insight -> Insight? in
             guard insight.kind == .volume,
                   insight.severity == .attention,
-                  let part = insight.part,
+                  let group = insight.group,
                   insight.title.localizedCaseInsensitiveContains("low") else {
                 return insight
             }
 
-            if unresolvedParts.contains(part) {
+            if unresolvedGroups.contains(group) {
                 return nil
             }
 
-            let completedSets = accounting.completedSetsByPart[part] ?? 0
-            let plannedSets = accounting.plannedRemainingSetsByPart[part] ?? 0
+            let completedSets = accounting.completedSetsByGroup[group] ?? 0
+            let plannedSets = accounting.plannedRemainingSetsByGroup[group] ?? 0
 
-            // When other deficits exist and this part has 0 completed sets, the
+            // When other deficits exist and this group has 0 completed sets, the
             // user cannot realistically add a new muscle group mid-week — suppress
             // the individual nag and rely on the unresolvedPlanningInsights aggregate.
             if !unresolvedDeficits.isEmpty && completedSets == 0 {
                 return nil
             }
 
-            // Fix the raw-insight leak: a part with no completed work AND no
-            // planned remaining work should not produce a per-part "low" nag.
+            // Fix the raw-insight leak: a group with no completed work AND no
+            // planned remaining work should not produce a per-group "low" nag.
             // If the plan genuinely cannot cover it, the unresolvedPlanningInsights
             // aggregate on line 176 already reports it honestly as a coach-side
             // planning note. If the plan covers it (projected >= MEV), the
@@ -151,34 +121,34 @@ public enum PlanAwareInsightEngine {
                 return nil
             }
 
-            // Early-week proration: before day ~3, a part that has 0 completed
+            // Early-week proration: before day ~3, a group that has 0 completed
             // sets and no planned remaining work gets at most the projected
             // framing (which won't trigger here since plannedSets is 0). More
-            // importantly, a part with planned remaining work gets the projected
+            // importantly, a group with planned remaining work gets the projected
             // framing instead of the bare "0/6 this week." This prevents the
             // Tuesday-morning "everything reads low" artifact from the
             // non-prorated Monday→now weekly window.
             if earlyWeek && completedSets == 0 && plannedSets > 0 {
                 let projectedSets = completedSets + plannedSets
-                let projectedZone = VolumeLandmarks.zone(sets: projectedSets, for: part,
+                let projectedZone = VolumeLandmarks.zone(sets: projectedSets, for: group,
                                                           experience: facts.experience)
                 guard projectedZone == .belowMEV else { return nil }
-                return projectedLowVolumeInsight(for: part,
+                return projectedLowVolumeInsight(for: group,
                                                   completedSets: completedSets,
                                                   plannedSets: plannedSets,
                                                   projectedSets: projectedSets,
                                                   experience: facts.experience)
             }
 
-            let projectedSets = accounting.projectedSetsByPart[part] ?? 0
+            let projectedSets = accounting.projectedSetsByGroup[group] ?? 0
             let projectedZone = VolumeLandmarks.zone(sets: projectedSets,
-                                                      for: part,
+                                                      for: group,
                                                       experience: facts.experience)
             guard projectedZone == .belowMEV else { return nil }
 
             guard plannedSets > 0 else { return insight }
-            return projectedLowVolumeInsight(for: part,
-                                              completedSets: accounting.completedSetsByPart[part] ?? 0,
+            return projectedLowVolumeInsight(for: group,
+                                              completedSets: accounting.completedSetsByGroup[group] ?? 0,
                                               plannedSets: plannedSets,
                                               projectedSets: projectedSets,
                                               experience: facts.experience)
@@ -187,23 +157,23 @@ public enum PlanAwareInsightEngine {
         let behind = behindPlanInsights(facts: facts, accounting: accounting,
                                         isBehindPlan: isBehindPlan, plan: plan, now: now)
 
-        let resolved: Set<BodyPart>
-        let resolvedSets: [BodyPart: Double]
+        let resolved: Set<MuscleGroup>
+        let resolvedSets: [MuscleGroup: Double]
         if unresolvedDeficits.isEmpty {
-            resolved = Set(accounting.plannedRemainingSetsByPart.keys)
-            resolvedSets = accounting.plannedRemainingSetsByPart
+            resolved = Set(accounting.plannedRemainingSetsByGroup.keys)
+            resolvedSets = accounting.plannedRemainingSetsByGroup
         } else {
-            let plannedKeys = Set(accounting.plannedRemainingSetsByPart.keys)
+            let plannedKeys = Set(accounting.plannedRemainingSetsByGroup.keys)
             let unresolvedKeys = Set(unresolvedDeficits.keys)
             resolved = plannedKeys.subtracting(unresolvedKeys)
-                .intersection(Set(BodyPart.allCases))
-            resolvedSets = resolved.reduce(into: [:]) { $0[$1] = accounting.plannedRemainingSetsByPart[$1] ?? 0 }
+                .intersection(Set(MuscleGroup.allCases))
+            resolvedSets = resolved.reduce(into: [:]) { $0[$1] = accounting.plannedRemainingSetsByGroup[$1] ?? 0 }
         }
 
         let unresolved = unresolvedPlanningInsights(deficits: unresolvedDeficits,
                                                      diagnostics: diagnostics,
                                                      experience: facts.experience,
-                                                     resolvedParts: resolved,
+                                                     resolvedGroups: resolved,
                                                      resolvedSets: resolvedSets,
                                                      isOverrideActive: isOverrideActive)
 
@@ -214,17 +184,17 @@ public enum PlanAwareInsightEngine {
         return ranked(result)
     }
 
-    private static func projectedLowVolumeInsight(for part: BodyPart,
+    private static func projectedLowVolumeInsight(for group: MuscleGroup,
                                                   completedSets: Double,
                                                   plannedSets: Double,
                                                   projectedSets: Double,
                                                   experience: ExperienceLevel) -> Insight {
-        let bands = VolumeLandmarks.bands(for: part, experience: experience)
-        let name = part.displayName
+        let bands = VolumeLandmarks.bands(for: group, experience: experience)
+        let name = group.displayName
         return Insight(
-            id: "volume.\(part.rawValue)",
+            id: "volume.\(group.rawValue)",
             kind: .volume,
-            part: part,
+            group: group,
             title: "\(name) volume is projected low",
             message: "\(name): \(Format.sets(completedSets)) done + \(Format.sets(plannedSets)) planned = \(Format.progress(done: projectedSets, target: bands.mev, unit: "sets")) this week.",
             detail: "\(name) is projected for \(Format.sets(projectedSets)) sets this week after planned remaining work. Coach's starting range for your experience is ~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week, so the plan likely needs more \(name.lowercased()) work.",
@@ -239,19 +209,19 @@ public enum PlanAwareInsightEngine {
                                            now: Date) -> [Insight] {
         guard isBehindPlan, lateEnoughForBehindPlan(plan: plan, now: now) else { return [] }
         var result: [Insight] = []
-        for part in BodyPart.allCases {
-            let completed = accounting.completedSetsByPart[part] ?? 0
-            let planned = accounting.plannedRemainingSetsByPart[part] ?? 0
-            let projected = accounting.projectedSetsByPart[part] ?? completed
+        for group in MuscleGroup.canonicalOrder {
+            let completed = accounting.completedSetsByGroup[group] ?? 0
+            let planned = accounting.plannedRemainingSetsByGroup[group] ?? 0
+            let projected = accounting.projectedSetsByGroup[group] ?? completed
             guard planned > 0 else { continue }
-            guard VolumeLandmarks.zone(sets: completed, for: part, experience: facts.experience) == .belowMEV else { continue }
-            guard VolumeLandmarks.zone(sets: projected, for: part, experience: facts.experience) != .belowMEV else { continue }
+            guard VolumeLandmarks.zone(sets: completed, for: group, experience: facts.experience) == .belowMEV else { continue }
+            guard VolumeLandmarks.zone(sets: projected, for: group, experience: facts.experience) != .belowMEV else { continue }
 
-            let name = part.displayName
+            let name = group.displayName
             result.append(Insight(
-                id: "behindPlan.\(part.rawValue)",
+                id: "behindPlan.\(group.rawValue)",
                 kind: .volume,
-                part: part,
+                group: group,
                 title: "\(name) is behind plan",
                 message: "\(name): \(Format.sets(completed)) done this week, \(Format.sets(planned)) planned remaining — do the planned sets to stay on target.",
                 detail: "The plan still projects enough \(name.lowercased()) work by week-end, but adherence is behind late in the week. Treat the remaining planned \(name.lowercased()) work as the priority before adding extra volume elsewhere.",
@@ -261,36 +231,36 @@ public enum PlanAwareInsightEngine {
         return result
     }
 
-    private static func unresolvedPlanningInsights(deficits: [BodyPart: Double],
+    private static func unresolvedPlanningInsights(deficits: [MuscleGroup: Double],
                                                     diagnostics: [PlanningDiagnostic],
                                                     experience: ExperienceLevel,
-                                                    resolvedParts: Set<BodyPart> = [],
-                                                    resolvedSets: [BodyPart: Double] = [:],
+                                                    resolvedGroups: Set<MuscleGroup> = [],
+                                                    resolvedSets: [MuscleGroup: Double] = [:],
                                                     isOverrideActive: Bool = false) -> [Insight] {
-        if deficits.isEmpty && resolvedParts.isEmpty { return [] }
+        if deficits.isEmpty && resolvedGroups.isEmpty { return [] }
 
         // Fully resolved — no suggestion. A successful plan adjustment is not
         // actionable feedback and should not become "volume gaps closed" noise.
-        if deficits.isEmpty && !resolvedParts.isEmpty {
+        if deficits.isEmpty && !resolvedGroups.isEmpty {
             return []
         }
 
         // Partially resolved — note what was added AND what's still short
-        if !deficits.isEmpty && !resolvedParts.isEmpty {
-            let added = resolvedParts.sorted { partIdx($0) < partIdx($1) }
+        if !deficits.isEmpty && !resolvedGroups.isEmpty {
+            let added = resolvedGroups.sorted { groupIdx($0) < groupIdx($1) }
                 .map { "\($0.displayName) +\(Format.sets(resolvedSets[$0] ?? 0))" }
                 .joined(separator: ", ")
             let ordered = deficits.sorted { a, b in
                 if a.value != b.value { return a.value > b.value }
-                return partIdx(a.key) < partIdx(b.key)
+                return groupIdx(a.key) < groupIdx(b.key)
             }
             let short = ordered
                 .map { "\($0.key.displayName) \(Format.sets($0.value))" }
                 .joined(separator: ", ")
             let reason = diagnosticReason(diagnostics)
-            let ranges = ordered.map { part, _ -> String in
-                let bands = VolumeLandmarks.bands(for: part, experience: experience)
-                return "\(part.displayName) starts around \(Format.sets(bands.mev)) sets/week"
+            let ranges = ordered.map { group, _ -> String in
+                let bands = VolumeLandmarks.bands(for: group, experience: experience)
+                return "\(group.displayName) starts around \(Format.sets(bands.mev)) sets/week"
             }.joined(separator: "; ")
 
             return [Insight(
@@ -308,15 +278,15 @@ public enum PlanAwareInsightEngine {
         // None resolved — keep existing nag
         let ordered = deficits.sorted { a, b in
             if a.value != b.value { return a.value > b.value }
-            return partIdx(a.key) < partIdx(b.key)
+            return groupIdx(a.key) < groupIdx(b.key)
         }
         let summary = ordered
             .map { "\($0.key.displayName) \(Format.sets($0.value))" }
             .joined(separator: ", ")
         let reason = diagnosticReason(diagnostics)
-        let ranges = ordered.map { part, _ -> String in
-            let bands = VolumeLandmarks.bands(for: part, experience: experience)
-            return "\(part.displayName) starts around \(Format.sets(bands.mev)) sets/week"
+        let ranges = ordered.map { group, _ -> String in
+            let bands = VolumeLandmarks.bands(for: group, experience: experience)
+            return "\(group.displayName) starts around \(Format.sets(bands.mev)) sets/week"
         }.joined(separator: "; ")
 
         return [Insight(
@@ -331,8 +301,8 @@ public enum PlanAwareInsightEngine {
                 .addGapsToPlan(deficits: deficits))]
     }
 
-    private static func partIdx(_ part: BodyPart) -> Int {
-        BodyPart.allCases.firstIndex(of: part) ?? Int.max
+    private static func groupIdx(_ group: MuscleGroup) -> Int {
+        MuscleGroup.canonicalIndex(group)
     }
 
     private static func diagnosticReason(_ diagnostics: [PlanningDiagnostic]) -> String {

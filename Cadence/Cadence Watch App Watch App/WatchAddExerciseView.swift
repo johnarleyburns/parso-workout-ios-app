@@ -9,7 +9,7 @@ struct WatchAddExerciseView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @State private var recent: [Exercise] = []
-    @State private var selectedBodyPart: BodyPart?
+    @State private var selectedGroup: MuscleGroup?
     @State private var showingRecent = false
     @State private var selectedExercise: Exercise?
     @State private var showingDetail = false
@@ -20,7 +20,8 @@ struct WatchAddExerciseView: View {
     @State private var searchTask: Task<Void, Never>?
     @State private var showingCustomExercise = false
     @State private var customName = ""
-    @State private var customBodyParts: Set<BodyPart> = []
+    @State private var customGroups: Set<MuscleGroup> = []
+    @State private var showingAllGroups = false
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -37,7 +38,7 @@ struct WatchAddExerciseView: View {
                 picker
             }
         }
-        .navigationTitle(showingCustomExercise ? "Custom Exercise" : selectedExercise?.name ?? selectedBodyPart?.displayName ?? "Add Exercise")
+        .navigationTitle(showingCustomExercise ? "Custom Exercise" : selectedExercise?.name ?? selectedGroup?.displayName ?? "Add Exercise")
         .task { loadRecent() }
         .onChange(of: query) { _, _ in
             scheduleSearch()
@@ -86,18 +87,18 @@ struct WatchAddExerciseView: View {
                 Section {
                     customExerciseButton
                 }
-            } else if let selectedBodyPart {
+            } else if let selectedGroup {
                 Section {
                     Button {
                         WatchHaptics.tap()
-                        self.selectedBodyPart = nil
+                        self.selectedGroup = nil
                     } label: {
                         Label("Back", systemImage: "chevron.left")
                     }
                     .buttonStyle(.plain)
                 }
-                Section(selectedBodyPart.displayName) {
-                    ForEach(WatchExerciseSelection.fullList(for: selectedBodyPart, exercises: exercises), id: \.self) { name in
+                Section(selectedGroup.displayName) {
+                    ForEach(WatchExerciseSelection.fullList(for: selectedGroup, exercises: exercises), id: \.self) { name in
                         if let exercise = exercise(named: name) {
                             exerciseButton(exercise)
                         }
@@ -132,23 +133,40 @@ struct WatchAddExerciseView: View {
                     }
                 }
                 Section("Categories") {
-                    ForEach(watchCategoryOrder) { part in
+                    ForEach(watchCategoryOrder) { group in
                         Button {
                             WatchHaptics.tap()
-                            selectedBodyPart = part
-                        } label: { Text(part.displayName) }
+                            selectedGroup = group
+                        } label: { Text(group.displayName) }
                         .buttonStyle(.plain)
-                        .accessibilityIdentifier("watchAddExercise.category.\(part.rawValue)")
+                        .accessibilityIdentifier("watchAddExercise.category.\(group.rawValue)")
+                    }
+                    if !showingAllGroups {
+                        Button {
+                            WatchHaptics.tap()
+                            showingAllGroups = true
+                        } label: { Label("More muscles", systemImage: "ellipsis.circle") }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("watchAddExercise.moreCategories")
                     }
                 }
             }
         }
+        .id(pickerBranchIdentity)
     }
 
-    /// Keep the most common upper-body entry points above the fold on the
-    /// watch; the complete set remains available by scrolling.
-    private var watchCategoryOrder: [BodyPart] {
-        [.chest, .back, .legs, .shoulders, .biceps, .triceps, .calves, .abs]
+    private var pickerBranchIdentity: String {
+        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "search" }
+        if let selectedGroup { return "group.\(selectedGroup.rawValue)" }
+        if showingRecent { return "recent" }
+        return "categories"
+    }
+
+    private var watchCategoryOrder: [MuscleGroup] {
+        let groups = showingAllGroups
+            ? MuscleGroup.canonicalOrder
+            : MuscleGroup.canonicalOrder.filter(\.isTrackedByDefault)
+        return [.chest] + groups.filter { $0 != .chest }
     }
 
     private var customExerciseButton: some View {
@@ -179,43 +197,43 @@ struct WatchAddExerciseView: View {
                 TextField("Exercise name", text: $customName)
                     .accessibilityIdentifier("watchCustom.name")
 
-                Text("Body parts")
+                Text("Muscle groups")
                     .font(.caption.bold())
                     .foregroundStyle(.secondary)
 
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                    ForEach(BodyPart.allCases) { part in
+                    ForEach(MuscleGroup.canonicalOrder) { group in
                         Button {
                             WatchHaptics.tap()
-                            if customBodyParts.contains(part) {
-                                customBodyParts.remove(part)
+                            if customGroups.contains(group) {
+                                customGroups.remove(group)
                             } else {
-                                customBodyParts.insert(part)
+                                customGroups.insert(group)
                             }
                         } label: {
-                            Text(part.displayName)
+                            Text(group.displayName)
                                 .font(.caption2.bold())
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.7)
                                 .frame(maxWidth: .infinity, minHeight: 28)
-                                .background(customBodyParts.contains(part) ? Color.green.opacity(0.35) : Color.white.opacity(0.1), in: Capsule())
+                                .background(customGroups.contains(group) ? Color.green.opacity(0.35) : Color.white.opacity(0.1), in: Capsule())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("\(part.displayName) \(customBodyParts.contains(part) ? "selected" : "not selected")")
-                        .accessibilityIdentifier("watchCustom.bodyPart.\(part.rawValue)")
+                        .accessibilityLabel("\(group.displayName) \(customGroups.contains(group) ? "selected" : "not selected")")
+                        .accessibilityIdentifier("watchCustom.muscleGroup.\(group.rawValue)")
                     }
                 }
 
                 Button {
                     WatchHaptics.success()
-                    _ = model.addCustomExercise(named: customName, bodyParts: customBodyParts)
+                    _ = model.addCustomExercise(named: customName, muscleGroups: customGroups)
                 } label: {
                     Label("Create & Add", systemImage: "plus.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
-                .disabled(customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || customBodyParts.isEmpty)
+                .disabled(customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || customGroups.isEmpty)
                 .accessibilityIdentifier("watchCustom.create")
 
                 Button("Back") {

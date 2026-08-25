@@ -88,8 +88,12 @@ final class PartnersAndUnitsTests: XCTestCase {
 
         let tf = TrainingFacts.make(sessions: [session], now: now,
                                     goal: .strength, experience: .intermediate)
-        XCTAssertEqual(tf.weeklySetsByPart.values.reduce(0, +), 4, accuracy: 0.001,
-                       "Weekly sets by body part must count only the owner's 4 sets")
+        // Under DB++ one set credits several groups (direct 1.0 + indirect 0.5), so
+        // the cross-group total is no longer the set count. The direct credit is:
+        // 4 owner sets of a quad movement = 4.0 quadriceps, and would read 8.0 if
+        // the partner's sets leaked in.
+        XCTAssertEqual(tf.weeklySetsByGroup[.quadriceps] ?? 0, 4, accuracy: 0.001,
+                       "Direct weekly credit must count only the owner's 4 sets")
 
         let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate, now: now)
         XCTAssertEqual(facts.weeklyBalance.fractionalSets.values.reduce(0, +), 4, accuracy: 0.001,

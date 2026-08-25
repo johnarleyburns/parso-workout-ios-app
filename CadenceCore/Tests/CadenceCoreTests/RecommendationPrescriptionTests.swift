@@ -12,12 +12,12 @@ final class RecommendationPrescriptionTests: XCTestCase {
     }
 
     private func facts(snapshots: [LiftSnapshot] = [],
-                       weeklySets: [BodyPart: Double] = [:],
+                       weeklySets: [MuscleGroup: Double] = [:],
                        goal: TrainingGoal = .strength,
                        experience: ExperienceLevel = .intermediate) -> TrainingFacts {
         TrainingFacts(
-            weeklySetsByPart: weeklySets,
-            frequencyByPart: [:],
+            weeklySetsByGroup: weeklySets,
+            frequencyByGroup: [:],
             e1RMTrendByExercise: [:],
             intensity: .empty,
             avgRPE: nil,
@@ -29,8 +29,8 @@ final class RecommendationPrescriptionTests: XCTestCase {
     }
 
     private func snapshot(_ name: String, weight: Double, reps: Int,
-                          trend: TrendDirection?, part: BodyPart? = .legs) -> LiftSnapshot {
-        LiftSnapshot(exercise: name, part: part, topSetWeightKg: weight,
+                          trend: TrendDirection?, group: MuscleGroup? = .quadriceps) -> LiftSnapshot {
+        LiftSnapshot(exercise: name, group: group, topSetWeightKg: weight,
                      topSetReps: reps, bestE1RM: weight, trend: trend)
     }
 
@@ -74,7 +74,7 @@ final class RecommendationPrescriptionTests: XCTestCase {
         let f = facts(weeklySets: [.biceps: 1], goal: .hypertrophy)
         let rec = try XCTUnwrap(RecommendationEngine.run(f).first { $0.id == "addVolume.biceps" })
         let p = try XCTUnwrap(rec).prescribedSession()
-        XCTAssertEqual(p.title, "\(BodyPart.biceps.displayName) focus")
+        XCTAssertEqual(p.title, "\(MuscleGroup.biceps.displayName) focus")
         XCTAssertEqual(p.exerciseNames, ["Barbell Curl"], "part default exercise provided")
         XCTAssertNil(p.loadKg, "bodyweight/any load")
         XCTAssertFalse(p.repLadder.isEmpty, "still prescribes a rep ladder to apply")

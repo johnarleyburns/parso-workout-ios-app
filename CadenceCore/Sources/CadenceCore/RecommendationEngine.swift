@@ -63,12 +63,12 @@ public enum RecommendationEngine {
             var score = 0
 
             let moveSet = Set(plan.movementNames.map { $0.lowercased() })
-            let planParts = routineBodyParts(plan)
+            let planGroups = routineMuscleGroups(plan)
 
             for rec in recs {
                 if let ex = rec.exercise, moveSet.contains(ex.lowercased()) {
                     score += 10
-                } else if let part = rec.part, planParts.contains(part) {
+                } else if let group = rec.group, planGroups.contains(group) {
                     score += 5
                 }
             }
@@ -94,13 +94,13 @@ public enum RecommendationEngine {
         return bestPlan
     }
 
-    private static func routineBodyParts(_ plan: WorkoutPlan) -> Set<BodyPart> {
-        var parts = Set<BodyPart>()
+    private static func routineMuscleGroups(_ plan: WorkoutPlan) -> Set<MuscleGroup> {
+        var groups = Set<MuscleGroup>()
         for name in plan.movementNames {
             if let t = ExerciseLibrary.byName[name.lowercased()] {
-                parts.formUnion(ExerciseLibrary.bodyParts(of: t))
+                groups.formUnion(ExerciseLibrary.muscleGroups(of: t))
             }
         }
-        return parts
+        return groups
     }
 }

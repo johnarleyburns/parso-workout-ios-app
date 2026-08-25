@@ -2,11 +2,11 @@ import Foundation
 
 public struct OptimizedCoachPlan: Sendable, Equatable {
     public let plannedStrengthSessions: [CoachSession]
-    public let unresolvedDeficits: [BodyPart: Double]
+    public let unresolvedDeficits: [MuscleGroup: Double]
     public let diagnostics: [PlanningDiagnostic]
 
     public init(plannedStrengthSessions: [CoachSession],
-                unresolvedDeficits: [BodyPart: Double] = [:],
+                unresolvedDeficits: [MuscleGroup: Double] = [:],
                 diagnostics: [PlanningDiagnostic] = []) {
         self.plannedStrengthSessions = plannedStrengthSessions
         self.unresolvedDeficits = unresolvedDeficits
@@ -31,15 +31,15 @@ public struct PlanningDiagnostic: Sendable, Equatable, Identifiable {
     public let id: String
     public let kind: Kind
     public let message: String
-    public let part: BodyPart?
+    public let group: MuscleGroup?
     public let value: Double?
 
     public init(id: String, kind: Kind, message: String,
-                part: BodyPart? = nil, value: Double? = nil) {
+                group: MuscleGroup? = nil, value: Double? = nil) {
         self.id = id
         self.kind = kind
         self.message = message
-        self.part = part
+        self.group = group
         self.value = value
     }
 }
@@ -120,12 +120,12 @@ public enum CoachPlanOptimizer {
 
     private struct CandidatePlan {
         let session: CoachSession
-        let remainingDeficits: [BodyPart: Double]
+        let remainingDeficits: [MuscleGroup: Double]
         let score: CandidateScore
     }
 
     private struct CandidateScore: Comparable {
-        let remainingParts: Int
+        let remainingGroups: Int
         let remainingMagnitude: Double
         let totalSets: Int
         let overMRV: Double
@@ -133,7 +133,7 @@ public enum CoachPlanOptimizer {
         let sessionID: String
 
         static func < (lhs: CandidateScore, rhs: CandidateScore) -> Bool {
-            if lhs.remainingParts != rhs.remainingParts { return lhs.remainingParts < rhs.remainingParts }
+            if lhs.remainingGroups != rhs.remainingGroups { return lhs.remainingGroups < rhs.remainingGroups }
             if lhs.remainingMagnitude != rhs.remainingMagnitude { return lhs.remainingMagnitude < rhs.remainingMagnitude }
             if lhs.totalSets != rhs.totalSets { return lhs.totalSets < rhs.totalSets }
             if lhs.overMRV != rhs.overMRV { return lhs.overMRV < rhs.overMRV }
@@ -148,7 +148,8 @@ public enum CoachPlanOptimizer {
                                 schedulePreferences: CoachSchedulePreferences,
                                 candidates candidateSessions: [CoachSession],
                                 constraintPolicy: PlanningConstraintPolicy = .safe) -> OptimizedCoachPlan {
-        let lowParts = weeklyCoverageParts(in: trainingFacts, excluded: schedulePreferences.excludedCoverageParts)
+        let lowGroups = weeklyCoverageGroups(in: trainingFacts,
+                                             tracked: schedulePreferences.trackedMuscleGroups)
         let strengthCandidates = uniqueStrengthCandidates(candidateSessions)
         let desiredSetsPerExercise = schedulePreferences.desiredSetsPerExercise
         var diagnostics: [PlanningDiagnostic] = []
@@ -169,7 +170,7 @@ public enum CoachPlanOptimizer {
         // When no remaining slots exist at all but today is a valid training day,
         // add an ad-hoc slot so residual volume can be routed into a self-scheduled
         // session (Phase 3: volume routing fix). Guardrails: only self-schedule to
-        // close a genuine weekly strength shortfall (at least one part below MEV),
+        // close a genuine weekly strength shortfall (at least one group below MEV),
         // and never manufacture a two-a-day the user disallowed — if today already
         // holds a non-rest session and two-a-days are off, defer to the aggregate
         // nag rather than stacking a second session on the day.
@@ -182,25 +183,25 @@ public enum CoachPlanOptimizer {
         let adhocWouldForceTwoADay = constraintPolicy.requiresTwoADayPreferenceForExtraSlots
             && !schedulePreferences.allowsTwoADays
             && todayHasOtherSession
-        if !hasTodaySlot, slots.isEmpty, !lowParts.isEmpty, !adhocWouldForceTwoADay,
+        if !hasTodaySlot, slots.isEmpty, !lowGroups.isEmpty, !adhocWouldForceTwoADay,
            hardStrengthAllowed(on: todayStart, facts: coachFacts,
                                schedulePreferences: schedulePreferences,
                                policy: constraintPolicy) {
             slots.append(PlanningSlot(id: "today.adhoc", date: todayStart, isExtra: false))
         }
 
-        var projected = trainingFacts.weeklySetsByPart
+        var projected = trainingFacts.weeklySetsByGroup
         var planned: [CoachSession] = []
         // Plan toward the *productive* midpoint (issue 1), not the bare MEV floor,
         // so small muscles (abs, calves, arms) get a genuinely productive dose.
-        var deficits = lowDeficits(for: lowParts, projected: projected,
+        var deficits = lowDeficits(for: lowGroups, projected: projected,
                                    experience: trainingFacts.experience, target: .productive)
 
         plan(slots: slots,
              into: &planned,
              projected: &projected,
              deficits: &deficits,
-             lowParts: lowParts,
+             lowGroups: lowGroups,
              trainingFacts: trainingFacts,
              coachFacts: coachFacts,
              strengthCandidates: strengthCandidates,
@@ -222,7 +223,7 @@ public enum CoachPlanOptimizer {
                  into: &planned,
                  projected: &projected,
                  deficits: &deficits,
-                 lowParts: lowParts,
+                 lowGroups: lowGroups,
                  trainingFacts: trainingFacts,
                  coachFacts: coachFacts,
                  strengthCandidates: strengthCandidates,
@@ -232,20 +233,20 @@ public enum CoachPlanOptimizer {
         }
 
         // Planning chases the productive midpoint (issue 1), but a *genuine*
-        // shortfall — the thing the coach nags about — is only a part still below
+        // shortfall — the thing the coach nags about — is only a group still below
         // its minimum effective volume (MEV) after all safe planned work. Reporting
         // against MEV (not the aspirational productive target) reconciles the old
-        // "under-dose AND nag" contradiction: a part trained to a productive dose is
+        // "under-dose AND nag" contradiction: a group trained to a productive dose is
         // above MEV, so it never surfaces as an unresolved deficit or a user nag.
-        let reportedDeficits = lowDeficits(for: lowParts, projected: projected,
+        let reportedDeficits = lowDeficits(for: lowGroups, projected: projected,
                                            experience: trainingFacts.experience, target: .mev)
 
-        for (part, value) in reportedDeficits.sorted(by: partDeficitSort) {
+        for (group, value) in reportedDeficits.sorted(by: groupDeficitSort) {
             diagnostics.append(PlanningDiagnostic(
-                id: "unresolved.\(part.rawValue)",
+                id: "unresolved.\(group.rawValue)",
                 kind: .unresolvedDeficit,
-                message: "\(part.displayName) remains \(Format.sets(value)) sets below the starting range after safe planned work.",
-                part: part,
+                message: "\(group.displayName) remains \(Format.sets(value)) sets below the starting range after safe planned work.",
+                group: group,
                 value: value))
         }
 
@@ -266,21 +267,21 @@ public enum CoachPlanOptimizer {
         case focused
     }
 
-    /// Lower-body parts; everything else (except abs, treated as neutral core) is
-    /// considered upper body for split classification.
-    private static let lowerBodyParts: Set<BodyPart> = [.legs, .calves]
-
-    /// Classify a strength session by the body parts its exercises cover. Non-strength
-    /// or exercise-less sessions return `nil` (no structure to explain).
+    /// Classify a strength session by the muscle groups its exercises cover.
+    /// Non-strength or exercise-less sessions return `nil` (no structure to explain).
     public static func classifyStructure(of session: CoachSession) -> SessionStructure? {
         guard session.kind == .strength, let exercises = session.exercises, !exercises.isEmpty else {
             return nil
         }
-        let parts = coveredParts(of: session)
-        guard !parts.isEmpty else { return nil }
-        if parts.count >= 5 { return .fullBody }
-        let lower = parts.intersection(lowerBodyParts)
-        let upper = parts.subtracting(lowerBodyParts).subtracting([.abs])
+        let groups = coveredGroups(of: session)
+        guard !groups.isEmpty else { return nil }
+        // 20 groups resolve finer than the retired 8 body parts, so the full-body
+        // threshold scales with them: 8 of 20 is the same share of the body that
+        // 5 of 8 parts was, and keeps a genuine upper/lower split from reading as
+        // full-body just because it touches more named groups.
+        if groups.count >= 8 { return .fullBody }
+        let lower = groups.intersection(MuscleGroup.lowerBody)
+        let upper = groups.subtracting(MuscleGroup.lowerBody).subtracting([.abdominals])
         if upper.isEmpty && !lower.isEmpty { return .lowerFocus }
         if lower.isEmpty && upper.count >= 2 { return .upperFocus }
         return .focused
@@ -289,7 +290,7 @@ public enum CoachPlanOptimizer {
     /// Build the user-facing, cited `ObservedFact` explaining a session's structure.
     public static func sessionStructureFact(for session: CoachSession, now: Date) -> ObservedFact? {
         guard let structure = classifyStructure(of: session) else { return nil }
-        let parts = coveredParts(of: session)
+        let groups = coveredGroups(of: session)
         let value: String
         let detail: String
         switch structure {
@@ -303,7 +304,7 @@ public enum CoachPlanOptimizer {
             value = "Lower body"
             detail = "Coach focused this session on your lower body to allow adequate per-muscle volume within a single workout."
         case .focused:
-            let names = parts.sorted { partIndex($0) < partIndex($1) }
+            let names = MuscleGroup.sorted(groups)
                 .prefix(2)
                 .map { $0.displayName.lowercased() }
                 .joined(separator: " & ")
@@ -319,17 +320,17 @@ public enum CoachPlanOptimizer {
             citationIds: CitationRegistry.citationPool(for: .sessionStructure).citationIds)
     }
 
-    private static func coveredParts(of session: CoachSession) -> Set<BodyPart> {
-        (session.exercises ?? []).reduce(into: Set<BodyPart>()) { acc, exercise in
-            acc.formUnion(partsCovered(by: exercise))
+    private static func coveredGroups(of session: CoachSession) -> Set<MuscleGroup> {
+        (session.exercises ?? []).reduce(into: Set<MuscleGroup>()) { acc, exercise in
+            acc.formUnion(groupsCovered(by: exercise))
         }
     }
 
     private static func plan(slots: [PlanningSlot],
                               into planned: inout [CoachSession],
-                              projected: inout [BodyPart: Double],
-                              deficits: inout [BodyPart: Double],
-                              lowParts: Set<BodyPart>,
+                              projected: inout [MuscleGroup: Double],
+                              deficits: inout [MuscleGroup: Double],
+                              lowGroups: Set<MuscleGroup>,
                               trainingFacts: TrainingFacts,
                               coachFacts: CoachFacts,
                               strengthCandidates: [CoachSession],
@@ -338,7 +339,7 @@ public enum CoachPlanOptimizer {
                               diagnostics: inout [PlanningDiagnostic]) {
         for (i, slot) in slots.enumerated() {
             let slotsLeft = slots.count - i
-            let slotDeficits: [BodyPart: Double] = deficits.mapValues { ceil($0 / Double(slotsLeft)) }
+            let slotDeficits: [MuscleGroup: Double] = deficits.mapValues { ceil($0 / Double(slotsLeft)) }
             // Exercises already assigned to earlier days in this generation pass, so
             // per-day selection can rotate a movement pattern's exercise *identity*
             // across days (issue: "rotary torso" every day) instead of repeating one
@@ -355,9 +356,9 @@ public enum CoachPlanOptimizer {
                 desiredSetsPerExercise: desiredSetsPerExercise,
                 policy: policy)
             planned.append(choice.session)
-            let added = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [choice.session])
+            let added = PlanAwareWeeklyAccounting.plannedSetsByGroup(from: [choice.session])
             projected = projected.merging(added) { $0 + $1 }
-            deficits = lowDeficits(for: lowParts, projected: projected, experience: trainingFacts.experience)
+            deficits = lowDeficits(for: lowGroups, projected: projected, experience: trainingFacts.experience)
 
             let kind: PlanningDiagnostic.Kind = slot.isExtra ? .plannedExtraSlot : .plannedExistingSlot
             diagnostics.append(PlanningDiagnostic(
@@ -380,8 +381,8 @@ public enum CoachPlanOptimizer {
     }
 
     private static func chooseSession(for slot: PlanningSlot,
-                                      deficits: [BodyPart: Double],
-                                      projected: [BodyPart: Double],
+                                      deficits: [MuscleGroup: Double],
+                                      projected: [MuscleGroup: Double],
                                       trainingFacts: TrainingFacts,
                                       coachFacts: CoachFacts,
                                       strengthCandidates: [CoachSession],
@@ -419,9 +420,9 @@ public enum CoachPlanOptimizer {
                                                              slot: slot,
                                                              desiredSetsPerExercise: desiredSetsPerExercise,
                                                              policy: policy),
-                                 targetedParts: Set(deficits.keys), synthesized: true),
+                                 targetedGroups: Set(deficits.keys), synthesized: true),
             remainingDeficits: deficits,
-            score: CandidateScore(remainingParts: deficits.count,
+            score: CandidateScore(remainingGroups: deficits.count,
                                   remainingMagnitude: deficits.values.reduce(0, +),
                                   totalSets: 0,
                                   overMRV: 0,
@@ -431,8 +432,8 @@ public enum CoachPlanOptimizer {
 
     private static func optimizedVersion(of base: CoachSession,
                                          slot: PlanningSlot,
-                                         deficits: [BodyPart: Double],
-                                         projected: [BodyPart: Double],
+                                         deficits: [MuscleGroup: Double],
+                                         projected: [MuscleGroup: Double],
                                          trainingFacts: TrainingFacts,
                                          coachFacts: CoachFacts,
                                          usedThisWeek: Set<String>,
@@ -448,7 +449,7 @@ public enum CoachPlanOptimizer {
                                           usedThisWeek: usedThisWeek,
                                           desiredSetsPerExercise: desiredSetsPerExercise,
                                           policy: policy)
-        let added = PlanAwareWeeklyAccounting.plannedSetsByPart(from: exercises)
+        let added = PlanAwareWeeklyAccounting.plannedSetsByGroup(from: exercises)
         let nextProjected = projected.merging(added) { $0 + $1 }
         let remaining = lowDeficits(for: Set(deficits.keys),
                                     projected: nextProjected,
@@ -458,10 +459,10 @@ public enum CoachPlanOptimizer {
         let session = materialize(base,
                                   slot: slot,
                                   exercises: exercises,
-                                  targetedParts: Set(deficits.keys),
+                                  targetedGroups: Set(deficits.keys),
                                   synthesized: base.id == syntheticBaseSession().id)
         let score = CandidateScore(
-            remainingParts: remaining.count,
+            remainingGroups: remaining.count,
             remainingMagnitude: remaining.values.reduce(0, +),
             totalSets: totalSets,
             overMRV: overMRVAmount(projected: nextProjected, experience: trainingFacts.experience),
@@ -471,8 +472,8 @@ public enum CoachPlanOptimizer {
     }
 
     private static func reshapedExercises(from baseExercises: [CoachSession.RecommendedExercise],
-                                          deficits: [BodyPart: Double],
-                                          projected: [BodyPart: Double],
+                                          deficits: [MuscleGroup: Double],
+                                          projected: [MuscleGroup: Double],
                                           trainingFacts: TrainingFacts,
                                           coachFacts: CoachFacts,
                                           slot: PlanningSlot,
@@ -519,7 +520,7 @@ public enum CoachPlanOptimizer {
             }
 
         // Pass 1 (coverage): allocate each exercise enough sets to reach the MEV
-        // floor for the parts it covers. Targeting MEV first guarantees whole-body
+        // floor for the groups it covers. Targeting MEV first guarantees whole-body
         // breadth fits inside the session budget — a productive top-up (pass 3)
         // then raises the dose toward the midpoint with whatever budget is left.
         for exercise in usefulBase {
@@ -540,10 +541,10 @@ public enum CoachPlanOptimizer {
             selected.append(planned)
             sessionSets += sets
             runningProjected = runningProjected.merging(
-                PlanAwareWeeklyAccounting.plannedSetsByPart(from: [planned])) { $0 + $1 }
+                PlanAwareWeeklyAccounting.plannedSetsByGroup(from: [planned])) { $0 + $1 }
         }
 
-        // Pass 2 (breadth): add movements for any part still below MEV that the
+        // Pass 2 (breadth): add movements for any group still below MEV that the
         // base candidate didn't cover, so the coach hits every weekly target.
         var remaining = lowDeficits(for: Set(deficits.keys),
                                     projected: runningProjected,
@@ -552,8 +553,8 @@ public enum CoachPlanOptimizer {
         while !remaining.isEmpty,
               selected.count < policy.maxExercisesPerSession,
               sessionSets < policy.maxTotalSetsPerSession {
-            guard let part = remaining.sorted(by: partDeficitSort).first?.key,
-                  let next = bestExercise(for: part,
+            guard let group = remaining.sorted(by: groupDeficitSort).first?.key,
+                  let next = bestExercise(for: group,
                                           existing: selected + baseExercises,
                                           facts: trainingFacts,
                                           coachFacts: coachFacts,
@@ -577,14 +578,14 @@ public enum CoachPlanOptimizer {
             selected.append(planned)
             sessionSets += sets
             runningProjected = runningProjected.merging(
-                PlanAwareWeeklyAccounting.plannedSetsByPart(from: [planned])) { $0 + $1 }
+                PlanAwareWeeklyAccounting.plannedSetsByGroup(from: [planned])) { $0 + $1 }
             remaining = lowDeficits(for: Set(deficits.keys),
                                     projected: runningProjected,
                                     experience: trainingFacts.experience,
                                     target: .mev)
         }
 
-        // Pass 3 (productive top-up): with every below-MEV part now covered, spend
+        // Pass 3 (productive top-up): with every below-MEV group now covered, spend
         // any remaining session budget raising set counts toward the productive
         // midpoint (issue 1). Never exceeds per-exercise / total-set caps or MRV.
         if !selected.isEmpty {
@@ -596,8 +597,8 @@ public enum CoachPlanOptimizer {
                     let exercise = selected[index]
                     let currentSets = exercise.sets ?? 0
                     guard currentSets < policy.maxSetsPerExercise else { continue }
-                    // Only top up while a covered part is still short of productive.
-                    let perSet = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [copy(exercise, sets: 1,
+                    // Only top up while a covered group is still short of productive.
+                    let perSet = PlanAwareWeeklyAccounting.plannedSetsByGroup(from: [copy(exercise, sets: 1,
                                                                                           goal: trainingFacts.goal,
                                                                                           trainingFacts: trainingFacts)])
                     let productiveDeficits = lowDeficits(for: Set(perSet.keys),
@@ -605,12 +606,12 @@ public enum CoachPlanOptimizer {
                                                          experience: trainingFacts.experience,
                                                          target: .productive)
                     guard perSet.contains(where: { productiveDeficits[$0.key] != nil && $0.value > 0 }) else { continue }
-                    // Respect the MRV ceiling per covered part.
+                    // Respect the MRV ceiling per covered group.
                     if policy.respectsMRVCeiling {
-                        let wouldExceedMRV = perSet.contains { part, contribution in
+                        let wouldExceedMRV = perSet.contains { group, contribution in
                             guard contribution > 0 else { return false }
-                            let mrv = VolumeLandmarks.bands(for: part, experience: trainingFacts.experience).mrv
-                            return (runningProjected[part] ?? 0) + contribution > mrv
+                            let mrv = VolumeLandmarks.bands(for: group, experience: trainingFacts.experience).mrv
+                            return (runningProjected[group] ?? 0) + contribution > mrv
                         }
                         if wouldExceedMRV { continue }
                     }
@@ -640,9 +641,11 @@ public enum CoachPlanOptimizer {
                                      slot: slot, policy: policy)
 
         return selected.sorted { a, b in
-            let apart = primarySortPart(for: a)
-            let bpart = primarySortPart(for: b)
-            if apart != bpart { return partIndex(apart) < partIndex(bpart) }
+            let agroup = primarySortGroup(for: a)
+            let bgroup = primarySortGroup(for: b)
+            if agroup != bgroup {
+                return MuscleGroup.canonicalIndex(agroup) < MuscleGroup.canonicalIndex(bgroup)
+            }
             return a.name < b.name
         }
     }
@@ -651,10 +654,10 @@ public enum CoachPlanOptimizer {
 
     /// Rotate exercise *identity* across the days of one planning pass: when a
     /// selected exercise was already assigned to an earlier day this week, swap it
-    /// for an equivalent alternative — same covered body parts, recovery-eligible,
+    /// for an equivalent alternative — same covered muscle groups, recovery-eligible,
     /// not yet used — preferring the user's own trained lifts for the movement
     /// pattern (ranked by `CoachSession.trainedExerciseCandidates`), then catalog
-    /// defaults. The exact part-set match keeps the coverage/MRV accounting and the
+    /// defaults. The exact group-set match keeps the coverage/MRV accounting and the
     /// prescription (sets, reps, RIR, ladder) identical, so only the identity
     /// varies. Interchangeable movements (mostly isolation, e.g. every core slot
     /// resolving to "rotary torso") rotate; compounds with unique coverage stay put.
@@ -685,12 +688,12 @@ public enum CoachPlanOptimizer {
     }
 
     /// An equivalent, not-yet-used replacement for `exercise`: covers exactly the
-    /// same body parts (so coverage and MRV math are unchanged) and passes the
+    /// same muscle groups (so coverage and MRV math are unchanged) and passes the
     /// recovery-eligibility gate. Candidates come from the user's ranked trained
     /// lifts — the exercise's own movement patterns first, then any other trained
-    /// lift that covers the same parts (pattern keyword inference can misfile a
+    /// lift that covers the same groups (pattern keyword inference can misfile a
     /// movement, e.g. "crunch" contains "run") — then the catalog defaults for its
-    /// primary part. Returns nil when no equivalent exists — the original is kept
+    /// primary group. Returns nil when no equivalent exists — the original is kept
     /// rather than degrading coverage.
     private static func varietyAlternative(for exercise: CoachSession.RecommendedExercise,
                                            avoiding used: Set<String>,
@@ -698,8 +701,8 @@ public enum CoachPlanOptimizer {
                                            coachFacts: CoachFacts,
                                            slot: PlanningSlot,
                                            policy: PlanningConstraintPolicy) -> CoachSession.RecommendedExercise? {
-        let originalParts = partsCovered(by: exercise)
-        guard !originalParts.isEmpty else { return nil }
+        let originalGroups = groupsCovered(by: exercise)
+        guard !originalGroups.isEmpty else { return nil }
 
         let muscles = muscleIDs(for: exercise)
         let ownPatterns = MovementPattern.patterns(forExerciseNamed: exercise.name,
@@ -712,13 +715,13 @@ public enum CoachPlanOptimizer {
         for pattern in trained.keys.sorted(by: { $0.rawValue < $1.rawValue }) where !ownPatterns.contains(pattern) {
             pool.append(contentsOf: trained[pattern] ?? [])
         }
-        pool.append(contentsOf: defaultExerciseNames(for: primarySortPart(for: exercise)))
+        pool.append(contentsOf: defaultExerciseNames(for: primarySortGroup(for: exercise)))
 
         var seen = Set<String>()
         for name in pool where seen.insert(name).inserted {
             guard name != exercise.name, !used.contains(name) else { continue }
             let candidate = CoachSession.RecommendedExercise(name: name)
-            guard partsCovered(by: candidate) == originalParts else { continue }
+            guard groupsCovered(by: candidate) == originalGroups else { continue }
             guard isExerciseEligible(candidate, on: slot.date, facts: coachFacts, policy: policy) else { continue }
             // The replacement carries the slot's prescription (sets, RIR) but gets
             // its own bodyweight-aware working range — its rep history is its own.
@@ -750,27 +753,27 @@ public enum CoachPlanOptimizer {
     }
 
     private static func plannedSets(for exercise: CoachSession.RecommendedExercise,
-                                    deficits: [BodyPart: Double],
-                                    projected: [BodyPart: Double],
+                                    deficits: [MuscleGroup: Double],
+                                    projected: [MuscleGroup: Double],
                                     experience: ExperienceLevel,
                                     desiredSetsPerExercise: Int,
                                     policy: PlanningConstraintPolicy) -> Int {
         guard !deficits.isEmpty else {
             return min(policy.maxSetsPerExercise, max(2, exercise.sets ?? desiredSetsPerExercise))
         }
-        let perSet = PlanAwareWeeklyAccounting.plannedSetsByPart(from: [copy(exercise, sets: 1)])
+        let perSet = PlanAwareWeeklyAccounting.plannedSetsByGroup(from: [copy(exercise, sets: 1)])
         guard perSet.contains(where: { deficits[$0.key] != nil && $0.value > 0 }) else { return 0 }
         var needed = 1
-        for (part, amount) in deficits {
-            guard let contribution = perSet[part], contribution > 0 else { continue }
+        for (group, amount) in deficits {
+            guard let contribution = perSet[group], contribution > 0 else { continue }
             needed = max(needed, Int(ceil(amount / contribution)))
         }
 
         var safe = policy.maxSetsPerExercise
         if policy.respectsMRVCeiling {
-            for (part, contribution) in perSet where contribution > 0 {
-                let bands = VolumeLandmarks.bands(for: part, experience: experience)
-                let remaining = bands.mrv - (projected[part] ?? 0)
+            for (group, contribution) in perSet where contribution > 0 {
+                let bands = VolumeLandmarks.bands(for: group, experience: experience)
+                let remaining = bands.mrv - (projected[group] ?? 0)
                 safe = min(safe, Int(floor(max(0, remaining) / contribution)))
             }
         }
@@ -779,7 +782,7 @@ public enum CoachPlanOptimizer {
         return min(policy.maxSetsPerExercise, max(0, safe), max(1, desired))
     }
 
-    private static func bestExercise(for part: BodyPart,
+    private static func bestExercise(for group: MuscleGroup,
                                       existing: [CoachSession.RecommendedExercise],
                                       facts: TrainingFacts,
                                       coachFacts: CoachFacts,
@@ -787,7 +790,7 @@ public enum CoachPlanOptimizer {
                                       desiredSetsPerExercise: Int,
                                       policy: PlanningConstraintPolicy) -> CoachSession.RecommendedExercise? {
         let existingOptions = existing
-            .filter { partsCovered(by: $0).contains(part) }
+            .filter { groupsCovered(by: $0).contains(group) }
             .filter { isExerciseEligible($0, on: slot.date, facts: coachFacts, policy: policy) }
             .sorted { a, b in
                 if coachFacts.recoveryAwareCoachV2 {
@@ -803,9 +806,9 @@ public enum CoachPlanOptimizer {
         }
 
         let preferred = CoachSession.mostTrainedExercises(facts: coachFacts)
-        for pattern in preferredPatternOrder(for: part) {
+        for pattern in preferredPatternOrder(for: group) {
             if let name = preferred[pattern],
-               partsCovered(by: CoachSession.RecommendedExercise(name: name)).contains(part) {
+               groupsCovered(by: CoachSession.RecommendedExercise(name: name)).contains(group) {
                 let exercise = CoachSession.RecommendedExercise(name: name)
                 if isExerciseEligible(exercise, on: slot.date, facts: coachFacts, policy: policy) {
                     return copy(exercise, sets: desiredSetsPerExercise,
@@ -814,21 +817,21 @@ public enum CoachPlanOptimizer {
             }
         }
 
-        return defaultExerciseNames(for: part)
+        return defaultExerciseNames(for: group)
             .map { CoachSession.RecommendedExercise(name: $0) }
             .first { isExerciseEligible($0, on: slot.date, facts: coachFacts, policy: policy) }
             .map { copy($0, sets: desiredSetsPerExercise, goal: facts.goal,
                         coachFacts: coachFacts, trainingFacts: facts) }
     }
 
-    private static func defaultExercises(for deficits: [BodyPart: Double],
+    private static func defaultExercises(for deficits: [MuscleGroup: Double],
                                          facts: TrainingFacts,
                                          coachFacts: CoachFacts,
                                          slot: PlanningSlot,
                                          desiredSetsPerExercise: Int,
                                          policy: PlanningConstraintPolicy) -> [CoachSession.RecommendedExercise] {
-        deficits.sorted(by: partDeficitSort).compactMap { part, _ in
-            return bestExercise(for: part, existing: [], facts: facts, coachFacts: coachFacts,
+        deficits.sorted(by: groupDeficitSort).compactMap { group, _ in
+            return bestExercise(for: group, existing: [], facts: facts, coachFacts: coachFacts,
                                 slot: slot,
                                 desiredSetsPerExercise: desiredSetsPerExercise,
                                 policy: policy)
@@ -838,23 +841,23 @@ public enum CoachPlanOptimizer {
     private static func materialize(_ base: CoachSession,
                                     slot: PlanningSlot,
                                     exercises: [CoachSession.RecommendedExercise],
-                                    targetedParts: Set<BodyPart>,
+                                    targetedGroups: Set<MuscleGroup>,
                                     synthesized: Bool) -> CoachSession {
-        let parts = targetedParts.sorted { partIndex($0) < partIndex($1) }
+        let groups = MuscleGroup.sorted(targetedGroups)
         let title: String
-        if parts.isEmpty {
+        if groups.isEmpty {
             title = base.title
-        } else if parts.count == 1 {
-            title = "\(parts[0].displayName) focus"
+        } else if groups.count == 1 {
+            title = "\(groups[0].displayName) focus"
         } else {
             title = "Strength focus"
         }
 
         let subtitle: String
-        if parts.isEmpty {
+        if groups.isEmpty {
             subtitle = base.subtitle
         } else {
-            let names = parts.prefix(3).map { $0.displayName.lowercased() }.joined(separator: ", ")
+            let names = groups.prefix(3).map { $0.displayName.lowercased() }.joined(separator: ", ")
             subtitle = "\(names) volume · \(exercises.reduce(0) { $0 + max(1, $1.sets ?? 3) }) planned sets"
         }
 
@@ -970,9 +973,8 @@ public enum CoachPlanOptimizer {
         let calendar = Calendar.current
         let plannedMidday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
         let muscles = muscleIDs(for: exercise)
-        let primaryParts = BodyPart.parts(forMuscleIDs: muscles.primary)
-        let secondaryParts = BodyPart.parts(forMuscleIDs: muscles.secondary)
-        let bodyParts = primaryParts.union(secondaryParts)
+        let groups = Set(MuscleGroup.canonicalize(muscles.primary))
+            .union(MuscleGroup.canonicalize(muscles.secondary))
         let patterns = MovementPattern.patterns(forExerciseNamed: exercise.name,
                                                 primaryMuscles: muscles.primary)
 
@@ -984,99 +986,97 @@ public enum CoachPlanOptimizer {
                 return false
             }
         }
-        for part in bodyParts {
-            if let window = facts.recovery.byBodyPart[part], plannedMidday < window.hardEligibleAt {
+        for group in groups {
+            if let window = facts.recovery.byGroup[group], plannedMidday < window.hardEligibleAt {
                 return false
             }
         }
         return true
     }
 
-    private static func weeklyCoverageParts(in facts: TrainingFacts,
-                                            excluded: Set<BodyPart> = []) -> Set<BodyPart> {
-        Set(BodyPart.allCases.filter { part in
-            guard !excluded.contains(part) else { return false }
-            return (facts.weeklySetsByPart[part] ?? 0) < VolumeLandmarks.bands(for: part, experience: facts.experience).mev
-        })
+    /// The tracked groups that are still under MEV for the week. The candidate
+    /// universe is the user's `trackedMuscleGroups` (13 by default), never all 20:
+    /// the untracked seven have no catalog depth behind them and would show as
+    /// permanent, uncloseable deficits (decision D4).
+    private static func weeklyCoverageGroups(in facts: TrainingFacts,
+                                             tracked: Set<MuscleGroup>) -> Set<MuscleGroup> {
+        let universe = tracked.isEmpty ? MuscleGroup.defaultTracked : tracked
+        return universe.filter { group in
+            (facts.weeklySetsByGroup[group] ?? 0)
+                < VolumeLandmarks.bands(for: group, experience: facts.experience).mev
+        }
     }
 
-    /// Which volume landmark the planner aims a part at.
+    /// Which volume landmark the planner aims a group at.
     /// - `.productive`: the MEV→MAV midpoint — the dose the coach *plans toward*
     ///   (issue 1) so small muscles get a productive, not minimum, prescription.
     /// - `.mev`: the minimum effective floor — the threshold used to *report* a
     ///   genuine shortfall (`unresolvedDeficits`) and drive the user-facing nag,
-    ///   so the coach only flags a part when it is below the effective minimum,
+    ///   so the coach only flags a group when it is below the effective minimum,
     ///   never merely short of the aspirational midpoint.
     private enum PlanningTarget {
         case productive
         case mev
 
-        func value(for part: BodyPart, experience: ExperienceLevel) -> Double {
+        func value(for group: MuscleGroup, experience: ExperienceLevel) -> Double {
             switch self {
-            case .productive: return VolumeLandmarks.productiveTarget(for: part, experience: experience)
-            case .mev:        return VolumeLandmarks.bands(for: part, experience: experience).mev
+            case .productive: return VolumeLandmarks.productiveTarget(for: group, experience: experience)
+            case .mev:        return VolumeLandmarks.bands(for: group, experience: experience).mev
             }
         }
     }
 
-    private static func lowDeficits(for parts: Set<BodyPart>,
-                                    projected: [BodyPart: Double],
+    private static func lowDeficits(for groups: Set<MuscleGroup>,
+                                    projected: [MuscleGroup: Double],
                                     experience: ExperienceLevel,
-                                    target: PlanningTarget = .productive) -> [BodyPart: Double] {
-        var result: [BodyPart: Double] = [:]
-        for part in parts {
-            let goal = target.value(for: part, experience: experience)
-            let sets = projected[part] ?? 0
+                                    target: PlanningTarget = .productive) -> [MuscleGroup: Double] {
+        var result: [MuscleGroup: Double] = [:]
+        for group in groups {
+            let goal = target.value(for: group, experience: experience)
+            let sets = projected[group] ?? 0
             if sets < goal {
-                result[part] = goal - sets
+                result[group] = goal - sets
             }
         }
         return result
     }
 
-    private static func overMRVAmount(projected: [BodyPart: Double],
+    private static func overMRVAmount(projected: [MuscleGroup: Double],
                                       experience: ExperienceLevel) -> Double {
-        BodyPart.allCases.reduce(0) { total, part in
-            let mrv = VolumeLandmarks.bands(for: part, experience: experience).mrv
-            return total + max(0, (projected[part] ?? 0) - mrv)
+        projected.reduce(0) { total, row in
+            let mrv = VolumeLandmarks.bands(for: row.key, experience: experience).mrv
+            return total + max(0, row.value - mrv)
         }
     }
 
     private static func exerciseHelps(_ exercise: CoachSession.RecommendedExercise,
-                                      deficits: [BodyPart: Double]) -> Bool {
-        let parts = partsCovered(by: exercise)
-        return deficits.keys.contains { parts.contains($0) }
+                                      deficits: [MuscleGroup: Double]) -> Bool {
+        let groups = groupsCovered(by: exercise)
+        return deficits.keys.contains { groups.contains($0) }
     }
 
     private static func exerciseDeficitScore(_ exercise: CoachSession.RecommendedExercise,
-                                             deficits: [BodyPart: Double]) -> Double {
-        let parts = partsCovered(by: exercise)
+                                             deficits: [MuscleGroup: Double]) -> Double {
+        let groups = groupsCovered(by: exercise)
         return deficits.reduce(0) { total, row in
-            parts.contains(row.key) ? total + row.value : total
+            groups.contains(row.key) ? total + row.value : total
         }
     }
 
-    private static func partsCovered(by exercise: CoachSession.RecommendedExercise) -> Set<BodyPart> {
-        let muscles = muscleIDs(for: exercise)
-        let primary = BodyPart.parts(forMuscleIDs: muscles.primary)
-            .union(BodyPart.parts(forMuscleIDs: muscles.secondary))
-        if primary.isEmpty, !exercise.name.isEmpty {
-            if let template = ExerciseLibrary.byName[exercise.name.lowercased()] {
-                return BodyPart.parts(forMuscleIDs: template.primaryMuscles)
-                    .union(BodyPart.parts(forMuscleIDs: template.secondaryMuscles))
-            }
-            if let cat = BodyPart.guessCategory(from: exercise.name) {
-                return BodyPart.parts(forCategory: cat)
-            }
-        }
-        return primary
+    /// The muscle groups a recommendation earns weekly volume in. Reads the DB++
+    /// roles through `PlanAwareWeeklyAccounting.credits(for:)`, so coverage and the
+    /// weekly accounting can never disagree about what an exercise trains, and a
+    /// non-volume-eligible movement (a stretch, a warm-up drill) covers nothing.
+    private static func groupsCovered(by exercise: CoachSession.RecommendedExercise) -> Set<MuscleGroup> {
+        Set(PlanAwareWeeklyAccounting.credits(for: exercise).keys)
     }
 
-    private static func primarySortPart(for exercise: CoachSession.RecommendedExercise) -> BodyPart {
+    private static func primarySortGroup(for exercise: CoachSession.RecommendedExercise) -> MuscleGroup {
         let muscles = muscleIDs(for: exercise)
-        return BodyPart.parts(forMuscleIDs: muscles.primary)
-            .sorted { partIndex($0) < partIndex($1) }
-            .first ?? .abs
+        return MuscleGroup.canonicalize(muscles.primary)
+            .min { MuscleGroup.canonicalIndex($0) < MuscleGroup.canonicalIndex($1) }
+            ?? MuscleGroup.sorted(groupsCovered(by: exercise)).first
+            ?? .abdominals
     }
 
     private static func muscleIDs(for exercise: CoachSession.RecommendedExercise) -> (primary: [String], secondary: [String]) {
@@ -1086,8 +1086,8 @@ public enum CoachPlanOptimizer {
         if let template = ExerciseLibrary.byName[exercise.name.lowercased()] {
             return (template.primaryMuscles, template.secondaryMuscles)
         }
-        if let cat = BodyPart.guessCategory(from: exercise.name) {
-            return (BodyPart.defaultMuscles(forCategory: cat), [])
+        if let cat = ExerciseCategory.guess(fromName: exercise.name) {
+            return (MuscleGroup.defaults(forCategory: cat).map(\.rawValue), [])
         }
         return ([], [])
     }
@@ -1171,29 +1171,50 @@ public enum CoachPlanOptimizer {
         return suggested > 0 ? (suggested * 2).rounded() / 2 : nil
     }
 
-    private static func defaultExerciseNames(for part: BodyPart) -> [String] {
-        switch part {
-        case .legs: return ["Back Squat", "Leg Press", "Romanian Deadlift"]
-        case .back: return ["Barbell Row", "Lat Pulldown", "Seated Cable Row"]
+    /// Catalog fallbacks per muscle group, in descending preference. Each list
+    /// leads with the compound the group is most reliably trained by, so the
+    /// planner's last resort is still a defensible prescription. Every name here
+    /// must resolve in `ExerciseLibrary.starter`.
+    private static func defaultExerciseNames(for group: MuscleGroup) -> [String] {
+        switch group {
+        case .quadriceps: return ["Back Squat", "Leg Press", "Front Squat"]
+        case .hamstrings: return ["Romanian Deadlift", "Lying Leg Curl", "Deadlift"]
+        case .glutes: return ["Hip Thrust", "Back Squat", "Romanian Deadlift"]
+        case .lats: return ["Lat Pulldown", "Pull-Up", "Barbell Row"]
+        case .middleBack: return ["Seated Cable Row", "Barbell Row", "Dumbbell Row"]
+        case .lowerBack: return ["Back Extension", "Deadlift", "Romanian Deadlift"]
+        case .traps: return ["Barbell Shrug", "Dumbbell Shrug", "Deadlift"]
         case .chest: return ["Bench Press", "Dumbbell Bench Press", "Machine Chest Press"]
         case .shoulders: return ["Overhead Press", "Dumbbell Lateral Raise", "Machine Shoulder Press"]
         case .biceps: return ["Barbell Curl", "Dumbbell Curl", "Lat Pulldown"]
         case .triceps: return ["Triceps Pushdown", "Overhead Cable Extension", "Close-Grip Bench Press"]
+        case .forearms: return ["Wrist Curl", "Farmer's Walk", "Barbell Shrug"]
+        case .abdominals: return ["Cable Crunch", "Plank", "Hanging Leg Raise"]
         case .calves: return ["Standing Calf Raise", "Seated Calf Raise", "Calf Press on Leg Press"]
-        case .abs: return ["Cable Crunch", "Plank", "Hanging Leg Raise"]
+        case .tibialis: return ["Standing Calf Raise", "Seated Calf Raise"]
+        case .adductors: return ["Thigh Adductor", "Front Squat", "Leg Press"]
+        case .abductors: return ["Thigh Abductor", "Hip Thrust"]
+        case .hipFlexors: return ["Hanging Leg Raise", "Plank"]
+        case .neck: return ["Neck Flexion", "Barbell Shrug"]
+        case .rotatorCuff: return ["Cable External Rotation", "Dumbbell Lateral Raise"]
         }
     }
 
-    private static func preferredPatternOrder(for part: BodyPart) -> [MovementPattern] {
-        switch part {
-        case .legs: return [.squat, .hinge]
-        case .back: return [.horizontalPull, .verticalPull, .hinge]
+    private static func preferredPatternOrder(for group: MuscleGroup) -> [MovementPattern] {
+        switch group {
+        case .quadriceps: return [.squat, .hinge]
+        case .hamstrings, .glutes, .lowerBack: return [.hinge, .squat]
+        case .lats: return [.verticalPull, .horizontalPull]
+        case .middleBack, .traps: return [.horizontalPull, .verticalPull, .hinge]
         case .chest: return [.horizontalPush]
-        case .shoulders: return [.verticalPush, .horizontalPush]
+        case .shoulders, .rotatorCuff: return [.verticalPush, .horizontalPush]
         case .biceps: return [.verticalPull, .horizontalPull]
         case .triceps: return [.horizontalPush, .verticalPush]
-        case .calves: return [.locomotion, .squat]
-        case .abs: return [.core, .carry]
+        case .forearms: return [.carry, .horizontalPull]
+        case .calves, .tibialis: return [.locomotion, .squat]
+        case .abdominals, .hipFlexors: return [.core, .carry]
+        case .adductors, .abductors: return [.squat, .hinge]
+        case .neck: return [.horizontalPull]
         }
     }
 
@@ -1208,14 +1229,10 @@ public enum CoachPlanOptimizer {
             }
     }
 
-    private static func partDeficitSort(_ lhs: (key: BodyPart, value: Double),
-                                        _ rhs: (key: BodyPart, value: Double)) -> Bool {
+    private static func groupDeficitSort(_ lhs: (key: MuscleGroup, value: Double),
+                                         _ rhs: (key: MuscleGroup, value: Double)) -> Bool {
         if lhs.value != rhs.value { return lhs.value > rhs.value }
-        return partIndex(lhs.key) < partIndex(rhs.key)
-    }
-
-    private static func partIndex(_ part: BodyPart) -> Int {
-        BodyPart.allCases.firstIndex(of: part) ?? Int.max
+        return MuscleGroup.canonicalIndex(lhs.key) < MuscleGroup.canonicalIndex(rhs.key)
     }
 
     private static func stableID(_ value: String) -> String {

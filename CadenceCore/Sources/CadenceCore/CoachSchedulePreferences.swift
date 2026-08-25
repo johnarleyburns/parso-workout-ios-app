@@ -64,7 +64,6 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public var allowsTwoADays: Bool
     public var sameDayCardioTiming: SameDayCardioTiming
     public var dailyStepTarget: Int
-    public var excludedCoverageParts: Set<BodyPart>
     public var desiredSetsPerExercise: Int
     /// The muscle groups the coach programs toward and Home always shows a row
     /// for. Defaults to `MuscleGroup.defaultTracked` — the 13 groups the catalog
@@ -85,7 +84,6 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         restPreference: .defaultRolling,
         allowsTwoADays: false,
         sameDayCardioTiming: .afterStrength,
-        excludedCoverageParts: [],
         desiredSetsPerExercise: 3,
         trackedMuscleGroups: MuscleGroup.defaultTracked)
 
@@ -95,7 +93,6 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
                 allowsTwoADays: Bool = false,
                 sameDayCardioTiming: SameDayCardioTiming = .afterStrength,
                 dailyStepTarget: Int = 8_000,
-                excludedCoverageParts: Set<BodyPart> = [],
                 desiredSetsPerExercise: Int = 3,
                 trackedMuscleGroups: Set<MuscleGroup> = MuscleGroup.defaultTracked) {
         self.strengthDaysPerWeek = min(5, max(2, strengthDaysPerWeek))
@@ -104,7 +101,6 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         self.allowsTwoADays = allowsTwoADays
         self.sameDayCardioTiming = sameDayCardioTiming
         self.dailyStepTarget = min(20_000, max(2_000, dailyStepTarget))
-        self.excludedCoverageParts = excludedCoverageParts
         self.desiredSetsPerExercise = Self.clampDesiredSets(desiredSetsPerExercise)
         self.trackedMuscleGroups = trackedMuscleGroups.isEmpty
             ? MuscleGroup.defaultTracked : trackedMuscleGroups
@@ -118,7 +114,11 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         allowsTwoADays = try c.decodeIfPresent(Bool.self, forKey: .allowsTwoADays) ?? false
         sameDayCardioTiming = try c.decodeIfPresent(SameDayCardioTiming.self, forKey: .sameDayCardioTiming) ?? .afterStrength
         dailyStepTarget = min(20_000, max(2_000, try c.decodeIfPresent(Int.self, forKey: .dailyStepTarget) ?? 8_000))
-        excludedCoverageParts = try c.decodeIfPresent(Set<BodyPart>.self, forKey: .excludedCoverageParts) ?? []
+        // Pre-DB++ stores keyed coverage opt-outs by the retired 8-case `BodyPart`.
+        // `BodyPart` is gone, so decode those as raw strings and fold them into the
+        // tracked set below — an old store must not silently start coaching a group
+        // the user had switched off.
+        let excludedCoverageParts = try c.decodeIfPresent(Set<String>.self, forKey: .excludedCoverageParts) ?? []
         desiredSetsPerExercise = Self.clampDesiredSets(
             try c.decodeIfPresent(Int.self, forKey: .desiredSetsPerExercise) ?? 3
         )
@@ -130,11 +130,45 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         } else if excludedCoverageParts.isEmpty {
             trackedMuscleGroups = MuscleGroup.defaultTracked
         } else {
-            let excluded = excludedCoverageParts
+            let excluded = Set(excludedCoverageParts.map { $0.lowercased() })
             trackedMuscleGroups = MuscleGroup.defaultTracked.filter { group in
-                guard let part = BodyPart.part(forGroup: group) else { return true }
+                guard let part = Self.retiredBodyPart(forGroup: group) else { return true }
                 return !excluded.contains(part)
             }
+        }
+    }
+
+    /// `excludedCoverageParts` is decode-only: it is a pre-DB++ key folded into
+    /// `trackedMuscleGroups` on read, and writing it back would resurrect a
+    /// vocabulary the app no longer has.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(strengthDaysPerWeek, forKey: .strengthDaysPerWeek)
+        try c.encode(cardioDaysPerWeek, forKey: .cardioDaysPerWeek)
+        try c.encode(restPreference, forKey: .restPreference)
+        try c.encode(allowsTwoADays, forKey: .allowsTwoADays)
+        try c.encode(sameDayCardioTiming, forKey: .sameDayCardioTiming)
+        try c.encode(dailyStepTarget, forKey: .dailyStepTarget)
+        try c.encode(desiredSetsPerExercise, forKey: .desiredSetsPerExercise)
+        try c.encode(trackedMuscleGroups, forKey: .trackedMuscleGroups)
+    }
+
+    /// The retired `BodyPart` a group used to roll up into, as its raw string.
+    /// Read-only decode compatibility for stores written before the DB++ migration;
+    /// nothing else may depend on this coarse grouping. `forearms` had no coarse
+    /// bucket and deliberately returns nil, exactly as before.
+    private static func retiredBodyPart(forGroup group: MuscleGroup) -> String? {
+        switch group {
+        case .chest: return "chest"
+        case .lats, .middleBack, .lowerBack, .traps, .neck: return "back"
+        case .shoulders, .rotatorCuff: return "shoulders"
+        case .biceps: return "biceps"
+        case .triceps: return "triceps"
+        case .calves, .tibialis: return "calves"
+        case .abdominals: return "abs"
+        case .quadriceps, .hamstrings, .glutes, .adductors, .abductors, .hipFlexors:
+            return "legs"
+        case .forearms: return nil
         }
     }
 

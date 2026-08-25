@@ -3,9 +3,9 @@ import XCTest
 
 final class CoachSchedulePreferencesCodableTests: XCTestCase {
 
-    // MARK: - Legacy blob: missing excludedCoverageParts AND dailyStepTarget
+    // MARK: - Legacy blob: missing tracked groups AND dailyStepTarget
 
-    func testLegacyBlobMissingExcludedCoveragePartsAndDailyStepTarget() throws {
+    func testLegacyBlobMissingTrackedGroupsAndDailyStepTarget() throws {
         let legacyJSON = """
         {
           "strengthDaysPerWeek": 4,
@@ -37,15 +37,15 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         // Missing keys fall back to defaults.
         XCTAssertEqual(prefs.dailyStepTarget, 8_000,
                        "Missing dailyStepTarget should default to 8000")
-        XCTAssertEqual(prefs.excludedCoverageParts, [],
-                       "Missing excludedCoverageParts should default to empty set")
+        XCTAssertEqual(prefs.trackedMuscleGroups, MuscleGroup.defaultTracked,
+                       "A blob with no coverage keys at all should track the defaults")
         XCTAssertEqual(prefs.desiredSetsPerExercise, 3,
                        "Missing desiredSetsPerExercise should default to 3")
     }
 
-    // MARK: - Legacy blob: missing only excludedCoverageParts (had dailyStepTarget before the new field)
+    // MARK: - Legacy blob: missing only coverage opt-outs (had dailyStepTarget before the new field)
 
-    func testLegacyBlobMissingOnlyExcludedCoverageParts() throws {
+    func testLegacyBlobMissingOnlyCoverageOptOuts() throws {
         let legacyJSON = """
         {
           "strengthDaysPerWeek": 3,
@@ -70,10 +70,51 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         XCTAssertEqual(prefs.sameDayCardioTiming, .afterStrength)
         XCTAssertEqual(prefs.dailyStepTarget, 12_000,
                        "Existing dailyStepTarget should survive")
-        XCTAssertEqual(prefs.excludedCoverageParts, [],
-                       "Missing excludedCoverageParts should default to empty set")
+        XCTAssertEqual(prefs.trackedMuscleGroups, MuscleGroup.defaultTracked,
+                       "A blob with no coverage keys at all should track the defaults")
         XCTAssertEqual(prefs.desiredSetsPerExercise, 3,
                        "Missing desiredSetsPerExercise should default to 3")
+    }
+
+    // MARK: - Pre-DB++ coverage opt-outs fold into the tracked set
+
+    /// Before the DB++ migration a user switched coverage off per 8-case body part.
+    /// `BodyPart` is gone, but an old store must not silently start nagging about a
+    /// group the user had turned off — every group under an excluded part drops out
+    /// of `trackedMuscleGroups` on decode.
+    func testLegacyExcludedCoveragePartsFoldIntoTrackedGroups() throws {
+        let legacyJSON = """
+        {
+          "strengthDaysPerWeek": 3,
+          "cardioDaysPerWeek": 2,
+          "restPreference": {"rolling": {"everyNDays": 3}},
+          "allowsTwoADays": false,
+          "sameDayCardioTiming": "afterStrength",
+          "dailyStepTarget": 9000,
+          "excludedCoverageParts": ["abs", "calves"]
+        }
+        """
+        let prefs = try JSONDecoder().decode(CoachSchedulePreferences.self,
+                                             from: Data(legacyJSON.utf8))
+
+        XCTAssertFalse(prefs.trackedMuscleGroups.contains(.abdominals),
+                       "An excluded 'abs' opt-out must keep abdominals untracked")
+        XCTAssertFalse(prefs.trackedMuscleGroups.contains(.calves),
+                       "An excluded 'calves' opt-out must keep calves untracked")
+        XCTAssertTrue(prefs.trackedMuscleGroups.contains(.chest),
+                      "Groups the user never excluded stay tracked")
+        XCTAssertTrue(prefs.trackedMuscleGroups.contains(.quadriceps),
+                      "Groups the user never excluded stay tracked")
+    }
+
+    /// The retired key is decode-only: re-encoding must not resurrect a vocabulary
+    /// the app no longer has.
+    func testLegacyExcludedCoveragePartsIsNotWrittenBack() throws {
+        let prefs = CoachSchedulePreferences(trackedMuscleGroups: [.chest, .lats])
+        let data = try JSONEncoder().encode(prefs)
+        let json = try XCTUnwrap(String(data: data, encoding: .utf8))
+        XCTAssertFalse(json.contains("excludedCoverageParts"),
+                       "The retired BodyPart key must never be encoded again")
     }
 
     // MARK: - Round-trip stability
@@ -86,8 +127,8 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
             allowsTwoADays: true,
             sameDayCardioTiming: .separateLater,
             dailyStepTarget: 10_000,
-            excludedCoverageParts: [.abs, .calves],
-            desiredSetsPerExercise: 4
+            desiredSetsPerExercise: 4,
+            trackedMuscleGroups: [.abdominals, .calves]
         )
         let data = try JSONEncoder().encode(prefs)
         let decoded = try JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
@@ -98,7 +139,7 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         XCTAssertTrue(decoded.allowsTwoADays)
         XCTAssertEqual(decoded.sameDayCardioTiming, .separateLater)
         XCTAssertEqual(decoded.dailyStepTarget, 10_000)
-        XCTAssertEqual(decoded.excludedCoverageParts, [.abs, .calves])
+        XCTAssertEqual(decoded.trackedMuscleGroups, [.abdominals, .calves])
         XCTAssertEqual(decoded.desiredSetsPerExercise, 4)
     }
 
@@ -130,17 +171,17 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
                        "Desired sets above 4 should clamp to 4")
     }
 
-    // MARK: - ExcludedCoverageParts survives as a populated set
+    // MARK: - trackedMuscleGroups survives as a populated set
 
-    func testExcludedCoveragePartsSurvivesPopulatedSet() throws {
+    func testTrackedMuscleGroupsSurvivesPopulatedSet() throws {
         let prefs = CoachSchedulePreferences(
             strengthDaysPerWeek: 3,
-            excludedCoverageParts: [.abs, .calves, .biceps]
+            trackedMuscleGroups: [.abdominals, .calves, .biceps]
         )
         let data = try JSONEncoder().encode(prefs)
         let decoded = try JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
 
-        XCTAssertEqual(decoded.excludedCoverageParts, [.abs, .calves, .biceps])
+        XCTAssertEqual(decoded.trackedMuscleGroups, [.abdominals, .calves, .biceps])
         XCTAssertEqual(decoded.strengthDaysPerWeek, 3)
     }
 

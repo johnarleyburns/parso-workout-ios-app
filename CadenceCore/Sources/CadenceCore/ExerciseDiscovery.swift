@@ -1,26 +1,26 @@
 import Foundation
 
-/// Discovery helpers over the exercise catalog (feedback batch 8): a body-part
+/// Discovery helpers over the exercise catalog (feedback batch 8): a muscle-group
 /// index for fast filtering, a curated "popular" shortlist so the picker can hide
 /// the long tail behind a Browse/Search affordance, and gap-filling suggestions for
-/// the Home "body parts" quick-start. P2 retired the external EXRX.NET link in favor
+/// the Home muscle-group quick-start. P2 retired the external EXRX.NET link in favor
 /// of an in-app detail (public-domain instructions + images now ship on-device).
 public extension ExerciseLibrary {
 
-    /// Body parts an exercise trains, from its primary+secondary muscle ids.
-    static func bodyParts(of t: ExerciseTemplate) -> Set<BodyPart> {
-        BodyPart.parts(forMuscleIDs: t.muscleGroups)
+    /// Muscle groups an exercise trains, by DB++ role.
+    static func muscleGroups(of t: ExerciseTemplate) -> Set<MuscleGroup> {
+        t.trainedMuscleGroups
     }
 
-    /// Index: body part → the built-in exercises that train it, compound-first
+    /// Index: muscle group → the built-in exercises that train it, compound-first
     /// (compounds are the efficient choice for covering a gap), then by name.
-    static let byBodyPart: [BodyPart: [ExerciseTemplate]] = {
-        var index: [BodyPart: [ExerciseTemplate]] = [:]
+    static let byMuscleGroup: [MuscleGroup: [ExerciseTemplate]] = {
+        var index: [MuscleGroup: [ExerciseTemplate]] = [:]
         for t in starter {
-            for part in bodyParts(of: t) { index[part, default: []].append(t) }
+            for group in muscleGroups(of: t) { index[group, default: []].append(t) }
         }
-        for (part, list) in index {
-            index[part] = list.sorted {
+        for (group, list) in index {
+            index[group] = list.sorted {
                 if ($0.mechanics == .compound) != ($1.mechanics == .compound) {
                     return $0.mechanics == .compound
                 }
@@ -44,9 +44,9 @@ public extension ExerciseLibrary {
     static let popular: [ExerciseTemplate] = popularNames.compactMap { byName[$0.lowercased()] }
 
     /// Greedy set-cover: pick exercises (compounds first) that together cover as many
-    /// of the `missing` body parts as possible, fewest movements first. Used by the
-    /// body-parts quick-start as a fallback / supplement to reusing a past workout.
-    static func suggestions(forMissing missing: [BodyPart], limit: Int = 6) -> [ExerciseTemplate] {
+    /// of the `missing` muscle groups as possible, fewest movements first. Used by the
+    /// quick-start as a fallback / supplement to reusing a past workout.
+    static func suggestions(forMissing missing: [MuscleGroup], limit: Int = 6) -> [ExerciseTemplate] {
         guard !missing.isEmpty else { return [] }
         var remaining = Set(missing)
         var chosen: [ExerciseTemplate] = []
@@ -55,24 +55,32 @@ public extension ExerciseLibrary {
             ($0.mechanics == .compound ? 0 : 1, $0.name) < ($1.mechanics == .compound ? 0 : 1, $1.name)
         }
         while !remaining.isEmpty && chosen.count < limit {
-            // Pick the movement covering the most still-missing parts.
+            // Pick the movement covering the most still-missing groups.
             let best = pool
                 .filter { !chosen.contains($0) }
                 .max { a, b in
-                    bodyParts(of: a).intersection(remaining).count
-                        < bodyParts(of: b).intersection(remaining).count
+                    muscleGroups(of: a).intersection(remaining).count
+                        < muscleGroups(of: b).intersection(remaining).count
                 }
-            guard let best, !bodyParts(of: best).intersection(remaining).isEmpty else { break }
+            guard let best, !muscleGroups(of: best).intersection(remaining).isEmpty else { break }
             chosen.append(best)
-            remaining.subtract(bodyParts(of: best))
+            remaining.subtract(muscleGroups(of: best))
         }
         return chosen
     }
 }
 
 public extension Exercise {
-    /// Body parts this (possibly custom) exercise trains, from its muscle groups.
-    var bodyParts: Set<BodyPart> { BodyPart.parts(forMuscleIDs: muscleGroups) }
+    /// The muscle groups this (possibly custom) exercise trains — the picker's and
+    /// facet index's classification dimension. Reads the DB++ roles that already
+    /// back `volumeCredits`, so the picker and the volume ledger cannot disagree;
+    /// a movement that credits no volume still classifies by its muscle lists so
+    /// it stays findable under a group.
+    var trainedMuscleGroups: Set<MuscleGroup> {
+        let credited = Set(volumeCredits.keys)
+        if !credited.isEmpty { return credited }
+        return Set(MuscleGroup.canonicalize(primaryMuscles + secondaryMuscles))
+    }
 
     /// The de-duplicated facet chips shown in the exercise detail (level, equipment,
     /// mechanics, force, category). `force` and `category` both read "Push"/"Pull"
@@ -99,5 +107,15 @@ public enum ExerciseFacetTagBuilder {
         if let category { tags.append(category.displayName) }
         var seen = Set<String>()
         return tags.filter { seen.insert($0.lowercased()).inserted }
+    }
+}
+
+public extension ExerciseTemplate {
+    /// The muscle groups this catalog movement trains. Same rule as `Exercise`:
+    /// DB++ roles first, muscle lists as the fallback for non-eligible movements.
+    var trainedMuscleGroups: Set<MuscleGroup> {
+        let credited = Set(volumeCredits.keys)
+        if !credited.isEmpty { return credited }
+        return Set(MuscleGroup.canonicalize(primaryMuscles + secondaryMuscles))
     }
 }

@@ -4,7 +4,7 @@ import CadenceCore
 
 final class WatchExerciseSelectionTests: XCTestCase {
 
-    func testDefaultSectionsUseSharedBodyPartTaxonomyAndOtherRows() {
+    func testDefaultSectionsUseSharedMuscleGroupTaxonomyAndOtherRows() {
         let exercises = [
             Exercise(name: "Bench Press", muscleGroups: ["chest"], primaryMuscles: ["chest"]),
             Exercise(name: "Cable Row", muscleGroups: ["lats"], primaryMuscles: ["lats"]),
@@ -20,7 +20,7 @@ final class WatchExerciseSelectionTests: XCTestCase {
             exercises: exercises,
             recent: [exercises[2]],
             popularNames: ["Bench Press", "Back Squat"],
-            perBodyPartLimit: 2
+            perGroupLimit: 2
         )
 
         XCTAssertEqual(sections.first?.title, "My Last Exercises")
@@ -28,10 +28,12 @@ final class WatchExerciseSelectionTests: XCTestCase {
         XCTAssertTrue(sections.contains { $0.title == "Popular Exercises" && $0.exerciseNames == ["Bench Press", "Back Squat"] })
         XCTAssertFalse(sections.contains { $0.title == "Arms" })
 
-        for part in BodyPart.allCases {
+        // The watch picker shows the tracked groups by default — the seven the
+        // catalog cannot fill (neck, tibialis, rotator cuff, …) are behind "More".
+        for part in MuscleGroup.canonicalOrder.filter(\.isTrackedByDefault) {
             let section = sections.first { $0.title == part.displayName }
             XCTAssertNotNil(section, "Missing \(part.displayName)")
-            XCTAssertEqual(section?.otherBodyPart, part)
+            XCTAssertEqual(section?.otherMuscleGroup, part)
         }
 
         XCTAssertTrue(sections.first { $0.title == "Biceps" }?.exerciseNames.contains("Dumbbell Curl") == true)
@@ -39,7 +41,7 @@ final class WatchExerciseSelectionTests: XCTestCase {
         XCTAssertTrue(sections.first { $0.title == "Calves" }?.exerciseNames.contains("Standing Calf Raise") == true)
     }
 
-    func testFullListFiltersAndSortsByBodyPart() {
+    func testFullListFiltersAndSortsByMuscleGroup() {
         let exercises = [
             Exercise(name: "Z Calf Raise", muscleGroups: ["calves"], primaryMuscles: ["calves"]),
             Exercise(name: "A Calf Raise", muscleGroups: ["calves"], primaryMuscles: ["calves"]),

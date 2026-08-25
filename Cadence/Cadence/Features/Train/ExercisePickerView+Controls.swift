@@ -6,7 +6,7 @@ import CadenceFeatures
 extension ExercisePickerView {
     var browseModePicker: some View {
         Picker("Browse by", selection: $browseMode) {
-            Text("By Muscle Group").tag(BrowseMode.byBodyPart)
+            Text("By Muscle Group").tag(BrowseMode.byMuscleGroup)
             Text("By Equipment").tag(BrowseMode.byEquipment)
         }
         .pickerStyle(.segmented)
@@ -18,22 +18,22 @@ extension ExercisePickerView {
     var filterChips: some View {
         Group {
             switch browseMode {
-            case .byBodyPart: bodyPartFilterChips
+            case .byMuscleGroup: muscleGroupFilterChips
             case .byEquipment: equipmentFilterChips
             }
         }
     }
 
-    var bodyPartFilterChips: some View {
+    var muscleGroupFilterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                chip("All", active: selectedPart == nil) { selectedPart = nil }
+                chip("All", active: selectedGroup == nil) { selectedGroup = nil }
                     .accessibilityIdentifier("picker.filter.all")
-                ForEach(BodyPart.allCases) { part in
-                    chip(part.displayName, active: selectedPart == part) {
-                        selectedPart = (selectedPart == part) ? nil : part
+                ForEach(availableGroups) { group in
+                    chip(group.displayName, active: selectedGroup == group) {
+                        selectedGroup = (selectedGroup == group) ? nil : group
                     }
-                    .accessibilityIdentifier("picker.filter.\(part.rawValue)")
+                    .accessibilityIdentifier("picker.filter.\(group.rawValue)")
                 }
             }
             .padding(.vertical, 2)
@@ -58,7 +58,7 @@ extension ExercisePickerView {
         .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 0))
     }
 
-    // MARK: Sub-filter chips (byBodyPart: equipment, byEquipment: muscle group)
+    // MARK: Sub-filter chips (byMuscleGroup: equipment, byEquipment: muscle group)
 
     var equipmentChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -77,16 +77,16 @@ extension ExercisePickerView {
         .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 6, trailing: 0))
     }
 
-    var bodyPartSubChips: some View {
+    var muscleGroupSubChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                chip("All", active: selectedPart == nil) { selectedPart = nil }
+                chip("All", active: selectedGroup == nil) { selectedGroup = nil }
                     .accessibilityIdentifier("picker.filter.all")
-                ForEach(availableParts) { part in
-                    chip(part.displayName, active: selectedPart == part) {
-                        selectedPart = (selectedPart == part) ? nil : part
+                ForEach(availableGroups) { group in
+                    chip(group.displayName, active: selectedGroup == group) {
+                        selectedGroup = (selectedGroup == group) ? nil : group
                     }
-                    .accessibilityIdentifier("picker.filter.\(part.rawValue)")
+                    .accessibilityIdentifier("picker.filter.\(group.rawValue)")
                 }
             }
             .padding(.vertical, 2)
@@ -135,10 +135,9 @@ extension ExercisePickerView {
 
     func muscleSubtitle(_ ex: Exercise) -> String? {
         let ids = ex.primaryMuscles.isEmpty ? ex.muscleGroups : ex.primaryMuscles
-        guard !ids.isEmpty else { return nil }
-        return ids.prefix(3).map { id in
-            id.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
-        }.joined(separator: ", ")
+        let groups = MuscleGroup.canonicalize(ids)
+        guard !groups.isEmpty else { return nil }
+        return groups.prefix(3).map(\.displayName).joined(separator: ", ")
     }
 
     func create() {
@@ -185,26 +184,15 @@ extension ExercisePickerView {
                     }
                     .pickerStyle(.menu)
                     .onChange(of: selectedCreationCategory) { _, cat in
-                        let muscles = BodyPart.defaultMuscles(forCategory: cat)
-                        selectedCreationMuscles = Set(muscles)
-                        selectedCreationParts = BodyPart.parts(forCategory: cat)
-                    }
-                }
-
-                if !selectedCreationParts.isEmpty {
-                    Section("Muscle Groups (auto-filled from category)") {
-                        Text(selectedCreationParts.sorted { $0.rawValue < $1.rawValue }
-                            .map(\.displayName).joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        selectedCreationMuscles = Set(
+                            MuscleGroup.defaults(forCategory: cat).map(\.rawValue))
                     }
                 }
 
                 if !selectedCreationMuscles.isEmpty {
-                    Section("Muscles (auto-filled from category)") {
-                        Text(selectedCreationMuscles.sorted().map { id in
-                            id.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
-                        }.joined(separator: ", "))
+                    Section("Muscle Groups (auto-filled from category)") {
+                        Text(MuscleGroup.sorted(MuscleGroup.canonicalize(Array(selectedCreationMuscles)))
+                            .map(\.displayName).joined(separator: ", "))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -221,14 +209,13 @@ extension ExercisePickerView {
                 }
             }
             .onAppear {
-                if let cat = BodyPart.guessCategory(from: trimmedQuery) {
+                if let cat = ExerciseCategory.guess(fromName: trimmedQuery) {
                     selectedCreationCategory = cat
-                    selectedCreationMuscles = Set(BodyPart.defaultMuscles(forCategory: cat))
-                    selectedCreationParts = BodyPart.parts(forCategory: cat)
+                    selectedCreationMuscles = Set(
+                        MuscleGroup.defaults(forCategory: cat).map(\.rawValue))
                 } else {
                     selectedCreationCategory = .other
                     selectedCreationMuscles = []
-                    selectedCreationParts = []
                 }
             }
         }

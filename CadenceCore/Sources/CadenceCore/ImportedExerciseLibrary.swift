@@ -4,7 +4,7 @@ import Foundation
 /// transformed **on-device** into our own taxonomy. The document ships as a bundled
 /// package resource and is decoded by `ExerciseDatabase`; the transform here is a
 /// pure, `swift test`-verifiable function that maps the upstream record DB++ carries
-/// under `source` onto our `MuscleCatalog` ids, `Equipment`, and movement-split
+/// under `source` onto our `MuscleGroup` values, `Equipment`, and movement-split
 /// `ExerciseCategory`. Strength-pivot P2 (D2).
 ///
 /// DB++'s own annotation layer — direct/indirect/stabilizer muscle roles, volume
@@ -65,7 +65,7 @@ public enum ImportedExerciseLibrary {
 
     /// Transform one database record into our `ExerciseTemplate`, or `nil` if it maps
     /// to no known muscle (so every imported entry is guaranteed to have ≥1
-    /// `MuscleCatalog` id, satisfying catalog integrity).
+    /// `MuscleGroup` value, satisfying catalog integrity).
     static func template(from record: ExerciseDatabase.Record) -> ExerciseTemplate? {
         let e = record.source
         let annotation = record.annotation

@@ -34,23 +34,23 @@ extension WorkoutRepository {
         return (strength + cardio).sorted { $0.date > $1.date }
     }
 
-    /// Ranks past strength sessions by how many of the `missing` body parts they
-    /// cover (feedback batch 8 — Home "body parts" quick-start). A session's coverage
-    /// is the union of its logged exercises' body parts intersected with `missing`.
-    /// Returns only sessions covering ≥1 missing part, most-covered first, ties
+    /// Ranks past strength sessions by how many of the `missing` muscle groups they
+    /// cover (feedback batch 8 — Home muscle-group quick-start). A session's coverage
+    /// is the union of its logged exercises' groups intersected with `missing`.
+    /// Returns only sessions covering ≥1 missing group, most-covered first, ties
     /// broken by recency. `sessions` is assumed newest-first (as from `allSessions`).
     public static func workoutsByMissingCoverage(_ sessions: [WorkoutSession],
-                                                 missing: [BodyPart])
-        -> [(session: WorkoutSession, covered: [BodyPart])] {
+                                                 missing: [MuscleGroup])
+        -> [(session: WorkoutSession, covered: [MuscleGroup])] {
         guard !missing.isEmpty else { return [] }
         let want = Set(missing)
-        let ranked: [(WorkoutSession, [BodyPart])] = sessions.compactMap { s in
-            var hit = Set<BodyPart>()
-            for ex in s.exercisesInOrder { hit.formUnion(BodyPart.parts(forMuscleIDs: ex.muscleGroups)) }
+        let ranked: [(WorkoutSession, [MuscleGroup])] = sessions.compactMap { s in
+            var hit = Set<MuscleGroup>()
+            for ex in s.exercisesInOrder { hit.formUnion(MuscleGroup.canonicalize(ex.muscleGroups)) }
             let covered = want.intersection(hit)
             guard !covered.isEmpty else { return nil }
             // Stable display order for the covered chips.
-            return (s, BodyPart.allCases.filter { covered.contains($0) })
+            return (s, MuscleGroup.sorted(covered))
         }
         // `sessions` is already newest-first, so a stable sort by covered-count desc
         // keeps recency as the tie-breaker.

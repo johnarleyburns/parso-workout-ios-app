@@ -30,19 +30,19 @@ final class WeeklyStatsTests: XCTestCase {
         XCTAssertEqual(WeeklyStats.volumeKg([session], since: since), 500, accuracy: 0.001)
     }
 
-    func testBodyPartsFromWeeksSessions() throws {
+    func testMuscleGroupsFromWeeksSessions() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(title: "Legs", in: ctx)
         let squat = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", in: ctx)
         _ = try WorkoutRepository.addSet(to: session, exercise: squat, weightKg: 140, reps: 5, in: ctx)
         let since = WeeklyStats.weekStart()
-        let (hit, missing) = WeeklyStats.bodyParts([session], since: since)
+        let (hit, missing) = WeeklyStats.muscleGroups([session], since: since)
         // Back Squat trains quadriceps and glutes directly and the adductors
         // indirectly — all legs. The lower back, hamstrings and calves only
         // stabilise, so the squat no longer credits the back (DB++ adoption).
-        XCTAssertTrue(hit.contains(.legs))
-        XCTAssertFalse(hit.contains(.back))
-        XCTAssertTrue(missing.contains(.back))
+        XCTAssertTrue(hit.contains(.quadriceps))
+        XCTAssertFalse(hit.contains(.lats))
+        XCTAssertTrue(missing.contains(.lats))
         XCTAssertTrue(missing.contains(.chest))
     }
 

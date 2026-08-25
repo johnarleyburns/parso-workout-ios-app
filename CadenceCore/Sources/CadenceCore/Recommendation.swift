@@ -156,33 +156,48 @@ public extension Recommendation {
     /// When no specific exercise is named (goal-level recs like starter / add-volume),
     /// provide a sensible default so the logger doesn't open empty.
     private var defaultExerciseNames: [String] {
-        if let part {
-            return [Self.partDefaultExercise(part)]
+        if let group {
+            return [Self.defaultExercise(for: group)]
         }
         // Full-body starter: three compound lifts.
         return ["Back Squat", "Bench Press", "Deadlift"]
     }
 
-    /// A representative compound exercise for the given body part.
-    static func partDefaultExercise(_ part: BodyPart) -> String {
-        switch part {
-        case .chest: return "Bench Press"
-        case .back: return "Deadlift"
-        case .shoulders: return "Overhead Press"
-        case .legs: return "Back Squat"
+    /// A representative exercise for the given muscle group — the lift the logger
+    /// opens with when a recommendation names a group but no specific movement.
+    /// Every name here must resolve in `ExerciseLibrary.starter`
+    /// (`testEveryDefaultExerciseNameExists` fails if one stops doing so).
+    static func defaultExercise(for group: MuscleGroup) -> String {
+        switch group {
+        case .abdominals: return "Crunches"
+        case .abductors: return "Thigh Abductor"
+        case .adductors: return "Thigh Adductor"
         case .biceps: return "Barbell Curl"
-        case .triceps: return "Tricep Dip"
         case .calves: return "Standing Calf Raise"
-        case .abs: return "Plank"
+        case .chest: return "Bench Press"
+        case .forearms: return "Wrist Curl"
+        case .glutes: return "Hip Thrust"
+        case .hamstrings: return "Romanian Deadlift"
+        case .lats: return "Lat Pulldown"
+        case .lowerBack: return "Back Extension"
+        case .middleBack: return "Seated Cable Row"
+        case .neck: return "Neck Flexion"
+        case .quadriceps: return "Back Squat"
+        case .shoulders: return "Overhead Press"
+        case .traps: return "Barbell Shrug"
+        case .triceps: return "Triceps Pushdown"
+        case .tibialis: return "Standing Calf Raise"
+        case .rotatorCuff: return "Cable External Rotation"
+        case .hipFlexors: return "Hanging Leg Raise"
         }
     }
 
     /// The session/history title for a "Do this workout" launch: the lift for a
-    /// single-lift rec, the body part for an add-volume rec, else a neutral label.
+    /// single-lift rec, the muscle group for an add-volume rec, else a neutral label.
     var prescribedTitle: String {
         if let exercise { return exercise }
         if kind == .starter { return "Full-body session" }
-        if let part { return "\(part.displayName) focus" }
+        if let group { return "\(group.displayName) focus" }
         return "Coach session"
     }
 }
@@ -194,7 +209,7 @@ public extension Recommendation {
 public struct Recommendation: Identifiable, Sendable, Equatable {
     public let id: String
     public let kind: RecommendationKind
-    public let part: BodyPart?      // the body part this concerns, if any
+    public let group: MuscleGroup?  // the muscle group this concerns, if any
     public let exercise: String?    // the lift this concerns, if any
     public let title: String        // short headline, e.g. "Progress your squat"
     public let action: String       // the imperative one-liner, e.g. "Add a rep: 5×102.5 kg"
@@ -232,7 +247,7 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
 
     public init(id: String,
                 kind: RecommendationKind,
-                part: BodyPart? = nil,
+                group: MuscleGroup? = nil,
                 exercise: String? = nil,
                 title: String,
                 action: String,
@@ -251,7 +266,7 @@ public struct Recommendation: Identifiable, Sendable, Equatable {
                 minimumEligibility: [String] = []) {
         self.id = id
         self.kind = kind
-        self.part = part
+        self.group = group
         self.exercise = exercise
         self.title = title
         self.action = action

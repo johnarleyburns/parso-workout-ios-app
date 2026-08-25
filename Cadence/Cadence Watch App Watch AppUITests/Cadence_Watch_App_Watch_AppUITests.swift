@@ -38,9 +38,9 @@ final class WatchSmokeTests: XCTestCase {
                       "Watch exercise picker did not expose search first")
         XCTAssertTrue(app.buttons["watchAddExercise.custom"].waitForExistence(timeout: 10),
                       "Watch exercise search did not expose custom exercise creation")
-        XCTAssertTrue(app.tapButton("watchAddExercise.category.chest", scrollAttempts: 4),
+        XCTAssertTrue(app.tapButton("watchAddExercise.category.chest"),
                       "Watch exercise picker did not show categories")
-        XCTAssertTrue(app.tapButton("watchAddExercise.row.Alternating Floor Press"),
+        XCTAssertTrue(app.tapButtonAfterSmallScroll("watchAddExercise.row.Alternating Floor Press", attempts: 8),
                       "Watch exercise picker did not show a chest exercise")
         XCTAssertTrue(app.tapButton("watchAddExercise.previewAdd"),
                       "Watch exercise preview did not show Add")
@@ -75,13 +75,13 @@ final class WatchSmokeTests: XCTestCase {
 
         XCTAssertTrue(app.tapButton("watchStrength.addExercise", scrollAttempts: 4),
                       "Could not add a second exercise")
-        XCTAssertTrue(app.tapButton("watchAddExercise.category.chest", scrollAttempts: 4),
+        XCTAssertTrue(app.tapButton("watchAddExercise.category.chest"),
                       "Second watch exercise picker did not show categories")
-        XCTAssertTrue(app.tapButtonAfterSmallScroll("watchAddExercise.row.Alternating Renegade Row"),
+        XCTAssertTrue(app.tapButtonAfterSmallScroll("watchAddExercise.row.Barbell Bench Press - Medium Grip", attempts: 8),
                       "Watch exercise picker did not show a second chest exercise")
         XCTAssertTrue(app.tapButton("watchAddExercise.previewAdd", scrollAttempts: 4),
                       "Watch exercise preview did not add the second exercise")
-        XCTAssertTrue(app.tapButton("watchStrength.deleteExercise.Alternating Renegade Row", scrollAttempts: 4),
+        XCTAssertTrue(app.tapButton("watchStrength.deleteExercise.Barbell Bench Press - Medium Grip", scrollAttempts: 4),
                       "Watch exercise delete was not available")
 
         XCTAssertTrue(app.tapButton("watchStrength.deleteWorkout", scrollAttempts: 4),
@@ -109,6 +109,12 @@ private extension XCUIApplication {
         for _ in 0...attempts {
             if button.waitForExistence(timeout: 1), button.isHittable {
                 button.tap()
+                return true
+            }
+            if button.exists, windows.firstMatch.frame.intersects(button.frame) {
+                // A watch List can leave its edge treatment over a visible row.
+                // Its own coordinate remains the reliable hit target.
+                button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
                 return true
             }
             let start = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))

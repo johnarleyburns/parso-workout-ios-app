@@ -28,8 +28,8 @@ public enum ExerciseSearch {
         if isLateral { ["isolateral", "unilateral", "single arm", "single leg"].forEach { tokens.insert($0) } }
         if let force { tokens.insert(force.rawValue) }
         if let mechanics { tokens.insert(mechanics.rawValue) }
-        for m in primaryMuscles + secondaryMuscles {
-            MuscleCatalog.searchTerms(for: m).forEach { tokens.insert(normalize($0)) }
+        for group in MuscleGroup.canonicalize(primaryMuscles + secondaryMuscles) {
+            group.searchTerms.forEach { tokens.insert(normalize($0)) }
         }
         return tokens.filter { !$0.isEmpty }.sorted()
     }

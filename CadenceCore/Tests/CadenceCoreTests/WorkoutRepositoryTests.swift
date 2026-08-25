@@ -218,9 +218,9 @@ final class WorkoutRepositoryTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: b, exercise: curl, weightKg: 15, reps: 10, in: ctx)
 
         let ranked = WorkoutRepository.workoutsByMissingCoverage(
-            try WorkoutRepository.allSessions(ctx), missing: [.back, .calves, .chest])
+            try WorkoutRepository.allSessions(ctx), missing: [.lats, .calves, .chest])
         XCTAssertEqual(ranked.first?.session.id, a.id, "the session covering the most missing parts ranks first")
-        XCTAssertEqual(Set(ranked.first?.covered ?? []), Set([.back, .calves]))
+        XCTAssertEqual(Set(ranked.first?.covered ?? []), Set([.lats, .calves]))
         XCTAssertFalse(ranked.contains { $0.session.id == b.id }, "a session covering no missing part is excluded")
     }
 

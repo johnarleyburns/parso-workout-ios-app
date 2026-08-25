@@ -17,7 +17,7 @@ public struct StrengthEventDetails: Sendable, Equatable {
         public let exerciseID: String
         public let exerciseName: String
         public let patterns: Set<MovementPattern>
-        public let bodyParts: Set<BodyPart>
+        public let muscleGroups: Set<MuscleGroup>
         public let hardSetCount: Int
         public let topSetWeightKg: Double
         public let topSetReps: Int
@@ -179,7 +179,7 @@ extension TrainingEvent {
             let hardSets = entry.sets
             let primaryMuscles = ex.primaryMuscles
             let patterns = MovementPattern.patterns(forExerciseNamed: name, primaryMuscles: primaryMuscles)
-            let bodyParts = BodyPart.parts(forMuscleIDs: primaryMuscles)
+            let muscleGroups = Set(MuscleGroup.canonicalize(primaryMuscles))
             let hardSetCount = hardSets.count
             totalHardSets += hardSetCount
 
@@ -202,7 +202,7 @@ extension TrainingEvent {
                 exerciseID: ex.id.uuidString,
                 exerciseName: name,
                 patterns: patterns,
-                bodyParts: bodyParts,
+                muscleGroups: muscleGroups,
                 hardSetCount: hardSetCount,
                 topSetWeightKg: topWeight,
                 topSetReps: topReps,

@@ -33,16 +33,16 @@ public struct IntensityDistribution: Equatable, Sendable {
 /// get one. Canonical kilograms.
 public struct LiftSnapshot: Equatable, Sendable {
     public let exercise: String
-    public let part: BodyPart?            // primary body part, for grouping
+    public let group: MuscleGroup?        // primary muscle group, for grouping
     public let topSetWeightKg: Double     // heaviest loaded working set this week
     public let topSetReps: Int            // reps achieved on that set
     public let bestE1RM: Double           // best estimated 1RM this week
     public let trend: TrendDirection?     // vs the prior week (nil if no prior data)
 
-    public init(exercise: String, part: BodyPart?, topSetWeightKg: Double,
+    public init(exercise: String, group: MuscleGroup?, topSetWeightKg: Double,
                 topSetReps: Int, bestE1RM: Double, trend: TrendDirection?) {
         self.exercise = exercise
-        self.part = part
+        self.group = group
         self.topSetWeightKg = topSetWeightKg
         self.topSetReps = topSetReps
         self.bestE1RM = bestE1RM
@@ -66,20 +66,11 @@ public struct TrainingFacts: Sendable {
     /// Weekly working-set volume trend per muscle group (this week vs prior).
     public let volumeTrendByGroup: [MuscleGroup: TrendDirection]
 
-    /// Working sets per body part over the trailing 7 days.
-    ///
-    /// Transitional: rolled up from `weeklySetsByGroup` so the coach optimizer and
-    /// the rule engine keep their `BodyPart` dimension until phase 6 of the DB++
-    /// adoption retires it. A part is credited once per set at its best member
-    /// credit, which is exactly the primary/secondary semantics it had before.
-    public let weeklySetsByPart: [BodyPart: Double]
-    /// The same tally keyed by `MuscleGroup` raw value, for callers that work in
+    /// The weekly tally keyed by `MuscleGroup` raw value, for callers that work in
     /// strings. Derived from `weeklySetsByGroup`.
     public var weeklySetsByMuscle: [String: Double] {
         Dictionary(uniqueKeysWithValues: weeklySetsByGroup.map { ($0.key.rawValue, $0.value) })
     }
-    /// Distinct training days per body part over the trailing 7 days.
-    public let frequencyByPart: [BodyPart: Int]
     /// Per exercise name: e1RM trend (recent 7 days vs the prior 7), only for lifts
     /// with data in both windows.
     public let e1RMTrendByExercise: [String: TrendDirection]
@@ -118,9 +109,6 @@ public struct TrainingFacts: Sendable {
     /// Per lift: number of logged sessions since the last load drop (>10% vs prior
     /// session's top set). Equals the full session count if never deloaded.
     public let sessionsSinceDeloadByExercise: [String: Int]
-    /// Per body part: weekly working-set volume trend (this week vs prior week).
-    /// Transitional, like `weeklySetsByPart`.
-    public let volumeTrendByPart: [BodyPart: TrendDirection]
 
     public var assessedE1RMs: [String: Double] {
         var result: [String: Double] = [:]
@@ -147,8 +135,6 @@ public struct TrainingFacts: Sendable {
     public init(weeklySetsByGroup: [MuscleGroup: Double] = [:],
                 frequencyByGroup: [MuscleGroup: Int] = [:],
                 volumeTrendByGroup: [MuscleGroup: TrendDirection] = [:],
-                weeklySetsByPart: [BodyPart: Double],
-                frequencyByPart: [BodyPart: Int],
                 e1RMTrendByExercise: [String: TrendDirection],
                 intensity: IntensityDistribution,
                 avgRPE: Double?,
@@ -160,15 +146,12 @@ public struct TrainingFacts: Sendable {
                 liftSnapshots: [String: LiftSnapshot] = [:],
                 repeatedDeclineByExercise: [String: Int] = [:],
                 sessionsSinceDeloadByExercise: [String: Int] = [:],
-                 volumeTrendByPart: [BodyPart: TrendDirection] = [:],
                  goal: TrainingGoal,
                  experience: ExperienceLevel,
                  incompleteCustomExerciseNames: [String] = []) {
         self.weeklySetsByGroup = weeklySetsByGroup
         self.frequencyByGroup = frequencyByGroup
         self.volumeTrendByGroup = volumeTrendByGroup
-        self.weeklySetsByPart = weeklySetsByPart
-        self.frequencyByPart = frequencyByPart
         self.e1RMTrendByExercise = e1RMTrendByExercise
         self.intensity = intensity
         self.avgRPE = avgRPE
@@ -180,7 +163,6 @@ public struct TrainingFacts: Sendable {
         self.liftSnapshots = liftSnapshots
         self.repeatedDeclineByExercise = repeatedDeclineByExercise
         self.sessionsSinceDeloadByExercise = sessionsSinceDeloadByExercise
-        self.volumeTrendByPart = volumeTrendByPart
         self.goal = goal
         self.experience = experience
         self.incompleteCustomExerciseNames = incompleteCustomExerciseNames
@@ -211,12 +193,9 @@ public extension TrainingFacts {
             }
         }
 
-        // Weekly sets + frequency per muscle group, with the body-part rollup
-        // derived from it (transitional — see `weeklySetsByPart`).
+        // Weekly sets + frequency per muscle group.
         var setsByGroup: [MuscleGroup: Double] = [:]
         var daysByGroup: [MuscleGroup: Set<Date>] = [:]
-        var setsByPart: [BodyPart: Double] = [:]
-        var daysByPart: [BodyPart: Set<Date>] = [:]
         for ws in weekSets {
             let credits = creditedGroups(for: ws.exercise)
             let day = cal.startOfDay(for: ws.date)
@@ -224,19 +203,7 @@ public extension TrainingFacts {
                 setsByGroup[group, default: 0] += weight
                 daysByGroup[group, default: []].insert(day)
             }
-            // A part is credited once per set at its best member credit, which
-            // reproduces the primary/secondary semantics it had before.
-            var partCredits: [BodyPart: Double] = [:]
-            for (group, weight) in credits {
-                guard let part = BodyPart.part(forGroup: group) else { continue }
-                partCredits[part] = max(partCredits[part] ?? 0, weight)
-            }
-            for (part, weight) in partCredits {
-                setsByPart[part, default: 0] += weight
-                daysByPart[part, default: []].insert(day)
-            }
         }
-        let frequencyByPart = daysByPart.mapValues { $0.count }
         let frequencyByGroup = daysByGroup.mapValues { $0.count }
 
         // e1RM reference per exercise (best across all provided history) + windowed
@@ -298,10 +265,11 @@ public extension TrainingFacts {
         }
         var liftSnapshots: [String: LiftSnapshot] = [:]
         for (name, top) in topSet {
-            let part = BodyPart.parts(forMuscleIDs: top.exercise.primaryMuscles).sorted { $0.rawValue < $1.rawValue }.first
+            let group = MuscleGroup.canonicalize(top.exercise.primaryMuscles)
+                .min { MuscleGroup.canonicalIndex($0) < MuscleGroup.canonicalIndex($1) }
             liftSnapshots[name] = LiftSnapshot(
                 exercise: name,
-                part: part,
+                group: group,
                 topSetWeightKg: top.weight,
                 topSetReps: top.reps,
                 bestE1RM: bestRecent[name] ?? WorkoutMath.estimated1RM(weight: top.weight, reps: top.reps, formula: formula),
@@ -322,24 +290,17 @@ public extension TrainingFacts {
 
         // Phase 2 strength deltas (additive; not consumed by the engine yet).
 
-        // Prior-week volume → weekly volume trend, per group and per part.
+        // Prior-week volume → weekly volume trend, per group.
         var priorSetsByGroup: [MuscleGroup: Double] = [:]
-        var priorSetsByPart: [BodyPart: Double] = [:]
         for session in sessions where session.date >= priorStart && session.date < weekStart {
             for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 {
                 guard let ex = set.exercise else { continue }
-                let credits = creditedGroups(for: ex)
-                var partCredits: [BodyPart: Double] = [:]
-                for (group, weight) in credits {
+                for (group, weight) in creditedGroups(for: ex) {
                     priorSetsByGroup[group, default: 0] += weight
-                    guard let part = BodyPart.part(forGroup: group) else { continue }
-                    partCredits[part] = max(partCredits[part] ?? 0, weight)
                 }
-                for (part, weight) in partCredits { priorSetsByPart[part, default: 0] += weight }
             }
         }
         let volumeTrendByGroup = trend(current: setsByGroup, prior: priorSetsByGroup)
-        let volumeTrendByPart = trend(current: setsByPart, prior: priorSetsByPart)
 
         // Weekly-best e1RM per lift → trailing consecutive-decline count.
         // Uses effective load.
@@ -399,8 +360,6 @@ public extension TrainingFacts {
         return TrainingFacts(weeklySetsByGroup: setsByGroup,
                              frequencyByGroup: frequencyByGroup,
                              volumeTrendByGroup: volumeTrendByGroup,
-                             weeklySetsByPart: setsByPart,
-                             frequencyByPart: frequencyByPart,
                              e1RMTrendByExercise: trends,
                              intensity: intensity,
                              avgRPE: avgRPE,
@@ -412,7 +371,6 @@ public extension TrainingFacts {
                              liftSnapshots: liftSnapshots,
                              repeatedDeclineByExercise: repeatedDecline,
                              sessionsSinceDeloadByExercise: sessionsSinceDeload,
-                             volumeTrendByPart: volumeTrendByPart,
                              goal: goal,
                              experience: experience,
                              incompleteCustomExerciseNames: incompleteCustomExerciseNames)

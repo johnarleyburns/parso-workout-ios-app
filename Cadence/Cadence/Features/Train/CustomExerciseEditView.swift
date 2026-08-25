@@ -14,21 +14,12 @@ struct CustomExerciseEditView: View {
     @State private var selectedCategory: ExerciseCategory?
     @State private var selectedMechanics: Mechanics?
     @State private var selectedForce: Force?
-    @State private var selectedBodyParts: Set<BodyPart> = []
     @State private var selectedMuscleIDs: Set<String> = []
     @State private var selectedSecondaryIDs: Set<String> = []
-
-    private var allMuscles: [Muscle] { MuscleCatalog.all }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Muscle Groups") {
-                    bodyPartChips
-                    Text("Tap a muscle group to select its primary muscles. Fine-tune in the Muscles section below.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-
                 Section("Equipment") {
                     Picker("Equipment", selection: $selectedEquipment) {
                         Text("None").tag(Equipment?.none)
@@ -70,6 +61,8 @@ struct CustomExerciseEditView: View {
                 }
 
                 Section("Primary Muscles") {
+                    Text("The muscles this movement trains directly — what its sets count toward.")
+                        .font(.caption).foregroundStyle(.secondary)
                     muscleGrid(selected: $selectedMuscleIDs)
                 }
 
@@ -89,65 +82,35 @@ struct CustomExerciseEditView: View {
                 }
             }
             .onAppear { loadExisting() }
-            .onChange(of: selectedBodyParts) { _, parts in applyBodyPartSelection(parts) }
         }
         .presentationDetents([.large])
     }
 
-    // MARK: - Body part chips
-
-    private var bodyPartChips: some View {
-        FlowLayout(spacing: 8) {
-            ForEach(BodyPart.allCases) { part in
-                chip(part.displayName, selected: selectedBodyParts.contains(part)) {
-                    if selectedBodyParts.contains(part) {
-                        selectedBodyParts.remove(part)
-                    } else {
-                        selectedBodyParts.insert(part)
-                    }
-                }
-            }
-        }
-    }
-
-    private func applyBodyPartSelection(_ parts: Set<BodyPart>) {
-        for part in parts {
-            let muscleIDs = bodyPartMuscleIDs[part] ?? []
-            selectedMuscleIDs.formUnion(muscleIDs)
-        }
-    }
-
-    private var bodyPartMuscleIDs: [BodyPart: Set<String>] {
-        var map: [BodyPart: Set<String>] = [:]
-        for muscle in allMuscles {
-            guard let bp = BodyPart.part(forMuscleID: muscle.id) else { continue }
-            map[bp, default: []].insert(muscle.id)
-        }
-        return map
-    }
-
     // MARK: - Muscle grid
 
+    /// One chip per `MuscleGroup`, grouped by body region for scanability. The
+    /// groups are the same dimension the coach counts volume in, so what the user
+    /// tags here is exactly what their sets credit (decision D2).
     private func muscleGrid(selected: Binding<Set<String>>) -> some View {
-        let grouped = Dictionary(grouping: allMuscles, by: { $0.region })
+        let grouped = Dictionary(grouping: MuscleGroup.canonicalOrder, by: \.region)
         return ForEach(BodyRegion.allCases, id: \.self) { region in
-            if let muscles = grouped[region], !muscles.isEmpty {
+            if let groups = grouped[region], !groups.isEmpty {
                 Section(region.displayName) {
-                    muscleChips(muscles, selected: selected)
+                    muscleChips(MuscleGroup.sorted(groups), selected: selected)
                 }
             }
         }
     }
 
-    private func muscleChips(_ muscles: [Muscle], selected: Binding<Set<String>>) -> some View {
+    private func muscleChips(_ groups: [MuscleGroup], selected: Binding<Set<String>>) -> some View {
         FlowLayout(spacing: 6) {
-            ForEach(muscles) { muscle in
-                let isSelected = selected.wrappedValue.contains(muscle.id)
-                chip(muscle.scientific, selected: isSelected) {
+            ForEach(groups) { group in
+                let isSelected = selected.wrappedValue.contains(group.rawValue)
+                chip(group.displayName, selected: isSelected) {
                     if isSelected {
-                        selected.wrappedValue.remove(muscle.id)
+                        selected.wrappedValue.remove(group.rawValue)
                     } else {
-                        selected.wrappedValue.insert(muscle.id)
+                        selected.wrappedValue.insert(group.rawValue)
                     }
                 }
             }
@@ -173,14 +136,10 @@ struct CustomExerciseEditView: View {
         selectedCategory = exercise.categoryValue
         selectedMechanics = exercise.mechanicsValue
         selectedForce = exercise.forceValue
-        selectedMuscleIDs = Set(exercise.primaryMuscles)
-        selectedSecondaryIDs = Set(exercise.secondaryMuscles)
-
-        let bpSet = Set(BodyPart.allCases.filter { bp in
-            let ids = bodyPartMuscleIDs[bp] ?? []
-            return !selectedMuscleIDs.intersection(ids).isEmpty
-        })
-        selectedBodyParts = bpSet
+        // Canonicalize on load so an exercise stored with pre-DB++ muscle ids
+        // ("quads", "delts") shows its chips selected rather than looking untagged.
+        selectedMuscleIDs = Set(MuscleGroup.canonicalize(exercise.primaryMuscles).map(\.rawValue))
+        selectedSecondaryIDs = Set(MuscleGroup.canonicalize(exercise.secondaryMuscles).map(\.rawValue))
     }
 
     private func save() {

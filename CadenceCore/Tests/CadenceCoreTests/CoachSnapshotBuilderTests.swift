@@ -56,7 +56,7 @@ final class CoachSnapshotBuilderTests: XCTestCase {
             schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
 
         // Facts reflect the logged chest volume (the builder wired TrainingFacts).
-        XCTAssertEqual(snap.facts.weeklySetsByPart[.chest], 8)
+        XCTAssertEqual(snap.facts.weeklySetsByGroup[.chest], 8)
         // A weekly plan + a decision were produced, and every insight is cited.
         XCTAssertFalse(snap.plan.days.isEmpty)
         XCTAssertFalse(snap.decision.primary.id.isEmpty)
@@ -124,11 +124,11 @@ final class CoachSnapshotBuilderTests: XCTestCase {
 
         // RED: No abs or calves "low volume" nag in the insights.
         let absNag = snap.insights.first {
-            $0.part == .abs && $0.kind == .volume && $0.severity == .attention
+            $0.group == .abdominals && $0.kind == .volume && $0.severity == .attention
                 && $0.title.localizedCaseInsensitiveContains("low")
         }
         let calvesNag = snap.insights.first {
-            $0.part == .calves && $0.kind == .volume && $0.severity == .attention
+            $0.group == .calves && $0.kind == .volume && $0.severity == .attention
                 && $0.title.localizedCaseInsensitiveContains("low")
         }
         XCTAssertNil(absNag, "Abs should not read 'low' when coach never planned them")
@@ -169,7 +169,7 @@ final class CoachSnapshotBuilderTests: XCTestCase {
             sessions: sessions, cardio: [], assessments: [], hasPainToday: false,
             goal: .hypertrophy, experience: .intermediate, formula: .epley,
             schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
-        XCTAssertEqual(before.facts.weeklySetsByPart[.chest], 8)
+        XCTAssertEqual(before.facts.weeklySetsByGroup[.chest], 8)
 
         sessions[0].deletedAt = Date()
         try ctx.save()
@@ -178,7 +178,7 @@ final class CoachSnapshotBuilderTests: XCTestCase {
             goal: .hypertrophy, experience: .intermediate, formula: .epley,
             schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
         // Soft-deleted sessions are excluded from the facts the coach reasons over.
-        XCTAssertEqual(after.facts.weeklySetsByPart[.chest] ?? 0, 0)
+        XCTAssertEqual(after.facts.weeklySetsByGroup[.chest] ?? 0, 0)
     }
 
     // MARK: - Phase F (field-test-fixes): coachFacts exposed

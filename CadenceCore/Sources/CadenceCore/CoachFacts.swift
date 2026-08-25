@@ -17,7 +17,7 @@ public struct RecoveryWindow: Sendable, Equatable {
 public enum RecoveryReason: String, Sendable, Equatable {
     case exactLift
     case pattern
-    case bodyPart
+    case muscleGroup
     case fatigue
     case pain
     case none
@@ -26,70 +26,70 @@ public enum RecoveryReason: String, Sendable, Equatable {
 public struct RecoveryState: Sendable, Equatable {
     public let byExercise: [String: RecoveryWindow]
     public let byPattern: [MovementPattern: RecoveryWindow]
-    public let byBodyPart: [BodyPart: RecoveryWindow]
+    public let byGroup: [MuscleGroup: RecoveryWindow]
     public let wholeBody: RecoveryWindow?
     /// Soft recency penalty (0.0 = fully recovered, 1.0 = just trained). Keyed
-    /// by canonical exercise name, movement family, and body part. Penalty decays
+    /// by canonical exercise name, movement family, and muscle group. Penalty decays
     /// linearly from 1.0 at 0h to 0.0 at 48h.
     public let softByExercise: [String: Double]
     public let softByFamily: [MovementFamily: Double]
-    public let softByBodyPart: [BodyPart: Double]
+    public let softByGroup: [MuscleGroup: Double]
 
-    public static let empty = RecoveryState(byExercise: [:], byPattern: [:], byBodyPart: [:],
+    public static let empty = RecoveryState(byExercise: [:], byPattern: [:], byGroup: [:],
                                              wholeBody: nil,
-                                             softByExercise: [:], softByFamily: [:], softByBodyPart: [:])
+                                             softByExercise: [:], softByFamily: [:], softByGroup: [:])
 
     public init(byExercise: [String: RecoveryWindow], byPattern: [MovementPattern: RecoveryWindow],
-                byBodyPart: [BodyPart: RecoveryWindow], wholeBody: RecoveryWindow?,
+                byGroup: [MuscleGroup: RecoveryWindow], wholeBody: RecoveryWindow?,
                 softByExercise: [String: Double] = [:], softByFamily: [MovementFamily: Double] = [:],
-                softByBodyPart: [BodyPart: Double] = [:]) {
+                softByGroup: [MuscleGroup: Double] = [:]) {
         self.byExercise = byExercise
         self.byPattern = byPattern
-        self.byBodyPart = byBodyPart
+        self.byGroup = byGroup
         self.wholeBody = wholeBody
         self.softByExercise = softByExercise
         self.softByFamily = softByFamily
-        self.softByBodyPart = softByBodyPart
+        self.softByGroup = softByGroup
     }
 
     public func isHardEligible(exercise: String, patterns: Set<MovementPattern>,
-                                bodyParts: Set<BodyPart>, now: Date) -> Bool {
+                                muscleGroups: Set<MuscleGroup>, now: Date) -> Bool {
         if let w = byExercise[exercise], now < w.hardEligibleAt { return false }
         for p in patterns {
             if let w = byPattern[p], now < w.hardEligibleAt { return false }
         }
-        for p in bodyParts {
-            if let w = byBodyPart[p], now < w.hardEligibleAt { return false }
+        for g in muscleGroups {
+            if let w = byGroup[g], now < w.hardEligibleAt { return false }
         }
         return true
     }
 
     public func nextHardEligible(exercise: String, patterns: Set<MovementPattern>,
-                                  bodyParts: Set<BodyPart>, now: Date) -> Date {
+                                  muscleGroups: Set<MuscleGroup>, now: Date) -> Date {
         var candidates: [Date] = []
         if let w = byExercise[exercise] { candidates.append(w.hardEligibleAt) }
         for p in patterns { if let w = byPattern[p] { candidates.append(w.hardEligibleAt) } }
-        for p in bodyParts { if let w = byBodyPart[p] { candidates.append(w.hardEligibleAt) } }
+        for g in muscleGroups { if let w = byGroup[g] { candidates.append(w.hardEligibleAt) } }
         return candidates.max() ?? now
     }
 
     public func softPenalty(forExerciseNamed name: String,
                              primaryMuscles: [String] = [],
-                             bodyParts: Set<BodyPart> = []) -> Double {
-        let canonical = MuscleCatalog.canonicalName(name)
+                             muscleGroups: Set<MuscleGroup> = []) -> Double {
+        let canonical = ExerciseNameCanonicalizer.canonicalName(name)
         let namePenalty = softByExercise[canonical] ?? 0
         let family = MovementFamily.family(forExerciseNamed: name, primaryMuscles: primaryMuscles)
         let familyPenalty = softByFamily[family] ?? 0
-        let maxPartPenalty = bodyParts.map { softByBodyPart[$0] ?? 0 }.max() ?? 0
-        return max(namePenalty, familyPenalty, maxPartPenalty)
+        let maxGroupPenalty = muscleGroups.map { softByGroup[$0] ?? 0 }.max() ?? 0
+        return max(namePenalty, familyPenalty, maxGroupPenalty)
     }
 
     /// The per-exercise (canonical-name) recency penalty only, excluding the
-    /// coarser family/body-part components. Two lifts in the same movement family
+    /// coarser family/muscle-group components. Two lifts in the same movement family
     /// share the family penalty, so this finer signal is what distinguishes them
     /// when rotating within a pattern (see `CoachSession.mostTrainedExercises`).
     public func softNamePenalty(forExerciseNamed name: String) -> Double {
-        softByExercise[MuscleCatalog.canonicalName(name)] ?? 0
+        softByExercise[ExerciseNameCanonicalizer.canonicalName(name)] ?? 0
     }
 }
 
@@ -97,8 +97,8 @@ public struct WeeklyBalance: Sendable, Equatable {
     public let strengthDays: Int
     public let cardioDays: Int
     public let patternsTrained: Set<MovementPattern>
-    public let bodyPartsTrained: Set<BodyPart>
-    public let fractionalSets: [BodyPart: Double]
+    public let muscleGroupsTrained: Set<MuscleGroup>
+    public let fractionalSets: [MuscleGroup: Double]
     public let moderateMinutes: Double
     public let vigorousMinutes: Double
     public let moderateEquivalentMinutes: Double
@@ -124,7 +124,7 @@ public struct WeeklyBalance: Sendable, Equatable {
     }
 
     public static let empty = WeeklyBalance(
-        strengthDays: 0, cardioDays: 0, patternsTrained: [], bodyPartsTrained: [],
+        strengthDays: 0, cardioDays: 0, patternsTrained: [], muscleGroupsTrained: [],
         fractionalSets: [:], moderateMinutes: 0, vigorousMinutes: 0,
         moderateEquivalentMinutes: 0, hardDays: 0, consecutiveHardDays: 0,
         vo2maxLatest: nil, vo2maxProtocol: nil, vo2maxTrend: nil,
@@ -360,7 +360,7 @@ public extension CoachFacts {
                                          now: Date) -> RecoveryState {
         var byExercise: [String: RecoveryWindow] = [:]
         var byPattern: [MovementPattern: RecoveryWindow] = [:]
-        var byBodyPart: [BodyPart: RecoveryWindow] = [:]
+        var byGroup: [MuscleGroup: RecoveryWindow] = [:]
         var wholeBodyLatest: Date?
 
         for event in completed {
@@ -397,17 +397,17 @@ public extension CoachFacts {
                     }
                 }
 
-                for part in ex.bodyParts {
+                for group in ex.muscleGroups {
                     let bw = RecoveryWindow(
                         lastExposedAt: ex.lastWorkingSetAt,
                         hardEligibleAt: ex.lastWorkingSetAt.addingTimeInterval(hours * 3600),
-                        reason: .bodyPart,
+                        reason: .muscleGroup,
                         confidence: .moderate
                     )
-                    if let existing = byBodyPart[part] {
-                        byBodyPart[part] = maxWindow(existing, bw)
+                    if let existing = byGroup[group] {
+                        byGroup[group] = maxWindow(existing, bw)
                     } else {
-                        byBodyPart[part] = bw
+                        byGroup[group] = bw
                     }
                 }
 
@@ -433,7 +433,7 @@ public extension CoachFacts {
         // Soft tier: all working sets (no isHard filter), penalty decays 1→0 over 48h
         var softByExercise: [String: Double] = [:]
         var softByFamily: [MovementFamily: Double] = [:]
-        var softByBodyPart: [BodyPart: Double] = [:]
+        var softByGroup: [MuscleGroup: Double] = [:]
 
         for event in completed {
             guard case .strength(let details) = event.kind, let d = details else { continue }
@@ -442,23 +442,23 @@ public extension CoachFacts {
                 let penalty = max(0.0, 1.0 - hoursSince / 48.0)
                 guard penalty > 0 else { continue }
 
-                let canonical = MuscleCatalog.canonicalName(ex.exerciseName)
+                let canonical = ExerciseNameCanonicalizer.canonicalName(ex.exerciseName)
                 softByExercise[canonical] = max(softByExercise[canonical] ?? 0, penalty)
 
                 let family = MovementFamily.family(forExerciseNamed: ex.exerciseName,
                                                     primaryMuscles: [])
                 softByFamily[family] = max(softByFamily[family] ?? 0, penalty)
 
-                for part in ex.bodyParts {
-                    softByBodyPart[part] = max(softByBodyPart[part] ?? 0, penalty)
+                for group in ex.muscleGroups {
+                    softByGroup[group] = max(softByGroup[group] ?? 0, penalty)
                 }
             }
         }
 
-        return RecoveryState(byExercise: byExercise, byPattern: byPattern, byBodyPart: byBodyPart,
+        return RecoveryState(byExercise: byExercise, byPattern: byPattern, byGroup: byGroup,
                               wholeBody: wholeBody,
                               softByExercise: softByExercise, softByFamily: softByFamily,
-                              softByBodyPart: softByBodyPart)
+                              softByGroup: softByGroup)
     }
 
     private static func maxWindow(_ a: RecoveryWindow, _ b: RecoveryWindow) -> RecoveryWindow {
@@ -473,16 +473,16 @@ public extension CoachFacts {
         let cardioDays = Set(aerobicEvents.map { Calendar.current.startOfDay(for: $0.start) }).count
 
         var patternsTrained = Set<MovementPattern>()
-        var bodyPartsTrained = Set<BodyPart>()
-        var fractionalSets: [BodyPart: Double] = [:]
+        var muscleGroupsTrained = Set<MuscleGroup>()
+        var fractionalSets: [MuscleGroup: Double] = [:]
 
         for event in strengthEvents {
             guard case .strength(let details) = event.kind, let d = details else { continue }
             for ex in d.exercises {
                 patternsTrained.formUnion(ex.patterns)
-                bodyPartsTrained.formUnion(ex.bodyParts)
-                for part in ex.bodyParts {
-                    fractionalSets[part, default: 0] += Double(ex.hardSetCount)
+                muscleGroupsTrained.formUnion(ex.muscleGroups)
+                for group in ex.muscleGroups {
+                    fractionalSets[group, default: 0] += Double(ex.hardSetCount)
                 }
             }
         }
@@ -532,7 +532,7 @@ public extension CoachFacts {
             strengthDays: strengthDays,
             cardioDays: cardioDays,
             patternsTrained: patternsTrained,
-            bodyPartsTrained: bodyPartsTrained,
+            muscleGroupsTrained: muscleGroupsTrained,
             fractionalSets: fractionalSets,
             moderateMinutes: moderateMinutes,
             vigorousMinutes: vigorousMinutes,

@@ -64,7 +64,7 @@ final class InsightEngineTests: XCTestCase {
 
     // MARK: only actionable volume warnings are reported
 
-    func testOnlyActionableBodyPartsProduceVolumeInsights() throws {
+    func testOnlyActionableGroupsProduceVolumeInsights() throws {
         // Only chest is trained; productive parts and target-status noise stay silent.
         let facts = try populatedFacts(chestSets: 8, goal: .hypertrophy)
         let insights = InsightEngine.run(facts)
@@ -72,7 +72,7 @@ final class InsightEngineTests: XCTestCase {
         XCTAssertNotNil(insights.first { $0.id == "volume.biceps" })
     }
 
-    func testUntrainedBodyPartIsAttentionLowVolume() throws {
+    func testUntrainedGroupIsAttentionLowVolume() throws {
         let facts = try populatedFacts(chestSets: 8, goal: .hypertrophy)
         // Biceps was never trained this week.
         let biceps = InsightEngine.run(facts).first { $0.id == "volume.biceps" }

@@ -5,12 +5,14 @@ public struct WatchExerciseSection: Equatable, Sendable, Identifiable {
     public var id: String { title }
     public var title: String
     public var exerciseNames: [String]
-    public var otherBodyPart: BodyPart?
+    /// The muscle group this section browses, when tapping "Show all" should open
+    /// the group's full list. `nil` for the curated Recent/Popular sections.
+    public var otherMuscleGroup: MuscleGroup?
 
-    public init(title: String, exerciseNames: [String], otherBodyPart: BodyPart? = nil) {
+    public init(title: String, exerciseNames: [String], otherMuscleGroup: MuscleGroup? = nil) {
         self.title = title
         self.exerciseNames = exerciseNames
-        self.otherBodyPart = otherBodyPart
+        self.otherMuscleGroup = otherMuscleGroup
     }
 }
 
@@ -18,7 +20,9 @@ public enum WatchExerciseSelection {
     public static func defaultSections(exercises: [Exercise],
                                        recent: [Exercise],
                                        popularNames: [String] = ExerciseLibrary.popularNames,
-                                       perBodyPartLimit: Int = 4) -> [WatchExerciseSection] {
+                                       perGroupLimit: Int = 4,
+                                       groups: [MuscleGroup] = MuscleGroup.canonicalOrder
+                                           .filter(\.isTrackedByDefault)) -> [WatchExerciseSection] {
         let allByName = Dictionary(exercises.map { ($0.name.lowercased(), $0) },
                                    uniquingKeysWith: { first, _ in first })
         var sections: [WatchExerciseSection] = []
@@ -35,23 +39,26 @@ public enum WatchExerciseSelection {
                                                  exerciseNames: Array(unique(popular).prefix(10))))
         }
 
-        for part in BodyPart.allCases {
-            let names = bodyPartHighlights(part: part,
-                                           exercises: exercises,
-                                           recent: recent,
-                                           popularNames: popularNames,
-                                           limit: perBodyPartLimit)
-            sections.append(WatchExerciseSection(title: part.displayName,
+        // Only the coach's tracked groups get a wrist section: a group the catalog
+        // cannot fill (decision D4) would be an empty row on a 45mm screen. Search
+        // still reaches every movement.
+        for group in groups {
+            let names = groupHighlights(group: group,
+                                        exercises: exercises,
+                                        recent: recent,
+                                        popularNames: popularNames,
+                                        limit: perGroupLimit)
+            sections.append(WatchExerciseSection(title: group.displayName,
                                                  exerciseNames: names,
-                                                 otherBodyPart: part))
+                                                 otherMuscleGroup: group))
         }
 
         return sections
     }
 
-    public static func fullList(for part: BodyPart, exercises: [Exercise]) -> [String] {
+    public static func fullList(for group: MuscleGroup, exercises: [Exercise]) -> [String] {
         exercises
-            .filter { $0.bodyParts.contains(part) }
+            .filter { $0.trainedMuscleGroups.contains(group) }
             .map(\.name)
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
@@ -62,23 +69,23 @@ public enum WatchExerciseSelection {
         return Array(ExerciseSearchIndex(exercises).rank(trimmed).prefix(max(0, limit)))
     }
 
-    private static func bodyPartHighlights(part: BodyPart,
-                                           exercises: [Exercise],
-                                           recent: [Exercise],
-                                           popularNames: [String],
-                                           limit: Int) -> [String] {
+    private static func groupHighlights(group: MuscleGroup,
+                                        exercises: [Exercise],
+                                        recent: [Exercise],
+                                        popularNames: [String],
+                                        limit: Int) -> [String] {
         let popularSet = Set(popularNames.map { $0.lowercased() })
-        let recentPart = recent
-            .filter { $0.bodyParts.contains(part) }
+        let recentGroup = recent
+            .filter { $0.trainedMuscleGroups.contains(group) }
             .map(\.name)
-        let popularPart = exercises
-            .filter { $0.bodyParts.contains(part) && popularSet.contains($0.name.lowercased()) }
+        let popularGroup = exercises
+            .filter { $0.trainedMuscleGroups.contains(group) && popularSet.contains($0.name.lowercased()) }
             .map(\.name)
         let fallback = exercises
-            .filter { $0.bodyParts.contains(part) }
+            .filter { $0.trainedMuscleGroups.contains(group) }
             .map(\.name)
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
-        return Array(unique(recentPart + popularPart + fallback).prefix(max(0, limit)))
+        return Array(unique(recentGroup + popularGroup + fallback).prefix(max(0, limit)))
     }
 
     private static func unique(_ names: [String]) -> [String] {

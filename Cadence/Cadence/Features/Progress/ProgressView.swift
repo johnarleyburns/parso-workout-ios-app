@@ -223,10 +223,10 @@ struct TrainingProgressView: View {
     }
 
     @ViewBuilder private var frequencyCard: some View {
-        let hits = BodyPart.allCases.filter { (facts.frequencyByPart[$0] ?? 0) >= 2 }
-        let lows = BodyPart.allCases.filter { (facts.frequencyByPart[$0] ?? 0) == 1 }
+        let hits = MuscleGroup.canonicalOrder.filter { (facts.frequencyByGroup[$0] ?? 0) >= 2 }
+        let lows = MuscleGroup.canonicalOrder.filter { (facts.frequencyByGroup[$0] ?? 0) == 1 }
         card(title: "Frequency", citation: CitationRegistry.frequencyMeta, compact: true, tint: .orange, equalHeight: true) {
-            if facts.frequencyByPart.isEmpty {
+            if facts.frequencyByGroup.isEmpty {
                 emptyNote("Train each muscle \u{2265}2\u{00d7}/week to get more from the same weekly sets.")
             } else {
                 if !hits.isEmpty {

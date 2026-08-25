@@ -5,7 +5,7 @@ import XCTest
 final class VolumeLandmarksTests: XCTestCase {
 
     func testBandsAreOrderedForEveryPartAndLevel() {
-        for part in BodyPart.allCases {
+        for part in MuscleGroup.canonicalOrder {
             for level in ExperienceLevel.allCases {
                 let b = VolumeLandmarks.bands(for: part, experience: level)
                 XCTAssertLessThan(b.mev, b.mav, "\(part)/\(level): MEV !< MAV")
@@ -15,9 +15,9 @@ final class VolumeLandmarksTests: XCTestCase {
     }
 
     func testExperienceScalesVolumeUp() {
-        let beg = VolumeLandmarks.bands(for: BodyPart.chest, experience: .beginner)
-        let int = VolumeLandmarks.bands(for: BodyPart.chest, experience: .intermediate)
-        let adv = VolumeLandmarks.bands(for: BodyPart.chest, experience: .advanced)
+        let beg = VolumeLandmarks.bands(for: MuscleGroup.chest, experience: .beginner)
+        let int = VolumeLandmarks.bands(for: MuscleGroup.chest, experience: .intermediate)
+        let adv = VolumeLandmarks.bands(for: MuscleGroup.chest, experience: .advanced)
         XCTAssertLessThan(beg.mev, int.mev)
         XCTAssertLessThan(int.mev, adv.mev)
         XCTAssertLessThan(beg.mrv, adv.mrv)
@@ -25,16 +25,16 @@ final class VolumeLandmarksTests: XCTestCase {
 
     func testZoneClassification() {
         // Intermediate chest baseline: MEV 8, MAV 16, MRV 22.
-        XCTAssertEqual(VolumeLandmarks.zone(sets: 4, for: BodyPart.chest, experience: .intermediate), .belowMEV)
-        XCTAssertEqual(VolumeLandmarks.zone(sets: 12, for: BodyPart.chest, experience: .intermediate), .productive)
-        XCTAssertEqual(VolumeLandmarks.zone(sets: 18, for: BodyPart.chest, experience: .intermediate), .approachingMRV)
-        XCTAssertEqual(VolumeLandmarks.zone(sets: 25, for: BodyPart.chest, experience: .intermediate), .overMRV)
+        XCTAssertEqual(VolumeLandmarks.zone(sets: 4, for: MuscleGroup.chest, experience: .intermediate), .belowMEV)
+        XCTAssertEqual(VolumeLandmarks.zone(sets: 12, for: MuscleGroup.chest, experience: .intermediate), .productive)
+        XCTAssertEqual(VolumeLandmarks.zone(sets: 18, for: MuscleGroup.chest, experience: .intermediate), .approachingMRV)
+        XCTAssertEqual(VolumeLandmarks.zone(sets: 25, for: MuscleGroup.chest, experience: .intermediate), .overMRV)
     }
 
     func testBoundaryIsInclusiveAtMEV() {
-        let b = VolumeLandmarks.bands(for: BodyPart.chest, experience: .intermediate)
+        let b = VolumeLandmarks.bands(for: MuscleGroup.chest, experience: .intermediate)
         // Exactly MEV is no longer below it.
-        XCTAssertEqual(VolumeLandmarks.zone(sets: b.mev, for: BodyPart.chest, experience: .intermediate), .productive)
+        XCTAssertEqual(VolumeLandmarks.zone(sets: b.mev, for: MuscleGroup.chest, experience: .intermediate), .productive)
     }
 
     // MARK: Per-muscle-group bands (DB++ adoption phase 4)
@@ -60,8 +60,8 @@ final class VolumeLandmarksTests: XCTestCase {
 
     /// The transitional body-part band is the widest of its members, so a part
     /// holding a large muscle is not judged against a small one's ceiling.
-    func testBodyPartBandTakesTheWidestMemberBand() {
-        let legs = VolumeLandmarks.bands(for: BodyPart.legs, experience: .intermediate)
+    func testGroupBandsCoverEveryMuscleGroup() {
+        let legs = VolumeLandmarks.bands(for: MuscleGroup.quadriceps, experience: .intermediate)
         let quads = VolumeLandmarks.bands(for: MuscleGroup.quadriceps, experience: .intermediate)
         let hipFlexors = VolumeLandmarks.bands(for: MuscleGroup.hipFlexors, experience: .intermediate)
         XCTAssertEqual(legs.mev, quads.mev)

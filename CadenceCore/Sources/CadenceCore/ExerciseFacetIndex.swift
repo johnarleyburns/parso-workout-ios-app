@@ -1,73 +1,74 @@
 import Foundation
 
-/// Anything the exercise picker's equipment sub-filter can classify: its coarse
-/// body parts (already derived from muscle ids) and its equipment type. Both the
-/// SwiftData `Exercise` and lightweight test doubles conform.
+/// Anything the exercise picker's equipment sub-filter can classify: the muscle
+/// groups it trains and its equipment type. Both the SwiftData `Exercise` and
+/// lightweight test doubles conform.
 public protocol EquipmentClassifiable {
-    var bodyParts: Set<BodyPart> { get }
+    var trainedMuscleGroups: Set<MuscleGroup> { get }
     var equipmentValue: Equipment? { get }
 }
 
-/// A precomputed body-part → exercises / body-part → equipment index (built once
-/// from the loaded catalog) so the picker's **equipment sub-filter** — a second
-/// chip row under the body-part row — is an O(1) dictionary lookup plus an O(m)
-/// narrow, never an O(catalog) scan per render. Also indexes equipment → exercises
-/// so the Browse tab can browse by equipment first.
+/// A precomputed group → exercises / group → equipment index (built once from the
+/// loaded catalog) so the picker's **equipment sub-filter** — a second chip row
+/// under the muscle-group row — is an O(1) dictionary lookup plus an O(m) narrow,
+/// never an O(catalog) scan per render. Also indexes equipment → exercises so the
+/// Browse tab can browse by equipment first.
 public struct ExerciseFacetIndex<T: EquipmentClassifiable> {
-    /// Exercises training each body part, preserving the input order.
-    public let byBodyPart: [BodyPart: [T]]
-    /// Equipment types present for each body part, in canonical order.
-    public let equipmentByBodyPart: [BodyPart: [Equipment]]
+    /// Exercises training each muscle group, preserving the input order.
+    public let byGroup: [MuscleGroup: [T]]
+    /// Equipment types present for each muscle group, in canonical order.
+    public let equipmentByGroup: [MuscleGroup: [Equipment]]
     /// Exercises grouped by equipment type, preserving input order.
     public let byEquipment: [Equipment: [T]]
-    /// Body parts that have exercises of each equipment type.
-    public let bodyPartsByEquipment: [Equipment: [BodyPart]]
+    /// Muscle groups that have exercises of each equipment type.
+    public let groupsByEquipment: [Equipment: [MuscleGroup]]
 
     public init(_ items: [T]) {
-        var parts: [BodyPart: [T]] = [:]
+        var groups: [MuscleGroup: [T]] = [:]
         var equip: [Equipment: [T]] = [:]
         for item in items {
-            for part in item.bodyParts { parts[part, default: []].append(item) }
+            for group in item.trainedMuscleGroups { groups[group, default: []].append(item) }
             if let eq = item.equipmentValue { equip[eq, default: []].append(item) }
         }
-        var equipment: [BodyPart: [Equipment]] = [:]
-        for (part, list) in parts {
-            equipment[part] = Self.equipmentPresent(in: list)
+        var equipment: [MuscleGroup: [Equipment]] = [:]
+        for (group, list) in groups {
+            equipment[group] = Self.equipmentPresent(in: list)
         }
-        var bodyPartsForEq: [Equipment: [BodyPart]] = [:]
+        var groupsForEq: [Equipment: [MuscleGroup]] = [:]
         for (eq, list) in equip {
-            let bps = BodyPart.allCases.filter { p in list.contains { $0.bodyParts.contains(p) } }
-            bodyPartsForEq[eq] = bps
+            groupsForEq[eq] = MuscleGroup.canonicalOrder.filter { g in
+                list.contains { $0.trainedMuscleGroups.contains(g) }
+            }
         }
-        self.byBodyPart = parts
-        self.equipmentByBodyPart = equipment
+        self.byGroup = groups
+        self.equipmentByGroup = equipment
         self.byEquipment = equip
-        self.bodyPartsByEquipment = bodyPartsForEq
+        self.groupsByEquipment = groupsForEq
     }
 
-    /// Exercises training `part`, optionally narrowed to a single equipment type.
-    public func exercises(for part: BodyPart, equipment: Equipment? = nil) -> [T] {
-        let base = byBodyPart[part] ?? []
+    /// Exercises training `group`, optionally narrowed to a single equipment type.
+    public func exercises(for group: MuscleGroup, equipment: Equipment? = nil) -> [T] {
+        let base = byGroup[group] ?? []
         guard let equipment else { return base }
         return base.filter { $0.equipmentValue == equipment }
     }
 
-    /// Equipment types available for `part` (deduped, canonical order). Empty when
-    /// the part is unknown or has no equipment-tagged movements.
-    public func equipment(for part: BodyPart) -> [Equipment] {
-        equipmentByBodyPart[part] ?? []
+    /// Equipment types available for `group` (deduped, canonical order). Empty when
+    /// the group is unknown or has no equipment-tagged movements.
+    public func equipment(for group: MuscleGroup) -> [Equipment] {
+        equipmentByGroup[group] ?? []
     }
 
-    /// All exercises of a given equipment type, unfiltered by body part.
-    public func exercises(forEquipment eq: Equipment, bodyPart: BodyPart? = nil) -> [T] {
+    /// All exercises of a given equipment type, unfiltered by muscle group.
+    public func exercises(forEquipment eq: Equipment, group: MuscleGroup? = nil) -> [T] {
         let base = byEquipment[eq] ?? []
-        guard let part = bodyPart else { return base }
-        return base.filter { $0.bodyParts.contains(part) }
+        guard let group else { return base }
+        return base.filter { $0.trainedMuscleGroups.contains(group) }
     }
 
-    /// Body parts that have exercises of the given equipment type.
-    public func bodyParts(forEquipment eq: Equipment) -> [BodyPart] {
-        bodyPartsByEquipment[eq] ?? []
+    /// Muscle groups that have exercises of the given equipment type.
+    public func muscleGroups(forEquipment eq: Equipment) -> [MuscleGroup] {
+        groupsByEquipment[eq] ?? []
     }
 
     /// The distinct equipment types among `items`, in canonical `Equipment.allCases`

@@ -9,7 +9,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             .shoulders: 2,
             .triceps: 2,
         ])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1, cardioDays: 2)
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 1, cardioDays: 2)
         let plan = weeklyPlan(now: now, days: [
             (1, [.strength]),
             (2, [.rest]),
@@ -63,7 +63,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             .shoulders: 2,
             .triceps: 2,
         ])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 0)
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 0)
         let plan = weeklyPlan(now: now, days: [
             (1, [.strength]),
             (3, [.strength]),
@@ -92,16 +92,15 @@ final class CoachPlanOptimizerTests: XCTestCase {
     func testOptimizerUsesDesiredSetsWhenCandidateSetsAreMissing() throws {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 0])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 0)
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 0)
         let plan = weeklyPlan(now: now, days: [(1, [.strength])])
-        let excluded = Set(BodyPart.allCases.filter { $0 != .chest })
         let prefs = CoachSchedulePreferences(
             strengthDaysPerWeek: 2,
             cardioDaysPerWeek: 3,
             restPreference: .fixed(days: []),
             allowsTwoADays: false,
-            excludedCoverageParts: excluded,
-            desiredSetsPerExercise: 4
+            desiredSetsPerExercise: 4,
+            trackedMuscleGroups: [.chest]
         )
         let candidate = CoachSession(
             id: "strength.nilSets",
@@ -127,13 +126,12 @@ final class CoachPlanOptimizerTests: XCTestCase {
         XCTAssertEqual(exercise.repLadder, [5, 5, 3, 3])
     }
 
-    func testOptimizerTargetsOnlyRemainingLowBodyParts() {
+    func testOptimizerTargetsOnlyRemainingLowGroups() {
         let now = fixedWednesday()
-        let facts = trainingFacts([
-            .legs: 12, .back: 12, .chest: 12, .shoulders: 12,
-            .abs: 9, .biceps: 0, .triceps: 0, .calves: 0,
-        ])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1)
+        let facts = trainingFacts(trackedSets(baseline: 12, [
+            .abdominals: 9, .biceps: 0, .triceps: 0, .calves: 0,
+        ]))
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 1)
         let plan = weeklyPlan(now: now, days: [(1, [.strength])])
 
         let optimized = CoachPlanOptimizer.optimize(
@@ -154,16 +152,13 @@ final class CoachPlanOptimizerTests: XCTestCase {
 
     func testOptimizerCarriesHistoryBasedSuggestedWeightIntoPlan() throws {
         let now = fixedWednesday()
-        let snapshot = LiftSnapshot(exercise: "Bench Press", part: .chest,
+        let snapshot = LiftSnapshot(exercise: "Bench Press", group: .chest,
                                     topSetWeightKg: 80, topSetReps: 5,
                                     bestE1RM: 93.333, trend: nil)
-        var facts = trainingFacts([
-            .legs: 12, .back: 12, .shoulders: 12, .biceps: 14,
-            .triceps: 14, .calves: 12, .abs: 12, .chest: 0,
-        ])
+        var facts = trainingFacts(trackedSets(baseline: 14, [.chest: 0]))
         facts = TrainingFacts(
-            weeklySetsByPart: facts.weeklySetsByPart,
-            frequencyByPart: facts.frequencyByPart,
+            weeklySetsByGroup: facts.weeklySetsByGroup,
+            frequencyByGroup: facts.frequencyByGroup,
             e1RMTrendByExercise: facts.e1RMTrendByExercise,
             intensity: facts.intensity,
             avgRPE: facts.avgRPE,
@@ -173,7 +168,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             liftSnapshots: ["Bench Press": snapshot],
             goal: facts.goal,
             experience: facts.experience)
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 0)
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 0)
         let plan = weeklyPlan(now: now, days: [(1, [.strength])])
         let candidate = CoachSession(
             id: "strength.bench", kind: .strength, title: "Bench",
@@ -194,16 +189,16 @@ final class CoachPlanOptimizerTests: XCTestCase {
     func testImpossibleCaseEmitsOneUnresolvedPlanningInsight() {
         let now = fixedWednesday()
         let facts = trainingFacts([
-            .legs: 1,
-            .back: 1,
+            .quadriceps: 1,
+            .lats: 1,
             .chest: 1,
             .shoulders: 1,
             .biceps: 1,
             .triceps: 1,
             .calves: 1,
-            .abs: 1,
+            .abdominals: 1,
         ])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1)
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 1)
         let plan = weeklyPlan(now: now, days: [
             (1, [.strength]),
         ])
@@ -232,7 +227,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             $0.kind == .volume
                 && $0.severity == .attention
                 && $0.title.localizedCaseInsensitiveContains("low")
-                && $0.part != nil
+                && $0.group != nil
         }
         XCTAssertTrue(individualLowVolume.isEmpty)
     }
@@ -250,14 +245,14 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let now = mondayComps.date ?? Date(timeIntervalSince1970: 1_782_300_000)
 
         // Monday workout: 2 sets each of chest/back/legs/shoulders, 1 set biceps/triceps.
-        let completedSets: [BodyPart: Double] = [
-            .chest: 2, .back: 2, .legs: 2, .shoulders: 2,
+        let completedSets: [MuscleGroup: Double] = [
+            .chest: 2, .lats: 2, .quadriceps: 2, .shoulders: 2,
             .biceps: 1, .triceps: 1,
-            .abs: 0, .calves: 0,
+            .abdominals: 0, .calves: 0,
         ]
         let facts = TrainingFacts(
-            weeklySetsByPart: completedSets,
-            frequencyByPart: completedSets.compactMapValues { $0 > 0 ? 1 : nil },
+            weeklySetsByGroup: completedSets,
+            frequencyByGroup: completedSets.compactMapValues { $0 > 0 ? 1 : nil },
             e1RMTrendByExercise: [:],
             intensity: .empty,
             avgRPE: nil,
@@ -271,7 +266,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             strengthDays: 1,
             cardioDays: 0,
             patternsTrained: [],
-            bodyPartsTrained: Set(completedSets.keys).filter { completedSets[$0] ?? 0 > 0 },
+            muscleGroupsTrained: Set(completedSets.keys).filter { completedSets[$0] ?? 0 > 0 },
             fractionalSets: completedSets,
             moderateMinutes: 0,
             vigorousMinutes: 0,
@@ -327,15 +322,15 @@ final class CoachPlanOptimizerTests: XCTestCase {
             $0.kind == .volume
                 && $0.severity == .attention
                 && $0.title.localizedCaseInsensitiveContains("low")
-                && $0.part != nil
+                && $0.group != nil
         }
 
         let untrainedPartsWithAlerts = individualLowVolume.filter { ins in
-            guard let part = ins.part else { return false }
+            guard let part = ins.group else { return false }
             return (completedSets[part] ?? 0) == 0
         }
         XCTAssertTrue(untrainedPartsWithAlerts.isEmpty,
-                      "Should not show individual low-volume alerts for untrained parts (0 completed sets), but got: \(untrainedPartsWithAlerts.map { $0.part?.rawValue ?? "nil" })")
+                      "Should not show individual low-volume alerts for untrained parts (0 completed sets), but got: \(untrainedPartsWithAlerts.map { $0.group?.rawValue ?? "nil" })")
 
         // For any genuine unresolved deficits, the aggregate triage insight exists.
         if !optimized.unresolvedDeficits.isEmpty {
@@ -351,7 +346,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             .shoulders: 2,
             .triceps: 2,
         ])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1)
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 1)
         let plan = weeklyPlan(now: now, days: [
             (1, [.strength]),
             (3, [.strength]),
@@ -376,7 +371,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
     func testOptimizerRespectsScheduleAndRecoveryConstraints() {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 2, .shoulders: 2, .triceps: 1])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1)
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 1)
         let cardioOnlyPlan = weeklyPlan(now: now, days: [
             (1, [.moderateAerobic]),
         ])
@@ -419,7 +414,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let recovery = RecoveryState(
             byExercise: [:],
             byPattern: [:],
-            byBodyPart: [:],
+            byGroup: [:],
             wholeBody: RecoveryWindow(
                 lastExposedAt: now,
                 hardEligibleAt: recoveryEnd,
@@ -427,7 +422,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
                 confidence: .moderate))
         let recoveryBlocked = CoachPlanOptimizer.optimize(
             trainingFacts: facts,
-            coachFacts: coachFacts(now: now, completedSets: facts.weeklySetsByPart,
+            coachFacts: coachFacts(now: now, completedSets: facts.weeklySetsByGroup,
                                    strengthDays: 1, recovery: recovery),
             weeklyPlan: fixedRestPlan,
             schedulePreferences: preferences(twoADays: true),
@@ -444,7 +439,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
     func testAdHocTodaySlotRespectsTwoADayPreference() {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 2, .shoulders: 2, .triceps: 1])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart,
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup,
                                strengthDays: 0, cardioDays: 1)
         // Today (Wednesday) already holds a cardio session; no strength slots exist.
         let cardioTodayPlan = weeklyPlan(now: now, days: [
@@ -475,11 +470,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
     /// plans nothing rather than inventing a session on a free day.
     func testAdHocTodaySlotSkippedWhenNoWeeklyShortfall() {
         let now = fixedWednesday()
-        let facts = trainingFacts([
-            .legs: 16, .back: 16, .chest: 16, .shoulders: 16,
-            .biceps: 14, .triceps: 14, .calves: 12, .abs: 12,
-        ])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 3)
+        let facts = trainingFacts(trackedSets(baseline: 16, [
+            .biceps: 14, .triceps: 14, .calves: 12, .abdominals: 12,
+        ]))
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 3)
         let emptyPlan = weeklyPlan(now: now, days: [])
 
         let optimized = CoachPlanOptimizer.optimize(
@@ -500,11 +494,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
         tuesdayComps.hour = 8  // morning, before any workout
         let now = tuesdayComps.date ?? Date(timeIntervalSince1970: 1_782_300_000)
 
-        // Monday was logged: 4 compounds, 2 sets each — the coach's own workout.
-        // Abs and calves = 0 sets because the coach never planned them.
-        let completedSets: [BodyPart: Double] = [
-            .legs: 2, .chest: 2, .back: 2, .shoulders: 2,
-        ]
+        // Monday was logged: the big groups are already at a productive dose.
+        // Abs and calves = 0 sets because the coach never planned them, so they are
+        // the standing deficits going into the two remaining slots.
+        let completedSets = trackedSets(baseline: 12, [.abdominals: 0, .calves: 0])
         let facts = trainingFacts(completedSets)
         let coach = coachFacts(now: now, completedSets: completedSets, strengthDays: 1, cardioDays: 0)
 
@@ -538,7 +531,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
         // RED: The coach must never surface a "you're low" alert for a part it
         // chose not to program. Abs and calves had 0 sets because the optimizer
         // excluded them.
-        XCTAssertNil(lowVolumeInsight(.abs, in: insights),
+        XCTAssertNil(lowVolumeInsight(.abdominals, in: insights),
                      "Abs should not read 'low' when coach never planned them")
         XCTAssertNil(lowVolumeInsight(.calves, in: insights),
                      "Calves should not read 'low' when coach never planned them")
@@ -565,7 +558,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             let untrainedPartsWithAlerts = insights.filter {
                 $0.kind == .volume && $0.severity == .attention
                     && $0.title.localizedCaseInsensitiveContains("low")
-                    && (completedSets[$0.part ?? .abs] ?? 0) == 0
+                    && (completedSets[$0.group ?? .abdominals] ?? 0) == 0
             }
             XCTAssertTrue(untrainedPartsWithAlerts.isEmpty,
                           "No per-part 'low' nags for parts coach never programmed")
@@ -583,12 +576,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
         // Every large part is already at/above MEV so abs is the ONLY deficit —
         // isolates the productive-target behaviour from whole-body coverage noise.
         // Abs at 3 completed sets (below MEV 6); productive target is 9.
-        let facts = trainingFacts([
-            .legs: 16, .back: 16, .chest: 16, .shoulders: 16,
-            .biceps: 14, .triceps: 14, .calves: 12,
-            .abs: 3,
-        ])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1)
+        let facts = trainingFacts(trackedSets(baseline: 16, [
+            .biceps: 14, .triceps: 14, .calves: 12, .abdominals: 3,
+        ]))
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 1)
         // Two strength slots so the optimizer has room to prescribe a productive dose.
         let plan = weeklyPlan(now: now, days: [
             (1, [.strength]),
@@ -614,21 +605,21 @@ final class CoachPlanOptimizerTests: XCTestCase {
             candidates: [absCandidate])
 
         let plannedAbsSets = PlanAwareWeeklyAccounting
-            .plannedSetsByPart(from: optimized.plannedStrengthSessions)[.abs] ?? 0
+            .plannedSetsByGroup(from: optimized.plannedStrengthSessions)[.abdominals] ?? 0
         let projectedAbs = 3 + plannedAbsSets
-        let productive = VolumeLandmarks.productiveTarget(for: .abs, experience: .intermediate)
+        let productive = VolumeLandmarks.productiveTarget(for: .abdominals, experience: .intermediate)
         XCTAssertEqual(productive, 9, "intermediate abs productive target is the MEV/MAV midpoint (6+12)/2 = 9")
         XCTAssertGreaterThanOrEqual(projectedAbs, productive,
             "Abs should be planned toward the productive dose (\(productive)), not the MEV floor — got projected \(projectedAbs)")
         // And there should be no residual below-MEV deficit for abs.
-        XCTAssertNil(optimized.unresolvedDeficits[.abs],
+        XCTAssertNil(optimized.unresolvedDeficits[.abdominals],
                      "Abs trained to a productive dose leaves no below-MEV residual")
     }
 
     /// Guard: the productive target must never push a part above MRV.
     func testProductiveTargetNeverExceedsMRV() {        let now = fixedWednesday()
-        let facts = trainingFacts([.abs: 3, .calves: 3])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 0)
+        let facts = trainingFacts([.abdominals: 3, .calves: 3])
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 0)
         let plan = weeklyPlan(now: now, days: [
             (1, [.strength]), (2, [.strength]), (3, [.strength]), (4, [.strength]),
         ])
@@ -640,9 +631,9 @@ final class CoachPlanOptimizerTests: XCTestCase {
             candidates: [genericStrengthSession()])
 
         let projected = PlanAwareWeeklyAccounting
-            .plannedSetsByPart(from: optimized.plannedStrengthSessions)
-        for part in BodyPart.allCases {
-            let total = (facts.weeklySetsByPart[part] ?? 0) + (projected[part] ?? 0)
+            .plannedSetsByGroup(from: optimized.plannedStrengthSessions)
+        for part in MuscleGroup.canonicalOrder {
+            let total = (facts.weeklySetsByGroup[part] ?? 0) + (projected[part] ?? 0)
             let mrv = VolumeLandmarks.bands(for: part, experience: .intermediate).mrv
             XCTAssertLessThanOrEqual(total, mrv,
                 "\(part) projected \(total) must not exceed MRV \(mrv)")
@@ -659,12 +650,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
     func testProductivelyPlannedAbsProducesNoNag() {
         let now = fixedWednesday()
         // Abs is the only deficit; everything else is already covered.
-        let facts = trainingFacts([
-            .legs: 16, .back: 16, .chest: 16, .shoulders: 16,
-            .biceps: 14, .triceps: 14, .calves: 12,
-            .abs: 2,
-        ])
-        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByPart, strengthDays: 1)
+        let facts = trainingFacts(trackedSets(baseline: 16, [
+            .biceps: 14, .triceps: 14, .calves: 12, .abdominals: 2,
+        ]))
+        let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 1)
         let plan = weeklyPlan(now: now, days: [(1, [.strength]), (3, [.strength])])
         let absCandidate = CoachSession(
             id: "strength.abs", kind: .strength, title: "Core", durationMinutes: 30,
@@ -684,9 +673,9 @@ final class CoachPlanOptimizerTests: XCTestCase {
             unresolvedDeficits: optimized.unresolvedDeficits,
             diagnostics: optimized.diagnostics, now: now)
 
-        XCTAssertNil(optimized.unresolvedDeficits[.abs],
+        XCTAssertNil(optimized.unresolvedDeficits[.abdominals],
                      "Abs planned to a productive dose leaves no below-MEV residual")
-        XCTAssertNil(lowVolumeInsight(.abs, in: insights),
+        XCTAssertNil(lowVolumeInsight(.abdominals, in: insights),
                      "No per-part abs nag when abs is productively covered")
         XCTAssertNil(insights.first { $0.id == "planning.unresolvedVolume" },
                      "No aggregate 'needs attention' nag when the only deficit is productively covered")
@@ -733,10 +722,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
         insights.first { $0.id == "planning.partialResolved" || $0.id == "planning.unresolvedVolume" }
     }
 
-    private func lowVolumeInsight(_ part: BodyPart, in insights: [Insight]) -> Insight? {
+    private func lowVolumeInsight(_ part: MuscleGroup, in insights: [Insight]) -> Insight? {
         insights.first {
             $0.kind == .volume
-                && $0.part == part
+                && $0.group == part
                 && $0.severity == .attention
                 && $0.title.localizedCaseInsensitiveContains("low")
         }
@@ -760,11 +749,22 @@ final class CoachPlanOptimizerTests: XCTestCase {
             allowsTwoADays: twoADays)
     }
 
-    private func trainingFacts(_ sets: [BodyPart: Double],
+    /// A weekly tally that covers every tracked group. DB++ tracks 13 groups, not
+    /// the 8 retired body parts, so a test meaning "everything is satisfied except
+    /// X" must say so explicitly — otherwise the eleven unnamed groups read as
+    /// zero-volume deficits and out-rank the one the test is about.
+    private func trackedSets(baseline: Double,
+                             _ overrides: [MuscleGroup: Double] = [:]) -> [MuscleGroup: Double] {
+        var out = Dictionary(uniqueKeysWithValues: MuscleGroup.defaultTracked.map { ($0, baseline) })
+        for (group, value) in overrides { out[group] = value }
+        return out
+    }
+
+    private func trainingFacts(_ sets: [MuscleGroup: Double],
                                allTimeSets: Int? = nil) -> TrainingFacts {
         TrainingFacts(
-            weeklySetsByPart: sets,
-            frequencyByPart: sets.mapValues { _ in 1 },
+            weeklySetsByGroup: sets,
+            frequencyByGroup: sets.mapValues { _ in 1 },
             e1RMTrendByExercise: [:],
             intensity: .empty,
             avgRPE: nil,
@@ -776,7 +776,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
     }
 
     private func coachFacts(now: Date,
-                            completedSets: [BodyPart: Double],
+                            completedSets: [MuscleGroup: Double],
                             strengthDays: Int,
                             cardioDays: Int = 0,
                             recovery: RecoveryState = .empty,
@@ -785,7 +785,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             strengthDays: strengthDays,
             cardioDays: cardioDays,
             patternsTrained: [],
-            bodyPartsTrained: Set(completedSets.keys),
+            muscleGroupsTrained: Set(completedSets.keys),
             fractionalSets: completedSets,
             moderateMinutes: Double(cardioDays * 35),
             vigorousMinutes: 0,
@@ -882,7 +882,11 @@ final class CoachPlanOptimizerTests: XCTestCase {
     /// isolation movement lost its weight.
     func testVarietyRotationKeepsAResolvedLoad() {
         let now = fixedWednesday()
-        let facts = trainingFacts([:])
+        // Only the arms and the upper back are short, so the optimizer reaches for
+        // the curl/row variants the history below prices.
+        let facts = trainingFacts(trackedSets(baseline: 16, [
+            .biceps: 0, .middleBack: 0,
+        ]))
         // Both curl variants and both row variants are trained, so whichever the
         // day-2 rotation swaps in must still be priced. (Before the DB++ adoption
         // the coach put a curl on both days; rows credit the biceps indirectly now,
@@ -951,8 +955,8 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let now = fixedWednesday()
         var facts = trainingFacts([:])
         facts = TrainingFacts(
-            weeklySetsByPart: facts.weeklySetsByPart,
-            frequencyByPart: facts.frequencyByPart,
+            weeklySetsByGroup: facts.weeklySetsByGroup,
+            frequencyByGroup: facts.frequencyByGroup,
             e1RMTrendByExercise: [:],
             intensity: .empty,
             avgRPE: nil,
@@ -960,7 +964,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             totalWorkingSets: facts.totalWorkingSets,
             allTimeWorkingSets: facts.allTimeWorkingSets,
             liftSnapshots: ["Bench Press": LiftSnapshot(exercise: "Bench Press",
-                                                        part: .chest,
+                                                        group: .chest,
                                                         topSetWeightKg: 100,
                                                         topSetReps: 5,
                                                         bestE1RM: 116,
@@ -1012,7 +1016,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             exerciseID: name.lowercased(),
             exerciseName: name,
             patterns: [],
-            bodyParts: [],
+            muscleGroups: [],
             hardSetCount: 3,
             topSetWeightKg: weightKg,
             topSetReps: reps,

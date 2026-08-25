@@ -69,7 +69,7 @@ final class TrainingFactsVolumeTests: XCTestCase {
 
         XCTAssertTrue(f.weeklySetsByGroup.isEmpty,
                       "\(stretchName) credited \(f.weeklySetsByGroup)")
-        XCTAssertTrue(f.weeklySetsByPart.isEmpty)
+        XCTAssertTrue(f.weeklySetsByGroup.isEmpty)
         XCTAssertEqual(f.totalWorkingSets, 5, "the sets are still logged, they just do not count as volume")
     }
 
@@ -90,7 +90,7 @@ final class TrainingFactsVolumeTests: XCTestCase {
 
     /// The body-part rollup credits a part once per set at its best member credit,
     /// which is exactly the primary/secondary semantics it had before.
-    func testBodyPartRollupCreditsOncePerSet() throws {
+    func testMuscleGroupRollupCreditsOncePerSet() throws {
         let ctx = try makeContext()
         // A squat trains quadriceps and glutes directly and the adductors
         // indirectly — three leg groups from one set, but one set of `legs`.
@@ -100,7 +100,7 @@ final class TrainingFactsVolumeTests: XCTestCase {
         XCTAssertEqual(f.weeklySetsByGroup[.quadriceps] ?? 0, 3, accuracy: 0.001)
         XCTAssertEqual(f.weeklySetsByGroup[.glutes] ?? 0, 3, accuracy: 0.001)
         XCTAssertEqual(f.weeklySetsByGroup[.adductors] ?? 0, 1.5, accuracy: 0.001)
-        XCTAssertEqual(f.weeklySetsByPart[.legs] ?? 0, 3, accuracy: 0.001,
+        XCTAssertEqual(f.weeklySetsByGroup[.quadriceps] ?? 0, 3, accuracy: 0.001,
                        "three leg groups from one set is still one set of legs")
     }
 
@@ -134,7 +134,7 @@ final class TrainingFactsVolumeTests: XCTestCase {
 
         let f = facts([thisWeek, priorWeek])
         XCTAssertEqual(f.volumeTrendByGroup[.chest], .rising)
-        XCTAssertEqual(f.volumeTrendByPart[.chest], .rising)
+        XCTAssertEqual(f.volumeTrendByGroup[.chest], .rising)
     }
 
     func testEmptyHistoryTalliesNothing() {

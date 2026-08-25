@@ -56,21 +56,21 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.start(createSession: true)
 
         let exercise = m.addCustomExercise(named: "  Standing Cable Twist  ",
-                                           bodyParts: [.abs, .shoulders])
+                                           muscleGroups: [.abdominals, .shoulders])
 
         XCTAssertEqual(exercise?.name, "Standing Cable Twist")
         XCTAssertEqual(exercise?.isCustom, true)
-        XCTAssertEqual(Set(exercise?.primaryMuscles ?? []), ["delts", "abs", "obliques"])
+        XCTAssertEqual(Set(exercise?.primaryMuscles ?? []), ["shoulders", "abdominals"])
         XCTAssertEqual(exercise?.categoryValue, .other)
         XCTAssertEqual(m.stage, .home)
         XCTAssertTrue(m.exerciseList.contains { $0.exercise.name == "Standing Cable Twist" })
     }
 
-    func testAddCustomExerciseRequiresNameAndBodyPart() {
+    func testAddCustomExerciseRequiresNameAndMuscleGroup() {
         let m = makeModel()
         m.start(createSession: true)
-        XCTAssertNil(m.addCustomExercise(named: "", bodyParts: [.back]))
-        XCTAssertNil(m.addCustomExercise(named: "Mystery Lift", bodyParts: []))
+        XCTAssertNil(m.addCustomExercise(named: "", muscleGroups: [.lats]))
+        XCTAssertNil(m.addCustomExercise(named: "Mystery Lift", muscleGroups: []))
     }
 
     func testAddExercise_showsPendingExerciseOnHome() {

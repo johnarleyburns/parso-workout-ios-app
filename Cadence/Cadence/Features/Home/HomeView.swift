@@ -43,7 +43,7 @@ struct HomeView: View {
     @State var outdoorGoalMeters: Double?
     @State var showAlternatives = false
     @State var showSupport = false
-    @State var pendingAddGapsDeficits: [BodyPart: Double]?
+    @State var pendingAddGapsDeficits: [MuscleGroup: Double]?
     @State var suggestionsExpanded = false
     @State var suggestedWorkoutRequest: SuggestedWorkoutRequest?
     @State var expandedTodayRowIDs: Set<String> = []

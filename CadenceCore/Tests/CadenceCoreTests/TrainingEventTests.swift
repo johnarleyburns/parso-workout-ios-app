@@ -41,7 +41,7 @@ final class TrainingEventTests: XCTestCase {
         XCTAssertEqual(ex.topSetWeightKg, 100)
         XCTAssertEqual(ex.topSetReps, 5)
         XCTAssertTrue(ex.patterns.contains(.squat))
-        XCTAssertTrue(ex.bodyParts.contains(.legs))
+        XCTAssertTrue(ex.muscleGroups.contains(.quadriceps))
         XCTAssertEqual(ex.maxRPE, 9)
         XCTAssertEqual(ex.maxRPE, 9)
     }

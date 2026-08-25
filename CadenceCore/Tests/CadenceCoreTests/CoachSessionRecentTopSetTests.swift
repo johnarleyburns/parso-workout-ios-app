@@ -15,7 +15,7 @@ final class CoachSessionRecentTopSetTests: XCTestCase {
             exerciseID: name.lowercased(),
             exerciseName: name,
             patterns: [],
-            bodyParts: [],
+            muscleGroups: [],
             hardSetCount: 3,
             topSetWeightKg: weightKg,
             topSetReps: reps,
@@ -47,7 +47,7 @@ final class CoachSessionRecentTopSetTests: XCTestCase {
             events: events,
             recovery: .empty,
             weeklyBalance: WeeklyBalance(
-                strengthDays: 0, cardioDays: 0, patternsTrained: [], bodyPartsTrained: [],
+                strengthDays: 0, cardioDays: 0, patternsTrained: [], muscleGroupsTrained: [],
                 fractionalSets: [:], moderateMinutes: 0, vigorousMinutes: 0,
                 moderateEquivalentMinutes: 0, hardDays: 0, consecutiveHardDays: 0,
                 vo2maxLatest: nil, vo2maxProtocol: nil, vo2maxTrend: nil,

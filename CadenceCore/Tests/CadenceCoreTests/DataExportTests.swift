@@ -273,8 +273,9 @@ final class DataExportTests: XCTestCase {
         XCTAssertEqual(decoded.preferences?.schedulePreferences?.dailyStepTarget, 10_000)
         XCTAssertEqual(decoded.preferences?.schedulePreferences?.desiredSetsPerExercise, 3)
         XCTAssertTrue(decoded.preferences?.schedulePreferences?.allowsTwoADays ?? false)
-        XCTAssertEqual(decoded.preferences?.schedulePreferences?.excludedCoverageParts, [],
-                       "Missing excludedCoverageParts should default to empty, not fail decode")
+        XCTAssertEqual(decoded.preferences?.schedulePreferences?.trackedMuscleGroups,
+                       MuscleGroup.defaultTracked,
+                       "A payload with no tracked-group key should fall back to the defaults, not fail decode")
     }
 
     // MARK: - Legacy stepGoal compatibility

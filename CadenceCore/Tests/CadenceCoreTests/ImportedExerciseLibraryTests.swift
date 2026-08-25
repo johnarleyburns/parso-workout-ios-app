@@ -20,7 +20,7 @@ final class ImportedExerciseLibraryTests: XCTestCase {
         for t in ImportedExerciseLibrary.templates {
             XCTAssertFalse(t.primaryMuscles.isEmpty, "\(t.name) has no primary muscle")
             for m in t.muscleGroups {
-                XCTAssertNotNil(MuscleCatalog.muscle(m), "\(t.name) → unknown muscle id \(m)")
+                XCTAssertNotNil(MuscleGroup.canonical(m), "\(t.name) → unknown muscle id \(m)")
             }
             // Primary and secondary never overlap.
             XCTAssertTrue(Set(t.primaryMuscles).isDisjoint(with: Set(t.secondaryMuscles)),

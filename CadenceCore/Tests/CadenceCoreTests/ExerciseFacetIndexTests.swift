@@ -2,28 +2,28 @@ import XCTest
 @testable import CadenceCore
 
 /// Pure tests for the picker's equipment sub-filter index (feedback: fast
-/// equipment narrowing under a selected body part).
+/// equipment narrowing under a selected muscle group).
 final class ExerciseFacetIndexTests: XCTestCase {
 
     private struct Item: EquipmentClassifiable, Equatable {
-        var bodyParts: Set<BodyPart>
+        var trainedMuscleGroups: Set<MuscleGroup>
         var equipmentValue: Equipment?
     }
 
     private var catalog: [Item] {
         [
-            Item(bodyParts: [.shoulders], equipmentValue: .barbell),   // Overhead Press
-            Item(bodyParts: [.shoulders], equipmentValue: .dumbbell),  // DB Shoulder Press
-            Item(bodyParts: [.shoulders], equipmentValue: .dumbbell),  // Lateral Raise
-            Item(bodyParts: [.shoulders], equipmentValue: .cable),     // Cable Lateral Raise
-            Item(bodyParts: [.chest, .triceps], equipmentValue: .bodyweight), // Push-Up
-            Item(bodyParts: [.chest], equipmentValue: .barbell),       // Bench Press
-            Item(bodyParts: [.abs], equipmentValue: nil),              // untagged
+            Item(trainedMuscleGroups: [.shoulders], equipmentValue: .barbell),   // Overhead Press
+            Item(trainedMuscleGroups: [.shoulders], equipmentValue: .dumbbell),  // DB Shoulder Press
+            Item(trainedMuscleGroups: [.shoulders], equipmentValue: .dumbbell),  // Lateral Raise
+            Item(trainedMuscleGroups: [.shoulders], equipmentValue: .cable),     // Cable Lateral Raise
+            Item(trainedMuscleGroups: [.chest, .triceps], equipmentValue: .bodyweight), // Push-Up
+            Item(trainedMuscleGroups: [.chest], equipmentValue: .barbell),       // Bench Press
+            Item(trainedMuscleGroups: [.abdominals], equipmentValue: nil),              // untagged
         ]
     }
 
     func testEquipmentPresentIsDedupedAndCanonicalOrder() {
-        let shoulders = catalog.filter { $0.bodyParts.contains(.shoulders) }
+        let shoulders = catalog.filter { $0.trainedMuscleGroups.contains(.shoulders) }
         let equip = ExerciseFacetIndex.equipmentPresent(in: shoulders)
         // Deduped (two dumbbells → one) and in Equipment.allCases order:
         // barbell, dumbbell, cable, ...
@@ -31,15 +31,15 @@ final class ExerciseFacetIndexTests: XCTestCase {
     }
 
     func testEquipmentPresentIgnoresUntagged() {
-        let abs = catalog.filter { $0.bodyParts.contains(.abs) }
+        let abs = catalog.filter { $0.trainedMuscleGroups.contains(.abdominals) }
         XCTAssertEqual(ExerciseFacetIndex.equipmentPresent(in: abs), [])
     }
 
-    func testEquipmentForBodyPart() {
+    func testEquipmentForMuscleGroup() {
         let index = ExerciseFacetIndex(catalog)
         XCTAssertEqual(index.equipment(for: .shoulders), [.barbell, .dumbbell, .cable])
         XCTAssertEqual(index.equipment(for: .chest), [.barbell, .bodyweight])
-        XCTAssertEqual(index.equipment(for: .legs), [])   // no leg movements
+        XCTAssertEqual(index.equipment(for: .quadriceps), [])   // no leg movements
     }
 
     func testExercisesForPartUnfilteredReturnsAll() {
@@ -80,7 +80,7 @@ final class ExerciseFacetIndexTests: XCTestCase {
         // Guards the real seeded library still gives the sub-filter something to do
         // for a heavily-populated part (drives the UI test's Shoulders → Dumbbell).
         let items = ExerciseLibrary.starter.map {
-            Item(bodyParts: ExerciseLibrary.bodyParts(of: $0), equipmentValue: $0.equipment)
+            Item(trainedMuscleGroups: ExerciseLibrary.muscleGroups(of: $0), equipmentValue: $0.equipment)
         }
         let index = ExerciseFacetIndex(items)
         let shoulderEquip = index.equipment(for: .shoulders)

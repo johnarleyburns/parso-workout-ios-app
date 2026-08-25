@@ -75,30 +75,30 @@ final class MovementFamilyTests: XCTestCase {
     // MARK: - Canonical name
 
     func testCanonicalNameStripsEquipmentAndLaterality() {
-        XCTAssertEqual(MuscleCatalog.canonicalName("Double Kettlebell Snatch"), "snatch")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Kettlebell Snatch"), "snatch")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Dumbbell Snatch"), "snatch")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Single Kettlebell Snatch"), "snatch")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Snatch"), "snatch")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Double Kettlebell Snatch"), "snatch")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Kettlebell Snatch"), "snatch")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Dumbbell Snatch"), "snatch")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Single Kettlebell Snatch"), "snatch")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Snatch"), "snatch")
     }
 
     func testCanonicalNameStripsBarbellAndPosition() {
-        XCTAssertEqual(MuscleCatalog.canonicalName("Barbell Bench Press"), "bench press")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Seated Dumbbell Overhead Press"), "overhead press")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Standing Barbell Curl"), "curl")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Alternate Dumbbell Curl"), "curl")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Barbell Bench Press"), "bench press")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Seated Dumbbell Overhead Press"), "overhead press")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Standing Barbell Curl"), "curl")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Alternate Dumbbell Curl"), "curl")
     }
 
     func testCanonicalNameStripsGripQualifiers() {
-        XCTAssertEqual(MuscleCatalog.canonicalName("Lat Pulldown - Pronated Grip"), "lat pulldown")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Lat Pulldown Pronated Grip"), "lat pulldown")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Lat Pulldown - Supinated Grip"), "lat pulldown")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Lat Pulldown - Pronated Grip"), "lat pulldown")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Lat Pulldown Pronated Grip"), "lat pulldown")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Lat Pulldown - Supinated Grip"), "lat pulldown")
     }
 
     func testCanonicalNamePreservesCoreMovement() {
-        XCTAssertEqual(MuscleCatalog.canonicalName("Deadlift"), "deadlift")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Back Squat"), "back squat")
-        XCTAssertEqual(MuscleCatalog.canonicalName("Pull-Up"), "pull-up")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Deadlift"), "deadlift")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Back Squat"), "back squat")
+        XCTAssertEqual(ExerciseNameCanonicalizer.canonicalName("Pull-Up"), "pull-up")
     }
 
     // MARK: - Fallback to other

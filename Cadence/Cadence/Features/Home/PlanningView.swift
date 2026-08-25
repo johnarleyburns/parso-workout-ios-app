@@ -17,7 +17,7 @@ struct PlanningView: View {
 
     @State private var segment: Segment = .routines
     @State private var query = ""
-    @State private var selectedPart: BodyPart?
+    @State private var selectedGroup: MuscleGroup?
     @State private var browseAll = false
     @State private var templateEditorPresented = false
 
@@ -34,7 +34,7 @@ struct PlanningView: View {
 
     private var filteredExercises: [Exercise] {
         if !trimmedQuery.isEmpty { return ExerciseSearch.rank(trimmedQuery, over: exercises) }
-        if let part = selectedPart { return exercises.filter { $0.bodyParts.contains(part) } }
+        if let group = selectedGroup { return exercises.filter { $0.trainedMuscleGroups.contains(group) } }
         return browseAll ? exercises : popular
     }
 
@@ -46,11 +46,11 @@ struct PlanningView: View {
         }
     }
 
-    private var showsGrouped: Bool { browseAll && trimmedQuery.isEmpty && selectedPart == nil }
+    private var showsGrouped: Bool { browseAll && trimmedQuery.isEmpty && selectedGroup == nil }
 
     private var exerciseSectionTitle: String {
         if !trimmedQuery.isEmpty { return "Results" }
-        if let part = selectedPart { return part.displayName }
+        if let group = selectedGroup { return group.displayName }
         return "Popular"
     }
 
@@ -102,7 +102,7 @@ struct PlanningView: View {
                         : "Search routines")
         .onChange(of: segment) { _, _ in
             query = ""
-            selectedPart = nil
+            selectedGroup = nil
             browseAll = false
         }
         .sheet(isPresented: $templateEditorPresented) { TemplateEditorView() }
@@ -125,7 +125,7 @@ struct PlanningView: View {
                 Section(exerciseSectionTitle) {
                     ForEach(filteredExercises) { exerciseRow($0) }
                 }
-                if !browseAll && trimmedQuery.isEmpty && selectedPart == nil {
+                if !browseAll && trimmedQuery.isEmpty && selectedGroup == nil {
                     Section {
                         Button { browseAll = true } label: {
                             Label("Browse all exercises", systemImage: "square.grid.2x2")
@@ -141,13 +141,13 @@ struct PlanningView: View {
     private var filterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                chip("All", active: selectedPart == nil) { selectedPart = nil }
+                chip("All", active: selectedGroup == nil) { selectedGroup = nil }
                     .accessibilityIdentifier("planning.filter.all")
-                ForEach(BodyPart.allCases) { part in
-                    chip(part.displayName, active: selectedPart == part) {
-                        selectedPart = (selectedPart == part) ? nil : part
+                ForEach(MuscleGroup.canonicalOrder) { group in
+                    chip(group.displayName, active: selectedGroup == group) {
+                        selectedGroup = (selectedGroup == group) ? nil : group
                     }
-                    .accessibilityIdentifier("planning.filter.\(part.rawValue)")
+                    .accessibilityIdentifier("planning.filter.\(group.rawValue)")
                 }
             }
             .padding(.vertical, 2)

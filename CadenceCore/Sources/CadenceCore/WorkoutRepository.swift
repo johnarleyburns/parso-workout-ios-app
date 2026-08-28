@@ -953,9 +953,21 @@ public enum WorkoutRepository {
     @discardableResult
     public static func ingest(_ workouts: [IngestedWorkout], in context: ModelContext) throws -> Int {
         let existing = try context.fetch(FetchDescriptor<CardioWorkout>())
-        let known = Set(existing.compactMap { $0.healthKitWorkoutUUID })
         var inserted = 0
-        for w in workouts where !known.contains(w.id) && shouldAutoImport(w) {
+        var changed = false
+        for w in workouts where shouldAutoImport(w) {
+            if let match = existing.first(where: {
+                $0.healthKitWorkoutUUID == w.id ||
+                ($0.sourceValue == .watch && $0.typeValue == w.type &&
+                 abs($0.start.timeIntervalSince(w.start)) < 10 &&
+                 abs(($0.end ?? $0.start).timeIntervalSince(w.end)) < 10)
+            }) {
+                if match.healthKitWorkoutUUID != w.id {
+                    match.healthKitWorkoutUUID = w.id
+                    changed = true
+                }
+                continue
+            }
             let c = CardioWorkout(type: w.type, start: w.start, end: w.end,
                                    distance: w.distanceMeters, activeEnergy: w.activeEnergyKcal,
                                    avgHeartRate: w.avgHeartRate, maxHeartRate: w.maxHeartRate,
@@ -967,8 +979,33 @@ public enum WorkoutRepository {
             }
             inserted += 1
         }
-        if inserted > 0 { try context.save() }
+        if inserted > 0 || changed { try context.save() }
         return inserted
+    }
+
+    /// Ingests the app-level Watch completion before HealthKit becomes
+    /// available. Repeated envelopes are harmless, and a later HealthKit
+    /// import is reconciled by workout identity (or matching watch timing).
+    @discardableResult
+    public static func ingest(_ completion: WatchCardioCompletion,
+                              in context: ModelContext) throws -> Bool {
+        let all = try context.fetch(FetchDescriptor<CardioWorkout>())
+        if all.contains(where: { $0.id == completion.id }) {
+            return false
+        }
+        let summary = CardioWorkoutSummary(
+            id: completion.id, type: completion.type, start: completion.start,
+            end: completion.end, distanceMeters: completion.distanceMeters,
+            hrSamples: completion.hrSamples,
+            customTitle: completion.title)
+        let saved = try saveRecordedCardio(summary, source: .watch,
+                                    healthKitWorkoutUUID: nil, in: context)
+        if completion.hrSamples.isEmpty {
+            saved.avgHeartRate = completion.avgHeartRate
+            saved.maxHeartRate = completion.maxHeartRate
+            try context.save()
+        }
+        return true
     }
 
     /// Auto-import policy for HealthKit workouts: clear Apple Watch cardio only.

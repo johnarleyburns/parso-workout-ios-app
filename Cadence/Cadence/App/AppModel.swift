@@ -389,6 +389,11 @@ extension AppModel {
 
     fileprivate func handleWatchMessage(_ message: [String: Any],
                                          replyHandler: (([String: Any]) -> Void)? = nil) {
+        if message["action"] as? String == "cardio_completion" {
+            let accepted = handleWatchCardioCompletion(message)
+            replyHandler?(accepted ? completionAck(for: message) : ["ack": false])
+            return
+        }
         if message[WatchSync.Key.command] as? String == WatchSync.Key.requestSettingsSync {
             Task { @MainActor [weak self] in
                 self?.pushSettingsContext(force: true)
@@ -421,6 +426,8 @@ extension AppModel {
         Task { @MainActor [weak self] in
             guard let self else { return }
             switch action {
+            case "cardio_completion":
+                _ = self.handleWatchCardioCompletion(payload.value)
             case "log_set", "end_session", "discard_session", "delete_exercise", "delete_set":
                 self.handleWatchStrengthMutation(payload.value)
             case "set_unit":
@@ -431,6 +438,33 @@ extension AppModel {
                 break
             }
         }
+    }
+
+    @discardableResult
+    private func handleWatchCardioCompletion(_ info: [String: Any]) -> Bool {
+        guard let data = info["payload"] as? Data,
+              let completion = try? WatchCardioCompletion.decode(data),
+              let container = _modelContainer else { return false }
+        let ctx = ModelContext(container)
+        do {
+            _ = try WorkoutRepository.ingest(completion, in: ctx)
+            let ack: [String: Any] = ["action": "cardio_completion_ack", "id": completion.id.uuidString]
+            if let session = wcSession {
+                session.transferUserInfo(ack)
+                if session.isReachable { session.sendMessage(ack, replyHandler: nil, errorHandler: nil) }
+            }
+            NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
+            return true
+        } catch {
+            // Keep the watch payload queued; a later delivery can retry it.
+            return false
+        }
+    }
+
+    private func completionAck(for info: [String: Any]) -> [String: Any] {
+        guard let data = info["payload"] as? Data,
+              let completion = try? WatchCardioCompletion.decode(data) else { return ["ack": false] }
+        return ["ack": true, "action": "cardio_completion_ack", "id": completion.id.uuidString]
     }
 
     private func handleWatchStrengthMutation(_ info: [String: Any]) {

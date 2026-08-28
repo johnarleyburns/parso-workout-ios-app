@@ -8,6 +8,7 @@ struct WatchCardioSummaryView: View {
     let lapText: String?
     let onSave: () -> Void
     let onDiscard: () -> Void
+    @Environment(WatchWorkoutManager.self) private var watchManager
 
     var body: some View {
         VStack(spacing: 8) {
@@ -28,6 +29,11 @@ struct WatchCardioSummaryView: View {
 
             Button("Save") { onSave() }
                 .buttonStyle(.borderedProminent).tint(.green)
+            if watchManager.phoneSyncState.isInProgress {
+                Text("Syncing to iPhone…").font(.caption).foregroundStyle(.secondary)
+            } else if !watchManager.pendingCardioCompletions.isEmpty {
+                Text("Will sync when iPhone is available").font(.caption).foregroundStyle(.secondary)
+            }
             Button("Discard") { onDiscard() }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
 

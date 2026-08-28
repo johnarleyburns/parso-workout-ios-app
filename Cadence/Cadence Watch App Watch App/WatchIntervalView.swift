@@ -185,6 +185,9 @@ struct WatchIntervalView: View {
             }
 
             Button("Save workout") {
+                if let s = watchManager.savedSummary {
+                    watchManager.enqueueCardioCompletion(type: intervalCardioType, summary: s)
+                }
                 watchManager.stopWorkout(save: true)
                 onDone()
             }
@@ -296,5 +299,9 @@ struct WatchIntervalView: View {
 
     private var isBoxingInterval: Bool {
         kind.localizedCaseInsensitiveContains("boxing") || plan.name.localizedCaseInsensitiveContains("boxing")
+    }
+
+    private var intervalCardioType: CardioType {
+        kind.localizedCaseInsensitiveContains("boxing") ? .boxing : .hiit
     }
 }

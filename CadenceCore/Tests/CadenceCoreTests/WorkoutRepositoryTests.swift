@@ -121,6 +121,27 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertEqual(all[0].orderedHRSamples.count, 2)
     }
 
+    func testWatchCompletionIsIdempotentAndReconcilesLaterHealthKitImport() throws {
+        let ctx = try makeContext()
+        let start = Date(timeIntervalSince1970: 10_000)
+        let completion = WatchCardioCompletion(type: .run, start: start,
+                                               end: start.addingTimeInterval(600),
+                                               distanceMeters: 1500,
+                                               hrSamples: [HRSamplePoint(t: 10, bpm: 130)],
+                                               avgHeartRate: 130, maxHeartRate: 130,
+                                               gpsEnabled: true)
+        XCTAssertTrue(try WorkoutRepository.ingest(completion, in: ctx))
+        XCTAssertFalse(try WorkoutRepository.ingest(completion, in: ctx))
+
+        let hkWorkout = IngestedWorkout(id: UUID(), type: .run, start: start,
+                                        end: start.addingTimeInterval(600),
+                                        importedKind: .running)
+        XCTAssertEqual(try WorkoutRepository.ingest([hkWorkout], in: ctx), 0)
+        let cardio = try XCTUnwrap(try WorkoutRepository.allCardio(ctx).first)
+        XCTAssertEqual(cardio.healthKitWorkoutUUID, hkWorkout.id)
+        XCTAssertEqual(cardio.orderedHRSamples.count, 1)
+    }
+
     func testSaveRecordedCardioComputesHRAndLinksHK() throws {
         let ctx = try makeContext()
         let hkID = UUID()

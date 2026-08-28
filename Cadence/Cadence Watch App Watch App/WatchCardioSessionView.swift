@@ -85,8 +85,25 @@ struct WatchCardioSessionView: View {
     }
 
     private func save() {
+        if let summary = pendingSummary {
+            watchManager.enqueueCardioCompletion(type: cardioType, summary: summary)
+        }
         watchManager.stopWorkout(save: true)
         onDone()
+    }
+
+    private var cardioType: CardioType {
+        switch kind {
+        case .run: return .run
+        case .walk: return .walk
+        case .cycle: return .cycle
+        case .swim: return .swim
+        case .hiit: return .hiit
+        case .boxing: return .boxing
+        case .rowing: return .rowing
+        case .other: return .other
+        case .strength: return .other
+        }
     }
 
     private func discard() {

@@ -65,6 +65,11 @@ extension WatchWorkoutManager: WCSessionDelegate {
 
     @MainActor
     func handleMessage(_ message: [String: Any]) -> [String: Any] {
+        if message["action"] as? String == "cardio_completion_ack",
+           let rawID = message["id"] as? String, let id = UUID(uuidString: rawID) {
+            acknowledgeCardioCompletion(id)
+            return ["ack": true]
+        }
         guard let rawAction = message[WatchSync.Key.command] as? String,
               let action = WatchHRCommand.Action(rawValue: rawAction) else { return ["ack": false] }
         let command = WatchHRCommand(payload: message)

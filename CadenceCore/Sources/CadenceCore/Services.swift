@@ -135,7 +135,7 @@ public enum ImportedWorkoutKind: String, Sendable, CaseIterable {
     }
 }
 
-public struct HRSamplePoint: Equatable, Sendable {
+public struct HRSamplePoint: Codable, Equatable, Sendable {
     public var t: TimeInterval   // seconds since workout start
     public var bpm: Double
     public init(t: TimeInterval, bpm: Double) { self.t = t; self.bpm = bpm }

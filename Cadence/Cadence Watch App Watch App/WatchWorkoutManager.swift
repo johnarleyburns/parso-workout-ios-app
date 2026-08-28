@@ -38,6 +38,7 @@ final class WatchWorkoutManager: NSObject {
     var recentPartnerNames: [String] = []
     var customExerciseRows: [[String: Any]] = []
     var customExercisesUpdatedAt = Date.distantPast
+    var pendingCardioCompletions: [WatchCardioCompletion] = []
 
     struct SavedWorkoutSummary {
         let duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double
@@ -55,7 +56,7 @@ final class WatchWorkoutManager: NSObject {
     private var builder: HKLiveWorkoutBuilder?
     private var hrPollTimer: Timer?
     private var ble: WatchHeartRateBLE?
-    private var sessionStart: Date?
+    var sessionStart: Date?
     var phoneRequestID: String?
     private var accumulatedHR: Double = 0
     private var hrCount: Int = 0
@@ -75,6 +76,7 @@ final class WatchWorkoutManager: NSObject {
     init(uiTestMode: Bool = false) {
         self.uiTestMode = uiTestMode
         super.init()
+        pendingCardioCompletions = Self.loadPendingCardioCompletions()
     }
 
     var wcSession: WCSession? { WCSession.isSupported() ? WCSession.default : nil }
@@ -85,6 +87,7 @@ final class WatchWorkoutManager: NSObject {
         guard let session = wcSession else { return }
         session.delegate = self
         session.activate()
+        flushPendingCardioCompletions()
     }
 
     // MARK: HealthKit authorization
@@ -258,7 +261,7 @@ final class WatchWorkoutManager: NSObject {
     private(set) var manualLapCount: Int = 0
     private(set) var autoLapCount: Int = 0
     private var isSwimSession: Bool = false
-    private var isOutdoorSession: Bool = false
+    var isOutdoorSession: Bool = false
 
     func incrementManualLap() { manualLapCount += 1 }
     func enableWaterLock() { WKInterfaceDevice.current().enableWaterLock() }

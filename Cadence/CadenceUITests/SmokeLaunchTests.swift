@@ -369,6 +369,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         let continueButton = app.buttons["prehr.start"]
         XCTAssertTrue(continueButton.waitForExistence(timeout: 10),
                       "HR gate did not appear before the cardio workout")
+        XCTAssertTrue(app.buttons["prehr.cancel"].exists,
+                      "HR gate did not offer a way back to Home")
         XCTAssertTrue(continueButton.isEnabled,
                       "HR gate Continue is disabled on a fresh cardio start")
         continueButton.tap()

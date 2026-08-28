@@ -34,8 +34,11 @@ struct ExercisePickerSearch {
     }
 
     private var index = ExerciseSearchIndex<Exercise>([])
+    private var libraryIndex = ExerciseSearchIndex<Exercise>([])
     /// `(exercise, normalized name, isCustom)` — folded once at build time.
     private var names: [(item: Exercise, name: String, isCustom: Bool)] = []
+    private var normalizedNameByID: [UUID: String] = [:]
+    private var builtInNames: Set<String> = []
     private var popularCache: [Exercise] = []
     private(set) var indexedCount = -1
 
@@ -44,6 +47,9 @@ struct ExercisePickerSearch {
         guard exercises.count != indexedCount else { return false }
         index = ExerciseSearchIndex(exercises)
         names = index.normalizedNames
+        normalizedNameByID = Dictionary(uniqueKeysWithValues: names.map { ($0.item.id, $0.name) })
+        builtInNames = Set(names.lazy.filter { !$0.isCustom }.map(\.name))
+        libraryIndex = ExerciseSearchIndex(exercises.filter { !$0.isCustom })
         indexedCount = exercises.count
         let byName = Dictionary(names.map { ($0.name, $0.item) }, uniquingKeysWith: { first, _ in first })
         popularCache = ExerciseLibrary.popularNames.compactMap { byName[ExerciseSearch.normalize($0)] }
@@ -58,7 +64,7 @@ struct ExercisePickerSearch {
         guard !trimmed.isEmpty else { return .empty }
         let normalized = ExerciseSearch.normalize(trimmed)
         var outcome = Outcome(query: trimmed, results: index.rank(trimmed))
-        outcome.exactMatch = names.contains { $0.name == normalized }
+        outcome.exactMatch = builtInNames.contains(normalized) || names.contains { $0.isCustom && $0.name == normalized }
         outcome.bestMatch = bestLibraryMatch(normalized: normalized, query: trimmed)
         return outcome
     }
@@ -68,14 +74,16 @@ struct ExercisePickerSearch {
     /// the pre-normalized names — no folding on the keystroke path.
     private func bestLibraryMatch(normalized: String, query: String) -> Exercise? {
         guard normalized.count >= 3 else { return nil }
-        var matches: [Exercise] = []
-        for entry in names where !entry.isCustom && entry.name != normalized {
-            if entry.name.contains(normalized) || normalized.contains(entry.name) {
-                matches.append(entry.item)
-            }
+        let ranked = libraryIndex.rank(query)
+        var match: Exercise?
+        var matchCount = 0
+        for item in ranked {
+            guard let name = normalizedNameByID[item.id], name != normalized else { continue }
+            guard name.contains(normalized) || normalized.contains(name) else { continue }
+            match = item
+            matchCount += 1
+            if matchCount > 1 { break }
         }
-        if matches.count == 1 { return matches[0] }
-        guard matches.count > 1 else { return nil }
-        return ExerciseSearchIndex(matches).rank(query).first
+        return match
     }
 }

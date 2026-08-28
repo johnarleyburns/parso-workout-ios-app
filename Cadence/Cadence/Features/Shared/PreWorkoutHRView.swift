@@ -27,6 +27,7 @@ extension HRSourceChoice {
 struct PreWorkoutHRView: View {
     let workoutType: CardioType?
     let onContinue: (_ source: HRSourceChoice) -> Void
+    let onCancel: () -> Void
 
     @Environment(AppModel.self) private var model
     @Query private var savedDevices: [HRMDevice]
@@ -136,6 +137,13 @@ struct PreWorkoutHRView: View {
                 .cadenceGlassButton(prominent: true, tint: .green)
                 .disabled(!PreWorkoutHRPresenter.continueEnabled(hrState))
                 .accessibilityIdentifier("prehr.start")
+
+                Button("Cancel") {
+                    model.stopWatchWorkout()
+                    onCancel()
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("prehr.cancel")
             }
             .padding(.horizontal)
         }

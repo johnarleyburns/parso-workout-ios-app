@@ -267,11 +267,15 @@ extension HomeView {
         // HR gate — appears BEFORE the get-ready countdown.  Lets the
         // user connect HR, see live data, then press "Start Workout".
         if let kind = hrGateKind {
-            PreWorkoutHRView(workoutType: kind.cardioType) { source in
-                hrGateKind = nil
-                captureHR = source != .none
-                proceedFromHRGate(kind, useHR: source != .none)
-            }
+            PreWorkoutHRView(
+                workoutType: kind.cardioType,
+                onContinue: { source in
+                    hrGateKind = nil
+                    captureHR = source != .none
+                    proceedFromHRGate(kind, useHR: source != .none)
+                },
+                onCancel: { hrGateKind = nil }
+            )
             .transition(.identity)
             .zIndex(2)
         }

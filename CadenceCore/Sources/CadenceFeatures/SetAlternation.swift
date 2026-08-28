@@ -40,22 +40,21 @@ public enum SetAlternation {
     }
 
     /// Who should enter the next set for an exercise.
-    /// - `pendingSets` non-empty → the performer of the first pending row (the
-    ///   card's alternation answer).
-    /// - `pendingSets` empty (silent/unplanned exercise) → the next member in
-    ///   `rosterOrder` after `lastLoggedPerformerID`, defaulting to the first
-    ///   configured roster member when there is nothing to rotate from.
+    /// - Once a working set has been logged on this exercise, advance from its
+    ///   performer in `rosterOrder`. This keeps the Add Set editor cycling even
+    ///   when pending prescription rows still lead with another performer.
+    /// - Before any working set is logged, use the first pending row when one
+    ///   exists; otherwise use the first configured roster member.
     /// The owner is represented by `nil` throughout.
     public static func nextPerformerID(pendingSets: [SessionRenderModel.PendingSetDisplay],
                                        rosterOrder: [UUID?],
-                                       lastLoggedPerformerID: UUID?) -> UUID? {
-        if let first = pendingSets.first {
-            return first.performerID
+                                       lastLoggedPerformerID: UUID?,
+                                       hasLoggedWorkingSet: Bool = false) -> UUID? {
+        guard !rosterOrder.isEmpty else { return nil }
+        if hasLoggedWorkingSet,
+           let lastIndex = rosterOrder.firstIndex(of: lastLoggedPerformerID) {
+            return rosterOrder[(lastIndex + 1) % rosterOrder.count]
         }
-        guard let lastLoggedPerformerID,
-              let lastIndex = rosterOrder.firstIndex(of: lastLoggedPerformerID) else {
-            return rosterOrder.first ?? nil
-        }
-        return rosterOrder[(lastIndex + 1) % rosterOrder.count]
+        return pendingSets.first?.performerID ?? (rosterOrder.first ?? nil)
     }
 }

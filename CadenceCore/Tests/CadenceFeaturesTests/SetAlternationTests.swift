@@ -98,7 +98,8 @@ final class SetAlternationTests: XCTestCase {
         let id = SetAlternation.nextPerformerID(
             pendingSets: [],
             rosterOrder: [nil, partner],
-            lastLoggedPerformerID: partner)
+            lastLoggedPerformerID: partner,
+            hasLoggedWorkingSet: true)
         XCTAssertNil(id, "After a partner, the rotation falls back to the owner")
     }
 
@@ -109,5 +110,40 @@ final class SetAlternationTests: XCTestCase {
             rosterOrder: [partner, nil],
             lastLoggedPerformerID: nil)
         XCTAssertEqual(id, partner, "Nothing logged → the configured first performer leads")
+    }
+
+    func testNextPerformerIDAdvancesAfterOwnerEvenWhenPendingOwnerRowLeads() {
+        let partner = UUID()
+        let id = SetAlternation.nextPerformerID(
+            pendingSets: [pending(nil, 0), pending(partner, 0)],
+            rosterOrder: [nil, partner],
+            lastLoggedPerformerID: nil,
+            hasLoggedWorkingSet: true)
+        XCTAssertEqual(id, partner, "After Me logs, Add Set must advance to the partner")
+    }
+
+    func testNextPerformerIDCyclesThreeConfiguredPerformers() {
+        let sam = UUID()
+        let alex = UUID()
+        XCTAssertEqual(SetAlternation.nextPerformerID(
+            pendingSets: [], rosterOrder: [nil, sam, alex],
+            lastLoggedPerformerID: sam, hasLoggedWorkingSet: true), alex)
+        XCTAssertNil(SetAlternation.nextPerformerID(
+            pendingSets: [], rosterOrder: [nil, sam, alex],
+            lastLoggedPerformerID: alex, hasLoggedWorkingSet: true))
+    }
+
+    func testNextPerformerIDRecoversWhenLastPerformerWasRemoved() {
+        let removed = UUID()
+        let partner = UUID()
+        XCTAssertNil(SetAlternation.nextPerformerID(
+            pendingSets: [], rosterOrder: [nil, partner],
+            lastLoggedPerformerID: removed, hasLoggedWorkingSet: true))
+    }
+
+    func testNextPerformerIDEmptyRosterIsSafe() {
+        XCTAssertNil(SetAlternation.nextPerformerID(
+            pendingSets: [], rosterOrder: [], lastLoggedPerformerID: nil,
+            hasLoggedWorkingSet: true))
     }
 }

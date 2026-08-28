@@ -236,12 +236,14 @@ extension SessionView {
         guard hasPartners else { return nil }
         let ctx = cache.state.contexts.first { $0.exerciseID == exercise.id }
         let rosterOrder: [UUID?] = rosterEntries.map { $0.isMe ? nil : $0.personID }
-        let lastID = session.orderedSets
+        let exerciseSets = session.orderedSets
             .filter { $0.exercise?.id == exercise.id && !$0.isWarmup }
-            .last.map { $0.isOwnerSet ? nil : $0.performedBy?.id } ?? nil
+        let lastSet = exerciseSets.last
+        let lastID = lastSet.map { $0.isOwnerSet ? nil : $0.performedBy?.id } ?? nil
         let id = SetAlternation.nextPerformerID(pendingSets: ctx?.pendingSets ?? [],
                                                 rosterOrder: rosterOrder,
-                                                lastLoggedPerformerID: lastID)
+                                                lastLoggedPerformerID: lastID,
+                                                hasLoggedWorkingSet: lastSet != nil)
         return id.flatMap { people(for: $0) } ?? allPeople.first { $0.isMe }
     }
     func explicitRosterIDs() -> [String] {

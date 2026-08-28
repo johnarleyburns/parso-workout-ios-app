@@ -270,28 +270,35 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Saving a set collapsed the exercise instead of leaving it open")
         app.dismissRestBar()
 
-        // Field test 2026-08-20 issue 3: the set editor ALWAYS shows per-performer
-        // history, and it re-derives when "Who did this set?" changes. Right after
-        // the owner's set saves, reopening must show that set as "last set today";
-        // switching to Sam must clear it. Unguarded — a missing element fails.
+        // Field test 2026-08-27 issue 1: after the owner's set saves, reopening
+        // Add Set must advance to Sam even when the pending owner row leads.
         XCTAssertTrue(app.scrollToHittableAndTap("set.add.\(exerciseName)"),
                       "Could not reopen the set editor for the next set")
         XCTAssertTrue(app.descendants(matching: .any)["setEditor.history"]
                         .waitForExistence(timeout: 10),
                       "Set editor is missing the History card")
+        let samNoHistory = app.descendants(matching: .any)["setEditor.history.noHistory"]
+        XCTAssertTrue(samNoHistory.waitForExistence(timeout: 5),
+                      "Add Set did not advance to Sam after the owner's set")
+        XCTAssertTrue(samNoHistory.label.contains("Sam"),
+                      "The next Add Set editor did not name Sam as the selected performer")
+        XCTAssertTrue(app.buttons["setEditor.performer"].waitTap(timeout: 10),
+                      "Set editor lost the Who did this set? picker")
+        let me = app.buttons.containing(NSPredicate(format: "label == %@", "Me")).firstMatch
+        XCTAssertTrue(me.waitForExistence(timeout: 5), "Me is not in the performer picker")
+        me.tap()
         let ownerLastSet = app.descendants(matching: .any)["setEditor.history.lastSet"]
         XCTAssertTrue(ownerLastSet.waitForExistence(timeout: 5),
-                      "Owner's just-saved set is not shown as last set today")
+                      "Switching back to Me did not show the owner's just-saved set")
         XCTAssertTrue(ownerLastSet.label.contains("× 5"),
                       "Last set today does not carry the owner's just-logged reps (default 5)")
         XCTAssertTrue(app.buttons["setEditor.performer"].waitTap(timeout: 10),
-                      "Set editor lost the Who did this set? picker")
+                      "Set editor lost the Who did this set? picker after switching to Me")
         let sam = app.buttons.containing(NSPredicate(format: "label == %@", "Sam")).firstMatch
         XCTAssertTrue(sam.waitForExistence(timeout: 5), "Sam is not in the performer picker")
         sam.tap()
         XCTAssertFalse(app.descendants(matching: .any)["setEditor.history.lastSet"].exists,
                        "Switching to Sam left the owner's last set on the History card")
-        let samNoHistory = app.descendants(matching: .any)["setEditor.history.noHistory"]
         XCTAssertTrue(samNoHistory.waitForExistence(timeout: 5),
                       "Sam's History card does not say No previous history")
         XCTAssertTrue(samNoHistory.label.contains("Sam"),

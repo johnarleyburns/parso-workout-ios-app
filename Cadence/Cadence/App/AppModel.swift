@@ -41,6 +41,10 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// 1.2 s teardown window so the stop-then-retry-once fires only while the
     /// user is still on the HR screen (any new start/stop disarms it).
     private var watchRetryArmed = false
+    /// A start tapped during WCSession activation is held until activation has
+    /// completed. Sending before activation is silently dropped by some OS
+    /// releases, which used to leave the HR gate waiting forever.
+    private var pendingWatchStartType: String?
     /// UI-test seam (`-uiTestWatchStop`): record every `stopWatchWorkout()` call
     /// into `UserDefaults("uitest.watchStopCount")` so the iPhone smoke test can
     /// assert the cardio end paths actually stop the watch session.
@@ -210,11 +214,19 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// raw type string and begin streaming live heart rate.
     func startWatchWorkout(rawType: String) {
         watchRetryArmed = false
+        if !isUITestMode, WCSession.isSupported(), WCSession.default.activationState != .activated {
+            pendingWatchStartType = rawType
+            activateWCSession()
+            return
+        }
         performWatchStart(rawType: rawType, retryType: rawType, allowsRetry: true)
     }
 
     private func performWatchStart(rawType: String, retryType: String, allowsRetry: Bool) {
-        guard watchAvailable, let session = wcSession else { return }
+        guard watchAvailable, let session = wcSession else {
+            watchError = "Apple Watch is unavailable — open Cladiron on your Watch and try again"
+            return
+        }
         watchError = nil
         watchTimeout?.invalidate()
 
@@ -227,6 +239,10 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchHRRelay.begin(requestID: requestID)
         let command = WatchHRCommand(action: .start, requestID: requestID,
                                      workoutType: rawType, issuedAt: nextWatchHRCommandIssuedAt())
+        // Keep a durable copy in case the watch is reachable only briefly or
+        // the immediate message is lost while the companion launches. The
+        // watch's command handler makes this duplicate idempotent.
+        session.transferUserInfo(command.payload)
         session.sendMessage(
             command.payload,
             replyHandler: Self.watchReplyHandler(owner: self, requestID: requestID,
@@ -381,6 +397,10 @@ extension AppModel {
     fileprivate func watchActivationCompleted(installed: Bool) {
         watchAppInstalled = installed
         pushSettingsContext()
+        if installed, let rawType = pendingWatchStartType {
+            pendingWatchStartType = nil
+            performWatchStart(rawType: rawType, retryType: rawType, allowsRetry: true)
+        }
     }
 
     fileprivate func watchStateChanged(installed: Bool) {
@@ -389,6 +409,20 @@ extension AppModel {
 
     fileprivate func handleWatchMessage(_ message: [String: Any],
                                          replyHandler: (([String: Any]) -> Void)? = nil) {
+        if let requestIDString = message["requestID"] as? String,
+           let requestID = UUID(uuidString: requestIDString),
+           let accepted = message["accepted"] as? Bool {
+            // A queued start is acknowledged by a follow-up message from the
+            // watch. It has the same request ID as the immediate reply and is
+            // therefore safe to apply after either delivery wins the race.
+            if accepted, requestID == watchHRRelay.activeRequestID {
+                watchTimeout?.invalidate(); watchTimeout = nil
+                watchError = nil
+                watchHRRelay.acknowledged()
+            }
+            replyHandler?(accepted ? ["ack": true] : ["ack": false])
+            return
+        }
         if message["action"] as? String == "cardio_completion" {
             let accepted = handleWatchCardioCompletion(message)
             replyHandler?(accepted ? completionAck(for: message) : ["ack": false])

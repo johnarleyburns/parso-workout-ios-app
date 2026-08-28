@@ -59,7 +59,15 @@ extension WatchWorkoutManager: WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         let message = UncheckedWatchPayload(value: userInfo)
         Task { @MainActor [weak self] in
-            _ = self?.handleMessage(message.value)
+            guard let self else { return }
+            let reply = self.handleMessage(message.value)
+            // User-info has no replyHandler. Mirror the command result over an
+            // immediate message when possible so the phone can advance from
+            // connecting even when the durable delivery was the one that
+            // started the session.
+            if reply["requestID"] != nil, self.wcSession?.isReachable == true {
+                self.wcSession?.sendMessage(reply, replyHandler: nil, errorHandler: nil)
+            }
         }
     }
 
@@ -74,6 +82,12 @@ extension WatchWorkoutManager: WCSessionDelegate {
               let action = WatchHRCommand.Action(rawValue: rawAction) else { return ["ack": false] }
         let command = WatchHRCommand(payload: message)
         if let command, !command.isNewer(than: lastAppliedWatchHRCommandAt) {
+            if action == .start,
+               let requestID = command.requestID,
+               requestID.uuidString == phoneRequestID,
+               isActive || isMonitoring {
+                return reply(for: requestID, accepted: true)
+            }
             return ["ack": true]
         }
 

@@ -132,6 +132,26 @@ struct Cadence_Watch_App_Watch_AppTests {
         }
     }
 
+    @Test func duplicateImmediateAndQueuedStartIsIdempotent() async {
+        await MainActor.run {
+            UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
+            let manager = WatchWorkoutManager(uiTestMode: true)
+            let requestID = UUID()
+            let command = WatchHRCommand(action: .start, requestID: requestID,
+                                         workoutType: "other", issuedAt: 300)
+
+            let first = manager.handleMessage(command.payload)
+            let duplicate = manager.handleMessage(command.payload)
+
+            #expect(first["accepted"] as? Bool == true)
+            #expect(duplicate["accepted"] as? Bool == true)
+            #expect(duplicate["requestID"] as? String == requestID.uuidString)
+            #expect(manager.isActive)
+            manager.stopWorkout(save: false)
+            UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
+        }
+    }
+
     @Test func phoneRequestDoesNotTakeOverWatchOnlyWorkout() async {
         await MainActor.run {
             UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")

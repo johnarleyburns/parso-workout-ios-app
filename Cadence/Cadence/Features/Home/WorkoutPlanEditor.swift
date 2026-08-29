@@ -40,6 +40,7 @@ struct WorkoutPlanEditor: View {
     @State private var plateRounding: Bool
     @State private var useHR: Bool
     @State private var isEditing = false
+    @State private var originalPlan: EditablePlan
     @State private var settingsPresented = false
     let allowsStart: Bool
 
@@ -48,6 +49,7 @@ struct WorkoutPlanEditor: View {
         self._plan = State(initialValue: plan)
         self.onStart = onStart
         self._isEditing = State(initialValue: startInEditMode)
+        self._originalPlan = State(initialValue: plan)
         self.allowsStart = allowsStart
 
         let ws = WorkoutSettings.default
@@ -102,6 +104,32 @@ struct WorkoutPlanEditor: View {
                     withAnimation { isEditing.toggle() }
                 }
                 .accessibilityIdentifier("editor.edit")
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if isEditing {
+                HStack(spacing: 12) {
+                    Button("Cancel") {
+                        plan = originalPlan
+                        withAnimation { isEditing = false }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("editor.cancel")
+
+                    Button("Save") {
+                        originalPlan = plan
+                        withAnimation { isEditing = false }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("editor.save")
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.bar)
             }
         }
         .sheet(item: $exercisePickerIntent) { intent in

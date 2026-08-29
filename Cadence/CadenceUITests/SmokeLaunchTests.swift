@@ -204,8 +204,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertLessThan(rowing.frame.minY, swim.frame.minY,
                           "Rowing is not before Swim in the cardio grid")
         // Return to the top of the sheet for the strength-flow steps that follow.
-        app.scrollViews.firstMatch.swipeDown()
-        app.scrollViews.firstMatch.swipeDown()
+        for _ in 0..<8 { app.scrollViews.firstMatch.swipeDown() }
 
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
                       "Start Workout did not offer Custom Workout beneath Quick Start")

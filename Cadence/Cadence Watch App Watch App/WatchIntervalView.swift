@@ -287,7 +287,8 @@ struct WatchIntervalView: View {
             duration: sum.duration,
             avgHR: sum.avgHR,
             maxHR: sum.maxHR,
-            distanceMeters: sum.distanceMeters
+            distanceMeters: sum.distanceMeters,
+            hrSamples: watchManager.currentHRSamplesForSummary
         )
         showSummary = true
     }

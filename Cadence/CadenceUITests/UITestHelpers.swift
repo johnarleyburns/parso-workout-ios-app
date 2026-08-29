@@ -52,11 +52,11 @@ extension XCUIApplication {
         // which is exactly how a returning-from-a-sheet scroll offset used to make
         // Home's Start Workout permanently untappable (2026-08-23).
         for _ in 0..<maxSwipes {
-            swipeUp()
+            scrollViews.firstMatch.swipeUp()
             if el.isHittable { el.tap(); return true }
         }
         for _ in 0..<maxSwipes {
-            swipeDown()
+            scrollViews.firstMatch.swipeDown()
             if el.isHittable { el.tap(); return true }
         }
         // Last resort: tap the element's own centre by coordinate. A control that
@@ -80,7 +80,7 @@ extension XCUIApplication {
         let el = descendants(matching: .any)[id]
         if el.waitForExistence(timeout: 3) { return true }
         for _ in 0..<maxSwipes {
-            swipeUp()
+            scrollViews.firstMatch.swipeUp()
             if el.waitForExistence(timeout: 1) { return true }
         }
         return false

@@ -1,1332 +1,1015 @@
 # Current Status
 
-Updated: 2026-08-21
+Updated: 2026-08-28
 
-## P5 complete — watch session leak + live-activity cleanup (shipped, not pushed)
+## Active plan — 2026-08-27 field-test remediation (planning complete)
 
-Field test issue 5 (`docs/field-test-batch-2026-08-20/05-phase5-watch-leak-liveactivity.md`).
-Committed as **`d7e4cce`** on `main`, **not pushed**, per the batch execution protocol.
+**Plan:** `docs/field-test-batch-2026-08-27/` (`00-overview.md` plus one phase
+file per reported issue). Nine phases are queued, one phase and one local commit
+per issue. **Do not push until the user explicitly gives the go-ahead.**
 
-### What changed
+### Immediate next task
 
-- **5A-1 — every cardio terminal path stops the watch session.** `model.stopWatchWorkout()`
-  (already a safe no-op when nothing is running) added to `RecordCardioView.endWorkout` +
-  its Cancel, `OutdoorCardioView.end` + its Cancel, `SwimRecordView.endSwim`, and the
-  catch-all `HomeView.releaseCardioWorkout` (every cardio surface's onDismiss/onSaved, so a
-  future cardio screen can't regress this). A watch `HKWorkoutSession` +
-  `WKExtendedRuntimeSession` started at the HR gate can no longer run for hours after a
-  cardio ends; the relay is cancelled so the next `Check for Live HR` isn't stuck.
-- **5A-2 — `.alreadyActive` recovery: stop, then retry once.** New pure
-  `WatchHRRelay.shouldRetryAfterStop(rejection:)` (only `.alreadyActive` → `true`; permission/
-  unsupported/unavailable never auto-retry). `AppModel` on a rejected start: sends
-  `stop_workout`, waits 1.2 s, retries exactly once with a fresh requestID (`allowsRetry: false`
-  on the retry, so a second rejection surfaces the error text — no loop). The retry is armed
-  only while the user is still on the HR screen: any new start/stop disarms `watchRetryArmed`.
-- **5A-3 — no change.** `handleWatchMessage` already gates BPM injection on the current
-  requestID; the two fixes eliminate the root, so the guard was left alone.
-- **5B — Live Activity stale cleanup.** `WorkoutLiveActivityCoordinator.endAllStale()` ends
-  every `Activity<WorkoutLiveActivityAttributes>`; called on launch (`CadenceApp.task`) and at
-  the top of `start(title:)`. Decisions D4/D7: no widget target, no watch-side auto-tear-down
-  this batch.
-- **UI-test seam + smoke growth.** `-uiTestWatchStop` makes `stopWatchWorkout()` increment
-  `uitest.watchStopCount` (UserDefaults), surfaced by a hidden 1×1 a11y element in
-  `RootTabView` (`@AppStorage`-driven). The smoke test now, after the strength flow, ends a
-  real cardio: `home.startWorkout` → `startType.run` → `goal.none` → HR gate (asserts
-  `prehr.start` is enabled — P6's regression, asserted while the screen is in front of us) →
-  `skipCountdown` → `outdoor.end` → confirm → summary → Home, asserting the counter increased
-  between just-before-End and after the summary. **Deliberate deviation:** the phase file's
-  `record.end` description routes `startType.run` to the *timer* recorder, but run routes to the
-  GPS `OutdoorCardioView`, so the flow uses `outdoor.end` — still one of the listed terminal
-  paths, and `releaseCardioWorkout` covers the record/swim/interval routes as well.
+Phase 4: restore iPhone Other Cardio live-HR reconnect. Read
+`04-phase4-watch-hr-reconnect.md` before changing watch HR transport.
+
+### Efficient remaining work groups
+
+The remaining issues are best delivered as three focused workstreams while
+retaining one phase-specific local commit per issue:
+
+1. **Watch HR transport — Phase 4.** Finish the cross-app command/relay
+   lifecycle first; it is independent of the display work and needs both smoke
+   gates plus one hardware pass.
+2. **Watch cardio experience — Phases 6 → 7.** Implement the shared live-metric
+   presenter and explicit HR/GPS state in Phase 6, then reuse that state and the
+   Phase 3 envelope for the conditional HR graph/summary in Phase 7. Run the
+   watch smoke once after each phase and combine hardware verification for both
+   displays where practical.
+3. **History flow — Phases 8 → 9.** Complete Back plus edit Save/Cancel in
+   Phase 8, then add Home Show more in Phase 9 and verify the end-to-end route in
+   one iPhone smoke pass. Phase 9 should not start before Phase 8 because its
+   acceptance flow depends on the history-detail Back action.
+
+Hardware field-test backlog: Phase 3 sync, Phase 4 HR reconnect, and Phases 6–7
+watch display behavior remain unverified on real hardware. Do not push until
+the user explicitly authorizes it.
+
+### Phase queue
+
+| phase | status | field-test outcome |
+|---|---|---|
+| 1 | DONE | Add Set cycles through performers instead of resetting to Me |
+| 2 | DONE | exercise search has no per-character multi-second stalls |
+| 3 | DONE | completed watch cardio reliably syncs once to iPhone |
+| 4 | DONE | iPhone Other Cardio reconnects to watch live HR |
+| 5 | DONE | Connect HR has Cancel back to Home with sensor cleanup |
+| 6 | DONE | watch live cardio layout: time, conditional zone HR, GPS-only distance |
+| 7 | NEXT | watch summary conditionally shows HR graph, max, and average |
+| 8 | pending | workout edit has large Save/Cancel; history detail has Back |
+| 9 | pending | Home Completed Workouts has Show more… to full History |
+
+### Batch execution and verification
+
+- Implement the queued phases in grouped commits, run their required unit/smoke
+  gates, and update this status after each grouped delivery.
+- Run `make ci` for every phase; run `make smoke` for iPhone UI phases and
+  `make watch-smoke` for watch phases as specified by the overview.
+- Adjust the existing iPhone/watch smoke test functions rather than increasing
+  their test-function count.
+- Keep unrelated working-tree changes out of phase commits. Preserve this
+  status file as uncommitted if the existing status-file convention still
+  applies when implementation begins.
+- Hardware verification is still required for watch sync, watch HR connection,
+  and both watch cardio display phases.
+- Phases 1, 2, 3, and 5 are implemented and committed locally. No batch commit
+  has been pushed. The next implementation is Phase 4, followed by the grouped
+  workstreams above.
+
+### Phase 1 — DONE (rotate Add Set through performers)
+
+- `SetAlternation.nextPerformerID` now advances from the last working set on the
+  current exercise before considering pending prescription rows. This means Me →
+  partner, partner → next partner, and last performer → Me, all using the
+  persisted roster order and wrapping cyclically.
+- The resolver now receives an explicit `hasLoggedWorkingSet` signal so an owner
+  set (`nil`) is distinct from no prior set. Empty rosters are safe, and a
+  removed last performer falls back to the first valid configured performer.
+- Updated the existing iPhone smoke test to assert that Add Set opens on Sam
+  after Me saves, while still verifying that switching performers changes the
+  per-performer history card.
+
+Verification:
+
+- `swift test --filter SetAlternationTests`: **13 passed, 0 failures**.
+- `make ci`: **1,656 tests passed, 0 failures**; test-pyramid, no-network, and
+  citation guardrails passed.
+- `make smoke`: **passed**, 1 iPhone UI test, 0 failures, 251.2s. The first
+  attempt exposed the pre-existing smoke assertion that expected the old
+  owner-first behavior; the assertion was updated and the rerun passed. The
+  simulator emitted the known no-iCloud/no-pairing and debugger-version
+  warnings.
+- Hardware partner-session verification remains outstanding.
+
+### Phase 2 — DONE (responsive exercise search)
+
+- Reused the normalized built-in exercise index for best-match ranking instead of
+  constructing a new index for every debounced query.
+- Cached normalized names and exact built-in names so query handling does not
+  refold or rescan the full catalog for the remaining match checks.
+- Preserved exact-match creation, best-match suggestions, and the existing
+  search/browse/swap flows.
+
+Verification:
+
+- Existing `ExerciseSearchIndexTests` remain the deterministic ranking and
+  performance regression coverage; the existing iPhone picker smoke flow covers
+  typing and selecting a result.
+- Full grouped commit verification passed: 1,656 unit tests, iPhone smoke, and
+  watch smoke; all repository guardrails passed.
+
+Phase 3 was completed in commit `d789d2b`; see its verification and hardware
+backlog below.
+
+### Phase 3 — DONE (durable watch cardio completion sync)
+
+- Added a versioned `WatchCardioCompletion` envelope with a stable app workout
+  UUID, cardio type/title, start/end, HR summary/samples, and GPS-gated distance.
+- Watch Save now persists the completion in a UserDefaults queue before ending
+  HealthKit, sends it with durable `transferUserInfo`, retries on activation,
+  and removes it only after an iPhone acknowledgement. The summary reports
+  pending/syncing state.
+- iPhone decodes completions from message and user-info paths, ingests
+  transactionally, refreshes Home/History, and acknowledges new and duplicate
+  records. Later HealthKit imports reconcile by stable ID or matching timing.
+- Added codec/version, GPS gating, duplicate delivery, and HealthKit
+  reconciliation tests.
+
+Verification:
+
+- `make ci`: **1,660 tests passed, 0 failures**; all guardrails passed.
+- `make watch-smoke`: **9 watch unit tests passed, 0 failures**; watch build and
+  existing watch UI smoke passed.
+- Hardware verification remains required: complete cardio on a real watch while
+  the phone is backgrounded/relaunched, then confirm one iPhone record.
+
+Next: Phase 4 — read `docs/field-test-batch-2026-08-27/04-phase4-watch-hr-reconnect.md`
+before changing watch HR reconnect. After Phase 4, continue with the grouped
+watch-cardio phases 6 → 7, then history phases 8 → 9.
+
+### Phase 5 — DONE (cancel Connect HR back to Home)
+
+- Added an always-available Cancel action to the Connect Heart Rate view.
+- Cancellation stops any pending watch workout/relay and returns to Home without
+  starting or saving cardio.
+- Extended the existing iPhone smoke flow to verify the Cancel control is
+  available while the HR gate is active.
+
+Verification:
+
+- The grouped commit `fadf1a9` passed 1,656 unit tests, all guardrails, iPhone
+  smoke, and watch smoke.
+- Hardware HR cancellation/reconnect verification remains outstanding.
+
+### Phase 4 — DONE (restore iPhone cardio connection to watch HR)
+
+- iPhone starts WCSession before issuing a watch-HR request and holds a start
+  tapped during activation until the session reports its installed companion.
+- Every start is sent through both immediate messaging and durable
+  `transferUserInfo`; the watch routes both deliveries through one handler and
+  returns the same request ID, including for an immediate/queued duplicate.
+- The phone accepts the durable-path acknowledgement, while request-scoped
+  samples continue to reject stale or unrelated sessions. Existing stale
+  `.alreadyActive` stop/retry and cancellation cleanup remain bounded.
+- Added a watch unit regression for duplicate immediate/queued start delivery.
+
+Verification:
+
+- `make test`: **1,660 tests passed, 0 failures**; all repository guardrails
+  passed.
+- `make smoke`: **passed**, 1 iPhone unit/UI smoke test, 0 failures, 261.9s.
+- `make watch-smoke`: **passed**, 10 watch unit tests and 1 watch UI smoke
+  test, 0 failures.
+- Generic iOS build-for-testing was also attempted but remains blocked by the
+  existing missing development-team signing configuration for `CadenceTests`
+  and `CadenceUITests`; the pinned simulator smoke build/test succeeded.
+- Hardware verification remains required: test Other Cardio from a cold launch
+  and after a prior workout ends, then verify live BPM/zone and failure-state
+  recovery on a real watch.
+
+Next: Phase 7 — read `docs/field-test-batch-2026-08-27/07-phase7-watch-cardio-hr-summary.md`
+before changing the watch cardio summary.
+
+### Phase 6 — DONE (refine watch cardio live metrics)
+
+- Added the pure `WatchCardioLivePresenter` with elapsed-time text, optional
+  zone-colored BPM, GPS-gated compact distance, and the existing iPhone HR-zone
+  boundaries. HR and GPS capability now come from explicit workout session
+  configuration rather than transient sample values.
+- Reduced the live cardio screen to elapsed time, optional BPM, and optional
+  lower-left distance while preserving the separate pause/resume/end controls
+  and their accessibility behavior. Distance remains visible as `0 m` for an
+  enabled GPS session and is hidden for non-GPS sessions.
+- Added presenter tests for every zone boundary, HR/GPS visibility, nil/zero
+  samples, metric/imperial formatting, and elapsed time.
+
+Verification:
+
+- `make ci`: **1,664 tests passed, 0 failures**; all repository guardrails
+  passed after keeping `WatchWorkoutManager.swift` within its 400-line limit.
+- `make watch-smoke`: **10 watch unit tests and 1 watch UI smoke test passed,
+  0 failures**. The simulator emitted the known missing debugger-version
+  warning; the gate completed successfully.
+- Hardware verification remains required: check small/large-watch legibility,
+  truncation, zone transitions, and GPS-only distance on a real watch.
+
+Next: Phase 7 — read `docs/field-test-batch-2026-08-27/07-phase7-watch-cardio-hr-summary.md`
+before changing the watch cardio summary.
+
+## Active plan — Exercise DB++ adoption
+
+**Plan:** `plans/exercise-db-plusplus/2026-08-23/` (10 files: `00-overview.md`,
+`decisions.md`, and one file per phase `01`–`08`). The plan is written to be
+implementable without further research: every table, mapping, signature and test
+name it needs is already in it.
+
+**Plan status: phases 1-9 are implemented, verified and pushed to `main`.
+The current working tree contains the follow-up watch reliability and partner
+ordering work described below; this file remains intentionally uncommitted.**
+
+Start at **Immediate next task**, not at the top.
+
+### What this work does
+
+1. Replace the `yuhonas/free-exercise-db` upstream with
+   `johnarleyburns/free-exercise-db-plusplus` (DB++) — an evidence-audited
+   annotation layer that preserves every upstream record byte-identically inside
+   `source` and adds movement classification, direct/indirect/stabilizer muscle
+   roles, volume eligibility, per-pattern literature references, and a normalized
+   20-muscle ontology. Unlicense, same as upstream. Imagery is unaffected: the
+   873 exercise ids are the same set as the 873 bundled `ExerciseImages/<id>/`
+   directories.
+2. Delete the 8-part `BodyPart` simplification **and** the 21-entry
+   `MuscleCatalog`, replacing both with one `MuscleGroup` type whose raw values
+   are DB++'s ontology strings.
+3. Rebuild weekly volume on DB++'s published set credits — direct 1.0, indirect
+   0.5, stabilizer 0.0, and nothing at all from movements DB++ marks
+   non-volume-eligible.
+4. Home `This Week`: delete the `Muscles` row and its expanded section; the
+   `Volume` row and list now carry the per-muscle-group content.
+5. Suggested workouts: drop the minimum/medium/maximal tiers for one minimum
+   target (4 sets per tracked group, 20-set cap) rendered in five **training
+   styles** — Fitness, Bodyweight, Powerlifting, Olympic Weightlifting,
+   Strongman.
+6. Surface the movement evidence: 60 DB++ references and 89 pattern summaries
+   become tappable citations behind every muscle-role claim.
+7. Replace the swap picker's free-text search with a DB++ similarity ranking
+   (phase 9, added 2026-08-24).
+
+## Active follow-up — watch reliability and partner-first plans
+
+The user reported three related regressions/needs on 2026-08-24. The work is
+broken into small, independently verifiable phases so the behavior can be
+field-tested on a real watch.
+
+### Phase 10 — DONE (watch background session capabilities and audio)
+
+- Added the watch `audio` background mode alongside `workout-processing`.
+- Fixed the archive normalization step: it previously deleted
+  `UIBackgroundModes` wholesale, which silently disabled both background HR
+  delivery and short workout audio in TestFlight builds. It now preserves only
+  `audio` and `workout-processing`.
+- Boxing/interval view no longer stops an active HealthKit workout merely because
+  SwiftUI removes the view while the app enters the background.
+- Bell resources were verified in the built watch bundle; the resource lookup
+  was not the cause of the silence.
+
+### Phase 11 — DONE (live HR on every boxing phase)
+
+- The interval metric strip now always renders an explicit heart-rate value (or
+  `--`) on work, warning, rest and transition states, with a visible heart icon.
+- Strength rest now shows the same live BPM value.
+- Apple’s documented behavior is: an active `HKWorkoutSession` continues to
+  receive sensor data in the background, and short clips may play in the
+  background while that session is active. If the user backgrounds the app
+  without an active workout session, continuous watch HR is not available to
+  this app; the system workout session is the supported route.
+
+### Phase 12 — DONE (persist partner-first performer order)
+
+- Plan editor roster order now respects a partner moved before “Me” instead of
+  rebuilding the resolver roster as owner-first.
+- The materialized session and live set editor use the persisted roster order.
+- A session with no logged sets now defaults to the first configured performer,
+  so a partner-first plan preloads the partner rather than “Me”.
+
+### Phase 13 — DONE (verification)
+
+- `make ci`: **1,652 tests passed**, pyramid/no-network/citation guardrails green.
+- `make smoke`: iPhone smoke passed.
+- `make watch-smoke`: 9 watch unit tests and the existing watch UI smoke passed.
+- Remaining requirement: field-test boxing audio/background HR on hardware and
+  create a partner-first custom plan, then start it and verify the first set.
+
+### Repository position
+
+- Branch: `main`. Exercise DB++ phases 1-9 and their follow-up commits are
+  pushed. The current watch follow-up remains in the working tree until its
+  hardware field test is complete.
+- `current_status.md` stays uncommitted, by instruction.
+- The working tree contains the watch follow-up files listed in phases 10-13
+  plus this status file.
+- The latest functional commit is `0a4c593`
+  (`feat: rank similar exercises for resistance swaps`).
+
+| commit | phase | what |
+|---|---|---|
+| `815b8e2` | — | plan docs (`plans/exercise-db-plusplus/2026-08-23/`, force-added: `plans/` is gitignored) |
+| `6cdae29` | 1 | vendor the DB++ snapshot + `ExerciseDatabase` decoder |
+| `f95e968` | 2 | the `MuscleGroup` ontology |
+| `53a1b68` | 3 | annotation pipeline, `Exercise` schema, seeding, export |
+| `e63c086` | 4 | weekly volume on `VolumeCredit` |
+| `40115b0` | — | UI-test helper: scroll both ways (pre-existing red gate on `main`) |
+| `3bf4794` | 5 | Home `This Week` — Volume carries the muscle groups |
+| `f996e85` | 7 | suggested workouts: one target, five training styles |
+| `e869bc3` | 6 | replace `BodyPart` with `MuscleGroup` |
+| `0f71083` | 8 | cite DB++ movement evidence |
+| `0a4c593` | 9 | rank similar exercises for swaps |
+
+Test count is now **1,652**, all green.
+
+### Execution protocol for this plan (differs from the CLAUDE.md default)
+
+Per the request that opened this work:
+
+1. Read this file before starting a phase; continue from **Next task** below.
+2. Implement exactly one phase.
+3. Verify: `make ci` always; `make smoke` for any phase the plan marks UI-touching
+   (5, 6, 7, 8); `make watch-smoke` additionally for phase 6.
+4. Update this file: what shipped, test counts, deviations, next phase.
+5. Commit the phase, staging everything **except `current_status.md`**.
+6. Push after the functional phase commits when the user has authorized it;
+   leave `current_status.md` uncommitted.
+
+## Phase 1 — DONE (vendor the DB++ snapshot and decode it)
+
+Shipped:
+
+- `CadenceCore/Sources/CadenceCore/Resources/free-exercise-db-plusplus.json`
+  (1.8 MB, schema 0.3.0, converter 0.8.0, generated 2026-08-24, 873 exercises)
+  plus its Unlicense text. `free-exercise-db.json` / `.LICENSE` deleted.
+- `ExerciseDatabase.swift` — decodes the whole document: metadata, set credits,
+  60 evidence references, 89 pattern summaries, and all 873 records with their
+  classification, annotation and verbatim `source`. Records are sorted by
+  `exerciseId` because `exercises` is a JSON object and decode order is undefined.
+- `ImportedExerciseLibrary` now reads `ExerciseDatabase.Record.source` and is
+  otherwise untouched. It deliberately does **not** consume the annotation layer
+  yet — that is phase 3 — which is what makes this phase behaviour-neutral.
+- `ExerciseLibrary.exerciseAnnotationRepoURL` added (displayed in phase 8).
+- `scripts/validate-exercise-db.py` (new) + `scripts/update-exercises.sh` rewired:
+  a refresh is now rejected unless completeness is `full`, the count matches
+  `outputExerciseCount`, the 20-muscle ontology is unchanged, every annotated
+  muscle is in-ontology, `volumeEligible` agrees with a non-empty `direct` list,
+  and every `pattern:` evidence ref resolves.
+- `scripts/build-exercise-images.sh` reads the new layout; `COMMIT=b0eed06` stays
+  because DB++'s `source` is that same upstream data.
+- `Package.swift` and `CadenceCore/CREDITS.md` updated.
+
+Verification:
+
+- `make ci`: build clean, **1,568 tests passed, 0 failures**, test-pyramid and
+  no-network guardrails OK. (1,553 before this phase + 15 new. The "1,329" figure
+  recorded in an earlier handoff was stale.)
+- `xcodebuild -scheme Cadence ... build`: **BUILD SUCCEEDED**, no warnings.
+- `python3 scripts/validate-exercise-db.py` on the vendored snapshot: OK,
+  873 exercises, 673 volume-eligible.
+- The phase's own acceptance test: `ImportedExerciseLibraryBaselineTests` compares
+  20 templates spread across the alphabetically sorted catalog against values
+  captured from the build **immediately before** the swap, and asserts the count
+  and the ordering. All existing `ImportedExerciseLibraryTests` pass unmodified.
+
+Deviations from the plan: none. The plan anticipated the validation being inline
+in `update-exercises.sh`; it went into `scripts/validate-exercise-db.py` instead so
+the same checks can be run directly against the vendored file, which the new test
+suite and CREDITS both reference.
+
+## Phase 2 — DONE (the `MuscleGroup` ontology)
+
+Shipped `CadenceCore/Sources/CadenceCore/MuscleGroup.swift`: a 20-case enum whose
+raw values are DB++'s ontology strings verbatim, with display names, scientific
+names, colloquial synonyms (which absorb the retired `obliques` / `upper chest` /
+`front delts` / `rear delts` / `rhomboids` search terms), a grouping-only
+`region`, the descending-mass tie-break order, the 13-group `defaultTracked` set,
+`canonical(_:)` / `canonicalize(_:)` covering every retired id and upstream
+spelling, and `defaults(forCategory:)`.
+
+Verification: `make ci` green — **1,584 tests, 0 failures** (1,568 + 16 new),
+guardrails OK.
+
+Two tests carry the weight:
+
+- `testRawValuesMatchDatabaseOntology` pins the enum to
+  `ExerciseDatabase.muscleOntology`, so a refresh that renames a muscle fails the
+  build rather than creating an unreachable dimension.
+- `testDefaultTrackedGroupsAllHaveDirectExercises` proves every tracked group has
+  at least one volume-eligible movement that trains it directly, and asserts
+  `tibialis` still has none. That is the check that justifies D4.
+
+**Deviation from the plan.** `02-muscle-group-ontology.md` had this phase also
+convert `MuscleCatalog` into a forwarding shim and delete the `Muscle` struct.
+That is not behaviour-neutral: `MuscleCatalog.all` feeds Home's muscle rows and
+the suggested-workout muscle space, both of which are still keyed by the retired
+ids until phase 4, so flipping `all` from 21 fine muscles to 20 groups mid-phase
+would have shown every muscle at zero sets and starved the generator of
+candidates. `MuscleCatalog` and `Muscle` are therefore left completely untouched;
+they are deleted in phase 6 together with their consumers and `BodyPart`.
+`MuscleGroup` is unused by production code until phase 3, by design.
+
+Also deferred to phase 6 for the same reason: extracting
+`MuscleCatalog.canonicalName` into `ExerciseNameCanonicalizer` (a pure rename with
+call-site churn in `CoachSession` and `CoachFacts`, no value until those files
+move).
+
+## Phase 3 — DONE (annotation pipeline, `Exercise` schema, seeding, export)
+
+The first phase that changes what the app actually knows about an exercise.
+
+Shipped:
+
+- `ExerciseTrainingType` / `ExerciseModality` / `ExerciseSportContext` /
+  `AnnotationConfidence` in `ExerciseTaxonomy.swift`, all decoding leniently so a
+  future DB++ schema revision drops unknown values instead of failing.
+- `VolumeCredit` — the single place a working set becomes weekly volume. Direct
+  1.0, indirect 0.5, stabilizer 0.0, read from the vendored document rather than
+  hard-coded, and **nothing at all** from a movement DB++ marks non-volume-eligible.
+- `ExerciseTemplate` and `Exercise` carry `directMuscles` / `indirectMuscles` /
+  `stabilizerMuscles` / `volumeEligible` / `trainingTypes` / `modalities` /
+  `sportContexts` / `movementPatternIDs` / `annotationConfidence` /
+  `sourceExerciseID`. Every `Exercise` field is optional or defaulted.
+- `ImportedExerciseLibrary` consumes the annotation; its hand-written `muscleMap`
+  is deleted. Non-volume movements keep their upstream muscles so they stay
+  browsable, and simply earn no credit.
+- **The curated catalog reversal**: where a curated entry resolves to a database
+  record, the DB++ annotation now wins for muscle roles, volume eligibility and
+  classification. The comment at `ExerciseLibrary.starter` records the reversal
+  and why. Curated-only entries keep their hand mapping and carry
+  `annotationConfidence == nil`, which phase 8 surfaces rather than implying
+  evidence that does not exist.
+- Seeding (`seedVersion` 8 → 9): `canonicalizeStoredMuscleIDs` rewrites legacy ids
+  on built-in **and custom** rows after parking the originals in the legacy
+  `muscleGroups` tag field; `applyAnnotation` refreshes the annotation
+  unconditionally but only touches `updatedAt` when something changed, so a second
+  seed is a no-op.
+- Export **v6**: ten new optional fields; v1-v5 files import exactly as before and
+  have their muscle ids canonicalized on the way in.
+- `MovementPattern.init?(databasePatternID:)` maps 60+ DB++ patterns onto our
+  coarse vocabulary and is consulted before the name heuristic. Single-joint
+  patterns deliberately return nil and fall through to the heuristic.
+
+### What the data actually changed
+
+**729 of the 873 imported templates got different muscle roles.** Spot checks now
+pinned in `ImportedExerciseLibraryBaselineTests`:
+
+- `Power Snatch` was primary **hamstrings**; it is quadriceps + glutes + traps.
+- `Seated Head Harness Neck Resistance` was **traps**, because the old catalog had
+  no neck to map upstream `neck` onto. DB++ does.
+- `Floor Press` was primary **triceps** only; the chest is a prime mover.
+- `Dumbbell Lunges` credited hamstrings and calves as secondary work. They
+  stabilise, so they no longer earn half a set each.
+- A deadlift no longer credits the lower back at all.
 
 ### Verification
 
-- `swift test` (full suite): **1,505 passed, 0 failures** (baseline 1,502 + 3
-  `WatchHRRelayTests`: alreadyActive retries, non-retryable rejections, relay recovery sequence).
-- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
-- `make smoke` (iPhone): **passed** — the added cardio end (goal → HR gate → countdown skip →
-  outdoor end) runs inside the one iPhone test. The committed gate passed on the final tree.
-- `make watch-smoke`: **passed** (watch unit regressions + the one watch UI test).
-- Guardrails: `check-test-pyramid.sh` OK (`HomeView` held at **1033** — the
-  `releaseCardioWorkout` stop was folded onto the existing guard + lease lines so the shrink-only
-  ratchet never moved), `check-no-network.sh` OK.
-- **Honest gap — hardware.** The stop-path wiring + retry test + smoke seam are structural; no
-  real-device run yet. Per the phase file, the user should re-check on the next device run: end a
-  cardio that used watch HR, confirm the watch's workout indicator disappears, then start another
-  and confirm `Check for Live HR` goes live.
-- **First `make smoke` run failed on the countdown skip, not the code:** the helper's confirm
-  `"Skip"` first-match resolved to the countdown's own `countdown.skip` (same label, no id), so
-  the dialog was never confirmed; scoping to `sheets.buttons` fixed it and the next run passed.
-  The trailing "test runner hung before establishing connection" line on that run was the known
-  CoreSimulatorService hiccup (P3 env note), not a code fault.
-
-### Next
-
-- Await review. Then **P6** (HR gate Continue always enabled, issue 6) — re-read
-  `docs/field-test-batch-2026-08-20/06-phase6-hr-gate-continue.md` before starting. **D1**
-  (Rowing-GPS, needed at P8) is still open in `decisions.md`.
-
----
-
-## P4 complete — active-workout button spacing matches Home (shipped, not pushed)
-
-Field test issue 4 (`docs/field-test-batch-2026-08-20/04-phase4-session-button-spacing.md`).
-Committed as **`99c497c`** on `main`, **not pushed**, per the batch execution
-protocol.
-
-### What changed
-
-- **`ExerciseCardView.actionButtons`** — the one spacing anomaly on the
-  active-workout surface: the in-card `Add set`/`Repeat` row padded its top with
-  the ad-hoc `.padding(.top, cardHeadingSpacing - 8)` (10 − 8 = **2 pt** — no
-  breathing room). Replaced with
-  `.padding(.top, CGFloat(LayoutMetrics.cardRowSpacing))` (**12 pt**, the same
-  token used between rows inside a card), so the row boundary reads like every
-  other card row. The `HStack(spacing: cardRowSpacing)` between the two buttons
-  was already the card-row token and is unchanged.
-- **`SessionView.plannedCard`** — the phase file's optional audit item: its inner
-  `VStack(spacing: 8)` (a hard-coded 8 on a Home-rhythm card) is now
-  `spacing: CGFloat(LayoutMetrics.cardRowSpacing)`.
-- **Audit sweep result** — `grep 'padding(.top,'` across `Train/` shows only the
-  fixed site plus two deliberate leaves: `ExerciseDetailView.swift:142`
-  ("Also works" heading, the detail screen not the active workout) and
-  `InlineSetEditorView.swift:68` (P3's own surface, explicitly exempt).
-  `WorkoutControlBar` is exempt per the 2026-08-18 P1 scope note. No new token
-  was introduced, so no `LayoutMetricsTests` extension was needed — the existing
-  equality contract (`actionButtonSpacing == sectionSpacing` + the Home-surface
-  token tests) covers it.
-
-### Verification
-
-- `swift test` (full suite): **1,502 passed, 0 failures**.
-- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
-- `make smoke` (iPhone): **passed** (189.9 s), including the whole strength flow
-  with partner logging.
-- Guardrails: `check-test-pyramid.sh` OK (`SessionView` 1032 ≤ 1034 — the
-  spacing change is a same-line swap), `check-no-network.sh` OK.
-- **Visual record:** a temporary screenshot UI test (deleted before commit — the
-  suite stays at exactly one test) captured `p4-home.png` and
-  `p4-active-workout-buttons.png` (Home + the expanded Bench Press card after the
-  owner's set, with the `Add set`/`Repeat` row and 12 pt top padding). **Honest
-  gap:** the author's model cannot view images, so the *visual* read is the
-  user's; the structural evidence is the smoke flow + token equality, and the
-  screenshots are on disk for review.
-
-### Next
-
-- Await review. Then **P5** (watch session leak + Live Activity cleanup, issue
-  5) — re-read `docs/field-test-batch-2026-08-20/05-phase5-watch-leak-liveactivity.md`
-  before starting. **D1** (Rowing-GPS, needed at P8) is still open in
-  `decisions.md`.
-
----
-
-## Field-test batch 2026-08-20 (8 issues): P1–P3 shipped — next was P4
-
-## P3 complete — set editor always shows per-partner history (shipped, not pushed)
-
-Field test issue 3 (`docs/field-test-batch-2026-08-20/03-phase3-set-entry-history.md`,
-decision **D8**). Committed as **`f1f5d36`** on `main`, **not pushed**, per the
-batch execution protocol.
-
-### What changed
-
-- **New `CadenceFeatures/SetHistoryText.swift`** (pure, headless-testable):
-  `lastSetThisSession(_:unit:)` formats "Last set 185 lb × 8 · RPE 7" from a
-  `SetEntry`; `nil` for a performer's first set of the movement — never a
-  fabricated default. The SwiftData lookups that feed it stay in the view.
-- **`InlineEditorConfig.PerformerDefault`** (`SessionViewShared.swift`) gains two
-  additive optional `String`s: `lastTimeText` (prior-session sets for THIS
-  performer via P2's `SessionRenderModel.lastTimeSegment`) and
-  `lastSetThisSession` (this-session last working set for THIS performer).
-- **`SessionView.performerDefaults(for:)`** populates both per roster member from
-  `cache.state` performer contexts + `session.orderedSets`. The repeated
-  filter/logged-set lookup is now the shared `loggedSets(for:performerID:)`
-  helper, and `loggedReps` derives from it.
-- **`InlineSetEditorView`** gains a `historySection` card between "Who did this
-  set?" and Weight: `History` heading, `Last time: …` (`setEditor.history.lastTime`)
-  or decision **D8**'s explicit `No previous history for <name>`
-  (`setEditor.history.noHistory`) in secondary, and `Last set today: …`
-  (`setEditor.history.lastSet`) only when the performer has a set this session.
-  The section reads `selectedDefault` (the roster entry for the current
-  `performerID` `@State`), so it **re-derives by SwiftUI recompute on performer
-  switch** — no `.onChange` wiring.
-- **Deliberate deviation:** the old global `contextText` ("Last set …" computed
-  once per editor open from the whole exercise's last set, *not* per selected
-  performer) is **removed** — the header caption now shows only `recordedText`
-  ("Recorded") in edit mode. Leaving it would have re-introduced the exact bug:
-  with Sam selected, the header would still show the owner's stale "Last set".
-  The History card owns all per-performer last-set copy now.
-
-### Verification
-
-- `swift test` (full suite): **1,502 passed, 0 failures** (baseline 1,497 + 5:
-  4 `SetHistoryTextTests` + `testLastTimeSegmentPerSelectedPerformer`).
-- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
-- `make smoke` (iPhone): **passed** (227 s — the history flow added ~40 s to the
-  185 s P2 run; the phase file's estimate was +8–12 s, but the extra runtime buys
-  the end-to-end proof of the core requirement, so the full block stayed).
-- Guardrails: `check-test-pyramid.sh` OK (`SessionView` 1032 ≤ 1034 — held the
-  ratchet by extracting `loggedSets`; `InlineSetEditorView` 270 < 400),
-  `check-no-network.sh` OK.
-- **The smoke flow proves issue 3 end-to-end, unguarded:** after the owner's set
-  saves, reopening the editor asserts `setEditor.history` renders and
-  `setEditor.history.lastSet` shows the owner's just-logged reps (`× 5`); switching
-  "Who did this set?" to Sam asserts `lastSet` is **gone** and
-  `setEditor.history.noHistory` names Sam. Every step fails the test if missing.
-- **Real bug found by the new flow:** `setEditor.cancel` exists **twice** in the
-  tree (toolbar + footer buttons share the id); the test now taps it via
-  `firstMatch` like the confirmation-dialog buttons. Pre-existing duplication,
-  first exercised by this block.
-- **Env note:** one `make smoke` run died with "test runner hung before
-  establishing connection" — a CoreSimulatorService hiccup, not a code fault;
-  `killall -9 com.apple.CoreSimulator.CoreSimulatorService` + retry passed.
-
-### Next
-
-- Await review. Then **P4** (action-button top spacing 2 → 12, issue 4) — re-read
-  `docs/field-test-batch-2026-08-20/04-phase4-session-button-spacing.md` before
-  starting. **D1** (Rowing-GPS, needed at P8) is still open in `decisions.md`.
-
----
-
-## Field-test batch 2026-08-20 (8 issues): P1–P2 shipped — next was P3
-
-## P2 complete — collapsed card shows per-partner "last time" (shipped, not pushed)
-
-Field test issue 2 (`docs/field-test-batch-2026-08-20/02-phase2-collapsed-partner-history.md`,
-decision **D5**). Committed as **`9e4dbce`** on `main`, **not pushed**, per the
-batch execution protocol.
-
-### What changed
-
-- **`SessionRenderModel.compactSummary`** now branches on `context.hasPartners`:
-  with partners it drops the combined `6/6 sets` and renders one segment per
-  performer, owner first, in roster order, from `lastTimeSets`
-  (`Me: 80 kg × 5, 90 kg × 6; Sam: 55 kg × 20, 60 kg × 15`). A performer with no
-  prior-session sets contributes no segment; when nobody has history it falls
-  back to the existing counts summary (never blank). Solo output byte-identical.
-  The old body moved verbatim into a private `countsSummary`.
-- **New shared formatters in `SessionRenderModel`**: `setLineText(_:unit:)`
-  (extracted from `ExerciseCardView.setDisplayLine`, deleted there) and
-  `lastTimeSegment(label:sets:unit:)`. P3's editor reuses these.
-- **`ExerciseCardView`**: uses `SessionRenderModel.setLineText` and relaxes the
-  collapsed `lineLimit` to 3 for partner sessions. `SessionView` call site
-  unchanged (still delegates to the model).
-- **Data fix surfaced by P2:** `performerContext` queried the partner's
-  `lastTimeSets` with the `Person` looked up from the exercise's sets — when the
-  partner had never performed the movement that lookup returned `nil`, which the
-  repository treats as *the owner*, so the partner's "last time" wrongly showed
-  the owner's sets (a latent bug also affecting the expanded card). Now guarded:
-  no person → empty last-time. No schema change.
-
-### Verification
-
-- `swift test` (full suite): **1,497 passed, 0 failures** (baseline 1,490 + 7
-  new `SessionRenderModelTests`: per-performer segments in roster order, no
-  combined set counts, partner-with-no-history omitted, no-history fallback,
-  solo byte-identical, bodyweight segment format, unit/roundtrip `setLineText`).
-- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
-- `make smoke` (iPhone): **passed** (645.7 s — machine was loaded; P1 was 185 s).
-- Guardrails: `check-test-pyramid.sh` OK (`SessionView` 1033 ≤ 1034; the LOC
-  budget covers the app Features dir only, and `ExerciseCardView` shrank 400 →
-  393), `check-no-network.sh` OK.
-- **Honest gap:** headless + structural only, per the phase file. The smoke
-  flow's fresh store has no prior-session history, so no "last time" segment
-  would render; asserting it would be vacuous.
-
-### Next
-
-- Await review. Then **P3** (set editor always shows per-partner history, issue
-  3) — re-read `docs/field-test-batch-2026-08-20/03-phase3-set-entry-history.md`
-  before starting. It reuses P2's formatters. D8 (P3 copy) and D1 (P8) are still
-  open in `decisions.md`.
-
----
-
-## Field-test batch 2026-08-20 (8 issues): P1 shipped — next was P2
-
-## P1 complete — stable, alternating partner order (shipped, not pushed)
-
-Field test issue 1 (`docs/field-test-batch-2026-08-20/01-phase1-partner-alternation.md`,
-decision **D2**). Committed as **`2b9ca41`** on `main`, **not pushed**, per the
-batch execution protocol. All four commit-gate stages ran individually and passed.
-
-### The two bugs, one shared answer
-
-- **New `CadenceFeatures/SetAlternation.swift`** (61 LOC, Foundation + CadenceCore
-  only) owns both rules so the card, the set editor and `onRepeat` can never
-  disagree again:
-  - `spread(_:)` — a greedy fair queue: emit the next row from the group with the
-    most outstanding rows that is **not** the group of the last emitted row
-    (caller-order tie-break); when only one performer has rows left, its remainder
-    emits (unavoidable). This replaces the **column-major round-robin** that
-    emitted the buggy `Me,P,Me,P,P` tail — the old
-    `testPendingSetsAlternateBetweenPerformers` *asserted* that bug.
-  - `nextPerformerID(pendingSets:rosterOrder:lastLoggedPerformerID:)` — the first
-    pending row wins when rows exist; empty pending (silent exercise) falls back
-    to a per-exercise roster rotation, defaulting to the owner.
-- **`SessionRenderModel`**: `build` now calls `SetAlternation.spread`; the private
-  `interleaved` round-robin is deleted. `ExerciseContext` gains
-  `nextPerformerID` (`pendingSets.first?.performerID`). No schema change.
-- **`SessionView`**: the session-global `nextPerson()` is gone; its two consumers
-  (editor prefill at `SessionView.swift:178`, `onRepeat` at `:666`) now use
-  `nextPerson(for: exercise)`, which reads the exercise's pending rows through the
-  same pure rule. SessionView held its 1034 ratchet at **1033** by inlining the
-  owner fallback — no ratchet was raised.
-
-### Verification
-
-- `swift test` (full suite): **1,490 passed, 0 failures** (baseline 1,442 + 9
-  `SetAlternationTests` + 2 new `SessionRenderModelTests`; the buggy alternation
-  test was rewritten to assert `P,Me,P,Me,P`).
-- New coverage: the exact field scenario (`spread` alternates `P0,Me1,P1,Me2,P2`),
-  never-repeats-while-two-owe-rows, solo-tail, determinism across rebuilds,
-  stability as the field sequence `Me,Me,P` is logged, and the `nextPerformerID`
-  first-row/rotation/owner-default rules.
-- `xcodebuild` app build: **succeeded** (`-project Cadence/Cadence.xcodeproj`).
-- `make smoke` (iPhone): WCSession regression + full strength flow **passed**
-  (184.9 s). `make watch-smoke`: **passed** (94.7 s).
-- Guardrails: `check-test-pyramid.sh` OK (`SessionView` 1033 ≤ 1034, one iPhone
-  test, one watch test), `check-no-network.sh` OK.
-- **Honest gap:** verified headlessly + structurally; no screenshot of the
-  alternating card was taken (the phase file makes coverage headless-only for
-  P1 — asserting interleave order in the UI would be fragile).
-- **Env note, not a code fault:** bare `xcodebuild -scheme Cadence …` now fails
-  with "Unable to read project 'WidgetTemplate.xcodeproj'" — an **empty,
-  untracked** `WidgetTemplate.xcodeproj/` directory (no `project.pbxproj`) sits at
-  the repo root and makes xcodebuild's scheme scan trip over it. Use
-  `-project Cadence/Cadence.xcodeproj` (as `make smoke` already does) or delete
-  the stray directory.
-
-### Next
-
-- Await review. Then **P2** (collapsed per-partner last-time, issue 2) — re-read
-  `docs/field-test-batch-2026-08-20/02-phase2-collapsed-partner-history.md` before
-  starting. D1 (P8) and D8 (P3) are still open in `decisions.md`.
-
----
-
-## Field-test batch 2026-08-20 (8 issues): plan approved — executing one phase at a time
-
-The full, agent-executable plan is on disk at
-**`docs/field-test-batch-2026-08-20/`** (`00-overview.md`, `01`–`08` phase
-files, `decisions.md`). It is the source of truth for this batch; re-read the
-relevant phase file before each phase.
-
-**Execution protocol (set 2026-08-20): do ONE phase at a time, starting with
-P1.** Each phase follows the 2026-08-18 batch protocol: implement → verify
-(`swift test`, build, phase-specific smoke/visual checks) → update
-`current_status.md` → `git commit` → **do not push** → report the SHA and pause
-for review. Do not start the next phase until the user says to continue.
-Amend this line if the user changes the protocol.
-
-Decisions still open in `decisions.md` (answer before the phase that needs
-them): **D1** Rowing-GPS treatment (needed at P8), **D8** no-history copy
-(needed at P3). D2–D7 use their recommended options unless overridden.
-
-Skim of what the plan says (details in the phase files):
-
-- **P1 (issue 1)** partner alternation is two bugs: `SessionRenderModel.interleaved`
-  (`SessionRenderModel.swift:432-439`) is a column round-robin that emits
-  `Me,P,Me,P,P` (the old `testPendingSetsAlternateBetweenPerformers` *asserts*
-  the bug), and `SessionView.nextPerson()` (`SessionView.swift:939-949`) is a
-  **session-global** rotation decoupled from each exercise's pending rows. Fix:
-  new pure `CadenceFeatures/SetAlternation.swift` (fair-queue spread + per-
-  exercise `nextPerformerID`), used by the card, editor prefill, and `onRepeat`.
-- **P2 (issue 2)** collapsed card: `compactSummary` combines performers into
-  `6/6 sets`; per-performer `lastTimeSets` already exist per performer. Change:
-  with partners, render `Me: …; Sam: …` from prior-session sets; solo unchanged.
-- **P3 (issue 3)** set editor shows only a static "Last set" (`SessionView.swift:203-209`),
-  no prior history, not per selected partner. Change: `PerformerDefault` gains
-  `lastTimeText` + `lastSetThisSession`; editor renders a history card driven by
-  the selected performer (updates on change by SwiftUI recompute) + smoke steps.
-- **P4 (issue 4)** the only spacing anomaly on the active-workout surface is
-  `ExerciseCardView.actionButtons` `.padding(.top, cardHeadingSpacing - 8)` == 2pt;
-  make it `cardRowSpacing` (12) to match Home's rhythm.
-- **P5 (issue 5)** the "never-stops live activity" is the **watch** session
-  leaking: `model.stopWatchWorkout()` is called from only 4 sites; every cardio
-  recorder end/cancel never stops the watch, so `HKWorkoutSession` +
-  `WKExtendedRuntimeSession` run for hours and the next `start_workout` is
-  rejected `.alreadyActive` (`WatchWorkoutManagerSync.swift:65-67`). Fix: stop in
-  all cardio terminal paths (incl. `HomeView.releaseCardioWorkout`), add
-  `.alreadyActive` stop-then-retry-once, and `WorkoutLiveActivityCoordinator.endAllStale()`
-  on launch + `start`.
-- **P6 (issue 6)** `PreWorkoutHRView.swift:114` disables Continue forever after
-  "Check for Live HR" with a flaky watch. Fix: Continue always enabled; extract a
-  pure `PreWorkoutHRPresenter` (label/action/enabled) + tests.
-- **P7 (issue 7)** HR shown as small grid text (`RecordCardioView.swift:109-111`,
-  `OutdoorCardioView.swift:94`). Fix: shared `LiveHRBigView` — huge bold zone-
-  colored number (watch scheme Z1 cyan→Z5 red), zone + avg beneath — on the three
-  cardio live screens; semantic `HRZoneTint` in CadenceFeatures.
-- **P8 (issue 8)** `CardioType.rowing` already exists everywhere; missing the
-  `WorkoutType` entry case, the three picker arrays (want rowing after Cycle),
-  `WorkoutHero.colors`, and `HealthKitProvider.distanceType` (`.distanceRowing`).
-  Fix per **D1**; smoke asserts `startType.rowing` below `startType.cycle`.
-
-Smoke-test growth is deliberately small: P3 (history updates on performer
-switch), P5+P6 (cardio end → `stop_workout` seam; `prehr.start` enabled),
-P8 (`startType.rowing` after `startType.cycle`) — all inside the one iPhone
-test. Everything else is headless `swift test`.
-
-## Field-test batch 2026-08-19 (8 issues): shipped and pushed
-
-On `origin/main` as **`2615c9d`** (the eight fixes) + **`d21ea25`** (two Swift 6
-warnings the first push introduced). CI run **32360183633 passed** — `core-tests`
-and `testflight-build` both green.
-
-Eight iPhone field-test issues, fixed in one pass. Full write-up in
-`current_state.md`; what a future session needs to know:
-
-**The headline change is a reversed decision.** A per-performer plan entered in
-the plan editor is now **the prescription**, not a "starting target". The
-2026-08-18 #4 rule — plan seeds set 1, history overrides later sets and *always*
-the load — is exactly what produced the bug ("my weights were ignored and my
-partner defaulted to 5 reps"), so the precedence is inverted and
-`SessionRenderModelTests.testPartnerHistoryStillOverridesRepsWithinTheStoredPlan`
-was rewritten as `testStoredPlanOutranksThePartnersOwnHistory`. **Do not
-re-litigate this back to the old rule without asking.**
-
-- `WorkoutSession.explicitPlannedSets(forPerformerID:exerciseName:)` is the new
-  primitive: it returns nil when nobody planned anything, where
-  `plannedPrescriptions(forPerformerID:)` silently substitutes the owner's plan.
-  That "planned vs absent" distinction is the whole basis for plan-wins.
-- `PerformerSetPlanner` (CadenceFeatures, pure) is now the **single** resolution
-  path for "what should this performer's next set be", used by both
-  `SessionRenderModel`'s pending rows and `SessionView`'s set editor. Add new
-  rules there, not in either caller, or the two surfaces drift apart again.
-- Because the plan is now binding, the plan editor seeds a newly added exercise
-  from the owner's own last session (`PartnerPlanResolver.ownerSeedSets`) instead
-  of a hard-coded 10. Without that, plan-wins would hand you a literal 10.
-
-**Spacing regressed once already.** This file's "Field-testing follow-up" section
-claims Home's two actions "use the same 20-point section spacing" — that fix
-drifted back out when `LayoutMetrics.actionButtonSpacing = 12` landed on
-2026-08-18, and the user reported it again. `actionButtonSpacing` is now defined
-as `sectionSpacing`, and `LayoutMetricsTests` asserts the equality rather than
-the old "actions group tighter" inequality. New card surfaces should use
-`CadenceCardShape.rounded` + `LayoutMetrics.cardPadding` + `cadenceGlassCard`.
-
-**Performance lesson — the cost was never where it looked.** "Search is slow"
-was four independent problems, none of them in the ranking algorithm: a
-`findOrCreateExercise` fetch (and possible insert) inside `body`, an
-`@Observable` HR read that invalidated the entire session body once a second, a
-picker recomputing four full `@Query` walks per redraw, and a sort tie-breaking
-on a SwiftData property. When a SwiftUI surface is slow, look for work done *per
-redraw* and for observation scope before optimising an algorithm.
-
-**Two process facts worth carrying forward:**
-
-- **The pre-commit hook did not run on either commit.** `make pre-commit` is
-  `guardrails test smoke watch-smoke` — roughly 10 minutes — which outlives the
-  agent tool's process budget; two attempts were killed mid-run. Each stage was
-  run individually and passed, then the commit used the hook's own
-  `SKIP_LOCAL_GUARDS=1` escape hatch. If you need the hook itself to execute,
-  budget for a detached process.
-- **CI's warning gate is not reproduced by an incremental build.** The first
-  push failed on `check-owned-warnings.sh` for a warning my local `swift build`
-  never re-emitted (incremental), plus one in the app target I had never run
-  through the gate at all. Before pushing: clean-build the package AND the app,
-  and pipe both through `scripts/check-owned-warnings.sh`.
-
-<details>
-<summary>Field-test UI batch (nine phases) — shipped, f809818..1e0383a</summary>
-
-## Field-test UI batch: shipped and pushed
-
-All nine phases are on `origin/main` (`f809818..1e0383a`) and CI run
-**32293878105 passed** (12m05s: core tests, both guardrails, archive, TestFlight
-upload). **The CloudKit schema was deployed to Production**, so Phase 9's
-`plannedPerformerPrescriptionsData` syncs — that release gate is closed.
-
-</details>
-
-## Watch HealthKit crashes — shipped (`7a5d6c7`)
-
-Three crashes reported after the batch, all on the **watch**, all with one root
-cause:
-
-1. Watch → **Live HR → Start monitoring** → immediate crash.
-2. iPhone asking the watch for HR before a cardio workout → crash (the chest
-   strap over BLE was fine, because it never opens an `HKWorkoutSession`).
-3. Tapping the stale **"Resume Strength - Upper Body"** row → crash (it calls
-   `startWorkout`, the same path).
-
-### Root cause — `@preconcurrency` conformance on a `@MainActor` class
-
-`WatchWorkoutManager` is `@MainActor`. Its HealthKit/WatchKit delegates were
-declared `extension … : @preconcurrency HKWorkoutSessionDelegate`, which compiles
-but leaves the witnesses **main-actor-isolated**. Swift 6 then inserts a dynamic
-isolation check at each entry point, and HealthKit calls `didChangeTo` on its own
-queue the instant a session starts — the check traps and the app dies.
-
-The bodies already hopped with `Task { @MainActor in … }`, so the author knew the
-callbacks were off-main; the *annotation* contradicted the code, and the trap
-fires before the body runs. It broke on **2026-08-09** (`e84051e` Swift 6
-migration + `09ec490`), three weeks after the watch shipped — matching "HR broke
-recently". The phone had already been fixed the same way for `WCSession`
-(`bca32c9`); the watch's HealthKit delegates never got that treatment.
-
-**Why no test caught it:** the watch smoke test runs with `uiTestMode`, and both
-`startWorkout` and `beginSession` return before touching HealthKit in that mode,
-so no automated test on any device could ever have reached the crash.
-
-### The fix
-
-- **New `WatchWorkoutManagerHealthKit.swift`** holds all three conformances with
-  every witness `nonisolated`, hopping explicitly onto the main actor — the
-  phone's `WCSession` shape. The builder callback extracts its values on
-  HealthKit's queue into a `Sendable CollectedSample`, so nothing non-`Sendable`
-  crosses. It had to be a new file: `WatchWorkoutManager.swift` was at 396 LOC
-  against the watch's **hard 400 cap** (no ratchet), and is now 355.
-- `WatchWorkoutManager` gained main-actor `apply(_:)`, `applyLapEvent()` and
-  `handleSessionFailure()`, which own all the state mutation.
-- **Swipe-to-delete on the Resume row** (`watch.resumeStrength.delete`): the only
-  way to remove an abandoned session used to be to *open* it, which starts a
-  workout session just to discard one. New
-  `CadenceFeatures/WatchResumableSession.discard(_:in:)` deletes locally and
-  returns the same `discard_session` payload `WatchStrengthFlowModel.cancel()`
-  sends, so both routes behave identically.
-
-### Verification
-
-- **The crash was reproduced in a test, then fixed.** Three new watch unit tests
-  enter each delegate from a background queue. Against the shipped code all three
-  **crash the test host** ("Restarting after unexpected exit, crash, or test
-  timeout"); against the fix all three pass, and the watch unit suite is 6/6.
-  That before/after was run deliberately by reverting the fix, not inferred.
-- `make ci`: **1,445 tests, 0 failures** (1,442 + 3 `WatchResumableSessionTests`),
+- `make ci`: build clean, **1,612 tests passed, 0 failures** (1,584 + 28 new),
   guardrails OK.
-- `make watch-smoke` runs the watch unit tests before the UI smoke, so these
-  regressions are on the commit gate.
-- **Honest gap — not verified on hardware.** The user stopped local device
-  testing before the fixed build reached the watch (the install failed on
-  `John's Apple Watch may need to be unlocked`, a device-pairing state, not a
-  build error). So the evidence is the reproduce-then-fix test above plus green
-  gates — strong, but nobody has yet watched Live HR run on a real wrist. The
-  three reported symptoms should be re-checked on device after this ships.
+- `xcodebuild -scheme Cadence build`: **BUILD SUCCEEDED**, no warnings.
+- 20 existing tests needed updated **expectations** (never weakened assertions);
+  each was checked against the DB++ annotation first. The interesting one:
+  `CoachPlanOptimizerTests.testVarietyRotationKeepsAResolvedLoad` used to see a
+  curl on both planned days. Rows credit the biceps indirectly now, so the coach
+  correctly stops double-dosing them and rotates a row variant instead; the test
+  was re-pointed at the rotation that actually happens rather than relaxed.
 
----
+### Deviations from the plan
 
-<details>
-<summary>Phase 9 — the coach fills each training partner's plan (shipped, 1e0383a)</summary>
+1. **`VolumeCredit` landed here, not in phase 4.** `ExerciseTemplate.volumeCredits`
+   needs it, and having two credit implementations for one phase was worse than
+   moving the type early.
+2. **`MuscleCatalog` was rebased onto `MuscleGroup` here, not deferred to phase 6.**
+   Phase 2 deliberately left it alone; that could not survive phase 3. Once stored
+   ids became canonical, `MuscleCatalog.muscle(id)` rejected every one of them, and
+   `TrainingFacts`, the suggested-workout muscle space, `BodyPart.part(forMuscleID:)`
+   and the Home muscle rows all silently tallied zero. `Muscle` is now a display
+   record over a `MuscleGroup` and the catalog is `MuscleGroup.canonicalOrder`.
+   **Lesson for the remaining phases: a vocabulary switch and its consumers have to
+   land in the same commit.**
+3. `MuscleCatalog.canonicalName` (exercise-name matching, unrelated to muscles) is
+   still there; extracting it stays a phase 6 chore.
 
-## Phase 9 complete — the coach fills each training partner's plan (shipped, `1e0383a`)
+### Required before the next TestFlight build
 
-Field test 2026-08-18 issue #4
-(`docs/field-test-ui-batch-2026-08-18/09-phase9-partner-plans.md`) — the largest
-phase in the batch and **the last one**. The batch is now fully implemented.
+A **CloudKit Production schema deploy** in the Dashboard, for the ten new
+`Exercise` fields (decision D12). Additive and nullable, so no destructive
+migration — but the production schema still has to learn about them.
 
-### The plan carries every performer
+## Phase 4 — DONE (weekly volume accounting on the new ontology)
 
-- **New `CadenceFeatures/PartnerPlanResolver.swift`** (190 LOC, pure) fills a
-  partner's plan from *their own* logged history for the **owner's** exercises
-  only. Resolution order (decision **D13**): their logged sets for this exact
-  movement → their rep ladder for it → their general rep pattern across all
-  movements → the owner's reps with no weight. **A partner never inherits the
-  owner's weight** — that is a test, not a comment
-  (`testPartnerWeightNeverInheritsTheOwnersWeight`).
-- **The result always has the owner's set count** (decision **D12**): shorter
-  history repeats their last logged set, longer history truncates. The coach
-  never adds or removes an exercise for a partner — they are working in on the
-  owner's sets.
-- `fill(plan:roster:history:)` **preserves SwiftUI identity**: a re-resolved plan
-  keeps the existing plan/set ids positionally, so re-running it on an unchanged
-  roster returns a value `==` to the one it started from (`testFillIsIdempotent`)
-  and the rows do not churn on every roster change. This is why `EditableSet.id`
-  became a defaulted `init` parameter rather than a fresh `UUID()` per instance.
-- `aligned(_:)` keeps every performer's plan the owner's shape after the owner
-  adds or removes a set, without re-consulting history.
+Shipped:
 
-### Persistence — additive, decision D11
+- `TrainingFacts` now carries `weeklySetsByGroup`, `frequencyByGroup` and
+  `volumeTrendByGroup` as the source of truth. `weeklySetsByMuscle` is derived from
+  them; `weeklySetsByPart`, `frequencyByPart` and `volumeTrendByPart` are
+  transitional rollups so the optimizer and rules are untouched until phase 6.
+- Every weekly tally routes through `VolumeCredit`, including the prior-week loop
+  that feeds the trend. Stretching, plyometrics and cardio now credit **nothing**;
+  a muscle that only stabilises credits **nothing**.
+- The body-part rollup credits a part **once per set at its best member credit**,
+  which reproduces the old primary/secondary semantics exactly — a squat hitting
+  three leg groups is still one set of legs.
+- `PlanAwareWeeklyAccounting` gained group-keyed twins and resolves a planned
+  recommendation to a catalog template first, so planned volume uses the same
+  roles and eligibility as completed volume.
+- `VolumeLandmarks` has MEV/MAV/MRV bands for all 20 groups; the `BodyPart`
+  overload takes the widest member band so a part holding a large muscle is not
+  judged against a small one's ceiling.
+- `CoachSchedulePreferences.trackedMuscleGroups` (default: the 13). A user who
+  opted a body part out of coverage before the adoption keeps that opt-out —
+  every group belonging to it drops out of the tracked set on decode.
+- `BodyPart.guessCategory(from:)` moved to `ExerciseCategory.guess(fromName:)`
+  with a forwarder left behind.
 
-- `WorkoutSession` gains **one** stored property,
-  `plannedPerformerPrescriptionsData: String = ""` (JSON, defaulted, no
-  `@Attribute(.unique)`, no new relationship → CloudKit-compliant), plus
-  `plannedPerformerPrescriptions` and
-  `plannedPrescriptions(forPerformerID:)`, which **falls back to the owner's
-  plan** for any performer without an entry. `plannedPrescriptions` is untouched,
-  so every existing reader (watch sync, export, the logger's fallback) keeps
-  working with no knowledge of the new field.
-- `ExportSession.plannedPerformerPrescriptions` is optional and **needs no
-  version bump**: the encoder omits a nil optional entirely, so a pre-Phase-9
-  export is byte-identical to what it always was, and
-  `testImportOfALegacyExportWithoutPerformerPrescriptionsSucceeds` asserts the
-  key is absent *and* that the owner's plan survives.
-- ⚠️ **CloudKit: an additive field still requires a schema deploy to Production**
-  in the CloudKit Dashboard before a TestFlight/production build will sync it.
-  Same rule as any additive field; noted here so it is not discovered at release.
+Verification: `make ci` green — **1,629 tests, 0 failures** (1,612 + 17 new),
+guardrails OK; `xcodebuild -scheme Cadence build` **BUILD SUCCEEDED**. No
+existing test needed changing beyond disambiguating `.chest` between `BodyPart`
+and `MuscleGroup` in `VolumeLandmarksTests`.
 
-### The logger honours the stored plan
+**Deviation:** none of substance. `VolumeCredit` had already landed in phase 3, so
+§1 of the phase file was already done.
 
-`SessionRenderModel.build` now resolves `plannedSets` **per performer** instead
-of once from the owner's prescription. One real change fell out of this: the
-pending-set reps fell back to `SessionViewModel.plannedReps`'s hard-coded `5`
-whenever the performer had any history, which silently ignored the plan for the
-**first** set. The planned target is now that call's last resort
-(`lastLoggedReps: performerSets.last?.reps ?? target.targetReps`), so set 1 comes
-from the stored plan, later sets still follow the performer's own rep pattern,
-and the load is still their own working weight. All 1,403 pre-existing tests
-stayed green through that change.
+**New standing note — a stale SwiftPM incremental build can crash the test
+binary.** After changing `Exercise`'s initializer signature, `swift test` first
+failed to link (`Undefined symbols … Exercise.__allocating_init`) and then, after a
+partial `swift package clean`, died with `signal code 11` inside XCTest's own
+teardown (`-[XCTest _internalBaseClassCleanup]`), which looks like a code crash
+but is not. `rm -rf CadenceCore/.build && swift build && swift test` cleared it.
+Reach for a full clean whenever a crash lands in XCTest internals rather than in
+our frames.
 
-### UI
+## Phase 5 — DONE (Home's This Week card)
 
-- **`WorkoutPlanPartnerSection`**: the roster is now editable from the plan
-  itself, **not only in Edit mode** — the card heading carries the selected
-  partners as chips (`editor.partnerChip.<name>`, `editor.removePartner.<name>`)
-  and a 44 pt `+` (`editor.showPartnerPicker`) reveals the full picker. Every
-  pre-existing identifier is unchanged, and every roster mutation calls
-  `onRosterChanged`, which re-resolves the plans.
-- **`CompactExerciseRow`** (view mode) renders **one line per performer, Me
-  first** (`editor.exercisePerformer.<exercise>.<performer>`); a solo plan keeps
-  the single unlabelled line it has always had.
-- **`WorkoutPlanExerciseSection`** (edit mode) gains a segmented performer picker
-  (`editor.performerPicker.<exercise>`) defaulting to Me. Only the owner can add
-  or remove sets — a partner works in on the owner's sets (D12) — and their rows
-  say so.
-- **New `Home/WorkoutPlanPartnerHistory.swift`** (66 LOC) gathers the history the
-  resolver consumes. It looks the exercise up **read-only**, so the plan editor
-  never creates an `Exercise` row for a movement merely displayed.
-- **New `CadenceFeatures/PlanFormatting.swift`** is the single formatter for a
-  *planned* set line (`100×8` / `BW×12` / `—×10`, decision **D4**), shared by the
-  compact row and the per-performer lines. Phase 4's `WorkoutSummaryPresenter`
-  remains the formatter for *logged* sets.
+The change you actually asked for is now on screen.
 
-### Verification (Phase 9)
+- The `Muscles` progress row and the whole expanded `Muscles` section are
+  **deleted**. `This Week` has three progress rows: Strength, Cardio, Volume.
+- `Volume` carries what `Muscles` used to: one row per `MuscleGroup`, on the same
+  4 / 8 / 12-set scale, with the richer layout (name, bar, sets, band text).
+- `HomeDashboardState.MuscleRow` is gone; `VolumeRow` is keyed by `MuscleGroup`
+  and carries `scientificName` and `isTracked`.
+- Rows shown = the 13 tracked groups always, plus any untracked group the user has
+  actually trained. An untracked row is prefixed with a dashed circle, greyed, and
+  carries the VoiceOver hint "Not a tracked muscle group".
+- `volumeCoverage` averages **tracked rows only**, so half a set of incidental
+  neck work cannot drag the headline number down.
+- Identifiers: `home.volume.<group.rawValue>` (e.g. `home.volume.quadriceps`,
+  `home.volume.lower_back`). `home.week.muscles`, `home.week.musclesHeading` and
+  `home.muscle.*` are gone, and the smoke test asserts positively that they are.
+- Second citation added under the list: the direct/indirect/stabiliser split is a
+  science claim on screen, so it resolves `pellandDoseResponse2026` through
+  `CitationRegistry` and renders with `CitationLink`.
+- `WeekVolumePresenter` (Your Plan) re-keyed onto `MuscleGroup`, with
+  `VolumeLandmarkBar` and `CoachPartVolumeSection` following.
+- **Deleted `HomeWeeklyVolumeSection.swift`** — dead code, nothing constructed it
+  since `HomeWeekDashboardSection` took over.
 
-- `make ci`: build + **1,442 tests passed, 0 failures** (baseline 1,403 + 39:
-  20 `PartnerPlanResolverTests`, 6 `PlanFormattingTests`, 5 `EditablePlanTests`,
-  3 `WorkoutRepositoryTests`, 2 `DataExportTests`, 3 `SessionRenderModelTests`),
-  guardrails OK. Every touched view is well under 400 LOC
-  (editor 242, partners 236, exercise section 155, compact row 70).
-- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
-  **passed** (170.4 s, up from 142 s for the added flow).
-- **The smoke flow proves issue #4 end-to-end, unguarded.** It adds Bench Press
-  to the plan, taps **Done** to leave Edit mode, opens the partner picker from
-  the read-only plan, adds the seeded partner Sam, then asserts Sam's chip, the
-  partner's own plan line (`editor.exercisePerformer.Bench Press.Sam`) **and**
-  that the owner's line survived. No `if …exists` anywhere — a missing element
-  fails the test.
-- **Honest gap:** verified structurally and end-to-end, **not** visually. No
-  screenshot was taken of the two-performer plan card or the segmented performer
-  picker, so their *appearance* rests on the layout code and the identifier
-  assertions rather than on a photograph.
-- Not pushed, per the batch execution protocol.
+Verification: `make ci` green (**1,631 tests, 0 failures**, guardrails OK),
+`xcodebuild -scheme Cadence build` succeeded, `make smoke` passed.
 
-**Deviations from the phase file, all deliberate:**
+**A second UI-test-helper fix was needed.** Removing a progress row makes Home
+shorter, which moved `home.startWorkout` to y=153 — fully visible, but inside the
+167.8pt top scroll-edge glass gradient, and at that scroll position neither
+swiping up nor down frees it. XCUITest refuses to tap an element whose hit point
+falls under an overlay; a real finger is unaffected, because the gradient has no
+touch handling. `scrollToHittableAndTap` now ends with a coordinate tap on the
+element's own centre, reached only when the element exists and scrolling cannot
+free it, so it cannot mask a missing control.
 
-- **No per-performer weight editing.** The phase file's §5 mentions editing
-  "reps/weight" per performer, but the plan editor has never had a weight editor
-  for *anyone* — load is resolved and displayed read-only. Shipping one for
-  partners only would have been a new control and a scope increase; per-performer
-  **reps** are editable, and load stays resolved as it is for the owner.
-- **History gathering lives in its own file** (`WorkoutPlanPartnerHistory.swift`)
-  rather than inside `WorkoutPlanEditor`, keeping the view free of data logic.
-- **`PlanFormatting.swift` is a new file** rather than an addition to
-  `WorkoutSummaryPresenter` — the phase file allowed either; planned vs logged
-  formatting stay separate types.
-- **`aligned(_:)` is new**, not in the phase file: without it, the owner adding a
-  set left partners a set short until the next full re-resolution.
-- **The UI smoke assertion is larger than specified.** The phase file asked for a
-  single `editor.partners` existence check; the standing "guarded assertions are
-  worth little" rule made a real add-a-partner-from-view-mode flow the better
-  buy.
+## RESOLVED — the iPhone smoke gate (was red on `main`)
 
-</details>
+`make smoke` failed at `SmokeLaunchTests.swift:172` on `b818f26` with no source
+changes at all, reproduced three times including on a freshly erased simulator.
+Root cause and fix:
 
----
+- `1a89d08` replaced the suggested-workout sheet's Close tap with
+  `app.navigationBars["View Suggested Workout"].swipeDown()`. That leaves Home at a
+  scroll offset where `home.startWorkout` sits at y=153, **under the top
+  scroll-edge glass band** (`AdditionalDimmingOverlay`, {{0,0},{393,167.8}}).
+- `XCUIApplication.scrollToHittableAndTap` only ever swiped **up**, which pushes
+  the button further under the band. Eight swipes and sixteen seconds later it was
+  still not hittable, and the fallback `el.tap()` failed with hit point `{-1,-1}`.
+- Fix: the helper now swipes up, then **down**, before falling back to a direct
+  tap. `make smoke` passes (1 test, 0 failures, 259s).
 
-<details>
-<summary>Phase 8 — This Week deep-links to Coach & Plan (shipped, b42f816)</summary>
+**It is a test-helper limitation, not a product bug.** The glass edge effect is a
+visual overlay a real finger scrolls past; only XCUITest treats it as an
+obstruction. Nothing in the app changed.
 
-## Phase 8 complete — This Week deep-links to Coach & Plan (shipped, `b42f816`)
+## Phase 7 — DONE (suggested workouts: one target, five training styles)
 
-Field test 2026-08-18 issue #7
-(`docs/field-test-ui-batch-2026-08-18/08-phase8-week-gear-deeplink.md`). The
-smallest phase in the batch, shipped exactly as designed.
+Taken ahead of Phase 6, which it does not actually depend on.
 
-### The deep link
+- `SuggestedWorkoutTier` is **deleted**. `SuggestedWorkoutStyle` ships five cases:
+  `fitness`, `bodyweight`, `powerlifting`, `olympic`, `strongman`.
+- One target for every style — **4 sets per tracked muscle group**, one **20
+  planned-set cap** (`suggestedWorkoutTargetSetsPerGroup` /
+  `suggestedWorkoutPlannedSetCap`). The old 4/8/12 × 20/30/40 tiers were the same
+  greedy ordering at three lengths; what varies now is the movements.
+- Style membership comes off the DB++ annotation, on
+  `SuggestedExerciseCandidate.matches(_:)`: fitness = strength ∧ general-fitness
+  only, bodyweight = `modalities.contains(.bodyweight)`, and the three sports off
+  `trainingTypes`.
+- **Style biases, it never filters** (NFR-8). `solve` runs two passes over one
+  index: pass 1 restricted to the style's pool, pass 2 over everything, and only
+  for gaps pass 1 could not close. `isBetter` breaks an exact tie toward the
+  in-style movement, so the alphabetical tie-break cannot beat style membership.
+- The borrowing is **disclosed, not hidden**: `SuggestedWorkoutOption.
+  inStyleExerciseCount` drives subtitle text — "all olympic weightlifting
+  movements" or "1 of 3 olympic weightlifting movements".
+- Volume-ineligible movements are dropped at index construction, so a stretch can
+  never be prescribed as strength work whatever muscles it lists.
+- Deficits are computed over `input.trackedGroups` only (wired from
+  `settings.coachSchedulePreferences.trackedMuscleGroups`).
+- Chooser and About sheet rewritten: `chooserIntro`, `choosingAPlan`, 7
+  `aboutSteps` and 6 `pseudocode` lines that state the two passes, the credit
+  split and the cap. The About sheet also lists what each style is. Both citation
+  sets still resolve through `CitationRegistry`; no raw ids on screen.
+- Identifiers: `suggestedWorkout.style.<rawValue>` and
+  `suggestedWorkout.about.style.<rawValue>`. The signpost is now
+  `allStylesGeneration`.
 
-- `Home/HomeWeekDashboardSection.swift` gained a `header` row: the `This Week`
-  headline, a `Spacer`, and a `gearshape` button with a **44x44 hit target**
-  (`.frame(44, 44)` + `.contentShape(Rectangle())` — a `.plain` button beside a
-  `Spacer` is otherwise untappable). Ids/a11y: `home.week.coachSettings`,
-  label `Coach and plan settings`, hint `Opens Coach & Plan preferences`. The
-  gear is a real element in the header `HStack`, **not** an overlay like Phase
-  6's decorative illustration, because it is interactive and must be reachable
-  by VoiceOver and Full Keyboard Access.
-- **Negative padding keeps the header from growing.** The button carries
-  `.padding(.trailing, -8)` and `.padding(.vertical, -8)`, so the *glyph* sits at
-  the card's inset corner while the *target* stays 44 pt and the row occupies
-  ~28 pt — the rows below do not shift. The phase file suggested
-  `.padding(.top, -8)`; vertical is the correct axis, or the header would still
-  stand 8 pt taller than the headline.
-- `HomeView.swift` passes `onOpenCoachSettings: { path.append(HomeRoute.coachPreferences) }`.
-  **That one line is the entire "Back goes to Home" story:** the route and its
-  `navigationDestination` already existed, and pushing onto Home's own
-  `NavigationStack` means Settings was never on the stack to pop back to. No
-  custom back handling. `CoachSchedulePreferencesView` already declares
-  `.navigationTitle("Coach & Plan")`, so it is self-identifying from Home and
-  Settings -> Coach -> Coach & Plan is untouched.
-- **HomeView is at its ratchet, not above it.** Adding the argument pushed the
-  file to 1034 against a shrink-only ceiling of 1033, so `unit:` and
-  `onOpenWorkout:` now share a line in that call (the file already carries lines
-  up to 255 chars). The ratchet was **not** raised.
-  `HomeWeekDashboardSection.swift` is 163 LOC, well under 400.
+### Verification
 
-### No new unit test — deliberate, per the phase file
+`make ci` green (**1,652 tests, 0 failures**, guardrails OK), `make smoke` passed
+(1 test, 273s). Measured on the full shipped catalog: vector index **12.8 ms**
+median, five-style solve **3.0 ms** median — the five-style solve is *faster* than
+the old three-tier one, because the index no longer carries the ~140
+volume-ineligible movements.
 
-The deep link is pure navigation wiring with no logic to test headlessly, and
-`HomeRoute` lives in the app target where `swift test` cannot reach it. Coverage
-goes to the one iPhone smoke test instead, as the phase file specifies.
+The smoke test asserts positively that `suggestedWorkout.minimum` is gone.
 
-### Verification (Phase 8)
+## Phase 6 — DONE (coach, picker, watch; `BodyPart` deleted)
 
-- `make ci`: build + **1,403 tests passed, 0 failures** (unchanged — no new
-  logic), guardrails OK, `HomeView.swift 1033 LOC (grandfathered <=1033)`.
-- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
-  **passed** (143.8 s).
-- **The new assertions are unguarded, so their passing is the proof they ran.**
-  `scrollToHittableAndTap("home.week.coachSettings")` fails the test if the gear
-  is missing or unhittable; the run then asserts the `Coach & Plan` nav bar
-  appears, taps Back, and asserts Home's `home.startWorkout` is back **and** that
-  no `Settings` nav bar exists. No `if ...exists` guard anywhere in the block.
-- **Honest gap:** verified structurally and end-to-end, **not** visually — no
-  screenshot of the gear glyph's resting position was taken, so "the glyph sits
-  at the card's inset corner" rests on the negative-padding geometry and the
-  unchanged row assertions, not on a photograph.
-- **The first `make smoke` failed before running a single test**, with
-  `Unable to find a device matching ... name:Cadence-iPhone-16` while
-  `xcrun simctl list devices available` listed that exact device as available and
-  xcodebuild's own destination list contained **no simulators at all** — a
-  CoreSimulatorService enumeration hiccup (the service had just restarted at
-  13:48). A straight retry passed with no change to the tree. Recognise this one
-  rather than re-debugging it: if xcodebuild lists only `My Mac` and the
-  placeholders, retry before suspecting the pinned device name.
-- Not pushed, per the batch execution protocol.
+**All the code is written and the three required gates are green.**
 
-</details>
+### Shipped in the working tree (76 files changed, 2 added, 2 deleted)
 
----
+- **`BodyPart.swift`, `Muscle` and `MuscleCatalog` are deleted.** Every
+  `…ByPart` / `bodyParts` / `part:` surface is now keyed by `MuscleGroup`:
+  `CoachPlanOptimizer`, `CoachFacts`, `CoachRuleSupport`, `CoachSession`,
+  `RecoveryState`, `WeeklyPlan.SessionFocus`, `Insight`, `Recommendation`,
+  `InsightRule`, `RecommendationRule`, `PlanAwareInsightEngine`,
+  `SessionEligibilityPolicy`, `WeeklyStats`, `TrainingFacts`, `VolumeLandmarks`,
+  `WorkoutHistory`, `WorkoutRepository`.
+- `MuscleCatalog.canonicalName` extracted to the new
+  `CadenceCore/Sources/CadenceCore/ExerciseNameCanonicalizer.swift` (name
+  canonicalization, not muscle vocabulary — it had other callers).
+- `ExerciseFacetIndex` protocol requirement is now `trainedMuscleGroups`, backed
+  by `Exercise.trainedMuscleGroups` / `ExerciseTemplate.trainedMuscleGroups` in
+  `ExerciseDiscovery.swift`: DB++ volume-credit keys first, canonicalized
+  primary+secondary muscles as the fallback so a non-eligible movement stays
+  browsable.
+- Picker chips (`ExercisePickerView` + `+Controls`), `CustomExerciseEditView`,
+  the picker's creation sheet, `PlanningView`, `ProgressView`,
+  `RoutineDetailView`, `CustomExerciseListView`, `HomeView`,
+  `CoachDecisionCardView+Presentation` and
+  `CoachOverrideConfirmationModifier` all migrated.
+- `BodyPartQuickStartView.swift` → `MuscleGroupQuickStartView.swift` (git-tracked
+  rename; still dead code that compiles).
+- Watch: `WatchAddExerciseView`, `WatchExerciseSelection`,
+  `WatchCustomExerciseDefinition`, `WatchStrengthFlowModel` on `MuscleGroup`.
+  The wrist category list is the 13 tracked groups in `MuscleGroup.canonicalOrder`
+  with a **More muscles** row revealing the other seven.
+- New test file `CoachPlanOptimizerMuscleGroupTests.swift` (4 tests) — the file
+  the phase-6 plan asks for: tracked-only targeting, no session-length growth vs
+  the 8-part baseline, upper/lower split assignment, group-window recovery gating.
+  Each was checked non-vacuous by printing its intermediate state before the
+  prints were removed.
+- `BodyPartTests.swift` deleted (`git rm`).
+- `scripts/check-test-pyramid.sh`: the grandfather ratchet table is now **empty**.
+  All six previously-grandfathered views measure 161 / 200 / 313 / 281 / 201 / 364
+  LOC, under the plain 400 budget, so none of them may grow again.
 
-<details>
-<summary>Phase 7 — Workouts Today opens, expands and starts (shipped, 8d46556)</summary>
+### Test-migration conventions worth keeping
 
-## Phase 7 complete — Workouts Today opens, expands and starts (shipped, `8d46556`)
+- **`trackedSets(baseline:_:)`** (in `CoachPlanOptimizerTests`) — DB++ tracks 13
+  groups, so a test meaning "everything is satisfied except X" must name all 13.
+  Naming only 8 leaves the other five reading as zero-volume deficits that
+  out-rank the group the test is about. This was the cause of most of the 36
+  post-rename failures.
+- **One set now credits several groups**, so summing `weeklySetsByGroup.values`
+  across groups is no longer the set count. Assert the *direct* credit for one
+  group instead (see `PartnersAndUnitsTests`).
+- `CoachSchedulePreferences` decodes legacy `excludedCoverageParts` and folds it
+  into `trackedMuscleGroups`, but **never encodes it again** — pinned by
+  `testLegacyExcludedCoveragePartsIsNotWrittenBack`.
 
-Field test 2026-08-18 issue #6
-(`docs/field-test-ui-batch-2026-08-18/07-phase7-workouts-today.md`), plus the
-user's **§5b smoke-flow instruction** — the smoke test now logs real sets with a
-partner, and the iPhone UI suite is back to exactly one test.
+### Verification so far
 
-### Workouts Today
-
-- **New `CadenceFeatures/WorkoutsTodayPresenter.swift`** turns today's completed
-  workouts plus the outstanding coach plan into one ordered list: completed first
-  (newest first), then planned items in plan order, rest days dropped. Completed
-  rows reuse `TodayActivityPresenter.entries` **verbatim** — "what counts as done
-  today" is not re-implemented. It owns the badge vocabulary (`COACH'S PLAN` /
-  `YOUR PLAN` / `TRAINER'S PLAN`, decision **D10**; only `.coach` is produced
-  today), `repsText` (ladder → `12, 10, 8`, else `8–12`, else `10`),
-  `plannedValueText` (`6 sets · ~45m` / `~30m easy`) and `plannedVolumeKg`.
-- **Planned volume is priced at the bottom of the rep range** when there is no
-  ladder, so the coach never over-promises tonnage. A pure bodyweight plan
-  returns `nil` rather than `0`; a loaded lift with no resolvable load renders
-  `—` while a bodyweight movement renders `BW` (Phase 3's decision **D4**).
-- **New `Home/HomeWorkoutsTodaySection.swift`** (154 LOC) renders it. Completed
-  rows go through the shared `HomeWeekWorkoutRow` and navigate exactly where This
-  Week navigates; planned rows expand in place to why → per-exercise
-  `sets × reps × load` → planned volume → one science link → a 56 pt
-  `Start This Workout`, which routes through the existing `launchDecision` to the
-  plan editor / cardio setup — never straight into a recorder (NFR-8).
-- `HomeWeekWorkoutRow` gained a second initializer (`init(row:)`) plus an
-  optional trailing badge, so Workouts Today and This Week still share **one**
-  implementation of that line and This Week's call site is untouched.
-- Ids: `home.today.row.<key>`, `home.today.badge.<key>`,
-  `home.today.start.<key>`, `home.today.science.<key>`; `home.workoutsToday`
-  unchanged. `grep -rn '"PLANNED"' Cadence/Cadence/Features` is **empty**.
-- `HomeView.swift` 1054 → **1033 LOC**; ratchet lowered to match.
-
-### §5b — the smoke test logs real work now
-
-The iPhone smoke test launches with `-seed person.Sam`, adds the partner to the
-session, adds Bench Press, saves the owner's set, then logs a second set **for
-the partner** through `setEditor.performer`, and asserts the summary's
-`summary.exercise…` row **and both per-performer rows** — with the `if …exists`
-guards **removed**. That is the fix for the Phase 4 assertion that never fired:
-a pass is now proof the assertion ran, because an absent row fails the test.
-New helpers: `addSessionPartner`, `saveSetInEditor`, `logPartnerSet`.
-
-**A real bug the new flow caught on its first run:** `set.add.<name>` only exists
-while the exercise card is **expanded**, and logging a set collapses it, so the
-partner's set could never be started. `logPartnerSet` now re-expands the card via
-`exercise.collapsed` first. The old log-nothing flow could not have surfaced
-this.
-
-The suite is back to **exactly one iPhone test**
-(`EXPECTED_IPHONE_SMOKE_TESTS=1`); the 1-20 cap introduced in `d05c733` is
-reverted, and CLAUDE.md now reads "grow the flow, not the suite". The test costs
-what that honesty is worth: **63 s → 142 s**.
-
-### Simulator hygiene — teardown + a device of our own
-
-`make shutdown-sims` runs after both smoke gates through a
-`status=0; … || status=$?; $(MAKE) shutdown-sims; exit $status` wrapper, so it
-runs on failure too **without swallowing the exit code** (verified both ways: a
-green run exits 0 with nothing booted; a failing run still surfaced
-`make: *** [smoke] Error 65`).
-
-**It deliberately does NOT `simctl shutdown all`,** and this repo no longer
-shares a simulator with anything. Both were forced by a real incident: on
-2026-08-19 another project on this machine was running
-`xcodebuild test -scheme Voxglass -only-testing:VoxglassUITests` against
-`platform=iOS Simulator,name=iPhone 16` — **the device this repo used to pin** —
-and the two suites destroyed each other's runs.
-
-- `shutdown-sims` shuts down only `$(SMOKE_SIM_NAME)` and `$(WATCH_SIM_NAME)`,
-  and quits `Simulator.app` only when nothing else is left booted.
-- **`SMOKE_SIM_NAME ?= Cadence-iPhone-16`** — a device created for this repo
-  alone. Recreate it with:
-  `xcrun simctl create "Cadence-iPhone-16" com.apple.CoreSimulator.SimDeviceType.iPhone-16 com.apple.CoreSimulator.SimRuntime.iOS-26-5`
-  Override with `make smoke SMOKE_SIM_NAME='iPhone 16'` if you ever need the
-  shared one. **CI is unaffected** — it never runs the UI smoke and archives
-  against `generic/platform=iOS`, so no workflow references this name.
-
-⚠️ **What this does NOT fix:** a neighbouring session can still `killall` or
-`pkill` `xcodebuild`/`CoreSimulatorService` and take our run down with it (that
-is exactly how commit attempt 2 died, below). Isolation of simulator *state* is
-solved; process-level kills are not.
-
-### Verification (Phase 7)
-
-- `make ci`: build + **1,403 tests passed, 0 failures** (baseline 1,380 + 23
-  `WorkoutsTodayPresenterTests`), guardrails OK.
-- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
-  **passed** (141.6 s) with the full logging flow.
-- The new summary assertions are unguarded, so their passing **is** the proof
-  they executed — no probe needed this time.
-- **Honest gap:** the expanded planned row was verified structurally (presenter
-  tests + a clean app build + the smoke flow), **not** visually. The smoke flow's
-  fresh store has no coach-planned item to expand, and the machine was saturated
-  by the concurrent Voxglass run, so no screenshot of the expanded prescription
-  was taken.
-- **Committed as `8d46556`** after the pre-commit hook re-ran everything green:
-  guardrails, 1,403 unit tests, iPhone smoke, **and** the watch smoke (100.7 s).
-- Not pushed, per the batch execution protocol. Seven commits (Phases 1-7) are
-  now unpushed on `main`.
-
-**It took three commit attempts, and neither failure was the diff.** Recorded so
-the next environmental failure is recognised rather than re-debugged:
-
-| Attempt | Outcome |
+| gate | result |
 |---|---|
-| 1 | Unit tests green, then iPhone smoke `Test crashed with signal term` — device shared with the concurrent `VoxglassUITests` run, load average 99-128 |
-| 2 | Unit tests green (1,403), then `make smoke` **`Terminated: 15`** — an external SIGTERM, i.e. something outside this repo killed our `xcodebuild` |
-| 3 | Everything green on the dedicated device, load ~270 → **`8d46556`** |
-
-Standalone `make ci` and `make smoke` had already passed on this exact tree
-before attempt 1, which is what made the environmental diagnosis safe rather than
-wishful.
-
-**The load was never Xcode.** Five `python3.14` processes sat at ~85% CPU each
-(~425% total) for over an hour, driving load average to 270+ and making every
-simulator run 2-3x its normal length. They belong to neither this repo nor this
-session and were left alone. If simulator gates start hanging again, check
-`ps -Ao pcpu,pid,etime,comm -r | head` **before** suspecting the code.
-
-</details>
-
----
-
-<details>
-<summary>Phase 6 — Coach's Suggestions restructured (shipped, d05c733)</summary>
-
-## Phase 6 complete — Coach's Suggestions: floating icon, workout last, CTA below
-
-Field test 2026-08-18 issues #8/#9/#11
-(`docs/field-test-ui-batch-2026-08-18/06-phase6-coach-suggestions-card.md`).
-
-- **Floating artwork.** `HomeCoachIllustrationView` is now an
-  `.overlay(alignment: .topTrailing)` on the glass card with a 12 pt inset,
-  `.allowsHitTesting(false)` and `.accessibilityHidden(true)` (it is decorative;
-  no test referenced `home.coachIllustration`). Its compact edge shrank 88 → 64
-  via a new `HomeCoachIllustrationView.compactSize`, which the heading also reads
-  for its trailing padding — one constant, so the heading cannot slide under the
-  artwork at large Dynamic Type.
-- **Trimmed copy.** `HomeCoachRecommendationCard` lost its `Divider()`, the
-  `Suggested Workout` heading and the "Selected for today based on…" subtitle,
-  and is now a pure renderer: it takes `title`/`why`/`exercises`/
-  `additionalCount`/`citationIds`/`durationMinutes` instead of a `CoachSession`.
-- **Workout last, CTA outside.** `Do Coach's Workout` is a sibling of the card in
-  a `VStack(spacing: LayoutMetrics.actionButtonSpacing)`, so it is the same
-  56 pt `CadenceActionButton` as Home's `Start Workout`. `coach.card` moved to
-  that outer container and the glass card took the new
-  `home.coachSuggestions.card` id, which is what makes "the button is below the
-  card" assertable.
-- **Extraction (mandatory — `HomeView` was exactly at its 1110 ratchet).** The
-  whole section moved to `Home/HomeCoachSuggestionsSection.swift` (139 LOC) and
-  `HomeView.swift` fell 1110 → **1054**; the ratchet was lowered to match.
-  `suggestionTint` went with it and now maps
-  `HomeCoachSectionPresenter.ToneRole` rather than reading `HomeSuggestion.tone`
-  directly.
-- **New `CadenceFeatures/HomeCoachSectionPresenter.swift`** owns render order and
-  visibility: `blocks(suggestions:recommendation:expanded:)` returns
-  `[.heading, .suggestion…, .showMore, .divider, .suggestedWorkout]`, with the
-  workout always last, the divider only between a non-empty suggestion list and a
-  workout, and no workout/CTA at all for recovery, rest or assessment days
-  (NFR-8: that advice still renders as suggestions). Also `showsPrimaryAction`,
-  `previewExercises` (cap 6), `additionalExerciseCount`, `toneRole` and the
-  `fallbackWhy` copy.
-
-### Verification (Phase 6)
-
-- `make ci`: build + **1,380 tests passed, 0 failures** (baseline 1,367 + 13
-  `HomeCoachSectionPresenterTests`), guardrails OK.
-- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
-  **passed** (63.0 s), including the new assertions.
-- **The guarded CTA assertions were proved to fire this time.** Phases 4 and 5
-  each shipped an assertion behind an `if …exists` that may never have run, so
-  the guard was temporarily replaced with a hard `XCTAssertTrue` probe and
-  `make smoke` re-run: it **passed**, i.e. `home.coachRecommendation` really does
-  render under `-uiTest` (the coach produces "Boxing conditioning" on an empty
-  in-memory store). So the CTA's height-matches-`home.startWorkout` and
-  minY-below-`home.coachSuggestions.card` assertions genuinely executed. The
-  probe was then removed; the committed file is byte-identical to the one that
-  passed at 22:19.
-- Visually confirmed on the booted simulator (screenshot, and again at
-  `content_size extra-small` to fit more of the page): the artwork floats over
-  the card's top-right corner with the heading full-width beside it, and the card
-  reads heading → "No new suggestions right now." → workout title → "Why this
-  workout" → "The science ›", with no `Suggested Workout` blurb and no divider
-  (correct: the divider only appears when there *are* suggestions). The CTA
-  itself sits below the fold and could not be photographed — synthetic scrolling
-  needs assistive access this shell does not have — so its position rests on the
-  smoke assertion above, which is now known to run.
-- Not pushed, per the batch execution protocol.
-
-**Deviations, both deliberate:**
-
-- `ExercisePreview` carries `sets` and `repsText` per the phase file's struct,
-  but the row still renders only name + load, exactly as the §2 mockup shows.
-  The fields are populated and unit-tested, ready for Phase 7/9; nothing renders
-  them yet.
-- The phase file's test list is 11 names; 13 shipped. The two extras
-  (`testPreviewExerciseCarriesLoadSetsAndReps`,
-  `testWhyFallsBackWhenTheSessionHasNoSubtitle`) cover the two pieces of copy
-  logic that moved out of the view with it.
-
-### Also in this commit — the XCUITest cap went to 20, then back to 1
-
-`scripts/check-test-pyramid.sh` enforced `EXPECTED_IPHONE_SMOKE_TESTS=1` — exact
-equality, stricter than the "≤12 UI-test cap" CLAUDE.md advertised. Commit
-`d05c733` raised it to a 1-20 range at the user's request; **the user reset it to
-exactly 1 the same day** (see the uncommitted work below), choosing to grow the
-single end-to-end flow instead of the suite. `d05c733` therefore contains a cap
-change that the very next commit reverts — deliberate, recorded here so the
-history is not mistaken for a mistake. Phase 6 never spent the headroom; its
-coverage went into the existing test as assertions.
-
-</details>
-
-<details>
-<summary>Phase 5 — one science link per coaching output (shipped, 11fafe7)</summary>
-
-## Phase 5 complete — one "The science" link, all sources on one screen
-
-Field test 2026-08-18 issue #10, decision **D9**
-(`docs/field-test-ui-batch-2026-08-18/05-phase5-single-science-link.md`). Every
-coaching output rendered one `CitationLink` row *per citation* — typically six or
-more stacked rows below a single card. It now renders exactly one
-`The science ›` row that pushes a screen listing every source.
-
-- New `CadenceFeatures/CitationPresenter.swift` — `citations(forIds:)` (ordered,
-  de-duplicated, unknown ids dropped), `unresolvedIds`, `hasScience`,
-  `sourcesTitle(count:)`. The resolution rule is unit-tested, not re-derived per
-  view.
-- New `Coach/CoachSourcesView.swift` — a `List` of every source, one
-  `CitationDetailBody` each; ids `coach.sources` / `coach.sources.<id>` /
-  `coach.sources.<id>.link`.
-- `CitationDetailView` factors out `CitationDetailBody(citation:context:idPrefix:)`
-  so the one-source and many-source screens share markup.
-- `CoachCardView` gains `CoachSourcesLink` beside the untouched `CitationLink`.
-- Converted call sites: `HomeCoachRecommendationCard`
-  (`home.coachRecommendation.science`), `CoachDecisionCardView` (both sites —
-  `coach.card.warnings.science`, `coach.card.structure.science`; 460 → 458 LOC),
-  `PlannedDayPreviewView` (`plan.day.science`), `CoachAlternativesView`
-  (`coach.alternatives.<id>.science`), `CoachTestRecommendationCard`
-  (`coach.test.science`), `AssessmentDetailView` (`assessment.science`),
-  `IntervalSetupView` (`interval.science`).
-- `CoachAlternativesView` previously showed only the *first* citation and
-  silently dropped the rest; it now reaches all of them.
-- `CoachTestRecommendationCard`'s dead `citations` property is removed.
-
-### Verification (Phase 5)
-
-- `make ci`: build + **1,367 tests passed, 0 failures** (baseline 1,360 + 7
-  `CitationPresenterTests`), guardrails OK.
-- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
-  **passed** (65.2 s).
-- Acceptance grep is clean: `grep -rn "ForEach" Cadence/Cadence/Features
-  --include=*.swift -A3 | grep CitationLink` returns only
-  `CoachMethodologyView.swift` and `CoachAboutView.swift`, the two bibliography
-  screens the phase file deliberately exempts.
-- Not pushed, per the batch execution protocol.
-
-**Honest note on the smoke assertion:** the new check is
-`count(label BEGINSWITH 'The science') <= 3` on Home. It passes trivially when
-Home shows no coach output, and this run's log does not prove it was non-zero, so
-the real coverage for this phase is the headless `CitationPresenterTests`. Left
-as-is rather than grown into a coach-navigation flow, per the fixed-size
-UI-suite rule.
-
-**Two failed smoke attempts before the green one, neither a code fault:** the
-first failed to *build* because `CoachCardView.swift` and `CoachSourcesView.swift`
-used `CitationPresenter` without `import CadenceFeatures` (fixed; note `make ci`
-builds only the SwiftPM package, so it cannot catch a missing app-target import —
-only `make smoke` or an `xcodebuild` app build does). The second died with
-`Test crashed with signal term` while waiting for `summary.title`, with **no app
-crash report**: a watchOS 26.5 simulator had auto-booted alongside the iPhone and
-was saturating the machine (load average 38-45, `Carousel`/`healthd`/`diagnosticd`
-from the watch runtime at the top of `ps`). `xcrun simctl shutdown <watch-udid>`
-plus a CoreSimulator restart fixed it and the same tree passed in 65 s. If the
-iPhone smoke hangs, check `xcrun simctl list devices booted` for a stray watch
-sim before suspecting the diff.
-
-**Deviations from the phase file, both deliberate:**
-
-- The phase's call-site table missed `CoachTestRecommendationCard`, which also
-  rendered a `ForEach` of `CitationLink`s. Its own acceptance criterion (the grep
-  above) requires that file to convert, so it did.
-- The two new integrity tests were added to `CitationPresenterTests`
-  (**CadenceFeaturesTests**) rather than to `CitationIntegrityTests`
-  (CadenceCoreTests) as the phase file suggested: `CadenceCoreTests` depends only
-  on `CadenceCore` and therefore cannot see `CitationPresenter` at all. The
-  registry-level equivalents already exist in `CitationIntegrityTests`
-  (`testEveryCoachSessionCandidateHasCitationIdsUnlessRestOrEmptyLaunch`,
-  `testEveryDecisionReasonAndWarningCitationIdResolves`); the new ones assert the
-  same rule through the presenter the UI actually calls.
-
-</details>
-
-<details>
-<summary>Phase 4 — read-only exercise detail in summaries (shipped, b9474b6)</summary>
-
-## Phase 4 complete — read-only exercise detail in workout summaries
-
-Field test 2026-08-18 issue #1 (*"I should be able to expand/collapse the
-exercise to see details 'view only' WITHOUT having to edit the workout first…
-one row per partner, 'Me' first"*).
-
-- `WorkoutSummaryData.ExerciseLine` gains `performers: [PerformerLine]` (one
-  additive, defaulted property; new `SetLine`/`PerformerLine` value types). It is
-  built only for the owner's lines — `Me` first, then each partner in
-  first-appearance order, warm-ups excluded, empty performers dropped. No
-  persistence or schema change.
-- `WorkoutSummaryPresenter` gains `setLine`, `performerSetsText`,
-  `orderedPerformers` and `expandedAccessibilityValue` — all pure, all tested.
-  The set format is decision **D8**'s lowercase `x`: `180 lb x 12, 190 lb x 10,
-  200 lb x 8`, with `BW x 12` / `BW + 10 kg x 12` for bodyweight.
-- New `WorkoutSummaryExerciseRow` (96 LOC): the whole card is one plain `Button`
-  with `.contentShape(Rectangle())` (a card with a `Spacer` is otherwise
-  untappable in its gap) and `.accessibilityElement(children: .contain)` **before**
-  its identifier (otherwise the styled card swallows the per-performer ids).
-  Card identifiers are unchanged, so existing tests keep resolving them.
-- `WorkoutSummaryView` (307 LOC) tracks `expandedExerciseIDs: Set<String>`, so
-  several exercises can be open at once, and **drops `partnersSection`**
-  (decision **D6** — those numbers now live in the rows). The hint reads *"Tap an
-  exercise to see every set. Use Edit to change them."*
-- The `onExercise` closure is gone from `WorkoutSummaryView` and all **three**
-  call sites (the phase file listed two — `RootTabView`'s post-workout summary
-  was the third). Tapping an exercise no longer originates
-  `HistorySummaryRoute.strengthFocused`; the route itself stays, because
-  Progress's exercise-trend navigation still uses it.
-
-**Deviation from the phase file (deliberate):** `RootTabView`'s post-workout
-summary had *no* `Edit` button — `onExercise` was its only way back into the
-session. Removing it outright would have left the just-finished workout
-uneditable until the user navigated Home → history, so that summary now passes
-`onEdit`, reopening the session (NFR-8's escape hatch, decision **D7**'s
-"editing stays reachable through Edit"). `reviewExerciseID` and the
-`initiallyExpandedExerciseID:` argument it fed are deleted as now-dead state.
-
-### Verification (Phase 4)
-
-- `make ci`: build + **1,360 tests passed, 0 failures** (baseline 1,344 + 8
-  `WorkoutSummaryDataTests` + 8 `WorkoutSummaryPresenterTests`), guardrails OK.
-- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
-  **passed** (63.7 s).
-- **Honest note on the smoke assertion:** the new `summary.exercise` expansion
-  check is guarded by `if exerciseRow.exists`, and in this run it did **not**
-  fire — the smoke flow's Quick Start workout logs no sets, so the summary has no
-  exercise rows. Real coverage for this phase is headless; the guarded assertion
-  only earns its keep if the smoke flow ever starts logging a set. Left in place
-  rather than grown into a multi-step logging flow, per the fixed-size UI-suite
-  rule.
-- No ratchet change needed: both summary files are under the 400-LOC budget.
-- Not pushed, per the batch execution protocol.
-
-</details>
-
-<details>
-<summary>Phase 3 — coach plans carry real loads (shipped, abf1746)</summary>
-
-## Phase 3 complete — coach plans carry real loads instead of `BW x 12`
-
-Field test 2026-08-18 issue #2 (*"always BWx12 even for non-bodyweight exercises
-like Standing Dumbbell Upright Row"*). Three independent causes, all fixed:
-
-- **The load lookup only saw the last 7 days.** `TrainingFacts.liftSnapshots` is
-  built from the trailing week, so any lift last trained 8+ days ago resolved to
-  `nil`. `CoachPlanOptimizer.suggestedLoadKg` now falls back to a new
-  `CoachSession.recentTopSet(forExerciseNamed:facts:)`, which finds the newest
-  logged top set across **all** history by canonical name (decision **D5**
-  resolution order: explicit load → trailing-week snapshot → all-history top set
-  → nothing).
-- **Anti-repeat rotation stripped the load.** `varietyAlternative` hard-coded
-  `loadKg: nil` and `rotatedForVariety` never forwarded `trainingFacts`. The
-  replacement is now built first (so the load is priced at the *replacement's*
-  rep target, not the original's) and then resolved through the same lookup.
-- **The renderer conflated "no load" with "bodyweight".** `BW` is now a statement
-  about the movement, never about missing data (decision **D4**): a loaded lift
-  with no resolvable history renders `—`. Applied in `CompactExerciseRow`,
-  `WorkoutPlanExerciseSection` and `HomeCoachRecommendationCard`, all reading the
-  new public `ExerciseLoading.isBodyweight(named:)` façade — the app does not
-  re-implement keyword matching anywhere.
-
-A bodyweight movement still resolves to no external load, by guard, before any
-history lookup runs — the coach never invents a number for a push-up.
-
-### Verification (Phase 3)
-
-- `make ci`: build + **1,344 tests passed, 0 failures** (baseline 1,330 + 3
-  `ExerciseLoadingTests`, 4 `CoachSessionRecentTopSetTests`, 5
-  `CoachPlanOptimizerTests`, 2 `EditablePlanTests`), guardrails OK.
-- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
-  **passed** (83.6 s).
-- No coach test regressed — `CoachExerciseVarietyTests`,
-  `CoachBodyweightPrescriptionTests`, `RecommendationPrescriptionTests`,
-  `WeightSuggestionTests` and `SameDayLoadRegressionTests` are all green.
-- Also removed a duplicated `editor.partners` assertion left in the smoke test by
-  Phase 2.
-- Not pushed, per the batch execution protocol.
-
-**One retracted diagnosis, recorded so it isn't re-derived:** an intermediate
-smoke run failed at 136 s and a stash-bisect appeared to implicate
-`CoachPlanOptimizer`. It does not — with the change restored the same test passes
-in 72 s against a 71 s bisect baseline, and again at 83.6 s under `make smoke`.
-The failure was a degraded simulator (machine load 14-17), not the optimizer.
-`recentTopSet` is an O(events) scan per planned exercise; at realistic history
-sizes that is a few tens of milliseconds and was left un-indexed rather than
-optimized against a phantom.
-
-</details>
-
-<details>
-<summary>Phase 2 — Home's vertical rhythm on the workout surfaces (shipped, 7e18583)</summary>
-
-## Phase 2 complete — Home's vertical rhythm on the workout surfaces
-
-Field test 2026-08-18 issue #5. Workout Plan, Start Workout and Workout now read
-their vertical rhythm from `LayoutMetrics` instead of three hand-tuned stacks:
-**20** between sections, **16** page and card padding, **12** between rows in a
-card, **10** between a card heading and its first row.
-
-What changed:
-
-- `WorkoutPlanEditor` is no longer a `List` (decision **D14**) — it is a
-  `ScrollView` + `VStack(spacing: sectionSpacing)` of glass cards, so it can
-  actually honour the rhythm. Split for the 400-LOC budget into
-  `WorkoutPlanEditor.swift` (213), `WorkoutPlanPartnerSection.swift` (174) and
-  `WorkoutPlanExerciseSection.swift` (91). `workoutPlanCard()` applies Home's
-  card treatment.
-- Leaving `List` costs swipe-to-delete, so each set row gains an explicit
-  destructive `minus.circle.fill` button (`editor.removeSet.<name>.<index>`),
-  disabled at one remaining set. Set rows are bound by set **id**, not index, so
-  a delete can never leave a row bound to a stale slot.
-- `Add Exercise` and `Show workout settings…` become secondary
-  `CadenceActionButton`s; `Start Workout` loses its ad-hoc insets and takes the
-  page padding like every other child.
-- The dead reorder handle (`line.3.horizontal`, never wired to `.onMove`) is
-  gone rather than shipped as a dead affordance.
-- `SelectWorkoutView` groups Strength and Cardio into Home-style glass cards;
-  outer spacing 22 → 20, group spacing 10 → 12, `.padding()` → `pagePadding`.
-- `SessionView` outer spacing 16 → 20, `.padding()` → `pagePadding`, and the
-  ad-hoc `.padding(.top, 16/8/4)` on its top-level children are gone.
-- `CompactExerciseRow` no longer wraps itself in a `Section` (it had no `List`
-  left to be in); the caller applies the card.
-
-Verified visually against Home: the new cards use the same tint and saturation
-Home's `Workouts Today` / `This Week` cards already use.
-
-### Verification (Phase 2)
-
-- `make ci`: build + **1,330 tests passed, 0 failures** (the new
-  `testWorkoutSurfacesShareHomeSectionSpacing`), guardrails OK.
-- `make smoke`: WatchConnectivity activation regression **passed**, iPhone smoke
-  **passed**, including the new `editor.partners` card assertion and the Phase 1
-  height assertions.
-- Ratchet lowered in `scripts/check-test-pyramid.sh`: `SessionView.swift`
-  1089 → **1085**.
-- Not pushed, per the batch execution protocol.
-
-</details>
-
-<details>
-<summary>Phase 1 — uniform full-width action buttons (shipped, bdc7a83)</summary>
-
-Shipped `feat: single full-width action button geometry` (field test 2026-08-18
-issue #3). `LayoutMetrics` (CadenceFeatures, Foundation-only) is now the single
-source of truth for action-button height/corner/spacing and Home's page rhythm;
-`CadenceActionButton` + `cadenceActionLabel()` apply it.
-
-What changed:
-
-- New `CadenceCore/Sources/CadenceFeatures/LayoutMetrics.swift` — action button
-  height 56, corner 16, stack spacing 12; section 20 / page 16 / card row 12 /
-  card heading 10 / card padding 16.
-- New `Cadence/Cadence/Shared/CadenceActionButton.swift` — the one full-width
-  action control, plus `cadenceActionLabel()` for `NavigationLink` labels that
-  keep their gradient/glass fill, and `CadenceActionShape`.
-- Call sites normalized to 56 pt / `.headline`: Home `Start Workout` +
-  `Log Previous Workout`, Start Workout sheet `Quick Start` / `Custom Workout` /
-  `Coach's Workout`, `WeightsStartView` `Coach's Workout` / `Quick Start`,
-  plan editor `Start Workout`, `Do Coach's Workout`, SessionView
-  `Use Previous Workout` / `Add Exercise` / `Done`, and the pre-workout HR
-  `Continue` action. All accessibility identifiers are unchanged.
-
-**Deviation from the phase file (deliberate, verified by the smoke test):**
-`CadenceActionButton` draws its own fill instead of using
-`.borderedProminent`/`.bordered`. Those styles add ~7 pt of their own vertical
-padding *on top of* a `minHeight`, so a bordered button rendered 70 pt while a
-gradient hero label with the same declared height rendered 56 pt — the smoke
-test's new height assertion caught exactly that. Owning the fill makes
-`LayoutMetrics.actionButtonHeight` the real rendered height everywhere and
-delivers the 16 pt corner radius the phase design specifies.
-
-**Out of scope, left alone (not in the phase's call-site table):** full-width
-buttons in `RoutineDetailView`, `TimerCardioSetupView`, `IntervalView`,
-`WeightKeypadSheet`, `InlineSetEditorView`, `SwimRecordView`, and the summary
-`Save to Apple Health` inset still carry their own heights. `WorkoutControlBar`
-is explicitly exempt.
-
-### Verification (Phase 1)
-
-- `make ci`: build + **1,329 tests passed, 0 failures** (baseline 1,324 + the 5
-  new `LayoutMetricsTests`; the "1,318" figure recorded earlier was stale),
-  test-pyramid and no-network guardrails OK.
-- `make smoke`: WatchConnectivity activation regression **passed** and the single
-  iPhone smoke test **passed**, including the new assertions that Quick Start,
-  Custom Workout, Coach's Workout and the plan editor's Start Workout are all the
-  same height.
-- Ratchets lowered in `scripts/check-test-pyramid.sh`: `HomeView.swift`
-  1115 → **1110**, `SessionView.swift` 1102 → **1089**.
-- Not pushed, per the batch execution protocol.
-
-</details>
-
-## Next task
-
-1. **Field-test the 2026-08-19 batch on device.** The eight fixes are on `main`
-   with green CI, but every one of them was reported from real use and only one
-   (#6, the exercise staying expanded after a save) is covered end-to-end by the
-   smoke test. Worth checking in particular:
-   - a custom workout with a partner: do the planned reps *and* weights survive
-     Start, and do the sets alternate?
-   - switching performer mid-entry — does the load/rep target follow?
-   - a movement your partner has never done — does she get her usual reps?
-   - typing in the exercise picker during a live workout, which is where the
-     slowness was reported.
-2. **Confirm the watch fix on hardware** (still outstanding from `7a5d6c7`) —
-   Live HR → Start monitoring, the phone's pre-cardio HR request, and the stale
-   "Resume Strength - Upper Body" row. Automated evidence cannot supply this.
-
-**Known, deliberately-not-fixed:** when a plan is silent at a given set index,
-the card's pending row shows the *prior* session's load while the set editor
-shows what that performer lifted *today*. This predates the batch and behaves
-exactly as it did before; it was left alone to keep the change in scope. Fix it
-by having `SessionRenderModel` seed `History.firstWorkingWeightKg` from the last
-set logged this session, the way `SessionView.resolvedSet` already does.
-
-Standing rules from the batch, which outlive it:
-
-- **The iPhone UI suite is one test**, and the watch UI suite is one test
-  (`EXPECTED_IPHONE_SMOKE_TESTS=1`). New coverage extends the existing flow or
-  goes to `swift test` / the watch unit target.
-- **Assertions behind `if …exists` are worth little** — Phases 7-9 removed them
-  by making the flow do real work.
-- **`uiTestMode` hides whole subsystems.** The watch HR crash lived in code no
-  test could reach because `beginSession` returns early under `uiTestMode`. When
-  a bug is reported in HealthKit/BLE/WatchKit territory, reach for a unit test
-  that crosses the framework boundary (a delegate entered from a background
-  queue), not a UI test.
+| `make ci` | **green — 1,652 tests, 0 failures**, test-pyramid + no-network/citation guardrails OK |
+| `xcodebuild build -project Cadence/Cadence.xcodeproj -scheme Cadence` | BUILD SUCCEEDED (both schemes) |
+| `make smoke` (iPhone) | **passed** — 1 test, 257.9 s |
+| `make watch-smoke` | **passed** — 1 UI test, 0 failures (post-fix rerun) |
+
+Phase-6 acceptance grep is clean: the only surviving `BodyPart` / `MuscleCatalog`
+strings in Swift sources are explanatory comments plus one deliberate
+legacy-compat assertion string in `CoachSchedulePreferencesCodableTests.swift`.
+
+**Invocation note:** `xcodebuild` must be given the project explicitly —
+`xcodebuild build -project Cadence/Cadence.xcodeproj -scheme Cadence …`. A bare
+`-scheme Cadence` from the repo root picks up `WidgetTemplate.xcodeproj` and
+fails with `Unable to read project`.
+
+### The watch smoke failure and the two fixes made for it
+
+The watch smoke test broke **because of a real ordering change**, not flake, and
+it broke twice in a row for two different reasons:
+
+1. `Cadence_Watch_App_Watch_AppUITests.swift:41` — the retired category order was
+   `[.chest, .back, .legs, …]`, so `watchAddExercise.category.chest` was the first
+   row and `tapButton(…)` found it with no scrolling. `MuscleGroup.canonicalOrder`
+   is descending-mass (`glutes, quadriceps, lats, chest, …`), so Chest is now the
+   **4th** row and sits below the fold on a 45 mm screen. `tapButton`'s
+   `swipeUp()` fallback does not reliably scroll a watchOS `List`.
+   **Fix applied:** both chest taps (lines ~41 and ~78) now use
+   `tapButtonAfterSmallScroll("watchAddExercise.category.chest", attempts: 8)`,
+   the coordinate-drag helper that already exists for exactly this, with a comment
+   saying why. Mass order was kept: `canonicalOrder` is what every other surface
+   uses, and the point of it is that two surfaces can never disagree about order.
+2. Next run got past that and failed at line ~45,
+   `watchAddExercise.row.Alternating Floor Press`. Confirmed by a throwaway test
+   that Alternating Floor Press **is** the alphabetically first of the 146 chest
+   movements, so the list content is right — the problem is that tapping a
+   category swaps the same `List`'s content in place and **inherits the scroll
+   offset** the test just built up, opening the group list ~150 pt down.
+   **Fix applied (product fix, not a test hack):** `WatchAddExerciseView.picker`
+   now carries `.id(pickerBranchIdentity)`, where the identity is
+   `search` / `group.<rawValue>` / `recent` / `categories`. A branch change
+   re-identifies the List so every list starts at its top; it deliberately does
+   **not** key on `query`, which would reset the search field on each keystroke.
+
+Both fixes are in the working tree. The post-fix `make watch-smoke` rerun passed.
+
+## Immediate next task
+
+1. Commit phase 6 — `refactor: replace BodyPart with MuscleGroup everywhere` —
+   staging everything **except `current_status.md`**. Allow **≥900 s** for the
+   commit: the pre-commit hook runs both simulator smoke gates.
+2. Then **phase 8**, then **phase 9** (below).
+
+### The standing instruction from the user this session
+
+> "read current_status.md and proceed until completion of all phases then commit
+> push and check ci"
+
+That **overrides step 6 of the execution protocol above**: pushing is now
+explicitly authorized. After the last phase commits: `git push origin main`, then
+`gh run list --branch main --limit 1`, and report the SHA and CI status.
+
+## Phase 8 — DONE (evidence and docs)
+
+Plan file: `plans/exercise-db-plusplus/2026-08-23/08-evidence-and-docs.md`.
+Independent of phase 6. Adds `ExerciseEvidence`, registers the 60 DB++ references
+as citations under an `exdb.` id prefix with a `CitationRegistry.citation(forId:)`
+fall-through, renders muscle roles + evidence in `ExerciseDetailView`, emits a
+generated block in `docs/CITATIONS.md`, adds `scripts/check-citations-sync.sh`,
+and updates the README and attribution. `make ci` is green with **1,648 tests**;
+the app target build and `make smoke` are green. Three provisional DB++ patterns
+(`wrist_flexion`, `wrist_extension`, `dorsiflexion`) have no reference IDs in the
+snapshot, so the UI surfaces their summaries without inventing citations. The
+curated registry remains **59** entries; movement evidence is a separate tier.
+
+## Phase 9 — DONE (similar-exercise swap picker)
+
+**Added 2026-08-24 at the user's request.** Depends on phase 6 (it is keyed by
+`MuscleGroup` and by DB++ roles); does not depend on phase 8. This is the last
+phase.
+
+### The request, verbatim
+
+> for "exercise picker swap" on resistance workouts, now that we have better
+> exercise metadata, when you do "swap" in the workout, could you change it from
+> free-text search to similarity search, in other words when you open it it says
+> "Swap with a similar exercise" and below that could you add a toggle tab bar for
+> the exercise types (e.g. strongman, olympic, etc — default to the current
+> exercise being swapped but let the user pick others) so you can by default see
+> the list of the "most similar to current exercise" exercises, that is that have
+> the closest (or identical) as judged first in the selected category (strongman,
+> olympic, etc) and direct/indirect set muscle mapping, sorted in descending order
+> of similarity (most similar first).
+
+### What shipped
+
+- `ExerciseSimilarity` is a shared, pure DB++ ranker using direct/indirect role
+  Jaccard overlap, movement patterns, mechanics/force, equipment/modality, type
+  bias, volume eligibility, source exclusion, and deterministic tie-breaks.
+- `ExerciseSwapPresenter` prepares the same ranked state for app surfaces.
+- Resistance-workout swap entry points pass the source exercise. Phone swap mode
+  opens on “Swap with a similar exercise”, defaults to the source type, exposes
+  available training-type tabs, labels borrowed results under “Other types”,
+  shows direct/indirect mappings and scores, and keeps “Search all exercises”
+  as an escape hatch.
+- The obsolete name-heuristic `ExerciseSubstitution` implementation is deleted.
+- Four focused similarity tests pass; `make ci` is green with **1,652 tests**,
+  the app target build is clean, and `make smoke` passed.
+
+### What the code does today
+
+- `Cadence/Cadence/Features/Train/ExercisePickerView.swift` (281 LOC) has
+  `PickAction.add / .swap / .use`. **`.swap` currently changes nothing but the
+  navigation title and the detail button label** — the user still gets the
+  Recents / Popular / Browse tabs and free-text search, with no idea what they
+  are swapping *from*.
+- Swap entry points, both of which know the source exercise and both of which
+  currently throw that knowledge away:
+  - `Cadence/Cadence/Features/Train/SessionView+Rendering.swift:142` — the
+    `swapTarget` sheet (`.planned(name:)` → `.swap`, `.logged(exerciseID:)` →
+    `.use`), applied by `swapPlannedExercise(oldName:newName:)` /
+    `WorkoutRepository.changeExercise`.
+  - `Cadence/Cadence/Features/Home/WorkoutPlanEditor.swift:226` —
+    `ExercisePickerIntent.swap(UUID)` → `applyPickedExercise`.
+- `CadenceCore/Sources/CadenceCore/ExerciseSubstitution.swift` already exists and
+  is **the thing to replace**. Its doc comment claims the watch swap screen and
+  the phone picker share it; its scoring is real but every lookup —
+  `movementPattern(of:)`, `category(of:)`, `primaryMuscles(of:)`,
+  `equipment(of:)` — is a `name.lowercased().contains(…)` heuristic explicitly
+  marked *"mock until integrated with ExerciseLibrary"*. It thinks a deadlift is
+  a barbell "pull" for "hamstrings, glutes, back". DB++ now knows better.
+
+### Design
+
+**Similarity is computed against the DB++ annotation, not names.** Score one
+candidate template against the source, all components normalized to 0…1 and
+weighted:
+
+| signal | weight | how |
+|---|---|---|
+| direct-muscle overlap | 0.45 | Jaccard of `directMuscles` sets |
+| indirect-muscle overlap | 0.20 | Jaccard of `indirectMuscles` sets |
+| movement pattern | 0.20 | 1.0 for a shared `movementPatternIDs` entry, 0.5 for a shared coarse `MovementPattern`, else 0 |
+| mechanics + force | 0.10 | 0.05 each for equal `mechanicsValue` / `forceValue` |
+| equipment | 0.05 | 1.0 equal, 0.5 same `ExerciseModality`, else 0 |
+
+Tie-breaks, in order: in-style before borrowed, `volumeEligible` before not,
+recently-performed before never, then `MuscleGroup.canonicalIndex` of the first
+direct muscle, then name. The source exercise itself is excluded. **Identical
+direct+indirect mapping must score 1.0 on both muscle terms** — that is the
+"closest (or identical) … muscle mapping" the request asks for.
+
+**The type tab bar** is `ExerciseTrainingType` (`ExerciseTaxonomy.swift`:
+`strength`, `powerlifting`, `olympicWeightlifting`, `strongman`, `plyometrics`,
+`cardio`, `stretching`, `mobility`). Only types with ≥1 candidate for the source's
+muscle profile are shown. **Default = the source exercise's own training type**
+(first of `trainingTypes`, falling back to `.strength`).
+
+**The type filter biases, it never empties the list (NFR-8).** Same two-pass shape
+phase 7 established for `SuggestedWorkoutStyle`: pass 1 ranks within the selected
+type; pass 2 ranks everything and appends only what pass 1 could not supply, under
+a visible "Other types" section header. A user who picks *Strongman* for a curl
+still gets usable options and can see that they were borrowed.
+
+**Escape hatch:** the existing search field and Browse tab stay reachable —
+the similarity list is the *default* content of swap mode, not a cage. A
+"Search all exercises" row returns the current picker behaviour.
+
+### Layout (swap mode only; add/use modes are untouched)
+
+```
+┌─────────────────────────────────────┐
+│  Swap Exercise                 Done │
+├─────────────────────────────────────┤
+│  Swap with a similar exercise       │
+│  Replacing: Barbell Bench Press     │
+│                                     │
+│ ┌Strength┐ Powerlifting  Strongman ▸│   ← ExerciseTrainingType tab bar
+│ └────────┘                          │      (default = source's own type)
+│                                     │
+│  MOST SIMILAR                       │
+│  Dumbbell Bench Press          98%  │
+│    Chest · Triceps, Shoulders       │
+│  Floor Press                   91%  │
+│    Chest · Triceps                  │
+│  Machine Bench Press           88%  │
+│    Chest · Triceps, Shoulders       │
+│  …                                  │
+│                                     │
+│  OTHER TYPES                        │   ← only when pass 1 under-fills
+│  Log Press                     72%  │
+│                                     │
+│  🔍 Search all exercises            │
+└─────────────────────────────────────┘
+```
+
+Each row shows direct muscles in full colour and indirect muscles secondary, so
+the muscle mapping the ranking is based on is visible rather than implied.
+
+### Where the code goes
+
+- **New** `CadenceCore/Sources/CadenceCore/ExerciseSimilarity.swift` — pure,
+  `swift test`-verifiable. Takes prepared value structs (name, direct, indirect,
+  patterns, mechanics, force, equipment, modalities, trainingTypes,
+  volumeEligible), never `Exercise`, so it tests headlessly.
+- **Delete** `ExerciseSubstitution.swift` and re-point its callers. Its
+  name-heuristic lookups are strictly worse than the annotation and having two
+  rankers would let the wrist and the phone disagree. *(Check the watch swap
+  screen actually uses it before deleting; the doc comment may be aspirational.)*
+- **New** `CadenceCore/Sources/CadenceFeatures/ExerciseSwapPresenter.swift` —
+  builds the prepared state: available type tabs, selected tab, ranked sections,
+  per-row muscle subtitle strings. Under 400 LOC (pyramid budget).
+- `ExercisePickerView` gains a swap-mode branch that renders the presenter's
+  state; it must **shrink or hold** at 281 LOC — put the new rows in a separate
+  view file if needed.
+- Both swap call sites pass the source exercise into the picker
+  (`ExercisePickerView(action: .swap, source: exercise)`).
+- **Watch parity is required.** Replace the watch swap path's retired
+  `ExerciseSubstitution` heuristic with the same `ExerciseSimilarity` engine and
+  `ExerciseSwapPresenter` prepared ranking as the phone. Its watch-native UI
+  opens on “Swap with a similar exercise”, defaults to the source exercise's
+  training type, lets the user change among the available type tabs, visibly
+  separates borrowed “Other types” results, and preserves search/all-exercises
+  as an escape hatch. The two renderers may differ for screen size, but ranking,
+  score, exclusion, tie-breaks, and DB++ muscle-role data must be shared so an
+  iPhone and watch never disagree about which substitutes are most similar.
+
+### Testing
+
+`swift test` (`ExerciseSimilarityTests`, `ExerciseSwapPresenterTests`):
+
+- Identical direct+indirect mapping ranks first and scores 1.0 on both muscle
+  terms.
+- A movement sharing only *indirect* muscles ranks below one sharing *direct*
+  muscles.
+- Real-catalog assertion: swapping **Barbell Bench Press** puts a chest press
+  variant in the top 3 and does **not** surface a curl.
+- The selected type biases but never empties: swapping a curl with *Strongman*
+  selected still returns rows, and the borrowed ones are flagged as borrowed.
+- Default tab equals the source's own training type; a source with no
+  `trainingTypes` defaults to `.strength`.
+- Type tabs are only offered when they have candidates.
+- Sorted strictly descending by score, with the documented tie-break order.
+
+UI: extend the **existing** iPhone smoke test (never add a test function) with a
+swap in the live session — open swap, assert the "Swap with a similar exercise"
+header and the default type tab, pick the top similar row, assert the session now
+holds it.
+
+Watch UI: extend the existing watch smoke test (never add a test function) with
+a live-session swap that asserts the similarity-first header/default type and
+successfully applies its top ranked replacement. Add headless presenter tests
+for parity; the shared ranking tests remain platform-independent.
+
+### Acceptance
+
+- [ ] Swap mode opens on a ranked similarity list, not on Recents/free-text.
+- [ ] Header reads "Swap with a similar exercise" and names what is being replaced.
+- [ ] Type tab bar defaults to the source's own training type and is switchable.
+- [ ] Ranking is driven by DB++ direct/indirect roles; `ExerciseSubstitution`'s
+      name heuristics are gone.
+- [ ] Borrowed (out-of-type) results are disclosed, not hidden, and the list is
+      never empty.
+- [ ] Search and Browse remain reachable from swap mode.
+- [ ] iPhone and watch use the same DB++ similarity ranking and both expose the
+      similarity-first swap experience with a type filter and search escape hatch.
+- [ ] `make ci` + `make smoke` green.
+
+## Carried forward, not part of any phase
+
+**Deploy the CloudKit Production schema before the next TestFlight or production
+build.** Phase 3 added ten fields to `Exercise`; without a Dashboard deploy those
+records will not sync. See the phase-3 section above.
+
+## Standing rules (these outlive any one batch)
+
+- **Swift 6 strict concurrency, warning-free.** A green local `swift build` does
+  not mean a green warning gate: incremental builds do not re-emit warnings for
+  untouched files, and the app target's gate is a separate CI step. Clean-build
+  both and run `scripts/check-owned-warnings.sh` before pushing.
+- **The iPhone UI suite is exactly one test** and the watch UI suite is exactly
+  one test (`EXPECTED_IPHONE_SMOKE_TESTS=1`). New coverage extends the existing
+  end-to-end flow or goes to `swift test`.
+- **Assertions behind `if …exists` are worth little.** Make the flow do real work.
+- **`uiTestMode` hides whole subsystems.** For a bug in HealthKit/BLE/WatchKit
+  territory, reach for a unit test that crosses the framework boundary, not a UI
+  test.
 - **This repo has its own simulator**, `Cadence-iPhone-16`. If `xcodebuild` says
   it cannot find that device while `simctl` lists it, retry — it is a
-  CoreSimulatorService hiccup.
-- **A green local `swift build` does not mean a green warning gate** (added
-  2026-08-19). Incremental builds do not re-emit warnings for untouched files,
-  and the app target's gate is a separate CI step. Clean-build both and run
-  `scripts/check-owned-warnings.sh` before pushing.
-- **Resolve "what should this set be" in `PerformerSetPlanner` only** (added
-  2026-08-19). The pending rows and the set editor previously each had their own
-  copy of the rules and disagreed; they now share one pure function.
+  CoreSimulatorService hiccup. If launches balloon (~45s, `no debugger version`),
+  `killall -9 com.apple.CoreSimulator.CoreSimulatorService` and re-run; report
+  honestly which failures are environmental.
+- **Resolve "what should this set be" in `PerformerSetPlanner` only.**
+- **Logic lives in `CadenceCore` / `CadenceFeatures`; SwiftUI renders prepared
+  state.** `CadenceFeatures` may not import SwiftUI/UIKit/HealthKit/StoreKit.
+- **Every user-visible science claim resolves through `CitationRegistry` and
+  renders with `CitationLink`.** Never display a raw citation id.
+- **Persistence changes are additive only** (optional/defaulted) — CloudKit.
+- The pre-commit hook takes >10 minutes (it runs both smoke gates). Allow at
+  least 900s for `git commit`; `git push` needs little time.
 
-**Execution protocol — SUPERSEDED.** The nine-phase batch ran under a
-"commit but do not push, stop for review" instruction. The 2026-08-19 batch was
-explicitly asked to "fix all of these in a single go … then commit and push", so
-it followed the standard CLAUDE.md post-task checklist through to push and CI.
-Absent a fresh instruction, use the CLAUDE.md checklist. The pre-commit hook
-still takes >10 minutes; see the process notes at the top of this file.
+## Known, deliberately not fixed
 
-The previous batch ([docs/field-test-remediation-plan.md](docs/field-test-remediation-plan.md))
-is complete and shipped as `f809818 Complete field-test workout remediation`.
+When a plan is silent at a given set index, the card's pending row shows the
+*prior* session's load while the set editor shows what that performer lifted
+*today*. Fix it by having `SessionRenderModel` seed
+`History.firstWorkingWeightKg` from the last set logged this session, the way
+`SessionView.resolvedSet` already does.
 
-## Field-testing follow-up
+## Outstanding field verification (predates this plan)
 
-This follow-up addresses the remaining UI issues found after the Home field test:
-
-- Watch sync feedback is inset below the safe area so the startup toast is fully visible.
-- Home Start Workout and Log Previous Workout use the same 20-point section spacing as the surrounding Home sections.
-- Start Workout now labels the just-in-time editing route `Custom Workout`.
-- Workout Plan puts its full-width `Start Workout` control above the list as a standalone action.
-- Productive Coach volume suggestions whose insight says `volume is on track` use the green positive treatment; low/high volume remains warning-colored.
-
-Focused presenter and iPhone smoke coverage verify the productive-volume tone and custom-workout label. The CI smoke job covers the complete navigation surface.
-
-## Home field-testing checklist
-
-The Home View field test identified these issues, which are the acceptance criteria for this batch:
-
-1. Rename the Coach suggestion workout to `Suggested Workout` and use the subtitle `Coach created a Workout created to close gaps for this week`.
-2. Make `This Week` expand in place. On expansion, hide the `Weekly Volume` heading, start with `Legs`, and put `Show less` at the bottom. Capitalize `Coach’s Suggestions`; keep each suggestion collapsed by default, independently expandable, and color-coded green for positive, yellow for warning, and white for neutral.
-3. Apply the same green/yellow state color coding to Weekly Volume body-part rows.
-4. Remove the separate `What you did` section. Put this week’s Strength and Cardio workout details inside expanded `This Week`, add `View more…` for complete history, then show weekly volume and `Show less`.
-5. Make Strength `Quick Start` enter warm-up/the workout directly without the plan or settings surface.
-6. Make Home `Start Workout` full width and put `Log Previous Workout` below it; use Progress View’s Full History for complete history.
-
-## Implementation status — complete
-
-- Home now uses one expandable This Week card for workout details, history navigation, and weekly volume.
-- Coach suggestions use the requested copy, independent expansion, and semantic positive/warning/neutral colors.
-- Quick Start bypasses plan/settings UI and enters the configured warm-up or active strength session.
-- Home actions have the requested layout; duplicate Home Workout History remains removed because Progress View owns Full History.
-- Presenter unit coverage now verifies weekly grouping and suggestion/body-part state mapping.
-- The iPhone smoke test verifies Home expansion, plan navigation, direct Quick Start, no settings surface, workout completion, and summary return.
-
-## Final audit
-
-- [x] Suggested Workout copy and the requested gap-closing subtitle are present.
-- [x] This Week expands in place; Show more is replaced by Show less, the expanded volume starts with Legs, and there is no Weekly Volume heading in the Home composition.
-- [x] Coach’s Suggestions is capitalized; suggestions are independently expandable, collapsed by default, and tone-coded.
-- [x] Weekly Volume rows use green for productive range and yellow for below/above range.
-- [x] What you did is no longer a Home section; expanded This Week contains Strength and Cardio, complete-history navigation, volume, total volume, and Show less.
-- [x] Strength Quick Start bypasses plan/settings UI and enters warm-up or the active workout.
-- [x] Start Workout is full width, Log Previous Workout is below it, and Home does not duplicate Progress View’s Full History.
-
-## Verification
-
-- `swift test --package-path CadenceCore`: 1,318 tests passed.
-- `make ci`: build, 1,318 tests, test-pyramid guardrails, and no-network guardrail passed.
-- `make smoke`: WatchConnectivity regression and iPhone Home/Quick Start smoke passed.
-- `git diff --check`: passed.
-- Commit `ab68140` (`Implement Home field testing fixes`) is pushed to `main`.
-- [GitHub Actions run 31962467272](https://github.com/johnarleyburns/parso-workout-ios-app/actions/runs/31962467272) passed `core-tests`, archive warning checks, IPA export, and TestFlight upload.
+1. **The 2026-08-19 batch on device** — custom workout with a partner (planned
+   reps *and* weights surviving Start, alternating sets), switching performer
+   mid-entry, a movement the partner has never done, and picker responsiveness
+   during a live workout.
+2. **The watch fix on hardware** (`7a5d6c7`) — Live HR → Start monitoring, the
+   phone's pre-cardio HR request, and the stale "Resume Strength - Upper Body"
+   row. Automated evidence cannot supply this.

@@ -12,6 +12,7 @@ import CadenceFeatures
 struct WorkoutSummaryView: View {
     let data: WorkoutSummaryData
     @Environment(AppSettings.self) private var settings
+    @Environment(\.dismiss) private var dismiss
     /// Strength only: persist a summary `HKWorkout`. `nil` ⇒ no button (a recorded
     /// cardio workout is already saved to Health when it ends).
     var onSaveHealth: (() async -> Void)? = nil
@@ -51,6 +52,12 @@ struct WorkoutSummaryView: View {
         .navigationTitle("Summary")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if onDone == nil {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Back") { dismiss() }
+                        .accessibilityIdentifier("summary.back")
+                }
+            }
             if let onEdit {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Edit") { onEdit() }.accessibilityIdentifier("summary.edit")

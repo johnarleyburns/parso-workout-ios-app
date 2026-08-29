@@ -168,16 +168,15 @@ jobs:
         if: success()
         run: |
           set -eo pipefail
-          # Keep the two modes required by the live watch experience. The
-          # previous step deleted UIBackgroundModes wholesale, which disabled
-          # both background HR delivery and short workout audio clips.
+          # Keep the supported mode required by short workout audio clips.
+          # workout-processing is not a valid UIBackgroundModes value for a
+          # watchOS app and is rejected by App Store Connect validation.
           WATCH_PLIST="./build/Cadence.xcarchive/Products/Applications/Cadence.app/Watch/Cadence Watch App Watch App.app/Info.plist"
           if [ -f "$WATCH_PLIST" ]; then
             /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$WATCH_PLIST" 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$WATCH_PLIST"
             /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" "$WATCH_PLIST"
-            /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:1 string workout-processing" "$WATCH_PLIST"
-            echo "Preserved audio and workout-processing in watch Info.plist"
+            echo "Preserved audio in watch Info.plist"
           else
             echo "Watch Info.plist not found at expected path, trying alternate..."
             WATCH_PLIST=$(find ./build/Cadence.xcarchive -name "Info.plist" -path "*/Watch/*" | head -1)
@@ -185,8 +184,7 @@ jobs:
               /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$WATCH_PLIST" 2>/dev/null || true
               /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$WATCH_PLIST"
               /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" "$WATCH_PLIST"
-              /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:1 string workout-processing" "$WATCH_PLIST"
-              echo "Preserved audio and workout-processing in $WATCH_PLIST"
+              echo "Preserved audio in $WATCH_PLIST"
             fi
           fi
 

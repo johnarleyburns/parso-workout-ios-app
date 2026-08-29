@@ -320,6 +320,60 @@ final class WatchCardioModelsTests: XCTestCase {
         XCTAssertTrue(m.formatSplit().contains("/500m"))
     }
 
+    // MARK: - WatchCardioLivePresenter
+
+    func testLivePresenterHRZoneBoundaries() {
+        let max = 190.0
+        let cases: [(Double, Int)] = [(1, 1), (0.60 * max, 2), (0.70 * max, 3),
+                                      (0.80 * max, 4), (0.90 * max, 5)]
+        for (bpm, zone) in cases {
+            let p = WatchCardioLivePresenter.present(elapsed: 1, bpm: bpm, distanceMeters: nil,
+                                                       heartRateEnabled: true, gpsEnabled: false,
+                                                       distanceUnit: .kilometers, maxHR: max)
+            XCTAssertEqual(p.hrZone, zone, "Expected zone \(zone) at \(bpm) BPM")
+            XCTAssertEqual(p.bpmText, "\(Int(bpm.rounded()))")
+        }
+    }
+
+    func testLivePresenterNoHRHidesBPMAndZone() {
+        let p = WatchCardioLivePresenter.present(elapsed: 65, bpm: 150, distanceMeters: 20,
+                                                   heartRateEnabled: false, gpsEnabled: false,
+                                                   distanceUnit: .kilometers)
+        XCTAssertEqual(p.elapsedText, "0:01:05")
+        XCTAssertFalse(p.showsHeartRate)
+        XCTAssertNil(p.hrZone)
+        XCTAssertNil(p.distanceText)
+    }
+
+    func testLivePresenterNilAndZeroSamples() {
+        let noHR = WatchCardioLivePresenter.present(elapsed: 0, bpm: nil, distanceMeters: nil,
+                                                      heartRateEnabled: true, gpsEnabled: true,
+                                                      distanceUnit: .kilometers)
+        XCTAssertNil(noHR.bpmText)
+        XCTAssertEqual(noHR.distanceText, "0 m")
+
+        let zeroHR = WatchCardioLivePresenter.present(elapsed: 0, bpm: 0, distanceMeters: 0,
+                                                        heartRateEnabled: true, gpsEnabled: true,
+                                                        distanceUnit: .miles)
+        XCTAssertNil(zeroHR.bpmText)
+        XCTAssertEqual(zeroHR.distanceText, "0 m")
+    }
+
+    func testLivePresenterDistanceFormattingAndGPSGate() {
+        let metric = WatchCardioLivePresenter.present(elapsed: 0, bpm: nil, distanceMeters: 132,
+                                                        heartRateEnabled: false, gpsEnabled: true,
+                                                        distanceUnit: .kilometers)
+        XCTAssertEqual(metric.distanceText, "132 m")
+        let imperial = WatchCardioLivePresenter.present(elapsed: 0, bpm: nil, distanceMeters: 3218.688,
+                                                          heartRateEnabled: false, gpsEnabled: true,
+                                                          distanceUnit: .miles)
+        XCTAssertEqual(imperial.distanceText, "2 mi")
+        let gated = WatchCardioLivePresenter.present(elapsed: 0, bpm: nil, distanceMeters: 3218.688,
+                                                       heartRateEnabled: false, gpsEnabled: false,
+                                                       distanceUnit: .miles)
+        XCTAssertNil(gated.distanceText)
+    }
+
     // MARK: - HIIT protocol picker
 
     func testHIITSetupDefaultsToTabata() {

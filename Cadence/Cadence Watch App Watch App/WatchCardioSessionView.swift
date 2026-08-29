@@ -4,6 +4,7 @@ import CadenceFeatures
 
 struct WatchCardioSessionView: View {
     let kind: WorkoutConfigurationSpec.CardioKind
+    let spec: WorkoutConfigurationSpec
     let onDone: () -> Void
 
     @Environment(WatchWorkoutManager.self) private var watchManager
@@ -31,7 +32,8 @@ struct WatchCardioSessionView: View {
         }
         .onAppear {
             if metrics == nil {
-                metrics = CardioMetricsModel(kind: kind, unit: watchSettings.unit, distanceUnit: watchSettings.distanceUnit)
+                metrics = CardioMetricsModel(kind: kind, unit: watchSettings.unit, distanceUnit: watchSettings.distanceUnit,
+                                             heartRateEnabled: spec.heartRateEnabled, gpsEnabled: spec.usesGPS)
             }
         }
         .onDisappear {

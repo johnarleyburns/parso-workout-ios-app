@@ -9,8 +9,6 @@ import CadenceFeatures
 @MainActor
 final class WatchWorkoutManager: NSObject {
 
-    // MARK: Published state
-
     private(set) var currentBPM: Double?
     private(set) var isActive: Bool = false
     private(set) var isMonitoring: Bool = false
@@ -30,6 +28,8 @@ final class WatchWorkoutManager: NSObject {
     private(set) var avgHeartRate: Double?
     private(set) var maxHeartRate: Double?
     private(set) var distanceMeters: Double = 0
+    private(set) var heartRateEnabled: Bool = true
+    private(set) var gpsEnabled: Bool = false
     var savedSummary: SavedWorkoutSummary?
     var phoneSyncState: WatchSync.Status = .idle
     var lastPhoneSyncAt: Date? = UserDefaults.standard.object(forKey: "watch.lastPhoneSyncAt") as? Date
@@ -48,8 +48,6 @@ final class WatchWorkoutManager: NSObject {
         get { UserDefaults.standard.string(forKey: "watch.hrSource") ?? HRSource.appleWatch.rawValue }
         set { UserDefaults.standard.set(newValue, forKey: "watch.hrSource") }
     }
-
-    // MARK: Private
 
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
@@ -81,16 +79,12 @@ final class WatchWorkoutManager: NSObject {
 
     var wcSession: WCSession? { WCSession.isSupported() ? WCSession.default : nil }
 
-    // MARK: WCSession activation
-
     func activateWCSession() {
         guard let session = wcSession else { return }
         session.delegate = self
         session.activate()
         flushPendingCardioCompletions()
     }
-
-    // MARK: HealthKit authorization
 
     @discardableResult
     func requestWorkoutAuthorization() async -> Bool {
@@ -129,22 +123,23 @@ final class WatchWorkoutManager: NSObject {
         }
     }
 
-    // MARK: Workout control
-
     @discardableResult
     func startWorkout(type rawType: String, cardioType: CardioType? = nil,
                       spec: WorkoutConfigurationSpec? = nil, phoneRequestID: UUID? = nil) -> Bool {
         guard !isActive, !isMonitoring else { return false }
+        let resolvedSpec = spec ?? WorkoutConfigurationSpec(for: rawType)
         self.phoneRequestID = phoneRequestID?.uuidString
+        heartRateEnabled = resolvedSpec.heartRateEnabled
+        gpsEnabled = resolvedSpec.usesGPS
         workoutType = rawType
         isActive = true; isMonitoring = false
         let activity = Self.activityType(for: rawType)
-        if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: spec); return true }
+        if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: resolvedSpec); return true }
         Task {
             guard await requestWorkoutAuthorization() else {
                 isActive = false; self.phoneRequestID = nil; return
             }
-            await MainActor.run { beginSession(activity: activity, spec: spec) }
+            await MainActor.run { beginSession(activity: activity, spec: resolvedSpec) }
         }
         return true
     }
@@ -180,6 +175,7 @@ final class WatchWorkoutManager: NSObject {
         phoneRequestID = nil
         sessionStart = nil; accumulatedHR = 0; hrCount = 0
         isSwimSession = false; isOutdoorSession = false
+        heartRateEnabled = true; gpsEnabled = false
         autoPauseDetector.reset(); lastAutoPauseDistance = 0
         elapsed = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
         elapsedTracker.reset()
@@ -209,8 +205,6 @@ final class WatchWorkoutManager: NSObject {
         case .none: break
         }
     }
-
-    // MARK: HR source switching
 
     func switchToSource(_ source: HRSource) {
         hrSource = source

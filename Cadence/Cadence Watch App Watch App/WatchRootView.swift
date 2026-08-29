@@ -13,6 +13,7 @@ struct WatchRootView: View {
     @State private var cardioLocation: WorkoutConfigurationSpec.Location = .outdoor
     @State private var cardioLapLength: Double = 25
     @State private var activeCardioKind: WorkoutConfigurationSpec.CardioKind?
+    @State private var activeCardioSpec: WorkoutConfigurationSpec?
     @State private var activeIntervalSession: ActiveIntervalSession?
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
@@ -32,9 +33,10 @@ struct WatchRootView: View {
                 WatchIntervalView(plan: activeIntervalSession.plan, kind: activeIntervalSession.kind) {
                     self.activeIntervalSession = nil
                 }
-            } else if let activeCardioKind {
-                WatchCardioSessionView(kind: activeCardioKind) {
+            } else if let activeCardioKind, let activeCardioSpec {
+                WatchCardioSessionView(kind: activeCardioKind, spec: activeCardioSpec) {
                     self.activeCardioKind = nil
+                    self.activeCardioSpec = nil
                 }
             } else {
                 launcher
@@ -257,8 +259,10 @@ struct WatchRootView: View {
             activeIntervalSession = ActiveIntervalSession(plan: model.intervalPlan(), kind: ct.displayName)
         } else {
             let kind = ct.toCardioKind()
-            watchManager.startWorkout(type: ct.rawValue, spec: nil)
+            let spec = WorkoutConfigurationSpec(for: ct.rawValue)
+            watchManager.startWorkout(type: ct.rawValue, spec: spec)
             activeCardioKind = kind
+            activeCardioSpec = spec
         }
     }
 
@@ -280,6 +284,7 @@ struct WatchRootView: View {
             WatchCardioSetupView(kind: kind, location: $cardioLocation, lapLength: $cardioLapLength, unit: watchAppSettings.unit) { spec in
                 watchManager.startWorkout(type: ct.rawValue, spec: spec)
                 activeCardioKind = kind
+                activeCardioSpec = spec
             }
         }
     }

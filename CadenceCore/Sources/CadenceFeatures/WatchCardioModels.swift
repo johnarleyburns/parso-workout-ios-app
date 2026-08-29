@@ -10,13 +10,23 @@ public struct WorkoutConfigurationSpec: Equatable {
     }
     public let kind: CardioKind
     public let location: Location
+    public let heartRateEnabled: Bool
 
-    public init(kind: CardioKind, location: Location = .indoor) {
+    public var usesGPS: Bool {
+        switch location {
+        case .outdoor, .openWater: return true
+        case .indoor, .pool: return false
+        }
+    }
+
+    public init(kind: CardioKind, location: Location = .indoor, heartRateEnabled: Bool = true) {
         self.kind = kind
         self.location = location
+        self.heartRateEnabled = heartRateEnabled
     }
 
     public init(for rawType: String) {
+        self.heartRateEnabled = true
         switch rawType.lowercased() {
         case "run": self.kind = .run; self.location = .outdoor
         case "walk": self.kind = .walk; self.location = .outdoor
@@ -28,6 +38,58 @@ public struct WorkoutConfigurationSpec: Equatable {
         case "other": self.kind = .other; self.location = .indoor
         default: self.kind = .strength; self.location = .indoor
         }
+    }
+}
+
+public struct WatchCardioLivePresentation: Equatable, Sendable {
+    public let elapsedText: String
+    public let bpmText: String?
+    public let distanceText: String?
+    public let hrZone: Int?
+    public let hrTint: HRZoneTint
+
+    public var showsHeartRate: Bool { bpmText != nil }
+    public var showsDistance: Bool { distanceText != nil }
+
+    public init(elapsedText: String, bpmText: String?, distanceText: String?, hrZone: Int?) {
+        self.elapsedText = elapsedText
+        self.bpmText = bpmText
+        self.distanceText = distanceText
+        self.hrZone = hrZone
+        self.hrTint = HRZoneTint.tint(for: hrZone ?? 0)
+    }
+}
+
+/// Prepares the small, glanceable set of metrics shown during a watch cardio
+/// workout. Sensor capability is supplied by the session configuration; it is
+/// never inferred from whether a transient sample happens to be non-zero.
+public enum WatchCardioLivePresenter {
+    public static func present(elapsed: TimeInterval, bpm: Double?, distanceMeters: Double?,
+                               heartRateEnabled: Bool, gpsEnabled: Bool,
+                               distanceUnit: DistanceUnitPreference,
+                               maxHR: Double = CardioMath.defaultMaxHR(age: nil))
+        -> WatchCardioLivePresentation {
+        let safeElapsed = max(0, Int(elapsed))
+        let elapsedText = String(format: "%d:%02d:%02d", safeElapsed / 3600,
+                                 (safeElapsed % 3600) / 60, safeElapsed % 60)
+        let validBPM = heartRateEnabled && (bpm ?? 0) > 0 ? bpm : nil
+        let zone = validBPM.map { CardioMath.hrZone(bpm: $0, maxHR: maxHR) }
+        let distance = gpsEnabled ? formatDistance(meters: max(0, distanceMeters ?? 0), unit: distanceUnit) : nil
+        return WatchCardioLivePresentation(
+            elapsedText: elapsedText,
+            bpmText: validBPM.map { "\(Int($0.rounded()))" },
+            distanceText: distance,
+            hrZone: zone
+        )
+    }
+
+    private static func formatDistance(meters: Double, unit: DistanceUnitPreference) -> String {
+        guard unit == .kilometers else {
+            if meters == 0 { return "0 m" }
+            let miles = meters / 1609.344
+            return miles >= 1 ? String(format: "%.0f mi", miles) : String(format: "%.2f mi", miles)
+        }
+        return meters >= 1000 ? String(format: "%.2f km", meters / 1000) : String(format: "%.0f m", meters)
     }
 }
 
@@ -43,19 +105,24 @@ public final class CardioMetricsModel {
     public var manualLapCount: Int = 0
     public var splitPer500m: Double?
     public var isAutoPaused: Bool = false
+    public var heartRateEnabled: Bool = true
+    public var gpsEnabled: Bool = false
 
     let unit: MeasurementUnitPreference
-    let distanceUnit: DistanceUnitPreference
+    public let distanceUnit: DistanceUnitPreference
     let kind: WorkoutConfigurationSpec.CardioKind
 
     private var lastDistance: Double = 0
     private var lastDistanceTime: Date?
     private var distanceHistory: [(time: Date, dist: Double)] = []
 
-    public init(kind: WorkoutConfigurationSpec.CardioKind, unit: MeasurementUnitPreference = .kilograms, distanceUnit: DistanceUnitPreference = .kilometers) {
+    public init(kind: WorkoutConfigurationSpec.CardioKind, unit: MeasurementUnitPreference = .kilograms, distanceUnit: DistanceUnitPreference = .kilometers,
+                heartRateEnabled: Bool = true, gpsEnabled: Bool = false) {
         self.kind = kind
         self.unit = unit
         self.distanceUnit = distanceUnit
+        self.heartRateEnabled = heartRateEnabled
+        self.gpsEnabled = gpsEnabled
     }
 
     public func updateElapsed(_ s: TimeInterval) { elapsed = s }

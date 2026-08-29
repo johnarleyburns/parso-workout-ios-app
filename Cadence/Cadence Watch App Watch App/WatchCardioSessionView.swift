@@ -82,7 +82,8 @@ struct WatchCardioSessionView: View {
             duration: live.duration,
             avgHR: live.avgHR,
             maxHR: live.maxHR,
-            distanceMeters: live.distanceMeters
+            distanceMeters: live.distanceMeters,
+            hrSamples: watchManager.currentHRSamplesForSummary
         )
     }
 

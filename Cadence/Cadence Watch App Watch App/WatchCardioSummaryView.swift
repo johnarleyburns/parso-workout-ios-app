@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import CadenceCore
 import CadenceFeatures
 
@@ -11,14 +12,40 @@ struct WatchCardioSummaryView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
 
     var body: some View {
-        VStack(spacing: 8) {
+        let presentation = WatchCardioSummaryPresenter.present(hrSamples: summary.hrSamples)
+        ScrollView {
+          VStack(spacing: 8) {
             Spacer()
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 28)).foregroundStyle(.green)
 
             summaryRow("Total", formatTime(summary.duration))
-            if let avg = summary.avgHR {
-                summaryRow("Avg HR", "\(Int(avg))")
+            if presentation.showsHeartRate {
+                Text("Heart Rate")
+                    .font(.caption.bold())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .accessibilityIdentifier("watchSummary.hrHeading")
+                Chart(Array(presentation.hrSamples.enumerated()), id: \.offset) { _, sample in
+                    LineMark(x: .value("Elapsed", sample.t), y: .value("BPM", sample.bpm))
+                        .foregroundStyle(.red)
+                        .interpolationMethod(.catmullRom)
+                    if presentation.hrSamples.count == 1 {
+                        PointMark(x: .value("Elapsed", sample.t), y: .value("BPM", sample.bpm))
+                            .foregroundStyle(.red)
+                    }
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 2)) }
+                .frame(height: 82)
+                .padding(.horizontal, 12)
+                .accessibilityLabel("Heart rate graph")
+                if let avg = presentation.averageBPM {
+                    summaryRow("Avg HR", "\(Int(avg.rounded()))")
+                }
+                if let max = presentation.maximumBPM {
+                    summaryRow("Max HR", "\(Int(max.rounded()))")
+                }
             }
             if summary.distanceMeters > 0 {
                 summaryRow("Distance", metrics.formatDistance())
@@ -37,7 +64,9 @@ struct WatchCardioSummaryView: View {
             Button("Discard") { onDiscard() }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
 
-            Spacer()
+            Spacer(minLength: 8)
+          }
+          .padding(.vertical, 8)
         }
     }
 

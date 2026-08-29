@@ -16,6 +16,7 @@ extension WatchWorkoutManager {
         let completion = WatchCardioCompletion(
             type: type, title: title, start: sessionStart ?? Date().addingTimeInterval(-summary.duration),
             end: Date(), distanceMeters: summary.distanceMeters,
+            hrSamples: summary.hrSamples,
             avgHeartRate: summary.avgHR, maxHeartRate: summary.maxHR,
             gpsEnabled: isOutdoorSession)
         guard !pendingCardioCompletions.contains(where: { $0.id == completion.id }) else { return }

@@ -31,6 +31,7 @@ final class WatchWorkoutManager: NSObject {
     private(set) var heartRateEnabled: Bool = true
     private(set) var gpsEnabled: Bool = false
     var savedSummary: SavedWorkoutSummary?
+    var currentHRSamplesForSummary: [HRSamplePoint] { recordedHRSamples }
     var phoneSyncState: WatchSync.Status = .idle
     var lastPhoneSyncAt: Date? = UserDefaults.standard.object(forKey: "watch.lastPhoneSyncAt") as? Date
     var lastPhoneSyncError: String?
@@ -39,16 +40,19 @@ final class WatchWorkoutManager: NSObject {
     var customExerciseRows: [[String: Any]] = []
     var customExercisesUpdatedAt = Date.distantPast
     var pendingCardioCompletions: [WatchCardioCompletion] = []
-
     struct SavedWorkoutSummary {
         let duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double
+        let hrSamples: [HRSamplePoint]
+        init(duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double,
+             hrSamples: [HRSamplePoint] = []) {
+            self.duration = duration; self.avgHR = avgHR; self.maxHR = maxHR
+            self.distanceMeters = distanceMeters; self.hrSamples = hrSamples
+        }
     }
-
     private var hrSourceRaw: String {
         get { UserDefaults.standard.string(forKey: "watch.hrSource") ?? HRSource.appleWatch.rawValue }
         set { UserDefaults.standard.set(newValue, forKey: "watch.hrSource") }
     }
-
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
@@ -58,6 +62,7 @@ final class WatchWorkoutManager: NSObject {
     var phoneRequestID: String?
     private var accumulatedHR: Double = 0
     private var hrCount: Int = 0
+    private var recordedHRSamples: [HRSamplePoint] = []
     private var elapsedTracker = ElapsedTimeTracker()
     var watchAppSettings: AppSettings? {
         didSet {
@@ -143,7 +148,6 @@ final class WatchWorkoutManager: NSObject {
         }
         return true
     }
-
     func startMonitoringSession() {
         guard !isActive, !isMonitoring else { return }
         phoneRequestID = nil
@@ -159,13 +163,13 @@ final class WatchWorkoutManager: NSObject {
         guard isMonitoring else { return }
         stopWorkout(save: false)
     }
-
     func stopWorkout(save: Bool = true) {
         guard isActive || isMonitoring else { phoneRequestID = nil; return }
         if save {
             elapsed = effectiveElapsed
             let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
-            savedSummary = SavedWorkoutSummary(duration: elapsed, avgHR: avg, maxHR: maxHeartRate, distanceMeters: distanceMeters)
+            savedSummary = SavedWorkoutSummary(duration: elapsed, avgHR: avg, maxHR: maxHeartRate,
+                                               distanceMeters: distanceMeters, hrSamples: recordedHRSamples)
         }
         let b = builder; let s = session
         hrPollTimer?.invalidate(); hrPollTimer = nil
@@ -174,6 +178,7 @@ final class WatchWorkoutManager: NSObject {
         isActive = false; isMonitoring = false; workoutType = nil; bleState = nil
         phoneRequestID = nil
         sessionStart = nil; accumulatedHR = 0; hrCount = 0
+        recordedHRSamples = []
         isSwimSession = false; isOutdoorSession = false
         heartRateEnabled = true; gpsEnabled = false
         autoPauseDetector.reset(); lastAutoPauseDistance = 0
@@ -192,7 +197,6 @@ final class WatchWorkoutManager: NSObject {
     }
 
     func resetSavedSummary() { savedSummary = nil }
-
     private var lastAutoPauseDistance: Double = 0
     private func evaluateAutoPause(distance m: Double) {
         guard isOutdoorSession else { return }
@@ -228,6 +232,7 @@ final class WatchWorkoutManager: NSObject {
                     self.currentBPM = value
                     self.accumulatedHR += value
                     self.hrCount += 1
+                    self.recordedHRSamples.append(HRSamplePoint(t: self.effectiveElapsed, bpm: value))
                     if self.maxHeartRate == nil || value > (self.maxHeartRate ?? 0) {
                         self.maxHeartRate = value
                     }
@@ -371,6 +376,7 @@ extension WatchWorkoutManager {
             currentBPM = bpm
             accumulatedHR += bpm
             hrCount += 1
+            recordedHRSamples.append(HRSamplePoint(t: effectiveElapsed, bpm: bpm))
             if maxHeartRate == nil || bpm > (maxHeartRate ?? 0) { maxHeartRate = bpm }
             if hrSource == .appleWatch { relayBPM(bpm) }
         }

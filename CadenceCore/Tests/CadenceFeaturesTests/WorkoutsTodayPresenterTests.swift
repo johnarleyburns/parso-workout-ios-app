@@ -235,6 +235,18 @@ final class WorkoutsTodayPresenterTests: XCTestCase {
         XCTAssertEqual(planned?.isNavigable, false)
     }
 
+    func testShowMoreHistoryOnlyAppearsForCompletedRows() {
+        let completed = WorkoutsTodayPresenter.rows(
+            sessions: [strengthSession("Push", endedMinutesAgo: 30)],
+            cardio: [], plannedToday: [], now: now, calendar: cal)
+        let planned = WorkoutsTodayPresenter.rows(
+            sessions: [], cardio: [], plannedToday: [plan()], now: now, calendar: cal)
+
+        XCTAssertTrue(WorkoutsTodayPresenter.showsMoreHistory(for: completed))
+        XCTAssertFalse(WorkoutsTodayPresenter.showsMoreHistory(for: planned))
+        XCTAssertFalse(WorkoutsTodayPresenter.showsMoreHistory(for: []))
+    }
+
     func testPlannedRowCarriesTheSessionCitationIds() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
                                                now: now, calendar: cal)

@@ -352,6 +352,26 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(todayRow.waitForExistence(timeout: 10),
                       "Completed workout did not appear in Workouts Today")
 
+        // Field test 2026-08-27 Phase 9: Home's compact completed-workout list
+        // opens the canonical full History surface, and History summaries use
+        // the explicit Back action added in Phase 8.
+        XCTAssertTrue(app.scrollToHittableAndTap("home.completed.showMore"),
+                      "Completed Workouts did not offer Show more…")
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 10),
+                      "Home Show more… did not open full History")
+        XCTAssertTrue(app.buttons["session.row"].waitForExistence(timeout: 10),
+                      "Full History did not show the completed workout")
+        app.buttons["session.row"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["summary.title"].waitForExistence(timeout: 10),
+                      "History workout row did not open its summary")
+        XCTAssertTrue(app.buttons["summary.back"].waitTap(timeout: 5),
+                      "History summary did not expose the Phase 8 Back action")
+        XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 10),
+                      "Summary Back did not return to full History")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Back from full History did not return to Home")
+
         // Field test 2026-08-20 issue 5: ending a cardio workout must stop the
         // watch's workout session — the leak behind the "live activity that never
         // stops". Under -uiTestWatchStop every stopWatchWorkout() call lands in

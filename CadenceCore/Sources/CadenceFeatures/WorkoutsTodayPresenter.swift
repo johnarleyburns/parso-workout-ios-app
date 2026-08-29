@@ -124,6 +124,12 @@ public enum WorkoutsTodayPresenter {
         return completed + planned
     }
 
+    /// The full-history affordance belongs on Home only when there is a
+    /// completed workout it can expand beyond today's compact list.
+    public static func showsMoreHistory(for rows: [Row]) -> Bool {
+        rows.contains { $0.isNavigable }
+    }
+
     public static func plannedExercises(_ session: CoachSession) -> [PlannedExerciseRow] {
         (session.exercises ?? []).map { exercise in
             PlannedExerciseRow(

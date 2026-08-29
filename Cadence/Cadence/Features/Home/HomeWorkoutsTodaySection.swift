@@ -10,6 +10,7 @@ struct HomeWorkoutsTodaySection: View {
     @Binding var expandedRowIDs: Set<String>
     let onOpenCompleted: (WorkoutsTodayPresenter.Row) -> Void
     let onStartPlanned: (WorkoutsTodayPresenter.Row) -> Void
+    let onShowMoreHistory: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LayoutMetrics.cardHeadingSpacing) {
@@ -28,6 +29,20 @@ struct HomeWorkoutsTodaySection: View {
                             onToggle: { toggle(row) },
                             onStart: { onStartPlanned(row) })
                     }
+                }
+                if WorkoutsTodayPresenter.showsMoreHistory(for: rows) {
+                    Divider().padding(.top, 4)
+                    Button(action: onShowMoreHistory) {
+                        HStack {
+                            Text("Show more…")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }
+                        .foregroundStyle(.tint)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("home.completed.showMore")
                 }
             }
         }

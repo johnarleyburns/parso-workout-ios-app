@@ -21,7 +21,8 @@ extension HomeView {
                         rows: workoutsTodayRows,
                         expandedRowIDs: $expandedTodayRowIDs,
                         onOpenCompleted: openTodayWorkout,
-                        onStartPlanned: startPlannedToday)
+                        onStartPlanned: startPlannedToday,
+                        onShowMoreHistory: { path.append(HomeRoute.history) })
                     HomeWeekDashboardSection(
                         dashboard: dashboard,
                         volumeExpanded: $weeklyVolumeExpanded,
@@ -66,6 +67,7 @@ extension HomeView {
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {
                 case .settings: SettingsView()
+                case .history: HistoryView(path: $path)
                 case .coach:
                     // Observations are free and continuous for everyone; only the
                     // prescription behind them is Pro. Free users still get the

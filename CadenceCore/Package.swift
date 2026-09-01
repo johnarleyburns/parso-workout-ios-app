@@ -16,9 +16,21 @@ let package = Package(
         // Shared deterministic seed catalog for previews + tests.
         .library(name: "CadenceFixtures", targets: ["CadenceFixtures"])
     ],
+    dependencies: [
+        .package(
+            url: "https://github.com/johnarleyburns/free-exercise-db-plusplus.git",
+            exact: "1.15.4"
+        )
+    ],
     targets: [
         .target(
             name: "CadenceCore",
+            dependencies: [
+                .product(
+                    name: "FreeExerciseDBPlusPlus",
+                    package: "free-exercise-db-plusplus"
+                )
+            ],
             resources: [
                 // Public-domain (Unlicense) exercise data from free-exercise-db++
                 // (schema 0.3.0, see CREDITS.md): an evidence-audited annotation

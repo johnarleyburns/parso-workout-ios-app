@@ -29,13 +29,17 @@ public enum TrainingGoal: String, CaseIterable, Codable, Sendable, Identifiable 
 
     /// The working rep range the prescriptive engine programs to for this goal
     /// (P5). From the load/rep continuum (Schoenfeld et al. 2021): strength favours
-    /// heavy low-rep work; hypertrophy a moderate range near failure; endurance
-    /// higher reps (lower-confidence evidence — kept conservative).
+    /// heavy low-rep work; hypertrophy a moderate range near failure. Endurance
+    /// resolves through DB++'s `general-endurance-v1` policy, with a conservative
+    /// literal retained only as a last-resort offline fallback.
     public var repRange: ClosedRange<Int> {
         switch self {
         case .strength:    return 3...5
         case .hypertrophy: return 6...12
-        case .endurance:   return 15...20
+        case .endurance:
+            return TrainingEngineBridge.goalDefaults(
+                policyId: "general-endurance-v1"
+            )?.reps ?? 15...20
         }
     }
 
@@ -46,7 +50,10 @@ public enum TrainingGoal: String, CaseIterable, Codable, Sendable, Identifiable 
         switch self {
         case .strength:    return 2
         case .hypertrophy: return 1
-        case .endurance:   return 2
+        case .endurance:
+            return TrainingEngineBridge.goalDefaults(
+                policyId: "general-endurance-v1"
+            )?.rir ?? 2
         }
     }
 

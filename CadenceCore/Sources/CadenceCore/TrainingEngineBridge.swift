@@ -30,6 +30,36 @@ public enum TrainingEngineBridge {
     }
 }
 
+/// The app-facing read model produced by DB++ `deriveState`. The package's
+/// versioned `TrainingState` stays inside the bridge; Home only needs the
+/// effective weekly volume rows and a stable provenance marker.
+public struct EngineObservationSnapshot: Sendable, Equatable {
+    public let subjectId: String
+    public let asOf: Date
+    public let stateVersion: String
+    public let effectiveSetsByMuscle: [String: Double]
+    public let unplannedSets: Int
+    public let substitutionAdjustedCompletion: Double
+
+    public init(subjectId: String, asOf: Date, stateVersion: String,
+                effectiveSetsByMuscle: [String: Double], unplannedSets: Int = 0,
+                substitutionAdjustedCompletion: Double = 0) {
+        self.subjectId = subjectId
+        self.asOf = asOf
+        self.stateVersion = stateVersion
+        self.effectiveSetsByMuscle = effectiveSetsByMuscle
+        self.unplannedSets = unplannedSets
+        self.substitutionAdjustedCompletion = substitutionAdjustedCompletion
+    }
+
+    public var effectiveSetsByGroup: [MuscleGroup: Double] {
+        effectiveSetsByMuscle.reduce(into: [:]) { result, row in
+            guard let group = MuscleGroup.canonical(row.key) else { return }
+            result[group, default: 0] += row.value
+        }
+    }
+}
+
 // MARK: - Database boundary
 
 extension TrainingEngineBridge {
@@ -342,8 +372,10 @@ extension TrainingEngineBridge {
         profile: FreeExerciseDBPlusPlus.TrainingProfile? = nil,
         target: FreeExerciseDBPlusPlus.VolumeTarget? = nil,
         history: FreeExerciseDBPlusPlus.TrainingHistory? = nil,
+        trainingState: FreeExerciseDBPlusPlus.TrainingState? = nil,
         currentPlan: FreeExerciseDBPlusPlus.WorkoutPlan? = nil,
-        plan: FreeExerciseDBPlusPlus.WorkoutPlan? = nil
+        plan: FreeExerciseDBPlusPlus.WorkoutPlan? = nil,
+        historyWindow: FreeExerciseDBPlusPlus.TrainingHistoryWindow = .last28Days
     ) -> FreeExerciseDBPlusPlus.TrainingResult? {
         guard let engine = shared else { return nil }
         let request = FreeExerciseDBPlusPlus.TrainingRequest(
@@ -353,19 +385,14 @@ extension TrainingEngineBridge {
             profile: profile,
             target: target,
             history: history,
+            trainingState: trainingState,
             currentPlan: currentPlan,
             plan: plan,
             asOf: timestampString(asOf),
-            historyWindow: .last28Days)
+            historyWindow: historyWindow)
         return try? engine.processTrainingRequest(request)
     }
 
-    private static func timestampString(_ date: Date) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter.string(from: date)
-    }
 }
 
 // MARK: - Suggested-workout generation
@@ -745,4 +772,458 @@ enum EngineOutcome<T> {
     case needsInput([FreeExerciseDBPlusPlus.MissingInformation])
     case unsatisfiable([FreeExerciseDBPlusPlus.PlanIssue])
     case unavailable
+}
+
+// MARK: - Observation and adaptive coaching
+
+extension TrainingEngineBridge {
+    /// Builds the DB++ ACTUAL history from finalized app sessions. The workout
+    /// interchange schema is pinned by DB++'s bundled `workout.schema.json`;
+    /// version 0.3.0 is the current released schema and supports the app's
+    /// optional plan linkage and per-set RPE/load fields.
+    static func trainingHistory(
+        from sessions: [WorkoutSession],
+        plans suppliedPlans: [FreeExerciseDBPlusPlus.WorkoutPlan] = [],
+        subjectId: String
+    ) -> FreeExerciseDBPlusPlus.TrainingHistory {
+        let liveSessions = sessions
+            .filter { $0.deletedAt == nil && ($0.endedAt != nil || $0.isLogged) }
+            .sorted { ($0.date, $0.id.uuidString) < ($1.date, $1.id.uuidString) }
+
+        let sessionPlans = liveSessions.compactMap { session -> FreeExerciseDBPlusPlus.WorkoutPlan? in
+            guard let data = session.enginePlanJSON else { return nil }
+            return deserializePlan(data)
+        }
+        let plans = uniquePlans(suppliedPlans + sessionPlans)
+        let workouts = liveSessions.map { workout(from: $0, plans: plans) }
+        let activations = plans.compactMap { plan -> FreeExerciseDBPlusPlus.PlanActivation? in
+            let start = liveSessions.first {
+                $0.enginePlanId == plan.planId && $0.engineRevisionId == plan.revisionId
+            }?.date
+            guard let start else { return nil }
+            return FreeExerciseDBPlusPlus.PlanActivation(
+                planId: plan.planId,
+                revisionId: plan.revisionId,
+                effectiveFrom: timestampString(start))
+        }
+
+        return FreeExerciseDBPlusPlus.TrainingHistory(
+            subjectId: subjectId,
+            plans: plans,
+            workouts: workouts,
+            planActivations: activations)
+    }
+
+    /// Derives the seven-day observation surface used by Home. A separate
+    /// 28-day state is requested for adaptation below because the released
+    /// coaching policy intentionally reasons over longer performance history.
+    public static func observationSnapshot(
+        from sessions: [WorkoutSession],
+        trackedGroups: Set<MuscleGroup>,
+        experience: ExperienceLevel,
+        subjectId: String,
+        asOf: Date
+    ) -> EngineObservationSnapshot? {
+        let target = volumeTarget(trackedGroups: trackedGroups, experience: experience)
+        let history = trainingHistory(from: sessions, subjectId: subjectId)
+        return observationSnapshot(
+            history: history,
+            target: target,
+            asOf: asOf)
+    }
+
+    /// Encodes the model extraction boundary so Home can perform the engine
+    /// work off the main actor without moving SwiftData models across actors.
+    public static func historyData(
+        from sessions: [WorkoutSession],
+        subjectId: String
+    ) -> Data? {
+        try? JSONEncoder().encode(trainingHistory(from: sessions, subjectId: subjectId))
+    }
+
+    /// Background-safe counterpart to the model-based observation entry point.
+    public static func observationSnapshot(
+        historyData: Data,
+        trackedGroups: Set<MuscleGroup>,
+        experience: ExperienceLevel,
+        asOf: Date
+    ) -> EngineObservationSnapshot? {
+        guard let history = try? JSONDecoder().decode(
+            FreeExerciseDBPlusPlus.TrainingHistory.self,
+            from: historyData)
+        else { return nil }
+        let target = volumeTarget(trackedGroups: trackedGroups, experience: experience)
+        return observationSnapshot(history: history, target: target, asOf: asOf)
+    }
+
+    private static func observationSnapshot(
+        history: FreeExerciseDBPlusPlus.TrainingHistory,
+        target: FreeExerciseDBPlusPlus.VolumeTarget,
+        asOf: Date
+    ) -> EngineObservationSnapshot? {
+        // DB++ history is intentionally finalized-workout history. Preserve the
+        // app's live/in-progress presentation by letting the caller fall back to
+        // its existing facts until at least one completed workout is available.
+        guard !history.workouts.isEmpty else { return nil }
+        guard let result = run(
+            .deriveState,
+            asOf: asOf,
+            target: target,
+            history: history,
+            historyWindow: .last7Days),
+            let state = result.trainingState,
+            result.status == "state_derived"
+        else { return nil }
+        return observationSnapshot(from: state, asOf: asOf)
+    }
+
+    /// Produces the engine-backed strength session that is composed behind the
+    /// existing `CoachSession` façade. The caller still owns readiness and
+    /// eligibility, so this method returns only an engine proposal.
+    public static func adaptiveCoachSession(
+        from sessions: [WorkoutSession],
+        schedule: CoachSchedulePreferences,
+        goal: TrainingGoal,
+        experience: ExperienceLevel,
+        subjectId: String,
+        asOf: Date,
+        facts: CoachFacts? = nil
+    ) -> CoachSession? {
+        let history = trainingHistory(from: sessions, subjectId: subjectId)
+        let currentPlan = currentEnginePlan(from: sessions)
+        return adaptiveCoachSession(
+            history: history,
+            currentPlan: currentPlan,
+            schedule: schedule,
+            goal: goal,
+            experience: experience,
+            subjectId: subjectId,
+            asOf: asOf,
+            facts: facts)
+    }
+
+    /// Background-safe counterpart to the model-based adaptive entry point.
+    public static func adaptiveCoachSession(
+        historyData: Data,
+        schedule: CoachSchedulePreferences,
+        goal: TrainingGoal,
+        experience: ExperienceLevel,
+        subjectId: String,
+        asOf: Date
+    ) -> CoachSession? {
+        guard let history = try? JSONDecoder().decode(
+            FreeExerciseDBPlusPlus.TrainingHistory.self,
+            from: historyData)
+        else { return nil }
+        return adaptiveCoachSession(
+            history: history,
+            currentPlan: currentEnginePlan(from: history),
+            schedule: schedule,
+            goal: goal,
+            experience: experience,
+            subjectId: subjectId,
+            asOf: asOf)
+    }
+
+    private static func adaptiveCoachSession(
+        history: FreeExerciseDBPlusPlus.TrainingHistory,
+        currentPlan: FreeExerciseDBPlusPlus.WorkoutPlan?,
+        schedule: CoachSchedulePreferences,
+        goal: TrainingGoal,
+        experience: ExperienceLevel,
+        subjectId: String,
+        asOf: Date,
+        facts: CoachFacts? = nil
+    ) -> CoachSession? {
+        var coachSchedule = schedule
+        // The Coach card proposes one launchable session. The user's weekly
+        // frequency still informs the target, but asking generation for a
+        // two-session cycle with a one-session exercise budget can be
+        // over-constrained for a single tracked group.
+        coachSchedule.strengthDaysPerWeek = 1
+        let exerciseCount = min(6, max(4, schedule.trackedMuscleGroups.count))
+        let profile = trainingProfile(
+            experience: experience,
+            schedule: coachSchedule,
+            availableEquipment: Equipment.allCases,
+            subjectId: subjectId,
+            exercisesPerSession: exerciseCount)
+        let target = volumeTarget(
+            trackedGroups: schedule.trackedMuscleGroups,
+            experience: experience)
+        let stateResult = run(
+            .deriveState,
+            asOf: asOf,
+            target: target,
+            history: history)
+        guard let state = stateResult?.trainingState else { return nil }
+
+        // Phase 4 adapts an active engine plan. A user with no materialised
+        // engine plan is still fully supported by the Phase 3 suggestion flow;
+        // generating a second hidden plan here would duplicate work and make
+        // the Home snapshot needlessly expensive.
+        guard let currentPlan else { return nil }
+
+        let adaptation = run(
+            .adaptPlan,
+            asOf: asOf,
+            profile: profile,
+            target: target,
+            history: history,
+            trainingState: state,
+            currentPlan: currentPlan)?.adaptation
+        let adaptedPlan = adaptation?.proposedPlan ?? currentPlan
+        let adaptationDecisions = adaptation?.decisions ?? []
+        let progression = run(
+            .suggestProgression,
+            asOf: asOf,
+            trainingState: state,
+            plan: adaptedPlan)?.coachDecisions ?? []
+        let decisions = adaptationDecisions + progression
+
+        guard let proposal = session(
+            from: adaptedPlan,
+            decisions: decisions,
+            goal: goal,
+            asOf: asOf)
+        else { return nil }
+
+        // Recovery and same-lift/pattern/body-part rules remain authoritative.
+        // If they reject the engine's first proposal, regenerate once with the
+        // offending catalog exercise ids excluded so the engine can choose a
+        // compliant alternative instead of silently weakening the app gate.
+        guard let facts else { return proposal }
+        guard case .eligible = SessionEligibilityPolicy.evaluate(proposal, facts: facts)
+        else {
+            let excluded = proposal.exercises?.compactMap { exercise in
+                exerciseRecords.first { record in
+                    record.name.caseInsensitiveCompare(exercise.name) == .orderedSame
+                }?.exerciseId
+            } ?? []
+            guard !excluded.isEmpty,
+                  let alternatePlan = generatedCoachPlan(
+                      goal: goal,
+                      schedule: coachSchedule,
+                      experience: experience,
+                      profile: profile,
+                      target: target,
+                      asOf: asOf,
+                      excludedExerciseIDs: excluded,
+                      sessionExerciseCount: exerciseCount),
+                  let alternate = session(
+                      from: alternatePlan,
+                      decisions: [],
+                      goal: goal,
+                      asOf: asOf),
+                  case .eligible = SessionEligibilityPolicy.evaluate(alternate, facts: facts)
+            else { return nil }
+            return alternate
+        }
+        return proposal
+    }
+
+    private static func observationSnapshot(
+        from state: FreeExerciseDBPlusPlus.TrainingState,
+        asOf: Date
+    ) -> EngineObservationSnapshot {
+        let effectiveSets = state.muscleState.reduce(into: [String: Double]()) { result, pair in
+            guard case let .object(row) = pair.value,
+                  case let .number(value)? = row["effectiveSets"]
+            else { return }
+            result[pair.key] = value
+        }
+        let unplannedSets: Int = {
+            guard case let .number(value)? = state.adherenceState["unplannedSets"] else { return 0 }
+            return Int(value.rounded())
+        }()
+        let substitutionCompletion: Double = {
+            guard case let .number(value)? = state.adherenceState["substitutionAdjustedCompletion"] else { return 0 }
+            return value
+        }()
+        return EngineObservationSnapshot(
+            subjectId: state.subjectId,
+            asOf: asOf,
+            stateVersion: state.stateVersion,
+            effectiveSetsByMuscle: effectiveSets,
+            unplannedSets: unplannedSets,
+            substitutionAdjustedCompletion: substitutionCompletion)
+    }
+
+    private static func workout(
+        from session: WorkoutSession,
+        plans: [FreeExerciseDBPlusPlus.WorkoutPlan]
+    ) -> FreeExerciseDBPlusPlus.Workout {
+        let plan = plans.first {
+            $0.planId == session.enginePlanId && $0.revisionId == session.engineRevisionId
+        }
+        let planSession = plan?.sessions.sorted {
+            ($0.dayOffset, $0.planSessionId) < ($1.dayOffset, $1.planSessionId)
+        }.first { engineSession in
+            session.exercisesInOrder.contains { appExercise in
+                engineSession.exercises.contains { prescription in
+                    prescription.exerciseId == appExercise.sourceExerciseID
+                        || prescription.exerciseName?.caseInsensitiveCompare(appExercise.name) == .orderedSame
+                }
+            }
+        }
+        let reference = plan.map {
+            FreeExerciseDBPlusPlus.PlanReference(
+                planId: $0.planId,
+                revisionId: $0.revisionId,
+                planSessionId: planSession?.planSessionId)
+        }
+        let observations = exerciseObservations(from: session, planSession: planSession)
+        return FreeExerciseDBPlusPlus.Workout(
+            schemaVersion: "0.3.0",
+            sessionId: session.id.uuidString,
+            startTime: timestampString(session.date),
+            endTime: session.endedAt.map(timestampString),
+            exercises: observations,
+            planReference: reference)
+    }
+
+    private static func exerciseObservations(
+        from session: WorkoutSession,
+        planSession: FreeExerciseDBPlusPlus.PlanSession?
+    ) -> [FreeExerciseDBPlusPlus.ExerciseObservation] {
+        let ownerSets = session.orderedSets.filter { $0.isOwnerSet }
+        var grouped: [(exercise: Exercise, sets: [SetEntry])] = []
+        var indices: [UUID: Int] = [:]
+        for set in ownerSets {
+            guard let exercise = set.exercise else { continue }
+            if let index = indices[exercise.id] {
+                grouped[index].sets.append(set)
+            } else {
+                indices[exercise.id] = grouped.count
+                grouped.append((exercise, [set]))
+            }
+        }
+
+        return grouped.enumerated().map { index, group in
+            let prescription = planSession?.exercises.first {
+                $0.exerciseId == group.exercise.sourceExerciseID
+                    || $0.exerciseName?.caseInsensitiveCompare(group.exercise.name) == .orderedSame
+            }
+            let observations = group.sets.enumerated().map { setIndex, set in
+                FreeExerciseDBPlusPlus.SetObservation(
+                    setNumber: setIndex + 1,
+                    setType: set.isWarmup ? "warmup" : "working",
+                    setPrescriptionId: prescription?.plannedSets?.indices.contains(setIndex) == true
+                        ? prescription?.plannedSets?[setIndex].setPrescriptionId : nil,
+                    reps: set.reps > 0 ? set.reps : nil,
+                    load: set.effectiveLoadKg > 0
+                        ? .init(value: set.effectiveLoadKg, unit: "kg") : nil,
+                    completed: !set.isWarmup && set.reps > 0,
+                    rpe: set.rpe,
+                    rir: set.rpe.map { max(0, 10 - $0) })
+            }
+            return FreeExerciseDBPlusPlus.ExerciseObservation(
+                exerciseId: group.exercise.sourceExerciseID,
+                exerciseName: group.exercise.name,
+                order: index + 1,
+                sets: observations,
+                exercisePrescriptionId: prescription?.prescriptionId)
+        }
+    }
+
+    private static func uniquePlans(
+        _ plans: [FreeExerciseDBPlusPlus.WorkoutPlan]
+    ) -> [FreeExerciseDBPlusPlus.WorkoutPlan] {
+        var seen = Set<String>()
+        return plans
+            .sorted { ($0.planId, $0.revisionId) < ($1.planId, $1.revisionId) }
+            .filter { seen.insert("\($0.planId)|\($0.revisionId)").inserted }
+    }
+
+    private static func currentEnginePlan(
+        from sessions: [WorkoutSession]
+    ) -> FreeExerciseDBPlusPlus.WorkoutPlan? {
+        sessions
+            .filter { $0.deletedAt == nil && $0.enginePlanJSON != nil }
+            .sorted { ($0.date, $0.id.uuidString) > ($1.date, $1.id.uuidString) }
+            .compactMap { $0.enginePlanJSON.flatMap(deserializePlan) }
+            .first
+    }
+
+    private static func currentEnginePlan(
+        from history: FreeExerciseDBPlusPlus.TrainingHistory
+    ) -> FreeExerciseDBPlusPlus.WorkoutPlan? {
+        if let activation = history.planActivations.max(by: {
+            $0.effectiveFrom < $1.effectiveFrom
+        }), let plan = history.plan(
+            planId: activation.planId, revisionId: activation.revisionId) {
+            return plan
+        }
+        return history.plans.sorted {
+            ($0.planId, $0.revisionId) < ($1.planId, $1.revisionId)
+        }.last
+    }
+
+    private static func generatedCoachPlan(
+        goal: TrainingGoal,
+        schedule: CoachSchedulePreferences,
+        experience: ExperienceLevel,
+        profile: FreeExerciseDBPlusPlus.TrainingProfile,
+        target: FreeExerciseDBPlusPlus.VolumeTarget,
+        asOf: Date,
+        excludedExerciseIDs: [String] = [],
+        sessionExerciseCount: Int? = nil
+    ) -> FreeExerciseDBPlusPlus.WorkoutPlan? {
+        let constraints = excludedExerciseIDs.isEmpty ? nil : FreeExerciseDBPlusPlus.ExerciseConstraints(
+            excludedExerciseIds: excludedExerciseIDs.sorted())
+        let intent = workoutIntent(
+            goal: goal,
+            environment: "commercial_gym",
+            schedule: schedule,
+            constraints: constraints,
+            sessionExerciseCount: sessionExerciseCount ?? min(6, max(1, schedule.trackedMuscleGroups.count)))
+        let result = run(
+            .generateFromIntent,
+            asOf: asOf,
+            intent: intent,
+            profile: profile,
+            target: target)
+        guard case let .ok(plan) = outcome(for: result, payload: result?.plan) else { return nil }
+        return plan
+    }
+
+    private static func session(
+        from plan: FreeExerciseDBPlusPlus.WorkoutPlan,
+        decisions: [FreeExerciseDBPlusPlus.CoachDecision],
+        goal: TrainingGoal,
+        asOf: Date
+    ) -> CoachSession? {
+        guard let engineSession = plan.sessions.sorted(by: {
+            ($0.dayOffset, $0.planSessionId) < ($1.dayOffset, $1.planSessionId)
+        }).first else { return nil }
+        let exercises = recommendedExercises(from: engineSession)
+        guard !exercises.isEmpty else { return nil }
+
+        let decisionTypes = decisions.map(\.decisionType).filter { $0 != "hold" && $0 != "insufficient_data" }
+        let subtitle: String
+        if decisionTypes.isEmpty {
+            subtitle = "\(goal.repRange.lowerBound)–\(goal.repRange.upperBound) reps · engine plan"
+        } else {
+            subtitle = "Engine \(decisionTypes.joined(separator: ", ")) · \(goal.targetRIR) RIR target"
+        }
+        return CoachSession(
+            id: "engine.\(plan.planId).\(plan.revisionId)",
+            kind: .strength,
+            title: engineSession.name ?? plan.name ?? "Strength session",
+            subtitle: subtitle,
+            durationMinutes: 45,
+            exercises: exercises,
+            trainingLoadTags: ["strength", "engine"] + decisionTypes,
+            citationIds: suggestedWorkoutCitationIDs,
+            launchPayload: .strengthPlan(plan.planId),
+            systemsTrained: [.maximalStrength, .hypertrophy],
+            evidenceCategory: .strengthIntensity)
+    }
+
+    private static func timestampString(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
+    }
 }

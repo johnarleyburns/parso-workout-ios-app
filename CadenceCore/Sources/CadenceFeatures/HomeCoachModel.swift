@@ -153,10 +153,28 @@ public enum HomeCoachModel {
         let hasPain = painToday(readiness: readiness, now: now)
         let readinessSnapshot = latestReadiness(readiness, now: now)
             .map { ReadinessSnapshot.from($0, now: now) }
+        let engineHistoryData = TrainingEngineBridge.historyData(
+            from: liveSessions, subjectId: "cladiron-local")
 
         // Phase 2: pure computation off the main actor
         return await Task.detached(priority: .userInitiated) {
-            CoachSnapshotBuilder.buildFromFactsAndEvents(
+            let engineObservation = engineHistoryData.flatMap {
+                TrainingEngineBridge.observationSnapshot(
+                    historyData: $0,
+                    trackedGroups: schedule.trackedMuscleGroups,
+                    experience: experience,
+                    asOf: now)
+            }
+            let engineSuggestion = engineHistoryData.flatMap {
+                TrainingEngineBridge.adaptiveCoachSession(
+                    historyData: $0,
+                    schedule: schedule,
+                    goal: goal,
+                    experience: experience,
+                    subjectId: "cladiron-local",
+                    asOf: now)
+            }
+            return CoachSnapshotBuilder.buildFromFactsAndEvents(
                 trainingFacts: trainingFacts,
                 trainingEvents: events,
                 hasPainToday: hasPain,
@@ -168,7 +186,9 @@ public enum HomeCoachModel {
                 readinessSnapshot: readinessSnapshot,
                 passiveSamples: passiveSamples,
                 now: now,
-                constraintPolicy: constraintPolicy)
+                constraintPolicy: constraintPolicy,
+                engineObservation: engineObservation,
+                engineSuggestion: engineSuggestion)
         }.value
     }
 

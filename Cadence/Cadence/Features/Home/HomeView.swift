@@ -57,7 +57,8 @@ struct HomeView: View {
                                      insights: coachSnapshot.insights, recommendation: coachSnapshot.recommendation,
                                      decision: coachSnapshot.decision, plan: coachSnapshot.plan,
                                      behindPlan: coachSnapshot.behindPlan, addOn: coachSnapshot.addOn,
-                                     readiness: coachSnapshot.readiness, optimizedPlan: coachSnapshot.optimizedPlan)
+                                     readiness: coachSnapshot.readiness, optimizedPlan: coachSnapshot.optimizedPlan,
+                                     engineObservation: coachSnapshot.engineObservation)
         return HomeDashboardPresenter.make(snapshot: snapshot, schedule: settings.coachSchedulePreferences,
                                     goal: settings.trainingGoal, experience: settings.experienceLevel,
                                     userAge: settings.userAge)

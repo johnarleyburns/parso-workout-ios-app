@@ -17,11 +17,13 @@ struct HomeCoachSnapshot {
     var addOn: CoachAddOnRecommendation
     var readiness: ReadinessSnapshot?
     var optimizedPlan: OptimizedCoachPlan
+    var engineObservation: EngineObservationSnapshot?
 
     init(_ s: CoachSnapshot) {
         facts = s.facts; coachFacts = s.coachFacts; insights = s.insights; recommendation = s.recommendation
         decision = s.decision; plan = s.plan; behindPlan = s.behindPlan; addOn = s.addOn
         readiness = s.readiness; optimizedPlan = s.optimizedPlan
+        engineObservation = s.engineObservation
     }
 
     /// Cheap cold-start value shown for the first frame before `.task` computes the

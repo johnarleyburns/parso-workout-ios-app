@@ -22,11 +22,15 @@ public struct CoachSnapshot: Sendable {
     /// The optimizer's output — planned sessions + unresolved deficits + diagnostics.
     /// Carried so the Your Plan screen can render per-part volume vs plan (§1).
     public let optimizedPlan: OptimizedCoachPlan
+    /// DB++'s seven-day derived observation surface. Nil only when the bundled
+    /// engine is unavailable; legacy facts remain the compatibility fallback.
+    public let engineObservation: EngineObservationSnapshot?
 
     public init(facts: TrainingFacts, coachFacts: CoachFacts, insights: [Insight], recommendation: Recommendation,
                 decision: CoachDecision, plan: WeeklyPlan, behindPlan: Bool,
                 addOn: CoachAddOnRecommendation, readiness: ReadinessSnapshot? = nil,
-                optimizedPlan: OptimizedCoachPlan = .empty) {
+                optimizedPlan: OptimizedCoachPlan = .empty,
+                engineObservation: EngineObservationSnapshot? = nil) {
         self.facts = facts
         self.coachFacts = coachFacts
         self.insights = insights
@@ -37,6 +41,7 @@ public struct CoachSnapshot: Sendable {
         self.addOn = addOn
         self.readiness = readiness
         self.optimizedPlan = optimizedPlan
+        self.engineObservation = engineObservation
     }
 }
 
@@ -88,7 +93,26 @@ public enum CoachSnapshotBuilder {
             schedulePreferences: schedulePreferences,
             candidates: candidates)
 
-        let decision = applyingOptimizedStrength(base, optimizedPlan: optimized)
+        let legacyDecision = applyingOptimizedStrength(base, optimizedPlan: optimized)
+        let engineObservation = TrainingEngineBridge.observationSnapshot(
+            from: liveSessions,
+            trackedGroups: schedulePreferences.trackedMuscleGroups,
+            experience: experience,
+            subjectId: "cladiron-local",
+            asOf: now)
+        let engineSuggestion = TrainingEngineBridge.adaptiveCoachSession(
+            from: liveSessions,
+            schedule: schedulePreferences,
+            goal: goal,
+            experience: experience,
+            subjectId: "cladiron-local",
+            asOf: now,
+            facts: coachFacts)
+        let decision = applyingEngineSuggestion(
+            legacyDecision,
+            suggestion: engineSuggestion,
+            facts: coachFacts,
+            hasPainConcern: hasPainToday)
         let behindPlan: Bool = { if case .offPlan = decision.planAdherence { return true }; return false }()
 
         let insights = PlanAwareInsightEngine.run(
@@ -134,7 +158,8 @@ public enum CoachSnapshotBuilder {
                              insights: allInsights,
                              recommendation: recommendation, decision: decision,
                              plan: plan, behindPlan: behindPlan, addOn: addOn,
-                             readiness: coachFacts.readiness, optimizedPlan: optimized)
+                             readiness: coachFacts.readiness, optimizedPlan: optimized,
+                             engineObservation: engineObservation)
     }
 
     /// Off-main-actor variant: the caller pre-computes `TrainingFacts` and
@@ -152,7 +177,9 @@ public enum CoachSnapshotBuilder {
         readinessSnapshot: ReadinessSnapshot? = nil,
         passiveSamples: [PassiveReadinessSample] = [],
         now: Date = Date(),
-        constraintPolicy: PlanningConstraintPolicy = .safe
+        constraintPolicy: PlanningConstraintPolicy = .safe,
+        engineObservation: EngineObservationSnapshot? = nil,
+        engineSuggestion: CoachSession? = nil
     ) -> CoachSnapshot {
         let coachFacts = CoachFacts.make(from: trainingEvents, goal: goal, experience: experience,
                                           readinessSnapshot: readinessSnapshot,
@@ -175,7 +202,12 @@ public enum CoachSnapshotBuilder {
             candidates: candidates,
             constraintPolicy: constraintPolicy)
 
-        let decision = applyingOptimizedStrength(base, optimizedPlan: optimized)
+        let legacyDecision = applyingOptimizedStrength(base, optimizedPlan: optimized)
+        let decision = applyingEngineSuggestion(
+            legacyDecision,
+            suggestion: engineSuggestion,
+            facts: coachFacts,
+            hasPainConcern: hasPainToday)
         let behindPlan: Bool = { if case .offPlan = decision.planAdherence { return true }; return false }()
 
         let insights = PlanAwareInsightEngine.run(
@@ -219,7 +251,8 @@ public enum CoachSnapshotBuilder {
                              insights: allInsights,
                              recommendation: recommendation, decision: decision,
                              plan: plan, behindPlan: behindPlan, addOn: addOn,
-                             readiness: coachFacts.readiness, optimizedPlan: optimized)
+                             readiness: coachFacts.readiness, optimizedPlan: optimized,
+                             engineObservation: engineObservation)
     }
 
     // MARK: - Helpers (ported verbatim from HomeView so behavior is unchanged)
@@ -283,5 +316,44 @@ public enum CoachSnapshotBuilder {
             todayCompletedMatches: decision.todayCompletedMatches,
             scoreBreakdowns: decision.scoreBreakdowns,
             todayPlannedRecommendations: optimizedToday)
+    }
+
+    /// Composes the engine's proposal after the app's existing optimization and
+    /// safety layers. A deferred/blocked proposal is intentionally ignored so
+    /// the legacy decision still owns lighter, recovery, and rest behavior.
+    static func applyingEngineSuggestion(_ decision: CoachDecision,
+                                         suggestion: CoachSession?,
+                                         facts: CoachFacts,
+                                         hasPainConcern: Bool) -> CoachDecision {
+        guard let suggestion, !hasPainConcern else { return decision }
+        guard case .eligible = SessionEligibilityPolicy.evaluate(suggestion, facts: facts)
+        else { return decision }
+
+        var primary = decision.primary
+        var planned = decision.todayPlannedRecommendations
+        if primary.kind == .strength {
+            primary = suggestion
+        }
+        if let index = planned.firstIndex(where: { $0.kind == .strength }) {
+            planned[index] = suggestion
+        } else if primary.kind == .strength && planned.isEmpty {
+            planned = [suggestion]
+        }
+
+        return CoachDecision(
+            id: decision.id,
+            generatedAt: decision.generatedAt,
+            primary: primary,
+            alternatives: decision.alternatives,
+            deferred: decision.deferred,
+            warnings: decision.warnings,
+            observedFacts: decision.observedFacts,
+            weeklyBalance: decision.weeklyBalance,
+            confidence: decision.confidence,
+            citationIds: Array(Set(decision.citationIds + suggestion.citationIds)).sorted(),
+            planAdherence: decision.planAdherence,
+            todayCompletedMatches: decision.todayCompletedMatches,
+            scoreBreakdowns: decision.scoreBreakdowns,
+            todayPlannedRecommendations: planned)
     }
 }

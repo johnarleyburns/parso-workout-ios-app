@@ -185,7 +185,9 @@ public enum HomeDashboardPresenter {
         let cardio = HomeDashboardState.Progress(completed: balance.moderateEquivalentMinutes, target: 150,
             displayText: "\(Int(balance.moderateEquivalentMinutes.rounded())) of 150 min",
             normalized: min(1, max(0, balance.moderateEquivalentMinutes / 150)))
-        let volume = volumeRows(setsByGroup: snapshot.facts.weeklySetsByGroup,
+        let volume = volumeRows(
+            setsByGroup: snapshot.engineObservation?.effectiveSetsByGroup
+                ?? snapshot.facts.weeklySetsByGroup,
                                 tracked: schedule.trackedMuscleGroups)
         // Averaged over the TRACKED rows only, so half a set of incidental neck
         // work cannot drag the headline number down.

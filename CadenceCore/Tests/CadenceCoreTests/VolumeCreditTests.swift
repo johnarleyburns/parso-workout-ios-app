@@ -9,8 +9,8 @@ final class VolumeCreditTests: XCTestCase {
         XCTAssertEqual(VolumeCredit.direct, 1.0)
         XCTAssertEqual(VolumeCredit.indirect, 0.5)
         XCTAssertEqual(VolumeCredit.stabilizer, 0.0)
-        XCTAssertEqual(VolumeCredit.direct, ExerciseDatabase.setCredits.direct)
-        XCTAssertEqual(VolumeCredit.indirect, ExerciseDatabase.setCredits.indirect)
+        XCTAssertEqual(VolumeCredit.direct, TrainingEngineBridge.setCredits.direct)
+        XCTAssertEqual(VolumeCredit.indirect, TrainingEngineBridge.setCredits.indirect)
     }
 
     /// The credit model is a science claim on screen, so it must cite.
@@ -131,11 +131,10 @@ final class MovementPatternAnnotationTests: XCTestCase {
     /// Every pattern id the shipped data actually uses is either mapped or a
     /// deliberate single-joint fall-through — never an unnoticed typo.
     func testEveryDatabasePatternIsAccountedFor() throws {
-        let metadata = try XCTUnwrap(ExerciseDatabase.metadata)
-        let used = Set(ExerciseDatabase.records.flatMap(\.annotation.patterns))
+        let used = Set(TrainingEngineBridge.exerciseRecords.flatMap(\.patterns))
         XCTAssertFalse(used.isEmpty)
         for id in used {
-            XCTAssertNotNil(metadata.evidence.patterns[id],
+            XCTAssertNotNil(TrainingEngineBridge.evidencePatterns[id],
                             "pattern \(id) has no evidence entry")
         }
         let mapped = used.filter { MovementPattern(databasePatternID: $0) != nil }

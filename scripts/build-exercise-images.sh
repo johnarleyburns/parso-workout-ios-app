@@ -24,7 +24,10 @@ BASE_URL="https://raw.githubusercontent.com/yuhonas/free-exercise-db/${COMMIT}/e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-DB_JSON="${REPO_ROOT}/CadenceCore/Sources/CadenceCore/Resources/free-exercise-db-plusplus.json"
+DB_JSON="${REPO_ROOT}/CadenceCore/.build/checkouts/free-exercise-db-plusplus/free-exercise-db-plusplus.json"
+if [[ ! -f "$DB_JSON" ]]; then
+  DB_JSON="${REPO_ROOT}/.build/dd/SourcePackages/checkouts/free-exercise-db-plusplus/free-exercise-db-plusplus.json"
+fi
 OUT_DIR="${REPO_ROOT}/CadenceCore/Sources/CadenceCore/Resources/ExerciseImages"
 
 command -v sips >/dev/null 2>&1 || { echo "error: sips not found (macOS only)"; exit 1; }

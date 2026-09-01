@@ -1,7 +1,4 @@
-.PHONY: update-exercises build test test-core test-features guardrails smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
-
-update-exercises:
-	@bash scripts/update-exercises.sh
+.PHONY: build test test-core test-features guardrails smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
 
 build:
 	swift build --package-path CadenceCore

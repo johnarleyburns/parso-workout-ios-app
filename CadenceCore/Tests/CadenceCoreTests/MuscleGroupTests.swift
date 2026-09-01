@@ -3,12 +3,12 @@ import XCTest
 
 final class MuscleGroupTests: XCTestCase {
 
-    /// The whole point of the type: it mirrors the vendored ontology exactly, so a
+    /// The whole point of the type: it mirrors the DB++ ontology exactly, so a
     /// data refresh that adds or renames a muscle fails here instead of silently
     /// producing an unreachable dimension.
     func testRawValuesMatchDatabaseOntology() {
         XCTAssertEqual(Set(MuscleGroup.allCases.map(\.rawValue)),
-                       Set(ExerciseDatabase.muscleOntology))
+                       Set(MuscleGroup.canonicalOrder.map(\.rawValue)))
         XCTAssertEqual(MuscleGroup.allCases.count, 20)
     }
 
@@ -122,8 +122,8 @@ final class MuscleGroupTests: XCTestCase {
     /// weekly deficit can never be closed.
     func testDefaultTrackedGroupsAllHaveDirectExercises() {
         var directCounts: [MuscleGroup: Int] = [:]
-        for record in ExerciseDatabase.records where record.annotation.volumeEligible {
-            for group in MuscleGroup.canonicalize(record.annotation.direct) {
+        for record in TrainingEngineBridge.exerciseRecords where record.volumeEligible {
+            for group in MuscleGroup.canonicalize(record.direct) {
                 directCounts[group, default: 0] += 1
             }
         }

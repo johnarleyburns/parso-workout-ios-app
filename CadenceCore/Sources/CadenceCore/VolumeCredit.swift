@@ -12,11 +12,11 @@ import Foundation
 /// dose-response work behind them is `pellandDoseResponse2026`.
 public enum VolumeCredit {
 
-    /// Read from the vendored document rather than hard-coded, so a refresh that
-    /// changed the model cannot silently disagree with our arithmetic.
-    public static var direct: Double { ExerciseDatabase.setCredits.direct }
-    public static var indirect: Double { ExerciseDatabase.setCredits.indirect }
-    public static var stabilizer: Double { ExerciseDatabase.setCredits.stabilizer }
+    /// Read from DB++ rather than hard-coded, so an upstream model refresh cannot
+    /// silently disagree with our arithmetic.
+    public static var direct: Double { TrainingEngineBridge.setCredits.direct }
+    public static var indirect: Double { TrainingEngineBridge.setCredits.indirect }
+    public static var stabilizer: Double { TrainingEngineBridge.setCredits.stabilizer }
 
     /// The citation behind the credit model. Rendered wherever the split is stated
     /// on screen (HARD RULE: every science claim cites).

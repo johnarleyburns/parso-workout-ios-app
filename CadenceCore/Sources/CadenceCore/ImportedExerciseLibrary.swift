@@ -1,17 +1,9 @@
 import Foundation
 
 /// Public-domain exercise data (free-exercise-db++, Unlicense — see `CREDITS.md`)
-/// transformed **on-device** into our own taxonomy. The document ships as a bundled
-/// package resource and is decoded by `ExerciseDatabase`; the transform here is a
-/// pure, `swift test`-verifiable function that maps the upstream record DB++ carries
-/// under `source` onto our `MuscleGroup` values, `Equipment`, and movement-split
-/// `ExerciseCategory`. Strength-pivot P2 (D2).
-///
-/// DB++'s own annotation layer — direct/indirect/stabilizer muscle roles, volume
-/// eligibility, movement classification — is decoded and available on
-/// `ExerciseDatabase.Record`, and is consumed from phase 3 of the DB++ adoption
-/// onward. This file deliberately still reads only `source`, which is byte-identical
-/// to the free-exercise-db snapshot it replaced.
+/// transformed **on-device** into our own taxonomy. DB++ owns the bundled database;
+/// `TrainingEngineBridge` supplies a stable app-facing record snapshot so this
+/// transform does not duplicate its decoder or leak package types.
 public enum ImportedExerciseLibrary {
 
     // MARK: Mapping tables (their coarse taxonomy → ours)
@@ -66,56 +58,109 @@ public enum ImportedExerciseLibrary {
     /// Transform one database record into our `ExerciseTemplate`, or `nil` if it maps
     /// to no known muscle (so every imported entry is guaranteed to have ≥1
     /// `MuscleGroup` value, satisfying catalog integrity).
-    static func template(from record: ExerciseDatabase.Record) -> ExerciseTemplate? {
-        let e = record.source
-        let annotation = record.annotation
-        let direct = MuscleGroup.canonicalize(annotation.direct)
-        let indirect = MuscleGroup.canonicalize(annotation.indirect)
+    static func template(from record: TrainingEngineBridge.ExerciseRecord) -> ExerciseTemplate? {
+        let direct = MuscleGroup.canonicalize(record.direct)
+        let indirect = MuscleGroup.canonicalize(record.indirect)
             .filter { !direct.contains($0) }
-        let stabilizers = MuscleGroup.canonicalize(annotation.stabilizers)
+        let stabilizers = MuscleGroup.canonicalize(record.stabilizers)
             .filter { !direct.contains($0) && !indirect.contains($0) }
 
         // Non-volume movements (stretching, plyometrics, cardio) carry an empty
         // `direct` list by construction, so fall back to the upstream primary
         // muscles: they stay searchable and browsable by muscle, they simply never
         // earn volume credit (decision D3).
-        let fallbackPrimary = MuscleGroup.canonicalize(e.primaryMuscles)
-        let fallbackSecondary = MuscleGroup.canonicalize(e.secondaryMuscles)
+        let fallbackPrimary = MuscleGroup.canonicalize(record.primaryMuscles)
+        let fallbackSecondary = MuscleGroup.canonicalize(record.secondaryMuscles)
             .filter { !fallbackPrimary.contains($0) }
         let primary = direct.isEmpty ? fallbackPrimary : direct
         let secondary = direct.isEmpty ? fallbackSecondary : indirect
         guard !primary.isEmpty else { return nil }
 
-        let force = e.force.flatMap { Force(rawValue: $0) }
-        let mechanics = e.mechanic.flatMap { Mechanics(rawValue: $0) } ?? .compound
-        let equipment = e.equipment.flatMap { equipmentMap[$0.lowercased()] }
-        let cat = category(primaryGroups: primary, force: force, rawCategory: e.category)
+        let force = record.force.flatMap { Force(rawValue: $0) }
+        let mechanics = record.mechanic.flatMap { Mechanics(rawValue: $0) } ?? .compound
+        let equipment = record.equipment.flatMap { equipmentMap[$0.lowercased()] }
+        let cat = category(primaryGroups: primary, force: force, rawCategory: record.category)
         return ExerciseTemplate(
-            e.name, cat, equipment, force, mechanics,
+            record.name, cat, equipment, force, mechanics,
             primary: primary.map(\.rawValue), secondary: secondary.map(\.rawValue),
-            lateral: isLateral(e.name),
-            instructions: e.instructions,
-            imageName: e.images.isEmpty ? nil : e.id,
-            level: e.level,
+            lateral: isLateral(record.name),
+            instructions: record.instructions,
+            imageName: record.images.isEmpty ? nil : record.exerciseId,
+            level: record.level,
             direct: direct, indirect: indirect, stabilizers: stabilizers,
-            volumeEligible: annotation.volumeEligible,
-            trainingTypes: ExerciseTrainingType.decode(record.classification.trainingTypes),
-            modalities: ExerciseModality.decode(record.classification.modalities),
-            sportContexts: ExerciseSportContext.decode(record.classification.sportContexts),
-            movementPatternIDs: annotation.patterns,
-            annotationConfidence: AnnotationConfidence(rawValue: annotation.confidence),
+            volumeEligible: record.volumeEligible,
+            trainingTypes: trainingTypes(for: record),
+            modalities: modalities(for: record),
+            sportContexts: sportContexts(for: record),
+            movementPatternIDs: record.patterns,
+            annotationConfidence: record.confidence.flatMap(AnnotationConfidence.init(rawValue:)),
             sourceExerciseID: record.exerciseId
         )
     }
 
+    private static func trainingTypes(for record: TrainingEngineBridge.ExerciseRecord) -> [ExerciseTrainingType] {
+        switch record.category {
+        case "cardio": return [.cardio]
+        case "plyometrics": return [.plyometrics]
+        case "stretching": return [.stretching]
+        case "powerlifting": return [.strength, .powerlifting]
+        case "olympic weightlifting": return [.strength, .olympicWeightlifting]
+        case "strongman": return [.strength, .strongman]
+        default: return [.strength]
+        }
+    }
+
+    private static func modalities(for record: TrainingEngineBridge.ExerciseRecord) -> [ExerciseModality] {
+        let equipment = record.equipment?.lowercased()
+        var result: [ExerciseModality]
+        switch equipment {
+        case "body only": result = [.bodyweight]
+        case "barbell", "dumbbell", "e-z curl bar": result = [.freeWeight]
+        case "cable": result = [.cable]
+        case "machine": result = [.machine]
+        case "bands": result = [.band]
+        case "kettlebells": result = [.kettlebell]
+        case "medicine ball": result = [.medicineBall]
+        case "foam roll": result = [.foamRoll]
+        default: result = [.other]
+        }
+
+        let name = record.name.lowercased()
+        if name.contains("rope") || name.contains("ropes") { result.append(.rope) }
+        if name.contains("sled") || name.contains("prowler") || name.contains("drag") { result.append(.sled) }
+        if name.contains("stone") || name.contains("keg") || name.contains("tire")
+            || name.contains("yoke") || name.contains("sandbag") || name.contains("conan") {
+            result.append(.loadedObject)
+        }
+        return result
+    }
+
+    private static func sportContexts(for record: TrainingEngineBridge.ExerciseRecord) -> [ExerciseSportContext] {
+        var result: [ExerciseSportContext] = [.generalFitness]
+        switch record.category {
+        case "powerlifting": result.append(.powerlifting)
+        case "olympic weightlifting": result.append(.weightlifting)
+        case "strongman": result.append(.strongman)
+        default: break
+        }
+
+        let name = record.name.lowercased()
+        if name.contains("iron cross") || name.contains("ring dip") || name.contains("muscle up") {
+            result.append(.gymnastics)
+        }
+        if name.contains("kettlebell thruster") || name.contains("kipping muscle up") {
+            result.append(.crossfit)
+        }
+        return result
+    }
+
     // MARK: Bundled data
 
-    /// The transformed public-domain catalog (lazy; decoded once from the bundled
-    /// resource). Empty if the resource is missing/corrupt so the app still seeds the
-    /// curated catalog. Order follows `ExerciseDatabase.records`, which is sorted by
-    /// `exerciseId`, so merges stay stable.
+    /// The transformed public-domain catalog (lazy; built once from DB++'s bundled
+    /// database). Empty if the package database is unavailable so the app still seeds
+    /// the curated catalog. Records arrive already sorted by `exerciseId`.
     public static let templates: [ExerciseTemplate] =
-        ExerciseDatabase.records.compactMap(template(from:))
+        TrainingEngineBridge.exerciseRecords.compactMap(template(from:))
 }
 
 public extension ExerciseLibrary {

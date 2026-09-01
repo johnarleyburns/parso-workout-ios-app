@@ -32,14 +32,6 @@ let package = Package(
                 )
             ],
             resources: [
-                // Public-domain (Unlicense) exercise data from free-exercise-db++
-                // (schema 0.3.0, see CREDITS.md): an evidence-audited annotation
-                // layer that carries every free-exercise-db record verbatim under
-                // `source` and adds muscle roles, volume eligibility, movement
-                // classification and per-pattern literature references. Decoded by
-                // `ExerciseDatabase` and transformed by `ImportedExerciseLibrary`.
-                .copy("Resources/free-exercise-db-plusplus.json"),
-                .copy("Resources/free-exercise-db-plusplus.LICENSE"),
                 // Bundled exercise photography, downscaled to HEIC by
                 // scripts/build-exercise-images.sh from free-exercise-db at pinned
                 // commit b0eed06 — the same upstream data DB++ carries in `source`. Loaded from

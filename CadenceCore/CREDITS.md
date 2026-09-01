@@ -1,18 +1,18 @@
-# Credits — vendored data
+# Credits — package-backed data
 
 ## free-exercise-db++
 - Source: https://github.com/johnarleyburns/free-exercise-db-plusplus
-- Vendored snapshot: schema `0.3.0`, converter `0.8.0`, generated
-  `2026-08-24T02:23:31Z`, 873 exercises.
+- Swift package dependency: `FreeExerciseDBPlusPlus` **1.15.4**; schema `0.3.0`,
+  converter `0.8.1`, 873 exercises. DB++ bundles the offline database and its
+  license; CadenceCore does not duplicate that resource.
 - License: **Unlicense** (public domain) — see
-  `Sources/CadenceCore/Resources/free-exercise-db-plusplus.LICENSE`. No
-  attribution or share-alike is required; this credit is open-source hygiene, not
-  an obligation.
+  No attribution or share-alike is required; this credit is open-source hygiene,
+  not an obligation.
 - What it is: an evidence-audited annotation layer over `yuhonas/free-exercise-db`.
   Every upstream record is preserved **verbatim** under each entry's `source`
   field — we verified the two are byte-identical for all 873 records and every
   field before adopting it — and DB++ adds:
-  - a normalized 20-muscle ontology (`metadata.muscleOntology`), which
+  - a normalized 20-muscle ontology, which
     `MuscleGroup` mirrors exactly;
   - `direct` / `indirect` / `stabilizers` muscle roles per movement, with the
     published set-credit convention 1.0 / 0.5 / 0.0;
@@ -23,10 +23,8 @@
   - 60 literature references with PMIDs/DOIs and 89 pattern-level evidence
     summaries, which is how every muscle attribution the app shows can cite the
     work it came from.
-- It is decoded by `ExerciseDatabase` and transformed into our taxonomy by
-  `ImportedExerciseLibrary`.
-- Refresh it with `make update-exercises`, which validates the snapshot against
-  `scripts/validate-exercise-db.py` and refuses to install one that fails.
+- It is decoded by DB++ and transformed into our taxonomy by
+  `ImportedExerciseLibrary` through `TrainingEngineBridge`.
 
 ## free-exercise-db
 - Source: https://github.com/yuhonas/free-exercise-db

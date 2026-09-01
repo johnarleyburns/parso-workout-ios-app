@@ -2,8 +2,8 @@ import XCTest
 @testable import CadenceCore
 
 final class ExerciseEvidenceTests: XCTestCase {
-    func testAllSixtyReferencesBecomeCitations() {
-        XCTAssertEqual(ExerciseEvidence.citations.count, 60)
+    func testAllPackageReferencesBecomeCitations() {
+        XCTAssertEqual(ExerciseEvidence.citations.count, 62)
     }
 
     func testEveryEvidenceCitationHasUrlAndYear() {
@@ -43,8 +43,8 @@ final class ExerciseEvidenceTests: XCTestCase {
     }
 
     func testEveryExercisePatternResolves() {
-        for record in ExerciseDatabase.records {
-            for id in record.annotation.patterns {
+        for record in TrainingEngineBridge.exerciseRecords {
+            for id in record.patterns {
                 XCTAssertNotNil(ExerciseEvidence.patterns[id], "Missing pattern \(id)")
             }
         }

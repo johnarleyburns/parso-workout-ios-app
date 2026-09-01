@@ -4,7 +4,7 @@
 The bundled document is the source of truth for muscle roles, weekly volume
 credit, and every muscle-attribution citation the app shows, so a malformed or
 schema-shifted refresh must never silently replace it. Run by
-`scripts/update-exercises.sh`; also usable directly:
+It is also usable directly when validating a downloaded or generated artifact:
 
     python3 scripts/validate-exercise-db.py <path-to-json>
 

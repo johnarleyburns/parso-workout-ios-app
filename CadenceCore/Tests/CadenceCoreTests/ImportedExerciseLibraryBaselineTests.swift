@@ -1,8 +1,8 @@
 import XCTest
 @testable import CadenceCore
 
-/// Pins the templates `ImportedExerciseLibrary` produces from the vendored
-/// free-exercise-db++ document.
+/// Pins the templates `ImportedExerciseLibrary` produces from the package-backed
+/// free-exercise-db++ database.
 ///
 /// Phase 1 of the DB++ adoption proved the swap changed nothing, because DB++
 /// carries every upstream record verbatim under `source`. Phase 3 then switched the
@@ -147,7 +147,7 @@ final class ImportedExerciseLibraryBaselineTests: XCTestCase {
     /// Order is what keeps the curated/imported merge stable across launches.
     func testTemplateOrderFollowsSortedExerciseIDs() {
         let templateNames = ImportedExerciseLibrary.templates.map(\.name)
-        let expected = ExerciseDatabase.records
+        let expected = TrainingEngineBridge.exerciseRecords
             .compactMap { ImportedExerciseLibrary.template(from: $0)?.name }
         XCTAssertEqual(templateNames, expected)
     }

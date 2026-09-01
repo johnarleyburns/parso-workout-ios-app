@@ -3,7 +3,7 @@ import Foundation
 /// The canonical training dimension: free-exercise-db++'s evidence-audited
 /// 20-muscle ontology. Raw values are DB++'s strings verbatim, so an annotation
 /// reads straight into this type with no translation table, and
-/// `ExerciseDatabaseTests` fails if a data refresh ever moves the two apart.
+/// `TrainingEngineDatabaseTests` fails if a data refresh ever moves the two apart.
 ///
 /// This replaces BOTH the 8-case `BodyPart` and the 21-entry `MuscleCatalog`
 /// (DB++ adoption, 2026-08-23, decision D2). The old fine catalog claimed a

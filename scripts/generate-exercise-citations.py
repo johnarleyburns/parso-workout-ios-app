@@ -3,7 +3,21 @@ import json
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-data = json.loads((root / "CadenceCore/Sources/CadenceCore/Resources/free-exercise-db-plusplus.json").read_text())
+package_data = next(
+    (
+        candidate
+        for candidate in (
+            root / "CadenceCore/.build/checkouts/free-exercise-db-plusplus/free-exercise-db-plusplus.json",
+            root / ".build/dd/SourcePackages/checkouts/free-exercise-db-plusplus/free-exercise-db-plusplus.json",
+            root / ".build/dd-watch/SourcePackages/checkouts/free-exercise-db-plusplus/free-exercise-db-plusplus.json",
+        )
+        if candidate.is_file()
+    ),
+    None,
+)
+if package_data is None:
+    raise SystemExit("DB++ package checkout is unavailable; run swift build --package-path CadenceCore first")
+data = json.loads(package_data.read_text())
 refs = data["metadata"]["evidence"]["references"]
 labels = {"systematic_review": "Systematic review", "experimental": "Experimental study", "meta_regression": "Meta-regression", "review_or_position": "Review / position statement", "training_intervention": "Training intervention", "randomized_controlled_trial": "Randomized controlled trial"}
 lines = ["## Movement evidence (generated — do not hand-edit)", "", "These references back the DB++ muscle-role attributions, rather than coaching decisions. This block is regenerated from the bundled snapshot.", "", "<!-- BEGIN exercise-evidence -->"]

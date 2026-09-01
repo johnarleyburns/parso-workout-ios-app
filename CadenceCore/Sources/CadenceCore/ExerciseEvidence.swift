@@ -19,7 +19,7 @@ public enum ExerciseEvidence {
         "randomized_controlled_trial": "Randomized controlled trial",
     ]
 
-    public static let patterns: [String: PatternEvidence] = (ExerciseDatabase.document?.metadata.evidence.patterns ?? [String: ExerciseDatabase.PatternEvidence]())
+    public static let patterns: [String: PatternEvidence] = TrainingEngineBridge.evidencePatterns
         .mapValues { pattern in PatternEvidence(
             id: "", displayName: "", status: pattern.status, summary: pattern.summary,
             citationIDs: pattern.references.map { "exdb.\($0)" }
@@ -32,7 +32,7 @@ public enum ExerciseEvidence {
             )
         }
 
-    public static let citations: [Citation] = (ExerciseDatabase.document?.metadata.evidence.references ?? [String: ExerciseDatabase.Reference]())
+    public static let citations: [Citation] = TrainingEngineBridge.evidenceReferences
         .sorted { $0.key < $1.key }
         .map { id, reference in
             let year = Int(String(id.suffix(4))) ?? 0

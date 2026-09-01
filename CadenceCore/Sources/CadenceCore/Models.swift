@@ -448,6 +448,11 @@ public final class WorkoutSession {
     /// ad-hoc sessions and legacy keys (e.g. a removed CrossFit benchmark).
     /// Additive + optional for CloudKit + back-compat.
     public var planKey: String?
+    /// DB++ plan provenance for generated/adapted sessions. Additive and
+    /// optional so existing CloudKit stores and legacy sessions remain valid.
+    public var enginePlanId: String?
+    public var engineRevisionId: String?
+    public var enginePlanJSON: Data?
     /// Links to the summary HKWorkout written for this session (FR-4.3) or the
     /// Watch-ingested workout this came from (FR-2.1). Used for de-dup.
     public var healthKitWorkoutUUID: UUID?

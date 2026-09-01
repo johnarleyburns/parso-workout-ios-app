@@ -140,6 +140,11 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
     public let plannedSetTotal: Int
     public let capTrimmingOccurred: Bool
     public let citationIDs: [String]
+    /// DB++ provenance carried with a generated suggestion so materialising the
+    /// edited draft can preserve the engine plan for later evaluation/adaptation.
+    public let enginePlanID: String?
+    public let engineRevisionID: String?
+    public let enginePlanJSON: Data?
 
     /// How many of the chosen movements came from the style's own pool. The
     /// chooser reports this, because a style narrows the movements without ever
@@ -149,7 +154,9 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
     public init(style: SuggestedWorkoutStyle, plan: WorkoutPlan,
                 exercises: [SuggestedWorkoutExercise], initialDeficits: [String: Double],
                 remainingDeficits: [String: Double], plannedSetTotal: Int,
-                capTrimmingOccurred: Bool, citationIDs: [String]) {
+                capTrimmingOccurred: Bool, citationIDs: [String],
+                enginePlanID: String? = nil, engineRevisionID: String? = nil,
+                enginePlanJSON: Data? = nil) {
         self.style = style
         self.plan = plan
         self.exercises = exercises
@@ -158,6 +165,9 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
         self.plannedSetTotal = plannedSetTotal
         self.capTrimmingOccurred = capTrimmingOccurred
         self.citationIDs = citationIDs
+        self.enginePlanID = enginePlanID
+        self.engineRevisionID = engineRevisionID
+        self.enginePlanJSON = enginePlanJSON
     }
 
     public var isLaunchable: Bool { !exercises.isEmpty }
@@ -206,6 +216,29 @@ public struct SuggestedWorkoutBundle: Equatable, Sendable {
     }
 }
 
+/// App state needed to ask DB++ for a suggested workout. Keeping this as a
+/// value snapshot makes the generator safe to run off the main actor and keeps
+/// SwiftData/UI types outside the engine boundary.
+public struct SuggestedWorkoutEngineContext: Equatable, Sendable {
+    public let experience: ExperienceLevel
+    public let schedule: CoachSchedulePreferences
+    public let availableEquipment: [Equipment]
+    public let environment: String
+    public let asOf: Date
+
+    public init(experience: ExperienceLevel = .intermediate,
+                schedule: CoachSchedulePreferences = .default,
+                availableEquipment: [Equipment] = Equipment.allCases,
+                environment: String = "commercial_gym",
+                asOf: Date = Date(timeIntervalSince1970: 0)) {
+        self.experience = experience
+        self.schedule = schedule
+        self.availableEquipment = availableEquipment
+        self.environment = environment
+        self.asOf = asOf
+    }
+}
+
 public struct SuggestedWorkoutInput: Equatable, Sendable {
     public let completedSetsByMuscle: [String: Double]
     public let candidates: [SuggestedExerciseCandidate]
@@ -215,17 +248,20 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
     public let trackedGroups: Set<MuscleGroup>
     public let preferredSetsPerExercise: Int
     public let trainingGoal: TrainingGoal
+    public let engineContext: SuggestedWorkoutEngineContext?
 
     public init(completedSetsByMuscle: [String: Double],
                 candidates: [SuggestedExerciseCandidate],
                 trackedGroups: Set<MuscleGroup> = MuscleGroup.defaultTracked,
                 preferredSetsPerExercise: Int,
-                trainingGoal: TrainingGoal) {
+                trainingGoal: TrainingGoal,
+                engineContext: SuggestedWorkoutEngineContext? = nil) {
         self.completedSetsByMuscle = completedSetsByMuscle
         self.candidates = candidates
         self.trackedGroups = trackedGroups.isEmpty ? MuscleGroup.defaultTracked : trackedGroups
         self.preferredSetsPerExercise = preferredSetsPerExercise
         self.trainingGoal = trainingGoal
+        self.engineContext = engineContext
     }
 }
 
@@ -233,6 +269,10 @@ public enum SuggestedWorkoutGenerator {
     public static let epsilon = 1e-9
 
     public static func generate(input: SuggestedWorkoutInput) -> SuggestedWorkoutBundle {
+        if let context = input.engineContext,
+           let engineBundle = generateWithEngine(input: input, context: context) {
+            return engineBundle
+        }
         let clock = ContinuousClock()
         let indexStart = clock.now
         let index = SuggestedWorkoutVectorIndex(candidates: input.candidates,
@@ -266,9 +306,77 @@ public enum SuggestedWorkoutGenerator {
         )
     }
 
+    private static func generateWithEngine(
+        input: SuggestedWorkoutInput,
+        context: SuggestedWorkoutEngineContext
+    ) -> SuggestedWorkoutBundle? {
+        let generationStart = ContinuousClock.now
+        let styles = SuggestedWorkoutStyle.allCases
+        // One chooser request should have one canonical engine plan. The style
+        // buttons are soft presentation biases over that plan; projecting them
+        // here avoids five independent planner/evaluator passes on device while
+        // preserving each option's style membership and engine provenance.
+        guard let base = TrainingEngineBridge.suggestedWorkout(
+            input: input,
+            context: context,
+            style: .fitness) else { return nil }
+        let options = styles.map { restyle(base.option, as: $0) }
+        let duration = generationStart.duration(to: ContinuousClock.now)
+        let diagnostics = SuggestedWorkoutDiagnostics(
+            rawCandidateCount: input.candidates.count,
+            indexedCandidateCount: TrainingEngineBridge.exerciseRecords.count,
+            indexBuildCount: 1,
+            invertedListLookupCount: 0,
+            invertedCandidateVisitCount: 0,
+            fullCatalogScanCount: 0,
+            vectorIndexBuildDuration: .zero,
+            allStylesGenerationDuration: duration)
+        return SuggestedWorkoutBundle(
+            options: options,
+            diagnostics: diagnostics)
+    }
+
     private struct Counters {
         var lookups = 0
         var visits = 0
+    }
+
+    private static func restyle(
+        _ option: SuggestedWorkoutOption,
+        as style: SuggestedWorkoutStyle
+    ) -> SuggestedWorkoutOption {
+        guard style != option.style else { return option }
+        let styleIDs = Set(TrainingEngineBridge.preferredExerciseIDs(for: style))
+        let exercises = option.exercises.map { exercise in
+            SuggestedWorkoutExercise(
+                candidateID: exercise.candidateID,
+                name: exercise.name,
+                mechanics: exercise.mechanics,
+                plannedSets: exercise.plannedSets,
+                repRange: exercise.repRange,
+                contributions: exercise.contributions,
+                selectionScore: exercise.selectionScore,
+                isInStyle: styleIDs.contains(exercise.candidateID))
+        }
+        let plan = WorkoutPlan(
+            id: "coach-suggested-\(style.rawValue)",
+            name: style.planName,
+            source: option.plan.source,
+            scheme: option.plan.scheme,
+            items: option.plan.items,
+            notes: option.plan.notes)
+        return SuggestedWorkoutOption(
+            style: style,
+            plan: plan,
+            exercises: exercises,
+            initialDeficits: option.initialDeficits,
+            remainingDeficits: option.remainingDeficits,
+            plannedSetTotal: option.plannedSetTotal,
+            capTrimmingOccurred: option.capTrimmingOccurred,
+            citationIDs: option.citationIDs,
+            enginePlanID: option.enginePlanID,
+            engineRevisionID: option.engineRevisionID,
+            enginePlanJSON: option.enginePlanJSON)
     }
 
     private struct Score {

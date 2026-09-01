@@ -97,18 +97,16 @@ struct SuggestedWorkoutView: View {
         state = .calculating
         await Task.yield()
         guard !Task.isCancelled else { return }
-        // A child task keeps generation attached to this sheet's `.task`. If the
-        // sheet is dismissed, SwiftUI cancellation propagates to the child and
-        // the task group does not publish a result after dismissal.
-        let bundle = await withTaskGroup(of: SuggestedWorkoutBundle?.self) { group in
-            group.addTask {
-                guard !Task.isCancelled else { return nil }
-                let result = SuggestedWorkoutGenerator.generate(input: request.input)
-                guard !Task.isCancelled else { return nil }
-                return result
-            }
-            return await group.next() ?? nil
+        // Generation uses the immutable DB++ catalog and can take several
+        // seconds on device. Keep that CPU work off the main actor so the sheet
+        // can render its calculating state and remain interactive.
+        let generation = Task.detached(priority: .userInitiated) { () -> SuggestedWorkoutBundle? in
+            guard !Task.isCancelled else { return nil }
+            let result = SuggestedWorkoutGenerator.generate(input: request.input)
+            guard !Task.isCancelled else { return nil }
+            return result
         }
+        let bundle = await generation.value
         guard !Task.isCancelled else { return }
         guard let bundle else { return }
         SuggestedWorkoutSignposts.recordGeneration(bundle)

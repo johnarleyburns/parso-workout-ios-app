@@ -12,14 +12,24 @@ public struct EditablePlan: Hashable {
     public var cooldownMinutes: Int
     public var exercises: [EditableExercise]
     public var partnerIDs: [UUID] = []
+    /// Optional DB++ provenance carried from a generated plan into the
+    /// materialised WorkoutSession. Nil keeps legacy/user-created drafts intact.
+    public var enginePlanId: String?
+    public var engineRevisionId: String?
+    public var enginePlanJSON: Data?
 
     public init(title: String = "Workout", warmupMinutes: Int, cooldownMinutes: Int,
-                exercises: [EditableExercise], partnerIDs: [UUID] = []) {
+                exercises: [EditableExercise], partnerIDs: [UUID] = [],
+                enginePlanId: String? = nil, engineRevisionId: String? = nil,
+                enginePlanJSON: Data? = nil) {
         self.title = title
         self.warmupMinutes = warmupMinutes
         self.cooldownMinutes = cooldownMinutes
         self.exercises = exercises
         self.partnerIDs = partnerIDs
+        self.enginePlanId = enginePlanId
+        self.engineRevisionId = engineRevisionId
+        self.enginePlanJSON = enginePlanJSON
     }
 
     public static func empty(warmup: Int, cooldown: Int) -> EditablePlan {
@@ -79,6 +89,9 @@ public struct EditablePlan: Hashable {
     /// this operation here prevents Home and Planning from silently reducing
     /// a multi-exercise plan to the first exercise's ladder.
     public func apply(to session: WorkoutSession) {
+        session.enginePlanId = enginePlanId
+        session.engineRevisionId = engineRevisionId
+        session.enginePlanJSON = enginePlanJSON
         session.plannedExerciseNames = exercises.map(\.name)
         session.plannedPrescriptions = exercises.map { exercise in
             PlannedExercisePrescription(

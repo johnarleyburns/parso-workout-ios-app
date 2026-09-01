@@ -119,6 +119,27 @@ final class EditablePlanTests: XCTestCase {
         ])
     }
 
+    func testApplyCarriesEngineProvenanceIntoSession() {
+        let json = Data(#"{"planId":"generated-plan"}"#.utf8)
+        let plan = EditablePlan(
+            warmupMinutes: 0,
+            cooldownMinutes: 0,
+            exercises: [EditableExercise(
+                name: "Bench Press",
+                sets: [EditableSet(targetReps: 8, targetWeight: nil)],
+                notes: "")],
+            enginePlanId: "generated-plan",
+            engineRevisionId: "r1",
+            enginePlanJSON: json)
+        let session = WorkoutSession(title: plan.title)
+
+        plan.apply(to: session)
+
+        XCTAssertEqual(session.enginePlanId, "generated-plan")
+        XCTAssertEqual(session.engineRevisionId, "r1")
+        XCTAssertEqual(session.enginePlanJSON, json)
+    }
+
     func testNormalizedPartnerIDsDropsOwnerOnly() {
         let owner = UUID()
         XCTAssertEqual(EditablePlan.normalizedPartnerIDs([owner], ownerID: owner), [])

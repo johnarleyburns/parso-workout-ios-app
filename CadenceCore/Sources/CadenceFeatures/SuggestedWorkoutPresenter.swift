@@ -77,8 +77,12 @@ public enum SuggestedWorkoutPresenter {
                                     unit: MeasurementUnitPreference,
                                     warmupMinutes: Int,
                                     cooldownMinutes: Int) -> EditablePlan {
-        EditablePlan.from(plan: option.plan, ladder: ladder, unit: unit,
-                          warmupMinutes: warmupMinutes, cooldownMinutes: cooldownMinutes)
+        var editable = EditablePlan.from(plan: option.plan, ladder: ladder, unit: unit,
+                                         warmupMinutes: warmupMinutes, cooldownMinutes: cooldownMinutes)
+        editable.enginePlanId = option.enginePlanID
+        editable.engineRevisionId = option.engineRevisionID
+        editable.enginePlanJSON = option.enginePlanJSON
+        return editable
     }
 
     /// Plain-language algorithm steps for the About sheet. Kept here so tests

@@ -191,7 +191,8 @@ extension TrainingEngineBridge {
         experience: ExperienceLevel,
         schedule: CoachSchedulePreferences,
         availableEquipment: [Equipment],
-        subjectId: String? = nil
+        subjectId: String? = nil,
+        exercisesPerSession: Int? = nil
     ) -> FreeExerciseDBPlusPlus.TrainingProfile {
         let equipment = availableEquipment
             .flatMap { equipmentStrings(for: $0) }
@@ -201,7 +202,9 @@ extension TrainingEngineBridge {
         let availability = FreeExerciseDBPlusPlus.TrainingAvailability(
             cycleLengthDays: 7,
             sessionsPerCycle: .init(min: sessions, target: sessions, max: sessions),
-            exercisesPerSession: nil,
+            exercisesPerSession: exercisesPerSession.map {
+                .init(min: Double($0), target: Double($0), max: Double($0))
+            },
             preferredDayOffsets: [],
             excludedDayOffsets: [])
 
@@ -227,7 +230,7 @@ extension TrainingEngineBridge {
             }
 
         return FreeExerciseDBPlusPlus.VolumeTarget(
-            targetId: "cadence-volume-\\(periodDays)d",
+            targetId: "cadence-volume-" + String(periodDays) + "d",
             periodDays: periodDays,
             muscles: muscles)
     }
@@ -252,7 +255,8 @@ extension TrainingEngineBridge {
         environment: String,
         schedule: CoachSchedulePreferences,
         style: SuggestedWorkoutStyle? = nil,
-        constraints: FreeExerciseDBPlusPlus.ExerciseConstraints? = nil
+        constraints: FreeExerciseDBPlusPlus.ExerciseConstraints? = nil,
+        sessionExerciseCount: Int? = nil
     ) -> FreeExerciseDBPlusPlus.WorkoutIntent {
         let fixedRestDays: [String]
         switch schedule.restPreference {
@@ -281,7 +285,10 @@ extension TrainingEngineBridge {
             requestedGoalPolicy: goal == .endurance ? "general-endurance-v1" : nil,
             environment: environment,
             schedule: engineSchedule,
-            sessionConstraints: nil,
+            sessionConstraints: sessionExerciseCount.map {
+                .init(exercisesPerSession: .init(
+                    min: $0, target: $0, max: $0))
+            },
             exerciseConstraints: constraints,
             preferences: preferences,
             continuity: "preserve")
@@ -305,7 +312,7 @@ extension TrainingEngineBridge {
         }
     }
 
-    private static func preferredExerciseIDs(for style: SuggestedWorkoutStyle) -> [String] {
+    static func preferredExerciseIDs(for style: SuggestedWorkoutStyle) -> [String] {
         exerciseRecords
             .filter { record in
                 switch style {
@@ -358,6 +365,241 @@ extension TrainingEngineBridge {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.string(from: date)
+    }
+}
+
+// MARK: - Suggested-workout generation
+
+extension TrainingEngineBridge {
+    struct EngineSuggestedWorkout {
+        let option: SuggestedWorkoutOption
+    }
+
+    /// Generates one style-biased suggestion through DB++ and adapts its
+    /// periodized session back into the app's flat suggestion contract.
+    static func suggestedWorkout(
+        input: SuggestedWorkoutInput,
+        context: SuggestedWorkoutEngineContext,
+        style: SuggestedWorkoutStyle
+    ) -> EngineSuggestedWorkout? {
+        let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
+        let exerciseLimit = max(1, suggestedWorkoutPlannedSetCap / preferredSets)
+        var schedule = context.schedule
+        // A suggestion is one launchable workout. The user's weekly schedule
+        // still informs the request shape, but does not create duplicate chips.
+        schedule.strengthDaysPerWeek = 1
+
+        let profile = trainingProfile(
+            experience: context.experience,
+            schedule: schedule,
+            availableEquipment: context.availableEquipment,
+            exercisesPerSession: exerciseLimit)
+        let target = fourSetTarget(for: input.trackedGroups)
+        let intent = workoutIntent(
+            goal: input.trainingGoal,
+            environment: context.environment,
+            schedule: schedule,
+            style: style,
+            sessionExerciseCount: exerciseLimit)
+        let result = run(
+            .generateFromIntent,
+            asOf: context.asOf,
+            intent: intent,
+            profile: profile,
+            target: target)
+        guard case let .ok(enginePlan) = outcome(for: result, payload: result?.plan),
+              let sourceSession = enginePlan.sessions.sorted(by: {
+                  ($0.dayOffset, $0.planSessionId) < ($1.dayOffset, $1.planSessionId)
+              }).first
+        else { return nil }
+
+        let trimmedExercises = trim(
+            sourceSession.exercises,
+            toSetCap: suggestedWorkoutPlannedSetCap)
+        let session = FreeExerciseDBPlusPlus.PlanSession(
+            planSessionId: sourceSession.planSessionId,
+            phaseId: sourceSession.phaseId,
+            dayOffset: sourceSession.dayOffset,
+            name: sourceSession.name ?? style.displayName,
+            notes: sourceSession.notes,
+            exercises: trimmedExercises)
+        let trimmedPlan = FreeExerciseDBPlusPlus.WorkoutPlan(
+            schemaVersion: enginePlan.schemaVersion,
+            planId: enginePlan.planId,
+            revisionId: enginePlan.revisionId,
+            name: enginePlan.name ?? style.planName,
+            description: enginePlan.description,
+            provenance: enginePlan.provenance,
+            cycle: enginePlan.cycle,
+            notes: enginePlan.notes,
+            tags: enginePlan.tags,
+            phases: enginePlan.phases,
+            sessions: [session])
+        let evaluation = run(
+            .evaluatePlan,
+            asOf: context.asOf,
+            profile: profile,
+            target: target,
+            plan: trimmedPlan)?.evaluation
+
+        let exercises = suggestedExercises(
+            from: session,
+            style: style,
+            goal: input.trainingGoal,
+            preferredSets: preferredSets)
+        guard !exercises.isEmpty else { return nil }
+        let initial = deficits(
+            trackedGroups: input.trackedGroups,
+            completed: input.completedSetsByMuscle)
+        let remaining = deficits(
+            trackedGroups: input.trackedGroups,
+            evaluation: evaluation,
+            fallback: initial,
+            exercises: exercises)
+        let appPlan = WorkoutPlan(
+            id: "coach-suggested-\(style.rawValue)",
+            name: style.planName,
+            source: .coachSuggested,
+            scheme: .strength,
+            items: exercises.enumerated().map { index, exercise in
+                PlanItem(
+                    id: index,
+                    movement: exercise.name,
+                    reps: exercise.repRange.lowerBound,
+                    targetSets: exercise.plannedSets)
+            },
+            notes: "DB++ \(trimmedPlan.planId) revision \(trimmedPlan.revisionId)")
+        let option = SuggestedWorkoutOption(
+            style: style,
+            plan: appPlan,
+            exercises: exercises,
+            initialDeficits: initial,
+            remainingDeficits: remaining,
+            plannedSetTotal: exercises.reduce(0) { $0 + $1.plannedSets },
+            capTrimmingOccurred: trimmedExercises.count < sourceSession.exercises.count,
+            citationIDs: suggestedWorkoutCitationIDs,
+            enginePlanID: trimmedPlan.planId,
+            engineRevisionID: trimmedPlan.revisionId,
+            enginePlanJSON: serialize(trimmedPlan))
+        return EngineSuggestedWorkout(option: option)
+    }
+
+    private static func fourSetTarget(
+        for groups: Set<MuscleGroup>
+    ) -> FreeExerciseDBPlusPlus.VolumeTarget {
+        let landmarks = Dictionary(uniqueKeysWithValues: groups.map {
+            ($0, VolumeBands(mev: Double(suggestedWorkoutTargetSetsPerGroup),
+                             mav: Double(suggestedWorkoutTargetSetsPerGroup),
+                             mrv: Double(suggestedWorkoutTargetSetsPerGroup)))
+        })
+        return volumeTarget(trackedGroups: groups, landmarks: landmarks, periodDays: 7)
+    }
+
+    private static func trim(
+        _ exercises: [FreeExerciseDBPlusPlus.PlanExercisePrescription],
+        toSetCap cap: Int
+    ) -> [FreeExerciseDBPlusPlus.PlanExercisePrescription] {
+        var total = 0
+        return exercises.sorted { ($0.order ?? Int.max) < ($1.order ?? Int.max) }.filter { exercise in
+            let sets = max(1, integerValue(exercise.sets) ?? exercise.plannedSets?.count ?? 1)
+            guard total + sets <= cap else { return false }
+            total += sets
+            return true
+        }
+    }
+
+    private static func suggestedExercises(
+        from session: FreeExerciseDBPlusPlus.PlanSession,
+        style: SuggestedWorkoutStyle,
+        goal: TrainingGoal,
+        preferredSets: Int
+    ) -> [SuggestedWorkoutExercise] {
+        let styleIDs = Set(preferredExerciseIDs(for: style))
+        let credits = setCredits
+        return session.exercises.sorted { ($0.order ?? Int.max) < ($1.order ?? Int.max) }.compactMap { prescription in
+            let record = prescription.exerciseId.flatMap { id in
+                exerciseRecords.first { $0.exerciseId == id }
+            }
+            guard record != nil || prescription.exerciseName != nil else { return nil }
+            let name = record?.name ?? prescription.exerciseName ?? "Exercise"
+            let sets = max(1, integerValue(prescription.sets)
+                ?? prescription.plannedSets?.count
+                ?? preferredSets)
+            let reps = repRange(prescription.reps)
+            let repLadder = prescription.plannedSets?.compactMap { integerValue($0.reps) } ?? []
+            let lower = repLadder.min() ?? reps.lower ?? goal.repRange.lowerBound
+            let upper = repLadder.max() ?? reps.upper ?? goal.repRange.upperBound
+            let direct = record?.direct ?? []
+            let indirect = record?.indirect ?? []
+            let stabilizers = record?.stabilizers ?? []
+            var contributions: [SuggestedMuscleContribution] = []
+            for muscle in direct {
+                contributions.append(.init(
+                    muscleID: muscle,
+                    weight: credits.direct,
+                    plannedSetContribution: Double(sets) * credits.direct))
+            }
+            for muscle in indirect where !direct.contains(muscle) {
+                contributions.append(.init(
+                    muscleID: muscle,
+                    weight: credits.indirect,
+                    plannedSetContribution: Double(sets) * credits.indirect))
+            }
+            for muscle in stabilizers
+                where !direct.contains(muscle) && !indirect.contains(muscle) && credits.stabilizer > 0 {
+                contributions.append(.init(
+                    muscleID: muscle,
+                    weight: credits.stabilizer,
+                    plannedSetContribution: Double(sets) * credits.stabilizer))
+            }
+            guard !contributions.isEmpty else { return nil }
+            let score = contributions.reduce(0) { $0 + $1.plannedSetContribution }
+            return SuggestedWorkoutExercise(
+                candidateID: record?.exerciseId ?? prescription.exerciseId ?? name,
+                name: name,
+                mechanics: record?.mechanic.flatMap(Mechanics.init(rawValue:)) ?? .compound,
+                plannedSets: sets,
+                repRange: lower...max(lower, upper),
+                contributions: contributions,
+                selectionScore: score,
+                isInStyle: prescription.exerciseId.map(styleIDs.contains) ?? false)
+        }
+    }
+
+    private static func deficits(
+        trackedGroups: Set<MuscleGroup>,
+        completed: [String: Double]
+    ) -> [String: Double] {
+        trackedGroups.reduce(into: [:]) { result, group in
+            result[group.rawValue] = max(
+                0,
+                Double(suggestedWorkoutTargetSetsPerGroup) - (completed[group.rawValue] ?? 0))
+        }
+    }
+
+    private static func deficits(
+        trackedGroups: Set<MuscleGroup>,
+        evaluation: FreeExerciseDBPlusPlus.PlanEvaluation?,
+        fallback: [String: Double],
+        exercises: [SuggestedWorkoutExercise]
+    ) -> [String: Double] {
+        guard let evaluation else {
+            var remaining = fallback
+            for exercise in exercises {
+                for contribution in exercise.contributions where remaining[contribution.muscleID] != nil {
+                    remaining[contribution.muscleID] = max(
+                        0,
+                        (remaining[contribution.muscleID] ?? 0) - contribution.plannedSetContribution)
+                }
+            }
+            return remaining
+        }
+        return trackedGroups.reduce(into: [:]) { result, group in
+            let row = evaluation.muscleCoverage[group.rawValue]
+            let target = row?.target ?? Double(suggestedWorkoutTargetSetsPerGroup)
+            let actual = row?.actualEffectiveSets ?? row?.plannedSets ?? 0
+            result[group.rawValue] = max(0, target - actual)
+        }
     }
 }
 

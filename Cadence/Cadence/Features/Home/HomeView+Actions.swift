@@ -85,7 +85,7 @@ extension HomeView {
             let candidates = try SuggestedWorkoutSignposts.exerciseFetchAndMap {
                 try WorkoutRepository.allExercises(context).map { exercise in
                     SuggestedExerciseCandidate(
-                        id: exercise.id.uuidString,
+                        id: exercise.sourceExerciseID ?? exercise.id.uuidString,
                         name: exercise.name,
                         mechanics: exercise.mechanicsValue ?? .compound,
                         primaryMuscles: exercise.primaryMuscles,
@@ -102,7 +102,12 @@ extension HomeView {
                     candidates: candidates,
                     trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
                     preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
-                    trainingGoal: settings.trainingGoal),
+                    trainingGoal: settings.trainingGoal,
+                    engineContext: SuggestedWorkoutEngineContext(
+                        experience: settings.experienceLevel,
+                        schedule: settings.coachSchedulePreferences,
+                        availableEquipment: Equipment.allCases,
+                        environment: "commercial_gym")),
                 unit: settings.unit,
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes)
@@ -115,7 +120,12 @@ extension HomeView {
                                               candidates: [],
                                               trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
                                               preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
-                                              trainingGoal: settings.trainingGoal),
+                                              trainingGoal: settings.trainingGoal,
+                                              engineContext: SuggestedWorkoutEngineContext(
+                                                  experience: settings.experienceLevel,
+                                                  schedule: settings.coachSchedulePreferences,
+                                                  availableEquipment: Equipment.allCases,
+                                                  environment: "commercial_gym")),
                 unit: settings.unit,
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes,

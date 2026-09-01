@@ -42,6 +42,7 @@ struct WorkoutPlanEditor: View {
     @State private var isEditing = false
     @State private var originalPlan: EditablePlan
     @State private var settingsPresented = false
+    @State private var generatePresented = false
     let allowsStart: Bool
 
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
@@ -65,6 +66,9 @@ struct WorkoutPlanEditor: View {
         ScrollView {
             VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
                 if allowsStart { startButton }
+                if plan.exercises.isEmpty {
+                    generateButton
+                }
 
                 WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
                                           isEditing: isEditing,
@@ -158,6 +162,17 @@ struct WorkoutPlanEditor: View {
                 plateRounding: $plateRounding,
                 useHR: $useHR)
         }
+        .sheet(isPresented: $generatePresented) {
+            StructuredPlanGeneratorView { generated in
+                var replacement = generated
+                replacement.warmupMinutes = plan.warmupMinutes
+                replacement.cooldownMinutes = plan.cooldownMinutes
+                plan = replacement
+                originalPlan = replacement
+                isEditing = true
+                generatePresented = false
+            }
+        }
     }
 
     private var startButton: some View {
@@ -174,6 +189,15 @@ struct WorkoutPlanEditor: View {
             exercisePickerIntent = .add
         }
         .accessibilityIdentifier("editor.addExercise")
+    }
+
+    private var generateButton: some View {
+        CadenceActionButton(title: "Generate with Coach",
+                            systemImage: "wand.and.stars",
+                            emphasis: .secondary) {
+            generatePresented = true
+        }
+        .accessibilityIdentifier("editor.generate")
     }
 
     private var settingsButton: some View {

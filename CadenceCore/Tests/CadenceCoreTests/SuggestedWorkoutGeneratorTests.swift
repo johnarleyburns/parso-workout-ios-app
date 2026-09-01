@@ -357,6 +357,46 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         }
     }
 
+    func testEngineContextGeneratesAllStylesWithEvaluationAndProvenance() throws {
+        let candidates = TrainingEngineBridge.exerciseRecords.map { record in
+            SuggestedExerciseCandidate(
+                id: record.exerciseId,
+                name: record.name,
+                mechanics: Mechanics(rawValue: record.mechanic ?? "") ?? .compound,
+                primaryMuscles: record.direct,
+                secondaryMuscles: record.indirect,
+                volumeEligible: record.volumeEligible,
+                trainingTypes: ExerciseTrainingType.decode(
+                    record.category == "powerlifting" ? ["strength", "powerlifting"]
+                    : record.category == "olympic weightlifting" ? ["strength", "olympic_weightlifting"]
+                    : record.category == "strongman" ? ["strength", "strongman"]
+                    : ["strength"]),
+                modalities: [],
+                sportContexts: [.generalFitness])
+        }
+        let bundle = SuggestedWorkoutGenerator.generate(input: SuggestedWorkoutInput(
+            completedSetsByMuscle: [:],
+            candidates: candidates,
+            trackedGroups: [.chest, .lats],
+            preferredSetsPerExercise: 4,
+            trainingGoal: .hypertrophy,
+            engineContext: SuggestedWorkoutEngineContext(
+                schedule: .default,
+                availableEquipment: Equipment.allCases,
+                asOf: Date(timeIntervalSince1970: 1_750_000_000))))
+
+        XCTAssertEqual(bundle.options.map(\.style), SuggestedWorkoutStyle.allCases)
+        for option in bundle.options {
+            XCTAssertTrue(option.isLaunchable)
+            XCTAssertLessThanOrEqual(option.plannedSetTotal, suggestedWorkoutPlannedSetCap)
+            XCTAssertEqual(option.enginePlanID, "generated-plan")
+            XCTAssertEqual(option.engineRevisionID, "r1")
+            XCTAssertNotNil(option.enginePlanJSON)
+            XCTAssertEqual(option.initialDeficits["chest"], 4)
+            XCTAssertEqual(option.initialDeficits["lats"], 4)
+        }
+    }
+
     func testAlreadySatisfiedStylesAreEmptyAndNonLaunchable() {
         let completed = satisfied(at: 4)
         let candidates = [candidate("chest", "Chest", primary: ["chest"])]

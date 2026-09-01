@@ -180,9 +180,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.navigationBars["View Suggested Workout"].waitForExistence(timeout: 5),
                       "Back did not return to suggested workouts")
-        app.navigationBars["View Suggested Workout"].swipeDown()
+        XCTAssertTrue(app.buttons["suggestedWorkout.close"].waitTap(timeout: 5),
+                      "Suggested-workout sheet lacks its Close action")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
-                      "Suggested-workout sheet did not swipe-dismiss back to Home")
+                      "Suggested-workout sheet did not close back to Home")
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
                       "Home Start Workout did not reopen after suggested workouts")
@@ -203,8 +204,13 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(swim.exists, "Start Workout lost Swim")
         XCTAssertLessThan(rowing.frame.minY, swim.frame.minY,
                           "Rowing is not before Swim in the cardio grid")
-        // Return to the top of the sheet for the strength-flow steps that follow.
-        for _ in 0..<8 { app.scrollViews.firstMatch.swipeDown() }
+        // Reopen at the top for the strength-flow steps that follow. Swiping
+        // `scrollViews.firstMatch` is ambiguous while Home remains behind this
+        // sheet and can move the covered dashboard instead of the picker.
+        XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitTap(timeout: 5),
+                      "Start Workout lacks its Cancel action")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(timeout: 10),
+                      "Home Start Workout did not reopen after taxonomy checks")
 
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
                       "Start Workout did not offer Custom Workout beneath Quick Start")

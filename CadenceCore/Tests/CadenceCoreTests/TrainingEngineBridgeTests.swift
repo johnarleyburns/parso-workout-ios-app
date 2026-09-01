@@ -240,6 +240,11 @@ final class TrainingEngineBridgeTests: XCTestCase {
         XCTAssertEqual(session.kind, .strength)
         XCTAssertTrue(session.trainingLoadTags.contains("engine"))
         XCTAssertFalse(session.citationIds.isEmpty)
+        XCTAssertTrue(session.citationIds.contains { $0.hasPrefix("exdb.") })
+        XCTAssertTrue(session.citationIds.allSatisfy {
+            CitationRegistry.citation(forId: $0) != nil
+        })
+        XCTAssertFalse(session.citationIds.contains { $0.hasPrefix("pattern:") })
         XCTAssertFalse(session.exercises?.isEmpty ?? true)
         XCTAssertTrue(session.id.hasPrefix("engine."))
     }

@@ -1214,10 +1214,72 @@ extension TrainingEngineBridge {
             durationMinutes: 45,
             exercises: exercises,
             trainingLoadTags: ["strength", "engine"] + decisionTypes,
-            citationIds: suggestedWorkoutCitationIDs,
+            citationIds: engineCitationIDs(
+                for: engineSession,
+                plan: plan,
+                decisions: decisions,
+                goal: goal),
             launchPayload: .strengthPlan(plan.planId),
             systemsTrained: [.maximalStrength, .hypertrophy],
             evidenceCategory: .strengthIntensity)
+    }
+
+    /// Resolves the evidence actually attached to an engine prescription into
+    /// the app's citation contract. DB++ stores movement references indirectly:
+    /// a prescription points to an exercise, the exercise points to pattern ids,
+    /// and the bundled evidence metadata maps each pattern to references. The
+    /// raw pattern ids never cross into a CoachSession or the UI.
+    private static func engineCitationIDs(
+        for engineSession: FreeExerciseDBPlusPlus.PlanSession,
+        plan: FreeExerciseDBPlusPlus.WorkoutPlan,
+        decisions: [FreeExerciseDBPlusPlus.CoachDecision],
+        goal: TrainingGoal
+    ) -> [String] {
+        var ids = suggestedWorkoutCitationIDs
+        ids.append(contentsOf: CitationRegistry.strengthIntensityPool.citationIds)
+        if goal == .hypertrophy {
+            ids.append(contentsOf: CitationRegistry.strengthVolumePool.citationIds)
+        }
+        if !(plan.phases ?? []).isEmpty {
+            ids.append(contentsOf: CitationRegistry.periodizationPool.citationIds)
+        }
+
+        for prescription in engineSession.exercises {
+            guard let record = exerciseRecord(for: prescription) else { continue }
+            for patternID in record.patterns.sorted() {
+                ids.append(contentsOf: evidencePatterns[patternID]?.references.map {
+                    "exdb.\($0)"
+                } ?? [])
+            }
+        }
+
+        let progressionTypes = Set(decisions.map(\.decisionType))
+        if !progressionTypes.isDisjoint(with: [
+            "increase_load", "decrease_load", "increase_reps", "decrease_reps"
+        ]) {
+            ids.append(CitationRegistry.rpeAutoregulation.id)
+        }
+        if !progressionTypes.isDisjoint(with: ["increase_sets", "decrease_sets"]) {
+            ids.append(contentsOf: CitationRegistry.strengthVolumePool.citationIds)
+        }
+
+        var seen: Set<String> = []
+        return ids.filter { id in
+            CitationRegistry.citation(forId: id) != nil && seen.insert(id).inserted
+        }
+    }
+
+    private static func exerciseRecord(
+        for prescription: FreeExerciseDBPlusPlus.PlanExercisePrescription
+    ) -> ExerciseRecord? {
+        if let exerciseId = prescription.exerciseId,
+           let record = exerciseRecords.first(where: { $0.exerciseId == exerciseId }) {
+            return record
+        }
+        guard let exerciseName = prescription.exerciseName else { return nil }
+        return exerciseRecords.first {
+            $0.name.caseInsensitiveCompare(exerciseName) == .orderedSame
+        }
     }
 
     private static func timestampString(_ date: Date) -> String {

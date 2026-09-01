@@ -10,6 +10,8 @@ struct AboutView: View {
     private let siteURL = URL(string: "https://www.parso.guru")!
     private let exerciseDBURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!
     private let exerciseAnnotationURL = URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
+    private let enginePackageURL = URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
+    private let enginePackageVersion = "1.15.4"
 
     var body: some View {
         ScrollView {
@@ -150,6 +152,16 @@ struct AboutView: View {
             Link(destination: exerciseAnnotationURL) {
                 HStack(spacing: 6) {
                     Text("View free-exercise-db++ annotations on GitHub")
+                    Image(systemName: "arrow.up.right").font(.caption2)
+                }
+                .font(.body)
+            }
+            Text("The on-device training engine is free-exercise-db++ \(enginePackageVersion), pinned as a Swift package dependency.")
+                .font(.footnote).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Link(destination: enginePackageURL) {
+                HStack(spacing: 6) {
+                    Text("View DB++ Swift package")
                     Image(systemName: "arrow.up.right").font(.caption2)
                 }
                 .font(.body)

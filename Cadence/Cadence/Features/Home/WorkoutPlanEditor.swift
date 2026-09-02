@@ -43,6 +43,9 @@ struct WorkoutPlanEditor: View {
     @State private var originalPlan: EditablePlan
     @State private var settingsPresented = false
     @State private var generatePresented = false
+    @State private var historyIndex: WorkoutPlanPartnerHistory.Index?
+    @State private var didResolvePartnerPlans = false
+    @State private var exerciseIndex: [String: Exercise] = [:]
     let allowsStart: Bool
 
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
@@ -80,7 +83,8 @@ struct WorkoutPlanEditor: View {
                         WorkoutPlanExerciseSection(
                             exercise: $exercise,
                             unit: settings.unit,
-                            exerciseInfo: allExercises.first { $0.name == exercise.name },
+                            exerciseInfo: exerciseIndex[exercise.name.lowercased()] ??
+                                allExercises.first { $0.name == exercise.name },
                             onSwap: { exercisePickerIntent = .swap(exercise.id) },
                             onRemove: { removeExercise(id: exercise.id) })
                     }
@@ -98,7 +102,16 @@ struct WorkoutPlanEditor: View {
         .onAppear {
             loadSettings()
             _ = try? WorkoutRepository.me(in: modelContext)
-            resolvePartnerPlans()
+            if historyIndex == nil {
+                let index = WorkoutPlanPartnerHistory.Index(context: modelContext)
+                historyIndex = index
+                exerciseIndex = Dictionary(allExercises.map { ($0.name.lowercased(), $0) },
+                                           uniquingKeysWith: { first, _ in first })
+            }
+            if !didResolvePartnerPlans {
+                resolvePartnerPlans()
+                didResolvePartnerPlans = true
+            }
         }
         .navigationTitle("Workout Plan")
         .navigationBarTitleDisplayMode(.inline)
@@ -260,11 +273,15 @@ struct WorkoutPlanEditor: View {
     private func resolvePartnerPlans() {
         let roster = rosterMembers()
         guard !plan.exercises.isEmpty else { return }
+        let index: WorkoutPlanPartnerHistory.Index
+        if let historyIndex {
+            index = historyIndex
+        } else {
+            index = WorkoutPlanPartnerHistory.Index(context: modelContext)
+            historyIndex = index
+        }
         plan = PartnerPlanResolver.fill(plan: plan, roster: roster) { name, performerID in
-            WorkoutPlanPartnerHistory.history(forExerciseNamed: name,
-                                              performerID: performerID,
-                                              people: allPeople,
-                                              context: modelContext)
+            index.history(forExerciseNamed: name, performerID: performerID, people: allPeople)
         }
     }
 

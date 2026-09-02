@@ -20,15 +20,26 @@ import CadenceCore
 /// it in as values, so this stays `swift test`-able.
 public enum PerformerSetPlanner {
 
+    public enum WeightBasis: Equatable, Sendable {
+        case explicitPlan
+        case ownerPlan
+        case exactHistory
+        case estimatedHistory
+        case priorHistory
+        case none
+    }
+
     /// The resolved target for one set. `weightKg` nil means "no opinion" — the
     /// editor leaves the field empty rather than inventing a load.
     public struct Resolved: Equatable, Sendable {
         public var reps: Int
         public var weightKg: Double?
+        public var weightBasis: WeightBasis
 
-        public init(reps: Int, weightKg: Double?) {
+        public init(reps: Int, weightKg: Double?, weightBasis: WeightBasis = .none) {
             self.reps = reps
             self.weightKg = weightKg
+            self.weightBasis = weightBasis
         }
     }
 
@@ -45,15 +56,20 @@ public enum PerformerSetPlanner {
         public var generalRepLadders: [[Int]]
         /// The performer's own first working weight for this exercise (kg).
         public var firstWorkingWeightKg: Double?
+        /// Prior working sets for this performer and movement, oldest first.
+        /// Used to make a transparent, rep-aware load suggestion.
+        public var weightSamples: [SetSample]
 
         public init(repsLoggedThisSession: [Int] = [],
                     repLadders: [[Int]] = [],
                     generalRepLadders: [[Int]] = [],
-                    firstWorkingWeightKg: Double? = nil) {
+                    firstWorkingWeightKg: Double? = nil,
+                    weightSamples: [SetSample] = []) {
             self.repsLoggedThisSession = repsLoggedThisSession
             self.repLadders = repLadders
             self.generalRepLadders = generalRepLadders
             self.firstWorkingWeightKg = firstWorkingWeightKg
+            self.weightSamples = weightSamples
         }
 
         public static let empty = History()
@@ -107,20 +123,43 @@ public enum PerformerSetPlanner {
                                ownerPlan: [PlannedSetPrescription],
                                ownerLadder: [Int]?,
                                isOwner: Bool,
-                               history: History) -> Resolved {
+                               history: History,
+                               formula: OneRepMaxFormula = .epley) -> Resolved {
         let planned = performerPlan.flatMap { setIndex < $0.count ? $0[setIndex] : nil }
         let ownerPlanned = setIndex < ownerPlan.count ? ownerPlan[setIndex] : nil
 
-        var weight = planned?.targetWeightKg
-        if weight == nil { weight = history.firstWorkingWeightKg }
-        if weight == nil, isOwner { weight = ownerPlanned?.targetWeightKg }
+        let weight: Double?
+        let weightBasis: WeightBasis
+        if let plannedWeight = planned?.targetWeightKg, plannedWeight > 0 {
+            weight = plannedWeight
+            weightBasis = .explicitPlan
+        } else if let suggestion = WeightSuggestion.suggest(
+            targetReps: reps(setIndex: setIndex, planned: planned,
+                             ownerPlanned: ownerPlanned,
+                             ownerLadder: isOwner ? ownerLadder : nil,
+                             history: history),
+            history: history.weightSamples,
+            formula: formula) {
+            weight = suggestion.weightKg
+            weightBasis = suggestion.basis == .exactRepMatch ? .exactHistory : .estimatedHistory
+        } else if let prior = history.firstWorkingWeightKg, prior > 0 {
+            weight = prior
+            weightBasis = .priorHistory
+        } else if isOwner, let ownerWeight = ownerPlanned?.targetWeightKg, ownerWeight > 0 {
+            weight = ownerWeight
+            weightBasis = .ownerPlan
+        } else {
+            weight = nil
+            weightBasis = .none
+        }
 
         return Resolved(reps: reps(setIndex: setIndex,
                                    planned: planned,
                                    ownerPlanned: ownerPlanned,
                                    ownerLadder: isOwner ? ownerLadder : nil,
                                    history: history),
-                        weightKg: (weight ?? 0) > 0 ? weight : nil)
+                        weightKg: (weight ?? 0) > 0 ? weight : nil,
+                        weightBasis: weightBasis)
     }
 
     private static func reps(setIndex: Int,

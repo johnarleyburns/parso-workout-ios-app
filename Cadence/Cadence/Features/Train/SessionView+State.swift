@@ -46,6 +46,7 @@ extension SessionView {
         setEditorIdentity = editingSetID ?? UUID()
         pendingRepsOverride = repsOverride
         pendingPerformerID = performerID
+        pendingPerformerWasProvided = performerID != nil || repsOverride != nil
         setEditorRoute = editingSetID.map { .edit(exerciseID: exercise.id, setID: $0) } ?? .add(exerciseID: exercise.id)
         if !dumbbellInfoShown, case .dumbbell = exercise.equipmentValue {
             dumbbellInfoShown = true
@@ -64,7 +65,9 @@ extension SessionView {
         if isEditing, editingSet == nil { return nil }
         let performerID: UUID? = isEditing
             ? (editingSet?.performedBy?.isMe ?? true ? nil : editingSet?.performedBy?.id)
-            : (pendingPerformerID ?? nextPerson(for: exercise).flatMap { $0.isMe ? nil : $0.id })
+            : (pendingPerformerWasProvided
+                ? pendingPerformerID
+                : nextPerson(for: exercise).flatMap { $0.isMe ? nil : $0.id })
 
         let defaults = performerDefaults(for: exercise)
         let own = defaults.first { $0.performerID == performerID }
@@ -77,7 +80,10 @@ extension SessionView {
             weight = own.weight
             hint = own.weightKg
         } else {
-            let prescribedKg = isPrescribedMovement(exercise.name) ? session.prescribedLoadKg : 0
+            // A coach load belongs to Me. A partner with no resolved load must
+            // open at zero rather than silently inheriting the owner's weight.
+            let prescribedKg = performerID == nil && isPrescribedMovement(exercise.name)
+                ? session.prescribedLoadKg : 0
             weight = prescribedKg > 0 ? Format.weightValue(prescribedKg, unit: settings.unit) : ""
             hint = nil
         }
@@ -104,6 +110,7 @@ extension SessionView {
             unit: settings.unit,
             priorWeightHint: hint,
             performerDefaults: defaults,
+            weightSourceText: own?.weightSourceText,
             exerciseName: exercise.name,
             setNumberText: isEditing ? "Editing set \(number)" : "Set \(number) of \(max(number, session.plannedRepLadder.count))",
             recordedText: isEditing ? "Recorded" : nil,
@@ -116,6 +123,7 @@ extension SessionView {
         inlineEditingSetID = nil
         pendingRepsOverride = nil
         pendingPerformerID = nil
+        pendingPerformerWasProvided = false
         setEditorRoute = nil
     }
     func recordInlineSet(for exercise: Exercise, draft: SetDraft) {
@@ -166,12 +174,19 @@ extension SessionView {
             let performerID = entry.isMe ? nil : entry.personID
             let logged = loggedReps(for: exercise, performerID: performerID)
             let resolved = resolvedSet(for: exercise, setIndex: logged.count, performerID: performerID)
+            let weightKg = resolved.weightKg.map {
+                SessionViewModel.roundedInferredWeightKg($0, unit: settings.unit,
+                                                         basis: resolved.weightBasis)
+            }
             let pc = ctx?.performerContexts.first { $0.performerID == performerID }
             let lastTime = pc.flatMap { SessionRenderModel.lastTimeSegment(label: $0.label, sets: $0.lastTimeSets, unit: settings.unit) }
             let lastSet = SetHistoryText.lastSetThisSession(loggedSets(for: exercise, performerID: performerID).last, unit: settings.unit)
             return InlineEditorConfig.PerformerDefault(
-                performerID: performerID, reps: resolved.reps, weightKg: resolved.weightKg,
-                weight: resolved.weightKg.map { Format.weightValue($0, unit: settings.unit) } ?? "",
+                performerID: performerID, reps: resolved.reps, weightKg: weightKg,
+                weight: weightKg.map { Format.weightValue($0, unit: settings.unit) } ?? "",
+                weightSourceText: weightSourceText(for: resolved.weightBasis,
+                                                   performerID: performerID,
+                                                   exerciseName: exercise.name),
                 lastTimeText: lastTime, lastSetThisSession: lastSet)
         }
     }
@@ -207,6 +222,11 @@ extension SessionView {
         if history.generalRepLadders.isEmpty {
             history.generalRepLadders = generalRepLadders[SessionRenderModel.performerKey(performerID)] ?? []
         }
+        if history.weightSamples.isEmpty {
+            history.weightSamples = (exercise.sets ?? [])
+                .filter { $0.session?.id != session.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID) }
+                .map(SetSample.from)
+        }
         history.repsLoggedThisSession = loggedReps(for: exercise, performerID: performerID)
         // What they lifted for this movement *today* is a better starting load
         // than what they opened with last time.
@@ -222,7 +242,27 @@ extension SessionView {
             // gets their own established rep pattern instead.
             ownerLadder: SessionViewModel.effectiveLadder(session: session),
             isOwner: performerID == nil,
-            history: history)
+            history: history,
+            formula: settings.formula)
+    }
+
+    private func weightSourceText(for basis: PerformerSetPlanner.WeightBasis,
+                                  performerID: UUID?, exerciseName: String) -> String? {
+        let performer = performerID.flatMap(people(for:))?.name ?? "your"
+        switch basis {
+        case .explicitPlan:
+            return performerID == nil ? "From your workout plan" : "From \(performer)'s workout plan"
+        case .ownerPlan:
+            return "From the workout plan"
+        case .exactHistory:
+            return "Matched \(performer)'s previous \(exerciseName) set · rounded to a loadable increment"
+        case .estimatedHistory:
+            return "Estimated from \(performer)'s previous \(exerciseName) sets · rounded to a loadable increment"
+        case .priorHistory:
+            return "From \(performer)'s previous \(exerciseName) history · rounded to a loadable increment"
+        case .none:
+            return nil
+        }
     }
 
 }

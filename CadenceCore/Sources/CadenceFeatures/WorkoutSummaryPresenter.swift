@@ -42,6 +42,17 @@ public enum WorkoutSummaryPresenter {
         performer.sets.map { setLine($0, unit: unit) }.joined(separator: ", ")
     }
 
+    /// Current-workout summary used by completed exercise cards and history
+    /// rows: performer labels stay attached to the sets they actually logged.
+    public static func doneSummary(_ line: WorkoutSummaryData.ExerciseLine,
+                                   unit: MeasurementUnitPreference) -> String? {
+        let performers = orderedPerformers(line)
+        guard !performers.isEmpty else { return nil }
+        return "Done: " + performers.map {
+            "\($0.name): \(performerSetsText($0, unit: unit))"
+        }.joined(separator: "; ")
+    }
+
     /// The performers to render, "Me" first, then partners in the order the
     /// value type recorded them. Performers with no working sets are dropped.
     public static func orderedPerformers(_ line: WorkoutSummaryData.ExerciseLine)

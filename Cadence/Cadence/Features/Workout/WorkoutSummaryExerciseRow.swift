@@ -90,7 +90,10 @@ struct WorkoutSummaryExerciseRow: View {
     }
 
     private var summaryLine: String {
-        "\(line.setCount) set\(line.setCount == 1 ? "" : "s") · reps "
+        if let done = WorkoutSummaryPresenter.doneSummary(line, unit: unit) {
+            return done
+        }
+        return "\(line.setCount) set\(line.setCount == 1 ? "" : "s") · reps "
             + line.reps.map(String.init).joined(separator: ", ")
     }
 }

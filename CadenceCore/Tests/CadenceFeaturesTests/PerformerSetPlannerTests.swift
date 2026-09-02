@@ -100,6 +100,22 @@ final class PerformerSetPlannerTests: XCTestCase {
         XCTAssertNil(resolved.weightKg)
     }
 
+    func testHistoryWeightCarriesItsBasisAndCanBeRoundedForDisplay() {
+        let history = PerformerSetPlanner.History(
+            firstWorkingWeightKg: 15.08,
+            weightSamples: [SetSample(weight: 15.08, reps: 8)])
+        let resolved = PerformerSetPlanner.resolve(
+            setIndex: 0, performerPlan: nil,
+            ownerPlan: plan([8]), ownerLadder: nil,
+            isOwner: false, history: history)
+
+        XCTAssertEqual(resolved.weightBasis, .exactHistory)
+        XCTAssertEqual(resolved.weightKg ?? 0, 15.08, accuracy: 0.001)
+        XCTAssertEqual(SessionViewModel.roundedInferredWeightKg(
+            resolved.weightKg ?? 0, unit: .pounds, basis: resolved.weightBasis),
+                       WorkoutMath.lbToKg(35), accuracy: 0.001)
+    }
+
     // MARK: - Within-session continuation
 
     func testLaterSetsFollowWhatWasAlreadyLoggedToday() {

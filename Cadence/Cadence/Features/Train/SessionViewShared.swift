@@ -30,6 +30,7 @@ struct InlineEditorConfig: Equatable {
     /// their usual load and reps) instead of leaving the previous performer's
     /// numbers in place (field test 2026-08-19 #2).
     var performerDefaults: [PerformerDefault] = []
+    var weightSourceText: String? = nil
     var exerciseName: String = ""
     var setNumberText: String = ""
     var recordedText: String?
@@ -47,6 +48,7 @@ struct InlineEditorConfig: Equatable {
         var reps: Int
         var weightKg: Double?
         var weight: String
+        var weightSourceText: String? = nil
         /// Prior-session sets on this movement for THIS performer, already
         /// formatted (`185 lb × 5, 190 lb × 6`); nil when they have never done it
         /// (field test 2026-08-20 issue 3).

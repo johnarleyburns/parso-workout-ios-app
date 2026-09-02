@@ -194,6 +194,11 @@ struct InlineSetEditorView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(config.bodyweight ? "Added weight" : "Weight").font(.headline)
             if config.bodyweight { Text("Bodyweight movement · enter added load only").font(.caption).foregroundStyle(.secondary) }
+            if let source = selectedDefault?.weightSourceText ?? config.weightSourceText {
+                Label(source, systemImage: "wand.and.stars")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("setEditor.weightSource")
+            }
             Button { typedWeight = weightText; keypadPresented = true } label: {
                 HStack(alignment: .lastTextBaseline, spacing: 6) { Text(weightText).scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit(); Text(config.unit.abbreviation).font(.title3.weight(.semibold)); Text("Type…").font(.caption).foregroundStyle(.tint) }
                     .frame(maxWidth: .infinity)

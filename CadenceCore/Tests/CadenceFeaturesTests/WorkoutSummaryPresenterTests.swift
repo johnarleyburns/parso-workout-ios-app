@@ -71,6 +71,17 @@ final class WorkoutSummaryPresenterTests: XCTestCase {
         XCTAssertEqual(WorkoutSummaryPresenter.orderedPerformers(line).map(\.name), ["Me"])
     }
 
+    func testDoneSummaryKeepsSetsAttachedToTheirPerformer() {
+        let line = exerciseLine(performers: [
+            WorkoutSummaryData.PerformerLine(name: "Me", isMe: true,
+                                             sets: [setLine(100, 5)]),
+            WorkoutSummaryData.PerformerLine(name: "Alex", isMe: false,
+                                             sets: [setLine(60, 12)])
+        ])
+        XCTAssertEqual(WorkoutSummaryPresenter.doneSummary(line, unit: .kilograms),
+                       "Done: Me: 100 kg x 5; Alex: 60 kg x 12")
+    }
+
     func testExpandedAccessibilityValueNamesEachPerformer() {
         let line = exerciseLine(performers: [
             WorkoutSummaryData.PerformerLine(name: "Me", isMe: true, sets: [setLine(100, 5)]),

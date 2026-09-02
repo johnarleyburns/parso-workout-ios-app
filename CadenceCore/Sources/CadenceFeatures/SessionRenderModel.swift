@@ -16,6 +16,10 @@ public enum SessionRenderModel {
     /// (field test 2026-08-20 issue 2, decision D5).
     public static func compactSummary(context: ExerciseContext,
                                       unit: MeasurementUnitPreference) -> String {
+        if context.hasPlannedWork, context.pendingSets.isEmpty,
+           let done = completedSummary(context: context, unit: unit) {
+            return done
+        }
         guard context.hasPartners else {
             return countsSummary(context: context, unit: unit)
         }
@@ -26,6 +30,24 @@ public enum SessionRenderModel {
             return countsSummary(context: context, unit: unit)
         }
         return segments.joined(separator: "; ")
+    }
+
+    /// The current workout's completed work, used once an exercise has no
+    /// outstanding planned rows. This must outrank the prior-session context;
+    /// otherwise a completed card keeps showing the same "Last time" text that
+    /// was visible when the workout began.
+    public static func completedSummary(context: ExerciseContext,
+                                        unit: MeasurementUnitPreference) -> String? {
+        let working = context.sets.filter { !$0.isWarmup }
+        guard !working.isEmpty else { return nil }
+        let segments = context.performerContexts.compactMap { performer -> String? in
+            let sets = working.filter { set in
+                performer.isMe ? set.isOwnerSet : set.performedBy?.personID == performer.performerID
+            }
+            guard !sets.isEmpty else { return nil }
+            return "\(performer.label): " + sets.map { setLineText($0, unit: unit) }.joined(separator: ", ")
+        }
+        return segments.isEmpty ? nil : "Done: " + segments.joined(separator: "; ")
     }
 
     /// The combined `6/6 sets · reps · weight · BW` summary, used solo and as
@@ -171,6 +193,7 @@ public enum SessionRenderModel {
         public var pendingReps: [Int] = []
         public var pendingSets: [PendingSetDisplay] = []
         public var performerContexts: [PerformerContext] = []
+        public var hasPlannedWork: Bool = false
         public var hasPartners: Bool { performerContexts.count > 1 }
         /// The performer whose pending row leads the card — the alternation
         /// answer for "who goes next" on this exercise. `nil` is the owner; with
@@ -180,7 +203,8 @@ public enum SessionRenderModel {
         public init(exerciseID: UUID, name: String, sets: [SetDisplay],
                     pendingCount: Int, pendingReps: [Int],
                     performerContexts: [PerformerContext],
-                    pendingSets: [PendingSetDisplay] = []) {
+                    pendingSets: [PendingSetDisplay] = [],
+                    hasPlannedWork: Bool = false) {
             self.exerciseID = exerciseID
             self.name = name
             self.sets = sets
@@ -188,6 +212,7 @@ public enum SessionRenderModel {
             self.pendingReps = pendingReps
             self.performerContexts = performerContexts
             self.pendingSets = pendingSets
+            self.hasPlannedWork = hasPlannedWork
         }
     }
 
@@ -234,7 +259,8 @@ public enum SessionRenderModel {
             return PerformerSetPlanner.History(
                 repLadders: performer.repLadders,
                 generalRepLadders: performer.generalRepLadders,
-                firstWorkingWeightKg: performer.firstWorkingWeightKg)
+                firstWorkingWeightKg: performer.firstWorkingWeightKg,
+                weightSamples: performer.priorSamples)
         }
     }
 
@@ -354,7 +380,7 @@ public enum SessionRenderModel {
             }
 
             let ownerPlan = plannedSets(forPerformerID: nil, exerciseName: exercise.name, session: session)
-            var pendingByPerformer: [[PendingSetDisplay]] = []
+            var pendingByPerformer: [(performerID: UUID?, rows: [PendingSetDisplay])] = []
             for performer in performerContexts {
                 // A per-performer plan entered in the editor is that performer's
                 // own target and OUTRANKS their history (field test 2026-08-19
@@ -380,20 +406,31 @@ public enum SessionRenderModel {
                             ownerPlan: ownerPlan,
                             ownerLadder: nil,
                             isOwner: performer.isMe,
-                            history: history)
+                            history: history,
+                            formula: formula)
                         rows.append(PendingSetDisplay(
                             performerID: performer.performerID, performerName: performer.label,
                             setIndex: index, targetReps: resolved.reps,
                             targetWeightKg: resolved.weightKg))
                     }
                 }
-                pendingByPerformer.append(rows)
+                pendingByPerformer.append((performer.performerID, rows))
             }
             // Partners train the same movement together, so the remaining work
             // ALTERNATES: my set 1, their set 1, my set 2, … — never two
             // consecutive rows from one performer while the other still owes
             // rows (field test 2026-08-19 #1; decision D2).
-            let pendingSets = SetAlternation.spread(pendingByPerformer)
+            let configuredOrder = SessionRoster.roster(
+                activePartnerIDs: session.activePartnerIDs, allPeople: allPeople)
+                .map { $0.isMe ? nil : $0.id }
+            let fallbackOrder = performerContexts.map(\.performerID)
+            let order = configuredOrder + fallbackOrder.filter { !configuredOrder.contains($0) }
+            let orderedGroups = pendingByPerformer.sorted { lhs, rhs in
+                let left = order.firstIndex(of: lhs.performerID) ?? order.count
+                let right = order.firstIndex(of: rhs.performerID) ?? order.count
+                return left < right
+            }.map(\.rows)
+            let pendingSets = SetAlternation.spread(orderedGroups)
             let ownerPending = pendingSets.filter { $0.performerID == nil }
             let pendingReps = ownerPending.map(\.targetReps)
 
@@ -404,7 +441,8 @@ public enum SessionRenderModel {
                 pendingCount: pendingSets.count,
                 pendingReps: pendingReps,
                 performerContexts: performerContexts,
-                pendingSets: pendingSets
+                pendingSets: pendingSets,
+                hasPlannedWork: !ownerPlan.isEmpty
             ))
         }
 

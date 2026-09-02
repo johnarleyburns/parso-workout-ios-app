@@ -523,6 +523,29 @@ final class SessionRenderModelTests: XCTestCase {
                        "Pending rows repeat a performer while the other still owes rows")
     }
 
+    func testPendingRowsRespectAnExplicitPartnerFirstRoster() throws {
+        let ctx = try makeContext()
+        let me = try WorkoutRepository.me(in: ctx)
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
+        let session = try WorkoutRepository.createSession(
+            title: "Partner first", partnerIDs: [partner.id.uuidString, me.id.uuidString], in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        session.plannedPrescriptions = [PlannedExercisePrescription(
+            exerciseName: bench.name,
+            sets: [PlannedSetPrescription(targetReps: 8), PlannedSetPrescription(targetReps: 6)])]
+        session.plannedExerciseNames = [bench.name]
+        _ = try WorkoutRepository.addSet(to: session, exercise: bench,
+                                          weightKg: 40, reps: 12, performedBy: partner, in: ctx)
+
+        let state = SessionRenderModel.build(
+            session: session, prRule: .topWeight, formula: .epley,
+            allPeople: try WorkoutRepository.allPeople(ctx))
+
+        XCTAssertEqual(state.contexts.first?.pendingSets.map(\.performerID),
+                       [nil, partner.id, nil],
+                       "After a partner starts, the owner must be next and rows must alternate")
+    }
+
     /// Field test 2026-08-20 #1: the pending alternation is stable — rebuilding
     /// the same session twice yields identical pending rows.
     func testPendingAlternationIsDeterministicAcrossRebuilds() throws {

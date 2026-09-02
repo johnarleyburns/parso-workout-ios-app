@@ -101,4 +101,23 @@ public enum SessionViewModel {
         if plateRounding { kg = UnitEntry.plateRounded(kg: kg, unit: unit) }
         return kg
     }
+
+    /// Round only inferred loads before they reach the editor. Explicit plan
+    /// loads remain exact; inferred pounds use the field-tested 5 lb increment
+    /// and inferred kilograms use the matching 2.5 kg increment.
+    public static func roundedInferredWeightKg(_ kg: Double,
+                                               unit: MeasurementUnitPreference,
+                                               basis: PerformerSetPlanner.WeightBasis) -> Double {
+        guard kg > 0 else { return 0 }
+        switch basis {
+        case .explicitPlan, .ownerPlan:
+            return kg
+        case .exactHistory, .estimatedHistory, .priorHistory:
+            let display = WorkoutMath.display(kg, in: unit)
+            let increment = unit == .pounds ? 5.0 : 2.5
+            return WorkoutMath.canonical((display / increment).rounded() * increment, from: unit)
+        case .none:
+            return 0
+        }
+    }
 }

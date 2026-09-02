@@ -216,7 +216,9 @@ public enum PartnerPlanResolver {
             guard index < existing.sets.count else { return set }
             return EditableSet(id: existing.sets[index].id,
                                targetReps: set.targetReps,
-                               targetWeight: set.targetWeight)
+                               targetWeight: set.targetWeight,
+                               loadMode: set.loadMode,
+                               oneRepMaxPercent: set.oneRepMaxPercent)
         }
         return EditablePerformerPlan(id: existing.id,
                                      performerID: resolved.performerID,

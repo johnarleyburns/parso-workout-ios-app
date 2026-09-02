@@ -25,6 +25,9 @@ struct SessionView: View {
     @State var setEditorRoute: SetEditorRoute?
     @State var pendingRepsOverride: Int?
     @State var pendingPerformerID: UUID?
+    /// `nil` is the owner, so this flag distinguishes an explicitly selected
+    /// owner pending row from an add action that should choose the next turn.
+    @State var pendingPerformerWasProvided = false
     @State var lastEffortMode: WatchEffortMode = .rpe
     @State var showWeightInfo = false
     @State var showDumbbellInfo = false

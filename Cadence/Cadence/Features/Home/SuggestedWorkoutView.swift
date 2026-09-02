@@ -49,6 +49,7 @@ struct SuggestedWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var state: SuggestedWorkoutState = .idle
     @State private var aboutPresented = false
+    @State private var readyToast: SuggestedWorkoutToast?
 
     var body: some View {
         NavigationStack {
@@ -86,6 +87,14 @@ struct SuggestedWorkoutView: View {
                 NavigationStack { AboutSuggestedWorkoutsView() }
             }
         }
+        .overlay(alignment: .top) {
+            if let readyToast {
+                SuggestedWorkoutToastView(toast: readyToast)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: readyToast?.id)
         .task { await calculate() }
     }
 
@@ -108,9 +117,26 @@ struct SuggestedWorkoutView: View {
         }
         let bundle = await generation.value
         guard !Task.isCancelled else { return }
-        guard let bundle else { return }
+        guard let bundle else {
+            state = .failed(message: "The suggestion engine did not return a plan. Retry to try again.")
+            return
+        }
         SuggestedWorkoutSignposts.recordGeneration(bundle)
         state = .ready(bundle)
+        showReadyToast()
+    }
+
+    private func showReadyToast() {
+        let toast = SuggestedWorkoutToast(text: "Suggested workouts are ready")
+        withAnimation(.easeInOut(duration: 0.18)) {
+            readyToast = toast
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            guard readyToast?.id == toast.id else { return }
+            withAnimation(.easeInOut(duration: 0.18)) {
+                readyToast = nil
+            }
+        }
     }
 
     private func choices(_ bundle: SuggestedWorkoutBundle) -> some View {
@@ -169,5 +195,27 @@ struct SuggestedWorkoutView: View {
             }
         }
         .accessibilityIdentifier("suggestedWorkout.science")
+    }
+}
+
+private struct SuggestedWorkoutToast: Identifiable, Equatable {
+    let id = UUID()
+    let text: String
+}
+
+private struct SuggestedWorkoutToastView: View {
+    let toast: SuggestedWorkoutToast
+
+    var body: some View {
+        Label(toast.text, systemImage: "checkmark.circle.fill")
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
+            .overlay {
+                Capsule().stroke(Color.green.opacity(0.35), lineWidth: 1)
+            }
+            .padding(.horizontal, 16)
+            .accessibilityIdentifier("suggestedWorkout.readyToast")
     }
 }

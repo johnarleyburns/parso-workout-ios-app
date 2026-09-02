@@ -462,12 +462,15 @@ extension TrainingEngineBridge {
             tags: enginePlan.tags,
             phases: enginePlan.phases,
             sessions: [session])
-        let evaluation = run(
-            .evaluatePlan,
-            asOf: context.asOf,
-            profile: profile,
-            target: target,
-            plan: trimmedPlan)?.evaluation
+        // `generateFromIntent` already evaluates the generated plan. Re-running
+        // the evaluator here doubled chooser latency on device and made the UI
+        // smoke readiness assertion race a legitimate, still-running request.
+        // The engine's plan is already within the requested exercise/set cap in
+        // the normal path. If trimming did occur, use the local contribution
+        // fallback below so the gap reflects the actual trimmed plan.
+        let evaluation = trimmedExercises.count == sourceSession.exercises.count
+            ? result?.evaluation
+            : nil
 
         let exercises = suggestedExercises(
             from: session,

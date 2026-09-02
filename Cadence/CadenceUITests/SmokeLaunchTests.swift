@@ -132,6 +132,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Start Workout did not open suggested workouts")
         XCTAssertTrue(app.descendants(matching: .any)["suggestedWorkout.ready"].waitForExistence(timeout: 15),
                       "Suggested workouts did not become ready")
+        XCTAssertTrue(app.descendants(matching: .any)["suggestedWorkout.readyToast"].waitForExistence(timeout: 3),
+                      "Suggested-workout readiness did not notify the user")
         XCTAssertTrue(app.navigationBars["View Suggested Workout"].exists,
                       "Suggested-workout chooser has the wrong title")
         // Five training styles at one set target, not three lengths of the same

@@ -17,25 +17,79 @@ enum StringArray {
 /// The complete coach prescription for one exercise. Stored as JSON in the
 /// session so each exercise can retain its own set ladder and load.
 public struct PlannedSetPrescription: Codable, Equatable, Sendable {
+    public var sourceSetID: UUID?
     public var targetReps: Int
     public var targetWeightKg: Double?
     public var targetLoadMode: String?
     public var oneRepMaxPercent: Double?
+    public var targetRPE: Double?
+    public var restSeconds: Int?
+    public var isWarmup: Bool
 
+    /// Source-compatible initializer retained for clients compiled against the
+    /// shipped prescription shape.
     public init(targetReps: Int, targetWeightKg: Double? = nil,
                 targetLoadMode: String? = nil, oneRepMaxPercent: Double? = nil) {
+        self.init(sourceSetID: nil, targetReps: targetReps,
+                  targetWeightKg: targetWeightKg, targetLoadMode: targetLoadMode,
+                  oneRepMaxPercent: oneRepMaxPercent)
+    }
+
+    public init(sourceSetID: UUID? = nil, targetReps: Int, targetWeightKg: Double? = nil,
+                targetLoadMode: String? = nil, oneRepMaxPercent: Double? = nil,
+                targetRPE: Double? = nil, restSeconds: Int? = nil,
+                isWarmup: Bool = false) {
+        self.sourceSetID = sourceSetID
         self.targetReps = targetReps
         self.targetWeightKg = targetWeightKg
         self.targetLoadMode = targetLoadMode
         self.oneRepMaxPercent = oneRepMaxPercent
+        self.targetRPE = targetRPE
+        self.restSeconds = restSeconds
+        self.isWarmup = isWarmup
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case sourceSetID
+        case targetReps
+        case targetWeightKg
+        case targetLoadMode
+        case oneRepMaxPercent
+        case targetRPE
+        case restSeconds
+        case isWarmup
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.sourceSetID = try container.decodeIfPresent(UUID.self, forKey: .sourceSetID)
+        self.targetReps = try container.decode(Int.self, forKey: .targetReps)
+        self.targetWeightKg = try container.decodeIfPresent(Double.self, forKey: .targetWeightKg)
+        self.targetLoadMode = try container.decodeIfPresent(String.self, forKey: .targetLoadMode)
+        self.oneRepMaxPercent = try container.decodeIfPresent(Double.self, forKey: .oneRepMaxPercent)
+        self.targetRPE = try container.decodeIfPresent(Double.self, forKey: .targetRPE)
+        self.restSeconds = try container.decodeIfPresent(Int.self, forKey: .restSeconds)
+        // `isWarmup` was added after the original export shape.
+        self.isWarmup = try container.decodeIfPresent(Bool.self, forKey: .isWarmup) ?? false
     }
 }
 
 public struct PlannedExercisePrescription: Codable, Equatable, Sendable {
+    public var sourceItemID: UUID?
+    public var exerciseKey: String?
     public var exerciseName: String
     public var sets: [PlannedSetPrescription]
 
+    /// Source-compatible initializer retained for clients compiled against the
+    /// shipped prescription shape.
     public init(exerciseName: String, sets: [PlannedSetPrescription]) {
+        self.init(sourceItemID: nil, exerciseKey: nil, exerciseName: exerciseName, sets: sets)
+    }
+
+    public init(sourceItemID: UUID? = nil, exerciseKey: String? = nil,
+                exerciseName: String, sets: [PlannedSetPrescription]) {
+        self.sourceItemID = sourceItemID
+        self.exerciseKey = exerciseKey
         self.exerciseName = exerciseName
         self.sets = sets
     }
@@ -453,6 +507,9 @@ public final class WorkoutSession {
     public var enginePlanId: String?
     public var engineRevisionId: String?
     public var enginePlanJSON: Data?
+    /// Source plan-session identity for the unified planning adapter. Optional
+    /// so legacy sessions remain unchanged and manual workouts stay plan-free.
+    public var planSessionID: UUID?
     /// Links to the summary HKWorkout written for this session (FR-4.3) or the
     /// Watch-ingested workout this came from (FR-2.1). Used for de-dup.
     public var healthKitWorkoutUUID: UUID?
@@ -492,6 +549,7 @@ public final class WorkoutSession {
                 warmupSeconds: Double = 0,
                 cooldownSeconds: Double = 0,
                 activePartnerIDsData: String = "",
+                planSessionID: UUID? = nil,
                 updatedAt: Date = Date(),
                 originDevice: String = "") {
         self.id = id
@@ -505,6 +563,7 @@ public final class WorkoutSession {
         self.warmupSeconds = warmupSeconds
         self.cooldownSeconds = cooldownSeconds
         self.activePartnerIDsData = activePartnerIDsData
+        self.planSessionID = planSessionID
         self.updatedAt = updatedAt
         self.originDevice = originDevice
     }

@@ -54,11 +54,11 @@ engine calls, no runtime network path, additive-only persistence, warning-free
 builds, stable exercise IDs, package evidence resolved to app citations, and no
 second exercise database/decoder or DB++ import site.
 
-## Immediate next task — Phase 0 execution-compatibility audit and closure map
+## Immediate next task — Phase 0 unified model and Watch payload closure
 
-Read spec §§7–10, §§39–42, §47.0, Phase 0, `WS-EXECUTION-COMPAT`, and
-Appendix AA before touching planning or trainer code.
-Produce a repository-backed matrix that marks every Phase 0 requirement as:
+The required spec audit is complete in the closure map linked below. It covers
+§§7–10, §§39–42, §47.0, Phase 0, `WS-EXECUTION-COMPAT`, and Appendix AA.
+The matrix marks every Phase 0 requirement as:
 
 - **verified shipped** — cite implementation and tests;
 - **partial** — identify the exact missing model, invariant, test, or UI seam;
@@ -66,23 +66,24 @@ Produce a repository-backed matrix that marks every Phase 0 requirement as:
 - **superseded by v2.5** — only where the spec explicitly adopts the DB++ or
   existing SwiftData implementation instead.
 
-First freeze regression fixtures around today's editable workout/coach-plan
+Regression coverage is frozen around today's editable workout/coach-plan
 materializer, collapsed strength cards, full-screen set editor, performer history
 and alternation, 20-muscle credits, Watch strength/cardio lifecycle, and durable
-phone reconciliation. Then resolve the smallest adapter into the future unified
-`Plan → Week → Day → Session → Item → Set` model and the trainer/client sharing
-proof. It must not replace working private-iCloud sync, unplanned workout paths,
-Watch execution, cardio, partner behavior, history/export, or the DB++ bridge.
+phone reconciliation. The first smallest adapter slice is landed; it does not
+replace working private-iCloud sync, unplanned workout paths, Watch execution,
+cardio, partner behavior, history/export, or the DB++ bridge.
 
-After the audit, update the phase table below with concrete work slices and begin
-the first unmet dependency. Do not implement later-phase UI before the Phase 0
-model and sharing boundaries needed by it are explicit.
+Audit and closure map: `docs/plans/cladiron-mvp-revised/PHASE-0-EXECUTION-COMPATIBILITY-AUDIT.md`.
+The first adapter slice is now landed in `CadenceCore` and covered by
+`RuntimePrescriptionAdapterTests`. Continue with the dependency-ordered slices
+in that audit. Do not implement later-phase UI before the Phase 0 model and
+sharing boundaries needed by it are explicit.
 
 ## Phase queue
 
 | Phase | Status | Next outcome |
 |---|---|---|
-| 0 — foundations and sync proof | **NEXT: compatibility audit** | lock Appendix AA fixtures, then add the smallest unified-plan and trainer/client sharing adapters |
+| 0 — foundations and sync proof | **IN PROGRESS: audit + session adapter** | complete the persisted unified Plan model, versioned Watch strength/cardio payloads, then add the trainer/client sharing proof |
 | 1 — athlete app | pending | Plan-first iPhone/iPad experience, compact authoring, partner execution, migration |
 | 2 — scientific coach | partial baseline shipped | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces |
 | 3 — iPad Trainer mode | pending | roster, planner, connected/external delivery, review, export, and Pro entitlement |

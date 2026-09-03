@@ -132,6 +132,8 @@ public struct ExportSession: Codable, Equatable, Sendable {
     public var prescribedLoadKg: Double?
     public var activePartnerIDs: [String]?
     public var plannedPrescriptions: [PlannedExercisePrescription]?
+    /// Unified-plan source session identity; optional for legacy exports.
+    public var planSessionID: UUID?
     /// Per-performer prescriptions (field test 2026-08-18 #4, decision D11).
     /// Optional and additive: an export written before this field decodes it as
     /// nil and imports exactly as it always did, so no version bump is needed.
@@ -143,7 +145,8 @@ public struct ExportSession: Codable, Equatable, Sendable {
                 cooldownSeconds: Double? = nil, prescribedLoadKg: Double? = nil,
                 activePartnerIDs: [String]? = nil,
                 plannedPrescriptions: [PlannedExercisePrescription]? = nil,
-                plannedPerformerPrescriptions: [PlannedPerformerPrescription]? = nil) {
+                plannedPerformerPrescriptions: [PlannedPerformerPrescription]? = nil,
+                planSessionID: UUID? = nil) {
         self.id = id; self.title = title; self.date = date; self.notes = notes; self.sets = sets
         self.endedAt = endedAt; self.isLogged = isLogged; self.planKey = planKey
         self.templateName = templateName; self.plannedExerciseNames = plannedExerciseNames
@@ -152,6 +155,7 @@ public struct ExportSession: Codable, Equatable, Sendable {
         self.activePartnerIDs = activePartnerIDs
         self.plannedPrescriptions = plannedPrescriptions
         self.plannedPerformerPrescriptions = plannedPerformerPrescriptions
+        self.planSessionID = planSessionID
     }
 }
 

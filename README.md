@@ -1,6 +1,6 @@
 # Cladiron
 
-A private, open-source, science-based **strength app** for iPhone and Apple Watch. The tracker is **free forever** and open source — logging, history, Progress, Tests, and export are never gated. The **Coach** is a paid product (**Cladiron Pro**). The source is open so you can verify we never track you. Log strength workouts with per-set tracking and partner rotation from your wrist, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported on both phone and watch. **Companion Apple Watch app included** — run a full "watch-only fitness" session without your phone: strength (with partners, lbs, warm-up/cool-down), HIIT/Boxing with customizable rounds, and cardio (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live HR streams from the wrist; every completed workout saves to HealthKit for rings credit and auto-ingests back to the phone. Your data stays entirely on-device, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
+A proprietary, privacy-first, science-based **strength app** for iPhone and Apple Watch. Logging, history, Progress, Tests, and export are never gated. The **Coach** is a paid product (**Cladiron Pro**). Log strength workouts with per-set tracking and partner rotation from your wrist, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported on both phone and watch. **Companion Apple Watch app included** — run a full "watch-only fitness" session without your phone: strength (with partners, lbs, warm-up/cool-down), HIIT/Boxing with customizable rounds, and cardio (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live HR streams from the wrist; every completed workout saves to HealthKit for rings credit and auto-ingests back to the phone. Your data stays on-device and in your private iCloud, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
 
 **Every single coaching output cites published, user-navigable science.** Cladiron never makes a recommendation, insight, warning, or deferred decision without a tappable "The science >" link to the study behind it.
 
@@ -17,7 +17,7 @@ A private, open-source, science-based **strength app** for iPhone and Apple Watc
 - **Assessments** — strength (e1RM, rep-max, push-up, pull-up, plank, hollow hold) and cardio (VO2max field test, Wingate) battery with longitudinal tracking and retest cadence.
 - **Progress dashboard** — science-backed adaptation dashboard: e1RM trends, a PR timeline, a training-consistency heatmap, weekly volume vs landmarks, load intensity vs goal, effort/frequency, test results — every interpretation cites its source with tappable "The science >" links.
 - **Weekly dashboard** — Home's This Week card tracks strength days, cardio as moderate-equivalent minutes (with the vigorous-counts-double weighting broken out and cited, so 80 hard minutes reading as 158 is explained rather than mysterious), total tonnage, and graded muscle-group/muscle weekly sets: below 4, building to 8, productive through 12, and explicitly above the 12-set maximum.
-- **Exercise library** — 1,000+ exercises from a vendored CC0 database (free-exercise-db) with images, instructions, muscles, and level. Searchable with body-part filters.
+- **Exercise library and training engine** — 873 exercises from the pinned open `free-exercise-db-plusplus` package, with source imagery, evidence-audited muscle roles, a 20-muscle ontology, movement classifications, and deterministic planning primitives.
 - **Workout routines** — Full Body A/B, PHUL (4-day), Arnold Split, StrongLifts 5x5, Push/Pull/Legs, Upper/Lower, Calisthenics, Olympic Lifting, plus user-created templates. Every preset cites the relevant evidence.
 - **Cardio recording** — GPS outdoor (run/walk/cycle), indoor recording, swim laps, with live HR from a BLE chest strap (Apple Watch workouts are imported from Health afterward).
 - **HIIT intervals** — 7 science-backed protocols (Tabata, Norwegian 4x4, Gibala, SIT, REHIT, 10-20-30, Boxing) with work/rest timing, round bells, and warm-up/cool-down.
@@ -79,25 +79,19 @@ App Store launch materials live in `docs/app-store/metadata.md` and `docs/app-st
 
 Built supervised with Claude Code / opencode — see `CLAUDE.md`.
 
-## License
+## License and open-project boundary
 
-**GPLv3** — see [LICENSE](LICENSE). The Cladiron source code is free software
-under the GNU General Public License v3.0.
+Cladiron is proprietary, closed-source software. Copyright © 2026 Parso
+Consulting / John Arley Burns. All rights are reserved; see [LICENSE](LICENSE)
+and [TRADEMARKS.md](TRADEMARKS.md).
 
-The **"Cladiron" name, app icon, and brand assets are trademarks** and are *not*
-covered by the GPL — see [TRADEMARKS.md](TRADEMARKS.md). Forks must use their own
-name and icon.
+Cladiron is a proprietary, privacy-first application built on the open
+free-exercise-db-plusplus project. The exercise database, annotations, and
+related tooling remain freely available for use by other applications.
 
-As the sole copyright holder, John Arley Burns grants an **App Store exception**
-(see [LICENSE](LICENSE)) permitting distribution of this software through the
-Apple App Store under Apple's standard terms, notwithstanding any conflict with
-sections 6 and 12 of the GPL. This exception applies only to distribution by the
-copyright holder.
-
-Cladiron is open source so users can independently verify there is no tracking,
-no telemetry, and no account or server — the privacy claims are auditable.
-Purchasing **Cladiron Pro** on the App Store funds continued development. The free
-app is complete on its own; Pro adds the coaching layer (see below).
+The app pins `free-exercise-db-plusplus` 1.15.4 behind one import boundary.
+Cladiron's interface, app-specific coaching composition, persistence, HealthKit
+integration, Watch experience, and other application code are proprietary.
 
 Free users see the coach's **live insights** continuously — real, cited
 observations about their own training that update after every workout. What Pro

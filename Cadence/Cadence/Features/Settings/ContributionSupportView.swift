@@ -19,12 +19,12 @@ struct ContributionSupportView: View {
                         Label("Thank you for your support!", systemImage: "heart.fill")
                             .foregroundStyle(.pink)
                             .font(.headline)
-                        Text("Cladiron stays free, open-source, and ad-free because of people like you. Want to chip in again?")
+                        Text("Cladiron stays independent, privacy-first, and ad-free because of people like you. Want to chip in again?")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    Text("Cladiron is free, open-source, and ad-free. An optional contribution supports continued development — it's never required, and it unlocks nothing you don't already have.")
+                    Text("Cladiron is proprietary, privacy-first, and ad-free. An optional contribution supports continued development — it's never required, and it unlocks nothing you don't already have.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

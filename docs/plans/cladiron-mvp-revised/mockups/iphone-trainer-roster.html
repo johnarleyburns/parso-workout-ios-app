@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone Trainer - Roster Triage</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPhone Trainer - Roster Triage</h1>
+        <p>Forty clients, ten seconds, standing up. Cards render at triage height &mdash; status, pulse, one exception line, one primary action &mdash; sorted by needs-attention so the useful three are above the fold. Spec K.10 / section 30.2.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">K.10</span><span class="tag">Pro</span><span class="tag">Gym floor</span></div>
+    </header>
+
+    <section class="device-stage" style="display:grid;grid-template-columns:repeat(2,auto);gap:26px;justify-content:center;">
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>11:04</span><span>5G 61%</span></div>
+            <div class="ios-nav" style="padding-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span class="spacer"></span><span class="button ghost">Export</span><span class="button ghost">+ Client</span></div>
+              <h2>Clients</h2>
+              <div class="sub">14 active &middot; 5 need you</div>
+            </div>
+            <div class="ios-content">
+              <div class="segment" style="grid-template-columns:repeat(3,1fr);"><span class="active">Needs you</span><span>All</span><span>Paused</span></div>
+
+              <article class="ios-card" style="margin-top:11px;">
+                <div style="display:flex;align-items:center;gap:9px;">
+                  <span class="avatar">MR</span>
+                  <div style="flex:1;"><h3>Maya R.</h3><div class="sub">Lower B &middot; done 6:14 PM</div></div>
+                  <span class="pill alert">Pain 2/10</span>
+                </div>
+                <div class="pulse" style="margin-top:9px;"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span></div>
+                <div class="sub" style="margin-top:7px;">Right knee on split squat &middot; 17/18 sets</div>
+                <button class="button primary" style="width:100%;margin-top:9px;">Review</button>
+              </article>
+
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:9px;">
+                  <span class="avatar green">DC</span>
+                  <div style="flex:1;"><h3>Daniel C.</h3><div class="sub">Upper A &middot; in progress</div></div>
+                  <span class="pill progress">No plan</span>
+                </div>
+                <div class="pulse" style="margin-top:9px;"><span class="done"></span><span class="done"></span><span class="now"></span><span></span><span></span><span></span></div>
+                <div class="sub" style="margin-top:7px;">Next week not built &middot; engine: bench +5 lb</div>
+                <button class="button primary" style="width:100%;margin-top:9px;">Build next week</button>
+              </article>
+
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:9px;">
+                  <span class="avatar amber">JP</span>
+                  <div style="flex:1;"><h3>Jules P.</h3><div class="sub">Rest day</div></div>
+                  <span class="pill info">e1RM</span>
+                </div>
+                <div class="sub" style="margin-top:7px;">Bench 240 &rarr; 247 from Fri 10 &times; 185 @ RPE 8</div>
+                <div style="display:flex;gap:8px;margin-top:9px;"><button class="button" style="flex:1;">Ignore</button><button class="button primary" style="flex:1;">Accept</button></div>
+              </article>
+
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:9px;">
+                  <span class="avatar purple">SW</span>
+                  <div style="flex:1;"><h3>Sam W.</h3><div class="sub">No session in 8 days</div></div>
+                  <span class="pill alert">Inactive</span>
+                </div>
+              </article>
+            </div>
+            <nav class="ios-tabs" style="grid-template-columns:repeat(5,1fr);"><span>Home</span><span class="active">Clients</span><span>Plan</span><span>Progress</span><span>Profile</span></nav>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Five tabs in trainer mode.</b> The athlete tabs shift right; they are never removed. A coach's own training still matters.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>11:05</span><span>5G 61%</span></div>
+            <div class="ios-nav"><h2>Clients</h2><div class="sub">swipe actions</div></div>
+            <div class="ios-content">
+              <div class="ios-section-title">Swipe leading</div>
+              <article class="ios-card" style="background:var(--green-soft);border-color:#cae8d5;">
+                <div style="display:flex;align-items:center;gap:9px;">
+                  <span class="chip" style="background:var(--green);color:#fff;border-color:var(--green);">Review</span>
+                  <span class="avatar">MR</span>
+                  <div style="flex:1;"><h3>Maya R.</h3><div class="sub">Lower B &middot; done</div></div>
+                </div>
+              </article>
+
+              <div class="ios-section-title">Swipe trailing</div>
+              <article class="ios-card" style="background:#f7f4ee;">
+                <div style="display:flex;align-items:center;gap:9px;">
+                  <span class="avatar purple">SW</span>
+                  <div style="flex:1;"><h3>Sam W.</h3><div class="sub">Inactive 8 days</div></div>
+                  <span class="chip" style="background:#6b7683;color:#fff;border-color:#6b7683;">Snooze</span>
+                  <span class="chip" style="background:var(--blue);color:#fff;border-color:var(--blue);">Message</span>
+                </div>
+              </article>
+
+              <div class="ios-section-title">Filters</div>
+              <div style="display:flex;gap:7px;flex-wrap:wrap;">
+                <span class="chip active">Needs you</span><span class="chip">All 14</span><span class="chip">Active</span><span class="chip">Paused 2</span><span class="chip">Archived 3</span>
+              </div>
+              <div class="banner info" style="margin-top:11px;">Archived clients keep their history and their tab in the export &mdash; and they do <b>not</b> count toward Pro. Ending a coaching relationship should never feel billed.</div>
+
+              <div class="ios-section-title">Sort</div>
+              <div class="panel" style="padding:0;overflow:hidden;">
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);"><strong>Needs attention</strong><span class="spacer"></span>&#10003;</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Last activity</div>
+                <div class="side-row" style="margin:0;border-radius:0;">Name</div>
+              </div>
+            </div>
+            <nav class="ios-tabs" style="grid-template-columns:repeat(5,1fr);"><span>Home</span><span class="active">Clients</span><span>Plan</span><span>Progress</span><span>Profile</span></nav>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Everything reachable in the bottom two-thirds.</b> Destructive actions live behind a swipe or at top-right.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

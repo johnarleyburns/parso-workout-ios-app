@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPad Trainer - Strength Profile</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPad Trainer - Strength Profile</h1>
+        <p>The per-client estimated 1RM reference that every %1RM prescription resolves against. Always labelled estimated; never silently overwritten. Section 31.7.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">31.7</span><span class="tag">e1RM</span></div>
+    </header>
+
+    <section class="mockup-stage" style="display:grid;place-items:center;">
+      <div class="ipad-frame">
+        <div class="ipad-screen">
+          <div class="ipad-status"><span>Mon 3 Mar &nbsp; 9:48</span><span>Maya Rodriguez &mdash; Strength Profile</span><span>Wi-Fi</span></div>
+          <div class="menubar"><span class="app">Cladiron</span><span>File</span><span>Edit</span><span>Client</span><span>Plan</span><span>View</span><span>Window</span><span>Help</span></div>
+          <div class="split3">
+            <aside class="mac-sidebar">
+              <div class="side-heading">Clients</div>
+              <div class="side-row selected"><span class="avatar">MR</span><span>Maya R.</span></div>
+              <div class="side-row"><span class="avatar green">DC</span><span>Daniel C.</span></div>
+            </aside>
+            <section class="pane">
+              <div class="tabstrip"><span>Overview</span><span>Plan</span><span class="active">Strength Profile</span><span>History</span></div>
+              <div class="pane-body">
+                <div class="banner info"><strong style="margin-right:6px;">Suggestion</strong> Bench estimated 1RM 130 &rarr; 135 lb from Friday's 10 x 115 at RPE 8. <span class="spacer"></span><button class="button">Accept</button><button class="button">Ignore</button></div>
+                <div class="two-up">
+                  <div class="panel">
+                    <h3>Tracked lifts</h3>
+                    <table class="set-table">
+                      <thead><tr><th>Exercise</th><th>Est. 1RM</th><th>Confidence</th><th>Updated</th><th>Basis</th></tr></thead>
+                      <tbody>
+                        <tr style="background:var(--ember-soft);"><td>Back Squat</td><td class="mono">200 lb</td><td><span class="pill done">high</span></td><td class="mono">28 Feb</td><td class="mono">165 x 5 @ 8</td></tr>
+                        <tr><td>Bench Press</td><td class="mono">130 lb</td><td><span class="pill progress">medium</span></td><td class="mono">14 Feb</td><td class="mono">115 x 4 @ 9</td></tr>
+                        <tr><td>Deadlift</td><td class="mono">245 lb</td><td><span class="pill done">high</span></td><td class="mono">24 Feb</td><td class="mono">205 x 5 @ 8</td></tr>
+                        <tr><td>Overhead Press</td><td class="mono">85 lb</td><td><span class="pill alert">low</span></td><td class="mono">3 Jan</td><td class="mono">60 x 12 @ 8</td></tr>
+                        <tr><td>Leg Press</td><td class="mono">400 lb</td><td><span class="pill progress">medium</span></td><td class="mono">28 Feb</td><td class="mono">330 x 8 @ 8</td></tr>
+                        <tr><td>Barbell Row</td><td class="mono">135 lb</td><td><span class="pill progress">medium</span></td><td class="mono">21 Feb</td><td class="mono">115 x 6 @ 8</td></tr>
+                      </tbody>
+                    </table>
+                    <div class="card-meta"><span class="mono">Low confidence on OHP: derived from a 12-rep set, outside the 2-10 rep validity window.</span></div>
+                  </div>
+                  <div class="panel">
+                    <h3>Back Squat detail</h3>
+                    <div class="number-grid" style="grid-template-columns:repeat(3,1fr);">
+                      <div class="number-tile"><span>Est. 1RM</span><b>200</b></div>
+                      <div class="number-tile"><span>Formula</span><b style="font-size:16px;">Epley</b></div>
+                      <div class="number-tile"><span>8-wk trend</span><b style="font-size:18px;">+6%</b></div>
+                    </div>
+                    <table class="set-table" style="margin-top:8px;">
+                      <thead><tr><th>Date</th><th>Set</th><th>RPE</th><th>Implied 1RM</th></tr></thead>
+                      <tbody>
+                        <tr><td class="mono">28 Feb</td><td class="mono">165 x 5</td><td class="mono">8</td><td class="mono">192</td></tr>
+                        <tr><td class="mono">21 Feb</td><td class="mono">180 x 3</td><td class="mono">9</td><td class="mono">198</td></tr>
+                        <tr><td class="mono">14 Feb</td><td class="mono">160 x 5</td><td class="mono">8</td><td class="mono">187</td></tr>
+                        <tr><td class="mono">4 Jan</td><td class="mono">155 x 5</td><td class="mono">8.5</td><td class="mono">181</td></tr>
+                      </tbody>
+                    </table>
+                    <div class="card-meta"><button class="button">Set manually</button><button class="button">Recalculate</button><button class="button">Use recent best</button></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <aside class="inspector">
+              <h3>How this is used</h3>
+              <div class="finding"><strong>%1RM resolves here</strong>weight = round(e1RM x percent, increment). Maya's increment is 5 lb, nearest, no microplates.</div>
+              <div class="finding"><strong>Snapshot on send</strong>Sent plans freeze their weights. Accepting a suggestion changes future prescriptions only.</div>
+              <div class="finding"><strong>Estimation validity</strong>Epley and Brzycki are accurate in roughly the 2-10 rep range and degrade above it.<div class="citation-row"><span class="citation">epley_1985</span><span class="citation">brzycki_1993</span><span class="citation">nsca_essentials</span></div></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

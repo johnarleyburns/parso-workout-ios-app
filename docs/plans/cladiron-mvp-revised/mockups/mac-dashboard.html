@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mac - Native Dashboard</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>Mac - Native Dashboard</h1>
+        <p>Roster triage at desktop density, with the Client menu open. Same data, same code, same CloudKit zones as the iPad and iPhone builds &mdash; the trainer's Apple ID owns the shares, not any one machine, so a client can be added here, on the iPad, or on the phone and the roster converges through iCloud. Section 38.2.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">38.2</span><span class="tag">Native macOS</span><span class="tag">Any device adds clients</span></div>
+    </header>
+
+    <section class="mockup-stage">
+      <div class="menubar" style="border-radius:8px 8px 0 0;">
+        <span class="app">Cladiron</span><span>File</span><span>Edit</span><span class="open">Client</span><span>Plan</span><span>View</span><span>Window</span><span>Help</span>
+        <span class="spacer"></span><span class="mono" style="font-size:11px;color:var(--faint);">Mon 9:41</span>
+      </div>
+      <div class="menu-panel" style="position:absolute;margin-left:150px;">
+        <div><span>Add Client&hellip;</span><kbd></kbd></div>
+        <div><span>Invite Client&hellip;</span><kbd></kbd></div>
+        <hr>
+        <div class="sel"><span>Next Client</span><kbd>&#8997;&#8984;&rarr;</kbd></div>
+        <div><span>Previous Client</span><kbd>&#8997;&#8984;&larr;</kbd></div>
+        <hr>
+        <div><span>Pause Client</span><kbd></kbd></div>
+        <div><span>Archive Client</span><kbd></kbd></div>
+        <div><span>Client Settings&hellip;</span><kbd></kbd></div>
+      </div>
+
+      <div class="mac-window" style="border-radius:0 0 10px 10px;">
+        <div class="mac-titlebar"><div class="traffic"><span class="red"></span><span class="yellow"></span><span class="green"></span></div><strong>Cladiron &mdash; Clients</strong></div>
+        <div class="mac-app">
+          <aside class="mac-sidebar">
+            <div class="side-heading">Needs attention &nbsp; 5</div>
+            <div class="side-row selected"><span class="avatar">MR</span><span>Maya R.<span class="sub">Pain flag</span></span><span class="status-dot alert"></span></div>
+            <div class="side-row"><span class="avatar green">DC</span><span>Daniel C.<span class="sub">No plan next week</span></span><span class="status-dot assigned"></span></div>
+            <div class="side-row"><span class="avatar amber">JP</span><span>Jules P.<span class="sub">e1RM suggestion</span></span><span class="status-dot progress"></span></div>
+            <div class="side-row"><span class="avatar purple">SW</span><span>Sam W.<span class="sub">8 days inactive</span></span><span class="status-dot alert"></span></div>
+            <div class="side-row"><span class="avatar red">EN</span><span>Erin N.<span class="sub">deload proposed</span></span><span class="status-dot progress"></span></div>
+            <div class="side-heading">On track &nbsp; 9</div>
+            <div class="side-row"><span class="avatar">TK</span><span>Tomas K.</span><span class="status-dot done"></span></div>
+            <div class="side-row"><span class="avatar green">LB</span><span>Lena B.</span><span class="status-dot done"></span></div>
+            <div class="side-row"><span class="avatar amber">RO</span><span>Ravi O.</span><span class="status-dot done"></span></div>
+          </aside>
+
+          <section class="mac-main">
+            <div class="mac-toolbar">
+              <h2>Dashboard</h2><span class="sub">14 active &middot; 3 archived &middot; synced 2 min ago</span>
+              <span class="spacer"></span>
+              <button class="button">Export &#8984;E</button>
+              <button class="button">Print &#8984;P</button>
+              <button class="button primary">New plan</button>
+            </div>
+            <div class="mac-content">
+              <table class="set-table">
+                <thead><tr><th>Client</th><th>Today</th><th>Pulse</th><th>Rx vs actual</th><th>Exception</th><th>Engine</th><th></th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Maya R.</strong></td><td class="mono">Lower B &middot; 6:14 PM</td>
+                    <td><span class="pulse"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span></span></td>
+                    <td class="mono">17/18 &middot; RPE 8-9 vs 7-8</td>
+                    <td><span class="pill alert">Pain 2/10 knee</span></td>
+                    <td class="mono">substitute</td>
+                    <td><button class="button">Review</button></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Daniel C.</strong></td><td class="mono">Upper A &middot; in progress</td>
+                    <td><span class="pulse"><span class="done"></span><span class="done"></span><span class="now"></span><span></span><span></span></span></td>
+                    <td class="mono">on target</td>
+                    <td><span class="pill progress">No plan next week</span></td>
+                    <td class="mono">progress +5 lb</td>
+                    <td><button class="button">Plan</button></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Jules P.</strong></td><td class="mono">Rest</td>
+                    <td><span class="pulse"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span></span></td>
+                    <td class="mono">12/12 last week</td>
+                    <td>&mdash;</td>
+                    <td class="mono">e1RM 240 &rarr; 247</td>
+                    <td><button class="button">Accept</button></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Sam W.</strong></td><td class="mono">&mdash;</td>
+                    <td><span class="pulse"><span></span><span></span><span></span><span></span><span></span></span></td>
+                    <td class="mono">last: 22 Feb</td>
+                    <td><span class="pill alert">Inactive 8 d</span></td>
+                    <td class="mono">&mdash;</td>
+                    <td><button class="button">Message</button></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Erin N.</strong></td><td class="mono">Lower A &middot; 7:02 AM</td>
+                    <td><span class="pulse"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span></span></td>
+                    <td class="mono">effort rising at fixed load</td>
+                    <td><span class="pill progress">3 deload triggers</span></td>
+                    <td class="mono">deload week</td>
+                    <td><button class="button">Insert</button></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="banner" style="margin-top:14px;">Row density here is the platform default for a native Mac table. Hit targets switch to pointer metrics automatically when a trackpad or mouse is present &mdash; including on iPad.</div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

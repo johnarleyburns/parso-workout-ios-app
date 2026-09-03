@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone - Bulk Select and Apply</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPhone - Bulk Select and Apply</h1>
+        <p>Layer 5: edit one field across many sets at once. &ldquo;Set rest to 2:30 on all working sets&rdquo; is three taps. This is the compact equivalent of shift-clicking rows in the iPad grid, and it produces byte-identical results. Section 32.7.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">32.7</span><span class="tag">Parity with grid multi-select</span></div>
+    </header>
+
+    <section class="device-stage" style="display:grid;grid-template-columns:repeat(2,auto);gap:26px;justify-content:center;">
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:52</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span class="button ghost" style="padding-left:0;">Cancel</span><span class="spacer"></span><span class="button ghost">Select all</span></div>
+              <h2 style="font-size:24px;">4 sets selected</h2>
+              <div class="sub">Back Squat</div>
+            </div>
+            <div class="ios-content" style="padding-bottom:210px;">
+              <div style="display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap;">
+                <span class="chip">All</span><span class="chip active">All working</span><span class="chip">All warm-up</span><span class="chip">None</span>
+              </div>
+              <div class="set-stack">
+                <div class="set-row warm"><span class="chip ghost" style="min-width:26px;justify-content:center;">&#9675;</span><span class="ix">W1</span><span class="chip type warmc">Warm</span><span class="chip">8</span><span class="chip">40% &middot; 80</span></div>
+                <div class="set-row warm"><span class="chip ghost" style="min-width:26px;justify-content:center;">&#9675;</span><span class="ix">W2</span><span class="chip type warmc">Warm</span><span class="chip">5</span><span class="chip">55% &middot; 110</span></div>
+                <div class="set-row selected"><span class="chip" style="min-width:26px;justify-content:center;background:var(--ember);color:#fff;border-color:var(--ember);">&#10003;</span><span class="ix">1</span><span class="chip type top">Top</span><span class="chip">3</span><span class="chip">90% &middot; 180</span></div>
+                <div class="set-row selected"><span class="chip" style="min-width:26px;justify-content:center;background:var(--ember);color:#fff;border-color:var(--ember);">&#10003;</span><span class="ix">2</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip">80% &middot; 160</span></div>
+                <div class="set-row selected"><span class="chip" style="min-width:26px;justify-content:center;background:var(--ember);color:#fff;border-color:var(--ember);">&#10003;</span><span class="ix">3</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip">80% &middot; 160</span></div>
+                <div class="set-row selected"><span class="chip" style="min-width:26px;justify-content:center;background:var(--ember);color:#fff;border-color:var(--ember);">&#10003;</span><span class="ix">4</span><span class="chip type top">AMRAP</span><span class="chip">&ge;6</span><span class="chip">72% &middot; 145</span></div>
+              </div>
+            </div>
+
+            <div class="rx-bar">
+              <div class="rx-fields"><span>Type</span><span>Reps</span><span>Load</span><span>RPE</span><span class="active">Rest</span></div>
+              <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;justify-content:center;">
+                <span class="chip">1:00</span><span class="chip">1:30</span><span class="chip">2:00</span><span class="chip active">2:30</span><span class="chip">3:00</span><span class="chip">Custom</span>
+              </div>
+              <div class="rx-steps" style="margin-top:11px;">
+                <span class="button">Delete</span><span class="button">Duplicate</span><span class="button">%&#8644;lb</span>
+                <span class="spacer"></span>
+                <span class="button primary">Apply to 4</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Enter</b> by long-pressing a row or via the item overflow. <b>Shortcuts</b> select all working or all warm-up in one tap.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:53</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Shift %</h2><div class="sub">bulk load adjustment</div></div>
+            <div class="ios-content" style="padding-bottom:210px;">
+              <div class="banner">A deload week, in one gesture: select all working sets across the item and shift the percentage down.</div>
+              <div class="set-stack">
+                <div class="set-row selected"><span class="chip" style="min-width:26px;justify-content:center;background:var(--ember);color:#fff;border-color:var(--ember);">&#10003;</span><span class="ix">1</span><span class="chip type top">Top</span><span class="chip">3</span><span class="chip"><s style="color:var(--faint);">90%</s> &rarr; 80%</span></div>
+                <div class="set-row selected"><span class="chip" style="min-width:26px;justify-content:center;background:var(--ember);color:#fff;border-color:var(--ember);">&#10003;</span><span class="ix">2</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip"><s style="color:var(--faint);">80%</s> &rarr; 70%</span></div>
+                <div class="set-row selected"><span class="chip" style="min-width:26px;justify-content:center;background:var(--ember);color:#fff;border-color:var(--ember);">&#10003;</span><span class="ix">3</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip"><s style="color:var(--faint);">80%</s> &rarr; 70%</span></div>
+              </div>
+              <div class="ios-section-title">Resolved weights</div>
+              <div class="panel">
+                <table class="set-table">
+                  <tbody>
+                    <tr><td class="mono">Set 1</td><td class="mono">180 &rarr; 160 lb</td></tr>
+                    <tr><td class="mono">Set 2</td><td class="mono">160 &rarr; 140 lb</td></tr>
+                    <tr><td class="mono">Set 3</td><td class="mono">160 &rarr; 140 lb</td></tr>
+                  </tbody>
+                </table>
+                <div class="card-meta"><span class="mono">rounded to 5 lb, nearest &middot; % intent preserved</span></div>
+              </div>
+              <div class="banner info" style="margin-top:11px;">One undo reverses the whole bulk edit. Multi-step undo here would be a bug &mdash; a mis-tap on a phone must cost exactly one Undo.</div>
+            </div>
+
+            <div class="rx-bar">
+              <div class="rx-fields"><span>Type</span><span>Reps</span><span class="active">Load</span><span>RPE</span><span>Rest</span></div>
+              <div class="rx-control" style="justify-content:center;gap:12px;">
+                <span class="rx-round">&minus;</span><span class="big">&minus;10<span style="font-size:17px;">%</span></span><span class="rx-round">+</span>
+              </div>
+              <div class="rx-steps"><span class="who">3 sets selected</span><span class="button primary">Apply</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Same math, same result</b> as selecting the rows in the iPad grid and pressing &#8984;[ ten times.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

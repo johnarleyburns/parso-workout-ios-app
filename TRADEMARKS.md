@@ -1,37 +1,20 @@
-# Trademarks
+# Trademarks and product licensing
 
-The Cladiron **software** is licensed under the GNU General Public License v3.0
-(see [LICENSE](LICENSE)). The following are **not** covered by that license:
+Cladiron is proprietary, closed-source software. Copyright © 2026 Parso
+Consulting / John Arley Burns. All rights are reserved; see [LICENSE](LICENSE).
 
-- The name **"Cladiron"** (word mark)
-- The Cladiron **app icon** and logo
-- All other Cladiron **brand assets** (marketing copy, screenshots, wordmarks)
+The **Cladiron** name, app icon, logo, wordmarks, screenshots, and other brand
+assets are proprietary trademarks and may not be reused in a way that implies
+endorsement, affiliation, or an official Cladiron product.
 
-These are trademarks of John Arley Burns / Parso and are reserved.
+## Open-project boundary
 
-## What this means for forks
+Cladiron is a proprietary, privacy-first application built on the open
+free-exercise-db-plusplus project. The exercise database, annotations, and
+related tooling remain freely available for use by other applications.
 
-You are free, under the GPLv3, to copy, modify, and redistribute the source code.
-If you distribute a fork (including on the App Store), you **must**:
-
-1. Use **your own name** for the app — not "Cladiron" or anything confusingly similar.
-2. Use **your own app icon** and brand assets — do not reuse Cladiron's icon or logo.
-3. Not imply endorsement by or affiliation with Cladiron / Parso.
-
-The GPL guarantees your freedom to use and modify the code; trademark law protects
-users from confusingly-branded copies. Both apply.
-
-## Why open source
-
-Cladiron is open source so anyone can verify there is no tracking, no telemetry,
-and no account/server — the privacy claims are auditable. Purchasing Cladiron Pro
-on the App Store funds continued development; the trademark ensures that funding
-reaches the project that earns it.
-
-## App Store exception
-
-As the sole copyright holder, John Arley Burns grants an explicit **App Store
-exception** in [LICENSE](LICENSE), permitting distribution of this software
-through the Apple App Store under Apple's standard terms notwithstanding any
-conflict with sections 6 and 12 of the GPLv3. This exception applies only to
-distribution by the copyright holder.
+The open project's license does not extend to Cladiron's application code,
+interface, app-specific coaching composition, Apple-platform integrations, or
+brand assets. Third-party notices are listed in
+[CadenceCore/CREDITS.md](CadenceCore/CREDITS.md) and
+[docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md).

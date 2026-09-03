@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mac - Native Builder</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>Mac - Native Builder</h1>
+        <p>A <b>native macOS target</b> over the same <code>CadenceCore</code> and <code>CadenceUI</code> as iPhone and iPad: real menu bar, unified toolbar, native table density, pointer hit targets, right-click context menus, windows with restoration. Same bundle ID and same App Store record as the iOS app, so it is one Universal Purchase &mdash; not a second product, not a second price, and never a Mac-only feature. Spec K.5 / section 38.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">K.5</span><span class="tag">Native macOS</span><span class="tag">Universal Purchase</span></div>
+    </header>
+
+    <section class="mockup-stage">
+      <div class="menubar" style="border-radius:8px 8px 0 0;">
+        <span class="app">Cladiron</span><span>File</span><span>Edit</span><span>Client</span><span class="open">Plan</span><span>View</span><span>Window</span><span>Help</span>
+        <span class="spacer"></span><span class="mono" style="font-size:11px;color:var(--faint);">Wed 10:12</span>
+      </div>
+      <div class="menu-panel" style="position:absolute;margin-left:196px;">
+        <div><span>Generate with Coach&hellip;</span><kbd>&#8984;&#8679;G</kbd></div>
+        <div><span>Critique Plan</span><kbd>&#8984;&#8679;C</kbd></div>
+        <div class="sel"><span>Apply Scheme&hellip;</span><kbd>&#8984;&#8679;P</kbd></div>
+        <div><span>Apply Progression</span><kbd>&#8984;&#8679;R</kbd></div>
+        <hr>
+        <div><span>Insert Deload Week</span><kbd></kbd></div>
+        <div><span>Save as Template</span><kbd></kbd></div>
+        <hr>
+        <div><span>Preview as Client</span><kbd>&#8984;&#8679;V</kbd></div>
+        <div><span>Send Plan&hellip;</span><kbd>&#8984;&#8679;S</kbd></div>
+      </div>
+
+      <div class="mac-window" style="border-radius:0 0 10px 10px;">
+        <div class="mac-titlebar"><div class="traffic"><span class="red"></span><span class="yellow"></span><span class="green"></span></div><strong>Maya Rodriguez &mdash; Week of Mar 3</strong></div>
+        <div class="mac-app with-inspector">
+          <aside class="mac-sidebar">
+            <div class="side-heading">Clients</div>
+            <div class="side-row selected"><span class="avatar">MR</span><span>Maya R.<span class="sub">Lower B</span></span></div>
+            <div class="side-row"><span class="avatar green">DC</span><span>Daniel C.<span class="sub">Upper A</span></span></div>
+            <div class="side-row"><span class="avatar amber">JP</span><span>Jules P.<span class="sub">Rest</span></span></div>
+            <div class="side-heading">Templates</div>
+            <div class="side-row"><span class="mono">TPL</span><span>Upper/Lower 4x</span></div>
+            <div class="side-heading">Schemes</div>
+            <div class="side-row"><span class="mono">SCH</span><span>Top set + 2 back-offs</span></div>
+          </aside>
+
+          <section class="mac-main">
+            <div class="mac-toolbar">
+              <h2>Back Squat</h2><span class="sub">Wed &middot; Lower B &middot; desktop density</span>
+              <span class="spacer"></span>
+              <button class="button">Critique</button>
+              <button class="button">Preview</button>
+              <button class="button primary">Send Plan</button>
+            </div>
+            <div class="mac-content">
+              <div class="panel" style="margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <strong>Per-set prescription</strong>
+                  <span class="pill progress">e1RM 200 lb</span>
+                  <span class="spacer"></span>
+                  <span class="mono" style="font-size:11px;color:var(--faint);">right-click a row for the context menu</span>
+                </div>
+                <table class="set-table">
+                  <thead><tr><th>Set</th><th>Type</th><th>Reps</th><th>Method</th><th>%1RM</th><th>Weight</th><th>RPE</th><th>Rest</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono">W1</td><td><span class="set-type warm">Warm</span></td><td class="mono">8</td><td class="mono">%1RM</td><td class="mono">40%</td><td class="mono">80 lb</td><td class="mono">&mdash;</td><td class="mono">1:00</td></tr>
+                    <tr><td class="mono">W2</td><td><span class="set-type warm">Warm</span></td><td class="mono">5</td><td class="mono">%1RM</td><td class="mono">55%</td><td class="mono">110 lb</td><td class="mono">&mdash;</td><td class="mono">1:30</td></tr>
+                    <tr><td class="mono">1</td><td><span class="set-type amrap">Top</span></td><td class="mono">3</td><td class="mono">%1RM</td><td class="mono grid-cell focus">90%</td><td class="mono">180 lb</td><td class="mono">9</td><td class="mono">3:00</td></tr>
+                    <tr><td class="mono">2</td><td><span class="set-type">Work</span></td><td class="mono">6</td><td class="mono">%1RM</td><td class="mono">80%</td><td class="mono">160 lb</td><td class="mono">8</td><td class="mono">2:30</td></tr>
+                    <tr><td class="mono">3</td><td><span class="set-type">Work</span></td><td class="mono">6</td><td class="mono">%1RM</td><td class="mono">80%</td><td class="mono">160 lb</td><td class="mono">8</td><td class="mono">2:30</td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="display:flex;gap:14px;align-items:flex-start;">
+                <div class="menu-panel" style="margin:0;width:236px;">
+                  <div class="sel"><span>Duplicate Set</span><kbd>&#8984;D</kbd></div>
+                  <div><span>Delete Set</span><kbd>&#9003;</kbd></div>
+                  <hr>
+                  <div><span>Convert to Absolute</span><kbd>&#8984;&#8679;W</kbd></div>
+                  <div><span>Make Warm-up</span><kbd>Space</kbd></div>
+                  <div><span>Apply Scheme&hellip;</span><kbd>&#8984;&#8679;P</kbd></div>
+                  <hr>
+                  <div><span>Copy to Client&hellip;</span><kbd>&#8984;&#8679;K</kbd></div>
+                </div>
+                <div class="panel" style="flex:1;">
+                  <h3>What the Mac target owns &mdash; and what it doesn't</h3>
+                  <div class="card-meta" style="display:block;">
+                    <div><b>The shell, natively:</b></div>
+                    <div>&bull; Real menu bar from the shared <code>.commands</code> tree &mdash; every command in Appendix Y</div>
+                    <div>&bull; Multiple WindowGroup scenes with state restoration; &#8984;N opens a client window</div>
+                    <div>&bull; NSSavePanel export, NSOpenPanel template import, printing, Services</div>
+                    <div>&bull; Right-click menus on set rows, items, sessions, roster rows, templates</div>
+                    <div>&bull; Native table behaviour, desktop row density, 28 pt pointer targets</div>
+                    <div style="margin-top:6px;"><b>Not the product:</b></div>
+                    <div>&bull; This grid, the prescription model, the engine surface, and the rationale components are literally the same <code>CadenceUI</code> views the iPhone and iPad render</div>
+                  </div>
+                  <div class="banner" style="margin-top:10px;">No Mac-only capability, ever. A feature added to <code>CadenceUI</code> reaches all three idioms by construction, and CI fails the build if a <code>CadenceUI</code> view is compiled out under <code>#if os(macOS)</code>. That rule is what keeps a second target from becoming a second product.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="inspector">
+            <h3>Rationale</h3>
+            <div class="finding"><strong>Top set at 90% e1RM</strong>Strength exposure at roughly 1 RIR; proximity to failure has a negligible independent effect on strength.<div class="citation-row"><span class="citation">robinson_2024</span><span class="citation">helms_2016</span></div></div>
+            <div class="finding"><strong>Back-offs at 80%</strong>Keeps hypertrophy stimulus while the top set carries the intensity.<div class="citation-row"><span class="citation">pelland_2025</span></div></div>
+            <h3 style="margin-top:14px;">Window</h3>
+            <div class="finding">Resize this window narrow and the layout becomes the compact arrangement &mdash; set stack plus prescription bar &mdash; not a squeezed grid.</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+    <p class="screen-note"><b>Honest cost.</b> A native target is real ongoing work: platform-conditional code, a second test matrix, and coordinated releases. Section 38.4 accounts for it plainly, and Q.4 records the bet &mdash; that shared SwiftUI keeps a second target cheap enough for a solo developer. The measurable warning sign is <code>#if os(macOS)</code> appearing inside <code>CadenceUI</code> rather than staying in the shell.</p>
+  </main>
+</body>
+</html>

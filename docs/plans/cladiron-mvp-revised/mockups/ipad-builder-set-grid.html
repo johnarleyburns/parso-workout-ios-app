@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPad Trainer - Per-set Grid</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPad Trainer - Per-set Grid</h1>
+        <p>The reference authoring surface: a keyboard-traversable grid with multi-select, an e1RM header, the quick-add shorthand field, and an inspector carrying rationale and critique. Spec K.3 / section 31.3.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">K.3</span><span class="tag">Keyboard-first</span><span class="tag">Appendix Y</span></div>
+    </header>
+
+    <section class="mockup-stage" style="display:grid;place-items:center;">
+      <div class="ipad-frame">
+        <div class="ipad-screen">
+          <div class="ipad-status"><span>Wed 5 Mar &nbsp; 10:12</span><span>Maya Rodriguez &mdash; Lower B</span><span>Wi-Fi &nbsp; 79%</span></div>
+          <div class="menubar"><span class="app">Cladiron</span><span>File</span><span>Edit</span><span>Client</span><span>Plan</span><span>View</span><span>Window</span><span>Help</span></div>
+
+          <div class="split3">
+            <aside class="mac-sidebar">
+              <div class="side-heading">Clients</div>
+              <div class="side-row selected"><span class="avatar">MR</span><span>Maya R.<span class="sub">Lower B</span></span></div>
+              <div class="side-row"><span class="avatar green">DC</span><span>Daniel C.<span class="sub">Upper A</span></span></div>
+              <div class="side-heading">Session</div>
+              <div class="side-row"><span class="mono">1</span><span>Back Squat</span></div>
+              <div class="side-row"><span class="mono">2</span><span>Romanian Deadlift</span></div>
+              <div class="side-row"><span class="mono">3</span><span>Leg Press</span></div>
+              <div class="side-row"><span class="mono">4</span><span>Bike Intervals</span></div>
+            </aside>
+
+            <section class="pane">
+              <div class="mac-toolbar">
+                <h2>Back Squat</h2><span class="sub">Wed &middot; Lower B &middot; item 1 of 4</span>
+                <span class="spacer"></span>
+                <button class="button">Apply scheme &#8984;&#8679;P</button>
+                <button class="button">Substitute</button>
+                <button class="button primary">Send plan</button>
+              </div>
+              <div class="pane-body">
+                <div class="panel" style="margin-bottom:12px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <strong>Per-set prescription</strong>
+                    <span class="pill progress">e1RM 200 lb &middot; estimated</span>
+                    <span class="pill neutral">Scheme: Top set + 2 back-offs</span>
+                    <span class="pill info">2 sets selected</span>
+                    <span class="spacer"></span>
+                    <span class="mono" style="font-size:11px;color:var(--faint);">rounding 5 lb / nearest</span>
+                  </div>
+                  <table class="set-table">
+                    <thead><tr><th>Set</th><th>Type</th><th>Reps</th><th>Method</th><th>%1RM</th><th>Weight</th><th>RPE</th><th>Rest</th></tr></thead>
+                    <tbody>
+                      <tr><td class="mono">W1</td><td><span class="set-type warm">Warm</span></td><td class="mono">8</td><td class="mono">%1RM</td><td class="mono">40%</td><td class="mono">80 lb</td><td class="mono">&mdash;</td><td class="mono">1:00</td></tr>
+                      <tr><td class="mono">W2</td><td><span class="set-type warm">Warm</span></td><td class="mono">5</td><td class="mono">%1RM</td><td class="mono">55%</td><td class="mono">110 lb</td><td class="mono">&mdash;</td><td class="mono">1:30</td></tr>
+                      <tr><td class="mono">W3</td><td><span class="set-type warm">Warm</span></td><td class="mono">3</td><td class="mono">%1RM</td><td class="mono">70%</td><td class="mono">140 lb</td><td class="mono">&mdash;</td><td class="mono">2:00</td></tr>
+                      <tr><td class="mono">1</td><td><span class="set-type amrap">Top</span></td><td class="mono">3</td><td class="mono">%1RM</td><td class="mono grid-cell focus">90%</td><td class="mono">180 lb</td><td class="mono">9</td><td class="mono">3:00</td></tr>
+                      <tr style="background:var(--blue-soft);"><td class="mono">2</td><td><span class="set-type">Work</span></td><td class="mono">6</td><td class="mono">%1RM</td><td class="mono">80%</td><td class="mono">160 lb</td><td class="mono">8</td><td class="mono">2:30</td></tr>
+                      <tr style="background:var(--blue-soft);"><td class="mono">3</td><td><span class="set-type">Work</span></td><td class="mono">6</td><td class="mono">%1RM</td><td class="mono">80%</td><td class="mono">160 lb</td><td class="mono">8</td><td class="mono">2:30</td></tr>
+                      <tr><td class="mono">4</td><td><span class="set-type amrap">AMRAP</span></td><td class="mono">&ge;6</td><td class="mono">%1RM</td><td class="mono">72%</td><td class="mono">145 lb</td><td class="mono">9.5</td><td class="mono">&mdash;</td></tr>
+                    </tbody>
+                  </table>
+                  <div class="card-meta" style="margin-top:10px;">
+                    <span class="mono">Tab / arrows move &middot; Return commits &middot; &#8984;D duplicate &middot; &#8997;&#8593;&#8595; reorder &middot; &#8984;] nudge %</span>
+                  </div>
+                </div>
+
+                <div class="panel">
+                  <div class="side-heading" style="padding-left:0;">Quick add &nbsp; &#8984;K</div>
+                  <div class="sh-field">rdl 3x10-12 rpe8 r90<span style="color:var(--ember);">|</span></div>
+                  <div class="sh-echo">
+                    <div class="cap">Will create</div>
+                    <div class="set-row" style="border:0;">
+                      <span class="chip type">Work</span><span class="chip">10&ndash;12</span><span class="chip">RPE 8</span><span class="chip">1:30</span>
+                      <span class="chip ghost">x3 sets</span><span class="chip ghost">Romanian Deadlift</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <aside class="inspector">
+              <h3>Critique &nbsp; 1 note</h3>
+              <div class="finding"><strong>Chest at the low end of MAV</strong>9 working sets this week. Inside the productive range, but the bottom of it. Suggested fix: add 2-3 sets on Friday.<div class="citation-row"><span class="citation">pelland_2025</span><span class="citation">iusca_2021</span></div></div>
+              <h3 style="margin-top:14px;">Rationale</h3>
+              <div class="finding"><strong>Top set at 90% e1RM</strong>Strength exposure at 1 RIR; proximity to failure has a negligible independent effect on strength, so the top set stays shy of failure.<div class="citation-row"><span class="citation">robinson_2024</span><span class="citation">helms_2016</span></div></div>
+              <div class="finding"><strong>Rest 3:00 on the top set</strong>Longer inter-set rest preserves per-set performance and therefore weekly volume.<div class="citation-row"><span class="citation">schoenfeld_rest_2016</span></div></div>
+              <div class="finding"><strong>Snapshot on send</strong>These % loads freeze at the weights shown when the plan is sent. A later e1RM change will not move them.</div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+    <p class="screen-note"><b>States.</b> Editable &middot; preview-as-client (read-only) &middot; lapsed read-only &middot; multi-select active (shown). <b>Override</b> a %-derived weight and the % intent is retained with the effective % displayed.</p>
+  </main>
+</body>
+</html>

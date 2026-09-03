@@ -22,7 +22,7 @@
       "family" : "consumable",
       "localizations" : [
         {
-          "description" : "Support continued development of this free, open-source coach.",
+          "description" : "Support continued development of this privacy-first coach.",
           "displayName" : "Supporter",
           "locale" : "en_US"
         }
@@ -37,7 +37,7 @@
       "family" : "consumable",
       "localizations" : [
         {
-          "description" : "A generous contribution to keep Cladiron free, open-source, and independent.",
+          "description" : "A generous contribution to keep Cladiron independent, privacy-first, and ad-free.",
           "displayName" : "Patron",
           "locale" : "en_US"
         }
@@ -69,7 +69,7 @@
     "_developerTeamID" : "3264Y8YUGV",
     "_failTransactionsEnabled" : false,
     "_locale" : "en_US",
-    "_localizedDescription" : "Support Cladiron and help keep it free, open-source, and ad-free.",
+    "_localizedDescription" : "Support Cladiron and help keep it independent, privacy-first, and ad-free.",
     "_localizedName" : "Cladiron Support",
     "_storefront" : "USA",
     "_timeRate" : "1"

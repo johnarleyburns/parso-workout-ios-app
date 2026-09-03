@@ -12,11 +12,11 @@ This repository is fully on Swift 6 language mode with complete strict-concurren
 - **Internal codename:** Cadence — repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, type names. Do NOT rename these.
 
 ## What this is
-Cladiron: an open-source, privacy-first, iPhone-native **strength coach**. The tracker is free forever; the Coach is a paid product (see Monetization below). Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no server, no telemetry.
+Cladiron: a proprietary, privacy-first, iPhone-native **strength coach** built on the open `free-exercise-db-plusplus` project. The tracker is free forever; the Coach is a paid product (see Monetization below). Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no developer-operated server, no telemetry. The exercise database, annotations, and related tooling remain freely available for use by other applications; Cladiron application code is closed source.
 
 ## Roadmap — adopted 2026-08-11
 
-The **Cladiron Platform Spec v2.2** (`docs/plans/cladiron-mvp-revised/`) is the
+The **Cladiron Platform Spec v2.5** (`docs/plans/cladiron-mvp-revised/`) is the
 adopted forward plan. It is **not yet implemented**; everything else in this
 file describes the app as shipped and stays authoritative until a phase lands.
 Headline direction, so you don't design against the wrong target:
@@ -31,6 +31,11 @@ Headline direction, so you don't design against the wrong target:
   $249 lifetime, 30-day trial, lifetime available indefinitely.
 - **Persistence unchanged** — SwiftData + CloudKit, as shipped. The spec follows
   the app here rather than the reverse.
+- **Execution unchanged underneath planning** — plans materialize through the
+  shipped workout prescription seam. Preserve the DB++ 20-muscle accounting,
+  collapsed/full-screen iPhone set-entry loop, performer-specific partner
+  defaults/rotation, cardio, `HKWorkoutSession`, and durable idempotent
+  WatchConnectivity reconciliation (spec Appendix AA).
 - Naming: `CadenceCore` / `CadenceUI` internally, **Cladiron** user-facing.
 
 When a phase ships, update the sections below — not the spec.

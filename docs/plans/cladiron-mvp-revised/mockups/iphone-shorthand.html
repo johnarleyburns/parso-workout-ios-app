@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone - Shorthand Entry</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPhone - Shorthand Entry</h1>
+        <p>Layer 3: a deterministic grammar that turns one line of text into a fully formed item, with a live echo rendered as the exact chips it will produce. Offline, no model, no inference &mdash; a parser in CadenceCore, unit-tested against a fixture corpus. Section 32.5 / Appendix B.7.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">32.5</span><span class="tag">Not an LLM</span><span class="tag">&#8984;K on iPad</span></div>
+    </header>
+
+    <section class="device-stage" style="display:grid;grid-template-columns:repeat(3,auto);gap:22px;justify-content:center;">
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:47</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Quick add</h2><div class="sub">Wed &middot; Lower B</div></div>
+            <div class="ios-content">
+              <div class="sh-field">bench 4x8 @70% rpe8 r2:30<span style="color:var(--ember);">|</span></div>
+              <div class="sh-echo">
+                <div class="cap">Will create &mdash; Barbell Bench Press</div>
+                <div class="set-row" style="border:0;"><span class="ix">1&ndash;4</span><span class="chip type">Work</span><span class="chip">8</span><span class="chip">70% &middot; 90</span><span class="chip">RPE 8</span><span class="chip">2:30</span></div>
+                <div class="card-meta" style="margin-top:6px;"><span class="mono">70% of your bench e1RM 130 lb = 90 lb (5 lb increments)</span></div>
+              </div>
+
+              <div class="ios-section-title">Syntax</div>
+              <div class="panel" style="font-size:11.5px;line-height:1.7;">
+                <span class="mono">exercise</span> <span class="mono">sets</span>x<span class="mono">reps</span> [<span class="mono">@load</span>] [<span class="mono">rpe/rir</span>] [<span class="mono">r rest</span>] [<span class="mono">warm n</span>] [<span class="mono">"note"</span>]
+              </div>
+              <div class="panel" style="margin-top:8px;">
+                <table class="set-table">
+                  <tbody>
+                    <tr><td class="mono">sq 5x5 @315 r3:00 warm3</td><td>3 ramp sets + 5&times;5</td></tr>
+                    <tr><td class="mono">rdl 3x10-12 rpe8 r90</td><td>rep range</td></tr>
+                    <tr><td class="mono">pullup 3xamrap @bw</td><td>AMRAP bodyweight</td></tr>
+                    <tr><td class="mono">dip 3x8 @bw+25</td><td>weighted</td></tr>
+                    <tr><td class="mono">lat pd 3x12 @mach:7</td><td>machine setting</td></tr>
+                    <tr><td class="mono">plank 3x45s</td><td>timed mobility</td></tr>
+                    <tr><td class="mono">bike 20m z2</td><td>steady cardio</td></tr>
+                    <tr><td class="mono">bike 6x(1m z4 / 2m z1)</td><td>intervals</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;"><button class="button" style="flex:1;">Cancel</button><button class="button primary" style="flex:1;">Add item</button></div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Echo as chips.</b> You see the result before you commit. That is the trust mechanism, not decoration.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:48</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Ambiguous</h2><div class="sub">never guesses</div></div>
+            <div class="ios-content">
+              <div class="sh-field" style="border-color:var(--amber);">press 3x8 @70% rpe8</div>
+              <div class="sh-echo" style="border-color:var(--amber);">
+                <div class="cap" style="color:#8a6200;">&ldquo;press&rdquo; matches two exercises &mdash; pick one</div>
+                <div style="display:flex;gap:7px;flex-wrap:wrap;">
+                  <span class="chip">Overhead Press</span><span class="chip">Machine Chest Press</span>
+                </div>
+                <div class="card-meta" style="margin-top:8px;"><span class="mono">Everything else parsed: 3 &times; 8 &middot; 70% &middot; RPE 8</span></div>
+              </div>
+
+              <div class="ios-section-title">Unknown token</div>
+              <div class="sh-field" style="border-color:var(--red);">rdl 3x10 @70% rpee8</div>
+              <div class="sh-echo" style="border-color:#ecc9c3;">
+                <div class="cap" style="color:var(--red);">Didn&rsquo;t understand &ldquo;rpee8&rdquo;</div>
+                <div class="set-row" style="border:0;"><span class="ix">1&ndash;3</span><span class="chip type">Work</span><span class="chip">10</span><span class="chip">70% &middot; 170</span><span class="chip ghost dotted">RPE 8 default</span><span class="chip ghost dotted">1:30 default</span></div>
+                <div class="card-meta" style="margin-top:6px;"><span class="mono">The item is still created from what parsed. Nothing is lost to a typo.</span></div>
+              </div>
+
+              <div class="ios-section-title">Engine defaults</div>
+              <div class="banner">Fields you leave out are filled from the session goal by cited rules &mdash; rest from R-RST-1, effort from R-INT-2 &mdash; and marked with a dotted underline meaning &ldquo;engine default, tap to confirm.&rdquo;</div>
+              <div class="citation-row"><span class="citation">schoenfeld_rest_2016</span><span class="citation">helms_2016</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Totality.</b> Every input yields a parse, an ambiguity, or a marked error &mdash; never a crash, never silent data loss.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:49</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Paste a session</h2><div class="sub">multi-line &middot; one action</div></div>
+            <div class="ios-content">
+              <div class="sh-field" style="line-height:1.9;">sq 5x5 @80% r3:00 warm3<br>rdl 3x10 rpe8 r90<br>leg press 3x12 rpe8<br>leg curl 3x12 rpe9 r60<br>calf 4x15 rpe9 r45<br>bike 12m z2</div>
+              <div class="sh-echo">
+                <div class="cap">6 lines &middot; 5 strength, 1 cardio</div>
+                <div class="sh-line"><span class="ok">&#10003;</span><code>Back Squat</code><span class="spacer"></span><span class="mono" style="color:var(--muted);">3 warm + 5&times;5 @ 240</span></div>
+                <div class="sh-line"><span class="ok">&#10003;</span><code>Romanian Deadlift</code><span class="spacer"></span><span class="mono" style="color:var(--muted);">3&times;10 RPE 8</span></div>
+                <div class="sh-line"><span class="ok">&#10003;</span><code>Leg Press</code><span class="spacer"></span><span class="mono" style="color:var(--muted);">3&times;12 RPE 8</span></div>
+                <div class="sh-line"><span class="ok">&#10003;</span><code>Leg Curl</code><span class="spacer"></span><span class="mono" style="color:var(--muted);">3&times;12 RPE 9</span></div>
+                <div class="sh-line"><span class="ok">&#10003;</span><code>Standing Calf Raise</code><span class="spacer"></span><span class="mono" style="color:var(--muted);">4&times;15 RPE 9</span></div>
+                <div class="sh-line"><span class="ok">&#10003;</span><code>Bike</code><span class="spacer"></span><span class="mono" style="color:var(--muted);">12 min Zone 2</span></div>
+              </div>
+              <div class="banner info" style="margin-top:11px;">Commit builds the whole session in one undoable action &mdash; the fastest way to move a program out of Notes or a spreadsheet.</div>
+              <div style="display:flex;gap:8px;margin-top:10px;"><button class="button" style="flex:1;">Cancel</button><button class="button primary" style="flex:1;">Create session</button></div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Same grammar everywhere.</b> On iPad and Mac this is the &#8984;K quick-add field.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone - The Prescription Bar</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPhone - The Prescription Bar</h1>
+        <p>The compact analogue of keyboard grid traversal. Tapping a chip focuses that field; the field picker moves across columns; the set stepper moves across rows <em>without dismissing the bar or changing the focused field</em>. Editing five sets costs five taps, not thirty. Section 32.6.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">32.6</span><span class="tag">Never a modal</span></div>
+    </header>
+
+    <section class="device-stage" style="display:grid;grid-template-columns:repeat(3,auto);gap:22px;justify-content:center;">
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:43</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Back Squat</h2><div class="sub">e1RM 200 lb &middot; editing set 2</div></div>
+            <div class="ios-content" style="padding-bottom:250px;">
+              <div class="set-stack">
+                <div class="set-row warm"><span class="ix">W1</span><span class="chip type warmc">Warm</span><span class="chip">8</span><span class="chip">40% &middot; 80</span><span class="chip">1:00</span></div>
+                <div class="set-row warm"><span class="ix">W2</span><span class="chip type warmc">Warm</span><span class="chip">5</span><span class="chip">55% &middot; 110</span><span class="chip">1:30</span></div>
+                <div class="set-row"><span class="ix">1</span><span class="chip type top">Top</span><span class="chip">3</span><span class="chip">90% &middot; 180</span><span class="chip">RPE 9</span></div>
+                <div class="set-row focused"><span class="ix">2</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip active">80% &middot; 160</span><span class="chip">RPE 8</span><span class="chip">2:30</span></div>
+                <div class="set-row"><span class="ix">3</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip">80% &middot; 160</span><span class="chip">RPE 8</span><span class="chip">2:30</span></div>
+              </div>
+            </div>
+
+            <div class="rx-bar">
+              <div class="rx-fields"><span>Type</span><span>Reps</span><span class="active">Load</span><span>RPE</span><span>Rest</span></div>
+              <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;">
+                <span class="chip active">%1RM</span><span class="chip">lb</span><span class="chip">BW</span><span class="chip">BW+</span><span class="chip">Assist</span><span class="chip">Band</span><span class="chip">RPE only</span>
+              </div>
+              <div class="rx-control">
+                <span class="rx-round">&minus;</span>
+                <span class="big">80<span style="font-size:17px;">%</span></span>
+                <span class="eq">= 160 lb</span>
+                <span class="spacer"></span>
+                <span class="rx-round">+</span>
+              </div>
+              <div class="rx-scrub"></div>
+              <div class="rx-steps">
+                <span class="rx-round">&lsaquo;</span>
+                <span class="who">Set 2 of 5</span>
+                <span class="rx-round">&rsaquo;</span>
+                <span class="button">&#8943;</span>
+                <span class="button primary">Done</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Load.</b> Method chips switch the prescription type; the resolved weight updates live beside the percentage. Horizontal drag on the value scrubs.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:43</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Back Squat</h2><div class="sub">effort &middot; set 2 of 5</div></div>
+            <div class="ios-content" style="padding-bottom:250px;">
+              <div class="set-stack">
+                <div class="set-row"><span class="ix">1</span><span class="chip type top">Top</span><span class="chip">3</span><span class="chip">90% &middot; 180</span><span class="chip">RPE 9</span></div>
+                <div class="set-row focused"><span class="ix">2</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip">80% &middot; 160</span><span class="chip active">RPE 8</span><span class="chip">2:30</span></div>
+                <div class="set-row"><span class="ix">3</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip">80% &middot; 160</span><span class="chip">RPE 8</span></div>
+              </div>
+              <div class="banner info" style="margin-top:14px;">RPE 8 means about 2 reps in reserve. Cladiron defaults working sets to 1&ndash;3 RIR: most of the stimulus, a fraction of the fatigue.</div>
+              <div class="citation-row"><span class="citation">helms_2016</span><span class="citation">robinson_2024</span></div>
+            </div>
+
+            <div class="rx-bar">
+              <div class="rx-fields"><span>Type</span><span>Reps</span><span>Load</span><span class="active">RPE</span><span>Rest</span></div>
+              <div class="rx-control" style="justify-content:center;gap:14px;">
+                <span class="chip">7</span><span class="chip">7.5</span><span class="chip active" style="font-size:16px;padding:9px 14px;">8</span><span class="chip">8.5</span><span class="chip">9</span><span class="chip">9.5</span><span class="chip">10</span>
+              </div>
+              <div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px;">
+                <span class="pill neutral">= 2 RIR</span><span class="pill neutral">show as RIR instead</span>
+              </div>
+              <div class="rx-steps">
+                <span class="rx-round">&lsaquo;</span>
+                <span class="who">Set 2 of 5</span>
+                <span class="rx-round">&rsaquo;</span>
+                <span class="button">&#8943;</span>
+                <span class="button primary">Done</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Stepping.</b> Tap &rsaquo; and the bar stays on RPE for set 3. That persistence is the whole design.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:44</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Back Squat</h2><div class="sub">reps &middot; set 4 of 5</div></div>
+            <div class="ios-content" style="padding-bottom:250px;">
+              <div class="set-stack">
+                <div class="set-row"><span class="ix">3</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip">80% &middot; 160</span><span class="chip">RPE 8</span></div>
+                <div class="set-row focused"><span class="ix">4</span><span class="chip type top">AMRAP</span><span class="chip active">&ge;6</span><span class="chip">72% &middot; 145</span><span class="chip">RPE 9.5</span></div>
+              </div>
+              <div class="ios-section-title">Overflow &#8943;</div>
+              <div class="panel" style="padding:0;overflow:hidden;">
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Duplicate set</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Delete set</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Convert to absolute</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Make warm-up</div>
+                <div class="side-row" style="margin:0;border-radius:0;">Apply to all following sets</div>
+              </div>
+            </div>
+
+            <div class="rx-bar">
+              <div class="rx-fields"><span>Type</span><span class="active">Reps</span><span>Load</span><span>RPE</span><span>Rest</span></div>
+              <div style="display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;">
+                <span class="chip">Exact</span><span class="chip">Range</span><span class="chip active">AMRAP</span><span class="chip">Time</span><span class="chip">Distance</span>
+              </div>
+              <div class="rx-control">
+                <span class="rx-round">&minus;</span>
+                <span class="big">&ge;6</span>
+                <span class="eq">at least</span>
+                <span class="spacer"></span>
+                <span class="rx-round">+</span>
+              </div>
+              <div class="rx-steps">
+                <span class="rx-round">&lsaquo;</span>
+                <span class="who">Set 4 of 5</span>
+                <span class="rx-round">&rsaquo;</span>
+                <span class="button">&#8943;</span>
+                <span class="button primary">Done</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Reps.</b> Every RepTarget case is reachable: exact, range, AMRAP, duration, distance.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

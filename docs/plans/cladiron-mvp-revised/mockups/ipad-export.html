@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPad Trainer - Export</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPad Trainer - Export to Excel</h1>
+        <p>The whole dataset in one workbook, generated from the local store with no server round trip. Summary rollups are live formulas so the spreadsheet keeps working after you leave. Section 37.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">37</span><span class="tag">No lock-in</span></div>
+    </header>
+
+    <section class="mockup-stage" style="display:grid;place-items:center;">
+      <div class="ipad-frame">
+        <div class="ipad-screen">
+          <div class="ipad-status"><span>Sat 1 Mar &nbsp; 10:22</span><span>Export</span><span>Wi-Fi</span></div>
+          <div class="menubar"><span class="app">Cladiron</span><span class="open">File</span><span>Edit</span><span>Client</span><span>Plan</span><span>View</span><span>Window</span><span>Help</span></div>
+          <div class="menu-panel" style="margin-left:56px;">
+            <div><span>New Plan</span><kbd></kbd></div>
+            <div><span>New Template</span><kbd></kbd></div>
+            <div><span>New Window</span><kbd>&#8984;N</kbd></div>
+            <hr>
+            <div><span>Import Template&hellip;</span><kbd></kbd></div>
+            <div class="sel"><span>Export to Excel&hellip;</span><kbd>&#8984;E</kbd></div>
+            <div><span>Print Plan&hellip;</span><kbd>&#8984;P</kbd></div>
+          </div>
+
+          <div class="split2" style="margin-top:-142px;">
+            <aside class="mac-sidebar" style="padding-top:152px;">
+              <div class="side-heading">Clients</div>
+              <div class="side-row"><span class="avatar">MR</span><span>Maya R.</span></div>
+              <div class="side-row"><span class="avatar green">DC</span><span>Daniel C.</span></div>
+            </aside>
+            <section class="pane">
+              <div class="pane-body" style="padding-top:156px;">
+                <div class="export-shell" style="margin-bottom:14px;">
+                  <div class="excel-bar">Cladiron-Coaching-Export-2026-03-01.xlsx</div>
+                  <div class="excel-tabs"><span class="active">Summary</span><span>Customer List</span><span>Maya R.</span><span>Daniel C.</span><span>Jules P.</span><span>Sam W.</span><span>+10 more</span></div>
+                  <table class="set-table">
+                    <thead><tr><th>Metric</th><th>Value</th><th>Cell type</th></tr></thead>
+                    <tbody>
+                      <tr><td>Clients (active)</td><td class="mono">14</td><td class="mono">=COUNTIF(...)</td></tr>
+                      <tr><td>Workouts assigned</td><td class="mono">1,284</td><td class="mono">=SUM(...)</td></tr>
+                      <tr><td>Workouts completed</td><td class="mono">1,196</td><td class="mono">=SUM(...)</td></tr>
+                      <tr><td>Completion rate</td><td class="mono">93.1%</td><td class="mono">=B3/B2</td></tr>
+                      <tr><td>Avg sessions / client / week</td><td class="mono">3.6</td><td class="mono">=AVERAGE(...)</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="two-up">
+                  <div class="panel">
+                    <h3>What's in it</h3>
+                    <div class="finding"><strong>Summary</strong>Portfolio rollups as live formulas, so the workbook stays useful as a working document.</div>
+                    <div class="finding"><strong>Customer list</strong>One row per client: connected date, status, assigned, completed, completion %, last active, notes.</div>
+                    <div class="finding"><strong>One tab per client</strong>Strength profile plus every set ever prescribed and performed: target reps/load/%1RM/RPE against actual reps/load/RPE, result, and notes including pain flags. Cardio and mobility as rows.</div>
+                  </div>
+                  <div class="panel">
+                    <h3>Delivery</h3>
+                    <div class="finding"><strong>On iPad and iPhone</strong>Share sheet and Save to Files, plus an optional default iCloud Drive folder.</div>
+                    <div class="finding"><strong>On Mac</strong>A save panel with a remembered directory.</div>
+                    <div class="finding"><strong>Free for athletes too</strong>Export of your own training is never gated. Only the roster tabs need clients to exist.</div>
+                    <div class="banner">Generated locally. Historical data is written as values; rollups as formulas. Zero formula errors is an acceptance criterion.</div>
+                    <div style="display:flex;gap:8px;"><button class="button">Save to Files</button><button class="button primary">Share</button></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

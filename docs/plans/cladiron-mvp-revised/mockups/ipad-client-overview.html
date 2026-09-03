@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPad Trainer - Client Overview</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPad Trainer - Client Overview</h1>
+        <p>The trainer-side analogue of the athlete's Home page: current plan and phase, adherence, per-muscle volume against landmarks, e1RM highlights, injuries on file, and open engine suggestions. Section 30.3.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">30.3</span><span class="tag">iPad regular</span></div>
+    </header>
+
+    <section class="mockup-stage" style="display:grid;place-items:center;">
+      <div class="ipad-frame">
+        <div class="ipad-screen">
+          <div class="ipad-status"><span>Mon 3 Mar &nbsp; 9:44</span><span>Maya Rodriguez</span><span>Wi-Fi</span></div>
+          <div class="menubar"><span class="app">Cladiron</span><span>File</span><span>Edit</span><span>Client</span><span>Plan</span><span>View</span><span>Window</span><span>Help</span></div>
+          <div class="split3">
+            <aside class="mac-sidebar">
+              <div class="side-heading">Clients</div>
+              <div class="side-row selected"><span class="avatar">MR</span><span>Maya R.<span class="sub">Pain flag</span></span></div>
+              <div class="side-row"><span class="avatar green">DC</span><span>Daniel C.</span></div>
+              <div class="side-row"><span class="avatar amber">JP</span><span>Jules P.</span></div>
+            </aside>
+            <section class="pane">
+              <div class="tabstrip"><span class="active">Overview</span><span>Plan</span><span>Strength Profile</span><span>History</span></div>
+              <div class="pane-body">
+                <div class="mac-grid" style="margin-bottom:12px;">
+                  <div class="panel"><h3>Current plan</h3><div class="muted">Upper/Lower 4x &middot; hypertrophy</div><div class="card-meta"><span>Accumulation W2 of 5</span><span>from you</span><span>sent Sun 9:12 PM</span></div></div>
+                  <div class="panel"><h3>Adherence</h3><div class="muted">Last 4 weeks</div><div class="card-meta"><span class="mono">15 / 16 sessions</span><span class="pill done">94%</span></div></div>
+                  <div class="panel"><h3>Readiness</h3><div class="muted">Permissioned &middot; soft signal</div><div class="card-meta"><span>Sleep 7.1 h avg</span><span>Self-report 4/5</span></div></div>
+                </div>
+
+                <div class="panel" style="margin-bottom:12px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><strong>Weekly volume vs her landmarks</strong><span class="spacer"></span><span class="pill neutral">individualized from 14 weeks of history</span></div>
+                  <div class="vol-bars">
+                    <div class="vol"><b>Chest 9</b><div class="bar amber"><span style="width:45%"></span></div>low MAV</div>
+                    <div class="vol"><b>Back 15</b><div class="bar"><span style="width:72%"></span></div>in MAV</div>
+                    <div class="vol"><b>Quads 17</b><div class="bar amber"><span style="width:88%"></span></div>near MRV</div>
+                    <div class="vol"><b>Hams 11</b><div class="bar"><span style="width:56%"></span></div>in MAV</div>
+                    <div class="vol"><b>Glutes 12</b><div class="bar"><span style="width:60%"></span></div>in MAV</div>
+                    <div class="vol"><b>Calves 5</b><div class="bar red"><span style="width:26%"></span></div>below MEV</div>
+                  </div>
+                </div>
+
+                <div class="two-up">
+                  <div class="panel">
+                    <h3>Strength highlights</h3>
+                    <table class="set-table">
+                      <thead><tr><th>Exercise</th><th>Est. 1RM</th><th>Trend</th><th>Basis</th></tr></thead>
+                      <tbody>
+                        <tr><td>Back Squat</td><td class="mono">200 lb</td><td><span class="pill done">+6% / 8 wk</span></td><td class="mono">165 x 5</td></tr>
+                        <tr><td>Bench Press</td><td class="mono">135 lb</td><td><span class="pill neutral">flat 4 wk</span></td><td class="mono">115 x 4</td></tr>
+                        <tr><td>Deadlift</td><td class="mono">245 lb</td><td><span class="pill done">+4% / 8 wk</span></td><td class="mono">205 x 5</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="panel">
+                    <h3>On file</h3>
+                    <div class="finding"><strong>Right knee</strong>Avoid deep-knee high-fatigue choices; prefer leg press and split squats at controlled depth. Recorded 12 Jan.</div>
+                    <div class="finding"><strong>Equipment</strong>Full gym &middot; 5 lb increments, no microplates &middot; lb</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <aside class="inspector">
+              <h3>Open suggestions</h3>
+              <div class="finding"><strong>Calves below MEV for 3 weeks</strong>Add 3-4 sets. Below the growth threshold.<div class="citation-row"><span class="citation">iusca_2021</span><span class="citation">schoenfeld_2017</span></div><button class="button" style="margin-top:8px;">Stage in plan</button></div>
+              <div class="finding"><strong>Bench e1RM stalled 4 weeks</strong>Consider a variation or a lighter week.<div class="citation-row"><span class="citation">rp_landmarks</span></div></div>
+              <div class="finding"><strong>Substitute split squat</strong>Pain flag on Wed. Leg press preserves the stimulus.<div class="citation-row"><span class="citation">nsca_essentials</span></div></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

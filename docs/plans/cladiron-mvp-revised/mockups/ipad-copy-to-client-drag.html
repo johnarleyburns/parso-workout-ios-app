@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPad Trainer - Copy to Client by Drag</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPad Trainer - Copy to Client by Drag</h1>
+        <p>Drag an exercise onto a roster row and its %-based loads recalculate from the destination client's estimated 1RM. The drop badge describes the outcome before release. Sections 33.4 and 35.3.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">33.4</span><span class="tag">%-recalc</span></div>
+    </header>
+
+    <section class="mockup-stage" style="display:grid;place-items:center;">
+      <div class="ipad-frame">
+        <div class="ipad-screen">
+          <div class="ipad-status"><span>Sun 2 Mar &nbsp; 9:20 PM</span><span>Maya Rodriguez &mdash; Lower B</span><span>Wi-Fi</span></div>
+          <div class="menubar"><span class="app">Cladiron</span><span>File</span><span>Edit</span><span>Client</span><span>Plan</span><span>View</span><span>Window</span><span>Help</span></div>
+          <div class="split3">
+            <aside class="mac-sidebar">
+              <div class="side-heading">Clients</div>
+              <div class="side-row selected"><span class="avatar">MR</span><span>Maya R.<span class="sub">source</span></span></div>
+              <div class="side-row" style="outline:2px dashed var(--ember);outline-offset:-2px;background:#fff4f2;"><span class="avatar green">DC</span><span>Daniel C.<span class="sub">e1RM squat 315</span></span></div>
+              <div class="side-row"><span class="avatar amber">JP</span><span>Jules P.</span></div>
+              <div class="side-row"><span class="avatar purple">SW</span><span>Sam W.</span></div>
+              <div style="margin-top:10px;"><span class="drag-badge">Copy &middot; recalculate to Daniel</span></div>
+            </aside>
+            <section class="pane">
+              <div class="mac-toolbar"><h2>Lower B</h2><span class="sub">dragging &ldquo;Back Squat&rdquo; (7 sets)</span><span class="spacer"></span><button class="button">Undo</button></div>
+              <div class="pane-body">
+                <div class="panel" style="opacity:0.55;">
+                  <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;"><strong>1. Back Squat</strong><span class="pill progress">Maya e1RM 200</span></div>
+                  <table class="set-table">
+                    <thead><tr><th>Set</th><th>Type</th><th>Reps</th><th>%1RM</th><th>Weight</th><th>RPE</th><th>Rest</th></tr></thead>
+                    <tbody>
+                      <tr><td class="mono">1</td><td><span class="set-type amrap">Top</span></td><td class="mono">3</td><td class="mono">90%</td><td class="mono">180 lb</td><td class="mono">9</td><td class="mono">3:00</td></tr>
+                      <tr><td class="mono">2</td><td><span class="set-type">Work</span></td><td class="mono">6</td><td class="mono">80%</td><td class="mono">160 lb</td><td class="mono">8</td><td class="mono">2:30</td></tr>
+                      <tr><td class="mono">3</td><td><span class="set-type">Work</span></td><td class="mono">6</td><td class="mono">80%</td><td class="mono">160 lb</td><td class="mono">8</td><td class="mono">2:30</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="panel" style="margin-top:12px;border-color:var(--ember);">
+                  <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px;"><strong>Preview on drop &mdash; Daniel Cho</strong><span class="pill progress">Daniel e1RM 315</span><span class="pill neutral">2.5 lb increments, microplates on</span></div>
+                  <table class="set-table">
+                    <thead><tr><th>Set</th><th>Type</th><th>Reps</th><th>%1RM</th><th>Weight</th><th>RPE</th><th>Rest</th></tr></thead>
+                    <tbody>
+                      <tr><td class="mono">1</td><td><span class="set-type amrap">Top</span></td><td class="mono">3</td><td class="mono">90%</td><td class="mono" style="color:var(--ember);">285 lb</td><td class="mono">9</td><td class="mono">3:00</td></tr>
+                      <tr><td class="mono">2</td><td><span class="set-type">Work</span></td><td class="mono">6</td><td class="mono">80%</td><td class="mono" style="color:var(--ember);">252.5 lb</td><td class="mono">8</td><td class="mono">2:30</td></tr>
+                      <tr><td class="mono">3</td><td><span class="set-type">Work</span></td><td class="mono">6</td><td class="mono">80%</td><td class="mono" style="color:var(--ember);">252.5 lb</td><td class="mono">8</td><td class="mono">2:30</td></tr>
+                    </tbody>
+                  </table>
+                  <div class="card-meta"><span>% intent preserved</span><span>absolute loads would copy as-is</span><span>rounding follows Daniel's profile</span></div>
+                </div>
+              </div>
+            </section>
+            <aside class="inspector">
+              <h3>What a drag can do</h3>
+              <div class="finding"><strong>Set row &rarr; item</strong>Reorder or move the set.</div>
+              <div class="finding"><strong>Exercise &rarr; session</strong>Move the exercise; loads preserved.</div>
+              <div class="finding"><strong>Exercise &rarr; roster row</strong>Copy with %-recalculation to that client.</div>
+              <div class="finding"><strong>Exercise &rarr; another window</strong>Same, across windows.</div>
+              <div class="finding"><strong>Session &rarr; day</strong>Reschedule.</div>
+              <div class="finding"><strong>Session &rarr; Templates</strong>Save as a template.</div>
+              <div class="finding"><strong>Template &rarr; roster row</strong>Instantiate for that client.</div>
+              <div class="banner info" style="margin-top:10px;">On iPhone the same operation is the item's overflow menu &rarr; Copy to client&hellip;, with the recalculation preview shown before commit.</div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

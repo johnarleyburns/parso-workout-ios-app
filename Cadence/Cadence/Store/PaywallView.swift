@@ -194,7 +194,7 @@ struct PaywallView: View {
     }
 
     private var freeForeverNote: some View {
-        Text("Everything else in Cladiron is free forever. No ads. No account. No tracking. Open source.")
+        Text("Everything else in Cladiron is free forever. No ads. No account. No tracking. Proprietary and privacy-first.")
             .font(.caption)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)

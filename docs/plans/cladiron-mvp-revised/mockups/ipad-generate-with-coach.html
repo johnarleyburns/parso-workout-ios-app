@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPad Trainer - Generate with Coach</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPad Trainer - Generate with Coach</h1>
+        <p>The structured prompt prefilled from the client relationship, with an optional natural-language field. The engine drafts; the coach signs off. Section 34.1.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">34.1</span><span class="tag">&#8984;&#8679;G</span></div>
+    </header>
+
+    <section class="mockup-stage" style="display:grid;place-items:center;">
+      <div class="ipad-frame">
+        <div class="ipad-screen">
+          <div class="ipad-status"><span>Sun 2 Mar &nbsp; 8:55 PM</span><span>Generate &mdash; Maya Rodriguez</span><span>Wi-Fi</span></div>
+          <div class="menubar"><span class="app">Cladiron</span><span>File</span><span>Edit</span><span>Client</span><span>Plan</span><span>View</span><span>Window</span><span>Help</span></div>
+          <div class="split3">
+            <aside class="mac-sidebar">
+              <div class="side-heading">Clients</div>
+              <div class="side-row selected"><span class="avatar">MR</span><span>Maya R.</span></div>
+              <div class="side-row"><span class="avatar green">DC</span><span>Daniel C.</span></div>
+              <div class="side-row"><span class="avatar amber">JP</span><span>Jules P.</span></div>
+            </aside>
+            <section class="pane">
+              <div class="mac-toolbar"><h2>Generate with Coach</h2><span class="sub">prefilled from Maya's profile and history</span><span class="spacer"></span><button class="button">Reset</button><button class="button primary">Generate draft</button></div>
+              <div class="pane-body">
+                <div class="panel" style="margin-bottom:12px;">
+                  <h3>Request</h3>
+                  <div class="param-strip">
+                    <span class="param">Goal <b>Hypertrophy</b></span>
+                    <span class="param">Experience <b>Intermediate</b></span>
+                    <span class="param">Days <b>4</b></span>
+                    <span class="param">Session budget <b>60 min</b></span>
+                    <span class="param">Equipment <b>Full gym</b></span>
+                    <span class="param">Split <b>Upper / Lower</b></span>
+                    <span class="param">Effort language <b>RPE</b></span>
+                    <span class="param">Horizon <b>Mesocycle, 5 weeks</b></span>
+                    <span class="param">Periodization <b>Accumulation &rarr; intensification &rarr; deload</b></span>
+                  </div>
+                  <div class="finding"><strong>Constraints carried from her file</strong>Right knee: avoid deep-knee high-fatigue choices. Calves below MEV for 3 weeks &mdash; the engine will bias volume there.</div>
+                  <div class="side-heading" style="padding-left:0;">Or describe it (optional, on-device)</div>
+                  <div class="sh-field" style="border-color:var(--line);">Same as last block but push calves and keep Wednesday under 50 minutes<span style="color:var(--ember);">|</span></div>
+                  <div class="banner info" style="margin-top:10px;">Free text is parsed into the structured request above. The engine, not the language model, chooses every load, volume, exercise, and progression.</div>
+                </div>
+
+                <div class="panel">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><strong>Draft preview</strong><span class="pill neutral">deterministic &middot; KB v2.0</span><span class="spacer"></span><span class="mono" style="font-size:11px;color:var(--faint);">generated in 0.21 s</span></div>
+                  <div class="week-grid">
+                    <div class="day-card"><div class="day">Mon</div><h4>Lower A</h4><div class="mini">5 items</div></div>
+                    <div class="day-card"><div class="day">Tue</div><h4>Upper A</h4><div class="mini">7 items</div></div>
+                    <div class="day-card"><div class="day">Wed</div><h4>Rest</h4><div class="mini">&mdash;</div></div>
+                    <div class="day-card"><div class="day">Thu</div><h4>Lower B</h4><div class="mini">5 items</div></div>
+                    <div class="day-card"><div class="day">Fri</div><h4>Upper B</h4><div class="mini">7 items</div></div>
+                    <div class="day-card"><div class="day">Sat</div><h4>Zone 2</h4><div class="mini">30 min bike</div></div>
+                    <div class="day-card"><div class="day">Sun</div><h4>Rest</h4><div class="mini">&mdash;</div></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <aside class="inspector">
+              <h3>Why this plan</h3>
+              <div class="finding">Each muscle is trained twice at 10-16 weekly working sets &mdash; inside the productive range for an intermediate lifter &mdash; with compounds at 5-8 reps and accessories at 8-12, all at about 1-3 reps in reserve.</div>
+              <div class="finding"><strong>Quad volume 14 sets/week</strong><span class="pill progress">moderate</span> MAV band for trained lifters.<div class="citation-row"><span class="citation">pelland_2025</span><span class="citation">rp_landmarks</span></div></div>
+              <div class="finding"><strong>Calves raised to 9 sets</strong><span class="pill done">strong</span> Below MEV is below the growth threshold.<div class="citation-row"><span class="citation">iusca_2021</span></div></div>
+              <div class="finding"><strong>Effort 1-3 RIR</strong><span class="pill done">strong</span> Captures most of the stimulus at a fraction of the fatigue cost.<div class="citation-row"><span class="citation">robinson_2024</span><span class="citation">refalo_2024</span></div></div>
+              <div class="finding"><strong>Accumulation model</strong><span class="pill info">judgment call</span> LP and DUP are roughly equivalent for hypertrophy; this is a preference, not a finding.<div class="citation-row"><span class="citation">grgic_2017_periodization</span></div></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

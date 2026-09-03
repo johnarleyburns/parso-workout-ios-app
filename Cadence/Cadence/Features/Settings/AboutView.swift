@@ -2,11 +2,11 @@ import SwiftUI
 
 /// The About screen (reached from Settings): what Cladiron stands for — its
 /// privacy principles and the transparent, science-based coaching methodology —
-/// plus open-source, copyright, and a link to the online privacy policy.
+/// plus the app/open-data licensing boundary, copyright, and a link to the
+/// online privacy policy.
 /// "Cladiron" is the public product name; the internal target is still "Cadence".
 struct AboutView: View {
     private let privacyURL = URL(string: "https://parso.guru/cladiron_privacy")!
-    private let sourceURL = URL(string: "https://github.com/johnarleyburns/parso-workout-ios-app")!
     private let siteURL = URL(string: "https://www.parso.guru")!
     private let exerciseDBURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!
     private let exerciseAnnotationURL = URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
@@ -25,7 +25,7 @@ struct AboutView: View {
                 methodology
                     .padding(.horizontal, 20).padding(.vertical, 24)
                 Divider()
-                openSource
+                licensing
                     .padding(.horizontal, 20).padding(.vertical, 24)
                 Divider()
                 exerciseLibrary
@@ -86,10 +86,10 @@ struct AboutView: View {
                       "Everything runs on your device. There's no account, no server, and nothing about your training is ever sent to us.")
             principle("book.closed", "Science-based & transparent",
                       "Every recommendation comes from published exercise-science research and shows the principle and citation behind it. No black box.")
-            principle("dollarsign.circle", "Free & open source",
-                      "No subscriptions and no ads. An optional tip jar is the only thing you can buy — and it's never required. The complete source is public, so anyone can verify exactly what it does.")
+            principle("hand.raised", "Proprietary & privacy-first",
+                      "Cladiron is proprietary software. Its privacy commitments come from an on-device, serverless design, clear permissions, data export, and a published privacy policy — not from making the app source public.")
             principle("square.and.arrow.up", "Your data, fully portable",
-                      "Everything lives on this device — no cloud. You can export a complete backup of your entire history and preferences at any time and import it into a fresh install, so your data is never locked in.")
+                      "Your history lives on your devices and syncs through your private iCloud, never a Cladiron server. You can export a complete backup and import it into a fresh install, so your data is never locked in.")
         }
     }
 
@@ -114,21 +114,24 @@ struct AboutView: View {
             Text("Cladiron's coach is a deterministic, on-device expert system, not a cloud service or black box. It reads the workouts and assessments you log and reasons over a curated, citable knowledge base of strength and hypertrophy science.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("From that it derives concrete next steps — weekly volume versus evidence-based landmarks, estimated-1RM trends, double-progression load and rep targets, deloads, and periodic strength assessments to track progress like a study's pre/post. Because the rules are open and cited, you can always see why it suggests what it does.")
+            Text("From that it derives concrete next steps — weekly volume versus evidence-based landmarks, estimated-1RM trends, double-progression load and rep targets, deloads, and periodic strength assessments to track progress like a study's pre/post. The app shows its reasoning and citations so you can always see why it suggests what it does.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    // MARK: Open source
+    // MARK: Licensing
 
-    private var openSource: some View {
+    private var licensing: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Open Source").font(.title3.bold())
-            Text("Cladiron is released under the MIT license. The whole app — the logging, the coaching engine, and its knowledge base — is on GitHub for anyone to inspect, learn from, or build on. Issues and contributions are welcome.")
+            Text("Licensing").font(.title3.bold())
+            Text("Cladiron is proprietary, closed-source software owned by Parso Consulting. All rights are reserved.")
                 .font(.body).foregroundStyle(.secondary)
-            Link("View source on GitHub", destination: sourceURL)
-                .font(.body).accessibilityIdentifier("about.sourceLink")
+            Text("Cladiron is a proprietary, privacy-first application built on the open free-exercise-db-plusplus project. The exercise database, annotations, and related tooling remain freely available for use by other applications.")
+                .font(.body).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Link("View the open free-exercise-db-plusplus project", destination: exerciseAnnotationURL)
+                .font(.body).accessibilityIdentifier("about.dbppLink")
             Text("Made by Parso Consulting — an independent software studio.")
                 .font(.body).foregroundStyle(.secondary).padding(.top, 6)
             Link("parso.guru", destination: siteURL).font(.body)
@@ -140,7 +143,7 @@ struct AboutView: View {
     private var exerciseLibrary: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Exercise Library").font(.title3.bold())
-            Text("Exercise source data and imagery come from free-exercise-db; DB++ adds evidence-audited annotations, a 20-muscle ontology, and movement classifications. Everything is bundled on-device.")
+            Text("Exercise source data and imagery come from free-exercise-db; free-exercise-db-plusplus adds evidence-audited annotations, a 20-muscle ontology, movement classifications, and the on-device training engine. Everything is bundled on-device.")
                 .font(.body).foregroundStyle(.secondary)
             Link(destination: exerciseDBURL) {
                 HStack(spacing: 6) {
@@ -156,7 +159,7 @@ struct AboutView: View {
                 }
                 .font(.body)
             }
-            Text("The on-device training engine is free-exercise-db++ \(enginePackageVersion), pinned as a Swift package dependency.")
+            Text("The open free-exercise-db-plusplus package is pinned at version \(enginePackageVersion). Cladiron's interface, app-specific coaching composition, persistence, HealthKit integration, and Apple-platform experiences remain proprietary.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Link(destination: enginePackageURL) {
@@ -181,7 +184,7 @@ struct AboutView: View {
                 Link("View Online", destination: privacyURL)
                     .font(.subheadline).accessibilityIdentifier("about.privacyLink")
             }
-            Text("We don't collect, transmit, or sell your data — there's nothing to collect, because Cladiron runs entirely on your device. Apple Health, Bluetooth heart-rate, and location data all stay on your device, and only with your permission.")
+            Text("We don't collect, transmit, or sell your data. Cladiron runs on your devices; your training log can sync through your private iCloud but is never stored on or visible to a Cladiron server. Apple Health, Bluetooth heart-rate, and location data stay within your Apple devices and services, and are used only with your permission.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Location is used only while you're recording an outdoor run, walk, or ride. It keeps mapping your route in the background — shown by the blue status-bar indicator — and stops the moment you end the workout. Cladiron never tracks your location at any other time.")

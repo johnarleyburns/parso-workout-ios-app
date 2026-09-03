@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone - Set Scheme Picker</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPhone - Set Scheme Picker</h1>
+        <p>Layer 2 of compact authoring: fill an exercise's entire set list in two or three taps, then only touch the outliers. This is what turns the most common item from twenty interactions into three. Section 32.4 / model 9.9.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">32.4</span><span class="tag">One undoable action</span></div>
+    </header>
+
+    <section class="device-stage" style="display:grid;grid-template-columns:repeat(2,auto);gap:26px;justify-content:center;">
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:45</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Back Squat</h2><div class="sub">no sets yet</div></div>
+            <div class="ios-content" style="padding-bottom:8px;">
+              <div class="set-row" style="border:1px dashed var(--line);border-radius:10px;justify-content:center;color:var(--faint);font-size:12px;">No sets. Pick a scheme, type shorthand, or add sets one at a time.</div>
+              <div class="stack-actions"><button class="button">+ Add set</button><button class="button primary">&#9889; Scheme</button><button class="button">&#9000; Shorthand</button></div>
+            </div>
+
+            <div class="sheet" style="height:64%;">
+              <div class="grabber"></div>
+              <h3>Apply a scheme</h3>
+              <div class="scheme-grid">
+                <div class="scheme-card"><strong>5 &times; 5</strong><span>@80% &middot; RPE 8 &middot; 3:00</span></div>
+                <div class="scheme-card sel"><strong>Top + 2 back-offs</strong><span>1@90 &middot; 2@80 &middot; 3:00</span></div>
+                <div class="scheme-card"><strong>3 &times; 8&ndash;10</strong><span>RPE 8 &middot; 2:00</span></div>
+                <div class="scheme-card"><strong>Ascending</strong><span>60/70/80/90%</span></div>
+                <div class="scheme-card"><strong>Wave 3&times;3</strong><span>3 waves &middot; RPE 8&ndash;9</span></div>
+                <div class="scheme-card"><strong>Dana&rsquo;s 3 &times; 8&ndash;10</strong><span>saved scheme</span></div>
+              </div>
+              <div class="param-strip">
+                <span class="param">Sets <b>&#8854; 3 &#8853;</b></span>
+                <span class="param">Top <b>90%</b></span>
+                <span class="param">Back-off <b>80%</b></span>
+                <span class="param">Reps <b>3 / 6</b></span>
+                <span class="param">RPE <b>9 / 8</b></span>
+                <span class="param">Rest <b>3:00</b></span>
+                <span class="param">Warm-up ramp <b>&#10003;</b></span>
+              </div>
+              <div class="sh-echo">
+                <div class="cap">Preview &mdash; 6 sets</div>
+                <div class="set-row warm" style="border:0;padding:4px 0;"><span class="ix">W1</span><span class="chip type warmc">Warm</span><span class="chip">8</span><span class="chip">40% &middot; 80</span></div>
+                <div class="set-row warm" style="border:0;padding:4px 0;"><span class="ix">W2</span><span class="chip type warmc">Warm</span><span class="chip">5</span><span class="chip">55% &middot; 110</span></div>
+                <div class="set-row warm" style="border:0;padding:4px 0;"><span class="ix">W3</span><span class="chip type warmc">Warm</span><span class="chip">3</span><span class="chip">70% &middot; 140</span></div>
+                <div class="set-row" style="border:0;padding:4px 0;"><span class="ix">1</span><span class="chip type top">Top</span><span class="chip">3</span><span class="chip">90% &middot; 180</span><span class="chip">RPE 9</span></div>
+                <div class="set-row" style="border:0;padding:4px 0;"><span class="ix">2&ndash;3</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip">80% &middot; 160</span><span class="chip">RPE 8</span></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+                <button class="button" style="flex:1;">Append</button>
+                <button class="button primary" style="flex:1;">Replace sets</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Two taps to a full item.</b> Card, then Replace. The parameter strip is there when you want it and ignorable when you don't.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:46</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Applied</h2><div class="sub">Back Squat &middot; Top + 2 back-offs</div></div>
+            <div class="ios-content">
+              <div class="banner">Scheme applied as a single action. Undo restores the previous sets exactly.</div>
+              <div style="display:flex;align-items:center;gap:8px;margin:2px 0;">
+                <strong style="font-size:15px;">1. Back Squat</strong><span class="pill progress">e1RM 200</span><span class="pill neutral">Scheme</span><span class="spacer"></span><span class="button ghost" style="padding:0;">&#8943;</span>
+              </div>
+              <div class="set-stack">
+                <div class="set-row warm"><span class="grab">&#8942;&#8942;</span><span class="ix">W1</span><span class="chip type warmc">Warm</span><span class="chip">8</span><span class="chip">40% &middot; 80</span><span class="chip">1:00</span></div>
+                <div class="set-row warm"><span class="grab">&#8942;&#8942;</span><span class="ix">W2</span><span class="chip type warmc">Warm</span><span class="chip">5</span><span class="chip">55% &middot; 110</span><span class="chip">1:30</span></div>
+                <div class="set-row warm"><span class="grab">&#8942;&#8942;</span><span class="ix">W3</span><span class="chip type warmc">Warm</span><span class="chip">3</span><span class="chip">70% &middot; 140</span><span class="chip">2:00</span></div>
+                <div class="set-row"><span class="grab">&#8942;&#8942;</span><span class="ix">1</span><span class="chip type top">Top</span><span class="chip">3</span><span class="chip">90% &middot; 180</span><span class="chip">RPE 9</span><span class="chip">3:00</span></div>
+                <div class="set-row"><span class="grab">&#8942;&#8942;</span><span class="ix">2</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip">80% &middot; 160</span><span class="chip">RPE 8</span><span class="chip">3:00</span></div>
+                <div class="set-row"><span class="grab">&#8942;&#8942;</span><span class="ix">3</span><span class="chip type">Work</span><span class="chip">6</span><span class="chip">80% &middot; 160</span><span class="chip">RPE 8</span><span class="chip">3:00</span></div>
+              </div>
+              <div class="stack-actions"><button class="button">+ Add set</button><button class="button">&#9889; Re-apply</button><button class="button">&#9000; Shorthand</button></div>
+
+              <div class="ios-section-title">Item overflow</div>
+              <div class="panel" style="padding:0;overflow:hidden;">
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Re-apply scheme with different parameters</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Save these sets as a scheme</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Substitute exercise&hellip;</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Copy to client&hellip;<span class="spacer"></span><span class="badge-pro">Pro</span></div>
+                <div class="side-row" style="margin:0;border-radius:0;">Select sets</div>
+              </div>
+              <div class="banner info" style="margin-top:11px;">Any hand-built set list can be saved as a scheme. That is how a coach's own patterns become one tap on the phone &mdash; and the same schemes appear on iPad under &#8984;&#8679;P.</div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Re-apply</b> reopens the sheet with the previous parameters, so intent never has to be reconstructed by hand.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

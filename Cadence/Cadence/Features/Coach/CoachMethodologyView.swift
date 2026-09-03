@@ -72,7 +72,7 @@ struct CoachMethodologyView: View {
     private var preamble: some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Every coaching recommendation is grounded in peer-reviewed exercise science. This page documents the specific rules and citations the coach follows — the same rules verified by the automated scientific validation suite that ships with the source code.")
+                Text("Every coaching recommendation is grounded in peer-reviewed exercise science. This page documents the specific rules and citations the coach follows — the same rules covered by Cladiron's automated scientific validation suite.")
                     .font(.subheadline)
                 Text("The coach is a deterministic, on-device rule engine. Identical inputs always produce identical outputs. There is no AI, no cloud service, and no black box.")
                     .font(.caption)

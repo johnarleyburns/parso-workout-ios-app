@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone Trainer - Client Switcher</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPhone Trainer - Client Switcher</h1>
+        <p>Two taps to change client from anywhere, keeping the current destination. If you are in Week view for Maya, switching to Daniel lands in Daniel's Week view &mdash; the phone equivalent of clicking a different row in the iPad sidebar. Section 32.8.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">32.8</span><span class="tag">Sidebar replacement</span></div>
+    </header>
+
+    <section class="device-stage" style="display:grid;grid-template-columns:repeat(2,auto);gap:26px;justify-content:center;">
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>11:12</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="button ghost" style="padding-left:0;">&lsaquo; Clients</span><span class="spacer"></span>
+                <span class="client-chip" style="border-color:var(--ember);box-shadow:0 0 0 2px rgba(178,58,46,0.15);"><span class="avatar">MR</span>Maya R. &#9662;</span>
+              </div>
+              <h2>Week of Mar 3</h2>
+            </div>
+            <div class="ios-content" style="opacity:0.35;">
+              <div class="plan-day-row"><span class="dow">MON</span><div><h3>Lower A</h3><p>5 items</p></div><span class="pill done">Done</span></div>
+              <div class="plan-day-row"><span class="dow">TUE</span><div><h3>Upper A</h3><p>6 items</p></div><span class="pill done">Done</span></div>
+              <div class="plan-day-row"><span class="dow">WED</span><div><h3>Lower B</h3><p>4 items</p></div></div>
+            </div>
+
+            <div class="sheet" style="height:64%;">
+              <div class="grabber"></div>
+              <div class="sh-field" style="border-color:var(--line);font-family:var(--ui);font-size:13px;">Search clients&hellip;</div>
+              <div class="ios-section-title">Recent</div>
+              <div class="plan-day-row" style="grid-template-columns:auto 1fr auto;padding:9px 0;"><span class="avatar">MR</span><div><h3>Maya R.</h3><p>Week of Mar 3 &middot; current</p></div><span class="pill neutral">Here</span></div>
+              <div class="plan-day-row" style="grid-template-columns:auto 1fr auto;padding:9px 0;"><span class="avatar green">DC</span><div><h3>Daniel C.</h3><p>needs next week</p></div><span class="status-dot assigned"></span></div>
+              <div class="plan-day-row" style="grid-template-columns:auto 1fr auto;padding:9px 0;"><span class="avatar amber">JP</span><div><h3>Jules P.</h3><p>e1RM suggestion</p></div><span class="status-dot progress"></span></div>
+              <div class="plan-day-row" style="grid-template-columns:auto 1fr auto;padding:9px 0;"><span class="avatar purple">SW</span><div><h3>Sam W.</h3><p>inactive 8 days</p></div><span class="status-dot alert"></span></div>
+              <div class="plan-day-row" style="grid-template-columns:auto 1fr auto;padding:9px 0;"><span class="avatar red">TK</span><div><h3>Tomas K.</h3><p>on track</p></div><span class="status-dot done"></span></div>
+              <div class="banner info" style="margin-top:10px;">Switching keeps your place: you are in Week view, so you land in Daniel's Week view.</div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Tap the chip</b> from any client screen &mdash; week, session, review, strength profile.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>11:13</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="button ghost" style="padding-left:0;">&lsaquo; Clients</span><span class="spacer"></span>
+                <span class="client-chip"><span class="avatar green">DC</span>Daniel C. &#9662;</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="color:var(--faint);font-size:18px;">&lsaquo;</span>
+                <h2 style="flex:1;">Week of Mar 3</h2>
+                <span style="color:var(--faint);font-size:18px;">&rsaquo;</span>
+              </div>
+              <div class="sub">swipe the header to page clients</div>
+            </div>
+            <div class="ios-content">
+              <div style="display:flex;gap:6px;justify-content:center;margin-bottom:12px;">
+                <span class="dot" style="color:#cfcbc2;"></span><span class="dot" style="color:var(--ember);"></span><span class="dot" style="color:#cfcbc2;"></span><span class="dot" style="color:#cfcbc2;"></span><span class="dot" style="color:#cfcbc2;"></span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:11px;">
+                <button class="button">Generate</button><button class="button">Critique</button><button class="button primary">Send</button>
+              </div>
+              <div class="plan-day-row"><span class="dow">MON</span><div><h3>Upper A</h3><p>7 items &middot; in progress</p></div><span class="pill progress">Now</span></div>
+              <div class="plan-day-row"><span class="dow">TUE</span><div><h3>Lower A</h3><p>5 items</p></div><span class="pill neutral">Sent</span></div>
+              <div class="plan-day-row"><span class="dow">WED</span><div><h3>Rest</h3><p>&mdash;</p></div><span class="pill neutral">Rest</span></div>
+              <div class="plan-day-row"><span class="dow">THU</span><div><h3>Upper B</h3><p>7 items</p></div><span class="pill neutral">Sent</span></div>
+              <div class="plan-day-row" style="border-bottom:0;"><span class="dow">FRI</span><div><h3 style="color:var(--ember);">Not built</h3><p>next week is empty</p></div><button class="button primary">Repeat + progress</button></div>
+
+              <div class="ios-section-title">Morning triage pass</div>
+              <div class="banner">Swipe through the roster in one motion per client without ever returning to a list. This is the phone's answer to Option-Command-Right on a keyboard.</div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Page dots</b> show position within the current sort, which defaults to needs-attention.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

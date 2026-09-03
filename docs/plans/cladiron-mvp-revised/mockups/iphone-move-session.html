@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone - Move Session and Repeat</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPhone - Move Session, Repeat, Reschedule</h1>
+        <p>Dragging a card across a seven-day list on a phone is fiddly, so scheduling gets an explicit action instead &mdash; faster to hit, available to VoiceOver and Switch Control, and offered on every idiom. Section 8.4.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">8.4</span><span class="tag">Accessible by default</span></div>
+    </header>
+
+    <section class="device-stage" style="display:grid;grid-template-columns:repeat(2,auto);gap:26px;justify-content:center;">
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:58</span><span>5G</span></div>
+            <div class="ios-nav"><h2>Plan</h2><div class="sub">Accumulation &middot; week 2 of 5</div></div>
+            <div class="ios-content">
+              <div class="segment"><span class="active">This week</span><span>Next week</span></div>
+              <div class="plan-day-row"><span class="dow">MON</span><div><h3>Lower A</h3><p>squat / hinge / calves</p></div><span class="pill done">Done</span></div>
+              <div class="plan-day-row"><span class="dow">TUE</span><div><h3>Upper A</h3><p>bench / row / press</p></div><span class="pill done">Done</span></div>
+              <div class="plan-day-row" style="background:#fff6f4;border-radius:8px;"><span class="dow">WED</span><div><h3>Lower B + Bike</h3><p>3 strength / 1 cardio</p></div><span class="button">&#8943;</span></div>
+              <div class="plan-day-row"><span class="dow">THU</span><div><h3>Rest</h3><p>optional walk</p></div><span class="pill neutral">Rest</span></div>
+              <div class="plan-day-row"><span class="dow">FRI</span><div><h3>Upper B</h3><p>pull emphasis</p></div><span class="pill neutral">Draft</span></div>
+              <div class="plan-day-row"><span class="dow">SAT</span><div><h3>Zone 2 bike</h3><p>30 min</p></div><span class="pill neutral">Draft</span></div>
+              <div class="plan-day-row" style="border-bottom:0;"><span class="dow">SUN</span><div><h3>Rest</h3><p>&mdash;</p></div><span class="button">+</span></div>
+            </div>
+
+            <div class="sheet" style="height:46%;">
+              <div class="grabber"></div>
+              <h3>Lower B + Bike</h3>
+              <div class="panel" style="padding:0;overflow:hidden;">
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);"><strong>Move to day&hellip;</strong></div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Repeat on selected days&hellip;</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Duplicate session</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Save as template</div>
+                <div class="side-row" style="margin:0;border-radius:0;border-bottom:1px solid var(--line-2);">Copy to client&hellip;<span class="spacer"></span><span class="badge-pro">Pro</span></div>
+                <div class="side-row" style="margin:0;border-radius:0;color:var(--red);">Delete session</div>
+              </div>
+              <div class="banner info" style="margin-top:11px;">Long-press-and-drag still works for people who prefer it. The explicit action exists so nothing depends on a gesture.</div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Session overflow.</b> Every scheduling operation the iPad offers by drag, in one list.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:59</span><span>5G</span></div>
+            <div class="ios-nav"><h2 style="font-size:26px;">Move to day</h2><div class="sub">Lower B + Bike &middot; content unchanged</div></div>
+            <div class="ios-content">
+              <div class="banner">Rescheduling is a scheduling change, not a prescription change. Loads, sets, and rationale travel with the session.</div>
+              <div class="plan-day-row"><span class="dow">MON</span><div><h3>Occupied</h3><p>Lower A &middot; completed</p></div><span class="pill neutral">Add second</span></div>
+              <div class="plan-day-row"><span class="dow">TUE</span><div><h3>Occupied</h3><p>Upper A &middot; completed</p></div><span class="pill neutral">Add second</span></div>
+              <div class="plan-day-row" style="background:var(--ember-soft);border-radius:8px;"><span class="dow" style="color:var(--ember);">WED</span><div><h3>Current day</h3><p>&mdash;</p></div><span class="pill alert">Here now</span></div>
+              <div class="plan-day-row"><span class="dow">THU</span><div><h3>Free</h3><p>rest day</p></div><button class="button primary">Move here</button></div>
+              <div class="plan-day-row"><span class="dow">FRI</span><div><h3>Occupied</h3><p>Upper B &middot; draft</p></div><span class="pill neutral">Add second</span></div>
+              <div class="plan-day-row"><span class="dow">SAT</span><div><h3>Occupied</h3><p>Zone 2 bike</p></div><span class="pill neutral">Add second</span></div>
+              <div class="plan-day-row" style="border-bottom:0;"><span class="dow">SUN</span><div><h3>Free</h3><p>rest day</p></div><button class="button">Move here</button></div>
+
+              <div class="ios-section-title">Interference check</div>
+              <div class="banner info">Moving Lower B to Thursday puts it the day after Upper A and two days before Upper B. No conflict with Saturday's Zone 2 work.<div class="citation-row" style="margin-top:6px;"><span class="citation">acsm_guidelines</span><span class="citation">nsca_essentials</span></div></div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Live critique</b> runs on the reschedule too &mdash; the engine flags a concurrent-training conflict before you create one.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

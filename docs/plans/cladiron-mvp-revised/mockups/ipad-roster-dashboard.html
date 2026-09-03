@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPad Trainer - Roster and Dashboard</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPad Trainer - Roster and Dashboard</h1>
+        <p>Three-column workbench: roster sidebar, roster-wide triage cards, and a contextual inspector. This replaces the retired Mac app as the reference trainer surface (spec K.1 / section 30).</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">K.1</span><span class="tag">iPad regular</span><span class="tag">Pro</span></div>
+    </header>
+
+    <section class="mockup-stage" style="display:grid;place-items:center;">
+      <div class="ipad-frame">
+        <div class="ipad-screen">
+          <div class="ipad-status"><span>Mon 3 Mar &nbsp; 9:41</span><span>Cladiron &mdash; Clients</span><span>Wi-Fi &nbsp; 82%</span></div>
+          <div class="menubar">
+            <span class="app">Cladiron</span><span>File</span><span>Edit</span><span>Client</span><span>Plan</span><span>View</span><span>Window</span><span>Help</span>
+          </div>
+
+          <div class="split3">
+            <aside class="mac-sidebar">
+              <div class="side-heading">Clients &nbsp; 14</div>
+              <div class="segment" style="grid-template-columns:1fr 1fr;margin-bottom:9px;"><span class="active">Needs you</span><span>All</span></div>
+              <div class="side-row selected"><span class="avatar">MR</span><span>Maya R.<span class="sub">Pain flag &middot; Wed</span></span><span class="status-dot alert"></span></div>
+              <div class="side-row"><span class="avatar green">DC</span><span>Daniel C.<span class="sub">No plan next week</span></span><span class="status-dot assigned"></span></div>
+              <div class="side-row"><span class="avatar amber">JP</span><span>Jules P.<span class="sub">e1RM suggestion</span></span><span class="status-dot progress"></span></div>
+              <div class="side-row"><span class="avatar purple">SW</span><span>Sam W.<span class="sub">8 days inactive</span></span><span class="status-dot alert"></span></div>
+              <div class="side-row"><span class="avatar red">TK</span><span>Tomas K.<span class="sub">Completed 6:14 PM</span></span><span class="status-dot done"></span></div>
+              <div class="side-heading">Templates</div>
+              <div class="side-row"><span class="mono">TPL</span><span>Upper/Lower 4x</span></div>
+              <div class="side-row"><span class="mono">TPL</span><span>3x Strength Block</span></div>
+              <div class="side-heading">Schemes</div>
+              <div class="side-row"><span class="mono">SCH</span><span>Top set + 2 back-offs</span></div>
+              <div class="side-row" style="color:var(--ember);font-weight:700;">+ Add client</div>
+            </aside>
+
+            <section class="pane">
+              <div class="mac-toolbar">
+                <h2>Dashboard</h2><span class="sub">14 clients &middot; 5 need attention</span>
+                <span class="spacer"></span>
+                <button class="button">Generate</button>
+                <button class="button">Export</button>
+                <button class="button primary">New plan</button>
+              </div>
+              <div class="pane-body">
+                <div class="client-card">
+                  <div class="client-card-head">
+                    <span class="avatar">MR</span>
+                    <div><h3>Maya Rodriguez</h3><div class="workout">Lower Body + Conditioning &middot; completed 6:14 PM</div></div>
+                    <div class="right"><span class="pill alert">Pain flag 2/10</span></div>
+                  </div>
+                  <div class="pulse" style="margin-top:10px;">
+                    <span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span>
+                    <span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span></span>
+                  </div>
+                  <div class="card-meta">
+                    <span>17/18 sets</span><span>cardio done</span><span>target RPE 7-8 / actual 8-9</span><span>knee, split squat</span>
+                  </div>
+                  <div class="card-meta">
+                    <button class="button">Review</button><button class="button">Message</button><button class="button">Substitute + resend</button>
+                  </div>
+                </div>
+
+                <div class="client-card">
+                  <div class="client-card-head">
+                    <span class="avatar green">DC</span>
+                    <div><h3>Daniel Cho</h3><div class="workout">Upper A &middot; in progress</div></div>
+                    <div class="right"><span class="pill progress">Needs next week</span></div>
+                  </div>
+                  <div class="pulse" style="margin-top:10px;">
+                    <span class="done"></span><span class="done"></span><span class="now"></span><span></span><span></span><span></span><span></span><span></span>
+                  </div>
+                  <div class="card-meta"><span>Accumulation W3 of 5</span><span>adherence 12/12</span><span>engine: progress bench +5 lb</span></div>
+                </div>
+
+                <div class="client-card">
+                  <div class="client-card-head">
+                    <span class="avatar amber">JP</span>
+                    <div><h3>Jules Park</h3><div class="workout">Rest day</div></div>
+                    <div class="right"><span class="pill info">e1RM 240 &rarr; 247?</span></div>
+                  </div>
+                  <div class="card-meta"><span>10 x 185 @ RPE 8 on Fri</span><span>+2.9% over noise threshold</span><button class="button">Accept</button><button class="button">Ignore</button></div>
+                </div>
+
+                <div class="client-card">
+                  <div class="client-card-head">
+                    <span class="avatar purple">SW</span>
+                    <div><h3>Sam Whitlock</h3><div class="workout">No session logged in 8 days</div></div>
+                    <div class="right"><span class="pill alert">Inactive</span></div>
+                  </div>
+                  <div class="card-meta"><span>Last: Upper B, 22 Feb</span><button class="button">Message</button><button class="button">Pause client</button></div>
+                </div>
+              </div>
+            </section>
+
+            <aside class="inspector">
+              <h3>Maya Rodriguez</h3>
+              <div class="finding"><strong>Pain flag &middot; right knee 2/10</strong>Logged on Bulgarian split squat, set 2. Engine proposes leg press next week and biasing knee-dominant effort down.</div>
+              <div class="finding"><strong>Volume this week</strong>Quads 14 (in MAV) &middot; Chest 9 (low MAV) &middot; Back 15 (in MAV)</div>
+              <div class="finding"><strong>Deload watch</strong>2 of 5 triggers active. Not proposing a deload yet.</div>
+              <div class="citation-row"><span class="citation">robinson_2024</span><span class="citation">rp_landmarks</span></div>
+              <h3 style="margin-top:14px;">Suggestions</h3>
+              <div class="finding"><strong>Substitute split squat &rarr; leg press</strong>Preserves knee-dominant quad/glute stimulus with less joint demand.<div class="citation-row"><span class="citation">nsca_essentials</span></div></div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+    <p class="screen-note"><b>States.</b> Populated &middot; empty (add your first client, trial terms stated once) &middot; lapsed (read-only banner, clients stay connected) &middot; syncing. <b>Sort</b> defaults to needs-attention.</p>
+  </main>
+</body>
+</html>

@@ -12,7 +12,7 @@ struct ContributionToast: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Enjoying Cladiron?")
                 .font(.headline)
-            Text("It's free, open-source, and has no ads or subscriptions. An optional tip helps support continued development.")
+            Text("It's privacy-first and has no ads or subscriptions. An optional tip helps support continued development.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

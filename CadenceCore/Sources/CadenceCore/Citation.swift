@@ -55,7 +55,7 @@ public enum EvidenceClaimCategory: String, Sendable, Codable, CaseIterable {
     case sessionStructure
 }
 
-/// The bundled reference list the P3 rules point at. Open-source + visible in-app.
+/// The bundled reference list the P3 rules point at. Visible and navigable in-app.
 public enum CitationRegistry {
 
     /// Anchor paper for the intensity×goal rule (user-supplied).

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone - Exercise Picker</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPhone - Exercise Picker</h1>
+        <p>Search, filter by muscle, pattern, and equipment &mdash; with &ldquo;recently programmed for this client&rdquo; first, which is what a coach actually reaches for. Load modes are constrained per exercise so the editor never offers a nonsense prescription. Section 31.2.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">31.2</span><span class="tag">Alias-aware</span></div>
+    </header>
+
+    <section class="device-stage" style="display:grid;grid-template-columns:repeat(2,auto);gap:26px;justify-content:center;">
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:55</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:4px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span class="button ghost" style="padding-left:0;">Cancel</span><span class="spacer"></span><span class="button ghost">&#9000; Shorthand</span></div>
+              <h2 style="font-size:26px;">Add exercise</h2>
+            </div>
+            <div class="ios-content">
+              <div class="sh-field" style="border-color:var(--line);font-family:var(--ui);">Search or type an alias&hellip;</div>
+              <div style="display:flex;gap:6px;margin:10px 0;flex-wrap:wrap;">
+                <span class="chip active">All</span><span class="chip">Squat</span><span class="chip">Hinge</span><span class="chip">Push</span><span class="chip">Pull</span><span class="chip">Carry</span><span class="chip">Isolation</span>
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+                <span class="chip ghost">Barbell</span><span class="chip ghost">Dumbbell</span><span class="chip ghost">Machine</span><span class="chip ghost">Cable</span><span class="chip ghost">Bodyweight</span>
+              </div>
+
+              <div class="ios-section-title">Recent for Maya</div>
+              <div class="plan-day-row" style="grid-template-columns:1fr auto;"><div><h3>Back Squat</h3><p>squat &middot; quads, glutes &middot; barbell</p></div><span class="pill neutral">e1RM 200</span></div>
+              <div class="plan-day-row" style="grid-template-columns:1fr auto;"><div><h3>Romanian Deadlift</h3><p>hinge &middot; hamstrings, glutes &middot; barbell</p></div><span class="pill neutral">e1RM 190</span></div>
+              <div class="plan-day-row" style="grid-template-columns:1fr auto;"><div><h3>Leg Press</h3><p>squat &middot; quads, glutes &middot; machine</p></div><span class="pill neutral">e1RM 400</span></div>
+
+              <div class="ios-section-title">All exercises</div>
+              <div class="plan-day-row" style="grid-template-columns:1fr auto;"><div><h3>Barbell Bench Press</h3><p>horizontal push &middot; chest &middot; aliases: bench, bp</p></div><span class="pill neutral">%1RM</span></div>
+              <div class="plan-day-row" style="grid-template-columns:1fr auto;"><div><h3>Pull-up</h3><p>vertical pull &middot; lats &middot; aliases: pullup, pu</p></div><span class="pill neutral">BW / BW+ / assisted</span></div>
+              <div class="plan-day-row" style="grid-template-columns:1fr auto;"><div><h3>Lat Pulldown</h3><p>vertical pull &middot; lats &middot; aliases: lat pd</p></div><span class="pill neutral">lb / machine</span></div>
+              <div class="plan-day-row" style="grid-template-columns:1fr auto;border-bottom:0;"><div><h3>Face Pull</h3><p>isolation &middot; rear delts &middot; cable, band</p></div><span class="pill neutral">lb / band</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Load modes are declared per exercise</b>, so a pull-up never offers %1RM and a cable fly never offers bodyweight-plus.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>9:56</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Substitute</h2><div class="sub">Bulgarian Split Squat</div></div>
+            <div class="ios-content">
+              <div class="banner" style="border-color:#ecc9c3;background:#fffaf9;"><span class="pill alert">Pain 2/10</span> Right knee, reported Wednesday.</div>
+              <div class="ios-section-title">Engine-ranked, stimulus preserving</div>
+
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:8px;"><strong>Leg Press</strong><span class="pill done">best fit</span><span class="spacer"></span><button class="button">Use</button></div>
+                <div class="sub">Preserves: squat pattern, quads and glutes.</div>
+                <div class="sub">Trade-off: less core and stabilizer demand; easier to recover from.</div>
+                <div class="citation-row"><span class="citation">nsca_essentials</span><span class="citation">rp_landmarks</span></div>
+              </article>
+
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:8px;"><strong>Goblet Squat</strong><span class="spacer"></span><button class="button">Use</button></div>
+                <div class="sub">Preserves: squat pattern, quads and glutes, with dumbbells.</div>
+                <div class="sub">Trade-off: loading limited by what she can hold.</div>
+              </article>
+
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:8px;"><strong>Hack Squat</strong><span class="spacer"></span><button class="button">Use</button></div>
+                <div class="sub">Preserves: knee-dominant quad emphasis.</div>
+                <div class="sub">Trade-off: more knee flexion demand &mdash; <span style="color:var(--red);">flagged against the recorded knee note</span>.</div>
+              </article>
+
+              <div class="banner info">Contraindicated options are ranked down and labelled rather than hidden, so the coach can see and override with their eyes open.</div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Same ranking code</b> is used mid-session on the Watch when a machine is taken.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPad Trainer - Menu Bar, Shortcut HUD, Command Palette</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPad Trainer - Commands</h1>
+        <p>One command declaration, three presentations: the iPadOS menu bar with key equivalents, the Command-hold shortcut HUD, and the Command-K palette. Every command also has a touch path. Spec K.4 / section 33 / Appendix Y.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">K.4</span><span class="tag">iPadOS 26 menu bar</span></div>
+    </header>
+
+    <section class="mockup-stage" style="display:grid;place-items:center;">
+      <div class="ipad-frame">
+        <div class="ipad-screen">
+          <div class="ipad-status"><span>Wed 5 Mar &nbsp; 10:14</span><span>Maya Rodriguez &mdash; Lower B</span><span>Wi-Fi</span></div>
+          <div class="menubar"><span class="app">Cladiron</span><span>File</span><span>Edit</span><span>Client</span><span class="open">Plan</span><span>View</span><span>Window</span><span>Help</span></div>
+
+          <div class="menu-panel">
+            <div><span>Generate with Coach&hellip;</span><kbd>&#8984;&#8679;G</kbd></div>
+            <div><span>Critique Plan</span><kbd>&#8984;&#8679;C</kbd></div>
+            <div class="sel"><span>Apply Scheme&hellip;</span><kbd>&#8984;&#8679;P</kbd></div>
+            <div><span>Apply Progression</span><kbd>&#8984;&#8679;R</kbd></div>
+            <hr>
+            <div><span>Insert Deload Week</span><kbd></kbd></div>
+            <div><span>Repeat Week</span><kbd></kbd></div>
+            <div><span>Save as Template</span><kbd></kbd></div>
+            <hr>
+            <div><span>Substitute Exercise&hellip;</span><kbd>&#8984;&#8679;X</kbd></div>
+            <div><span>Preview as Client</span><kbd>&#8984;&#8679;V</kbd></div>
+            <div><span>Send Plan&hellip;</span><kbd>&#8984;&#8679;S</kbd></div>
+          </div>
+
+          <div class="split2" style="margin-top:-186px;">
+            <aside class="mac-sidebar" style="padding-top:196px;">
+              <div class="side-heading">Clients</div>
+              <div class="side-row selected"><span class="avatar">MR</span><span>Maya R.</span></div>
+              <div class="side-row"><span class="avatar green">DC</span><span>Daniel C.</span></div>
+            </aside>
+            <section class="pane">
+              <div class="pane-body" style="padding-top:200px;">
+                <div class="two-up">
+                  <div>
+                    <div class="side-heading" style="padding-left:0;">Hold &#8984; &mdash; shortcut HUD</div>
+                    <div class="shortcut-hud">
+                      <div class="hud-title">Plan</div>
+                      <div><kbd>&#8984;&#8679;G</kbd> <b>Generate</b></div>
+                      <div><kbd>&#8984;&#8679;C</kbd> <b>Critique</b></div>
+                      <div><kbd>&#8984;&#8679;S</kbd> <b>Send</b></div>
+                      <div class="hud-title">Sets</div>
+                      <div><kbd>&#8984;D</kbd> <b>Duplicate set</b></div>
+                      <div><kbd>&#8997;&#8593;/&#8595;</kbd> <b>Move set</b></div>
+                      <div><kbd>Space</kbd> <b>Toggle warm-up</b></div>
+                      <div><kbd>&#8984;]</kbd> <b>Nudge % up</b></div>
+                      <div><kbd>&#8984;[</kbd> <b>Nudge % down</b></div>
+                      <div><kbd>&#8984;R</kbd> <b>Set all rest</b></div>
+                      <div class="hud-title">Navigate</div>
+                      <div><kbd>&#8997;&#8984;&rarr;</kbd> <b>Next client</b></div>
+                      <div><kbd>&#8984;K</kbd> <b>Quick add</b></div>
+                      <div><kbd>&#8984;\</kbd> <b>Sidebar</b></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="side-heading" style="padding-left:0;">&#8984;K &mdash; command palette</div>
+                    <div class="palette">
+                      <div class="q">crit<span style="color:var(--ember);">|</span></div>
+                      <div class="row sel"><span>Critique Plan</span><kbd>&#8984;&#8679;C</kbd></div>
+                      <div class="row"><span>Critique: show only high severity</span><kbd></kbd></div>
+                      <div class="row"><span>Copy exercise to client&hellip;</span><kbd>&#8984;&#8679;K</kbd></div>
+                      <div class="row"><span>Convert selected sets to %1RM</span><kbd>&#8984;&#8679;%</kbd></div>
+                      <div class="row" style="border-bottom:0;"><span>Show Rationale</span><kbd>&#8984;&#8679;Y</kbd></div>
+                    </div>
+                    <div class="banner info" style="margin-top:12px;">Nothing is keyboard-only. Every command here also appears in a toolbar, a context menu, or an item's overflow menu &mdash; iPad without a keyboard and iPhone are first-class.</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+    <p class="screen-note"><b>Below iPadOS 26</b> the menu bar is unavailable; the same commands remain reachable through the toolbar and the palette, which is a presentation difference, not a capability difference.</p>
+  </main>
+</body>
+</html>

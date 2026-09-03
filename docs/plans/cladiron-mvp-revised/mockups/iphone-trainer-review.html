@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPhone Trainer - Review Diff Rows</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPhone Trainer - Review</h1>
+        <p>A four-column table does not fit a phone, so review becomes diff rows: prescription over actual, outcome chip right-aligned, and matching sets collapsed into a summary line. The screen shows the exceptions, which is what review is for. Section 32.11.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">32.11</span><span class="tag">Rx over Did</span></div>
+    </header>
+
+    <section class="device-stage" style="display:grid;grid-template-columns:repeat(2,auto);gap:26px;justify-content:center;">
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>7:22 AM</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:6px;">
+              <div style="display:flex;align-items:center;gap:8px;"><span class="button ghost" style="padding-left:0;">&lsaquo; Maya</span><span class="spacer"></span><span class="client-chip"><span class="avatar">MR</span>Maya R. &#9662;</span></div>
+              <h2 style="font-size:26px;">Lower B</h2>
+              <div class="sub">Wed 5 Mar &middot; 47 min &middot; 17/18 sets</div>
+            </div>
+            <div class="ios-content">
+              <div class="banner" style="border-color:#ecc9c3;background:#fffaf9;"><span class="pill alert">Pain 2/10</span> Right knee, split squat set 2. &ldquo;Twinge on the way down, not sharp.&rdquo;</div>
+
+              <div class="ios-section-title">Back Squat</div>
+              <div class="diff-row ok"><div class="l"><span class="k">1&ndash;3</span><span>all on target</span><span class="spacer"></span><span class="pill done">On target</span></div></div>
+
+              <div class="ios-section-title">Bulgarian Split Squat</div>
+              <div class="diff-row ok"><div class="l"><span class="k">1</span><span>10 &times; 35 &middot; RPE 8</span><span class="spacer"></span><span class="pill done">On target</span></div></div>
+              <div class="diff-row miss">
+                <div class="l"><span class="k">Rx</span><span>10 &times; 35 &middot; RPE 8</span></div>
+                <div class="l"><span class="k">Did</span><span>6 &times; 35 &middot; RPE 7</span><span class="spacer"></span><span class="pill alert">Stopped</span></div>
+              </div>
+              <div class="diff-row miss">
+                <div class="l"><span class="k">Rx</span><span>10 &times; 35 &middot; RPE 8</span></div>
+                <div class="l"><span class="k">Did</span><span>&mdash;</span><span class="spacer"></span><span class="pill alert">Missed</span></div>
+              </div>
+
+              <div class="ios-section-title">Romanian Deadlift</div>
+              <div class="diff-row">
+                <div class="l"><span class="k">Rx</span><span>3 &times; 10 @ 135 &middot; RPE 8</span></div>
+                <div class="l"><span class="k">Did</span><span>3 &times; 10 @ 135 &middot; RPE 9</span><span class="spacer"></span><span class="pill progress">Harder</span></div>
+              </div>
+
+              <div class="ios-section-title">Bike intervals</div>
+              <div class="diff-row ok"><div class="l"><span class="k">&#10003;</span><span>24:06 &middot; avg HR 148 &middot; RPE 7</span><span class="spacer"></span><span class="pill done">Complete</span></div></div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+                <button class="button">Message</button><button class="button primary">Adjust next week</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Collapsing matches</b> is the key move: nine on-target sets become one line so three exceptions fit above the fold.</p>
+      </div>
+
+      <div>
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="island"></div>
+            <div class="ios-status"><span>7:24 AM</span><span>5G</span></div>
+            <div class="ios-nav" style="padding-bottom:2px;"><h2 style="font-size:24px;">Engine reactions</h2><div class="sub">proposals &mdash; nothing auto-applies</div></div>
+            <div class="ios-content">
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:8px;"><strong>Substitute split squat</strong><span class="spacer"></span><span class="pill info">pain</span></div>
+                <div class="sub" style="margin-top:5px;">Leg press preserves the knee-dominant quad and glute stimulus with less joint demand.</div>
+                <div class="citation-row"><span class="citation">nsca_essentials</span></div>
+                <div style="display:flex;gap:8px;margin-top:9px;"><button class="button" style="flex:1;">Not now</button><button class="button primary" style="flex:1;">Apply to next week</button></div>
+              </article>
+
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:8px;"><strong>Back off squat ~5%</strong><span class="spacer"></span><span class="pill progress">moderate</span></div>
+                <div class="sub" style="margin-top:5px;">Actual RPE ran above target at the same load for two sessions.</div>
+                <div class="citation-row"><span class="citation">helms_2023</span><span class="citation">robinson_2024</span></div>
+                <div style="display:flex;gap:8px;margin-top:9px;"><button class="button" style="flex:1;">Ignore</button><button class="button" style="flex:1;">Apply</button></div>
+              </article>
+
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:8px;"><strong>No e1RM change</strong></div>
+                <div class="sub" style="margin-top:5px;">No qualifying set this session: the top set matched the estimate rather than beating it. The profile is never updated silently.</div>
+              </article>
+
+              <article class="ios-card">
+                <div style="display:flex;align-items:center;gap:8px;"><strong>Deload watch</strong><span class="spacer"></span><span class="pill neutral">2 of 5 triggers</span></div>
+                <div class="sub" style="margin-top:5px;">Effort rising at fixed load, and quad volume is near the top of her range. Not proposing a deload yet.</div>
+                <div class="citation-row"><span class="citation">rp_landmarks</span></div>
+              </article>
+
+              <div class="banner">Pain at 2/10 is low severity: substitute and monitor. Cladiron does not diagnose, and it does not escalate at this level.</div>
+            </div>
+          </div>
+        </div>
+        <p class="screen-note" style="max-width:390px;margin-top:12px;"><b>Human in the loop</b> is unchanged by screen size &mdash; every reaction is a proposal with an explicit accept.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

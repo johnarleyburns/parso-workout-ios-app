@@ -2,7 +2,7 @@
 
 > **Product name (user-visible): Cladiron.** Internal codename: Cadence — used for the repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, and type names.
 
-**Status:** Draft v1.1 · **Platforms:** **v1 ships iPhone (iOS 17+) + an embedded watchOS 10+ companion app** (FR-8 shipped ahead of schedule, 2026-07-17); Watch-recorded workouts/steps/HR are also read from HealthKit. · **License:** GPLv3 (brand/trademark reserved) · **Distribution:** Source + TestFlight + App Store
+**Status:** Legacy v1 requirements; superseded by `docs/plans/cladiron-mvp-revised/CLADIRON_PLATFORM_SPEC.md` · **Platforms:** iPhone (iOS 17+) + embedded watchOS 10+ companion app · **License:** proprietary, closed source · **Distribution:** TestFlight + App Store
 
 > **v1 release scope:** log strength on the phone with coaching; read steps + ingest Watch-recorded workouts/HR from HealthKit; run a no-lab fitness test battery that feeds the coach; review history, PRs, and trends; train phone-free from the Watch (FR-8, shipped 2026-07-17: strength with partners, HIIT, cardio suite, live wrist HR). FTMS/NFC and Smart Start sensors move to later releases — see §9.
 
@@ -10,14 +10,14 @@
 
 ## 1. Vision & Goals
 
-Cladiron is an open-source, privacy-first, iPhone-native **strength coach**. The tracker is free forever and open source; the Coach is a paid product (**Cladiron Pro**). It occupies an unserved quadrant in the fitness-app landscape: the only open-source, no-account, on-device coaching app whose prescriptions are driven by field-testable fitness assessments the user administers themselves, and whose every recommendation cites readable, published science.
+Cladiron is a proprietary, privacy-first, iPhone-native **strength coach**. The tracker is free forever; the Coach is a paid product (**Cladiron Pro**). It is a no-account, on-device coaching app whose prescriptions are driven by field-testable fitness assessments the user administers themselves, and whose every recommendation cites readable, published science. Cladiron is built on the open `free-exercise-db-plusplus` project; the exercise database, annotations, and related tooling remain freely available for other applications.
 
 **The competitive wedge:**
 
 |                     | Account-based | No-account / local-first |
 |---------------------|---------------|--------------------|
 | **Closed-source**   | Hevy, Strong, Fitbod, RP, Juggernaut, Boostcamp | — |
-| **Open-source/FOSS**| wger (server), FitoTrack (Android) | **Cladiron** |
+| **Privacy-first / on-device** | wger (server), FitoTrack (Android) | **Cladiron** |
 
 **Primary goals**
 
@@ -26,7 +26,7 @@ Cladiron is an open-source, privacy-first, iPhone-native **strength coach**. The
 - **Auditable science:** every prescription and every test cites its published source via the built-in CitationRegistry. The user can always see *why*.
 - **Built-in established programs:** 5/3/1, PPL, 5x5, splits, calisthenics, Olympic lifting, and more for self-directed users who prefer a published program over coach-generated prescriptions.
 - **Strength-first, cardio secondary:** strength logging and coaching is the core loop. Cardio is capture-only (ingest Watch workouts from HealthKit, record with iPhone GPS or chest strap) — not coached in v1.
-- **Privacy by design:** no accounts, no server, no telemetry, no third-party SDKs. Works in airplane mode. Fully local — no cloud sync; portability is via JSON export/import.
+- **Privacy by design:** no accounts, no developer-operated server, no telemetry, no third-party SDKs. Works in airplane mode. Data persists locally and mirrors through the user's private iCloud; portability is also available through JSON export/import.
 - **Apple Design Award polish:** HIG-native, fully accessible (VoiceOver, Dynamic Type, Reduce Motion), restrained motion, inclusive design.
 
 **Non-goals (for v1)**
@@ -99,7 +99,7 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - FR-4.2 Local-first storage (SwiftData) as the source of truth for the rich strength model HealthKit cannot represent.
 - FR-4.3 Write summary strength workouts to HealthKit for unified history; keep detailed set data local.
 - FR-4.4 **Chest strap:** discover, connect, and subscribe to a BLE HRM via 0x180D; reconnect automatically; surface battery and signal status; persist a remembered device.
-- FR-4.5 (removed) Cladiron is **local-only — no cloud sync.** Data portability is via the complete JSON export/import (FR-6) covering full history + preferences.
+- FR-4.5 (superseded) The former local-only rule was replaced by local SwiftData mirrored through the user's private iCloud. Complete JSON export/import remains required (FR-6).
 
 ### FR-5 History, PRs & trends
 - FR-5.1 Per-exercise history list and trend chart (top weight, est. 1RM, volume over time).
@@ -132,7 +132,7 @@ Planning (program selection + routine building) lives **inside the Workout tab**
   `plans/watch-app/2026-07-17/`.
 
 ### FR-9 Cross-device portability & roles
-- FR-9.1 (removed) No cloud sync. The store is local; cross-install portability is the JSON export/import (FR-6). WatchConnectivity is for live handoff only.
+- FR-9.1 (superseded) The store is local-first and mirrors through private iCloud; JSON export/import remains the explicit portable backup (FR-6). WatchConnectivity handles live handoff and durable completion delivery.
 - FR-9.2 Every entity carries a stable UUID so export/import merges idempotently by id.
 - FR-9.3 Phone is the analysis surface; watch is the in-workout surface (future).
 - FR-9.4 (removed) Cloud sync is not part of the app.
@@ -181,12 +181,12 @@ Planning (program selection + routine building) lives **inside the Workout tab**
   - NFR-3.1 **No-network core:** all features work offline / airplane mode. Network is used only to fetch the public exercise-image dataset (cached on device).
   - NFR-3.2 **No third-party SDKs or telemetry.** Zero analytics, zero crash reporters, zero ad frameworks.
   - NFR-3.3 **App Store privacy label: "Data Not Collected."** No data is collected by the developer or any third party.
-  - NFR-3.4 **No cloud sync and no developer-operated server.** Data is fully local; portability is via JSON export/import.
+  - NFR-3.4 **No developer-operated server.** Data is local-first and may sync through the user's private iCloud; portability is also available via JSON export/import.
   - NFR-3.5 **Clear purpose strings** for every permission (HealthKit, Bluetooth, Location, Motion). Each explains exactly what data is accessed and that it never leaves the device.
-  - NFR-3.6 **Plain-English privacy commitment:** Cladiron does not collect, transmit, or sell user data. There is no account, no server, and no analytics. Health, Bluetooth, and location data stay on the device, only with explicit permission. The user can export or delete all data at any time. The complete source code is public for verification.
+  - NFR-3.6 **Plain-English privacy commitment:** Cladiron does not collect, transmit, or sell user data. There is no account, no developer-operated server, and no analytics. Health, Bluetooth, and location data stay on the user's device/private iCloud, only with explicit permission. The user can export or delete all data at any time.
 - NFR-4 **Performance:** cold launch < 1.5s; logging a set <= 2 taps; charts render < 100ms.
 - NFR-5 **Reliability/offline:** fully functional with no network; workout recording survives backgrounding.
-- NFR-6 **Open source:** GPLv3-licensed (name/icon/brand are reserved trademarks — see TRADEMARKS.md), documented build, no proprietary dependencies; reproducible from clean checkout.
+- NFR-6 **Licensing boundary:** Cladiron is proprietary and closed source. `free-exercise-db-plusplus`, its exercise database, annotations, and related tooling remain open under that project's license. Maintain complete third-party notices and a reproducible internal build.
 - NFR-7 **Battery:** GPS + BLE recording optimized; configurable GPS accuracy.
 - NFR-8 **Coach suggests, never proscribes (user agency):** the coach engine and every
   coach UI surface must honor the user's stated schedule targets (strength/cardio days,
@@ -272,7 +272,7 @@ Schema changes are **additive only** — optional fields, no unique constraints,
 
 - PR default: estimated 1RM (Brzycki formula). Configurable.
 - Units: kg canonical, lb toggle global.
-- Portability: complete JSON export/import (no cloud sync). WatchConnectivity for live handoff only.
+- Portability: complete JSON export/import plus private-iCloud mirroring. WatchConnectivity supports live handoff and durable workout completion delivery.
 - Watch store: local store (no sync).
 - IA: Workout / Tests / Progress (3 tabs). Planning inside Workout.
 - Naming: Cladiron (user-visible), Cadence (internal codename).

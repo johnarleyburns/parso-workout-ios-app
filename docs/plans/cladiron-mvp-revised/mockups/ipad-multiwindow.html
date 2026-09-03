@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>iPad Trainer - Two Clients, Two Windows</title>
+  <link rel="stylesheet" href="cladiron-mockups.css">
+</head>
+<body>
+  <main class="mockup-page">
+    <header class="mockup-header">
+      <div>
+        <h1>iPad Trainer - Two Clients, Two Windows</h1>
+        <p>iPadOS windowing: two scenes tiled side by side, drag-and-drop between them, and a narrow window that degrades gracefully to the compact arrangement rather than breaking the grid. Section 31.6.</p>
+      </div>
+      <div class="mockup-meta"><span class="tag">31.6</span><span class="tag">Windowing</span></div>
+    </header>
+
+    <section class="mockup-stage" style="display:grid;place-items:center;">
+      <div class="ipad-frame">
+        <div class="ipad-screen" style="background:#3a3c40;padding:10px;">
+          <div class="ipad-status" style="border-radius:8px;"><span>Sun 2 Mar &nbsp; 9:31 PM</span><span>Cladiron &mdash; 2 windows</span><span>Wi-Fi</span></div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;flex:1;">
+            <div style="background:var(--surface);border-radius:10px;overflow:hidden;border:1px solid rgba(0,0,0,0.25);">
+              <div class="mac-titlebar"><div class="traffic"><span class="red"></span><span class="yellow"></span><span class="green"></span></div><strong>Maya R. &mdash; Week of Mar 3</strong></div>
+              <div class="mac-toolbar"><h2>Lower B</h2><span class="spacer"></span><button class="button">Send</button></div>
+              <div class="mac-content">
+                <div class="panel" style="margin-bottom:9px;"><div style="display:flex;gap:8px;align-items:center;"><strong>1. Back Squat</strong><span class="pill progress">e1RM 200</span></div>
+                  <table class="set-table" style="margin-top:8px;">
+                    <thead><tr><th>Set</th><th>Reps</th><th>%</th><th>Weight</th><th>RPE</th></tr></thead>
+                    <tbody>
+                      <tr><td class="mono">1</td><td class="mono">3</td><td class="mono">90%</td><td class="mono">180</td><td class="mono">9</td></tr>
+                      <tr><td class="mono">2</td><td class="mono">6</td><td class="mono">80%</td><td class="mono">160</td><td class="mono">8</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="panel" style="border-color:var(--ember);"><div style="display:flex;gap:8px;align-items:center;"><strong>2. Romanian Deadlift</strong><span class="pill neutral">3 x 10 @ 65%</span></div>
+                  <div style="margin-top:8px;"><span class="drag-badge">Dragging to Daniel&rsquo;s window</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:var(--surface);border-radius:10px;overflow:hidden;border:1px solid rgba(0,0,0,0.25);">
+              <div class="mac-titlebar"><div class="traffic"><span class="red"></span><span class="yellow"></span><span class="green"></span></div><strong>Daniel C. &mdash; Week of Mar 3</strong></div>
+              <div class="mac-toolbar"><h2>Lower A</h2><span class="spacer"></span><button class="button">Send</button></div>
+              <div class="mac-content">
+                <div class="panel" style="margin-bottom:9px;"><div style="display:flex;gap:8px;align-items:center;"><strong>1. Front Squat</strong><span class="pill progress">e1RM 245</span></div></div>
+                <div class="panel" style="border:2px dashed var(--ember);background:#fff6f4;">
+                  <div style="display:flex;gap:8px;align-items:center;"><strong style="color:var(--ember);">Drop here</strong><span class="pill neutral">Romanian Deadlift</span></div>
+                  <div class="card-meta"><span class="mono">3 x 10 @ 65% of Daniel&rsquo;s 285 &rarr; 185 lb</span></div>
+                </div>
+                <div class="banner info" style="margin-top:10px;">Same drag matrix as within a window. Copy across windows recalculates % loads to the destination client.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="banner" style="margin:10px 0 0;">
+            <strong style="margin-right:6px;">Narrow window</strong> Resize either window below the split-view threshold and it becomes the compact arrangement &mdash; set stack plus prescription bar &mdash; not a squeezed grid. Same capability, different density.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

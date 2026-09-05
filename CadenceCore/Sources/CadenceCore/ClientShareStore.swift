@@ -16,15 +16,18 @@ public struct ClientShareInvitation: Codable, Equatable, Sendable {
     public let clientID: String
     public let clientDisplayName: String
     public let createdAt: Date
+    public let shareURL: URL?
 
     public init(zoneID: UUID = UUID(), shareID: UUID = UUID(), trainerID: String,
-                clientID: String, clientDisplayName: String, createdAt: Date = Date()) {
+                clientID: String, clientDisplayName: String, createdAt: Date = Date(),
+                shareURL: URL? = nil) {
         self.zoneID = zoneID
         self.shareID = shareID
         self.trainerID = trainerID
         self.clientID = clientID
         self.clientDisplayName = clientDisplayName
         self.createdAt = createdAt
+        self.shareURL = shareURL
     }
 }
 
@@ -46,9 +49,11 @@ public struct ClientShareConnection: Codable, Equatable, Sendable {
 /// An opaque, monotonically increasing cursor for one shared zone.
 public struct ClientShareChangeToken: Codable, Hashable, Sendable {
     public let sequence: Int
+    public let serverTokenData: Data?
 
-    public init(sequence: Int) {
+    public init(sequence: Int, serverTokenData: Data? = nil) {
         self.sequence = sequence
+        self.serverTokenData = serverTokenData
     }
 }
 
@@ -120,6 +125,8 @@ public enum ClientShareStoreError: Error, Equatable, Sendable {
     case clientOnly
     case invalidChangeToken
     case conflictingResultID
+    case invalidPayload
+    case missingShareURL
 }
 
 /// Explicit shared-zone boundary. Private SwiftData mirroring remains a

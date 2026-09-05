@@ -69,21 +69,22 @@ The matrix marks every Phase 0 requirement as:
 Regression coverage is frozen around today's editable workout/coach-plan
 materializer, collapsed strength cards, full-screen set editor, performer history
 and alternation, 20-muscle credits, Watch strength/cardio lifecycle, and durable
-phone reconciliation. The first smallest adapter, versioned Watch-payload, and
-in-memory sharing-contract slices are landed; they do not
+phone reconciliation. The first smallest adapter, versioned Watch-payload,
+in-memory sharing-contract, additive persisted unified-plan envelope, and
+CloudKit shared-zone adapter slices are landed; they do not
 replace working private-iCloud sync, unplanned workout paths, Watch execution,
 cardio, partner behavior, history/export, or the DB++ bridge.
 
 Audit and closure map: `docs/plans/cladiron-mvp-revised/PHASE-0-EXECUTION-COMPATIBILITY-AUDIT.md`.
-The first adapter, versioned Watch-payload, in-memory sharing-contract, and
-additive persisted unified-plan envelope slices are now landed in `CadenceCore`
-and covered by focused contract tests.
+The first adapter, versioned Watch-payload, in-memory sharing-contract,
+additive persisted unified-plan envelope, and CloudKit shared-zone adapter
+slices are now landed in `CadenceCore` and covered by focused contract tests.
 The payload preserves legacy Watch fields, carries rich strength prescriptions
 and planned cardio, and is consumed by Watch launch and phone reconciliation.
 The reconciliation fixtures cover duplicate/out-of-order results and source-ID
 preservation; the sharing contract covers invitation/acceptance, change tokens,
 append-only results, and trainer-device plan convergence. Continue with the
-production CloudKit adapter and the iPhone start-path materializer in that audit.
+CloudKit Apple-ID/device gate and the iPhone start-path materializer in that audit.
 Do not
 implement later-phase UI before the Phase 0 model and sharing boundaries
 needed by it are explicit.

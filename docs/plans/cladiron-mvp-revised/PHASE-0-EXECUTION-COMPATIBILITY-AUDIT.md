@@ -30,7 +30,7 @@ Device-only gates remain called out even when the code seam is shipped.
 | Unified plan into existing Watch strength inputs | **partial → versioned payload slice landed** | [`WatchPlanPayload.swift`](../../../CadenceCore/Sources/CadenceCore/WatchPlanPayload.swift:1) carries rich per-set prescriptions with legacy names/ladder fallback; `WatchStrengthView` and `WatchStrengthFlowModel` consume it, and `WatchStrengthSyncApplierTests` cover phone reconciliation. The phone's unified-Plan producer is still open. |
 | Unified plan into existing Watch cardio configuration | **partial → versioned payload slice landed** | `WatchPlanPayload.Cardio` carries kind, duration, distance, target zone, and interval data; `WatchSync.TodayPlan` round-trips it and planned-cardio launch passes duration/zone into `WorkoutConfigurationSpec`. A unified-Plan producer and real planned-cardio device gate remain open. |
 | Trainer private-device convergence | **partial → value-level contract landed** | [`ClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/ClientShareStore.swift:1) and `ClientShareStoreTests` prove two trainer-device connections converge with last-writer-wins metadata; persisted SwiftData draft stamps and a visible conflict notice remain open. |
-| Trainer↔client CloudKit sharing (`CKShare`, custom zone, change tokens) | **partial → in-memory contract landed** | [`ClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/ClientShareStore.swift:1) defines the explicit boundary; `InMemoryClientShareStore` covers invitation/acceptance, trainer plan write/read, change tokens, append-only results, duplicate delivery, and trainer-device convergence. Production `CKShare`/custom-zone/change-token implementation and the real two-Apple-ID gate remain open. |
+| Trainer↔client CloudKit sharing (`CKShare`, custom zone, change tokens) | **partial → production adapter landed / device gate open** | [`CloudKitClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/CloudKitClientShareStore.swift:1) creates per-client custom zones/`CKShare`s, accepts invitations, writes plan/result records, and consumes zone change tokens. `InMemoryClientShareStore` remains the deterministic contract fixture; real two-Apple-ID invite/accept, shared-zone permissions, and phone integration remain open. |
 | Phone is the sole Watch→CloudKit bridge | **verified shipped (code)** | [`Store.swift`](../../../CadenceCore/Sources/CadenceCore/Store.swift:4) documents the boundary; Watch uses local-only storage and WatchConnectivity; `AppModel` and `WatchStrengthSyncApplier` apply on the phone. |
 | No runtime network path | **verified shipped** | `check-no-network.sh` is the repository guardrail; the DB++ catalog/evidence are bundled and `TrainingEngineBridge` uses the pinned package. |
 | Swift 6 strict concurrency / warning-free package baseline | **verified shipped (package baseline)** | `Package.swift` sets Swift language mode v6 for all targets; the package build completed for the adapter slice. Full `make ci` remains the release gate. |
@@ -78,9 +78,10 @@ planner UI work. The new adapter suite extends, rather than forks, this set.
 5. **Only after execution compatibility is green**, add the CloudKit sharing
    protocol and its in-memory contract, then the production custom-zone/
    participant implementation and real two-Apple-ID invite/accept test.
-   **In-memory contract landed 2026-09-05:** `ClientShareStore` and
-   `InMemoryClientShareStore` cover the value-level protocol. Production
-   CloudKit remains the next Phase 0 implementation slice.
+   **Contract and adapter landed 2026-09-05:** `ClientShareStore`,
+   `InMemoryClientShareStore`, and `CloudKitClientShareStore` cover the
+   value-level protocol and production record-zone seam. The real Apple-ID
+   device gate and phone integration remain mandatory.
 
 Out of scope for this closure slice: planner UI, compact set-stack authoring,
 trainer UI, external-client packets, entitlement gating, Mac shell work, and any

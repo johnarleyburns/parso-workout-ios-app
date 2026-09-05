@@ -5,7 +5,9 @@ import CadenceFeatures
 
 /// Launch-blockers Phase 1e: crash/upgrade recovery. A workout is NEVER lost —
 /// the candidate is adopted paused with the dead gap excluded from elapsed,
-/// and never auto-presented or discarded, no matter how stale.
+/// and never discarded, no matter how stale. The app root presents the adopted
+/// session after this model-level recovery step; adoption itself stays neutral
+/// so Home's explicit Resume action remains safe to use.
 @MainActor
 final class ActiveSessionRecoveryTests: XCTestCase {
 

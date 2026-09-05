@@ -54,13 +54,12 @@ extension HomeView {
             .accessibilityIdentifier("home.logWorkout")
         }
     }
-    /// Today's completed workouts plus the coach plan still outstanding.
-    /// Ordering, badge vocabulary and planned volume live in the presenter.
+    /// Workouts completed today; coach recommendations stay in the coach and
+    /// Start Workout surfaces rather than appearing as historical activity.
     var workoutsTodayRows: [WorkoutsTodayPresenter.Row] {
-        WorkoutsTodayPresenter.rows(
+        WorkoutsTodayPresenter.historicalRows(
             sessions: sessions,
-            cardio: cardio,
-            plannedToday: coachDecision.todayPlannedRecommendations)
+            cardio: cardio)
     }
     func openTodayWorkout(_ row: WorkoutsTodayPresenter.Row) {
         guard let id = UUID(uuidString: row.sourceKey) else { return }
@@ -70,12 +69,6 @@ extension HomeView {
         case .cardio:
             if let c = cardio.first(where: { $0.id == id }) { path.append(c) }
         }
-    }
-    func startPlannedToday(_ row: WorkoutsTodayPresenter.Row) {
-        guard let session = coachDecision.todayPlannedRecommendations
-            .first(where: { $0.id == row.sourceKey }) else { return }
-        Haptics.selection()
-        launchDecision(session)
     }
     /// Captures SwiftData values on the main actor, then lets the sheet run the
     /// pure, Sendable generator without carrying managed objects across actors.

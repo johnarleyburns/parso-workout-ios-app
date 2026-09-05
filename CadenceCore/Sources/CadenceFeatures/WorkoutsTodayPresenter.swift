@@ -1,9 +1,9 @@
 import Foundation
 import CadenceCore
 
-/// Home's "Workouts Today" list: today's completed workouts plus the coach plan
-/// still outstanding, as one ordered, renderable model. Pure so the badge
-/// vocabulary, the ordering and the planned-volume arithmetic are unit-tested.
+/// Home's "Workouts Today" list. The Home surface uses `historicalRows`, which
+/// intentionally contains only workouts the user actually completed. The
+/// planned-row support remains available to other plan-preview surfaces.
 ///
 /// Field test 2026-08-18 #6: the rows used to be three flat, non-interactive
 /// `HStack`s badged with the bare word `PLANNED`.
@@ -77,6 +77,16 @@ public enum WorkoutsTodayPresenter {
         public var isNavigable: Bool { status == .completed }
     }
 
+    /// Rows shown by Home's Workouts Today card: completed strength/cardio
+    /// history only. Coach recommendations belong in the coach/planning
+    /// surfaces, not in a history list.
+    public static func historicalRows(sessions: [WorkoutSession],
+                                      cardio: [CardioWorkout],
+                                      now: Date = Date(),
+                                      calendar: Calendar = .current) -> [Row] {
+        completedRows(sessions: sessions, cardio: cardio, now: now, calendar: calendar)
+    }
+
     /// Completed first (newest first), then outstanding plan items in plan order.
     public static func rows(sessions: [WorkoutSession],
                             cardio: [CardioWorkout],
@@ -84,24 +94,8 @@ public enum WorkoutsTodayPresenter {
                             source: PlanSource = .coach,
                             now: Date = Date(),
                             calendar: Calendar = .current) -> [Row] {
-        // Completed rows reuse This Week's presenter verbatim — the "what counts
-        // as done today" rules live there and are not re-implemented here.
-        let completed = TodayActivityPresenter
-            .entries(sessions: sessions, cardio: cardio, now: now, calendar: calendar)
-            .map { entry in
-                Row(id: "completed.\(entry.sourceId.uuidString)",
-                    status: .completed,
-                    modality: entry.kind == .strength ? .strength : .cardio,
-                    title: entry.title,
-                    subtitle: entry.detail,
-                    value: entry.value,
-                    why: nil,
-                    exercises: [],
-                    plannedVolumeKg: nil,
-                    targetMinutes: nil,
-                    citationIds: [],
-                    sourceKey: entry.sourceId.uuidString)
-            }
+        let completed = completedRows(sessions: sessions, cardio: cardio,
+                                     now: now, calendar: calendar)
 
         let planned = plannedToday
             .filter { $0.kind != .rest }
@@ -122,6 +116,30 @@ public enum WorkoutsTodayPresenter {
             }
 
         return completed + planned
+    }
+
+    // Completed rows reuse This Week's presenter verbatim — the "what counts
+    // as done today" rules live there and are not re-implemented here.
+    private static func completedRows(sessions: [WorkoutSession],
+                                      cardio: [CardioWorkout],
+                                      now: Date,
+                                      calendar: Calendar) -> [Row] {
+        TodayActivityPresenter
+            .entries(sessions: sessions, cardio: cardio, now: now, calendar: calendar)
+            .map { entry in
+                Row(id: "completed.\(entry.sourceId.uuidString)",
+                    status: .completed,
+                    modality: entry.kind == .strength ? .strength : .cardio,
+                    title: entry.title,
+                    subtitle: entry.detail,
+                    value: entry.value,
+                    why: nil,
+                    exercises: [],
+                    plannedVolumeKg: nil,
+                    targetMinutes: nil,
+                    citationIds: [],
+                    sourceKey: entry.sourceId.uuidString)
+            }
     }
 
     /// The full-history affordance belongs on Home only when there is a

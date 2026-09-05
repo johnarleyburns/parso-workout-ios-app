@@ -10,7 +10,7 @@ privacy, and data ownership.
 
 Core promise:
 
-> A proprietary, privacy-first strength coach that explains every workout with cited
+> An open-source, privacy-first strength coach that explains every workout with cited
 > sport science.
 
 Differentiators:
@@ -141,7 +141,7 @@ Start with a 30-day free trial. Everything outside the Coach stays free forever.
 PRIVACY BY DESIGN
 - No account, no ads, no telemetry, no developer-operated server; optional private-iCloud sync
 - Health, Bluetooth, Location, and Motion data stay on your device
-- Proprietary and privacy-first, with no developer-operated server or tracking
+- Open-source and privacy-first, with no developer-operated server or tracking
 
 APPLE WATCH INCLUDED
 Train phone-free from your wrist: strength with partner rotation, HIIT and boxing rounds, and cardio (run, walk, cycle, swim with lap counting, rowing). Live heart rate streams from the wrist, workouts count toward your Activity rings, and everything syncs back to your iPhone automatically.
@@ -163,7 +163,7 @@ Terms (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 Initial release:
 
 ```text
-Cladiron launches as a proprietary, privacy-first strength app for iPhone and Apple Watch: fast logging, PRs, progress trends, Apple Health import/write, assessments, routines, a phone-free Watch app (strength, HIIT, cardio with live wrist HR), and full export/import with private-iCloud backup — all free. Cladiron Pro adds the cited coach (program generation, daily prescriptions, autoregulation) with a 30-day free trial. Cladiron is built on the open free-exercise-db-plusplus project; its exercise database, annotations, and related tooling remain freely available for use by other applications.
+Cladiron launches as an open-source, privacy-first strength app for iPhone and Apple Watch: fast logging, PRs, progress trends, Apple Health import/write, assessments, routines, a phone-free Watch app (strength, HIIT, cardio with live wrist HR), and full export/import with private-iCloud backup — all free. Cladiron Pro adds the cited coach (program generation, daily prescriptions, autoregulation) with a 30-day free trial. Cladiron is released under GPLv3-or-later with the Cladiron App Store Exception and built on the open free-exercise-db-plusplus project; its exercise database, annotations, and related tooling remain freely available for use by other applications under their own license.
 ```
 
 ## Screenshot Storyboard
@@ -205,7 +205,7 @@ Connect will not submit without at least one Apple Watch screenshot):
 ## Review Notes
 
 ```text
-Cladiron is a proprietary, privacy-first strength app for iPhone. It has no accounts, no ads, no analytics, and no developer-operated server; private iCloud sync is optional.
+Cladiron is an open-source, privacy-first strength app for iPhone. It has no accounts, no ads, no analytics, and no developer-operated server; private iCloud sync is optional. The application is released under GPLv3-or-later with the Cladiron App Store Exception; brand assets remain protected under TRADEMARKS.md.
 
 The tracker is free: logging, history, PRs, analytics, assessments, routines, Apple Health import/write, and JSON export/import. Free users also see the coach's live insights (observations about their training).
 

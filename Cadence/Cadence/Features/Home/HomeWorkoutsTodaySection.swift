@@ -2,33 +2,22 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// Home's "Workouts Today" card. Completed workouts open the same destination
-/// This Week opens; coach-planned workouts expand in place to their full
-/// prescription and can be started from there (field test 2026-08-18 #6).
+/// Home's "Workouts Today" card. It is a compact view of completed workouts;
+/// coach recommendations stay in the coach and Start Workout surfaces.
 struct HomeWorkoutsTodaySection: View {
     let rows: [WorkoutsTodayPresenter.Row]
-    @Binding var expandedRowIDs: Set<String>
     let onOpenCompleted: (WorkoutsTodayPresenter.Row) -> Void
-    let onStartPlanned: (WorkoutsTodayPresenter.Row) -> Void
     let onShowMoreHistory: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: LayoutMetrics.cardHeadingSpacing) {
             Text("Workouts Today").font(.headline)
             if rows.isEmpty {
-                Text("Nothing completed or planned yet.")
+                Text("Nothing completed yet.")
                     .font(.subheadline).foregroundStyle(.secondary)
             } else {
                 ForEach(rows) { row in
-                    if row.isNavigable {
-                        HomeWeekWorkoutRow(row: row) { onOpenCompleted(row) }
-                    } else {
-                        HomePlannedWorkoutRow(
-                            row: row,
-                            isExpanded: expandedRowIDs.contains(row.id),
-                            onToggle: { toggle(row) },
-                            onStart: { onStartPlanned(row) })
-                    }
+                    HomeWeekWorkoutRow(row: row) { onOpenCompleted(row) }
                 }
                 if WorkoutsTodayPresenter.showsMoreHistory(for: rows) {
                     Divider().padding(.top, 4)
@@ -55,13 +44,6 @@ struct HomeWorkoutsTodaySection: View {
         .accessibilityIdentifier("home.workoutsToday")
     }
 
-    private func toggle(_ row: WorkoutsTodayPresenter.Row) {
-        Haptics.selection()
-        withAnimation {
-            if expandedRowIDs.contains(row.id) { expandedRowIDs.remove(row.id) }
-            else { expandedRowIDs.insert(row.id) }
-        }
-    }
 }
 
 /// A planned workout: collapsed it reads like a completed row, expanded it shows

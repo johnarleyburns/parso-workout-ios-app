@@ -8,6 +8,7 @@ import SwiftUI
 struct AboutView: View {
     private let privacyURL = URL(string: "https://parso.guru/cladiron_privacy")!
     private let siteURL = URL(string: "https://www.parso.guru")!
+    private let sourceURL = URL(string: "https://github.com/johnarleyburns/parso-workout-ios-app/blob/main/LICENSE")!
     private let exerciseDBURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!
     private let exerciseAnnotationURL = URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
     private let enginePackageURL = URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
@@ -86,8 +87,8 @@ struct AboutView: View {
                       "Everything runs on your device. There's no account, no server, and nothing about your training is ever sent to us.")
             principle("book.closed", "Science-based & transparent",
                       "Every recommendation comes from published exercise-science research and shows the principle and citation behind it. No black box.")
-            principle("hand.raised", "Proprietary & privacy-first",
-                      "Cladiron is proprietary software. Its privacy commitments come from an on-device, serverless design, clear permissions, data export, and a published privacy policy — not from making the app source public.")
+            principle("lock.open", "Open source & privacy-first",
+                      "Cladiron is free and open-source software. Its privacy commitments are auditable in the public source and reinforced by an on-device, serverless design, clear permissions, data export, and a published privacy policy.")
             principle("square.and.arrow.up", "Your data, fully portable",
                       "Your history lives on your devices and syncs through your private iCloud, never a Cladiron server. You can export a complete backup and import it into a fresh install, so your data is never locked in.")
         }
@@ -125,11 +126,13 @@ struct AboutView: View {
     private var licensing: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Licensing").font(.title3.bold())
-            Text("Cladiron is proprietary, closed-source software owned by Parso Consulting. All rights are reserved.")
+            Text("Cladiron is free and open-source software, Copyright © 2026 Parso Consulting / John Arley Burns, released under the GNU GPLv3-or-later with the Cladiron App Store Exception.")
                 .font(.body).foregroundStyle(.secondary)
-            Text("Cladiron is a proprietary, privacy-first application built on the open free-exercise-db-plusplus project. The exercise database, annotations, and related tooling remain freely available for use by other applications.")
+            Text("The application source is public so anyone can inspect, modify, and redistribute it under those terms. Cladiron's name, icon, logo, screenshots, and other brand assets remain protected; see TRADEMARKS.md. Cladiron is built on the open free-exercise-db-plusplus project, whose database, annotations, and related tooling remain available under their own license.")
                 .font(.body).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Link("View the GPLv3 license and App Store Exception", destination: sourceURL)
+                .font(.body).accessibilityIdentifier("about.licenseLink")
             Link("View the open free-exercise-db-plusplus project", destination: exerciseAnnotationURL)
                 .font(.body).accessibilityIdentifier("about.dbppLink")
             Text("Made by Parso Consulting — an independent software studio.")
@@ -159,7 +162,7 @@ struct AboutView: View {
                 }
                 .font(.body)
             }
-            Text("The open free-exercise-db-plusplus package is pinned at version \(enginePackageVersion). Cladiron's interface, app-specific coaching composition, persistence, HealthKit integration, and Apple-platform experiences remain proprietary.")
+            Text("The open free-exercise-db-plusplus package is pinned at version \(enginePackageVersion). Cladiron's interface, app-specific coaching composition, persistence, HealthKit integration, and Apple-platform experiences are covered by the GPLv3-or-later terms and App Store Exception above.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Link(destination: enginePackageURL) {

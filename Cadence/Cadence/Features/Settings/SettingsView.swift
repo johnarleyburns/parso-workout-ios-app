@@ -237,7 +237,7 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings.support")
             } footer: {
-                Text("Cladiron is proprietary and ad-free. A one-time tip is an optional way to support development — never required.")
+                Text("Cladiron is open source and ad-free. A one-time tip is an optional way to support development — never required.")
             }
         }
         .navigationTitle("Settings")

@@ -1,27 +1,39 @@
-Cladiron Proprietary License Notice
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
 
-Copyright © 2026 Parso Consulting / John Arley Burns. All rights reserved.
+Copyright © 2026 Parso Consulting / John Arley Burns
 
-Cladiron, including its application source code, user interface, app-specific
-coaching composition, persistence and synchronization implementation, Apple
-platform integrations, documentation, and brand assets, is proprietary,
-closed-source software. No permission is granted to copy, modify, publish,
-distribute, sublicense, reverse engineer, or create derivative works from these
-materials except as expressly permitted by applicable law or a separate written
-agreement from the copyright holder.
+Cladiron is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
 
-Distribution of the Cladiron application is governed by the applicable Apple
-App Store end-user license agreement and any additional terms presented with the
-application.
+Cladiron is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-Third-party and open-project materials retain their own licenses. In particular,
-free-exercise-db-plusplus, its exercise database, annotations, and related
-tooling remain available under the license published by that project. See
-CadenceCore/CREDITS.md and docs/THIRD_PARTY_NOTICES.md for notices applicable to
-bundled dependencies and assets.
+You should have received a copy of the GNU General Public License along with
+Cladiron. If not, see <https://www.gnu.org/licenses/>.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR
-A PARTICULAR PURPOSE, AND NONINFRINGEMENT. TO THE MAXIMUM EXTENT PERMITTED BY
-LAW, THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
-LIABILITY ARISING FROM OR RELATED TO THE SOFTWARE OR ITS USE.
+SPDX-License-Identifier: GPL-3.0-or-later WITH Cladiron-App-Store-Exception
+
+## Cladiron App Store Exception
+
+As an additional permission under Section 7 of the GNU General Public License
+version 3, the copyright holders of Cladiron permit distribution of the
+Cladiron application, including modified versions, through the Apple App Store
+and TestFlight, even when Apple's distribution terms would otherwise impose
+additional restrictions on the exercise of rights granted by the GPL.
+
+This exception applies only to the Cladiron code for which the copyright
+holders grant permission. It does not apply to third-party code or assets,
+which remain governed by their own licenses and notices. It does not grant
+permission to use the Cladiron name, icon, logo, screenshots, or other brand
+assets; see TRADEMARKS.md.
+
+The corresponding source must remain available under the GPLv3-or-later terms,
+including this App Store Exception, and all applicable copyright, license,
+warranty, and modification notices must be preserved.
+
+The complete GNU GPLv3 text is available at:
+<https://www.gnu.org/licenses/gpl-3.0.txt>

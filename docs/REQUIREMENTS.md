@@ -2,7 +2,7 @@
 
 > **Product name (user-visible): Cladiron.** Internal codename: Cadence — used for the repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, and type names.
 
-**Status:** Legacy v1 requirements; superseded by `docs/plans/cladiron-mvp-revised/CLADIRON_PLATFORM_SPEC.md` · **Platforms:** iPhone (iOS 17+) + embedded watchOS 10+ companion app · **License:** proprietary, closed source · **Distribution:** TestFlight + App Store
+**Status:** Legacy v1 requirements; superseded by `docs/plans/cladiron-mvp-revised/CLADIRON_PLATFORM_SPEC.md` · **Platforms:** iPhone (iOS 17+) + embedded watchOS 10+ companion app · **License:** GPLv3-or-later with the Cladiron App Store Exception · **Distribution:** TestFlight + App Store
 
 > **v1 release scope:** log strength on the phone with coaching; read steps + ingest Watch-recorded workouts/HR from HealthKit; run a no-lab fitness test battery that feeds the coach; review history, PRs, and trends; train phone-free from the Watch (FR-8, shipped 2026-07-17: strength with partners, HIIT, cardio suite, live wrist HR). FTMS/NFC and Smart Start sensors move to later releases — see §9.
 
@@ -10,7 +10,7 @@
 
 ## 1. Vision & Goals
 
-Cladiron is a proprietary, privacy-first, iPhone-native **strength coach**. The tracker is free forever; the Coach is a paid product (**Cladiron Pro**). It is a no-account, on-device coaching app whose prescriptions are driven by field-testable fitness assessments the user administers themselves, and whose every recommendation cites readable, published science. Cladiron is built on the open `free-exercise-db-plusplus` project; the exercise database, annotations, and related tooling remain freely available for other applications.
+Cladiron is an open-source, privacy-first, iPhone-native **strength coach**. The tracker is free forever; the Coach is a paid product (**Cladiron Pro**). It is a no-account, on-device coaching app whose prescriptions are driven by field-testable fitness assessments the user administers themselves, and whose every recommendation cites readable, published science. Cladiron is built on the open `free-exercise-db-plusplus` project; the exercise database, annotations, and related tooling remain freely available for other applications under their own license.
 
 **The competitive wedge:**
 
@@ -186,7 +186,7 @@ Planning (program selection + routine building) lives **inside the Workout tab**
   - NFR-3.6 **Plain-English privacy commitment:** Cladiron does not collect, transmit, or sell user data. There is no account, no developer-operated server, and no analytics. Health, Bluetooth, and location data stay on the user's device/private iCloud, only with explicit permission. The user can export or delete all data at any time.
 - NFR-4 **Performance:** cold launch < 1.5s; logging a set <= 2 taps; charts render < 100ms.
 - NFR-5 **Reliability/offline:** fully functional with no network; workout recording survives backgrounding.
-- NFR-6 **Licensing boundary:** Cladiron is proprietary and closed source. `free-exercise-db-plusplus`, its exercise database, annotations, and related tooling remain open under that project's license. Maintain complete third-party notices and a reproducible internal build.
+- NFR-6 **Licensing boundary:** Cladiron's application code is GPLv3-or-later with the Cladiron App Store Exception. `free-exercise-db-plusplus`, its exercise database, annotations, and related tooling remain open under that project's license. Brand assets remain protected under `TRADEMARKS.md`. Maintain complete third-party notices and a reproducible build.
 - NFR-7 **Battery:** GPS + BLE recording optimized; configurable GPS accuracy.
 - NFR-8 **Coach suggests, never proscribes (user agency):** the coach engine and every
   coach UI surface must honor the user's stated schedule targets (strength/cardio days,

@@ -149,8 +149,9 @@ struct RootTabView: View {
         }
         .task {
             // Crash/upgrade recovery FIRST (launch-blockers Phase 1e): re-adopt
-            // an in-progress workout paused; Home shows the Resume card. A
-            // workout is never auto-ended or discarded, no matter how stale.
+            // an in-progress workout paused and return straight to its session
+            // surface. A workout is never auto-ended or discarded, no matter
+            // how stale. Manual minimization remains a deliberate path to Home.
             recoverActiveSessionIfNeeded()
             // The training log syncs live via SwiftData↔CloudKit (private DB);
             // there is nothing to restore or upload here — SwiftData mirrors the
@@ -174,8 +175,8 @@ struct RootTabView: View {
 
     /// Re-adopts an in-progress session after a crash, force-quit, jetsam, or
     /// app upgrade (launch-blockers Phase 1e). The session is adopted PAUSED
-    /// (`.auto`) and not presented — Home shows the "Resume Workout" card — and
-    /// the dead gap is excluded from the clock via the heartbeat.
+    /// (`.auto`), immediately presented, and the dead gap is excluded from the
+    /// clock via the heartbeat.
     private func recoverActiveSessionIfNeeded() {
         guard active.strengthSession == nil else { return }
         let sessions = (try? context.fetch(FetchDescriptor<WorkoutSession>())) ?? []
@@ -184,6 +185,7 @@ struct RootTabView: View {
             return
         }
         active.adopt(candidate, heartbeat: WorkoutHeartbeatStore.read())
+        active.present()
     }
 
     private func showWatchSyncToast(for state: WatchSync.Status) {

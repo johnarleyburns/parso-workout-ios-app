@@ -52,6 +52,21 @@ final class WorkoutsTodayPresenterTests: XCTestCase {
         XCTAssertEqual(rows.prefix(2).map(\.status), [.completed, .completed])
     }
 
+    func testHistoricalRowsOnlyShowsWorkoutsActuallyCompleted() {
+        let completed = strengthSession("Lifted today", endedMinutesAgo: 30)
+        let rows = WorkoutsTodayPresenter.historicalRows(
+            sessions: [completed], cardio: [], now: now, calendar: cal)
+
+        XCTAssertEqual(rows.map(\.title), ["Lifted today"])
+        XCTAssertTrue(rows.allSatisfy { $0.status == .completed })
+        XCTAssertFalse(rows.contains { $0.title.localizedCaseInsensitiveContains("plan") })
+    }
+
+    func testHistoricalRowsIsEmptyWithoutCompletedHistory() {
+        XCTAssertTrue(WorkoutsTodayPresenter.historicalRows(
+            sessions: [], cardio: [], now: now, calendar: cal).isEmpty)
+    }
+
     func testPlannedRowsFollowInPlanOrder() {
         let a = plan("a", title: "First")
         let b = plan("b", title: "Second")

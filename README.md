@@ -1,6 +1,6 @@
 # Cladiron
 
-A proprietary, privacy-first, science-based **strength app** for iPhone and Apple Watch. Logging, history, Progress, Tests, and export are never gated. The **Coach** is a paid product (**Cladiron Pro**). Log strength workouts with per-set tracking and partner rotation from your wrist, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported on both phone and watch. **Companion Apple Watch app included** — run a full "watch-only fitness" session without your phone: strength (with partners, lbs, warm-up/cool-down), HIIT/Boxing with customizable rounds, and cardio (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live HR streams from the wrist; every completed workout saves to HealthKit for rings credit and auto-ingests back to the phone. Your data stays on-device and in your private iCloud, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
+An open-source, privacy-first, science-based **strength app** for iPhone and Apple Watch. Logging, history, Progress, Tests, and export are never gated. The **Coach** is a paid product (**Cladiron Pro**). Log strength workouts with per-set tracking and partner rotation from your wrist, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported on both phone and watch. **Companion Apple Watch app included** — run a full "watch-only fitness" session without your phone: strength (with partners, lbs, warm-up/cool-down), HIIT/Boxing with customizable rounds, and cardio (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live HR streams from the wrist; every completed workout saves to HealthKit for rings credit and auto-ingests back to the phone. Your data stays on-device and in your private iCloud, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
 
 **Every single coaching output cites published, user-navigable science.** Cladiron never makes a recommendation, insight, warning, or deferred decision without a tappable "The science >" link to the study behind it.
 
@@ -81,17 +81,22 @@ Built supervised with Claude Code / opencode — see `CLAUDE.md`.
 
 ## License and open-project boundary
 
-Cladiron is proprietary, closed-source software. Copyright © 2026 Parso
-Consulting / John Arley Burns. All rights are reserved; see [LICENSE](LICENSE)
-and [TRADEMARKS.md](TRADEMARKS.md).
+Cladiron is free and open-source software. Copyright © 2026 Parso
+Consulting / John Arley Burns. It is released under the GNU General Public
+License v3 or later with the [Cladiron App Store Exception](LICENSE).
 
-Cladiron is a proprietary, privacy-first application built on the open
-free-exercise-db-plusplus project. The exercise database, annotations, and
-related tooling remain freely available for use by other applications.
+The Cladiron source is public so anyone can inspect, modify, and redistribute
+the application under those terms. The Cladiron name, icon, logo, screenshots,
+and other brand assets remain protected; see [TRADEMARKS.md](TRADEMARKS.md).
+
+Cladiron is built on the open free-exercise-db-plusplus project. The exercise
+database, annotations, and related tooling remain freely available for use by
+other applications under their own license.
 
 The app pins `free-exercise-db-plusplus` 1.15.4 behind one import boundary.
 Cladiron's interface, app-specific coaching composition, persistence, HealthKit
-integration, Watch experience, and other application code are proprietary.
+integration, Watch experience, and other application code are covered by the
+GPLv3-or-later terms and App Store Exception above.
 
 Free users see the coach's **live insights** continuously — real, cited
 observations about their own training that update after every workout. What Pro

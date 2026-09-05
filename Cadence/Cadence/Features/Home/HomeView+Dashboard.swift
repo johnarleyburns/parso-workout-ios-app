@@ -19,9 +19,7 @@ extension HomeView {
                     homeActionRow
                     HomeWorkoutsTodaySection(
                         rows: workoutsTodayRows,
-                        expandedRowIDs: $expandedTodayRowIDs,
                         onOpenCompleted: openTodayWorkout,
-                        onStartPlanned: startPlannedToday,
                         onShowMoreHistory: { path.append(HomeRoute.history) })
                     HomeWeekDashboardSection(
                         dashboard: dashboard,

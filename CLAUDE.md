@@ -12,7 +12,7 @@ This repository is fully on Swift 6 language mode with complete strict-concurren
 - **Internal codename:** Cadence — repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, type names. Do NOT rename these.
 
 ## What this is
-Cladiron: a proprietary, privacy-first, iPhone-native **strength coach** built on the open `free-exercise-db-plusplus` project. The tracker is free forever; the Coach is a paid product (see Monetization below). Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no developer-operated server, no telemetry. The exercise database, annotations, and related tooling remain freely available for use by other applications; Cladiron application code is closed source.
+Cladiron: an open-source, privacy-first, iPhone-native **strength coach** built on the open `free-exercise-db-plusplus` project. The tracker is free forever; the Coach is a paid product (see Monetization below). Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no developer-operated server, no telemetry. The exercise database, annotations, and related tooling remain freely available for use by other applications; Cladiron application code is GPLv3-or-later with the Cladiron App Store Exception.
 
 ## Roadmap — adopted 2026-08-11
 

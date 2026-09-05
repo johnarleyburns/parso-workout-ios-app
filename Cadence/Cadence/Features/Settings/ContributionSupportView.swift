@@ -24,7 +24,7 @@ struct ContributionSupportView: View {
                             .foregroundStyle(.secondary)
                     }
                 } else {
-                    Text("Cladiron is proprietary, privacy-first, and ad-free. An optional contribution supports continued development — it's never required, and it unlocks nothing you don't already have.")
+                    Text("Cladiron is open source, privacy-first, and ad-free. An optional contribution supports continued development — it's never required, and it unlocks nothing you don't already have.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

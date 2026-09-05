@@ -20,17 +20,14 @@ stream; update this file and the authoritative spec instead.
 
 ## Product and licensing boundary
 
-Cladiron is proprietary, closed-source software. Remove GPL, App Store-exception,
-and “Cladiron is open source” language from all current product, repository,
-support, App Store, and in-app surfaces.
-
-Required public wording:
-
-> Cladiron is a proprietary, privacy-first application built on the open free-exercise-db-plusplus project. The exercise database, annotations, and related tooling remain freely available for use by other applications.
-
-The open-project license applies to `free-exercise-db-plusplus` and its materials,
-not to Cladiron's UI, app-specific coaching composition, persistence, HealthKit/
-Watch integrations, documentation, or brand. Preserve all third-party notices.
+Cladiron is public and free/open-source under GPLv3-or-later with the Cladiron
+App Store Exception. The application source, UI, app-specific coaching
+composition, persistence, and Apple-platform integrations are covered by that
+license. The Cladiron name, icon, logo, screenshots, and other brand assets
+remain protected under `TRADEMARKS.md`; `free-exercise-db-plusplus` and its
+materials remain under their own license. Keep these boundaries consistent in
+the repository, About, support screens, paywalls, App Store metadata, and
+release documentation.
 
 ## Shipped baseline — preserve, do not rebuild
 
@@ -155,7 +152,7 @@ verification and the plan-origin iPhone/Watch smoke path.
 - Use the mockups as visual contracts, including dynamic type, accessibility,
   empty, loading, error, offline, and lapsed-entitlement states required by the
   spec even when a static mockup shows only the primary state.
-- Keep the proprietary/open-project wording consistent in About/Help, paywalls,
+- Keep the GPLv3/App Store Exception/open-project wording consistent in About/Help, paywalls,
   support screens, App Store metadata, website copy, and release documentation.
 - Run focused tests during development and `make ci` before a phase/work-stream
   commit. Run iPhone/watch smoke gates whenever their user flows change.
@@ -168,7 +165,7 @@ verification and the plan-origin iPhone/Watch smoke path.
 
 The revised MVP is complete only when all acceptance criteria in §49 pass across
 the required idioms, the testing matrix in §50 is satisfied, the app and metadata
-contain no claim that Cladiron is open source, the DB++ boundary remains intact,
+state the GPLv3/App Store Exception license, the DB++ boundary remains intact,
 the free/Pro behavior matches §44 under Universal Purchase, and external-client
 delivery passes criteria 35–39 plus Appendix Z's golden renderer, adapter,
 privacy, cancellation, and idempotent manual-result tests. Criteria 40–45 and

@@ -2,6 +2,19 @@
 
 Live handoff/progress tracker.
 
+## Public GPLv3 licensing and workout recovery — 2026-09-05 — IN PROGRESS
+
+The repository is public. Cladiron application code is being restored to
+GPLv3-or-later with the Cladiron App Store Exception, with the licensing
+boundary and protected brand assets stated in `LICENSE`, `README.md`,
+`TRADEMARKS.md`, About, support/paywall copy, and release documentation.
+
+Active iPhone workouts already disable the idle timer while unpaused; this is a
+best-effort auto-lock prevention and cannot guarantee survival after a manual
+lock, force-quit, or OS termination. Cold-launch recovery now re-adopts the
+latest resumable workout paused and immediately presents its workout surface,
+so relaunch returns to the active workout instead of Home.
+
 ## Workout-entry surface cleanup — 2026-09-05 — SHIPPED
 
 The Home page now ends its coaching surface with the cited **Observations** card;

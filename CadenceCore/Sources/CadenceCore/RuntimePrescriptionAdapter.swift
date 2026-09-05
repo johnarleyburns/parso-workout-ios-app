@@ -16,6 +16,87 @@ public struct PlanSessionSnapshot: Codable, Equatable, Sendable {
         self.items = items
     }
 
+    /// Converts the unified value-model session into the runtime boundary. The
+    /// exercise-name map is supplied by the bundled catalog at the app edge;
+    /// stable exercise keys remain the source of truth in the plan.
+    public init(session: Session, exerciseNameByKey: [String: String] = [:]) {
+        self.id = session.id
+        self.title = session.title
+        self.items = session.orderedItems.compactMap { item in
+            switch item {
+            case let .strength(value):
+                return .strength(StrengthItemSnapshot(
+                    id: value.id,
+                    exerciseKey: value.exerciseKey.raw,
+                    exerciseName: exerciseNameByKey[value.exerciseKey.raw] ?? value.exerciseKey.raw,
+                    sets: value.sets.map { set in
+                        PrescribedSetSnapshot(
+                            id: set.id,
+                            targetReps: Self.targetReps(for: set.repTarget),
+                            load: Self.loadIntent(for: set.load),
+                            targetRPE: set.targetRPE,
+                            restSeconds: set.restSeconds,
+                            isWarmup: set.kind == .warmup)
+                    }))
+            case let .cardio(value):
+                return .cardio(Self.cardioSnapshot(value))
+            case let .mobility(value):
+                return .mobility(MobilityItemSnapshot(id: value.id, title: value.name,
+                                                      rounds: value.rounds))
+            case let .instruction(value):
+                return .instruction(InstructionItemSnapshot(id: value.id, text: value.text))
+            }
+        }
+    }
+
+    private static func targetReps(for target: RepTarget) -> Int {
+        switch target {
+        case let .exact(reps): return reps
+        case let .range(min, _): return min
+        case let .amrap(minimum): return minimum ?? 1
+        case .duration, .distance: return 0
+        }
+    }
+
+    private static func loadIntent(for load: LoadPrescription) -> PrescribedLoadIntent {
+        switch load {
+        case let .absoluteWeight(value, unit):
+            return .absoluteKg(unit == .kg ? value : value * 0.45359237)
+        case let .percent1RM(percent, _): return .oneRepMaxPercent(percent)
+        case .bodyweight, .bodyweightPlus, .assisted: return .bodyweight
+        case .band, .machineSetting, .rpeOnly, .unspecified: return .none
+        }
+    }
+
+    private static func cardioSnapshot(_ item: CardioItem) -> CardioItemSnapshot {
+        switch item.prescription {
+        case let .steadyState(value):
+            return CardioItemSnapshot(id: item.id, title: activityName(value.activity),
+                                      kind: activityName(value.activity),
+                                      durationSeconds: value.durationSeconds)
+        case let .intervals(value):
+            let data = try? JSONEncoder().encode(value)
+            return CardioItemSnapshot(id: item.id, title: activityName(value.activity),
+                                      kind: "intervals", intervalPlanData: data)
+        case let .open(value):
+            return CardioItemSnapshot(id: item.id, title: activityName(value.activity),
+                                      kind: "open")
+        }
+    }
+
+    private static func activityName(_ activity: CardioActivity) -> String {
+        switch activity {
+        case .walk: return "walk"
+        case .run: return "run"
+        case .bike: return "cycle"
+        case .row: return "rowing"
+        case .swim: return "swim"
+        case .elliptical: return "elliptical"
+        case .stairs: return "stairs"
+        case let .other(value): return value
+        }
+    }
+
     public var strengthItems: [StrengthItemSnapshot] {
         items.compactMap { item in
             if case let .strength(value) = item { return value }
@@ -217,6 +298,17 @@ public struct RuntimePrescriptionAdapter: Sendable {
             plannedPrescriptions: prescriptions,
             plannedRepLadder: firstSets.map(\.targetReps),
             prescribedLoadKg: firstWeight)
+    }
+
+    public func materialize(planSession: Session,
+                            exerciseNameByKey: [String: String] = [:],
+                            athlete: AthleteExecutionSnapshot,
+                            existingSessionID: UUID? = nil) throws -> WorkoutSessionDraft {
+        try materialize(
+            planSession: PlanSessionSnapshot(session: planSession,
+                                             exerciseNameByKey: exerciseNameByKey),
+            athlete: athlete,
+            existingSessionID: existingSessionID)
     }
 
     private struct ResolvedLoad {

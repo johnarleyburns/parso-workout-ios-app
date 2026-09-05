@@ -129,4 +129,79 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
         XCTAssertEqual(payload.cardio.first?.kind, "run")
         XCTAssertEqual(payload.cardio.first?.durationSeconds, 1_800)
     }
+
+    func testUnifiedSessionConversionPreservesAllItemFamiliesAndStableIDs() throws {
+        let strengthItemID = UUID()
+        let setID = UUID()
+        let cardioID = UUID()
+        let mobilityID = UUID()
+        let instructionID = UUID()
+        let unified = Session(
+            id: UUID(), title: "Full session",
+            items: [
+                .instruction(InstructionItem(id: instructionID, order: 0, text: "Brace first")),
+                .strength(StrengthItem(
+                    id: strengthItemID, exerciseKey: ExerciseKey(raw: "incline_crunch"), order: 1,
+                    sets: [PrescribedSet(id: setID, setIndex: 0, repTarget: .exact(12),
+                                         load: .bodyweight, restSeconds: 60)])),
+                .cardio(CardioItem(
+                    id: cardioID, order: 2,
+                    prescription: .steadyState(SteadyState(activity: .run, durationSeconds: 600)))),
+                .mobility(MobilityItem(
+                    id: mobilityID, order: 3, name: "Couch stretch", rounds: 2,
+                    perRound: .duration(seconds: 30)))
+            ])
+
+        let snapshot = PlanSessionSnapshot(
+            session: unified,
+            exerciseNameByKey: ["incline_crunch": "Incline Crunch"])
+
+        XCTAssertEqual(snapshot.items.count, 4)
+        XCTAssertEqual(snapshot.strengthItems.first?.id, strengthItemID)
+        XCTAssertEqual(snapshot.strengthItems.first?.exerciseName, "Incline Crunch")
+        XCTAssertEqual(snapshot.strengthItems.first?.sets.first?.id, setID)
+        XCTAssertEqual(snapshot.strengthItems.first?.sets.first?.load, .bodyweight)
+        XCTAssertTrue(snapshot.items.contains {
+            if case let .cardio(item) = $0 {
+                return item.id == cardioID && item.kind == "run" && item.durationSeconds == 600
+            }
+            return false
+        })
+        XCTAssertTrue(snapshot.items.contains {
+            if case let .mobility(item) = $0 {
+                return item.id == mobilityID && item.rounds == 2
+            }
+            return false
+        })
+        XCTAssertTrue(snapshot.items.contains {
+            if case let .instruction(item) = $0 {
+                return item.id == instructionID && item.text == "Brace first"
+            }
+            return false
+        })
+    }
+
+    func testUnifiedSessionMaterializerResolvesPercentLoadThroughSessionOverload() throws {
+        let itemID = UUID()
+        let setID = UUID()
+        let unified = Session(
+            id: UUID(), title: "Press day",
+            items: [.strength(StrengthItem(
+                id: itemID, exerciseKey: ExerciseKey(raw: "bench_press"), order: 0,
+                sets: [PrescribedSet(id: setID, setIndex: 0, repTarget: .exact(5),
+                                     load: .percent1RM(percent: 0.75, calculatedWeight: nil))]))])
+
+        let draft = try RuntimePrescriptionAdapter().materialize(
+            planSession: unified,
+            exerciseNameByKey: ["bench_press": "Bench Press"],
+            athlete: AthleteExecutionSnapshot(
+                oneRepMaxKgByExerciseKey: ["bench_press": 100], loadIncrementKg: 2.5))
+
+        XCTAssertEqual(draft.planSessionID, unified.id)
+        XCTAssertEqual(draft.plannedExerciseNames, ["Bench Press"])
+        XCTAssertEqual(draft.plannedPrescriptions.first?.sourceItemID, itemID)
+        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.sourceSetID, setID)
+        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.targetWeightKg, 75)
+        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.oneRepMaxPercent, 0.75)
+    }
 }

@@ -945,6 +945,28 @@ public enum WorkoutRepository {
         return session
     }
 
+    /// Materializes a unified value-model session through the same runtime
+    /// adapter used by Watch payloads. Existing `startSession` overloads remain
+    /// compatibility paths for legacy presets and manual starts.
+    @discardableResult
+    public static func startSession(from planSession: Session,
+                                    athlete: AthleteExecutionSnapshot,
+                                    exerciseNameByKey: [String: String] = [:],
+                                    date: Date = Date(),
+                                    in context: ModelContext) throws -> WorkoutSession {
+        let draft = try RuntimePrescriptionAdapter().materialize(
+            planSession: planSession,
+            exerciseNameByKey: exerciseNameByKey,
+            athlete: athlete)
+        let session = try createSession(title: draft.title, date: date, in: context)
+        draft.apply(to: session)
+        for name in draft.plannedExerciseNames {
+            _ = try findOrCreateExercise(named: name, in: context)
+        }
+        try context.save()
+        return session
+    }
+
     // MARK: Cardio ingest (FR-2.1)
 
     /// Inserts ingested HealthKit workouts that aren't already present, keyed by

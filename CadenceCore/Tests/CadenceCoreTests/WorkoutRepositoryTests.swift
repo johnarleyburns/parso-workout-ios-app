@@ -224,6 +224,33 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertTrue(s.title.localizedCaseInsensitiveContains("5×5"))
     }
 
+    func testStartSessionFromUnifiedPlanMaterializesRuntimePrescription() throws {
+        let ctx = try makeContext()
+        let itemID = UUID()
+        let setID = UUID()
+        let planSession = Session(
+            id: UUID(), title: "Core day",
+            items: [.strength(StrengthItem(
+                id: itemID, exerciseKey: ExerciseKey(raw: "incline_crunch"), order: 0,
+                sets: [PrescribedSet(id: setID, setIndex: 0, repTarget: .exact(12),
+                                     load: .bodyweight)]))])
+
+        let workout = try WorkoutRepository.startSession(
+            from: planSession,
+            athlete: AthleteExecutionSnapshot(),
+            exerciseNameByKey: ["incline_crunch": "Incline Crunch"],
+            date: Date(timeIntervalSince1970: 500),
+            in: ctx)
+
+        XCTAssertEqual(workout.title, "Core day")
+        XCTAssertEqual(workout.date, Date(timeIntervalSince1970: 500))
+        XCTAssertEqual(workout.planSessionID, planSession.id)
+        XCTAssertEqual(workout.plannedExerciseNames, ["Incline Crunch"])
+        XCTAssertEqual(workout.plannedPrescriptions.first?.sourceItemID, itemID)
+        XCTAssertEqual(workout.plannedPrescriptions.first?.sets.first?.sourceSetID, setID)
+        XCTAssertTrue(try WorkoutRepository.allExercises(ctx).contains { $0.name == "Incline Crunch" })
+    }
+
     // Batch 8 — rank past workouts by how many missing body parts they cover.
     func testWorkoutsByMissingCoverageRanksByCoveredCount() throws {
         let ctx = try makeContext()

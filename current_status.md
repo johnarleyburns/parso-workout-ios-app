@@ -70,21 +70,27 @@ Regression coverage is frozen around today's editable workout/coach-plan
 materializer, collapsed strength cards, full-screen set editor, performer history
 and alternation, 20-muscle credits, Watch strength/cardio lifecycle, and durable
 phone reconciliation. The first smallest adapter, versioned Watch-payload,
-in-memory sharing-contract, additive persisted unified-plan envelope, and
-CloudKit shared-zone adapter slices are landed; they do not
+in-memory sharing-contract, additive persisted unified-plan envelope, CloudKit
+shared-zone adapter, and unified `Session` → runtime materializer slices are
+landed; they do not
 replace working private-iCloud sync, unplanned workout paths, Watch execution,
 cardio, partner behavior, history/export, or the DB++ bridge.
 
 Audit and closure map: `docs/plans/cladiron-mvp-revised/PHASE-0-EXECUTION-COMPATIBILITY-AUDIT.md`.
 The first adapter, versioned Watch-payload, in-memory sharing-contract,
-additive persisted unified-plan envelope, and CloudKit shared-zone adapter
-slices are now landed in `CadenceCore` and covered by focused contract tests.
+additive persisted unified-plan envelope, CloudKit shared-zone adapter, and
+unified `Session` → runtime materializer slices are now landed in `CadenceCore`
+and covered by focused contract tests.
 The payload preserves legacy Watch fields, carries rich strength prescriptions
 and planned cardio, and is consumed by Watch launch and phone reconciliation.
 The reconciliation fixtures cover duplicate/out-of-order results and source-ID
 preservation; the sharing contract covers invitation/acceptance, change tokens,
-append-only results, and trainer-device plan convergence. Continue with the
-CloudKit Apple-ID/device gate and the iPhone start-path materializer in that audit.
+append-only results, and trainer-device plan convergence. The unified value-model
+conversion preserves strength/cardio/mobility/instruction item identity, and the
+repository has a single `Session`-based start entry point; the legacy
+`EditablePlan.apply` path remains compatible. Continue with the iPhone plan
+producer/start UI seam, CloudKit Apple-ID/device gate, and normalized persistence
+mapping.
 Do not
 implement later-phase UI before the Phase 0 model and sharing boundaries
 needed by it are explicit.
@@ -93,7 +99,7 @@ needed by it are explicit.
 
 | Phase | Status | Next outcome |
 |---|---|---|
-| 0 — foundations and sync proof | **IN PROGRESS: audit + adapter + Watch payload + sharing contract** | complete the persisted unified Plan model, then replace the in-memory sharing seam with the production CloudKit adapter and device gates |
+| 0 — foundations and sync proof | **IN PROGRESS: value model + runtime adapter + Watch payload + sharing contract** | wire the unified plan producer into the iPhone start UI, then run the CloudKit device gates and normalized persistence mapping |
 | 1 — athlete app | pending | Plan-first iPhone/iPad experience, compact authoring, partner execution, migration |
 | 2 — scientific coach | partial baseline shipped | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces |
 | 3 — iPad Trainer mode | pending | roster, planner, connected/external delivery, review, export, and Pro entitlement |

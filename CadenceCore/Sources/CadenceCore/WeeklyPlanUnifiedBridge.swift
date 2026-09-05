@@ -42,7 +42,7 @@ public enum WeeklyPlanUnifiedBridge {
                     id: stableUUID("item|\(planned.id)|\(index)|\(exercise.name)"),
                     exerciseKey: ExerciseKey(raw: exerciseKey(for: exercise.name)),
                     order: index,
-                    sets: sets(for: exercise)))
+                    sets: sets(for: exercise, namespace: "\(planned.id)|\(index)")))
             }
         } else if planned.kind == .rest || planned.isRest {
             items = []
@@ -58,7 +58,8 @@ public enum WeeklyPlanUnifiedBridge {
                        status: planned.sourceWorkoutId == nil ? .planned : .completed)
     }
 
-    private static func sets(for exercise: CoachSession.RecommendedExercise) -> [PrescribedSet] {
+    private static func sets(for exercise: CoachSession.RecommendedExercise,
+                             namespace: String) -> [PrescribedSet] {
         let ladder = exercise.repLadder ?? []
         let count = max(exercise.sets ?? ladder.count, ladder.isEmpty ? 1 : ladder.count)
         return (0..<count).map { index in
@@ -67,7 +68,7 @@ public enum WeeklyPlanUnifiedBridge {
                 .absoluteWeight(value: $0, unit: .kg)
             } ?? .unspecified
             return PrescribedSet(
-                id: stableUUID("set|\(exercise.name)|\(index)|\(reps)|\(exercise.loadKg ?? -1)"),
+                id: stableUUID("set|\(namespace)|\(exercise.name)|\(index)|\(reps)|\(exercise.loadKg ?? -1)"),
                 setIndex: index,
                 repTarget: .exact(reps),
                 load: load,

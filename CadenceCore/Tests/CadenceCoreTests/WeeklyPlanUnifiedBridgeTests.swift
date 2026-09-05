@@ -13,7 +13,10 @@ final class WeeklyPlanUnifiedBridgeTests: XCTestCase {
             isRest: false,
             exercises: [CoachSession.RecommendedExercise(
                 name: "Bench Press", sets: 3, repsLow: 8, repsHigh: 10,
-                loadKg: 60, rir: 2, repLadder: [10, 9, 8])])
+                loadKg: 60, rir: 2, repLadder: [10, 9, 8]),
+            CoachSession.RecommendedExercise(
+                name: "Bench Press", sets: 1, repsLow: 5,
+                loadKg: 70, rir: 1, repLadder: [5])])
         let cardio = PlannedSession(
             id: "coach-run", kind: .moderateAerobic, label: "Steady run",
             isHard: true, isRest: false, cardioDurationMinutes: 25, cardioZone: 3)
@@ -40,6 +43,13 @@ final class WeeklyPlanUnifiedBridgeTests: XCTestCase {
         XCTAssertEqual(item.sets.map(\.repTarget), [.exact(10), .exact(9), .exact(8)])
         XCTAssertEqual(item.sets.first?.load, .absoluteWeight(value: 60, unit: .kg))
         XCTAssertEqual(item.sets.first?.targetRIR, 2)
+        let allStrengthSetIDs = sessions.flatMap { session in
+            session.items.compactMap { item -> [UUID]? in
+                if case let .strength(value) = item { return value.sets.map(\.id) }
+                return nil
+            }.flatMap { $0 }
+        }
+        XCTAssertEqual(allStrengthSetIDs.count, Set(allStrengthSetIDs).count)
         XCTAssertTrue(sessions.contains { $0.items.contains { if case .cardio = $0 { return true }; return false } })
     }
 }

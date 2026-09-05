@@ -273,11 +273,19 @@ extension HomeView {
     }
 
     func materializePlan(_ plan: EditablePlan) throws -> WorkoutSession {
-        let session = try WorkoutRepository.createSession(title: plan.title, in: context)
-        plan.apply(to: session)
-        for name in plan.exercises.map(\.name) {
-            _ = try WorkoutRepository.findOrCreateExercise(named: name, in: context)
-        }
+        let session = try WorkoutRepository.startSession(
+            from: plan.unifiedSession(),
+            athlete: AthleteExecutionSnapshot(),
+            exerciseNameByKey: Dictionary(plan.exercises.map {
+                (ExerciseLibrary.template(matching: $0.name)?.sourceExerciseID
+                    ?? ExerciseLibrary.lookupKey($0.name), $0.name)
+            }, uniquingKeysWith: { first, _ in first }),
+            in: context)
+        session.enginePlanId = plan.enginePlanId
+        session.engineRevisionId = plan.engineRevisionId
+        session.enginePlanJSON = plan.enginePlanJSON
+        session.activePartnerIDs = plan.partnerIDs.map(\.uuidString)
+        session.plannedPerformerPrescriptions = plan.performerPrescriptions()
         session.cooldownSeconds = Double(plan.cooldownMinutes * 60)
         try context.save()
         return session

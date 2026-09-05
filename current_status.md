@@ -87,10 +87,11 @@ The reconciliation fixtures cover duplicate/out-of-order results and source-ID
 preservation; the sharing contract covers invitation/acceptance, change tokens,
 append-only results, and trainer-device plan convergence. The unified value-model
 conversion preserves strength/cardio/mobility/instruction item identity, and the
-repository has a single `Session`-based start entry point; the legacy
-`EditablePlan.apply` path remains compatible. Continue with the iPhone plan
-producer/start UI seam, CloudKit Apple-ID/device gate, and normalized persistence
-mapping.
+repository has a single `Session`-based start entry point. The editable iPhone
+start path now converts its draft through that entry point while retaining
+partner and DB++ provenance metadata; the legacy `EditablePlan.apply` path
+remains compatible. Continue with the generated-plan producer, CloudKit
+Apple-ID/device gate, and normalized persistence mapping.
 Do not
 implement later-phase UI before the Phase 0 model and sharing boundaries
 needed by it are explicit.

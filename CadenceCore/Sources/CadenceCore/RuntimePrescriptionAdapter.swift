@@ -62,7 +62,11 @@ public struct PlanSessionSnapshot: Codable, Equatable, Sendable {
         switch load {
         case let .absoluteWeight(value, unit):
             return .absoluteKg(unit == .kg ? value : value * 0.45359237)
-        case let .percent1RM(percent, _): return .oneRepMaxPercent(percent)
+        case let .percent1RM(percent, calculatedWeight):
+            if let calculatedWeight {
+                return .oneRepMaxPercentResolved(percent: percent, weightKg: calculatedWeight)
+            }
+            return .oneRepMaxPercent(percent)
         case .bodyweight, .bodyweightPlus, .assisted: return .bodyweight
         case .band, .machineSetting, .rpeOnly, .unspecified: return .none
         }
@@ -175,6 +179,10 @@ public struct InstructionItemSnapshot: Codable, Equatable, Sendable {
 public enum PrescribedLoadIntent: Codable, Equatable, Sendable {
     case absoluteKg(Double)
     case oneRepMaxPercent(Double)
+    /// A percentage whose concrete weight was already resolved at authoring or
+    /// start time. This keeps the intent and snapshot together when a legacy
+    /// editor hands the unified graph an already-calculated load.
+    case oneRepMaxPercentResolved(percent: Double, weightKg: Double)
     case bodyweight
     case none
 }
@@ -338,6 +346,12 @@ public struct RuntimePrescriptionAdapter: Sendable {
             let raw = oneRepMax * percent
             let rounded = (raw / athlete.loadIncrementKg).rounded() * athlete.loadIncrementKg
             return ResolvedLoad(weightKg: rounded, mode: "oneRepMaxPercent", percent: percent)
+        case let .oneRepMaxPercentResolved(percent, weightKg):
+            guard percent > 0, percent <= 2, percent.isFinite,
+                  weightKg >= 0, weightKg.isFinite else {
+                throw RuntimePrescriptionAdapterError.invalidOneRepMax(exerciseKey: exerciseKey)
+            }
+            return ResolvedLoad(weightKg: weightKg, mode: "oneRepMaxPercent", percent: percent)
         case .bodyweight:
             return ResolvedLoad(weightKg: nil, mode: "bodyweight", percent: nil)
         case .none:

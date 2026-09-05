@@ -114,6 +114,55 @@ public struct EditablePlan: Hashable {
         session.notes = rirNotes.isEmpty ? nil : rirNotes.joined(separator: "; ")
     }
 
+    /// Produces the unified value-model session represented by this editable
+    /// draft. The editor remains the compatibility UI, but it no longer needs
+    /// a second prescription-to-runtime conversion at the start boundary.
+    public func unifiedSession() -> Session {
+        let items = exercises.enumerated().map { index, exercise in
+            WorkoutItem.strength(StrengthItem(
+                id: exercise.id,
+                exerciseKey: ExerciseKey(raw: exerciseKey(for: exercise.name)),
+                order: index,
+                instructions: exercise.notes.isEmpty ? nil : exercise.notes,
+                sets: exercise.sets.enumerated().map { setIndex, set in
+                    PrescribedSet(
+                        id: set.id,
+                        setIndex: setIndex,
+                        repTarget: .exact(set.targetReps),
+                        load: unifiedLoad(for: set),
+                        targetRIR: targetRIR(in: exercise.notes))
+                }))
+        }
+        return Session(id: id, title: title, items: items)
+    }
+
+    private func unifiedLoad(for set: EditableSet) -> LoadPrescription {
+        switch set.loadMode {
+        case .straight:
+            return set.targetWeight.map { .absoluteWeight(value: $0, unit: .kg) } ?? .unspecified
+        case .bodyweight:
+            return .bodyweight
+        case .percentageOfOneRepMax:
+            let percent = (set.oneRepMaxPercent ?? 0) * 0.01
+            return .percent1RM(percent: percent, calculatedWeight: set.targetWeight)
+        }
+    }
+
+    private func exerciseKey(for name: String) -> String {
+        ExerciseLibrary.template(matching: name)?.sourceExerciseID
+            ?? ExerciseLibrary.lookupKey(name)
+    }
+
+    private func targetRIR(in notes: String) -> Int? {
+        guard let range = notes.range(of: "RIR") else { return nil }
+        let prefix = notes[..<range.lowerBound]
+        let digits = prefix.reversed()
+            .drop(while: { !$0.isNumber })
+            .prefix { $0.isNumber }
+            .reversed()
+        return Int(String(digits))
+    }
+
     public static func from(plan: WorkoutPlan, ladder: [Int]?, unit: MeasurementUnitPreference,
                             warmupMinutes: Int = 0, cooldownMinutes: Int = 0) -> EditablePlan {
         let reps = ladder ?? []

@@ -119,6 +119,33 @@ final class EditablePlanTests: XCTestCase {
         ])
     }
 
+    func testUnifiedSessionPreservesDraftIDsLoadsAndRIRIntent() {
+        let setID = UUID()
+        let plan = EditablePlan(
+            title: "Unified draft",
+            warmupMinutes: 0,
+            cooldownMinutes: 0,
+            exercises: [EditableExercise(
+                name: "Bench Press",
+                sets: [EditableSet(id: setID, targetReps: 5, targetWeight: 75,
+                                   loadMode: .percentageOfOneRepMax,
+                                   oneRepMaxPercent: 75)],
+                notes: "Target ≤2 RIR")])
+        let unified = plan.unifiedSession()
+        guard case let .strength(item) = unified.items.first,
+              let set = item.sets.first else {
+            return XCTFail("editable strength draft should convert to a strength item")
+        }
+
+        XCTAssertEqual(item.id, plan.exercises[0].id)
+        XCTAssertEqual(set.id, setID)
+        XCTAssertEqual(set.targetRIR, 2)
+        XCTAssertEqual(set.load, .percent1RM(percent: 0.75, calculatedWeight: 75))
+        XCTAssertEqual(item.exerciseKey.raw,
+                       ExerciseLibrary.template(matching: "Bench Press")?.sourceExerciseID
+                       ?? ExerciseLibrary.lookupKey("Bench Press"))
+    }
+
     func testApplyCarriesEngineProvenanceIntoSession() {
         let json = Data(#"{"planId":"generated-plan"}"#.utf8)
         let plan = EditablePlan(

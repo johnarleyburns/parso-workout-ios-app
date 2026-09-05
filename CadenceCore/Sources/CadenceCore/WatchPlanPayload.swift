@@ -82,6 +82,8 @@ public struct WatchPlanPayload: Codable, Equatable, Sendable {
                 id: value.id,
                 kind: value.kind,
                 durationSeconds: value.durationSeconds,
+                distanceMeters: value.distanceMeters,
+                targetZone: value.targetZone,
                 intervalPlanData: value.intervalPlanData)
         }
         return WatchPlanPayload(

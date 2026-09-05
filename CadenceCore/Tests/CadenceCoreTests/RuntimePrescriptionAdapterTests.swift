@@ -118,7 +118,8 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
                     id: UUID(), exerciseKey: "bench_press", exerciseName: "Bench Press",
                     sets: [.init(id: UUID(), targetReps: 5, load: .absoluteKg(80))])),
                 .cardio(.init(
-                    id: UUID(), title: "Easy run", kind: "run", durationSeconds: 1_800))
+                    id: UUID(), title: "Easy run", kind: "run", durationSeconds: 1_800,
+                    distanceMeters: 5_000, targetZone: 2))
             ])
 
         let payload = try WatchPlanPayload.make(from: session, athlete: .init())
@@ -128,6 +129,26 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
         XCTAssertEqual(payload.strength?.prescriptions.first?.sets.first?.targetWeightKg, 80)
         XCTAssertEqual(payload.cardio.first?.kind, "run")
         XCTAssertEqual(payload.cardio.first?.durationSeconds, 1_800)
+        XCTAssertEqual(payload.cardio.first?.distanceMeters, 5_000)
+        XCTAssertEqual(payload.cardio.first?.targetZone, 2)
+    }
+
+    func testUnifiedCardioPlanPreservesDistanceAndHeartRateZoneInWatchPayload() throws {
+        let cardio = CardioItem(
+            id: UUID(), order: 0,
+            prescription: .steadyState(SteadyState(
+                activity: .run, durationSeconds: 1_800, distanceMeters: 5_000,
+                intensity: .heartRateZone(2))))
+        let unified = Session(
+            id: UUID(), title: "Run plan",
+            items: [.cardio(cardio)])
+
+        let payload = try WatchPlanPayload.make(
+            from: PlanSessionSnapshot(session: unified), athlete: .init())
+
+        XCTAssertEqual(payload.cardio.count, 1)
+        XCTAssertEqual(payload.cardio.first?.distanceMeters, 5_000)
+        XCTAssertEqual(payload.cardio.first?.targetZone, 2)
     }
 
     func testUnifiedSessionConversionPreservesAllItemFamiliesAndStableIDs() throws {

@@ -43,6 +43,11 @@ Settings now reports the Apple-ID/iCloud account state used by private sync.
 Focused tests pass; the real private-iCloud/two-Apple-ID and plan-origin
 iPhone/Watch device gates remain open.
 
+The plan-to-Watch adapter also now retains unified cardio distance goals and
+heart-rate zones, including the interval work-zone hint, instead of dropping
+them while constructing the versioned payload. `RuntimePrescriptionAdapterTests`
+covers both the direct payload shape and the unified-session conversion.
+
 ## Suggested weekly workouts — 2026-08-21 — SHIPPED
 
 Home presents cited **Observations** independently from the on-demand

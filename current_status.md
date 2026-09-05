@@ -132,6 +132,12 @@ relationship round trips, preflight rejection, and account-status mapping.
 The remaining Phase 0 gaps are real private-iCloud/two-Apple-ID device
 verification and the plan-origin iPhone/Watch smoke path.
 
+The unified cardio-to-Watch producer now preserves steady-state distance goals
+and heart-rate zones (and interval work-zone metadata) through the versioned
+`PlanSessionSnapshot`/`WatchPlanPayload` boundary. Focused adapter tests cover
+the generated payload, including these fields; this closes a data-loss seam
+before the remaining device smoke gate.
+
 ## Phase queue
 
 | Phase | Status | Next outcome |

@@ -77,11 +77,15 @@ public struct PlanSessionSnapshot: Codable, Equatable, Sendable {
         case let .steadyState(value):
             return CardioItemSnapshot(id: item.id, title: activityName(value.activity),
                                       kind: activityName(value.activity),
-                                      durationSeconds: value.durationSeconds)
+                                      durationSeconds: value.durationSeconds,
+                                      distanceMeters: value.distanceMeters,
+                                      targetZone: heartRateZone(value.intensity))
         case let .intervals(value):
             let data = try? JSONEncoder().encode(value)
             return CardioItemSnapshot(id: item.id, title: activityName(value.activity),
-                                      kind: "intervals", intervalPlanData: data)
+                                      kind: "intervals",
+                                      targetZone: heartRateZone(value.work.intensity),
+                                      intervalPlanData: data)
         case let .open(value):
             return CardioItemSnapshot(id: item.id, title: activityName(value.activity),
                                       kind: "open")
@@ -99,6 +103,12 @@ public struct PlanSessionSnapshot: Codable, Equatable, Sendable {
         case .stairs: return "stairs"
         case let .other(value): return value
         }
+    }
+
+    private static func heartRateZone(_ intensity: CardioIntensity?) -> Int? {
+        guard let intensity else { return nil }
+        if case let .heartRateZone(zone) = intensity { return zone }
+        return nil
     }
 
     public var strengthItems: [StrengthItemSnapshot] {
@@ -142,14 +152,19 @@ public struct CardioItemSnapshot: Codable, Equatable, Sendable {
     public var title: String
     public var kind: String
     public var durationSeconds: Int?
+    public var distanceMeters: Double?
+    public var targetZone: Int?
     public var intervalPlanData: Data?
 
     public init(id: UUID, title: String, kind: String,
-                durationSeconds: Int? = nil, intervalPlanData: Data? = nil) {
+                durationSeconds: Int? = nil, distanceMeters: Double? = nil,
+                targetZone: Int? = nil, intervalPlanData: Data? = nil) {
         self.id = id
         self.title = title
         self.kind = kind
         self.durationSeconds = durationSeconds
+        self.distanceMeters = distanceMeters
+        self.targetZone = targetZone
         self.intervalPlanData = intervalPlanData
     }
 }

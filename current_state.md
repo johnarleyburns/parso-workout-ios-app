@@ -2,12 +2,27 @@
 
 Live handoff/progress tracker.
 
+## Workout-entry surface cleanup — 2026-09-05 — SHIPPED
+
+The Home page now ends its coaching surface with the cited **Observations** card;
+the separate Home-level **Suggest a Workout** CTA is removed. The working
+suggested-workout chooser remains available from **Start Workout**. The
+non-functional **Generate with Coach** action, state, and sheet presentation
+were removed from the empty Custom Workout editor; users can still add exercises
+directly through the library picker.
+
+Verification: `make ci` passed (1,718 package tests and all guardrails). The
+iPhone smoke passed on the second run after the first run hit the known
+simulator flake at This Week expansion; the passing run covered the retained
+Start Workout suggestion flow and the Custom Workout absence assertion.
+
 ## Suggested weekly workouts — 2026-08-21 — SHIPPED
 
-Home now presents cited **Observations** independently from an always-available
-**Suggest a Workout** action. It captures a main-actor SwiftData exercise
-snapshot, performs the Sendable 21-muscle vector calculation off the main actor,
-and offers editable Minimum/Medium/Maximal plans for 4/8/12 weekly sets. The
+Home presents cited **Observations** independently from the on-demand
+suggested-workout chooser, which is reached through **Start Workout**. It
+captures a main-actor SwiftData exercise snapshot, performs the Sendable
+21-muscle vector calculation off the main actor, and offers editable
+Minimum/Medium/Maximal plans for 4/8/12 weekly sets. The
 chooser renders a real calculating state, handles recoverable fetch failures,
 reports unresolved gaps and 20/30/40-set cap trims, provides an About sheet with
 pseudocode and both evidence links (`iversenTimeEfficient2021` and

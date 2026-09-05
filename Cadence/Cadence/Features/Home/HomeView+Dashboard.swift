@@ -34,8 +34,7 @@ extension HomeView {
                     HomeCoachSuggestionsSection(
                         suggestions: dashboard.suggestions,
                         illustration: coachIllustration,
-                        expanded: $suggestionsExpanded,
-                        onRequestSuggestedWorkout: requestSuggestedWorkout)
+                        expanded: $suggestionsExpanded)
                 }
                 .padding()
             }

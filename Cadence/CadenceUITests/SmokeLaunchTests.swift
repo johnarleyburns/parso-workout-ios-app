@@ -34,15 +34,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertFalse(app.staticTexts["Coach's Suggestions"].exists)
         XCTAssertFalse(app.staticTexts["Coach's Workout"].exists)
         XCTAssertFalse(app.staticTexts["Do Coach's Workout"].exists)
-        let cta = app.buttons["home.suggestWorkout"]
-        XCTAssertTrue(cta.waitForExistence(timeout: 5),
-                      "Suggest a Workout is missing below the observations card")
-        XCTAssertEqual(cta.frame.height, app.buttons["home.startWorkout"].frame.height,
-                       accuracy: 1,
-                       "Suggest a Workout does not match Home Start Workout's height")
-        XCTAssertGreaterThan(cta.frame.minY,
-                             app.descendants(matching: .any)["home.observations.card"].frame.minY,
-                             "Suggest a Workout is not below the Observations card")
+        XCTAssertFalse(app.buttons["home.suggestWorkout"].exists,
+                       "Home still exposes the removed Suggest a Workout CTA")
         XCTAssertFalse(app.buttons["home.coachRecommendation.preview"].exists,
                        "Coach card still exposes the removed Preview Workout action")
 
@@ -120,13 +113,13 @@ final class SmokeLaunchTests: CadenceUITestCase {
         let quickHeight = quick.frame.height
         XCTAssertEqual(quickHeight, custom.frame.height, accuracy: 1,
                        "Quick Start and Custom Workout are different heights")
-        if coach.exists {
-            XCTAssertTrue(coach.label.contains("Suggest a Workout"),
-                          "Suggested-workout action still uses the old visible label")
-            XCTAssertFalse(app.buttons["selectWorkout.coach"].exists)
-            XCTAssertEqual(quickHeight, coach.frame.height, accuracy: 1,
-                           "Suggest a Workout is a different height from Quick Start")
-        }
+        XCTAssertTrue(coach.waitForExistence(timeout: 5),
+                      "Start Workout lost Suggest a Workout")
+        XCTAssertTrue(coach.label.contains("Suggest a Workout"),
+                      "Suggested-workout action still uses the old visible label")
+        XCTAssertFalse(app.buttons["selectWorkout.coach"].exists)
+        XCTAssertEqual(quickHeight, coach.frame.height, accuracy: 1,
+                       "Suggest a Workout is a different height from Quick Start")
 
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.suggestWorkout"),
                       "Start Workout did not open suggested workouts")
@@ -218,6 +211,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Start Workout did not offer Custom Workout beneath Quick Start")
         XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10),
                       "Custom workout did not open the Workout Plan editor")
+        XCTAssertFalse(app.buttons["editor.generate"].exists,
+                       "Custom Workout still exposes the non-functional Generate with Coach action")
         XCTAssertTrue(app.buttons["editor.start"].label.contains("Start Workout"),
                       "Workout Plan start action is not labeled Start Workout")
         XCTAssertEqual(app.buttons["editor.start"].frame.height, quickHeight, accuracy: 1,

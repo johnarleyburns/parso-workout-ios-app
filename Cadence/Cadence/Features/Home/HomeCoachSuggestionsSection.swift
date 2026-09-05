@@ -2,12 +2,11 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// Home's Observations card plus the independent weekly-gap action beneath it.
+/// Home's cited Observations card.
 struct HomeCoachSuggestionsSection: View {
     let suggestions: [HomeSuggestion]
     let illustration: HomeCoachIllustration
     @Binding var expanded: Bool
-    let onRequestSuggestedWorkout: () -> Void
 
     /// The heading reserves the artwork's width so it cannot slide under the
     /// floating illustration at large Dynamic Type.
@@ -15,13 +14,7 @@ struct HomeCoachSuggestionsSection: View {
     private static let illustrationInset: CGFloat = 12
 
     var body: some View {
-        VStack(spacing: LayoutMetrics.actionButtonSpacing) {
-            card
-            CadenceActionButton(title: "Suggest a Workout",
-                                systemImage: "wand.and.stars",
-                                action: onRequestSuggestedWorkout)
-                .accessibilityIdentifier("home.suggestWorkout")
-        }
+        card
         // `children: .contain` must precede the identifier or the container
         // swallows the inner ids the smoke test resolves.
         .accessibilityElement(children: .contain)

@@ -100,6 +100,21 @@ Do not
 implement later-phase UI before the Phase 0 model and sharing boundaries
 needed by it are explicit.
 
+## Current work slice — workout-entry surface cleanup — SHIPPED 2026-09-05
+
+User-requested UI cleanup that does not alter the Phase 0 value model or
+sharing boundaries: remove the Home-level “Suggest a Workout” CTA while keeping
+the action inside the Start Workout flow, and remove the non-functional
+“Generate with Coach” action from the Custom Workout editor. Preserve the
+working suggested-workout chooser reached from Start Workout. Implemented in
+the Home observations component and Custom Workout editor; the smoke contract
+now asserts both removals and the retained entry point. Verification: `make ci`
+(build, 1,718 tests, four guardrails) passed; `make smoke` passed on its second
+run after an unrelated first-run simulator flake at This Week expansion.
+
+Next task remains the Phase 0 CloudKit Apple-ID/device gate, normalized
+persistence mapping, and plan-origin iPhone/Watch smoke path.
+
 ## Phase queue
 
 | Phase | Status | Next outcome |

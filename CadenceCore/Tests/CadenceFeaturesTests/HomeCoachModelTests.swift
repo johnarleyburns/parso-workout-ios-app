@@ -149,6 +149,38 @@ final class HomeCoachModelTests: XCTestCase {
         XCTAssertTrue(snapshots.allSatisfy { $0.coachFacts.events.count == 1 })
     }
 
+    func testSnapshotAsyncRetainsFinalizedPhoneCustomExerciseVolume() async throws {
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+        let ctx = try makeContext()
+        let session = try WorkoutRepository.createSession(
+            title: "Phone custom abs",
+            date: now.addingTimeInterval(-3_600),
+            in: ctx)
+        let exercise = try WorkoutRepository.findOrCreateExercise(
+            named: "Incline Crunches",
+            category: .core,
+            primaryMuscles: [MuscleGroup.abdominals.rawValue],
+            in: ctx)
+        for _ in 0..<3 {
+            _ = try WorkoutRepository.addSet(
+                to: session, exercise: exercise, weightKg: 0, reps: 15, in: ctx)
+        }
+        session.endedAt = now
+        try ctx.save()
+
+        let snapshot = await HomeCoachModel.snapshotAsync(
+            sessions: [session], cardio: [], assessments: [], readiness: [],
+            goal: .strength, experience: .intermediate, formula: .epley,
+            schedule: .default, profile: .empty, now: now)
+
+        XCTAssertEqual(snapshot.facts.weeklySetsByGroup[.abdominals], 3)
+        XCTAssertEqual(snapshot.engineObservation?.effectiveSetsByGroup[.abdominals], 3)
+        let dashboard = HomeDashboardPresenter.make(
+            snapshot: snapshot, schedule: .default, goal: .strength,
+            experience: .intermediate, userAge: nil)
+        XCTAssertEqual(dashboard.volume.first { $0.group == .abdominals }?.sets, 3)
+    }
+
     func testTestRecommendationNilWhenCoachHidden() throws {
         let ctx = try makeContext()
         _ = ctx

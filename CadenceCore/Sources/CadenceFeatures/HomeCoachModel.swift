@@ -155,6 +155,8 @@ public enum HomeCoachModel {
             .map { ReadinessSnapshot.from($0, now: now) }
         let engineHistoryData = TrainingEngineBridge.historyData(
             from: liveSessions, subjectId: "cladiron-local")
+        let unmappedCustomVolume = TrainingEngineBridge.unmappedCustomVolumeByGroup(
+            from: liveSessions, asOf: now)
 
         // Phase 2: pure computation off the main actor
         return await Task.detached(priority: .userInitiated) {
@@ -163,7 +165,8 @@ public enum HomeCoachModel {
                     historyData: $0,
                     trackedGroups: schedule.trackedMuscleGroups,
                     experience: experience,
-                    asOf: now)
+                    asOf: now,
+                    additionalSetsByGroup: unmappedCustomVolume)
             }
             let engineSuggestion = engineHistoryData.flatMap {
                 TrainingEngineBridge.adaptiveCoachSession(

@@ -76,6 +76,7 @@ final class HomeDashboardPresenterTests: XCTestCase {
             experience: .intermediate, userAge: nil)
 
         XCTAssertEqual(snapshot.facts.weeklySetsByGroup[.abdominals], 3)
+        XCTAssertEqual(snapshot.engineObservation?.effectiveSetsByGroup[.abdominals], 3)
         XCTAssertEqual(dashboard.volume.first { $0.group == .abdominals }?.sets, 3)
     }
 

@@ -832,7 +832,36 @@ extension TrainingEngineBridge {
         return observationSnapshot(
             history: history,
             target: target,
-            asOf: asOf)
+            asOf: asOf,
+            additionalSetsByGroup: unmappedCustomVolumeByGroup(from: sessions, asOf: asOf))
+    }
+
+    /// Returns volume from finalized app-created exercises that DB++ cannot
+    /// resolve because they have no catalog exercise ID. This is computed at the
+    /// app boundary so custom exercise definitions retain their user-selected
+    /// muscle attribution without adding a second exercise database to DB++.
+    public static func unmappedCustomVolumeByGroup(
+        from sessions: [WorkoutSession],
+        asOf: Date
+    ) -> [MuscleGroup: Double] {
+        let weekStart = WeeklyStats.weekStart(now: asOf)
+        var result: [MuscleGroup: Double] = [:]
+        for session in sessions where
+            session.deletedAt == nil &&
+            (session.endedAt != nil || session.isLogged) &&
+            session.date >= weekStart &&
+            session.date <= asOf {
+            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 {
+                guard let exercise = set.exercise,
+                      exercise.isCustom,
+                      exercise.sourceExerciseID == nil
+                else { continue }
+                for (group, credit) in exercise.volumeCredits where credit > 0 {
+                    result[group, default: 0] += credit
+                }
+            }
+        }
+        return result
     }
 
     /// Encodes the model extraction boundary so Home can perform the engine
@@ -849,20 +878,26 @@ extension TrainingEngineBridge {
         historyData: Data,
         trackedGroups: Set<MuscleGroup>,
         experience: ExperienceLevel,
-        asOf: Date
+        asOf: Date,
+        additionalSetsByGroup: [MuscleGroup: Double] = [:]
     ) -> EngineObservationSnapshot? {
         guard let history = try? JSONDecoder().decode(
             FreeExerciseDBPlusPlus.TrainingHistory.self,
             from: historyData)
         else { return nil }
         let target = volumeTarget(trackedGroups: trackedGroups, experience: experience)
-        return observationSnapshot(history: history, target: target, asOf: asOf)
+        return observationSnapshot(
+            history: history,
+            target: target,
+            asOf: asOf,
+            additionalSetsByGroup: additionalSetsByGroup)
     }
 
     private static func observationSnapshot(
         history: FreeExerciseDBPlusPlus.TrainingHistory,
         target: FreeExerciseDBPlusPlus.VolumeTarget,
-        asOf: Date
+        asOf: Date,
+        additionalSetsByGroup: [MuscleGroup: Double] = [:]
     ) -> EngineObservationSnapshot? {
         // DB++ history is intentionally finalized-workout history. Preserve the
         // app's live/in-progress presentation by letting the caller fall back to
@@ -877,7 +912,19 @@ extension TrainingEngineBridge {
             let state = result.trainingState,
             result.status == "state_derived"
         else { return nil }
-        return observationSnapshot(from: state, asOf: asOf)
+        let snapshot = observationSnapshot(from: state, asOf: asOf)
+        guard !additionalSetsByGroup.isEmpty else { return snapshot }
+        var effectiveSets = snapshot.effectiveSetsByMuscle
+        for (group, sets) in additionalSetsByGroup {
+            effectiveSets[group.rawValue, default: 0] += sets
+        }
+        return EngineObservationSnapshot(
+            subjectId: snapshot.subjectId,
+            asOf: snapshot.asOf,
+            stateVersion: snapshot.stateVersion,
+            effectiveSetsByMuscle: effectiveSets,
+            unplannedSets: snapshot.unplannedSets,
+            substitutionAdjustedCompletion: snapshot.substitutionAdjustedCompletion)
     }
 
     /// Produces the engine-backed strength session that is composed behind the

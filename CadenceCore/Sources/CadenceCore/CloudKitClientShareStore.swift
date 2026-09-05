@@ -31,12 +31,17 @@ public final class CloudKitClientShareStore: ClientShareStore, @unchecked Sendab
         let share = CKShare(rootRecord: root)
         share.publicPermission = .none
         let result = try await database.modifyRecords(saving: [root, share], deleting: [])
-        let savedShare = try Self.savedRecord(share.recordID, from: result.saveResults)
+        guard let savedShare = try Self.savedRecord(share.recordID, from: result.saveResults) as? CKShare,
+              let shareURL = savedShare.url else {
+            throw ClientShareStoreError.missingShareURL
+        }
         return ClientShareInvitation(
             zoneID: zoneUUID,
-            shareID: UUID(uuidString: savedShare.recordID.recordName) ?? UUID(),
+            // The root record is deliberately named "root"; the zone UUID is
+            // the stable value-level identity for this share invitation.
+            shareID: zoneUUID,
             trainerID: trainerID, clientID: clientID,
-            clientDisplayName: clientDisplayName, createdAt: date, shareURL: share.url)
+            clientDisplayName: clientDisplayName, createdAt: date, shareURL: shareURL)
     }
 
     public func trainerConnection(for invitation: ClientShareInvitation,
@@ -66,17 +71,30 @@ public final class CloudKitClientShareStore: ClientShareStore, @unchecked Sendab
         let database = database(for: connection)
         let recordID = CKRecord.ID(recordName: "latest",
                                    zoneID: Self.recordZoneID(for: connection.zoneID))
-        let record = CKRecord(recordType: Self.planRecordType, recordID: recordID)
+        let existingRecord = try await database.records(for: [recordID])[recordID].flatMap {
+            try? $0.get()
+        }
+        if let existingRecord,
+           let existingPlan = try? Self.decodePlan(existingRecord) {
+            let losesTie = editedAt == existingPlan.lastEditedAt &&
+                connection.deviceID <= existingPlan.lastEditedBy
+            guard editedAt > existingPlan.lastEditedAt || !losesTie else {
+                return ClientShareChangeToken(sequence: existingPlan.revision)
+            }
+        }
+
+        let record = existingRecord ?? CKRecord(recordType: Self.planRecordType, recordID: recordID)
         record["payloadVersion"] = Int64(UnifiedPlanStore.currentPayloadVersion) as CKRecordValue
         record["planData"] = try UnifiedPlanStore.encode(plan) as CKRecordValue
         record["sentAt"] = sentAt as CKRecordValue
         record["updatedAt"] = editedAt as CKRecordValue
         record["lastEditedBy"] = connection.deviceID as CKRecordValue
-        record["revision"] = Int64(1) as CKRecordValue
+        let previousRevision = (record["revision"] as? Int64).map(Int.init) ?? 0
+        record["revision"] = Int64(previousRevision + 1) as CKRecordValue
         let result = try await database.modifyRecords(
             saving: [record], deleting: [], savePolicy: .changedKeys, atomically: true)
         _ = try Self.savedRecord(recordID, from: result.saveResults)
-        return ClientShareChangeToken(sequence: 1)
+        return ClientShareChangeToken(sequence: previousRevision + 1)
     }
 
     public func currentPlan(using connection: ClientShareConnection) async throws -> ClientSharedPlan? {

@@ -80,7 +80,9 @@ Audit and closure map: `docs/plans/cladiron-mvp-revised/PHASE-0-EXECUTION-COMPAT
 The first adapter, versioned Watch-payload, in-memory sharing-contract,
 additive persisted unified-plan envelope, CloudKit shared-zone adapter, and
 unified `Session` → runtime materializer slices are now landed in `CadenceCore`
-and covered by focused contract tests.
+and covered by focused contract tests. The CloudKit adapter now preserves the
+saved share URL, plan revision/sentAt, and deterministic last-writer-wins
+behavior across device writers.
 The payload preserves legacy Watch fields, carries rich strength prescriptions
 and planned cardio, and is consumed by Watch launch and phone reconciliation.
 The reconciliation fixtures cover duplicate/out-of-order results and source-ID

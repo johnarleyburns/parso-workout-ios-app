@@ -118,7 +118,26 @@ struct HomeView: View {
             passiveSamples: passiveSamples,
             userAge: settings.userAge,
             constraintPolicy: policy))
-        model.updateWatchTodayPlan(WatchSync.TodayPlan.from(day: snapshot.plan.today))
+        let unifiedPlan = WeeklyPlanUnifiedBridge.plan(
+            from: snapshot.plan,
+            goal: settings.trainingGoal,
+            title: "Coach plan")
+        _ = try? UnifiedPlanStore.upsert(unifiedPlan, originDevice: "iphone", in: context)
+
+        var todayPlan = WatchSync.TodayPlan.from(day: snapshot.plan.today,
+                                                 updatedAt: unifiedPlan.updatedAt)
+        if let today = snapshot.plan.today {
+            for (index, planned) in today.sessions.enumerated()
+                where index < todayPlan.sessions.count {
+                let unifiedSession = WeeklyPlanUnifiedBridge.session(planned)
+                if let payload = try? WatchPlanPayload.make(
+                    from: PlanSessionSnapshot(session: unifiedSession),
+                    athlete: AthleteExecutionSnapshot()) {
+                    todayPlan.sessions[index].planPayload = payload
+                }
+            }
+        }
+        model.updateWatchTodayPlan(todayPlan)
         return snapshot
     }
     func handleInsightAction(_ action: Insight.Action) {

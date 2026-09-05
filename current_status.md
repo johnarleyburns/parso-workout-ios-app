@@ -92,8 +92,10 @@ conversion preserves strength/cardio/mobility/instruction item identity, and the
 repository has a single `Session`-based start entry point. The editable iPhone
 start path now converts its draft through that entry point while retaining
 partner and DB++ provenance metadata; the legacy `EditablePlan.apply` path
-remains compatible. Continue with the generated-plan producer, CloudKit
-Apple-ID/device gate, and normalized persistence mapping.
+remains compatible. Coach-generated weekly plans now also bridge into the
+unified seven-day value graph, persist through `UnifiedPlanStore`, and enrich
+Watch payloads from the same sessions. Continue with the CloudKit Apple-ID/
+device gate, normalized persistence mapping, and plan-origin device smoke path.
 Do not
 implement later-phase UI before the Phase 0 model and sharing boundaries
 needed by it are explicit.
@@ -102,7 +104,7 @@ needed by it are explicit.
 
 | Phase | Status | Next outcome |
 |---|---|---|
-| 0 — foundations and sync proof | **IN PROGRESS: value model + runtime adapter + Watch payload + sharing contract** | wire the unified plan producer into the iPhone start UI, then run the CloudKit device gates and normalized persistence mapping |
+| 0 — foundations and sync proof | **IN PROGRESS: value model + runtime + coach producer + Watch payload + sharing contract** | run the CloudKit device gates, normalized persistence mapping, and plan-origin iPhone/Watch smoke path |
 | 1 — athlete app | pending | Plan-first iPhone/iPad experience, compact authoring, partner execution, migration |
 | 2 — scientific coach | partial baseline shipped | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces |
 | 3 — iPad Trainer mode | pending | roster, planner, connected/external delivery, review, export, and Pro entitlement |

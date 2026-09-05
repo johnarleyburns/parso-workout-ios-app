@@ -15,6 +15,9 @@ Verification: `make ci` passed (1,718 package tests and all guardrails). The
 iPhone smoke passed on the second run after the first run hit the known
 simulator flake at This Week expansion; the passing run covered the retained
 Start Workout suggestion flow and the Custom Workout absence assertion.
+The pre-commit full gate also passed iPhone smoke, Watch build/unit smoke, and
+Watch execution smoke. GitHub Actions run `33982770430` was unable to start
+because the repository account's payments/spending limit is blocked.
 
 ## Suggested weekly workouts — 2026-08-21 — SHIPPED
 

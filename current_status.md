@@ -111,6 +111,10 @@ the Home observations component and Custom Workout editor; the smoke contract
 now asserts both removals and the retained entry point. Verification: `make ci`
 (build, 1,718 tests, four guardrails) passed; `make smoke` passed on its second
 run after an unrelated first-run simulator flake at This Week expansion.
+The pre-commit full gate also passed iPhone smoke, Watch build/unit smoke, and
+Watch execution smoke. GitHub Actions run `33982770430` could not start its
+test job because the repository account's payments/spending limit is blocked;
+no remote code failure was reported.
 
 Next task remains the Phase 0 CloudKit Apple-ID/device gate, normalized
 persistence mapping, and plan-origin iPhone/Watch smoke path.

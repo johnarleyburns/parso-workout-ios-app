@@ -75,14 +75,16 @@ replace working private-iCloud sync, unplanned workout paths, Watch execution,
 cardio, partner behavior, history/export, or the DB++ bridge.
 
 Audit and closure map: `docs/plans/cladiron-mvp-revised/PHASE-0-EXECUTION-COMPATIBILITY-AUDIT.md`.
-The first adapter, versioned Watch-payload, and in-memory sharing-contract
-slices are now landed in `CadenceCore` and covered by focused contract tests.
+The first adapter, versioned Watch-payload, in-memory sharing-contract, and
+additive persisted unified-plan envelope slices are now landed in `CadenceCore`
+and covered by focused contract tests.
 The payload preserves legacy Watch fields, carries rich strength prescriptions
 and planned cardio, and is consumed by Watch launch and phone reconciliation.
 The reconciliation fixtures cover duplicate/out-of-order results and source-ID
 preservation; the sharing contract covers invitation/acceptance, change tokens,
 append-only results, and trainer-device plan convergence. Continue with the
-persisted unified model and production CloudKit adapter in that audit. Do not
+production CloudKit adapter and the iPhone start-path materializer in that audit.
+Do not
 implement later-phase UI before the Phase 0 model and sharing boundaries
 needed by it are explicit.
 

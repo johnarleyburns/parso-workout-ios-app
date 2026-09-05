@@ -7,7 +7,7 @@ import SwiftData
 /// the sole CloudKit writer.
 public enum CadenceStore {
     /// Shared local-store compatibility marker used by iPhone and Watch.
-    public static let schemaVersion = 2
+    public static let schemaVersion = 3
 
     /// The private CloudKit container backing the iPhone SwiftData store. Must
     /// match the `com.apple.developer.icloud-container-identifiers` entitlement
@@ -25,7 +25,8 @@ public enum CadenceStore {
         RouteSample.self,
         HRMDevice.self,
         Person.self,
-        Assessment.self
+        Assessment.self,
+        PersistedPlan.self
     ])
 
     /// - Parameters:

@@ -14,14 +14,6 @@ struct CadenceApp: App {
     @State private var store = StoreService()
     let container: ModelContainer
 
-    /// Bump when an incompatible on-disk schema change ships, so the local
-    /// store is reset once on first launch of the new build. The §06
-    /// `[String]` → delimited-String change is version 2: an old store still
-    /// has `Array<String>` columns that log "Could not materialize" faults when
-    /// SwiftData migrates them, so we discard it rather than migrate.
-    private static let schemaVersion = CadenceStore.schemaVersion
-    private static let schemaVersionKey = "cadence.localSchemaVersion"
-
     init() {
         let args = ProcessInfo.processInfo.arguments
         let uiTest = args.contains("-uiTest")
@@ -32,25 +24,14 @@ struct CadenceApp: App {
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default,
                                                          options: [.mixWithOthers])
 
-        // Reset a pre-version-2 local store once (pre-release; data is local and
-        // back-up-able via export, so nothing irreplaceable is lost).
-        if !uiTest, UserDefaults.standard.integer(forKey: Self.schemaVersionKey) < Self.schemaVersion {
-            CadenceStore.destroyDefaultStore()
-            UserDefaults.standard.set(Self.schemaVersion, forKey: Self.schemaVersionKey)
-        }
-
         do {
             container = try CadenceStore.makeModelContainer(inMemory: uiTest)
         } catch {
-            // A dev schema change can leave an incompatible on-disk store.
-            // Reset it once and retry rather than crashing (pre-release; data is
-            // local and export-backed, so nothing irreplaceable is lost).
-            CadenceStore.destroyDefaultStore()
-            do {
-                container = try CadenceStore.makeModelContainer(inMemory: uiTest)
-            } catch {
-                fatalError("Failed to create ModelContainer after reset: \(error)")
-            }
+            // Never delete or replace an on-disk store on a model-container
+            // error. The store contains irreplaceable workout history and may
+            // still be recoverable through SwiftData migration, CloudKit, or a
+            // user export. Fail closed so a schema bug cannot become data loss.
+            fatalError("Failed to create ModelContainer without altering stored workout history: \(error)")
         }
         // Seed starter library and (in UI-test mode) deterministic fixtures.
         let ctx = ModelContext(container)

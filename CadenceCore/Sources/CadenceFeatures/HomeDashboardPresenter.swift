@@ -186,9 +186,10 @@ public enum HomeDashboardPresenter {
             displayText: "\(Int(balance.moderateEquivalentMinutes.rounded())) of 150 min",
             normalized: min(1, max(0, balance.moderateEquivalentMinutes / 150)))
         let volume = volumeRows(
-            setsByGroup: snapshot.engineObservation?.effectiveSetsByGroup
-                ?? snapshot.facts.weeklySetsByGroup,
-                                tracked: schedule.trackedMuscleGroups)
+            setsByGroup: weeklyVolume(
+                engine: snapshot.engineObservation?.effectiveSetsByGroup,
+                facts: snapshot.facts.weeklySetsByGroup),
+            tracked: schedule.trackedMuscleGroups)
         // Averaged over the TRACKED rows only, so half a set of incidental neck
         // work cannot drag the headline number down.
         let averageSets = averageCappedSets(volume.filter(\.isTracked).map(\.sets))
@@ -210,6 +211,18 @@ public enum HomeDashboardPresenter {
                      volume: volume,
                      cardioDetail: cardioDetail,
                      suggestions: suggestions(snapshot: snapshot, schedule: schedule))
+    }
+
+    /// DB++ cannot resolve app-created exercises because they have no catalog ID.
+    /// Keep the engine's values for catalog exercises, while retaining the native
+    /// facts as a lower-bound compatibility fallback for unmapped custom work.
+    public static func weeklyVolume(engine: [MuscleGroup: Double]?,
+                                    facts: [MuscleGroup: Double]) -> [MuscleGroup: Double] {
+        guard var engine else { return facts }
+        for (group, factSets) in facts {
+            engine[group] = max(engine[group] ?? 0, factSets)
+        }
+        return engine
     }
 
     /// Every tracked muscle group, plus any untracked group the user has actually

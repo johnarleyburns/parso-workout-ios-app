@@ -47,6 +47,47 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertNotNil(CitationRegistry.citation(forId: productive?.citationID ?? ""))
     }
 
+    func testFinalizedPhoneCustomExerciseRetainsWeeklyVolumeOnHomeDashboard() throws {
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+        let context = try makeContext()
+        let session = try WorkoutRepository.createSession(
+            title: "Phone custom abs",
+            date: now.addingTimeInterval(-3_600),
+            in: context)
+        let exercise = try WorkoutRepository.findOrCreateExercise(
+            named: "Incline Crunches",
+            category: .core,
+            primaryMuscles: [MuscleGroup.abdominals.rawValue],
+            in: context)
+        for _ in 0..<3 {
+            _ = try WorkoutRepository.addSet(
+                to: session, exercise: exercise, weightKg: 0, reps: 15, in: context)
+        }
+        session.endedAt = now
+        try context.save()
+
+        let sessions = try context.fetch(FetchDescriptor<WorkoutSession>())
+        let snapshot = CoachSnapshotBuilder.build(
+            sessions: sessions, cardio: [], assessments: [], hasPainToday: false,
+            goal: .strength, experience: .intermediate, formula: .epley,
+            schedulePreferences: .default, profile: .empty, now: now)
+        let dashboard = HomeDashboardPresenter.make(
+            snapshot: snapshot, schedule: .default, goal: .strength,
+            experience: .intermediate, userAge: nil)
+
+        XCTAssertEqual(snapshot.facts.weeklySetsByGroup[.abdominals], 3)
+        XCTAssertEqual(dashboard.volume.first { $0.group == .abdominals }?.sets, 3)
+    }
+
+    func testWeeklyVolumeKeepsEngineValuesAndFillsUnmappedNativeFacts() {
+        let volume = HomeDashboardPresenter.weeklyVolume(
+            engine: [.chest: 4],
+            facts: [.chest: 3, .abdominals: 3])
+
+        XCTAssertEqual(volume[.chest], 4)
+        XCTAssertEqual(volume[.abdominals], 3)
+    }
+
     func testProgressStatusChangesOnlyAtTarget() {
         let below = HomeDashboardState.Progress(
             completed: 1, target: 2, displayText: "1 of 2", normalized: 0.5)

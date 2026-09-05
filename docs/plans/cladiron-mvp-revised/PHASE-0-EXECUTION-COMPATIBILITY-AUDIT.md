@@ -24,12 +24,12 @@ Device-only gates remain called out even when the code seam is shipped.
 | Watch strength lifecycle and durable phone reconciliation | **verified shipped (headless) / device gate open** | `WatchStrengthFlowModel` plus Watch views implement start/log/rest/cooldown/summary/cancel; `WatchStrengthFlowModelTests`, `WatchStrengthSyncApplierTests`, `WatchResumableSessionTests`, and `AppModelWCSessionDelegateTests` cover stable IDs, replay, discard, and phone application. Real unreachable-phone execution remains mandatory. |
 | Watch cardio lifecycle and exactly-once completion merge | **verified shipped (headless) / device gate open** | `WatchWorkoutManager`, `WatchCardioModels`, and `WatchCardioCompletion` are the current seams; `WatchCardioCompletionTests`, `WorkoutRepositoryTests`, and Watch UI tests cover duplicate/relaunch-friendly envelopes and HealthKit merge. Live HR/haptics/HealthKit still require hardware. |
 | JSON export/import and legacy decoding | **verified shipped** | [`DataExport.swift`](../../../CadenceCore/Sources/CadenceCore/DataExport.swift:115) keeps optional metadata; `DataExportTests`, `WorkoutRepositoryTests`, and `ExportFreezeFixTests` cover old/new round trips. |
-| Unified `Plan → Week → Day → Session → Item → Set` value model | **partial → additive envelope + coach producer landed** | `UnifiedPlanModel.swift` supplies the Codable value graph; [`UnifiedPlanStore.swift`](../../../CadenceCore/Sources/CadenceCore/UnifiedPlanStore.swift:1) persists validated plans through an additive SwiftData envelope with stable IDs and deterministic LWW upsert; `WeeklyPlanUnifiedBridge` now converts the shipped coach week into the seven-day graph and Home persists it. A normalized per-entity mapping and client relationship persistence remain open. |
-| Rich per-set intent and source identity into the live session | **partial → adapter + iPhone/coach producer slices landed** | `PlannedSetPrescription` now carries optional source set ID, load mode, `%1RM`, RPE, rest, and warm-up; `WorkoutSession` carries optional `planSessionID`; `RuntimePrescriptionAdapterTests`, `EditablePlanTests`, and `WeeklyPlanUnifiedBridgeTests` prove resolution, stable IDs, all item-family conversion, and legacy fields. The editable iPhone start path and Home's generated coach-week path now convert through unified sessions; normalized plan provenance, sharing integration, and device smoke remain open. |
-| Snapshot `%1RM` at send/start and keep it fixed | **partial** | The pure adapter resolves and rounds `%1RM` once from `AthleteExecutionSnapshot`, and tests prove missing-e1RM rejection. A trainer send/preflight path and immutable shared-zone snapshot do not exist yet. |
+| Unified `Plan → Week → Day → Session → Item → Set` value model | **partial → additive envelope + normalized mapping + coach producer landed** | `UnifiedPlanModel.swift` supplies the Codable value graph; [`UnifiedPlanStore.swift`](../../../CadenceCore/Sources/CadenceCore/UnifiedPlanStore.swift:1) remains the compatibility envelope, while [`NormalizedPlanStore.swift`](../../../CadenceCore/Sources/CadenceCore/NormalizedPlanStore.swift:1) persists addressable header/week/day/session/item/set rows with stable IDs. `WeeklyPlanUnifiedBridge` converts the shipped coach week into the seven-day graph and Home writes both forms. Relationship UI/client sync remains open. |
+| Rich per-set intent and source identity into the live session | **partial → adapter + normalized provenance + iPhone/coach producer slices landed** | `PlannedSetPrescription` now carries optional source set ID, load mode, `%1RM`, RPE, rest, and warm-up; `WorkoutSession` carries optional `planSessionID`; `RuntimePrescriptionAdapterTests`, `EditablePlanTests`, and `WeeklyPlanUnifiedBridgeTests` prove resolution, stable IDs, all item-family conversion, and legacy fields. The editable iPhone start path and Home's generated coach-week path now convert through unified sessions; send-time snapshot validation is enforced by `PlanSendPreflight`. Device smoke and full shared-client integration remain open. |
+| Snapshot `%1RM` at send/start and keep it fixed | **partial → send preflight landed** | The pure adapter resolves and rounds `%1RM` once from `AthleteExecutionSnapshot`; [`PlanSendPreflight`](../../../CadenceCore/Sources/CadenceCore/PlanSendPreflight.swift:1) rejects invalid or unsnapshotted percentage loads before either share implementation writes. A real trainer send UI and immutable shared-zone device snapshot remain open. |
 | Unified plan into existing Watch strength inputs | **partial → versioned payload + coach producer landed** | [`WatchPlanPayload.swift`](../../../CadenceCore/Sources/CadenceCore/WatchPlanPayload.swift:1) carries rich per-set prescriptions with legacy names/ladder fallback; `WatchStrengthView` and `WatchStrengthFlowModel` consume it, and `WatchStrengthSyncApplierTests` cover phone reconciliation. Home now builds that payload from `WeeklyPlanUnifiedBridge` sessions; the real plan-origin device smoke gate remains open. |
 | Unified plan into existing Watch cardio configuration | **partial → versioned payload + coach producer landed** | `WatchPlanPayload.Cardio` carries kind, duration, distance, target zone, and interval data; `WatchSync.TodayPlan` round-trips it and planned-cardio launch passes duration/zone into `WorkoutConfigurationSpec`. Home now builds planned cardio from the same unified coach sessions; the real planned-cardio device gate remains open. |
-| Trainer private-device convergence | **partial → value-level contract landed** | [`ClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/ClientShareStore.swift:1) and `ClientShareStoreTests` prove two trainer-device connections converge with last-writer-wins metadata; persisted SwiftData draft stamps and a visible conflict notice remain open. |
+| Trainer private-device convergence | **partial → value-level contract + relationship persistence landed** | [`ClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/ClientShareStore.swift:1) and `ClientShareStoreTests` prove two trainer-device connections converge with last-writer-wins metadata; [`PersistedClientRelationship`](../../../CadenceCore/Sources/CadenceCore/NormalizedPlanStore.swift:182) persists display name, lifecycle, goal, and share metadata. A visible draft conflict notice remains open. |
 | Trainer↔client CloudKit sharing (`CKShare`, custom zone, change tokens) | **partial → production adapter landed / device gate open** | [`CloudKitClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/CloudKitClientShareStore.swift:1) creates per-client custom zones/`CKShare`s, returns the saved invitation URL, accepts invitations, writes plan/result records with revision/sentAt preservation and deterministic last-writer-wins, and consumes zone change tokens. `InMemoryClientShareStore` remains the deterministic contract fixture; real two-Apple-ID invite/accept, shared-zone permissions, and phone integration remain open. |
 | Phone is the sole Watch→CloudKit bridge | **verified shipped (code)** | [`Store.swift`](../../../CadenceCore/Sources/CadenceCore/Store.swift:4) documents the boundary; Watch uses local-only storage and WatchConnectivity; `AppModel` and `WatchStrengthSyncApplier` apply on the phone. |
 | No runtime network path | **verified shipped** | `check-no-network.sh` is the repository guardrail; the DB++ catalog/evidence are bundled and `TrainingEngineBridge` uses the pinned package. |
@@ -59,11 +59,12 @@ planner UI work. The new adapter suite extends, rather than forks, this set.
    snapshots: add `Plan`, `PlanWeek`, `PlanDay`, session/item identity, provenance,
    and scheduling as Codable value types; keep SwiftData mapping out of the
    execution adapter until invariants and fixture serialization are stable.
-   **Value model, additive persistence envelope, and coach producer landed
-   2026-09-05:** `UnifiedPlanModel` plus `PersistedPlan`/`UnifiedPlanStore`
-   round-trip and converge through stable IDs; `WeeklyPlanUnifiedBridge` makes
-   the existing coach week a validated seven-day `Plan`, and normalized entity
-   mapping remains open.
+   **Value model, additive persistence envelope, normalized mapping, and coach
+   producer landed 2026-09-05:** `UnifiedPlanModel` plus
+   `PersistedPlan`/`UnifiedPlanStore` round-trip and converge through stable IDs;
+   `NormalizedPlanStore` additionally persists the plan hierarchy and client
+   relationship as addressable records; `WeeklyPlanUnifiedBridge` makes the
+   existing coach week a validated seven-day `Plan`.
 2. **Promote the adapter to a single materializer entry point** used by the
    existing iPhone start path. **Landed 2026-09-05:** `PlanSessionSnapshot(session:)`,
    `RuntimePrescriptionAdapter.materialize(planSession: Session, ...)`, and
@@ -88,10 +89,11 @@ planner UI work. The new adapter suite extends, rather than forks, this set.
 5. **Only after execution compatibility is green**, add the CloudKit sharing
    protocol and its in-memory contract, then the production custom-zone/
    participant implementation and real two-Apple-ID invite/accept test.
-   **Contract and adapter landed 2026-09-05:** `ClientShareStore`,
+   **Contract, adapter, and send preflight landed 2026-09-05:** `ClientShareStore`,
    `InMemoryClientShareStore`, and `CloudKitClientShareStore` cover the
-   value-level protocol and production record-zone seam. The real Apple-ID
-   device gate and phone integration remain mandatory.
+   value-level protocol and production record-zone seam. `PlanSendPreflight`
+   rejects unsnapshotted `%1RM` loads before either share implementation writes.
+   The real Apple-ID device gate and phone integration remain mandatory.
 
 Out of scope for this closure slice: planner UI, compact set-stack authoring,
 trainer UI, external-client packets, entitlement gating, Mac shell work, and any

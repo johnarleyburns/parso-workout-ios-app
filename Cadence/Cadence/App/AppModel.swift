@@ -3,6 +3,7 @@ import SwiftUI
 import Observation
 import SwiftData
 import WatchConnectivity
+import CloudKit
 import CadenceCore
 import CadenceFeatures
 #if DEBUG
@@ -60,6 +61,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     private(set) var lastWatchSyncAt: Date? = UserDefaults.standard.object(forKey: "settings.lastWatchSyncAt") as? Date
     private(set) var lastWatchSyncError: String?
     private let watchSessionDelegate: WatchSessionDelegateProxy
+    private(set) var cloudKitAccountAvailability: CloudKitAccountAvailability = .checking
 
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var lastHealthSync: Date? {
@@ -144,6 +146,22 @@ final class AppModel: NSObject, @unchecked Sendable {
         _settings = settings
         _modelContainer = container
         _active = active
+    }
+
+    /// Checks the Apple-ID account that backs the private SwiftData store.
+    /// CloudKit account lookup is asynchronous and never blocks the first
+    /// frame; UI tests use a deterministic available state.
+    func refreshCloudKitAccountStatus() {
+        guard !isUITestMode else {
+            cloudKitAccountAvailability = .available
+            return
+        }
+        cloudKitAccountAvailability = .checking
+        CKContainer(identifier: CadenceStore.cloudKitContainerID).accountStatus { [weak self] status, _ in
+            Task { @MainActor [weak self] in
+                self?.cloudKitAccountAvailability = CloudKitAccountGate.availability(for: status.rawValue)
+            }
+        }
     }
 
     func pushSettingsContext(force: Bool = false) {

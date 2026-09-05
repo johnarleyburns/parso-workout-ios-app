@@ -207,9 +207,9 @@ struct SettingsView: View {
                 HStack {
                     Label("iCloud Sync", systemImage: "arrow.triangle.2.circlepath.icloud")
                     Spacer()
-                    Text("On")
+                    Text(model.cloudKitAccountAvailability.displayName)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(model.cloudKitAccountAvailability.canSync ? Color.secondary : Color.orange)
                         .accessibilityIdentifier("settings.sync.status")
                 }
             } header: {

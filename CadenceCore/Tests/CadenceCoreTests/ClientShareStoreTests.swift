@@ -93,6 +93,30 @@ final class ClientShareStoreTests: XCTestCase {
         XCTAssertEqual(current?.revision, 2)
     }
 
+    func testSharingRejectsAnUnsnapshottedPercentLoad() async throws {
+        let store = InMemoryClientShareStore()
+        let invitation = try await store.createShare(
+            trainerID: "trainer", clientID: "client", clientDisplayName: "Client")
+        let trainer = try await store.trainerConnection(for: invitation, deviceID: "iphone")
+        var plan = fixturePlan(title: "Needs snapshot", calculatedWeight: 70)
+        guard case let .strength(item) = plan.weeks[0].days[0].sessions[0].items[0] else {
+            return XCTFail("fixture should contain strength")
+        }
+        var unsnapshotted = item
+        unsnapshotted.sets[0].load = .percent1RM(percent: 0.725, calculatedWeight: nil)
+        plan.weeks[0].days[0].sessions[0].items[0] = .strength(unsnapshotted)
+
+        do {
+            _ = try await store.writePlan(plan, using: trainer, sentAt: Date(), editedAt: Date())
+            XCTFail("a shared plan must not carry an unresolved percentage load")
+        } catch let error as PlanSendPreflightError {
+            guard case let .unsnapshottedPercentLoads(ids) = error else {
+                return XCTFail("unexpected preflight error: \(error)")
+            }
+            XCTAssertEqual(ids, [item.sets[0].id])
+        }
+    }
+
     private func fixturePlan(title: String, calculatedWeight: Double) -> Plan {
         let set = PrescribedSet(
             setIndex: 0, kind: .working, repTarget: .exact(5),

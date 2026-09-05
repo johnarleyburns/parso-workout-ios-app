@@ -123,6 +123,7 @@ struct HomeView: View {
             goal: settings.trainingGoal,
             title: "Coach plan")
         _ = try? UnifiedPlanStore.upsert(unifiedPlan, originDevice: "iphone", in: context)
+        _ = try? NormalizedPlanStore.upsert(unifiedPlan, originDevice: "iphone", in: context)
 
         var todayPlan = WatchSync.TodayPlan.from(day: snapshot.plan.today,
                                                  updatedAt: unifiedPlan.updatedAt)

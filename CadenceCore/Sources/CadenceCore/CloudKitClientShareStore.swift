@@ -68,6 +68,7 @@ public final class CloudKitClientShareStore: ClientShareStore, @unchecked Sendab
     public func writePlan(_ plan: Plan, using connection: ClientShareConnection,
                           sentAt: Date, editedAt: Date) async throws -> ClientShareChangeToken {
         guard connection.actor == .trainer else { throw ClientShareStoreError.trainerOnly }
+        try PlanSendPreflight.validate(plan)
         let database = database(for: connection)
         let recordID = CKRecord.ID(recordName: "latest",
                                    zoneID: Self.recordZoneID(for: connection.zoneID))

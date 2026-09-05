@@ -26,7 +26,14 @@ public enum CadenceStore {
         HRMDevice.self,
         Person.self,
         Assessment.self,
-        PersistedPlan.self
+        PersistedPlan.self,
+        PersistedPlanHeader.self,
+        PersistedPlanWeek.self,
+        PersistedPlanDay.self,
+        PersistedPlanSession.self,
+        PersistedPlanItem.self,
+        PersistedPlanSet.self,
+        PersistedClientRelationship.self
     ])
 
     /// - Parameters:

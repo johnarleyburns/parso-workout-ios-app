@@ -199,6 +199,7 @@ public actor InMemoryClientShareStore: ClientShareStore {
     public func writePlan(_ plan: Plan, using connection: ClientShareConnection,
                           sentAt: Date, editedAt: Date) async throws -> ClientShareChangeToken {
         var zone = try authorizedZone(for: connection, requires: .trainer)
+        try PlanSendPreflight.validate(plan)
         let current = zone.currentPlan
         let isNewer = current.map { editedAt > $0.lastEditedAt ||
             (editedAt == $0.lastEditedAt && connection.deviceID > $0.lastEditedBy) } ?? true

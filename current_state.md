@@ -19,6 +19,17 @@ The pre-commit full gate also passed iPhone smoke, Watch build/unit smoke, and
 Watch execution smoke. GitHub Actions run `33982770430` was unable to start
 because the repository account's payments/spending limit is blocked.
 
+## Phase 0 persistence and send safety — 2026-09-05 — IN PROGRESS
+
+Unified plans now write normalized SwiftData header/week/day/session/item/set
+records with stable IDs, while the existing JSON envelope remains a compatible
+recovery path. Coach-generated Home plans write both representations. Client
+relationship metadata has an additive persisted record, and shared-plan writes
+reject invalid or unsnapshotted `%1RM` loads through `PlanSendPreflight`.
+Settings now reports the Apple-ID/iCloud account state used by private sync.
+Focused tests pass; the real private-iCloud/two-Apple-ID and plan-origin
+iPhone/Watch device gates remain open.
+
 ## Suggested weekly workouts — 2026-08-21 — SHIPPED
 
 Home presents cited **Observations** independently from the on-demand

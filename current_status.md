@@ -116,14 +116,30 @@ Watch execution smoke. GitHub Actions run `33982770430` could not start its
 test job because the repository account's payments/spending limit is blocked;
 no remote code failure was reported.
 
-Next task remains the Phase 0 CloudKit Apple-ID/device gate, normalized
-persistence mapping, and plan-origin iPhone/Watch smoke path.
+The remaining Phase 0 work is the real CloudKit Apple-ID/device gate and
+plan-origin iPhone/Watch smoke path; the normalized persistence mapping is now
+in place below.
+
+## Current work slice — Phase 0 persistence and send safety — SHIPPED 2026-09-05
+
+The next Phase 0 slice is implemented: unified plans now have normalized
+SwiftData header/week/day/session/item/set rows with stable IDs, coach-generated
+Home plans write the normalized tree alongside the compatibility envelope, and
+client relationship metadata persists with lifecycle and share information.
+`PlanSendPreflight` now blocks shared plans that contain invalid or
+unsnapshotted `%1RM` loads. The Apple-ID account gate is wired into app startup
+and Settings, which reports the real iCloud account state rather than always
+claiming sync is on. Focused tests cover all item families, stable-ID updates,
+relationship round trips, preflight rejection, and account-status mapping.
+
+The remaining Phase 0 gaps are real private-iCloud/two-Apple-ID device
+verification and the plan-origin iPhone/Watch smoke path.
 
 ## Phase queue
 
 | Phase | Status | Next outcome |
 |---|---|---|
-| 0 — foundations and sync proof | **IN PROGRESS: value model + runtime + coach producer + Watch payload + sharing contract** | run the CloudKit device gates, normalized persistence mapping, and plan-origin iPhone/Watch smoke path |
+| 0 — foundations and sync proof | **IN PROGRESS: value model + runtime + normalized persistence + send gate + Watch payload + sharing contract** | run the CloudKit device gates and plan-origin iPhone/Watch smoke path |
 | 1 — athlete app | pending | Plan-first iPhone/iPad experience, compact authoring, partner execution, migration |
 | 2 — scientific coach | partial baseline shipped | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces |
 | 3 — iPad Trainer mode | pending | roster, planner, connected/external delivery, review, export, and Pro entitlement |

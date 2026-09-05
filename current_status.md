@@ -1,6 +1,6 @@
 # Current Status
 
-Updated: 2026-09-04
+Updated: 2026-09-05
 
 ## Sole active plan — revised Cladiron MVP v2.5
 
@@ -69,17 +69,20 @@ The matrix marks every Phase 0 requirement as:
 Regression coverage is frozen around today's editable workout/coach-plan
 materializer, collapsed strength cards, full-screen set editor, performer history
 and alternation, 20-muscle credits, Watch strength/cardio lifecycle, and durable
-phone reconciliation. The first smallest adapter and versioned Watch-payload
-slices are landed; they do not
+phone reconciliation. The first smallest adapter, versioned Watch-payload, and
+in-memory sharing-contract slices are landed; they do not
 replace working private-iCloud sync, unplanned workout paths, Watch execution,
 cardio, partner behavior, history/export, or the DB++ bridge.
 
 Audit and closure map: `docs/plans/cladiron-mvp-revised/PHASE-0-EXECUTION-COMPATIBILITY-AUDIT.md`.
-The first adapter and versioned Watch-payload slices are now landed in
-`CadenceCore` and covered by focused contract tests. The payload preserves
-legacy Watch fields, carries rich strength prescriptions and planned cardio,
-and is consumed by Watch launch and phone reconciliation. Continue with the
-dependency-ordered append-only/reconciliation fixtures in that audit. Do not
+The first adapter, versioned Watch-payload, and in-memory sharing-contract
+slices are now landed in `CadenceCore` and covered by focused contract tests.
+The payload preserves legacy Watch fields, carries rich strength prescriptions
+and planned cardio, and is consumed by Watch launch and phone reconciliation.
+The reconciliation fixtures cover duplicate/out-of-order results and source-ID
+preservation; the sharing contract covers invitation/acceptance, change tokens,
+append-only results, and trainer-device plan convergence. Continue with the
+persisted unified model and production CloudKit adapter in that audit. Do not
 implement later-phase UI before the Phase 0 model and sharing boundaries
 needed by it are explicit.
 
@@ -87,7 +90,7 @@ needed by it are explicit.
 
 | Phase | Status | Next outcome |
 |---|---|---|
-| 0 — foundations and sync proof | **IN PROGRESS: audit + session adapter + Watch payload** | complete the persisted unified Plan model, add append-only/reconciliation fixtures, then add the trainer/client sharing proof |
+| 0 — foundations and sync proof | **IN PROGRESS: audit + adapter + Watch payload + sharing contract** | complete the persisted unified Plan model, then replace the in-memory sharing seam with the production CloudKit adapter and device gates |
 | 1 — athlete app | pending | Plan-first iPhone/iPad experience, compact authoring, partner execution, migration |
 | 2 — scientific coach | partial baseline shipped | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces |
 | 3 — iPad Trainer mode | pending | roster, planner, connected/external delivery, review, export, and Pro entitlement |

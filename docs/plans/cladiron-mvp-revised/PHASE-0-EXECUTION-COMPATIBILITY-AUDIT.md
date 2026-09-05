@@ -1,6 +1,6 @@
 # Phase 0 execution-compatibility audit
 
-Updated: 2026-09-04
+Updated: 2026-09-05
 Scope: v2.5 §§7–10, §§39–42, §47.0, `WS-EXECUTION-COMPAT`, Appendix AA
 
 This is a repository-backed closure map, not a replacement product plan. “Verified
@@ -29,8 +29,8 @@ Device-only gates remain called out even when the code seam is shipped.
 | Snapshot `%1RM` at send/start and keep it fixed | **partial** | The pure adapter resolves and rounds `%1RM` once from `AthleteExecutionSnapshot`, and tests prove missing-e1RM rejection. A trainer send/preflight path and immutable shared-zone snapshot do not exist yet. |
 | Unified plan into existing Watch strength inputs | **partial → versioned payload slice landed** | [`WatchPlanPayload.swift`](../../../CadenceCore/Sources/CadenceCore/WatchPlanPayload.swift:1) carries rich per-set prescriptions with legacy names/ladder fallback; `WatchStrengthView` and `WatchStrengthFlowModel` consume it, and `WatchStrengthSyncApplierTests` cover phone reconciliation. The phone's unified-Plan producer is still open. |
 | Unified plan into existing Watch cardio configuration | **partial → versioned payload slice landed** | `WatchPlanPayload.Cardio` carries kind, duration, distance, target zone, and interval data; `WatchSync.TodayPlan` round-trips it and planned-cardio launch passes duration/zone into `WorkoutConfigurationSpec`. A unified-Plan producer and real planned-cardio device gate remain open. |
-| Trainer private-device convergence | **partial** | Private SwiftData mirroring is configured, but there is no explicit trainer draft convergence fixture or conflict notice seam. Smallest slice: additive `lastEditedBy`/updated-at value plus a two-context convergence test before trainer UI. |
-| Trainer↔client CloudKit sharing (`CKShare`, custom zone, change tokens) | **not started** | Repository search finds private SwiftData CloudKit configuration but no `CKShare`, custom record-zone owner, participant acceptance, or shared-zone change-token service. Smallest slice: `ClientShareStore` protocol + in-memory contract test, then CloudKit implementation and real two-Apple-ID gate. |
+| Trainer private-device convergence | **partial → value-level contract landed** | [`ClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/ClientShareStore.swift:1) and `ClientShareStoreTests` prove two trainer-device connections converge with last-writer-wins metadata; persisted SwiftData draft stamps and a visible conflict notice remain open. |
+| Trainer↔client CloudKit sharing (`CKShare`, custom zone, change tokens) | **partial → in-memory contract landed** | [`ClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/ClientShareStore.swift:1) defines the explicit boundary; `InMemoryClientShareStore` covers invitation/acceptance, trainer plan write/read, change tokens, append-only results, duplicate delivery, and trainer-device convergence. Production `CKShare`/custom-zone/change-token implementation and the real two-Apple-ID gate remain open. |
 | Phone is the sole Watch→CloudKit bridge | **verified shipped (code)** | [`Store.swift`](../../../CadenceCore/Sources/CadenceCore/Store.swift:4) documents the boundary; Watch uses local-only storage and WatchConnectivity; `AppModel` and `WatchStrengthSyncApplier` apply on the phone. |
 | No runtime network path | **verified shipped** | `check-no-network.sh` is the repository guardrail; the DB++ catalog/evidence are bundled and `TrainingEngineBridge` uses the pinned package. |
 | Swift 6 strict concurrency / warning-free package baseline | **verified shipped (package baseline)** | `Package.swift` sets Swift language mode v6 for all targets; the package build completed for the adapter slice. Full `make ci` remains the release gate. |
@@ -51,7 +51,7 @@ planner UI work. The new adapter suite extends, rather than forks, this set.
 | Watch strength payloads, replay, cancel, resume, cooldown | `WatchStrengthFlowModelTests`; `WatchStrengthSyncApplierTests`; `WatchResumableSessionTests`; `AppModelWCSessionDelegateTests` | **verified shipped (headless)** |
 | Cardio duplicate/relaunch and HR-present/absent summaries | `WatchCardioCompletionTests`; `WorkoutRepositoryTests`; `WatchCardioSummaryPresenterTests` | **verified shipped (headless)** |
 | JSON export/import and old fixture decoding | `DataExportTests`; `ExportFreezeFixTests`; `WorkoutRepositoryTests` | **verified shipped** |
-| Single iPhone/Watch plan → runtime → history smoke path | Existing iPhone/Watch smoke tests cover manual/runtime flows; rich payload materialization, Watch launch, and phone reconciliation are now headless-tested, but no plan-origin device smoke path exists yet | **partial** |
+| Single iPhone/Watch plan → runtime → history smoke path | Existing iPhone/Watch smoke tests cover manual/runtime flows; rich payload materialization, Watch launch, phone reconciliation, duplicate/out-of-order result handling, and source-ID export/import are now headless-tested, but no plan-origin device smoke path exists yet | **partial** |
 
 ## Dependency-ordered closure map
 
@@ -70,9 +70,14 @@ planner UI work. The new adapter suite extends, rather than forks, this set.
 4. **Add append-only/reconciliation contract fixtures** for old/new payloads,
    duplicate/out-of-order events, and export/import of source IDs. Then run the
    real iPhone + Watch gates.
+   **Landed 2026-09-05:** Watch compatibility/replay fixtures, source-ID export
+   round trip, and append-only result assertions.
 5. **Only after execution compatibility is green**, add the CloudKit sharing
    protocol and its in-memory contract, then the production custom-zone/
    participant implementation and real two-Apple-ID invite/accept test.
+   **In-memory contract landed 2026-09-05:** `ClientShareStore` and
+   `InMemoryClientShareStore` cover the value-level protocol. Production
+   CloudKit remains the next Phase 0 implementation slice.
 
 Out of scope for this closure slice: planner UI, compact set-stack authoring,
 trainer UI, external-client packets, entitlement gating, Mac shell work, and any

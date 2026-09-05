@@ -804,6 +804,29 @@ final class DataExportTests: XCTestCase {
         XCTAssertEqual(decoded.sessions.first?.plannedPerformerPrescriptions, performerPlans)
     }
 
+    func testExportImportPreservesUnifiedPlanSourceIDs() throws {
+        let planSessionID = UUID(uuidString: "00000000-0000-0000-0000-000000000301")!
+        let sourceItemID = UUID(uuidString: "00000000-0000-0000-0000-000000000302")!
+        let sourceSetID = UUID(uuidString: "00000000-0000-0000-0000-000000000303")!
+        let prescription = PlannedExercisePrescription(
+            sourceItemID: sourceItemID,
+            exerciseKey: "bench_press",
+            exerciseName: "Bench Press",
+            sets: [PlannedSetPrescription(
+                sourceSetID: sourceSetID, targetReps: 5, targetWeightKg: 80,
+                targetLoadMode: "absolute", restSeconds: 150)])
+        let original = CadenceExport(sessions: [ExportSession(
+            id: UUID(), title: "Upper", date: Date(timeIntervalSince1970: 1_700_000_000),
+            notes: nil, sets: [], plannedPrescriptions: [prescription],
+            planSessionID: planSessionID)])
+
+        let decoded = try DataExport.decodeJSON(DataExport.encodeJSON(original))
+
+        XCTAssertEqual(decoded.sessions.first?.planSessionID, planSessionID)
+        XCTAssertEqual(decoded.sessions.first?.plannedPrescriptions?.first?.sourceItemID, sourceItemID)
+        XCTAssertEqual(decoded.sessions.first?.plannedPrescriptions?.first?.sets.first?.sourceSetID, sourceSetID)
+    }
+
     func testImportOfALegacyExportWithoutPerformerPrescriptionsSucceeds() throws {
         // A pre-Phase-9 export simply has no such key: the encoder omits a nil
         // optional entirely, which is exactly the legacy on-disk shape.

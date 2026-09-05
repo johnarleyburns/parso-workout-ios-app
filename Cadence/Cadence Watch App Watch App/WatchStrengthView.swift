@@ -13,6 +13,7 @@ struct WatchStrengthView: View {
     private let plannedExerciseNames: [String]
     private let repLadder: [Int]
     private let planKey: String?
+    private let planPayload: WatchPlanPayload?
     private let initialPartnerNames: [String]
     private let restSecondsOverride: Int?
 
@@ -21,6 +22,7 @@ struct WatchStrengthView: View {
          plannedExerciseNames: [String] = [],
          repLadder: [Int] = [],
          planKey: String? = nil,
+         planPayload: WatchPlanPayload? = nil,
          initialPartnerNames: [String] = [],
          restSeconds: Int? = nil) {
         self.resumingSession = session
@@ -28,6 +30,7 @@ struct WatchStrengthView: View {
         self.plannedExerciseNames = plannedExerciseNames
         self.repLadder = repLadder
         self.planKey = planKey
+        self.planPayload = planPayload
         self.initialPartnerNames = initialPartnerNames
         self.restSecondsOverride = restSeconds
     }
@@ -60,6 +63,7 @@ struct WatchStrengthView: View {
                     plannedExerciseNames: plannedExerciseNames,
                     repLadder: repLadder,
                     planKey: planKey,
+                    planPayload: planPayload,
                     initialPartnerNames: initialPartnerNames,
                     createSession: true
                 )

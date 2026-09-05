@@ -12,6 +12,13 @@ final class WatchCardioModelsTests: XCTestCase {
         XCTAssertEqual(spec.location, .outdoor)
     }
 
+    func testSpecCarriesPlannedCardioTargets() {
+        let spec = WorkoutConfigurationSpec(
+            for: "run", plannedDurationSeconds: 1_800, targetZone: 2)
+        XCTAssertEqual(spec.plannedDurationSeconds, 1_800)
+        XCTAssertEqual(spec.targetZone, 2)
+    }
+
     func testSpecForWalk() {
         let spec = WorkoutConfigurationSpec(for: "walk")
         XCTAssertEqual(spec.kind, .walk)

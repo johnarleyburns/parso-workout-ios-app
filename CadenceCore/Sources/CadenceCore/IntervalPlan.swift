@@ -9,7 +9,7 @@ public enum IntervalPhaseKind: String, Codable, Sendable {
 }
 
 /// One phase in an expanded interval plan.
-public struct IntervalPhase: Equatable, Sendable, Identifiable {
+public struct IntervalPhase: Codable, Equatable, Sendable, Identifiable {
     public let id: Int
     public let kind: IntervalPhaseKind
     public let duration: TimeInterval
@@ -24,7 +24,7 @@ public struct IntervalPhase: Equatable, Sendable, Identifiable {
 }
 
 /// A fully-expanded sequence of phases the runner walks through.
-public struct IntervalPlan: Equatable, Sendable {
+public struct IntervalPlan: Codable, Equatable, Sendable {
     public let name: String
     public let phases: [IntervalPhase]
 

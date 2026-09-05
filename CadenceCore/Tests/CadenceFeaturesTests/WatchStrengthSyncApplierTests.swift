@@ -73,6 +73,34 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         XCTAssertEqual(session.orderedSets.first?.id, setID)
     }
 
+    func testEndSessionAppliesRichPlanPayloadToMirroredSession() throws {
+        let sessionID = UUID()
+        let sourceItemID = UUID()
+        let payload = WatchPlanPayload(
+            planSessionID: sessionID,
+            title: "Upper",
+            strength: .init(
+                exerciseNames: ["Bench Press"], repLadder: [5],
+                prescriptions: [PlannedExercisePrescription(
+                    sourceItemID: sourceItemID,
+                    exerciseKey: "bench_press",
+                    exerciseName: "Bench Press",
+                    sets: [.init(targetReps: 5, targetWeightKg: 80,
+                                  targetLoadMode: "absolute", restSeconds: 150)])]))
+
+        try WatchStrengthSyncApplier.apply(userInfo: [
+            "action": "end_session",
+            "session_id": sessionID.uuidString,
+            "ended_at": Date(timeIntervalSince1970: 2_000).timeIntervalSince1970,
+            WatchPlanPayload.transportKey: payload.propertyList,
+        ], in: context)
+
+        let session = try XCTUnwrap(fetchSessions().first { $0.id == sessionID })
+        XCTAssertEqual(session.planSessionID, sessionID)
+        XCTAssertEqual(session.plannedPrescriptions.first?.sourceItemID, sourceItemID)
+        XCTAssertEqual(session.plannedPrescriptions.first?.sets.first?.restSeconds, 150)
+    }
+
     func testDeleteSetPayloadRemovesMirroredSet() throws {
         let session = try WorkoutRepository.createSession(title: "Strength", in: context)
         let exercise = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: context)

@@ -11,6 +11,8 @@ public struct WorkoutConfigurationSpec: Equatable {
     public let kind: CardioKind
     public let location: Location
     public let heartRateEnabled: Bool
+    public let plannedDurationSeconds: Int?
+    public let targetZone: Int?
 
     public var usesGPS: Bool {
         switch location {
@@ -19,14 +21,20 @@ public struct WorkoutConfigurationSpec: Equatable {
         }
     }
 
-    public init(kind: CardioKind, location: Location = .indoor, heartRateEnabled: Bool = true) {
+    public init(kind: CardioKind, location: Location = .indoor, heartRateEnabled: Bool = true,
+                plannedDurationSeconds: Int? = nil, targetZone: Int? = nil) {
         self.kind = kind
         self.location = location
         self.heartRateEnabled = heartRateEnabled
+        self.plannedDurationSeconds = plannedDurationSeconds
+        self.targetZone = targetZone
     }
 
-    public init(for rawType: String) {
+    public init(for rawType: String, plannedDurationSeconds: Int? = nil,
+                targetZone: Int? = nil) {
         self.heartRateEnabled = true
+        self.plannedDurationSeconds = plannedDurationSeconds
+        self.targetZone = targetZone
         switch rawType.lowercased() {
         case "run": self.kind = .run; self.location = .outdoor
         case "walk": self.kind = .walk; self.location = .outdoor

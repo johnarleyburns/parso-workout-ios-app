@@ -188,6 +188,28 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.exerciseList.map { $0.setCount }, [0, 0])
     }
 
+    func testStartWithVersionedPlanPayloadKeepsRichPrescriptionAndTransportData() {
+        let sessionID = UUID()
+        let payload = WatchPlanPayload(
+            planSessionID: sessionID,
+            title: "Upper",
+            strength: .init(
+                exerciseNames: ["Bench Press"], repLadder: [5],
+                prescriptions: [PlannedExercisePrescription(
+                    sourceItemID: UUID(), exerciseKey: "bench_press",
+                    exerciseName: "Bench Press",
+                    sets: [.init(targetReps: 5, targetWeightKg: 80,
+                                  targetLoadMode: "absolute", restSeconds: 150)])]))
+        let m = makeModel()
+
+        m.start(planPayload: payload, createSession: true)
+
+        XCTAssertEqual(m.session?.planSessionID, sessionID)
+        XCTAssertEqual(m.session?.plannedPrescriptions.first?.exerciseKey, "bench_press")
+        XCTAssertEqual(m.session?.plannedPrescriptions.first?.sets.first?.restSeconds, 150)
+        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press"])
+    }
+
     func testLogSet_ownerSet_countsVolume() {
         let m = makeModel()
         m.start()

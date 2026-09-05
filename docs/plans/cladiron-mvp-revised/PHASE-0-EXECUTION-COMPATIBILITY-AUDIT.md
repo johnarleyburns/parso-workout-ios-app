@@ -1,6 +1,6 @@
 # Phase 0 execution-compatibility audit
 
-Updated: 2026-09-02
+Updated: 2026-09-04
 Scope: v2.5 §§7–10, §§39–42, §47.0, `WS-EXECUTION-COMPAT`, Appendix AA
 
 This is a repository-backed closure map, not a replacement product plan. “Verified
@@ -27,8 +27,8 @@ Device-only gates remain called out even when the code seam is shipped.
 | Unified `Plan → Week → Day → Session → Item → Set` value model | **partial** | The shipped `WorkoutPlan`/`WeeklyPlan`/`EditablePlan` types are legacy or coach-specific, not the v2.5 spine. [`RuntimePrescriptionAdapter.swift`](../../../CadenceCore/Sources/CadenceCore/RuntimePrescriptionAdapter.swift:4) now adds the smallest pure `PlanSessionSnapshot`/item/set boundary, but persisted `Plan`, `Week`, `Day`, `ClientRelationship`, and full item semantics do not exist yet. |
 | Rich per-set intent and source identity into the live session | **partial → adapter slice landed** | `PlannedSetPrescription` now carries optional source set ID, load mode, `%1RM`, RPE, rest, and warm-up; `WorkoutSession` carries optional `planSessionID`; `RuntimePrescriptionAdapterTests` prove resolution and legacy fields. Cardio/mobility/instruction materialization and plan provenance beyond the session are still open. |
 | Snapshot `%1RM` at send/start and keep it fixed | **partial** | The pure adapter resolves and rounds `%1RM` once from `AthleteExecutionSnapshot`, and tests prove missing-e1RM rejection. A trainer send/preflight path and immutable shared-zone snapshot do not exist yet. |
-| Unified plan into existing Watch strength inputs | **partial** | The existing Watch input accepts `plannedExerciseNames` and `plannedRepLadder` through `WatchStrengthView`; the adapter preserves those legacy fields. Rich per-set prescription transfer to the Watch payload and a plan-origin Watch launch are not wired yet. |
-| Unified plan into existing Watch cardio configuration | **not started** | The existing cardio runner is present, but no unified-plan item adapter supplies modality/target/interval data to it. Smallest slice: versioned TodayPlan cardio item payload, then a single planned-cardio launch test. |
+| Unified plan into existing Watch strength inputs | **partial → versioned payload slice landed** | [`WatchPlanPayload.swift`](../../../CadenceCore/Sources/CadenceCore/WatchPlanPayload.swift:1) carries rich per-set prescriptions with legacy names/ladder fallback; `WatchStrengthView` and `WatchStrengthFlowModel` consume it, and `WatchStrengthSyncApplierTests` cover phone reconciliation. The phone's unified-Plan producer is still open. |
+| Unified plan into existing Watch cardio configuration | **partial → versioned payload slice landed** | `WatchPlanPayload.Cardio` carries kind, duration, distance, target zone, and interval data; `WatchSync.TodayPlan` round-trips it and planned-cardio launch passes duration/zone into `WorkoutConfigurationSpec`. A unified-Plan producer and real planned-cardio device gate remain open. |
 | Trainer private-device convergence | **partial** | Private SwiftData mirroring is configured, but there is no explicit trainer draft convergence fixture or conflict notice seam. Smallest slice: additive `lastEditedBy`/updated-at value plus a two-context convergence test before trainer UI. |
 | Trainer↔client CloudKit sharing (`CKShare`, custom zone, change tokens) | **not started** | Repository search finds private SwiftData CloudKit configuration but no `CKShare`, custom record-zone owner, participant acceptance, or shared-zone change-token service. Smallest slice: `ClientShareStore` protocol + in-memory contract test, then CloudKit implementation and real two-Apple-ID gate. |
 | Phone is the sole Watch→CloudKit bridge | **verified shipped (code)** | [`Store.swift`](../../../CadenceCore/Sources/CadenceCore/Store.swift:4) documents the boundary; Watch uses local-only storage and WatchConnectivity; `AppModel` and `WatchStrengthSyncApplier` apply on the phone. |
@@ -51,7 +51,7 @@ planner UI work. The new adapter suite extends, rather than forks, this set.
 | Watch strength payloads, replay, cancel, resume, cooldown | `WatchStrengthFlowModelTests`; `WatchStrengthSyncApplierTests`; `WatchResumableSessionTests`; `AppModelWCSessionDelegateTests` | **verified shipped (headless)** |
 | Cardio duplicate/relaunch and HR-present/absent summaries | `WatchCardioCompletionTests`; `WorkoutRepositoryTests`; `WatchCardioSummaryPresenterTests` | **verified shipped (headless)** |
 | JSON export/import and old fixture decoding | `DataExportTests`; `ExportFreezeFixTests`; `WorkoutRepositoryTests` | **verified shipped** |
-| Single iPhone/Watch plan → runtime → history smoke path | Existing iPhone/Watch smoke tests cover manual/runtime flows; no plan-origin rich-prescription smoke path exists yet | **partial** |
+| Single iPhone/Watch plan → runtime → history smoke path | Existing iPhone/Watch smoke tests cover manual/runtime flows; rich payload materialization, Watch launch, and phone reconciliation are now headless-tested, but no plan-origin device smoke path exists yet | **partial** |
 
 ## Dependency-ordered closure map
 
@@ -65,6 +65,8 @@ planner UI work. The new adapter suite extends, rather than forks, this set.
 3. **Add versioned Watch plan payloads** for rich strength prescriptions and
    planned cardio, with legacy fields retained and unknown keys ignored. Extend
    the existing Watch views/flow rather than creating a planner runner.
+   **Landed 2026-09-04:** `WatchPlanPayload`, Today Plan transport, Watch
+   strength launch/reconciliation, and the planned-cardio configuration seam.
 4. **Add append-only/reconciliation contract fixtures** for old/new payloads,
    duplicate/out-of-order events, and export/import of source IDs. Then run the
    real iPhone + Watch gates.

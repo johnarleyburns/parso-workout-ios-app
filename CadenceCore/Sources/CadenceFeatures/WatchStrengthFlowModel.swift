@@ -77,6 +77,7 @@ public final class WatchStrengthFlowModel {
     let restDefault: Int
     private let context: ModelContext
     private var exercisePendingAfterRest: Exercise?
+    private var planPayload: WatchPlanPayload?
 
     /// In-memory name → Exercise catalog, loaded once per flow so the per-tap
     /// path never refetches the full exercise table (~900 seeded rows — the
@@ -103,10 +104,19 @@ public final class WatchStrengthFlowModel {
                       plannedExerciseNames: [String] = [],
                       repLadder: [Int] = [],
                       planKey: String? = nil,
+                      planPayload: WatchPlanPayload? = nil,
                       initialPartnerNames: [String] = [],
                       createSession: Bool = false) {
         priorSetsByExerciseAndPerformer.removeAll()
         exerciseCache = nil
+        self.planPayload = planPayload
+        let payloadStrength = planPayload?.strength
+        let effectiveNames = plannedExerciseNames.isEmpty
+            ? (payloadStrength?.exerciseNames ?? [])
+            : plannedExerciseNames
+        let effectiveRepLadder = repLadder.isEmpty
+            ? (payloadStrength?.repLadder ?? [])
+            : repLadder
         if let existingSession {
             session = existingSession
             hydratePartners(from: existingSession)
@@ -117,8 +127,8 @@ public final class WatchStrengthFlowModel {
             loadInitialPartners(initialPartnerNames)
         }
         if let session {
-            if !plannedExerciseNames.isEmpty {
-                for name in plannedExerciseNames {
+            if !effectiveNames.isEmpty {
+                for name in effectiveNames {
                     let resolved = resolvedExerciseName(name)
                     guard !resolved.isEmpty,
                           !session.plannedExerciseNames.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) else {
@@ -127,15 +137,22 @@ public final class WatchStrengthFlowModel {
                     session.plannedExerciseNames.append(resolved)
                 }
             }
-            if !repLadder.isEmpty {
-                session.plannedRepLadder = repLadder
+            if !effectiveRepLadder.isEmpty {
+                session.plannedRepLadder = effectiveRepLadder
             }
             if let planKey {
                 session.planKey = planKey
             }
+            if let planPayload {
+                session.planSessionID = planPayload.planSessionID
+                if let prescriptions = planPayload.strength?.prescriptions,
+                   !prescriptions.isEmpty {
+                    session.plannedPrescriptions = prescriptions
+                }
+            }
             try? context.save()
         } else {
-            for name in plannedExerciseNames {
+            for name in effectiveNames {
                 let resolved = resolvedExerciseName(name)
                 guard !resolved.isEmpty,
                       !pendingExercises.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) else {
@@ -745,6 +762,10 @@ public final class WatchStrengthFlowModel {
             "planned_exercises": session.plannedExerciseNames,
             "planned_rep_ladder": session.plannedRepLadder,
         ]
+        if let planPayload {
+            let payload = planPayload.propertyList
+            if !payload.isEmpty { dict[WatchPlanPayload.transportKey] = payload }
+        }
         if let rpe = set.rpe {
             dict["rpe"] = rpe
             dict["effort_mode"] = effortMode.rawValue
@@ -773,6 +794,10 @@ public final class WatchStrengthFlowModel {
             "planned_rep_ladder": session.plannedRepLadder,
             "exercises": session.exercisesInOrder.map { $0.name },
         ]
+        if let planPayload {
+            let planData = planPayload.propertyList
+            if !planData.isEmpty { payload[WatchPlanPayload.transportKey] = planData }
+        }
         if let planKey = session.planKey {
             payload["plan_key"] = planKey
         }

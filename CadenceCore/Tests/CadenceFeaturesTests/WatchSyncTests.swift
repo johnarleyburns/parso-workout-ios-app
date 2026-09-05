@@ -180,6 +180,53 @@ final class WatchSyncTests: XCTestCase {
         XCTAssertFalse(restored?.isRestDay ?? true)
     }
 
+    func testVersionedPlanPayloadRoundTripsRichStrengthAndCardioAndIgnoresUnknownKeys() {
+        let prescription = PlannedExercisePrescription(
+            sourceItemID: UUID(uuidString: "00000000-0000-0000-0000-000000000101"),
+            exerciseKey: "bench_press",
+            exerciseName: "Bench Press",
+            sets: [PlannedSetPrescription(
+                sourceSetID: UUID(uuidString: "00000000-0000-0000-0000-000000000102"),
+                targetReps: 5, targetWeightKg: 80, targetLoadMode: "absolute",
+                oneRepMaxPercent: nil, targetRPE: 8, restSeconds: 150)])
+        let payload = WatchPlanPayload(
+            planSessionID: UUID(uuidString: "00000000-0000-0000-0000-000000000103"),
+            title: "Upper",
+            strength: .init(
+                exerciseNames: ["Bench Press"], repLadder: [5],
+                prescriptions: [prescription]),
+            cardio: [.init(kind: "run", durationSeconds: 1_800, targetZone: 2,
+                           intervalPlanData: Data([1, 2, 3]))])
+
+        var propertyList = payload.propertyList
+        propertyList["futureField"] = ["ignored": true]
+        let restored = WatchPlanPayload(propertyList: propertyList)
+
+        XCTAssertEqual(restored, payload)
+        XCTAssertEqual(restored?.version, WatchPlanPayload.currentVersion)
+        XCTAssertEqual(restored?.strength?.prescriptions.first?.sets.first?.targetRPE, 8)
+        XCTAssertEqual(restored?.cardio.first?.targetZone, 2)
+    }
+
+    func testTodayPlanCarriesRichPayloadAlongsideLegacyFields() {
+        let payload = WatchPlanPayload(
+            title: "Upper",
+            strength: .init(exerciseNames: ["Bench Press"], repLadder: [5],
+                            prescriptions: [PlannedExercisePrescription(
+                                exerciseName: "Bench Press",
+                                sets: [.init(targetReps: 5, targetWeightKg: 80)])]))
+        let plan = WatchSync.TodayPlan(sessions: [
+            .init(id: "strength", kind: .strength, label: "Upper",
+                  exerciseNames: ["Bench Press"], repLadder: [5], planPayload: payload)
+        ])
+
+        let restored = WatchSync.TodayPlan.from(context: WatchSync.TodayPlan.contextDict(plan))
+
+        XCTAssertEqual(restored?.sessions.first?.planPayload, payload)
+        XCTAssertEqual(restored?.sessions.first?.exerciseNames, ["Bench Press"])
+        XCTAssertEqual(restored?.sessions.first?.repLadder, [5])
+    }
+
     func testTodayPlanFromWeeklyRestDay() {
         let day = WeeklyPlan.DayOutline(date: Date(), label: "Rest", sessions: [
             PlannedSession(id: "rest", kind: .rest, label: "Rest", isHard: false, isRest: true)

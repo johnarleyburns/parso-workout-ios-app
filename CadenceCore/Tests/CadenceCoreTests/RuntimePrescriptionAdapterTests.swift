@@ -107,4 +107,26 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
         XCTAssertEqual(prescription.targetWeightKg, 100)
         XCTAssertFalse(prescription.isWarmup)
     }
+
+    func testWatchPlanPayloadMaterializesStrengthAndCardio() throws {
+        let sessionID = UUID()
+        let session = PlanSessionSnapshot(
+            id: sessionID,
+            title: "Upper + run",
+            items: [
+                .strength(.init(
+                    id: UUID(), exerciseKey: "bench_press", exerciseName: "Bench Press",
+                    sets: [.init(id: UUID(), targetReps: 5, load: .absoluteKg(80))])),
+                .cardio(.init(
+                    id: UUID(), title: "Easy run", kind: "run", durationSeconds: 1_800))
+            ])
+
+        let payload = try WatchPlanPayload.make(from: session, athlete: .init())
+
+        XCTAssertEqual(payload.version, WatchPlanPayload.currentVersion)
+        XCTAssertEqual(payload.planSessionID, sessionID)
+        XCTAssertEqual(payload.strength?.prescriptions.first?.sets.first?.targetWeightKg, 80)
+        XCTAssertEqual(payload.cardio.first?.kind, "run")
+        XCTAssertEqual(payload.cardio.first?.durationSeconds, 1_800)
+    }
 }

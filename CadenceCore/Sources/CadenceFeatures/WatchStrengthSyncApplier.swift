@@ -46,6 +46,7 @@ public enum WatchStrengthSyncApplier {
         }
 
         let completedAt = date(info["timestamp"]) ?? Date()
+        let planPayload = watchPlanPayload(from: info)
         let session = try ensureSession(
             id: sessionID,
             title: info["session_title"] as? String,
@@ -53,6 +54,7 @@ public enum WatchStrengthSyncApplier {
             plannedExerciseNames: info["planned_exercises"] as? [String],
             plannedRepLadder: info["planned_rep_ladder"] as? [Int],
             planKey: info["plan_key"] as? String,
+            planPayload: planPayload,
             in: context
         )
 
@@ -84,6 +86,7 @@ public enum WatchStrengthSyncApplier {
         }
 
         let endedAt = date(info["ended_at"]) ?? Date()
+        let planPayload = watchPlanPayload(from: info)
         let session = try ensureSession(
             id: sessionID,
             title: info["session_title"] as? String,
@@ -91,6 +94,7 @@ public enum WatchStrengthSyncApplier {
             plannedExerciseNames: (info["planned_exercises"] as? [String]) ?? (info["exercises"] as? [String]),
             plannedRepLadder: info["planned_rep_ladder"] as? [Int],
             planKey: info["plan_key"] as? String,
+            planPayload: planPayload,
             in: context
         )
         session.endedAt = endedAt
@@ -142,6 +146,7 @@ public enum WatchStrengthSyncApplier {
                                       plannedExerciseNames: [String]?,
                                       plannedRepLadder: [Int]?,
                                       planKey: String?,
+                                      planPayload: WatchPlanPayload?,
                                       in context: ModelContext) throws -> WorkoutSession {
         if let existing = try fetchSessions(id: id, in: context).first {
             applySessionMetadata(existing,
@@ -149,6 +154,7 @@ public enum WatchStrengthSyncApplier {
                                  plannedExerciseNames: plannedExerciseNames,
                                  plannedRepLadder: plannedRepLadder,
                                  planKey: planKey,
+                                 planPayload: planPayload,
                                  in: context)
             try context.save()
             return existing
@@ -167,6 +173,7 @@ public enum WatchStrengthSyncApplier {
                              plannedExerciseNames: plannedExerciseNames,
                              plannedRepLadder: plannedRepLadder,
                              planKey: planKey,
+                             planPayload: planPayload,
                              in: context)
         try context.save()
         return session
@@ -177,6 +184,7 @@ public enum WatchStrengthSyncApplier {
                                              plannedExerciseNames: [String]?,
                                              plannedRepLadder: [Int]?,
                                              planKey: String?,
+                                             planPayload: WatchPlanPayload?,
                                              in context: ModelContext) {
         if let title {
             let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -201,7 +209,26 @@ public enum WatchStrengthSyncApplier {
             session.plannedRepLadder = plannedRepLadder.filter { $0 > 0 }
         }
         if let planKey { session.planKey = planKey }
+        if let planPayload {
+            session.planSessionID = planPayload.planSessionID
+            if let strength = planPayload.strength {
+                if !strength.exerciseNames.isEmpty {
+                    session.plannedExerciseNames = strength.exerciseNames
+                }
+                if !strength.repLadder.isEmpty {
+                    session.plannedRepLadder = strength.repLadder
+                }
+                if !strength.prescriptions.isEmpty {
+                    session.plannedPrescriptions = strength.prescriptions
+                }
+            }
+        }
         session.updatedAt = Date()
+    }
+
+    private static func watchPlanPayload(from info: [String: Any]) -> WatchPlanPayload? {
+        guard let raw = info[WatchPlanPayload.transportKey] as? [String: Any] else { return nil }
+        return WatchPlanPayload(propertyList: raw)
     }
 
     private static func resolvedPerformer(_ info: [String: Any],

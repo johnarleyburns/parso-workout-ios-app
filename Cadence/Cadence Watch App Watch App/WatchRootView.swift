@@ -189,7 +189,8 @@ struct WatchRootView: View {
                             WatchStrengthView(
                                 title: session.label.isEmpty ? "Strength" : session.label,
                                 plannedExerciseNames: session.exerciseNames,
-                                repLadder: session.repLadder
+                                repLadder: session.repLadder,
+                                planPayload: session.planPayload
                             )
                         } label: {
                             plannedStrengthLabel(session)
@@ -255,11 +256,23 @@ struct WatchRootView: View {
     private func startPlannedCardio(_ session: WatchSync.TodayPlan.Session) {
         let ct = cardioType(from: session.cardioType)
         if ct == .hiit || ct == .boxing {
-            let model = intervalSetupModel(kind: ct.displayName)
-            activeIntervalSession = ActiveIntervalSession(plan: model.intervalPlan(), kind: ct.displayName)
+            let richCardio = session.planPayload?.cardio.first
+            if let data = richCardio?.intervalPlanData,
+               let plan = try? JSONDecoder().decode(IntervalPlan.self, from: data) {
+                activeIntervalSession = ActiveIntervalSession(plan: plan, kind: ct.displayName)
+            } else {
+                let model = intervalSetupModel(kind: ct.displayName)
+                activeIntervalSession = ActiveIntervalSession(plan: model.intervalPlan(), kind: ct.displayName)
+            }
         } else {
             let kind = ct.toCardioKind()
-            let spec = WorkoutConfigurationSpec(for: ct.rawValue)
+            let richCardio = session.planPayload?.cardio.first
+            let duration = richCardio?.durationSeconds ?? session.durationMinutes.map { $0 * 60 }
+            let zone = richCardio?.targetZone ?? session.zone
+            let spec = WorkoutConfigurationSpec(
+                for: ct.rawValue,
+                plannedDurationSeconds: duration,
+                targetZone: zone)
             watchManager.startWorkout(type: ct.rawValue, spec: spec)
             activeCardioKind = kind
             activeCardioSpec = spec

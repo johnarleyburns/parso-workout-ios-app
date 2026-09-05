@@ -140,11 +140,14 @@ public enum WatchSync {
             public var cardioType: String?
             public var durationMinutes: Int?
             public var zone: Int?
+            /// Rich, versioned plan data. Legacy fields above remain populated
+            /// so an older Watch can still launch the workout.
+            public var planPayload: WatchPlanPayload?
 
             public init(id: String, kind: Kind, label: String,
                         exerciseNames: [String] = [], repLadder: [Int] = [],
                         cardioType: String? = nil, durationMinutes: Int? = nil,
-                        zone: Int? = nil) {
+                        zone: Int? = nil, planPayload: WatchPlanPayload? = nil) {
                 self.id = id
                 self.kind = kind
                 self.label = label
@@ -153,6 +156,7 @@ public enum WatchSync {
                 self.cardioType = cardioType
                 self.durationMinutes = durationMinutes
                 self.zone = zone
+                self.planPayload = planPayload
             }
 
             public var isStrength: Bool { kind == .strength }
@@ -202,7 +206,8 @@ public enum WatchSync {
                     label: session.label,
                     cardioType: cardioTypeHint(for: session),
                     durationMinutes: session.cardioDurationMinutes,
-                    zone: session.cardioZone
+                    zone: session.cardioZone,
+                    planPayload: nil
                 )
             }
             return TodayPlan(sessions: sessions, updatedAt: updatedAt)
@@ -222,6 +227,10 @@ public enum WatchSync {
                     if let cardioType = session.cardioType { dict["cardioType"] = cardioType }
                     if let duration = session.durationMinutes { dict["durationMinutes"] = duration }
                     if let zone = session.zone { dict["zone"] = zone }
+                    if let payload = session.planPayload {
+                        let propertyList = payload.propertyList
+                        if !propertyList.isEmpty { dict[WatchPlanPayload.transportKey] = propertyList }
+                    }
                     return dict
                 },
             ]
@@ -242,7 +251,8 @@ public enum WatchSync {
                     repLadder: row["repLadder"] as? [Int] ?? [],
                     cardioType: row["cardioType"] as? String,
                     durationMinutes: row["durationMinutes"] as? Int,
-                    zone: row["zone"] as? Int
+                    zone: row["zone"] as? Int,
+                    planPayload: (row[WatchPlanPayload.transportKey] as? [String: Any]).flatMap(WatchPlanPayload.init(propertyList:))
                 )
             }
             let updatedAt = (context[Key.todayPlanUpdatedAt] as? Date) ?? Date()

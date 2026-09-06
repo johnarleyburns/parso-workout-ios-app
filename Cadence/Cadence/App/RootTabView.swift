@@ -94,6 +94,21 @@ struct RootTabView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
 
+            if model.isRestoringCloudKitHistory || model.cloudKitRestoreNotice != nil {
+                VStack(spacing: 0) {
+                    CloudKitRestoreToastView(
+                        text: model.isRestoringCloudKitHistory
+                            ? "Restoring iCloud history…"
+                            : (model.cloudKitRestoreNotice ?? "iCloud history restored"),
+                        isRestoring: model.isRestoringCloudKitHistory)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .safeAreaPadding(.top, 48)
+                .zIndex(19)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
             if model.isUITestMode {
                 Text("\(uiTestWatchStopCount)")
                     .accessibilityIdentifier("uitest.watchStopCount")
@@ -179,7 +194,11 @@ struct RootTabView: View {
     /// clock via the heartbeat.
     private func recoverActiveSessionIfNeeded() {
         guard active.strengthSession == nil else { return }
-        let sessions = (try? context.fetch(FetchDescriptor<WorkoutSession>())) ?? []
+        let sessions = (try? context.fetch(FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate {
+                $0.endedAt == nil && $0.deletedAt == nil && !$0.isLogged
+            },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
         guard let candidate = ActiveSessionRecovery.candidate(in: sessions) else {
             WorkoutHeartbeatStore.clear()
             return
@@ -226,5 +245,25 @@ private struct WatchSyncToastView: View {
             }
             .padding(.horizontal, 16)
             .accessibilityIdentifier("watchSync.toast")
+    }
+}
+
+private struct CloudKitRestoreToastView: View {
+    let text: String
+    let isRestoring: Bool
+
+    var body: some View {
+        Label(text, systemImage: isRestoring ? "arrow.down.icloud" : "checkmark.icloud")
+            .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
+            .overlay {
+                Capsule().stroke(Color.blue.opacity(0.4), lineWidth: 1)
+            }
+            .padding(.horizontal, 16)
+            .accessibilityIdentifier("cloudKitRestore.toast")
     }
 }

@@ -218,3 +218,8 @@ struct HomeView: View {
             since: WeeklyStats.weekStart())
     }
 }
+
+struct HomeCoachTaskIdentity: Equatable {
+    let signature: HomeCoachModel.Signature
+    let isRestoringCloudKitHistory: Bool
+}

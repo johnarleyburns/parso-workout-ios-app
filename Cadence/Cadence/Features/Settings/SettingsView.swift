@@ -7,6 +7,7 @@ struct SettingsView: View {
     @Environment(AppSettings.self) private var settingsObject
     @Environment(ContributionCoordinator.self) private var contributions
     @Environment(StoreService.self) private var store
+    @Environment(\.cadenceModelContainer) private var container
 
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false

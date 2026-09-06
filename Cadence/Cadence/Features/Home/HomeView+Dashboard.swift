@@ -338,12 +338,16 @@ extension HomeView {
         // Recompute the coach pipeline OFF the render/tap path, only when history or
         // coach-relevant settings actually change (see `coachSignature`). This keeps
         // set logging instant — the pipeline no longer runs on every set save.
-        .task(id: coachSignature) {
+        .task(id: HomeCoachTaskIdentity(
+            signature: coachSignature,
+            isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
+            guard !model.isRestoringCloudKitHistory else { return }
             coachSnapshot = await buildCoachSnapshot()
         }
         // Passive HealthKit samples arrive asynchronously after the initial pipeline
         // run; rebuild the snapshot once they land (and whenever they change).
         .onChange(of: passiveSamples) {
+            guard !model.isRestoringCloudKitHistory else { return }
             Task { coachSnapshot = await buildCoachSnapshot() }
         }
         .coachOverrideConfirmation(

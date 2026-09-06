@@ -4,6 +4,7 @@ import Observation
 import SwiftData
 import WatchConnectivity
 import CloudKit
+import CoreData
 import CadenceCore
 import CadenceFeatures
 #if DEBUG
@@ -62,6 +63,10 @@ final class AppModel: NSObject, @unchecked Sendable {
     private(set) var lastWatchSyncError: String?
     private let watchSessionDelegate: WatchSessionDelegateProxy
     private(set) var cloudKitAccountAvailability: CloudKitAccountAvailability = .checking
+    private(set) var isRestoringCloudKitHistory = false
+    private(set) var cloudKitRestoreNotice: String?
+    private var cloudKitEventObserver: NSObjectProtocol?
+    private var cloudKitRestoreNoticeTask: Task<Void, Never>?
 
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var lastHealthSync: Date? {
@@ -161,6 +166,47 @@ final class AppModel: NSObject, @unchecked Sendable {
             Task { @MainActor [weak self] in
                 self?.cloudKitAccountAvailability = CloudKitAccountGate.availability(for: status.rawValue)
             }
+        }
+    }
+
+    /// Observes Core Data's CloudKit import events. SwiftData owns the
+    /// underlying store, but it forwards these notifications; this gives the UI
+    /// an honest restore indicator without pretending CloudKit exposes byte-level
+    /// progress.
+    func startCloudKitHistoryMonitoring() {
+        guard !isUITestMode, cloudKitEventObserver == nil else { return }
+        cloudKitEventObserver = NotificationCenter.default.addObserver(
+            forName: NSPersistentCloudKitContainer.eventChangedNotification,
+            object: nil,
+            queue: .main) { [weak self] notification in
+                guard let event = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
+                        as? NSPersistentCloudKitContainer.Event,
+                      event.type == .import else { return }
+                let isInProgress = event.endDate == nil
+                let succeeded = event.succeeded
+                Task { @MainActor [weak self] in
+                    self?.applyCloudKitImport(isInProgress: isInProgress, succeeded: succeeded)
+                }
+            }
+    }
+
+    private func applyCloudKitImport(isInProgress: Bool, succeeded: Bool) {
+        cloudKitRestoreNoticeTask?.cancel()
+        if isInProgress {
+            cloudKitRestoreNotice = nil
+            isRestoringCloudKitHistory = true
+            return
+        }
+
+        isRestoringCloudKitHistory = false
+        cloudKitRestoreNotice = succeeded
+            ? "iCloud history restored"
+            : "iCloud history restore paused"
+        let notice = cloudKitRestoreNotice
+        cloudKitRestoreNoticeTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled, self?.cloudKitRestoreNotice == notice else { return }
+            self?.cloudKitRestoreNotice = nil
         }
     }
 

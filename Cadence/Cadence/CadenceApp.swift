@@ -12,11 +12,13 @@ struct CadenceApp: App {
     @State private var active = ActiveWorkoutModel()
     @State private var contributions = ContributionCoordinator()
     @State private var store = StoreService()
+    private let uiTestMode: Bool
     let container: ModelContainer
 
     init() {
         let args = ProcessInfo.processInfo.arguments
         let uiTest = args.contains("-uiTest")
+        self.uiTestMode = uiTest
         let persistentUITest = args.contains("-uiTestPersistentStore")
         let uiTestStoreURL: URL? = {
             guard persistentUITest,
@@ -51,13 +53,17 @@ struct CadenceApp: App {
             // user export. Fail closed so a schema bug cannot become data loss.
             fatalError("Failed to create ModelContainer without altering stored workout history: \(error)")
         }
-        // Seed starter library and (in UI-test mode) deterministic fixtures.
-        let ctx = ModelContext(container)
-        _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
-        if uiTest { UITestSeed.apply(args: args, context: ctx) }
-        // Restore the default BLE HRM for cold-launch auto-reconnect (FR-4.4).
-        if !uiTest, let device = try? ctx.fetch(FetchDescriptor<HRMDevice>(predicate: #Predicate { $0.isDefault })).first {
-            model.hrm.restoreDefaultDevice(device.id)
+        // Attach before the first scene task so an import that starts during
+        // ModelContainer setup can still surface its restore state in the UI.
+        model.startCloudKitHistoryMonitoring()
+        // UI tests need deterministic fixtures before their first assertion. In
+        // production this work is deferred until after the first frame so a
+        // CloudKit restore and a large exercise-library seed cannot monopolize
+        // app launch.
+        if uiTest {
+            let ctx = ModelContext(container)
+            _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
+            UITestSeed.apply(args: args, context: ctx)
         }
     }
 
@@ -75,8 +81,24 @@ struct CadenceApp: App {
                 .task { WorkoutLiveActivityCoordinator.shared.endAllStale() }
                 .task { model.configureWatchSync(settings: settings, container: container, active: active) }
                 .task { contributions.beginSession() }
+                .task { await preparePersistentStore() }
                 .task { await store.start() }
         }
         .modelContainer(container)
+    }
+
+    private func preparePersistentStore() async {
+        guard !uiTestMode else { return }
+        // Give SwiftUI a frame for the launch surface before doing synchronous
+        // SwiftData seeding. ModelContext is actor-bound, so yielding here is
+        // the safe way to move this work after first render without passing
+        // managed objects across actors.
+        await Task.yield()
+        let ctx = ModelContext(container)
+        _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
+        // Restore the default BLE HRM for cold-launch auto-reconnect (FR-4.4).
+        if let device = try? ctx.fetch(FetchDescriptor<HRMDevice>(predicate: #Predicate { $0.isDefault })).first {
+            model.hrm.restoreDefaultDevice(device.id)
+        }
     }
 }

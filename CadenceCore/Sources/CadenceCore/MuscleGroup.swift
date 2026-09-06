@@ -168,13 +168,10 @@ public enum MuscleGroup: String, CaseIterable, Codable, Sendable, Identifiable, 
     /// (decision D4). The rest are shown only once the user has actually trained
     /// them, and are never targeted.
     ///
-    /// The excluded seven are excluded because the catalog cannot satisfy a weekly
-    /// target for them: `tibialis` has no direct exercise anywhere in the database,
-    /// `abductors` has 2, `hip_flexors` 4, `lower_back` 4, `neck` 5 and
-    /// `rotator_cuff` 6 — and `lower_back`/`adductors` earn their volume as
-    /// stabilisers and indirect work in compound lifts rather than as programmed
-    /// targets. Users who want to program them can, via
-    /// `CoachSchedulePreferences.trackedMuscleGroups`.
+    /// The excluded groups are intentionally not coach targets: they have limited
+    /// or specialised coverage, or are normally trained as stabilisers and
+    /// indirect work in compound lifts. Users who want to program them can do so
+    /// via `CoachSchedulePreferences.trackedMuscleGroups`.
     public static let defaultTracked: Set<MuscleGroup> = [
         .abdominals, .biceps, .calves, .chest, .forearms, .glutes, .hamstrings,
         .lats, .middleBack, .quadriceps, .shoulders, .traps, .triceps

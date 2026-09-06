@@ -3,7 +3,7 @@ import XCTest
 
 final class ExerciseEvidenceTests: XCTestCase {
     func testAllPackageReferencesBecomeCitations() {
-        XCTAssertEqual(ExerciseEvidence.citations.count, 62)
+        XCTAssertEqual(ExerciseEvidence.citations.count, 63)
     }
 
     func testEveryEvidenceCitationHasUrlAndYear() {

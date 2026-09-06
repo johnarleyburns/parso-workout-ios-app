@@ -18,11 +18,11 @@ final class TrainingEngineDatabaseTests: XCTestCase {
     func testDocumentDecodes() throws {
         XCTAssertEqual(TrainingEngineBridge.metadataString("completeness"), "full")
         XCTAssertFalse(TrainingEngineBridge.metadataString("schemaVersion")?.isEmpty ?? true)
-        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count, 873)
+        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count, 927)
     }
 
     func testRecordCount() throws {
-        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count, 873)
+        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count, 927)
         XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count,
                        TrainingEngineBridge.metadataInt("outputExerciseCount"))
     }
@@ -48,19 +48,22 @@ final class TrainingEngineDatabaseTests: XCTestCase {
         }
     }
 
-    /// Volume eligibility and a non-empty direct list are the same fact. This is
-    /// what lets `volumeEligible` gate weekly credit on its own.
+    /// Volume-eligible records must have a direct attribution. Some non-volume
+    /// movements intentionally retain direct muscles for browsing and similarity,
+    /// so the converse is not required.
     func testVolumeEligibleImpliesNonEmptyDirect() {
         for record in TrainingEngineBridge.exerciseRecords {
-            XCTAssertEqual(record.volumeEligible, !record.direct.isEmpty,
-                           "\(record.exerciseId) disagrees about volume eligibility")
+            if record.volumeEligible {
+                XCTAssertFalse(record.direct.isEmpty,
+                               "\(record.exerciseId) is volume eligible without a direct attribution")
+            }
         }
     }
 
     func testVolumeEligibleCount() {
         let eligible = TrainingEngineBridge.exerciseRecords.filter(\.volumeEligible)
-        XCTAssertEqual(eligible.count, 673)
-        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count - eligible.count, 200)
+        XCTAssertEqual(eligible.count, 724)
+        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count - eligible.count, 203)
     }
 
     func testSetCredits() {
@@ -88,7 +91,7 @@ final class TrainingEngineDatabaseTests: XCTestCase {
     }
 
     func testEveryReferenceHasAUrl() throws {
-        XCTAssertEqual(TrainingEngineBridge.evidenceReferences.count, 62)
+        XCTAssertEqual(TrainingEngineBridge.evidenceReferences.count, 63)
         for (id, reference) in TrainingEngineBridge.evidenceReferences {
             XCTAssertFalse(reference.url.isEmpty, "reference \(id) has no url")
             XCTAssertFalse(reference.title.isEmpty, "reference \(id) has no title")

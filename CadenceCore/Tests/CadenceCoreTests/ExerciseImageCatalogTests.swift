@@ -50,13 +50,14 @@ final class ExerciseImageCatalogTests: XCTestCase {
     }
 
     /// The bundled image count matches the number of imported exercises with
-    /// imagery — guards against a truncated pipeline run (873 exercises × 2 images).
+    /// imagery — guards against a truncated pipeline run (873 of the 927 catalog
+    /// exercises currently carry bundled images).
     func testBundledImageCountMatchesImportedExercisesWithImagery() {
         let importedWithImages = ImportedExerciseLibrary.templates
             .compactMap { $0.imageName }
             .filter { ExerciseImageCatalog.hasImages(forImageName: $0) }
         XCTAssertEqual(importedWithImages.count, 873,
-                       "expected all 873 imported exercises to have bundled imagery")
+                       "expected all imported exercises with imagery to have bundled imagery")
     }
 
     /// The public `ExerciseLibrary.imageURLs` bridge resolves to files too, and

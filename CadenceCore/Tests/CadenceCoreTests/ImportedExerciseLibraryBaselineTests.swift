@@ -116,7 +116,7 @@ final class ImportedExerciseLibraryBaselineTests: XCTestCase {
     ]
 
     func testTemplateCount() {
-        XCTAssertEqual(ImportedExerciseLibrary.templates.count, 873)
+        XCTAssertEqual(ImportedExerciseLibrary.templates.count, 927)
     }
 
     func testSampledTemplatesMatchTheAnnotation() throws {
@@ -195,7 +195,7 @@ final class ImportedExerciseLibraryBaselineTests: XCTestCase {
                            "\(stretch.name) must stay browsable by muscle")
             XCTAssertTrue(stretch.volumeCredits.isEmpty, stretch.name)
         }
-        XCTAssertEqual(ImportedExerciseLibrary.templates.filter(\.volumeEligible).count, 673)
+        XCTAssertEqual(ImportedExerciseLibrary.templates.filter(\.volumeEligible).count, 724)
     }
 
     /// No template may carry a muscle string the volume engine cannot resolve.

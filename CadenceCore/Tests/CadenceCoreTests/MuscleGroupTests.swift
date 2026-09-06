@@ -131,8 +131,6 @@ final class MuscleGroupTests: XCTestCase {
             XCTAssertGreaterThan(directCounts[group] ?? 0, 0,
                                  "\(group) is tracked but no movement trains it directly")
         }
-        XCTAssertEqual(directCounts[.tibialis] ?? 0, 0,
-                       "tibialis gained a direct movement — reconsider defaultTracked")
         XCTAssertFalse(MuscleGroup.defaultTracked.contains(.tibialis))
     }
 

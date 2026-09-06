@@ -22,8 +22,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
     }
 
     /// Only tracked groups get a deficit — otherwise the solver spends slots on
-    /// groups the catalog cannot train (decision D4, `tibialis` has no direct
-    /// exercise anywhere in the database).
+    /// groups the catalog does not target by default (decision D4).
     func testUntrackedGroupsGetNoDeficit() {
         let bundle = generate(completed: [:], candidates: [], tracked: [.chest, .lats])
 

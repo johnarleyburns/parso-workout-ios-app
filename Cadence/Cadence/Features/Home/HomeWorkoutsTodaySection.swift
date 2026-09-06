@@ -19,21 +19,19 @@ struct HomeWorkoutsTodaySection: View {
                 ForEach(rows) { row in
                     HomeWeekWorkoutRow(row: row) { onOpenCompleted(row) }
                 }
-                if WorkoutsTodayPresenter.showsMoreHistory(for: rows) {
-                    Divider().padding(.top, 4)
-                    Button(action: onShowMoreHistory) {
-                        HStack {
-                            Text("Show more…")
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption)
-                        }
-                        .foregroundStyle(.tint)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("home.completed.showMore")
-                }
             }
+            Divider().padding(.top, 4)
+            Button(action: onShowMoreHistory) {
+                HStack {
+                    Text("Show more…")
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption)
+                }
+                .foregroundStyle(.tint)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("home.completed.showMore")
         }
         .padding(LayoutMetrics.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)

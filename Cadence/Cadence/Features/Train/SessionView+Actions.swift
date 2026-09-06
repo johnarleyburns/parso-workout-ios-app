@@ -14,6 +14,17 @@ extension SessionView {
                     .accessibilityIdentifier("session.minimize")
                     .accessibilityLabel("Minimize workout")
             }
+        } else {
+            // Historical workouts can be opened in the root full-screen cover
+            // from Summary. That presentation has no navigation Back button,
+            // so always provide an explicit escape hatch for non-live editing.
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: { Image(systemName: "xmark") }
+                    .accessibilityIdentifier("session.close")
+                    .accessibilityLabel("Close workout")
+            }
         }
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 12) {

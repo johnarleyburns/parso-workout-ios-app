@@ -19,7 +19,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/johnarleyburns/free-exercise-db-plusplus.git",
-            exact: "1.15.4"
+            exact: "1.16.0"
         )
     ],
     targets: [

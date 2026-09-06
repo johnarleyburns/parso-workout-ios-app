@@ -1,13 +1,13 @@
 {
-  "originHash" : "ad8ac08aa0d7301032a4e86849b77aadbb2ab7c56907ef32c6ed493ff03cecb6",
+  "originHash" : "6b236a5b95be6e8715bb570f131769b7e3d4e89506f1dd69e46fb12ff89921ca",
   "pins" : [
     {
       "identity" : "free-exercise-db-plusplus",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/johnarleyburns/free-exercise-db-plusplus.git",
       "state" : {
-        "revision" : "bde361ebed6f5fd7b7d2c893eaa8f5deb6bf191f",
-        "version" : "1.15.4"
+        "revision" : "352652cabde1625fbd856cb9a90c1a685c511e9c",
+        "version" : "1.16.0"
       }
     }
   ],

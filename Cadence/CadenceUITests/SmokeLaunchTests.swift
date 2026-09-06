@@ -13,8 +13,11 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // A seeded partner gives the session a real roster, so the flow can log a
         // set for someone other than the owner (field test 2026-08-18 §5b). The
         // watch-stop seam makes the cardio end below provable, not vacuous.
+        let persistenceTestID = UUID().uuidString
         let app = XCUIApplication.launched(seeds: ["person.Sam"],
-                                           extraArgs: ["-uiTestWatchStop"])
+                                           extraArgs: ["-uiTestWatchStop",
+                                                       "-uiTestPersistentStore",
+                                                       "-uiTestStoreID", persistenceTestID])
 
         XCTAssertEqual(app.state, .runningForeground,
                        "iPhone app terminated or failed to reach the foreground during cold launch")
@@ -412,5 +415,20 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Home did not return after the cardio summary")
         XCTAssertGreaterThan(app.watchStopCount(), stopsBeforeEnd,
                              "Ending the cardio workout did not stop the watch workout session")
+
+        // Persistence safety smoke check: the completed workout must remain in
+        // the local store across the same terminate/relaunch boundary users hit
+        // when unlocking or updating the app. The unique store id prevents this
+        // test from reading another simulator run's fixtures.
+        app.terminate()
+        app.launch()
+        XCTAssertEqual(app.state, .runningForeground,
+                       "App did not relaunch after the workout was persisted")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 15),
+                      "Home did not load after relaunch")
+        XCTAssertTrue(app.descendants(matching: .any)
+                        .matching(NSPredicate(format: "identifier BEGINSWITH 'home.today.row.'"))
+                        .firstMatch.waitForExistence(timeout: 15),
+                      "Completed workout disappeared from Workouts Today after relaunch")
     }
 }

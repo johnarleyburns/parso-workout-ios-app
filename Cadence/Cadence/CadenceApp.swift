@@ -17,6 +17,21 @@ struct CadenceApp: App {
     init() {
         let args = ProcessInfo.processInfo.arguments
         let uiTest = args.contains("-uiTest")
+        let persistentUITest = args.contains("-uiTestPersistentStore")
+        let uiTestStoreURL: URL? = {
+            guard persistentUITest,
+                  let idIndex = args.firstIndex(of: "-uiTestStoreID"),
+                  args.indices.contains(idIndex + 1) else { return nil }
+            let storeID = args[idIndex + 1].filter { $0.isNumber || $0 == "-" }
+            guard !storeID.isEmpty,
+                  let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory,
+                                                                     in: .userDomainMask).first else {
+                return nil
+            }
+            try? FileManager.default.createDirectory(at: applicationSupport,
+                                                     withIntermediateDirectories: true)
+            return applicationSupport.appendingPathComponent("ui-test-\(storeID).store")
+        }()
 
         // Put the audio session in non-interrupting mix mode before any audio
         // object initializes, so workout cues never pause the user's background
@@ -25,7 +40,10 @@ struct CadenceApp: App {
                                                          options: [.mixWithOthers])
 
         do {
-            container = try CadenceStore.makeModelContainer(inMemory: uiTest)
+            container = try CadenceStore.makeModelContainer(
+                inMemory: uiTest && !persistentUITest,
+                cloudKitEnabled: !persistentUITest,
+                storeURL: uiTestStoreURL)
         } catch {
             // Never delete or replace an on-disk store on a model-container
             // error. The store contains irreplaceable workout history and may

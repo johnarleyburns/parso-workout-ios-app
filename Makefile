@@ -19,6 +19,7 @@ guardrails:
 	bash scripts/check-no-network.sh
 	bash scripts/check-citations-sync.sh
 	bash scripts/check-engine-boundary.sh
+	bash scripts/check-history-safety.sh
 
 # iPhone smoke gate: build once, then run the app-target launch regression and
 # the single normal UI smoke test on a pinned simulator. Manual App Store

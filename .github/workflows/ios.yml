@@ -52,6 +52,9 @@ jobs:
       - name: No-network guardrail
         run: bash scripts/check-no-network.sh
 
+      - name: History persistence safety guardrail
+        run: bash scripts/check-history-safety.sh
+
   # XCUITest smoke suites are intentionally NOT run in CI: simulator-based UI
   # tests are unreliable on shared GitHub Actions runners (cold-launch timing,
   # shared CPU). The reliable CI gate is core-tests (host SwiftPM package tests +

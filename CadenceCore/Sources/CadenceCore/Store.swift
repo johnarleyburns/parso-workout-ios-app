@@ -41,10 +41,19 @@ public enum CadenceStore {
     ///   - cloudKitEnabled: pass `false` for the watch app; the phone remains the
     ///     sole CloudKit writer and watch data moves over WatchConnectivity.
     public static func makeModelContainer(inMemory: Bool = false,
-                                          cloudKitEnabled: Bool = true) throws -> ModelContainer {
+                                          cloudKitEnabled: Bool = true,
+                                          storeURL: URL? = nil) throws -> ModelContainer {
         let configuration: ModelConfiguration
-        if inMemory || !cloudKitEnabled {
+        if inMemory {
             configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
+        } else if let storeURL {
+            // Explicit URLs are used by persistence regression tests and by the
+            // isolated UI-test store. They are always local-only: a test must
+            // never touch the user's CloudKit database.
+            configuration = ModelConfiguration(schema: schema, url: storeURL,
+                                               cloudKitDatabase: .none)
+        } else if !cloudKitEnabled {
+            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         } else {
             configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
                                                cloudKitDatabase: .private(cloudKitContainerID))

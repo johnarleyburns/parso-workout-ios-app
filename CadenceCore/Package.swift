@@ -47,7 +47,7 @@ let package = Package(
         // no StoreKit, no UIKit — that is what keeps it testable on macOS.
         .target(name: "CadenceFeatures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(name: "CadenceFixtures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
-        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore", "CadenceFeatures"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "CadenceFeaturesTests",
             dependencies: ["CadenceFeatures", "CadenceFixtures"],

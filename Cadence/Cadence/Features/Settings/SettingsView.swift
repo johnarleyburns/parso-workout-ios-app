@@ -10,6 +10,7 @@ struct SettingsView: View {
 
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false
+    @State private var storageUsage = StorageUsageSnapshot()
 
     var body: some View {
         @Bindable var settings = settingsObject
@@ -212,10 +213,64 @@ struct SettingsView: View {
                         .foregroundStyle(model.cloudKitAccountAvailability.canSync ? Color.secondary : Color.orange)
                         .accessibilityIdentifier("settings.sync.status")
                 }
+
+                HStack {
+                    Label("Cloud database", systemImage: "lock.icloud")
+                    Spacer()
+                    Text("Private iCloud")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.sync.database")
+                }
+
+                HStack {
+                    Label("Workout records on iPhone", systemImage: "list.number")
+                    Spacer()
+                    Text("\(storageUsage.workoutRecordCount)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.storage.recordCount")
+                }
+
+                HStack {
+                    Label("Cladiron data on iPhone", systemImage: "internaldrive")
+                    Spacer()
+                    Text(storageUsage.appDataText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.storage.appData")
+                }
+
+                HStack {
+                    Label("Workout database", systemImage: "externaldrive")
+                    Spacer()
+                    Text(storageUsage.workoutStoreText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.storage.workoutStore")
+                }
+
+                HStack {
+                    Label("Free iPhone storage", systemImage: "iphone")
+                    Spacer()
+                    Text(storageUsage.deviceFreeText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.storage.deviceFree")
+                }
+
+                HStack {
+                    Label("iCloud storage used", systemImage: "externaldrive.icloud")
+                    Spacer()
+                    Text("Not exposed by Apple")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.storage.cloudUsage")
+                }
             } header: {
                 Text("iCloud Sync")
             } footer: {
-                Text("Your full training log syncs automatically across your iPhone and Apple Watch through your own private iCloud — not a Cladiron server, and never seen by us. Sign in to iCloud in Settings to sync; on a new device your history appears once sync completes.")
+                Text("Your full training log syncs automatically across your iPhone and Apple Watch through your own private iCloud — not a Cladiron server, and never seen by us. Sign in to iCloud in Settings to sync; on a new device your history appears once sync completes. Apple does not provide apps with the exact byte usage of a private CloudKit database, so the iCloud usage row cannot show a precise number.")
             }
 
             Section {
@@ -243,6 +298,9 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .sheet(isPresented: $primingPresented) {
             HealthPrimingView { status in healthStatus = status }
+        }
+        .task {
+            storageUsage = StorageUsageSnapshot.measure(container: container)
         }
     }
 

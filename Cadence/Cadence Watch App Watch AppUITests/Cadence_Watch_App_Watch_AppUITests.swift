@@ -14,6 +14,19 @@ final class WatchSmokeTests: XCTestCase {
 
         XCTAssertEqual(app.state, .runningForeground,
                        "Watch app terminated or failed to reach the foreground during cold launch")
+
+        XCTAssertTrue(app.tapButton("watch.about", scrollAttempts: 4),
+                      "Watch launcher did not expose About at the bottom of the screen")
+        XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 10),
+                      "Watch About screen did not open")
+        XCTAssertTrue(app.staticTexts["Version"].waitForExistence(timeout: 5),
+                      "Watch About screen did not show the installed version")
+        XCTAssertTrue(app.staticTexts["Build"].waitForExistence(timeout: 5),
+                      "Watch About screen did not show the installed build")
+        app.navigationBars["About"].buttons.firstMatch.tap()
+        app.terminate()
+        app.launch()
+
         XCTAssertTrue(app.tapButton("watch.startStrength", scrollAttempts: 4),
                       "Watch launcher did not show Strength Workout")
 

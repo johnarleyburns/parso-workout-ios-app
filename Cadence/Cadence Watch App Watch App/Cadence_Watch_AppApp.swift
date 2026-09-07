@@ -33,6 +33,7 @@ struct CadenceWatchApp: App {
                         .environment(watchManager)
                         .environment(watchAppSettings)
                         .task { watchManager.activateWCSession() }
+                        .task { watchManager.recoverActiveWorkoutIfNeeded() }
                         .task { watchManager.watchAppSettings = watchAppSettings }
                 }
                 .modelContainer(container)

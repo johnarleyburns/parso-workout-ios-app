@@ -10,9 +10,9 @@ import CadenceFeatures
 final class WatchWorkoutManager: NSObject {
 
     private(set) var currentBPM: Double?
-    private(set) var isActive: Bool = false
-    private(set) var isMonitoring: Bool = false
-    private(set) var workoutType: String?
+    var isActive: Bool = false
+    var isMonitoring: Bool = false
+    var workoutType: String?
 
     var hrSource: HRSource {
         get { HRSource(rawValue: hrSourceRaw) ?? .appleWatch }
@@ -28,8 +28,8 @@ final class WatchWorkoutManager: NSObject {
     private(set) var avgHeartRate: Double?
     private(set) var maxHeartRate: Double?
     private(set) var distanceMeters: Double = 0
-    private(set) var heartRateEnabled: Bool = true
-    private(set) var gpsEnabled: Bool = false
+    var heartRateEnabled: Bool = true
+    var gpsEnabled: Bool = false
     var savedSummary: SavedWorkoutSummary?
     var currentHRSamplesForSummary: [HRSamplePoint] { recordedHRSamples }
     var phoneSyncState: WatchSync.Status = .idle
@@ -53,9 +53,9 @@ final class WatchWorkoutManager: NSObject {
         get { UserDefaults.standard.string(forKey: "watch.hrSource") ?? HRSource.appleWatch.rawValue }
         set { UserDefaults.standard.set(newValue, forKey: "watch.hrSource") }
     }
-    private let store = HKHealthStore()
-    private var session: HKWorkoutSession?
-    private var builder: HKLiveWorkoutBuilder?
+    let store = HKHealthStore()
+    var session: HKWorkoutSession?
+    var builder: HKLiveWorkoutBuilder?
     private var hrPollTimer: Timer?
     private var ble: WatchHeartRateBLE?
     var sessionStart: Date?
@@ -64,6 +64,12 @@ final class WatchWorkoutManager: NSObject {
     private var hrCount: Int = 0
     private var recordedHRSamples: [HRSamplePoint] = []
     private var elapsedTracker = ElapsedTimeTracker()
+    enum PersistedWorkoutKey {
+        static let active = "watch.activeWorkout.active"
+        static let type = "watch.activeWorkout.type"
+        static let monitoring = "watch.activeWorkout.monitoring"
+        static let phoneRequestID = "watch.activeWorkout.phoneRequestID"
+    }
     var watchAppSettings: AppSettings? {
         didSet {
             if let pendingApplicationContext {
@@ -74,7 +80,7 @@ final class WatchWorkoutManager: NSObject {
     }
     var pendingApplicationContext: [String: Any]?
 
-    private let uiTestMode: Bool
+    let uiTestMode: Bool
 
     init(uiTestMode: Bool = false) {
         self.uiTestMode = uiTestMode
@@ -138,11 +144,14 @@ final class WatchWorkoutManager: NSObject {
         gpsEnabled = resolvedSpec.usesGPS
         workoutType = rawType
         isActive = true; isMonitoring = false
+        persistWorkoutMetadata(type: rawType, monitoring: false)
         let activity = Self.activityType(for: rawType)
         if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: resolvedSpec); return true }
         Task {
             guard await requestWorkoutAuthorization() else {
-                isActive = false; self.phoneRequestID = nil; return
+                isActive = false; self.phoneRequestID = nil
+                clearPersistedWorkoutMetadata()
+                return
             }
             await MainActor.run { beginSession(activity: activity, spec: resolvedSpec) }
         }
@@ -152,9 +161,14 @@ final class WatchWorkoutManager: NSObject {
         guard !isActive, !isMonitoring else { return }
         phoneRequestID = nil
         isMonitoring = true; workoutType = "monitoring"
+        persistWorkoutMetadata(type: "monitoring", monitoring: true)
         if uiTestMode { sessionStart = Date(); beginSession(activity: .other); return }
         Task {
-            guard await requestWorkoutAuthorization() else { isMonitoring = false; return }
+            guard await requestWorkoutAuthorization() else {
+                isMonitoring = false
+                clearPersistedWorkoutMetadata()
+                return
+            }
             await MainActor.run { beginSession(activity: .other) }
         }
     }
@@ -164,7 +178,12 @@ final class WatchWorkoutManager: NSObject {
         stopWorkout(save: false)
     }
     func stopWorkout(save: Bool = true) {
-        guard isActive || isMonitoring else { phoneRequestID = nil; return }
+        guard isActive || isMonitoring else {
+            phoneRequestID = nil
+            clearPersistedWorkoutMetadata()
+            return
+        }
+        clearPersistedWorkoutMetadata()
         if save {
             elapsed = effectiveElapsed
             let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
@@ -256,10 +275,10 @@ final class WatchWorkoutManager: NSObject {
 
     // MARK: Helpers
 
-    private var autoPauseDetector = AutoPauseDetector()
-    private(set) var manualLapCount: Int = 0
-    private(set) var autoLapCount: Int = 0
-    private var isSwimSession: Bool = false
+    var autoPauseDetector = AutoPauseDetector()
+    var manualLapCount: Int = 0
+    var autoLapCount: Int = 0
+    var isSwimSession: Bool = false
     var isOutdoorSession: Bool = false
 
     func incrementManualLap() { manualLapCount += 1 }
@@ -273,34 +292,6 @@ final class WatchWorkoutManager: NSObject {
     var effectiveElapsed: TimeInterval {
         guard let sessionStart else { return 0 }
         return elapsedTracker.elapsed(since: sessionStart)
-    }
-
-    private func beginSession(activity: HKWorkoutActivityType, spec: WorkoutConfigurationSpec? = nil) {
-        let config = HKWorkoutConfiguration()
-        config.activityType = activity; config.locationType = .indoor
-        if let spec {
-            switch spec.location {
-            case .indoor: break
-            case .outdoor: config.locationType = .outdoor; isOutdoorSession = true
-            case .pool(let lapLength):
-                config.swimmingLocationType = .pool; isSwimSession = true
-                if #available(watchOS 10.0, *) { config.lapLength = HKQuantity(unit: .meter(), doubleValue: lapLength) }
-            case .openWater: config.swimmingLocationType = .openWater; isSwimSession = true
-            }
-        }
-        sessionStart = Date(); autoPauseDetector.reset(); manualLapCount = 0; autoLapCount = 0
-        guard !uiTestMode else { return }
-        do {
-            let s = try HKWorkoutSession(healthStore: store, configuration: config)
-            self.session = s
-            let b = s.associatedWorkoutBuilder()
-            b.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: config)
-            b.delegate = self; self.builder = b; s.delegate = self
-            s.startActivity(with: Date())
-            b.beginCollection(withStart: Date(), completion: { _, _ in })
-            if hrSource == .bluetooth { startBLE() }
-            if isSwimSession { enableWaterLock() }
-        } catch { isActive = false; isMonitoring = false; session = nil; builder = nil; sessionStart = nil }
     }
 
     private func relayBPM(_ bpm: Double) {
@@ -354,6 +345,7 @@ final class WatchWorkoutManager: NSObject {
         default: return .functionalStrengthTraining
         }
     }
+
 }
 
 extension WatchWorkoutManager {

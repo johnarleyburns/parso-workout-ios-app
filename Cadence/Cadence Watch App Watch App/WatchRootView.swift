@@ -157,6 +157,21 @@ struct WatchRootView: View {
                     }
                     .disabled(watchManager.phoneSyncState.isInProgress)
                 }
+
+                Section {
+                    NavigationLink {
+                        WatchAboutView()
+                    } label: {
+                        HStack {
+                            Label("About", systemImage: "info.circle")
+                            Spacer()
+                            Text(WatchAppVersion.display)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityIdentifier("watch.about")
+                }
             }
             .navigationTitle("Cladiron")
         }
@@ -279,13 +294,6 @@ struct WatchRootView: View {
         }
     }
 
-    private func cardioType(from raw: String?) -> CardioType {
-        guard let raw, let type = CardioType(rawValue: raw) else { return .other }
-        return type
-    }
-
-    var cardioTypes: [CardioType] { [.run, .walk, .cycle, .swim, .hiit, .boxing, .rowing, .other] }
-
     @ViewBuilder
     private func cardioSetupView(for ct: CardioType) -> some View {
         let kind = ct.toCardioKind()
@@ -308,11 +316,6 @@ struct WatchRootView: View {
         let syncedCooldown = isHIITOrBoxing ? nil : (watchManager.lastPhoneSyncAt == nil ? nil : watchAppSettings.cooldownMinutes * 60)
         return IntervalSetupModel(kind: kind, warmupSeconds: syncedWarmup, cooldownSeconds: syncedCooldown)
     }
-}
-
-private struct ActiveIntervalSession {
-    let plan: IntervalPlan
-    let kind: String
 }
 
 // MARK: - Live HR + Settings views

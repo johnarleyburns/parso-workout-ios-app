@@ -48,16 +48,19 @@ and checkpoint edits are included in the next focused commit.
 Current Phase 0 status: the complete SwiftData/CloudKit contract is deployed and
 verified in both Development and Production; the schema tests, authenticated
 live comparison, all guardrails, and the installed pre-commit hook are green.
-The schema protection work is committed, and the follow-up CloudKit diagnostics
-and persistence/configuration changes are ready to be committed together.
+The schema protection work and the follow-up CloudKit diagnostics,
+entitlement, readiness, citation, and persistence/configuration changes are
+committed.
 
 The simulator gates also pass after making the Watch exercise-picker smoke
 fixture catalog-agnostic: it now selects the first available second chest
 exercise and derives its delete identifier from that row. Continue Phase 0 with
-the remaining private-iCloud/two-Apple-ID device verification and plan-origin
+the remaining same-user private-iCloud device verification and plan-origin
 iPhone/Watch smoke path. One iPhone, one paired Watch, and the Mac are enough
-for the same-user private-iCloud gate; the real two-Apple-ID invite/accept gate
-needs a second app-capable device because this project has no macOS target.
+for the same-user private-iCloud gate. The real two-Apple-ID invite/accept
+gate is intentionally deferred until the later macOS Trainer app phase, when
+the Mac can provide the second app-capable client; this project has no macOS
+target yet.
 The next code slice should prove that a generated plan retains its origin and
 prescriptions across iPhone persistence, CloudKit sync, Watch launch, and
 phone reconciliation without changing the working manual-workout path.
@@ -173,9 +176,10 @@ Watch execution smoke. GitHub Actions run `33982770430` could not start its
 test job because the repository account's payments/spending limit is blocked;
 no remote code failure was reported.
 
-The remaining Phase 0 work is the real CloudKit Apple-ID/device gate and
-plan-origin iPhone/Watch smoke path; the normalized persistence mapping is now
-in place below.
+The remaining Phase 0 work is the same-user private-iCloud Apple-ID/device gate
+and plan-origin iPhone/Watch smoke path; the normalized persistence mapping is
+now in place below. The live two-Apple-ID share/invite gate is deferred until
+the later macOS Trainer app phase.
 
 ## Current work slice — Phase 0 persistence and send safety — SHIPPED 2026-09-05
 
@@ -189,8 +193,10 @@ and Settings, which reports the real iCloud account state rather than always
 claiming sync is on. Focused tests cover all item families, stable-ID updates,
 relationship round trips, preflight rejection, and account-status mapping.
 
-The remaining Phase 0 gaps are real private-iCloud/two-Apple-ID device
-verification and the plan-origin iPhone/Watch smoke path.
+The remaining Phase 0 gaps are real same-user private-iCloud device
+verification and the plan-origin iPhone/Watch smoke path. The live
+two-Apple-ID invite/accept test is intentionally scheduled after the macOS
+Trainer app is available.
 
 The unified cardio-to-Watch producer now preserves steady-state distance goals
 and heart-rate zones (and interval work-zone metadata) through the versioned
@@ -202,7 +208,7 @@ before the remaining device smoke gate.
 
 | Phase | Status | Next outcome |
 |---|---|---|
-| 0 — foundations and sync proof | **IN PROGRESS: value model + runtime + normalized persistence + send gate + Watch payload + sharing contract** | run the CloudKit device gates and plan-origin iPhone/Watch smoke path |
+| 0 — foundations and sync proof | **IN PROGRESS: value model + runtime + normalized persistence + send gate + Watch payload + sharing contract** | run the same-user CloudKit device gate and plan-origin iPhone/Watch smoke path; defer live two-ID sharing until the macOS Trainer phase |
 | 1 — athlete app | pending | Plan-first iPhone/iPad experience, compact authoring, partner execution, migration |
 | 2 — scientific coach | partial baseline shipped | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces |
 | 3 — iPad Trainer mode | pending | roster, planner, connected/external delivery, review, export, and Pro entitlement |

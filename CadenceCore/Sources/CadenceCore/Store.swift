@@ -21,6 +21,7 @@ public enum CadenceStore {
         SessionTemplate.self,
         TemplateExercise.self,
         CardioWorkout.self,
+        ReadinessEntry.self,
         HRSample.self,
         RouteSample.self,
         HRMDevice.self,

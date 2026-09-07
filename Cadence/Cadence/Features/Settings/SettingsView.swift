@@ -268,6 +268,13 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("settings.storage.cloudUsage")
                 }
+
+                NavigationLink {
+                    CloudKitSyncDiagnosticsView()
+                } label: {
+                    Label("Sync Diagnostics & Recovery", systemImage: "stethoscope")
+                }
+                .accessibilityIdentifier("settings.sync.diagnostics")
             } header: {
                 Text("iCloud Sync")
             } footer: {

@@ -1,6 +1,66 @@
 # Current Status
 
-Updated: 2026-09-05
+Updated: 2026-09-07
+
+## Session restart checkpoint — CloudKit schema protection
+
+The entire SwiftData/CloudKit model graph was audited. Development and
+Production now match the checked-in contract across all 20 app record types and
+every field/type. The final automated guard discovered two fields that had been
+missing from both environments:
+
+- `CD_HRMDevice.CD_lastBattery` (`INT64`)
+- `CD_SetEntry.CD_note` (`STRING`)
+
+Both fields were added to Development and have now been deployed to Production.
+The live verification command is:
+
+```sh
+bash scripts/check-cloudkit-schema.sh
+```
+
+It reports: `cloudkit-schema: Development and Production match the contract`.
+
+The prevention work is committed in `94fe15d` (`test: add CloudKit schema
+contract guard`):
+
+- `CloudKitSchemaCoverageTests` asserts all 20 persisted models and their exact
+  SwiftData attribute sets.
+- `scripts/cloudkit-schema-contract.tsv` records every CloudKit record, field,
+  and CloudKit type.
+- `scripts/check-cloudkit-schema.sh` compares both live CloudKit environments
+  against that contract when `~/.cloudkit-management-token` exists; without a
+  token it still validates the checked-in contract for CI.
+- `make guardrails` runs the schema guard, so the installed pre-commit hook and
+  CI execute it. The hook is installed in this clone via
+  `scripts/install-git-hooks.sh`.
+
+Final audit passed: `CloudKitSchemaCoverageTests` 3/3, the credential-free
+contract check, the authenticated Development/Production comparison, and all
+`make guardrails` checks. The audit also found and repaired one generated
+exercise-citation documentation drift. `git diff --check` passes and the
+pre-commit hook is configured at `scripts/git-hooks`. The follow-up CloudKit
+diagnostics, entitlement split, readiness-model registration, citation sync,
+and checkpoint edits are included in the next focused commit.
+
+### Next implementation item
+
+Current Phase 0 status: the complete SwiftData/CloudKit contract is deployed and
+verified in both Development and Production; the schema tests, authenticated
+live comparison, all guardrails, and the installed pre-commit hook are green.
+The schema protection work is committed, and the follow-up CloudKit diagnostics
+and persistence/configuration changes are ready to be committed together.
+
+The simulator gates also pass after making the Watch exercise-picker smoke
+fixture catalog-agnostic: it now selects the first available second chest
+exercise and derives its delete identifier from that row. Continue Phase 0 with
+the remaining private-iCloud/two-Apple-ID device verification and plan-origin
+iPhone/Watch smoke path. One iPhone, one paired Watch, and the Mac are enough
+for the same-user private-iCloud gate; the real two-Apple-ID invite/accept gate
+needs a second app-capable device because this project has no macOS target.
+The next code slice should prove that a generated plan retains its origin and
+prescriptions across iPhone persistence, CloudKit sync, Watch launch, and
+phone reconciliation without changing the working manual-workout path.
 
 ## Sole active plan — revised Cladiron MVP v2.5
 

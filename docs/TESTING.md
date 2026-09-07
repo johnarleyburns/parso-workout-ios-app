@@ -106,6 +106,14 @@ Installed hooks:
 - `pre-commit`: runs `make pre-commit`, which is the guards, the SwiftPM unit suite, the iPhone smoke test, and the Watch unit/UI smoke tests. This keeps both SwiftUI app entry points covered by the commit gate.
 - `pre-push`: runs no tests. Verification happens at the commit gate.
 
+The CloudKit guard is part of `make guardrails`. It always checks the checked-in
+model contract and, when `~/.cloudkit-management-token` exists, exports both
+CloudKit environments and compares every app record type, field, and field type
+against `scripts/cloudkit-schema-contract.tsv`. A mismatch blocks the commit;
+this is intentionally stricter than checking only whether a workout record can
+be created. CI runs the contract check without credentials and performs the
+same deterministic local validation.
+
 The pre-commit hook includes iPhone and Watch simulator smoke coverage, so it expects
 the pinned simulator from `Makefile`'s `SMOKE_DEST` to be available locally. For
 exceptional cases, Git's standard `--no-verify` flag bypasses hooks.

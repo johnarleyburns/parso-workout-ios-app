@@ -308,7 +308,15 @@ struct SettingsView: View {
             HealthPrimingView { status in healthStatus = status }
         }
         .task {
-            storageUsage = StorageUsageSnapshot.measure(container: container)
+            // Directory enumeration and the record-count fetch can be expensive
+            // on a device with a long workout history. Keep both off the main
+            // actor so entering Settings remains responsive.
+            let measurementContainer = container
+            let measured = await Task.detached(priority: .utility) {
+                StorageUsageSnapshot.measure(container: measurementContainer)
+            }.value
+            guard !Task.isCancelled else { return }
+            storageUsage = measured
         }
     }
 

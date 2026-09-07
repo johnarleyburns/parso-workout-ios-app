@@ -162,13 +162,7 @@ struct WatchRootView: View {
                     NavigationLink {
                         WatchAboutView()
                     } label: {
-                        HStack {
-                            Label("About", systemImage: "info.circle")
-                            Spacer()
-                            Text(WatchAppVersion.display)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+                        Label("About", systemImage: "info.circle")
                     }
                     .accessibilityIdentifier("watch.about")
                 }

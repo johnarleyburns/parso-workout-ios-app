@@ -77,11 +77,13 @@ final class WatchSmokeTests: XCTestCase {
                       "Could not add a second exercise")
         XCTAssertTrue(app.tapButton("watchAddExercise.category.chest"),
                       "Second watch exercise picker did not show categories")
-        XCTAssertTrue(app.tapButtonAfterSmallScroll("watchAddExercise.row.Barbell Bench Press - Medium Grip", attempts: 8),
-                      "Watch exercise picker did not show a second chest exercise")
+        let secondExerciseRow = app.firstExerciseRow(excluding: "Alternating Floor Press", attempts: 8)
+        XCTAssertNotNil(secondExerciseRow,
+                        "Watch exercise picker did not show a second chest exercise")
         XCTAssertTrue(app.tapButton("watchAddExercise.previewAdd", scrollAttempts: 4),
                       "Watch exercise preview did not add the second exercise")
-        XCTAssertTrue(app.tapButton("watchStrength.deleteExercise.Barbell Bench Press - Medium Grip", scrollAttempts: 4),
+        let secondExerciseName = secondExerciseRow?.replacingOccurrences(of: "watchAddExercise.row.", with: "") ?? ""
+        XCTAssertTrue(app.tapButton("watchStrength.deleteExercise.\(secondExerciseName)", scrollAttempts: 4),
                       "Watch exercise delete was not available")
 
         XCTAssertTrue(app.tapButton("watchStrength.deleteWorkout", scrollAttempts: 4),
@@ -103,6 +105,25 @@ final class WatchSmokeTests: XCTestCase {
 }
 
 private extension XCUIApplication {
+    @MainActor
+    func firstExerciseRow(excluding excludedName: String, attempts: Int = 4) -> String? {
+        let rows = buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "watchAddExercise.row."))
+        for _ in 0...attempts {
+            for row in rows.allElementsBoundByIndex {
+                guard row.exists, row.isHittable, row.identifier != "watchAddExercise.row.\(excludedName)" else {
+                    continue
+                }
+                let identifier = row.identifier
+                row.tap()
+                return identifier
+            }
+            let start = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
+            let end = coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.60))
+            start.press(forDuration: 0.15, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.05)
+        }
+        return nil
+    }
+
     @MainActor
     func tapButtonAfterSmallScroll(_ identifier: String, attempts: Int = 4) -> Bool {
         let button = buttons[identifier].firstMatch

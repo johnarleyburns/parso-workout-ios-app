@@ -95,9 +95,27 @@ extension HomeView {
                 }
             }
             .task {
-                today = await model.health.todayActivity()
-                activityTrend = await model.health.activityTrend(days: 7)
-                passiveSamples = await model.health.passiveReadinessSamples(days: 60)
+                // HealthKit queries are asynchronous, but the old launch chain
+                // started the heaviest reads immediately. Keep each query
+                // cancellable and yield between them, publish one coherent
+                // update, and leave a short settling window before importing
+                // Watch workouts into SwiftData. This keeps the first
+                // interactive frames free without sending the main-actor
+                // HealthDataProviding value across a concurrent task.
+                let loadedToday = await model.health.todayActivity()
+                guard !Task.isCancelled else { return }
+                await Task.yield()
+                let loadedTrend = await model.health.activityTrend(days: 7)
+                guard !Task.isCancelled else { return }
+                await Task.yield()
+                let loadedReadiness = await model.health.passiveReadinessSamples(days: 60)
+                guard !Task.isCancelled else { return }
+                today = loadedToday
+                activityTrend = loadedTrend
+                passiveSamples = loadedReadiness
+
+                try? await Task.sleep(for: .milliseconds(750))
+                guard !Task.isCancelled else { return }
                 await syncCardioFromHealth()
             }
             .refreshable {

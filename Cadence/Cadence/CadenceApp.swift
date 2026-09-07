@@ -90,15 +90,22 @@ struct CadenceApp: App {
     private func preparePersistentStore() async {
         guard !uiTestMode else { return }
         // Give SwiftUI a frame for the launch surface before doing synchronous
-        // SwiftData seeding. ModelContext is actor-bound, so yielding here is
-        // the safe way to move this work after first render without passing
-        // managed objects across actors.
+        // SwiftData seeding. The seed can touch hundreds of exercises during a
+        // catalog upgrade, so it must also run in a detached context; a single
+        // yield only postpones the freeze, it does not move the work off the
+        // main actor.
         await Task.yield()
-        let ctx = ModelContext(container)
-        _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
+        let container = container
+        let defaultDeviceID = await Task.detached(priority: .utility) {
+            let ctx = ModelContext(container)
+            _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
+            return try? ctx.fetch(FetchDescriptor<HRMDevice>(predicate: #Predicate { $0.isDefault }))
+                .first?.id
+        }.value
+
         // Restore the default BLE HRM for cold-launch auto-reconnect (FR-4.4).
-        if let device = try? ctx.fetch(FetchDescriptor<HRMDevice>(predicate: #Predicate { $0.isDefault })).first {
-            model.hrm.restoreDefaultDevice(device.id)
+        if let defaultDeviceID {
+            model.hrm.restoreDefaultDevice(defaultDeviceID)
         }
     }
 }

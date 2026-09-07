@@ -122,6 +122,7 @@ jobs:
       - name: Set Build Number
         run: |
           BUILD=$(git rev-list --count HEAD)
+          echo "BUILD_NUMBER=$BUILD" >> "$GITHUB_ENV"
           cd Cadence && xcrun agvtool new-version -all $BUILD
 
       - name: Compute Marketing Version
@@ -154,6 +155,7 @@ jobs:
             -destination "generic/platform=iOS" \
             -archivePath ./build/Cadence.xcarchive \
             MARKETING_VERSION="$MKT_VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             IPHONEOS_DEPLOYMENT_TARGET=17.0 \
             "DEVELOPMENT_TEAM=$TEAM_ID" \
             2>&1 | tee build.log
@@ -162,6 +164,20 @@ jobs:
             grep -E 'error:' build.log | head -20
             exit 1
           fi
+
+          IOS_PLIST="./build/Cadence.xcarchive/Products/Applications/Cadence.app/Info.plist"
+          WATCH_PLIST="./build/Cadence.xcarchive/Products/Applications/Cadence.app/Watch/Cadence Watch App Watch App.app/Info.plist"
+          for PLIST in "$IOS_PLIST" "$WATCH_PLIST"; do
+            if [ ! -f "$PLIST" ]; then
+              echo "Missing archived bundle Info.plist: $PLIST"
+              exit 1
+            fi
+            SHORT=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
+            VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST")
+            echo "$PLIST: $SHORT ($VERSION)"
+            test "$SHORT" = "$MKT_VERSION"
+            test "$VERSION" = "$BUILD_NUMBER"
+          done
 
       - name: Check owned archive warnings
         if: success()

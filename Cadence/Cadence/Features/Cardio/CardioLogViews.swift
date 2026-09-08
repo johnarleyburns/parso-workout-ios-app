@@ -23,7 +23,14 @@ struct OtherCardioEntryView: View {
                 Button {
                     onStart(description, gps)
                 } label: {
-                    Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
+                    Label {
+                        Text("Start")
+                    } icon: {
+                        Image(systemName: "play.fill")
+                            .symbolRenderingMode(.monochrome)
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
                 }
                 .cadenceGlassButton(prominent: true, tint: .green)
                 .accessibilityIdentifier("otherCardio.start")

@@ -86,31 +86,43 @@ struct HistoryView: View {
     // MARK: Rows
 
     private func strengthRow(_ session: WorkoutSession) -> some View {
-        Button { Haptics.selection(); path.append(HistorySummaryRoute.strength(session)) } label: {
-            HStack {
-                Image(systemName: session.symbol).foregroundStyle(.tint).frame(width: 26)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
-                        Text(session.title.isEmpty ? "Workout" : session.title)
-                        if session.isLogged { LoggedTag() }
-                        if session.deletedAt != nil { DeletedTag() }
+        HStack(spacing: 12) {
+            Button { Haptics.selection(); path.append(HistorySummaryRoute.strength(session)) } label: {
+                HStack {
+                    Image(systemName: session.symbol).foregroundStyle(.tint).frame(width: 26)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 8) {
+                            Text(session.title.isEmpty ? "Workout" : session.title)
+                            if session.isLogged { LoggedTag() }
+                            if session.deletedAt != nil { DeletedTag() }
+                        }
+                        Text(session.date.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text("\(session.orderedSets.count) sets · \(Format.weightValue(session.totalVolume, unit: .kilograms)) kg volume")
+                            .font(.caption2).foregroundStyle(.tertiary)
                     }
-                    Text(session.date.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption).foregroundStyle(.secondary)
-                    Text("\(session.orderedSets.count) sets · \(Format.weightValue(session.totalVolume, unit: .kilograms)) kg volume")
-                        .font(.caption2).foregroundStyle(.tertiary)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+
+            if session.deletedAt != nil {
+                Button { restore(session) } label: {
+                    Label("Restore", systemImage: "arrow.uturn.backward")
+                }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+                .tint(.green)
+                .accessibilityIdentifier("history.restore")
+            }
         }
-        .buttonStyle(.plain)
         .accessibilityIdentifier("session.row")
         .swipeActions(edge: .leading) {
             if session.deletedAt != nil {
                 Button { restore(session) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
                     .tint(.green)
-                    .accessibilityIdentifier("history.restore")
+                    .accessibilityIdentifier("history.restoreSwipe")
             } else {
                 Button { reuse(session) } label: { Label("Reuse", systemImage: "arrow.clockwise") }
                     .tint(.blue)
@@ -131,24 +143,37 @@ struct HistoryView: View {
     }
 
     private func cardioRow(_ c: CardioWorkout) -> some View {
-        Button { Haptics.selection(); path.append(HistorySummaryRoute.cardio(c)) } label: {
-            HStack {
-                Image(systemName: c.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
-                        Text(c.displayTitle)
-                        if c.isLogged { LoggedTag() }
-                        if c.deletedAt != nil { DeletedTag() }
+        HStack(spacing: 12) {
+            Button { Haptics.selection(); path.append(HistorySummaryRoute.cardio(c)) } label: {
+                HStack {
+                    Image(systemName: c.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 8) {
+                            Text(c.displayTitle)
+                            if c.isLogged { LoggedTag() }
+                            if c.deletedAt != nil { DeletedTag() }
+                        }
+                        Text(c.start.formatted(date: .abbreviated, time: .shortened))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text("\(Format.duration(c.duration))\(c.distance.map { " · " + Format.distance($0) } ?? "")")
+                            .font(.caption2).foregroundStyle(.tertiary)
                     }
-                    Text(c.start.formatted(date: .abbreviated, time: .shortened))
-                        .font(.caption).foregroundStyle(.secondary)
-                    Text("\(Format.duration(c.duration))\(c.distance.map { " · " + Format.distance($0) } ?? "")")
-                        .font(.caption2).foregroundStyle(.tertiary)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+
+            if c.deletedAt != nil {
+                Button { restoreCardio(c) } label: {
+                    Label("Restore", systemImage: "arrow.uturn.backward")
+                }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+                .tint(.green)
+                .accessibilityIdentifier("history.restore")
+            }
         }
-        .buttonStyle(.plain)
         .accessibilityIdentifier("history.cardioRow.\(c.typeValue.rawValue)")
         .swipeActions {
             if c.deletedAt != nil {

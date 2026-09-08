@@ -51,11 +51,14 @@ struct WorkoutSummaryView: View {
         }
         .navigationTitle("Summary")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(onDone == nil)
         .toolbar {
             if onDone == nil {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Back") { dismiss() }
-                        .accessibilityIdentifier("summary.back")
+                    Button { dismiss() } label: {
+                        Label("Back", systemImage: "chevron.backward")
+                    }
+                    .accessibilityIdentifier("summary.back")
                 }
             }
             if let onEdit {

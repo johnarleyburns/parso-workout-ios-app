@@ -4,6 +4,7 @@ import CadenceCore
 
 public enum LiveWorkoutKind: Equatable, Sendable {
     case strength(sessionID: UUID)
+    case combinedPlan(id: UUID)
     case outdoorCardio(id: UUID, type: CardioType)
     case timerCardio(id: UUID, type: CardioType)
     case interval(id: UUID, type: CardioType)

@@ -2765,6 +2765,12 @@ replacing working persistence, Watch execution, or the DB++ bridge.
 
 **Outcome:** a complete, free, shippable self-planning app on two idioms. The compact authoring system ships in the individual-user context, where it gets real use and feedback before later platform polish.
 
+Phase 1's implementation boundary is complete when manual authoring,
+persistence, execution boundaries, and the existing iPhone/Watch launch seams
+are present. The real-device plan-origin execution and private self-device sync
+checks are Phase 2 close-outs, so both phases can be tested together after the
+automated-coach workflows are available.
+
 ### Phase 2 — The scientific coach expert system
 
 **Goal:** extend the shipped DB++-backed deterministic automated coach into the
@@ -2778,8 +2784,17 @@ only the missing unified-plan workflows, critique/autoregulation depth, and UI.
 - **Generate**, **critique**, **progress**, **substitute**, and **insights** (§14), wired into the Plan tab and Home/Progress insights.
 - **Explainability**: "Why this plan," per-decision rationale with confidence and tappable citations, including the compact bottom-sheet presentation (§17).
 
+**Phase 2 close-outs shared with Phase 1:**
+- Validate a manual or automated-coach plan on a real iPhone and Apple Watch:
+  preserve origin and prescriptions through iPhone persistence and Watch
+  launch, complete the relevant work, and verify durable phone reconciliation.
+- Validate private same-user self-device sync across supported Apple devices,
+  proving that plans and results converge without introducing cross-user
+  sharing.
+
 **Outcome:** the free app now offers automated coach-assisted planning and
-evidence-based insights — the core value proposition, live for every athlete.
+evidence-based insights — the core value proposition, live for every athlete —
+with the Phase 1 execution and private self-sync gates closed in the same pass.
 
 ### Phase 3 — Self-planning depth and optional supporter contribution
 

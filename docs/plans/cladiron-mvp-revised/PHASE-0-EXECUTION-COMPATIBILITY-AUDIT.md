@@ -12,16 +12,16 @@ Device-only gates remain called out even when the code seam is shipped.
 Phase 0 closure decision — 2026-09-08: the implementation and automated
 contract gates are complete. Hardware validations that require capabilities not
 available in the current product/device set are moved to later phases: the
-plan-origin iPhone/Watch execution path moves to Phase 1 after real plan
-authoring, and the same-user private-iCloud device path moves to Phase 4 after
-the macOS Trainer target exists.
+plan-origin iPhone/Watch execution path and the same-user private-iCloud device
+path are both Phase 2 close-outs, so they can be validated together after
+manual planning and automated-coach workflows are available.
 
 | Requirement | Status | Repository evidence / exact gap |
 |---|---|---|
 | One DB++ import boundary, pinned at 1.15.4 | **verified shipped** | `CadenceCore/Package.swift` pins `exact: "1.15.4"`; [`TrainingEngineBridge.swift`](../../../CadenceCore/Sources/CadenceCore/TrainingEngineBridge.swift:1) is the boundary; [`check-engine-boundary.sh`](../../../scripts/check-engine-boundary.sh:7) enforces it; `TrainingEngineContractTests` and `ExerciseDatabaseTests` cover the contract. |
 | 873 built-in exercises and the 20-muscle DB++ ontology | **verified shipped** | `ExerciseDatabaseTests` asserts 873 records and 20 canonical muscles; [`MuscleGroup.swift`](../../../CadenceCore/Sources/CadenceCore/MuscleGroup.swift:14) keeps the raw DB++ keys. |
 | Package evidence resolves into app citations | **verified shipped** | `TrainingEngineBridge` exposes package evidence as app-facing values; `CitationIntegrityTests`, `ExerciseEvidenceTests`, and `TrainingEngineContractTests` cover resolution. |
-| SwiftData local store and private iCloud mirroring | **verified shipped (code) / Phase 4 device validation** | [`Store.swift`](../../../CadenceCore/Sources/CadenceCore/Store.swift:4) declares the shared schema and `.private(...)` CloudKit configuration; `WorkoutRepositoryTests` cover persistence and round trips. The two-device private-CloudKit run moves to Phase 4, when the macOS Trainer target provides the second app-capable client. |
+| SwiftData local store and private iCloud mirroring | **verified shipped (code) / Phase 2 device close-out** | [`Store.swift`](../../../CadenceCore/Sources/CadenceCore/Store.swift:4) declares the shared schema and `.private(...)` CloudKit configuration; `WorkoutRepositoryTests` cover persistence and round trips. The two-device private-CloudKit run is a Phase 2 close-out paired with the plan-origin execution validation. |
 | Legacy GRDB/SQLite replacement | **superseded by v2.5** | §7.2 explicitly adopts the shipped SwiftData/private-CloudKit architecture; no second persistence stack should be introduced. |
 | Existing iPhone plan materializer | **verified shipped** | [`EditablePlan.apply`](../../../CadenceCore/Sources/CadenceFeatures/EditablePlan.swift:86) writes every exercise's per-set prescription and legacy fields; `EditablePlanTests` covers mixed exercise counts, weights, provenance, and partner plans. |
 | Collapsed strength cards and full-screen set editor | **verified shipped** | [`SessionRenderModel.swift`](../../../CadenceCore/Sources/CadenceFeatures/SessionRenderModel.swift:382) builds performer-aware pending rows; `SessionRenderModelTests`, `SessionViewModelTests`, and the iPhone Train views cover the collapsed → editor seam. |
@@ -32,10 +32,10 @@ the macOS Trainer target exists.
 | Watch cardio lifecycle and exactly-once completion merge | **verified shipped (headless) / device gate open** | `WatchWorkoutManager`, `WatchCardioModels`, and `WatchCardioCompletion` are the current seams; `WatchCardioCompletionTests`, `WorkoutRepositoryTests`, and Watch UI tests cover duplicate/relaunch-friendly envelopes and HealthKit merge. Live HR/haptics/HealthKit still require hardware. |
 | JSON export/import and legacy decoding | **verified shipped** | [`DataExport.swift`](../../../CadenceCore/Sources/CadenceCore/DataExport.swift:115) keeps optional metadata; `DataExportTests`, `WorkoutRepositoryTests`, and `ExportFreezeFixTests` cover old/new round trips. |
 | Unified `Plan → Week → Day → Session → Item → Set` value model | **partial → additive envelope + normalized mapping + coach producer landed** | `UnifiedPlanModel.swift` supplies the Codable value graph; [`UnifiedPlanStore.swift`](../../../CadenceCore/Sources/CadenceCore/UnifiedPlanStore.swift:1) remains the compatibility envelope, while [`NormalizedPlanStore.swift`](../../../CadenceCore/Sources/CadenceCore/NormalizedPlanStore.swift:1) persists addressable header/week/day/session/item/set rows with stable IDs. `WeeklyPlanUnifiedBridge` converts the shipped coach week into the seven-day graph and Home writes both forms. Relationship UI/client sync remains open. |
-| Rich per-set intent and source identity into the live session | **verified shipped (code) / Phase 1 device validation** | `PlannedSetPrescription` now carries optional source set ID, load mode, `%1RM`, RPE, rest, and warm-up; `WorkoutSession` carries optional `planSessionID`; `RuntimePrescriptionAdapterTests`, `EditablePlanTests`, and `WeeklyPlanUnifiedBridgeTests` prove resolution, stable IDs, all item-family conversion, and legacy fields. The editable iPhone start path and Home's generated coach-week path now convert through unified sessions; send-time snapshot validation is enforced by `PlanSendPreflight`. The plan-origin device smoke moves to Phase 1 after real plan authoring exists. |
+| Rich per-set intent and source identity into the live session | **verified shipped (code) / Phase 2 device close-out** | `PlannedSetPrescription` now carries optional source set ID, load mode, `%1RM`, RPE, rest, and warm-up; `WorkoutSession` carries optional `planSessionID`; `RuntimePrescriptionAdapterTests`, `EditablePlanTests`, and `WeeklyPlanUnifiedBridgeTests` prove resolution, stable IDs, all item-family conversion, and legacy fields. The editable iPhone start path and Home's generated coach-week path now convert through unified sessions; send-time snapshot validation is enforced by `PlanSendPreflight`. The plan-origin device smoke is a Phase 2 close-out after real manual and automated-coach plan workflows are available. |
 | Snapshot `%1RM` at send/start and keep it fixed | **partial → send preflight landed** | The pure adapter resolves and rounds `%1RM` once from `AthleteExecutionSnapshot`; [`PlanSendPreflight`](../../../CadenceCore/Sources/CadenceCore/PlanSendPreflight.swift:1) rejects invalid or unsnapshotted percentage loads before either share implementation writes. A real trainer send UI and immutable shared-zone device snapshot remain open. |
-| Unified plan into existing Watch strength inputs | **verified shipped (code) / Phase 1 device validation** | [`WatchPlanPayload.swift`](../../../CadenceCore/Sources/CadenceCore/WatchPlanPayload.swift:1) carries rich per-set prescriptions with legacy names/ladder fallback; `WatchStrengthView` and `WatchStrengthFlowModel` consume it, and `WatchStrengthSyncApplierTests` cover phone reconciliation. Home now builds that payload from `WeeklyPlanUnifiedBridge` sessions; the plan-origin device smoke moves to Phase 1 after real plan authoring exists. |
-| Unified plan into existing Watch cardio configuration | **verified shipped (code) / Phase 1 device validation** | `WatchPlanPayload.Cardio` carries kind, duration, distance, target zone, and interval data; `WatchSync.TodayPlan` round-trips it and planned-cardio launch passes duration/zone into `WorkoutConfigurationSpec`. Home now builds planned cardio from the same unified coach sessions; planned-cardio device validation moves with the Phase 1 plan-origin smoke. |
+| Unified plan into existing Watch strength inputs | **verified shipped (code) / Phase 2 device close-out** | [`WatchPlanPayload.swift`](../../../CadenceCore/Sources/CadenceCore/WatchPlanPayload.swift:1) carries rich per-set prescriptions with legacy names/ladder fallback; `WatchStrengthView` and `WatchStrengthFlowModel` consume it, and `WatchStrengthSyncApplierTests` cover phone reconciliation. Home now builds that payload from `WeeklyPlanUnifiedBridge` sessions; the plan-origin device smoke is a Phase 2 close-out after real manual and automated-coach plan workflows are available. |
+| Unified plan into existing Watch cardio configuration | **verified shipped (code) / Phase 2 device close-out** | `WatchPlanPayload.Cardio` carries kind, duration, distance, target zone, and interval data; `WatchSync.TodayPlan` round-trips it and planned-cardio launch passes duration/zone into `WorkoutConfigurationSpec`. Home now builds planned cardio from the same unified coach sessions; planned-cardio device validation moves with the Phase 2 plan-origin close-out. |
 | Trainer private-device convergence | **partial → value-level contract + relationship persistence landed** | [`ClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/ClientShareStore.swift:1) and `ClientShareStoreTests` prove two trainer-device connections converge with last-writer-wins metadata; [`PersistedClientRelationship`](../../../CadenceCore/Sources/CadenceCore/NormalizedPlanStore.swift:182) persists display name, lifecycle, goal, and share metadata. A visible draft conflict notice remains open. |
 | Trainer↔client CloudKit sharing (`CKShare`, custom zone, change tokens) | **partial → production adapter landed / same-user device gate open** | [`CloudKitClientShareStore.swift`](../../../CadenceCore/Sources/CadenceCore/CloudKitClientShareStore.swift:1) creates per-client custom zones/`CKShare`s, returns the saved invitation URL, accepts invitations, writes plan/result records with revision/sentAt preservation and deterministic last-writer-wins, and consumes zone change tokens. `InMemoryClientShareStore` remains the deterministic contract fixture. The real two-Apple-ID invite/accept, shared-zone permissions, and phone integration gate is intentionally deferred until the macOS Trainer app provides a second app-capable client. |
 | Phone is the sole Watch→CloudKit bridge | **verified shipped (code)** | [`Store.swift`](../../../CadenceCore/Sources/CadenceCore/Store.swift:4) documents the boundary; Watch uses local-only storage and WatchConnectivity; `AppModel` and `WatchStrengthSyncApplier` apply on the phone. |
@@ -58,7 +58,7 @@ planner UI work. The new adapter suite extends, rather than forks, this set.
 | Watch strength payloads, replay, cancel, resume, cooldown | `WatchStrengthFlowModelTests`; `WatchStrengthSyncApplierTests`; `WatchResumableSessionTests`; `AppModelWCSessionDelegateTests` | **verified shipped (headless)** |
 | Cardio duplicate/relaunch and HR-present/absent summaries | `WatchCardioCompletionTests`; `WorkoutRepositoryTests`; `WatchCardioSummaryPresenterTests` | **verified shipped (headless)** |
 | JSON export/import and old fixture decoding | `DataExportTests`; `ExportFreezeFixTests`; `WorkoutRepositoryTests` | **verified shipped** |
-| Single iPhone/Watch plan → runtime → history smoke path | Existing iPhone/Watch smoke tests cover manual/runtime flows; rich payload materialization, Watch launch, phone reconciliation, duplicate/out-of-order result handling, and source-ID export/import are now headless-tested. The plan-origin device smoke path is deferred until real manual or coach plan authoring exists. | **partial / deferred dependency** |
+| Single iPhone/Watch plan → runtime → history smoke path | Existing iPhone/Watch smoke tests cover manual/runtime flows; rich payload materialization, Watch launch, phone reconciliation, duplicate/out-of-order result handling, and source-ID export/import are now headless-tested. The plan-origin device smoke path is a Phase 2 close-out after real manual and automated-coach plan workflows are available. | **partial / deferred dependency** |
 
 ## Dependency-ordered closure map
 
@@ -101,11 +101,10 @@ planner UI work. The new adapter suite extends, rather than forks, this set.
    `InMemoryClientShareStore`, and `CloudKitClientShareStore` cover the
    value-level protocol and production record-zone seam. `PlanSendPreflight`
    rejects unsnapshotted `%1RM` loads before either share implementation writes.
-   The same-user private-iCloud device gate and phone integration move to Phase
-   4 because the current hardware has no second app-capable client. The Mac
-   target will provide that client. The real two-Apple-ID invite/accept gate is
-   deferred to the same phase for shared-zone permission and convergence
-   testing.
+   The same-user private-iCloud device gate and phone integration are Phase 2
+   close-outs paired with the plan-origin execution validation. The real
+   two-Apple-ID invite/accept gate remains retired with the trainer/client
+   roadmap.
 
 ### Scope decision — 2026-09-08
 
@@ -113,11 +112,10 @@ Phase 0 does not block on a live two-Apple-ID CKShare invite/accept run. The
 production CloudKit adapter, in-memory sharing contract, change-token handling,
 and deterministic convergence tests remain part of this phase. The real
 invite/accept, shared-zone permission, and cross-client phone integration gate
-will run after the macOS Trainer app exists, using the Mac as the second
-app-capable client. The plan-origin iPhone/Watch execution smoke path moves to
-Phase 1 after real manual or coach plan authoring exists. The same-user
-private-iCloud gate moves to Phase 4 because the current iPhone + Watch + Mac
-hardware has no second app-capable client.
+are retired with the trainer/client roadmap. The plan-origin iPhone/Watch
+execution smoke path and same-user private-iCloud gate are both Phase 2
+close-outs, intentionally run together after manual planning and
+automated-coach plan workflows are available.
 
 With those validations assigned to their dependency phases, the Phase 0
 implementation and automated contract closure is complete.

@@ -133,6 +133,7 @@ extension HomeView {
         switch kind {
         case .outdoorCardio(_, let type), .timerCardio(_, let type), .interval(_, let type): name = type.displayName
         case .swim: name = "Swim"
+        case .combinedPlan: name = "Plan session"
         case .strength: name = "Workout"
         }
         let intent = LiveWorkoutStartIntent(kind: kind, routePayload: kindName(kind), origin: .homeStart)
@@ -147,6 +148,7 @@ extension HomeView {
         switch kind {
         case .outdoorCardio(_, let type), .timerCardio(_, let type), .interval(_, let type): return type.rawValue
         case .swim: return "swim"
+        case .combinedPlan: return "combined-plan"
         case .strength: return "strength"
         }
     }

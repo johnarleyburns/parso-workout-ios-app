@@ -290,6 +290,11 @@ The biggest change after Part V: **the compact authoring system ships in Phase 1
 | 4 | Depth + LLM | **Trainer mode on iPhone + the native Mac app (v2.1)** |
 | 5 | — | Depth, autoregulation, LLM interface |
 
+The real-device validation of plan-origin iPhone/Watch execution and the
+same-user private-iCloud convergence check are Phase 2 close-outs. They are
+deliberately paired so the manual-planning and automated-coach phases can be
+tested together; this does not move the Phase 1 authoring implementation.
+
 New acceptance criteria worth calling out: #12 (compact-authoring parity — the keystone test), #22 (every command fires from menu, keyboard, and touch), #23 (native Mac test plan), #24 (no Mac-only capability), #25 (clients addable from any device), #29 (Universal Purchase holds), #26–28 and #30–31 (trial start, no-upsell-in-free, lapse behaviour, no inline entitlement reads, prior-purchase migration).
 
 ---

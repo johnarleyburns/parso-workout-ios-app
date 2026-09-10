@@ -1,6 +1,16 @@
 import Foundation
 import FreeExerciseDBPlusPlus
 
+// Keep DB++ as a single import boundary. Other Cadence files consume these
+// aliases so domain adapters cannot accidentally grow a second package import.
+public typealias DBPPJSONValue = FreeExerciseDBPlusPlus.JSONValue
+public typealias DBPPWorkoutPlan = FreeExerciseDBPlusPlus.WorkoutPlan
+public typealias DBPPPlanCycle = FreeExerciseDBPlusPlus.PlanCycle
+public typealias DBPPPlanPhase = FreeExerciseDBPlusPlus.PlanPhase
+public typealias DBPPPlannedSet = FreeExerciseDBPlusPlus.PlannedSet
+public typealias DBPPPlanExercisePrescription = FreeExerciseDBPlusPlus.PlanExercisePrescription
+public typealias DBPPPlanSession = FreeExerciseDBPlusPlus.PlanSession
+
 /// The single boundary between Cadence domain types and the DB++ training engine.
 public enum TrainingEngineBridge {
     /// Built once for deterministic, offline use. Callers retain their local defaults

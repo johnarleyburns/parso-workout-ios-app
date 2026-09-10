@@ -1,6 +1,6 @@
 # Current Status
 
-Updated: 2026-09-09
+Updated: 2026-09-10
 
 ## Current work slice — Watch AppIcon recurrence guard — COMPLETE 2026-09-09
 
@@ -12,8 +12,9 @@ contract guard now validates the metadata, referenced PNG, dimensions, alpha
 channel, and effective Watch target SDK. Repository-owned Xcode builds now run
 through a wrapper that rejects explicit SDK overrides, and the destination-only
 contract is checked in local guardrails and CI. Verification passed without
-launching a simulator. The aggregate guardrail remains blocked by the existing
-Phase 1 planner view-size violations, not by this guard.
+launching a simulator. The planner view-size violations were later cleared by
+splitting the manual authoring and Planning surfaces into focused SwiftUI
+files; the aggregate guardrails now pass.
 
 ## Current product scope correction — self-planned, automated coach only — COMPLETE 2026-09-09
 
@@ -158,10 +159,10 @@ configuration, CloudKit schema contract, sharing contract, and sync-performance
 hardening are implemented and covered by the automated gates.
 
 Two hardware validations are intentionally moved out of Phase 0: the plan-origin
-iPhone/Watch execution test moves to Phase 1 after real manual or automated-coach
-plan authoring exists; the same-user private-iCloud multi-device test remains a
-later self-sync validation. Human trainer/client sharing and two-Apple-ID
-invite/accept testing are removed from the roadmap.
+iPhone/Watch execution test and the same-user private-iCloud multi-device test
+are both Phase 2 close-outs. They will be run together after manual planning and
+automated-coach workflows are available. Human trainer/client sharing and
+two-Apple-ID invite/accept testing are removed from the roadmap.
 
 The complete SwiftData/CloudKit contract is deployed and verified in both
 Development and Production; the schema tests, authenticated live comparison,
@@ -173,11 +174,9 @@ The simulator gates also pass after making the Watch exercise-picker smoke
 fixture catalog-agnostic: it now selects the first available second chest
 exercise and derives its delete identifier from that row. The plan-origin
 iPhone/Watch smoke path and same-user private-iCloud device gate are now tracked
-in their later phases rather than blocking this closure.
-The next implementation slice is Phase 1 manual plan authoring. Once real plans
-exist, Phase 1 will prove that a generated or authored plan retains its origin
-and prescriptions across iPhone persistence, Watch launch, and phone
-reconciliation without changing the working manual-workout path.
+as Phase 2 close-outs rather than blocking this closure.
+Phase 1 manual plan authoring now supplies the first half of that combined
+validation; Phase 2 automated-coach workflows will supply the second half.
 
 ## Sole active plan — revised Cladiron MVP v2.5
 
@@ -270,8 +269,9 @@ partner and DB++ provenance metadata; the legacy `EditablePlan.apply` path
 remains compatible. Coach-generated weekly plans now also bridge into the
 unified seven-day value graph, persist through `UnifiedPlanStore`, and enrich
 Watch payloads from the same sessions. Phase 1 now starts with real manual plan
-authoring; once a plan can be authored and launched, run the deferred
-plan-origin iPhone/Watch smoke path.
+authoring. The deferred plan-origin iPhone/Watch smoke path and private
+self-sync validation are Phase 2 close-outs and should be run together after
+automated-coach plan workflows are available.
 Do not
 implement later-phase UI before the Phase 0 model and sharing boundaries
 needed by it are explicit.
@@ -292,10 +292,10 @@ Watch execution smoke. GitHub Actions run `33982770430` could not start its
 test job because the repository account's payments/spending limit is blocked;
 no remote code failure was reported.
 
-The plan-origin iPhone/Watch smoke path is now a Phase 1 validation after real
-manual or automated-coach plan authoring exists. The normalized persistence
-mapping is in place. Same-user private-iCloud convergence remains a later
-self-sync validation; human trainer/client sharing is not planned.
+The plan-origin iPhone/Watch smoke path and same-user private-iCloud convergence
+are now paired Phase 2 close-outs after real manual and automated-coach plan
+authoring exist. The normalized persistence mapping is in place; human
+trainer/client sharing is not planned.
 
 ## Current work slice — Phase 0 persistence and send safety — SHIPPED 2026-09-05
 
@@ -310,10 +310,10 @@ and Settings, which reports the real iCloud account state rather than always
 claiming sync is on. Focused tests cover all item families, stable-ID updates,
 relationship round trips, preflight rejection, and account-status mapping.
 
-The plan-origin iPhone/Watch smoke path is tracked in Phase 1 after real manual
-or automated-coach plan authoring exists. Same-user private-iCloud convergence
-is a later self-sync validation. The live two-Apple-ID invite/accept test and
-macOS Trainer dependency are removed from the roadmap.
+The plan-origin iPhone/Watch smoke path and same-user private-iCloud convergence
+are paired Phase 2 close-outs after real manual and automated-coach plan
+authoring exists. The live two-Apple-ID invite/accept test and macOS Trainer
+dependency are removed from the roadmap.
 
 The unified cardio-to-Watch producer now preserves steady-state distance goals
 and heart-rate zones (and interval work-zone metadata) through the versioned
@@ -343,14 +343,13 @@ button can force Apple's managed sync.
 
 Focused persistence tests and the full CI gate pass: 1,737 tests, all guardrails,
 and the live Development/Production CloudKit schema comparison. These changes are
-intentionally uncommitted. The plan-origin iPhone/Watch smoke path is tracked in
-Phase 1 after real manual or automated-coach plan authoring exists. Same-user
-private-iCloud convergence remains a later self-device validation; there is no
-macOS Trainer dependency.
+intentionally uncommitted. The plan-origin iPhone/Watch smoke path and same-user
+private-iCloud convergence are paired Phase 2 close-outs after real manual and
+automated-coach plan authoring exists; there is no macOS Trainer dependency.
 
 ## Phase queue
 
-### Phase 1 manual planning — compact authoring slice complete 2026-09-09
+### Phase 1 manual planning — implementation complete 2026-09-10
 
 The Plan tab now has a real self-authored weekly-plan path: create a blank
 Monday-first week, add up to two sessions per day, edit session titles, choose
@@ -358,10 +357,15 @@ an exercise from the bundled searchable catalog, edit set type/reps/load/%1RM,
 rest, and target RPE, and save through both the compatibility envelope and the
 normalized SwiftData plan tree. Authored plans retain stable plan/session/item/
 set IDs and can launch through the existing unified runtime materializer, so
-this slice is ready for the deferred plan-origin execution test once hardware
-validation is approved. The next implementation slice is plan-origin execution
-coverage for authored strength plans, followed by a deliberate mixed-session
-execution boundary for planned cardio and mobility.
+this slice is ready for the Phase 2 plan-origin execution close-out once
+hardware validation is approved. Authored plans now also project today's supported
+strength/cardio sessions into the versioned Watch payload while retaining the
+legacy Watch fields. A pure execution-boundary classifier now keeps
+strength-only on the existing iPhone runner, allows pure cardio to remain a
+Watch target, and routes cardio, mobility, and cardio-plus-mobility sessions to
+the dedicated combined runner; instruction-only and strength-plus-cardio mixes
+remain explicitly unsupported. No non-strength session is mislabeled as
+executable strength work.
 
 The pure `ManualPlanBuilder` contract is covered by five focused tests for
 blank-week shape, stable-ID session replacement, the two-sessions-per-day limit,
@@ -371,18 +375,61 @@ timed-or-repetition mobility, and instruction items while retaining their stable
 IDs and preserving the existing strength-only start boundary. Mixed sessions are
 saved and handed to the unified value/runtime boundary; they remain explicitly
 blocked from the current strength-only runner until the later execution slice.
-The generic iOS device build and focused core tests pass. The Watch AppIcon guard
+The pure `ManualPlanWatchBridge` contract is covered by four focused tests for
+strength identity/prescriptions, cardio legacy-plus-rich payloads, and the
+unsupported instruction-only and mixed-session boundaries. The new
+`PlanExecutionBoundary` contract covers empty, strength-only, cardio-only,
+mobility-only, instruction-only, and mixed sessions. The new headless
+`CombinedExecutionPlan`/`CombinedPlanRunner` contract preserves item order,
+auto-advances timed cardio, requires explicit completion for open cardio and
+mobility, freezes while paused, and rejects strength/instruction items. The
+authored-plan start path reserves a distinct combined live-workout lease and
+opens the iPhone runner; completed cardio segments persist through the existing
+cardio history path. The generic iOS device build and focused/full package tests
+pass. The Watch AppIcon guard
 and destination-based Xcode guard also pass; the unsafe global SDK invocation is
-rejected before Xcode starts. A full aggregate guard run remains blocked by the
-existing planner view-size limits, and no simulator was run.
+rejected before Xcode starts. The full aggregate guardrails now pass after the
+planner view-size cleanup, and no simulator was run. Partner workouts
+and partner history remain an explicit preservation boundary: unified plan
+`PartnerRef`s, runtime active-partner IDs, performer-specific prescriptions,
+`performedBy` set attribution, Watch partner rotation, and partner summary
+history are all still owned by their existing persistence/sync paths. The new
+Watch bridge only adds today's executable strength/cardio projection and does
+not rewrite or discard those partner fields.
 
 | Phase | Status | Next outcome |
 |---|---|---|
-| 0 — foundations and sync proof | **COMPLETE 2026-09-08** | closed; deferred self-plan execution and private self-sync validations remain |
-| 1 — athlete app | **IN PROGRESS** | validate authored plan-origin iPhone/Watch execution; then extend mixed-session execution for planned cardio and mobility |
-| 2 — automated scientific coach | partial baseline shipped | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces |
+| 0 — foundations and sync proof | **COMPLETE 2026-09-08** | closed; Phase 2 owns the deferred device close-outs |
+| 1 — athlete app | **IMPLEMENTATION COMPLETE 2026-09-10** | Phase 2 close-out validation of plan-origin execution and private self-device sync |
+| 2 — automated scientific coach | **IN PROGRESS** | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces, then run both Phase 2 device close-outs together |
 | 3 — self-planning depth + optional contribution | pending | periodization, personal templates/export, $9.99 optional Supporter contribution and Home badge |
 | 4 — individual-user platform polish | pending | bounded natural language, readiness, larger-surface self-planning, and accessibility/performance |
+
+## Status and next task — 2026-09-10
+
+Current status: Phase 1 implementation is complete; Phase 2 is now active. The manual weekly authoring slice,
+Watch payload bridge, safe execution boundary, and combined cardio/mobility
+runner are implemented. Strength-only sessions still use the existing
+iPhone/Watch runner; pure cardio remains projectable to the existing Watch
+cardio runner and can also run through the authored-plan combined surface;
+mobility and cardio-plus-mobility sessions use the new iPhone runner, while
+instruction-only and strength-containing mixes remain blocked. Partner
+workouts and partner history remain preserved. The last committed baseline is
+`159273f`; the current boundary/bridge/runner changes are intentionally
+uncommitted. No simulator has been run.
+
+Immediate next task: advance the Phase 2 automated-coach workflows. Once those
+workflows are ready and hardware approval is available, perform the deferred
+authored plan-origin iPhone/Watch execution validation and private same-user
+self-device sync validation together. Keep the strength-only runner and all
+partner attribution/history paths unchanged, and continue using generic device
+builds and package tests without simulator runs until hardware approval.
+
+Overall plan position: Phase 0 foundations and sync proof are complete. Phase 1
+athlete planning implementation is complete. Phase 2 automated scientific
+coaching is the active phase, with the two Phase 2 device close-outs scheduled
+after its planning workflows are ready. Phase 3 self-planning depth/optional
+contribution and Phase 4 individual-user polish remain queued.
 
 ## Execution rules
 

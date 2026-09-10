@@ -23,6 +23,18 @@ struct PendingWorkout: Identifiable {
     let kind: Kind
 }
 
+struct CombinedSessionLaunch: Identifiable {
+    let id: UUID
+    let session: Session
+    let lease: LiveWorkoutLease
+
+    init(session: Session, lease: LiveWorkoutLease) {
+        self.id = session.id
+        self.session = session
+        self.lease = lease
+    }
+}
+
 enum WorkoutStartCue {
     case countdown, single, none
 }

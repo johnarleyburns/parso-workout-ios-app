@@ -23,6 +23,7 @@ public enum PerformerSetPlanner {
     public enum WeightBasis: Equatable, Sendable {
         case explicitPlan
         case ownerPlan
+        case currentSession
         case exactHistory
         case estimatedHistory
         case priorHistory
@@ -56,6 +57,10 @@ public enum PerformerSetPlanner {
         public var generalRepLadders: [[Int]]
         /// The performer's own first working weight for this exercise (kg).
         public var firstWorkingWeightKg: Double?
+        /// The most recent working weight already logged for this performer and
+        /// movement in the current session. This is the safest default for a
+        /// subsequent set unless that set has a planned load.
+        public var lastWeightThisSessionKg: Double?
         /// Prior working sets for this performer and movement, oldest first.
         /// Used to make a transparent, rep-aware load suggestion.
         public var weightSamples: [SetSample]
@@ -64,11 +69,13 @@ public enum PerformerSetPlanner {
                     repLadders: [[Int]] = [],
                     generalRepLadders: [[Int]] = [],
                     firstWorkingWeightKg: Double? = nil,
+                    lastWeightThisSessionKg: Double? = nil,
                     weightSamples: [SetSample] = []) {
             self.repsLoggedThisSession = repsLoggedThisSession
             self.repLadders = repLadders
             self.generalRepLadders = generalRepLadders
             self.firstWorkingWeightKg = firstWorkingWeightKg
+            self.lastWeightThisSessionKg = lastWeightThisSessionKg
             self.weightSamples = weightSamples
         }
 
@@ -115,9 +122,10 @@ public enum PerformerSetPlanner {
     ///  6. the owner's planned reps at this index;
     ///  7. `defaultReps`.
     ///
-    /// Weight, in order: the explicit plan's weight → their own first working
-    /// weight for this movement → (owner only) the owner plan's weight. A partner
-    /// NEVER inherits the owner's load (decision **D13**).
+    /// Weight, in order: the explicit plan's weight → the owner's planned load →
+    /// the previous set in this session → historical estimation → their own
+    /// prior-session working weight. A partner NEVER inherits the owner's load
+    /// (decision **D13**).
     public static func resolve(setIndex: Int,
                                performerPlan: [PlannedSetPrescription]?,
                                ownerPlan: [PlannedSetPrescription],
@@ -133,6 +141,13 @@ public enum PerformerSetPlanner {
         if let plannedWeight = planned?.targetWeightKg, plannedWeight > 0 {
             weight = plannedWeight
             weightBasis = .explicitPlan
+        } else if isOwner, let ownerWeight = ownerPlanned?.targetWeightKg, ownerWeight > 0 {
+            weight = ownerWeight
+            weightBasis = .ownerPlan
+        } else if let currentSessionWeight = history.lastWeightThisSessionKg,
+                  currentSessionWeight > 0 {
+            weight = currentSessionWeight
+            weightBasis = .currentSession
         } else if let suggestion = WeightSuggestion.suggest(
             targetReps: reps(setIndex: setIndex, planned: planned,
                              ownerPlanned: ownerPlanned,
@@ -145,9 +160,6 @@ public enum PerformerSetPlanner {
         } else if let prior = history.firstWorkingWeightKg, prior > 0 {
             weight = prior
             weightBasis = .priorHistory
-        } else if isOwner, let ownerWeight = ownerPlanned?.targetWeightKg, ownerWeight > 0 {
-            weight = ownerWeight
-            weightBasis = .ownerPlan
         } else {
             weight = nil
             weightBasis = .none

@@ -396,7 +396,8 @@ public enum SessionRenderModel {
                     repsLoggedThisSession: performerSets.map(\.reps),
                     repLadders: performer.repLadders,
                     generalRepLadders: performer.generalRepLadders,
-                    firstWorkingWeightKg: performer.firstWorkingWeightKg)
+                    firstWorkingWeightKg: performer.firstWorkingWeightKg,
+                    lastWeightThisSessionKg: performerSets.last?.weight)
                 var rows: [PendingSetDisplay] = []
                 if performerSets.count < plan.count {
                     for index in performerSets.count..<plan.count {

@@ -85,7 +85,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 ## Commands
 - Core package: `cd CadenceCore && swift build` / `swift test`
 - App: open `Cadence.xcodeproj`; schemes are **Cadence** (iOS) and **Cadence Watch App**. The `.xcodeproj` is committed (created in Xcode, not generated).
-- CLI build: `xcodebuild -scheme Cadence -destination 'platform=iOS Simulator,name=iPhone 16' build`
+- CLI build: `bash scripts/xcodebuild-safe.sh -scheme Cadence -destination 'platform=iOS Simulator,name=iPhone 16' build`; use destination-based builds only — never pass a global `-sdk` override because the scheme embeds the Watch target.
 - Real-device runs are required to test HealthKit — the simulator has no real Health data.
 - Git hooks (installed via `scripts/install-git-hooks.sh`): **pre-commit** runs the guards, SwiftPM unit tests, and the iPhone UI smoke test (the full regression suite — watch smoke + watch unit regressions — is NOT part of the commit gate; run `make all-tests` for it); **pre-push** runs no tests.
 - **Set command timeouts for Git hooks:** allow at least **5 minutes (300 seconds)** for `git commit`, because pre-commit runs the simulator smoke test; `git push` needs little time because pre-push runs no tests.

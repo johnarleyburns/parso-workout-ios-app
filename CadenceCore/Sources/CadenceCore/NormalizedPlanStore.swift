@@ -245,6 +245,10 @@ public enum NormalizedPlanStore {
         let existing = try context.fetch(FetchDescriptor<PersistedPlanHeader>(
             predicate: #Predicate { $0.id == id })).first
         if let existing {
+            if let existingPlan = try? decode(header: existing, in: context),
+               UnifiedPlanStore.contentEquivalent(plan, existingPlan) {
+                return existing
+            }
             let newer = plan.updatedAt > existing.updatedAt ||
                 (plan.updatedAt == existing.updatedAt && originDevice > existing.originDevice)
             guard newer else { return existing }

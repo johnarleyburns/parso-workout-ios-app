@@ -84,12 +84,17 @@ struct RootTabView: View {
             }
 
             if let watchSyncToast {
-                VStack(spacing: 0) {
-                    WatchSyncToastView(toast: watchSyncToast)
-                    Spacer()
+                // SplashView intentionally ignores the safe area. Measure the
+                // real top inset here so the transient Watch status cannot be
+                // drawn underneath the iPhone status area or splash content.
+                GeometryReader { proxy in
+                    VStack(spacing: 0) {
+                        WatchSyncToastView(toast: watchSyncToast)
+                        Spacer()
+                    }
+                    .padding(.top, proxy.safeAreaInsets.top + 8)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaPadding(.top, 8)
+                .ignoresSafeArea()
                 .zIndex(20)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }

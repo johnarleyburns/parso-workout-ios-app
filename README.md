@@ -46,7 +46,7 @@ make test                            # same package test suite
 make all-tests                       # package tests + iPhone/watch simulator smoke tests
 open Cadence/Cadence.xcodeproj       # iOS app + embedded watchOS app
 # CLI build:
-xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence \
+bash scripts/xcodebuild-safe.sh -project Cadence/Cadence.xcodeproj -scheme Cadence \
   -destination 'platform=iOS Simulator,name=iPhone 16' build
 ```
 

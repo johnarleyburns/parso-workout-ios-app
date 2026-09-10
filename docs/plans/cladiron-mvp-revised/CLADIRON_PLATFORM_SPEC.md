@@ -1,23 +1,62 @@
 # Cladiron Coaching Platform — Complete Specification (Revised)
 
-**Version:** 2.5 — *plan onto the proven training loop* (revises v2.4 and v1.0 in `docs/plans/cladiron-mvp/`)
-**Status:** Authoritative implementation roadmap, reconciled with the repository on **2026-09-02**. It distinguishes the shipped baseline from remaining MVP work; `current_status.md` is the execution ledger.
+**Version:** 2.6 — *self-planned, automated-coach product* (revises v2.5, v2.4, and v1.0 in `docs/plans/cladiron-mvp/`)
+**Status:** Authoritative implementation roadmap, scope-corrected on **2026-09-09**. It distinguishes the shipped baseline from remaining MVP work; `current_status.md` is the execution ledger.
 **Supersedes:** `cladiron-mvp/CLADIRON_PLATFORM_SPEC.md` v1.0, which itself superseded `MVP_DESIGN.md` v0.2
 **Companion docs (present in this directory):** `REVISION-NOTES.md` (what changed and why), `mockups/index.html` (per-screen visual mockup catalog), `Cladiron-Coaching-Export-Sample.xlsx` (sample export)
 
 > **Note on inherited references.** v1.0 cited two companion documents — `TRAINER_PLATFORM_STRATEGY.md` (business case and positioning) and `DATABASE_SWIFTDATA_MIGRATION.md` (the persistence-layer analysis behind the GRDB decision and the two hard sync rules) — and both are cited again below where their reasoning is load-bearing. **Neither file exists in this repository.** They are treated here as the *intended* homes for that material: the decisions they justified are restated in summary form in §10, §42.6, and Appendix Q so that this specification stands alone, and the citations mark where the fuller analysis belongs if those documents are ever written. The same applies to `MVP_DESIGN.md` v0.2, which v1.0 superseded.
 
+## v2.6 active scope correction — self-planned, automated coach only
+
+This section is the current product boundary and supersedes any conflicting
+v2.5 trainer/client, roster, sharing, Pro, trial, paywall, external-delivery,
+or trainer-specific Mac requirements elsewhere in this document. Those older
+sections remain below only as historical decision context; they are not active
+implementation work.
+
+- Cladiron has one product user: an athlete planning and executing their own
+  training. Planning is manual, template-based, or assisted by Cladiron's
+  automated scientific coach. “Coach” means software in the active plan; there
+  is no personal-trainer role and no client role.
+- There is no Trainer mode, client roster, trainer/client relationship, invite or
+  accept flow, CKShare delivery, external-client packet, or human-coach result
+  review. Private iCloud sync remains for the user's own devices only.
+- There are no gated Pro features, Pro entitlement, trial, paywall, or feature
+  downgrade. Manual planning, templates, automated coach suggestions, critique,
+  progression, insights, execution, history, export, and partner sessions are
+  not gated by purchase.
+- The only planned purchase is an optional **$9.99 “Contribute to development”**
+  consumable. A successful purchase adds a **Supporter** badge to the user's
+  Home view and unlocks nothing else. It is never required, promoted as a
+  feature gate, or used to restrict core functionality.
+- The active platform scope is iPhone + embedded Apple Watch, with iPad/other
+  larger-surface self-planning considered only when it directly serves the same
+  individual user. The trainer-specific Mac target and Universal Purchase work
+  are removed from the roadmap.
+
+The active delivery plan is therefore: preserve the shipped training loop;
+finish manual self-planning; deepen the automated coach; add optional supporter
+badge/purchase handling; then polish readiness, natural-language assistance,
+and cross-device self-sync. New work must not expand legacy trainer/client or
+Pro compatibility types; migration/removal of those leftovers is separate
+cleanup, not a reason to revive the retired product model.
+
 ---
 
 ## How to read this document
 
-This specification describes the entire Cladiron platform as **one product** delivered through **four native surfaces** — **iPhone**, **iPad**, **Mac**, and **Apple Watch** — sold as a **single App Store record under Universal Purchase**, plus the shared scientific coach expert system (`CadenceCore`) that powers evidence-based planning on all of them. It is written to be handed to an agentic coding tool (Claude Code) work-stream by work-stream, so it is deliberately concrete: data types, workflows, screen-by-screen interaction, keyboard command tables, the encoded evidence base with citations, and acceptance criteria.
+This specification describes Cladiron as one Apple-native product centered on
+**iPhone + Apple Watch**, with optional larger-surface self-planning where it
+serves the same individual user. It includes the scientific coach expert
+system (`CadenceCore`) that powers evidence-based planning. It is written to
+be handed to an agentic coding tool work-stream by work-stream, so it is
+deliberately concrete: data types, workflows, screen-by-screen interaction,
+the encoded evidence base with citations, and acceptance criteria.
 
-Clients do not need an Apple device. Connected clients get automatic private
-CloudKit plan/result exchange; external clients receive locally generated
-HTML/PDF/text plan packets through the trainer's system Mail/share services and
-report results through their existing communication tools for manual entry.
-Both paths use the same plan/result model and count equally for Pro (Appendix Z).
+The only sync boundary in the active plan is the user's own private iCloud
+store across their devices. There is no client delivery, external packet, or
+human-coach sharing workflow.
 
 **Product and open-project boundary (normative).** Cladiron is proprietary,
 closed-source software. **Cladiron is a proprietary, privacy-first application
@@ -39,7 +78,13 @@ recovery, eligibility, presentation, and citation policy compose around DB++ and
 remain authoritative. Implementation must extend this boundary, not rebuild or
 fork the database/engine inside Cladiron.
 
-**What changed from v1.0, in one paragraph.** v1.0 specified a separate native **macOS trainer app** (`Cladiron Coach`) as *the* professional planning surface, sold separately. That framing is gone. The full trainer workbench now exists on **iPad** (keyboard-first, menu bar, pointer, multi-window) and — the distinctive claim of this revision — **complete trainer functionality on iPhone**, so a coach can run their roster, author a full per-set plan, review results, and send work from a phone on the gym floor. The Mac is **kept, and kept native**, but it is no longer a separate product: it is a **native macOS target sharing the same bundle ID and the same App Store record** as the iOS app, so one purchase covers every device. Monetization is re-cut to match: **planning your own training is free forever on every surface, Mac included** (with partner sessions and the full expert system), and the **only** in-app purchase is **Cladiron Pro**, which unlocks **clients** — one or forty, added from iPhone, iPad, or Mac, with iCloud keeping the roster and every draft in sync — starting with a **30-day free trial**.
+**What changed from v1.0, in one paragraph.** The active product is now explicitly
+self-planned: the athlete builds manually, starts from templates, or accepts
+suggestions from the automated scientific coach. Human trainer/client delivery,
+rosters, sharing, external packets, Pro gates, trials, and trainer-specific Mac
+work are retired from the roadmap. The only optional purchase is a $9.99
+“Contribute to development” consumable that adds a Supporter badge to Home and
+does not unlock functionality.
 
 > **v2.0 → v2.1 note.** v2.0 of this document eliminated the Mac app entirely and reached the desktop through **Mac Catalyst**. v2.1 reverses that specific delivery decision: the Mac app returns as a **native** target under Universal Purchase (§2.3, §38). Everything else v2.0 established — mobile-first trainer capability, the compact authoring model, and the free/Pro line — is unchanged and, if anything, better served. Because one App Store record carries exactly one macOS binary, the native target **replaces** the Catalyst destination; the two cannot coexist.
 
@@ -49,9 +94,9 @@ The document is organized in eight parts plus appendices:
 - **Part II — Architecture & data** — one app across four idioms; the unified planning model and complete data model.
 - **Part III — The scientific coach expert system** — the heart of the platform: how the evidence-based engine assists planning, what it knows, and how it stays defensible.
 - **Part IV — The athlete experience (iPhone-first)** — the free, self-coached app: a manual + assisted weekly planner.
-- **Part V — The trainer surface (iPad, Mac, iPhone)** — the professional planner at three densities, its command system, and the compact-width authoring model that makes a phone a real programming tool.
+- **Part V — Larger-surface self-planning (historical trainer section retained below)** — active work remains individual self-planning; the old trainer/client surface is non-normative.
 - **Part VI — The Apple Watch app** — execution.
-- **Part VII — Cross-cutting** — sync, privacy, monetization and the Pro gate, units, errors.
+- **Part VII — Cross-cutting** — private self-sync, privacy, optional contribution, units, errors.
 - **Part VIII — Delivery** — phasing, work-streams, acceptance, testing.
 - **Appendices** — citation registry, formula reference, exercise/taxonomy schemas, keyboard command reference, consolidated type catalog, glossary, mockup catalog.
 
@@ -61,14 +106,16 @@ Evidence claims are cited inline as `[Author Year]` and collected with DOIs in *
 
 ## The 30-second summary
 
-Cladiron is an **Apple-native, evidence-based strength-and-conditioning platform**. It is **one product** with **four native surfaces** and one brain, sold once:
+Cladiron is an **Apple-native, evidence-based strength-and-conditioning platform**. It is one product with an iPhone app, an embedded Watch app, and optional larger-surface self-planning:
 
-1. **Self-coached athletes** plan their week in the **Plan tab** — by hand, from pre-made plans, with a **training partner**, or with **coach-expert-system assistance** — and execute on Apple Watch. All of this is **free, forever, on iPhone, iPad, and Mac alike**.
-2. **Personal trainers** turn on **Trainer mode** and get a roster, a full per-set planner, prescribed-vs-actual review, templates, multi-client operations, and Excel export. On **iPad** this is a three-column, keyboard-first workbench with a menu bar; on **Mac** it is a **native macOS app** with the same capabilities at desktop density; on **iPhone** it is a re-thought compact-width authoring system that can produce the same plan, set for set, one-handed. Clients can be added from **any** of the three, and iCloud keeps the roster, drafts, and templates in step.
-3. **One App Store record, Universal Purchase.** The Mac app is not a second product and not a second price: same bundle ID, same record, one download entitlement. The only money in the product is **Cladiron Pro**, an in-app purchase that unlocks **clients** — 30-day free trial, and a purchase made on any device unlocks every device.
-4. **Every client can be coached.** Connected Cladiron clients receive plans and return results over CloudKit sharing. External clients on Android, the web, or paper receive a polished portable plan packet through the trainer's system Mail composer or Share sheet and report results for manual entry. Neither path requires a Cladiron server or account.
+1. **Self-planned athletes** plan their week in the **Plan tab** — by hand, from pre-made plans, with a training partner, or with **automated coach assistance** — and execute on Apple Watch.
+2. The automated coach generates, critiques, progresses, and explains suggestions; the user remains the author and decides what to accept or edit. It is not a human trainer, a client service, or an always-on improvisational coach.
+3. All core planning, coach assistance, execution, history, insights, templates, export, and partner sessions are available without a feature gate. The only purchase is an optional **$9.99 “Contribute to development”** consumable that adds a **Supporter** badge to Home.
+4. Private iCloud sync supports the same user's devices. There is no client delivery, roster, invite, external packet, or human-coach sharing path.
 
-The same plan object, the same execution on the wrist, and the same review flow serve everyone. A client's **"plan"** can originate from **themselves or their personal trainer** — the two are the same data, authored by different people, on whatever screen the author happens to be holding.
+The same plan object, execution on the wrist, and review flow serve the user.
+Plan provenance distinguishes manual, template, and automated-coach-suggested
+origins; the user remains responsible for accepting or editing every suggestion.
 
 The differentiator is the **scientific coach expert system**: an evidence-gated engine that generates, critiques, and progresses plans using published sport-science evidence (volume landmarks, proximity-to-failure, %1RM/RPE-RIR prescription, periodization, autoregulation, fatigue management), always with a cited rationale — not a black-box LLM.
 
@@ -1697,6 +1744,12 @@ A user who arrives intending to coach (from the App Store listing, a referral, o
 
 # PART V — THE TRAINER SURFACE (iPAD, MAC, iPHONE)
 
+> **v2.6 status: historical, non-normative.** This entire former trainer
+> surface is retained for decision history only. Do not implement Trainer mode,
+> clients, rosters, human-coach delivery, Pro gates, or trainer-specific Mac
+> work. Active authoring is the user's own manual/template plan plus automated
+> coach suggestions.
+
 Trainer mode is the professional configuration of the same app: manage a roster of clients, plan for each with the full expert-system-assisted planner, review what clients actually did, maintain reusable templates, and export everything. v1.0 put this on a separate native Mac app; v2.0 puts it **on every device the trainer owns**, at three interaction densities that produce identical output (§2.3, §7.5).
 
 This part is organized so that §31 (iPad) is the reference implementation, §32 (iPhone) is the compact-width re-expression, §33 is the command system they share, and §38 is what changes when the iPad build runs on a Mac.
@@ -2342,6 +2395,11 @@ Execution **never depends on connectivity**: the plan is available locally on th
 
 ## 42. CloudKit sharing specification
 
+> **v2.6 status: retired from the active plan.** The active product uses only
+> private iCloud synchronization for the user's own devices. CKShare zones,
+> client invitations, result return, and trainer/client sharing below are
+> historical v2.5 requirements and must not be expanded.
+
 The **serverless trainer↔client connection**: plan delivery and result return with **no custom server and no custom accounts**.
 
 ### 42.1 Model
@@ -2435,9 +2493,39 @@ Those surfaces must link to the open project and clearly distinguish its license
 from Cladiron's all-rights-reserved application code. Third-party attribution
 and share-alike obligations for bundled assets remain unaffected.
 
-## 44. Monetization: Cladiron Pro and the client gate
+## 44. Monetization: optional development contribution
 
-This section replaces v1.0 §40 in full. The full business case is in `TRAINER_PLATFORM_STRATEGY.md`; this specifies the product-side mechanics.
+> **v2.6 status: superseded.** There is no Pro tier, entitlement gate, trial,
+> paywall, or client-gated feature in the active product. Replace this section's
+> policy with one optional $9.99 “Contribute to development” consumable. A
+> successful purchase adds a Supporter badge to Home and unlocks nothing.
+
+### 44.1 Active v2.6 contribution policy
+
+All product functionality is available without purchase. There is no Pro tier,
+subscription, trial, entitlement resolver, paywall, or feature downgrade.
+
+- The only planned purchase is the optional consumable **“Contribute to
+  development”** at **$9.99**.
+- A successful transaction records the contribution and displays a **Supporter**
+  badge on the user's Home view.
+- The purchase unlocks nothing and is never required for planning, automated
+  coach assistance, templates, insights, execution, history, export, partner
+  sessions, readiness, or private self-device sync.
+- Contribution handling is local/private, non-analytics, and idempotent for
+  duplicate transaction callbacks. Failure, cancellation, or no purchase leaves
+  the core product unchanged.
+- Home may acknowledge Supporter status, but no view may use it to gate or
+  degrade a capability.
+
+The remainder of the old §44 text is retained below as **historical v2.5
+context only**. It is not an active product requirement and must not be
+implemented.
+
+### Historical v2.5 monetization policy (non-normative)
+
+This historical text previously described Cladiron Pro, trials, and client
+gating. It is superseded by the v2.6 contribution policy above.
 
 ### 44.1 The one-sentence rule
 
@@ -2607,7 +2695,7 @@ This part sequences the build for a solo developer working plan-first and handin
 
 ## 47. Phased implementation plan
 
-The build order is chosen so each phase produces something usable and de-risks the next. Compared with v1.0, the trainer phase is no longer a new app: it is a mode added to an existing shipped app, which is why it moves earlier and splits into two shippable halves.
+The build order is chosen so each phase produces something usable and de-risks the next. The active roadmap is single-user: manual self-planning comes first, automated coach assistance follows, and later work deepens the same individual-user experience.
 
 ### 47.0 Reconciled shipped baseline (2026-09-02)
 
@@ -2650,13 +2738,15 @@ planner mockup conflicts with the shipped training loop, Appendix AA wins.
 ### Phase 0 — Foundations and sync proof
 
 **Goal:** close only the remaining gaps in the already-shipped spine—especially
-the future unified `Plan` model and trainer/client CloudKit sharing proof—without
+the future unified `Plan` model and private self-device sync proof—without
 replacing working persistence, Watch execution, or the DB++ bridge.
 
 **Build:**
-- `CadenceCore` **data model** (§9) including `SetScheme`, `PerformerRef`/`PartnerRef`, and `ProEntitlement`, with domain invariants (private-init prescription types stubbed).
+- `CadenceCore` **data model** (§9) including `SetScheme` and `PerformerRef`/`PartnerRef`, with domain invariants (private-init prescription types stubbed). Do not add new Pro/entitlement types.
 - **Local store**: SwiftData models with CloudKit-compatible shapes (all optional/defaulted, optional inverse relationships, no `@Attribute(.unique)`, stable UUID + updatedAt + originDevice), additive-only schema evolution, SHA-256 keys.
-- **Single-user CloudKit private sync** and a **CloudKit sharing proof** (one trainer zone, one client participant, a plan written and read back) — including **%-snapshot at send** and the shipped boundary that only the phone bridges Watch results into CloudKit.
+- **Single-user CloudKit private sync** across the user's own devices, including
+  stable plan/result convergence and the shipped boundary that only the phone
+  bridges Watch results into CloudKit. There is no sharing proof or client zone.
 - The **Watch execution adapter**: prove that the unified plan can populate the shipped Watch strength/cardio inputs without changing its `HKWorkoutSession`, WatchConnectivity, local persistence, or completion semantics.
 - Test with one iPad, one iPhone, one Watch, including a set logged in Airplane Mode arriving after reconnect.
 
@@ -2673,12 +2763,12 @@ replacing working persistence, Watch execution, or the DB++ bridge.
 - **Execution from the plan** on Watch/iPhone with Live Activity.
 - **Migration** from the live-coach version preserving history/e1RM/per-muscle progress and every existing unplanned/manual workout path.
 
-**Outcome:** a complete, free, shippable athlete app on two idioms. Note that the compact authoring system — the hardest UI in the product — ships here, in the athlete context, where it gets real use and feedback long before trainers depend on it. This is the single biggest sequencing change from v1.0 and the main de-risking move for Phase 3.
+**Outcome:** a complete, free, shippable self-planning app on two idioms. The compact authoring system ships in the individual-user context, where it gets real use and feedback before later platform polish.
 
 ### Phase 2 — The scientific coach expert system
 
-**Goal:** extend the shipped DB++-backed deterministic coach into the revised
-Plan-tab experience. Generation, observations, suggestions, adaptation,
+**Goal:** extend the shipped DB++-backed deterministic automated coach into the
+revised Plan-tab experience. Generation, observations, suggestions, adaptation,
 progression, citation resolution, and contract tests already exist; implement
 only the missing unified-plan workflows, critique/autoregulation depth, and UI.
 
@@ -2688,60 +2778,87 @@ only the missing unified-plan workflows, critique/autoregulation depth, and UI.
 - **Generate**, **critique**, **progress**, **substitute**, and **insights** (§14), wired into the Plan tab and Home/Progress insights.
 - **Explainability**: "Why this plan," per-decision rationale with confidence and tappable citations, including the compact bottom-sheet presentation (§17).
 
-**Outcome:** the free app now offers assisted planning and evidence-based insights — the core value proposition, live for every athlete.
+**Outcome:** the free app now offers automated coach-assisted planning and
+evidence-based insights — the core value proposition, live for every athlete.
 
-### Phase 3 — Trainer mode on iPad (the paid product)
+### Phase 3 — Self-planning depth and optional supporter contribution
 
-**Goal:** turn the platform two-sided and commercial, starting on the idiom where professional programming is densest.
-
-**Build:**
-- **Trainer mode shell**: Clients tab / sidebar, roster, dashboard, per-client Overview, Strength Profile (§29–30, §31.7).
-- **iPad three-column workbench** and the **per-set grid** with keyboard traversal, multi-select, drag-and-drop, undo/redo (§31).
-- **The command system** (§33): `CadenceCommands`, iPad menu bar, ⌘-hold HUD, command palette, full shortcut set (Appendix Y).
-- **Expert-system assistance for trainers**: generate, **critique before send**, progress, substitute, deload (§34).
-- **Trainer↔client CloudKit sharing** in production: invite/accept, send plan (snapshot), execute-only client prescription, **prescribed-vs-actual review**, e1RM suggestions (§42, §36).
-- **External-client delivery**: delivery-mode onboarding, portable packet
-  model/renderers, iOS/iPadOS Mail and share adapters, external status, and
-  manual append-only result entry (Appendix Z). It ships with Trainer mode so
-  “client” never means “owns an iPhone.”
-- **Templates/programs/multi-client ops** (§35).
-- **Excel export** (§37).
-- **StoreKit 2 Pro entitlement**, the capability API, the 30-day trial, the lapse/grace behaviour, and paywall conduct (§44).
-
-**Outcome:** a commercial trainer product on iPad, with the athlete app unchanged and still free.
-
-### Phase 4 — Trainer mode on iPhone, and the native Mac app
-
-**Goal:** deliver the two propositions that distinguish this revision — a trainer product in your pocket, and the same app on the desktop.
+**Goal:** make the individual user's planning loop deep, coherent, and
+pleasant without introducing any feature gate.
 
 **Build:**
-- **iPhone trainer surfaces**: roster triage, client chip + quick switcher + swipe paging (§32.8), compact review diff rows (§32.11), Copy-to-client with recalculation preview, Send preflight (§32.9). *Most of the authoring machinery already exists from Phase 1 — this phase is navigation, triage, review, and send.*
-- **Native macOS target**: the Mac shell over `CadenceUI` — scene/window model with restoration, the `.commands` menu bar, native table metrics, `NSSavePanel`/`NSOpenPanel`, printing, right-click menus, multi-window drag-and-drop, Services (§38).
-- **Universal Purchase configuration**: shared bundle ID, one App Store record with both platforms, shared StoreKit products — **configured with the first Mac release, because separate records can never be merged** (§38.5, L.6).
-- **Hardware-keyboard support on iPhone** (§33.5).
-- Acceptance criterion 12 (author a full session entirely on iPhone) and the native Mac test plan (§38.6).
+- Complete cardio, mobility, instruction, periodization, mesocycle, and repeat
+  planning within the same self-authored plan model.
+- Add richer automated coach critique, progression, substitution,
+  autoregulation, deload detection, and cited insights.
+- Add optional StoreKit 2 handling for the **$9.99 “Contribute to development”**
+  consumable; after successful purchase, persist/display the **Supporter** badge
+  on Home. No entitlement resolver, trial, paywall, or capability gate.
+- Keep exports, partner sessions, private self-device sync, and all shipped
+  execution paths available regardless of supporter status.
 
-**Outcome:** one app, every screen — the thesis of this revision, shipped.
+**Outcome:** a complete self-planning product with an optional, non-functional
+support contribution.
 
-### Phase 5 — Depth, autoregulation, and the natural-language interface
+### Phase 4 — Platform polish for the individual user
+
+**Goal:** improve self-planning and execution across the supported Apple
+surfaces without adding a human-coaching or client-delivery product.
 
 **Build:**
-- **Autoregulation + deload detection** in production across athlete and trainer surfaces; **periodization/mesocycle** programs.
-- **LLM-as-interface layer** (on-device Foundation Models / Private Cloud Compute), strictly bounded (§16) and layered *above* the deterministic shorthand grammar.
-- **HealthKit readiness** signals as soft modifiers and insights.
-- **Complications, widgets, App Intents, Handoff** polish; the roster widget.
-- Richer insights, coach-methodology preferences, speed refinements.
+- iPad/larger-surface self-planning only where it shares the individual user's
+  plan model and does not become a trainer workbench.
+- Bounded natural-language interface over deterministic planning requests;
+  the automated engine remains the only prescription authority.
+- HealthKit readiness, complications, widgets, App Intents, Handoff, and
+  accessibility/performance polish.
+- Retire or migrate obsolete trainer/client/Pro compatibility code when safe;
+  do not add new behavior to it.
+
+**Outcome:** one coherent self-planned experience across the supported Apple
+surfaces, with no human-coach delivery surface.
 
 ### Phasing principles
 
-- Each phase ships something usable; the free athlete app (Phases 1–2) is in users' hands and generating feedback before the paid trainer mode (Phase 3).
-- **The compact authoring system ships in Phase 1**, not Phase 4 — building the hardest interaction model under the lowest stakes.
-- The **shared core and engine are built once** (Phases 0–2) and serve every surface.
-- The hard rules (snapshot-at-send, shipped execution preservation, phone-owned CloudKit, entitlement-never-gates-existing-data) are established early and never revisited.
+- Each phase ships something usable; manual self-planning lands before deeper
+  automated coach assistance and platform polish.
+- **The compact authoring system ships in Phase 1**, alongside the self-planned
+  app, where it gets real use and feedback.
+- The **shared core and engine are built once** and serve every supported surface.
+- The hard rules are shipped-execution preservation, private self-device sync,
+  user control over automated suggestions, cited deterministic prescriptions,
+  and no purchase-gated core functionality.
 
 ## 48. Work-stream specifications
 
 Work-streams (WS) are the units handed to the coding tool. Each has a scope, key dependencies, and its own acceptance signal.
+
+> **Active v2.6 filter:** the trainer/client, sharing, external-delivery, Pro,
+> and Universal Purchase work streams below are retained as historical v2.5
+> entries only and are **retired**. Do not implement or extend them. Active
+> work is limited to self-plan authoring, private self-device sync, automated
+> coach assistance, optional supporter contribution, and Apple-platform polish.
+
+### v2.6 active work-stream set
+
+- `WS-CORE-MODEL`, `WS-STORE`, and `WS-SYNC-PRIVATE`: self-owned plan/result
+  data, additive persistence, and private sync across the user's devices.
+- `WS-EXECUTION-COMPAT`, `WS-WATCH-EXEC`, and `WS-PLAN-BUILDER`: preserve the
+  shipped loop while completing manual, template, partner, and scheduled plans.
+- `WS-SETSTACK`, `WS-SETGRID`, `WS-SCHEMES`, `WS-SHORTHAND`, and `WS-COMMANDS`:
+  self-planning authoring at supported widths.
+- `WS-EVIDENCE-GATE`, `WS-KNOWLEDGE-BASE`, `WS-ENGINE-*`, `WS-INSIGHTS`,
+  `WS-AUTOREG`, `WS-LLM`, and `WS-READINESS`: deterministic automated-coach
+  suggestions, critique, progression, rationale, and readiness assistance.
+- `WS-REVIEW`, `WS-TEMPLATES`, `WS-EXPORT`, and `WS-SUPPORTER-CONTRIBUTION`:
+  personal review/templates/export plus the optional $9.99 contribution that
+  only adds the Home Supporter badge.
+
+The following v2.5 work streams are explicitly retired: `WS-SHARE`,
+`WS-TRAINER-SHELL`, `WS-DRAGDROP`, `WS-EXTERNAL-CLIENTS`,
+`WS-PRO-ENTITLEMENT`, `WS-IPHONE-TRAINER`, `WS-MAC-NATIVE`, and
+`WS-UNIVERSAL-PURCHASE`. `WS-PARTNERS` remains only for partner execution and
+must not contain a promote-to-client path.
 
 - **WS-CORE-MODEL** (Phase 0). The `CadenceCore` data model (§9) including schemes, performers, and entitlement types, plus domain-invariant scaffolding. *Done when:* the full model compiles, round-trips through Codable, and invariant types reject un-cited prescriptions in unit tests.
 - **WS-STORE** (Phase 0). SwiftData models, CloudKit-compatibility conformance, additive schema evolution, append-only result enforcement, SHA-256 keys. *Done when:* all entities persist/query; a versioned migration runs; a fuzz test confirms no result overwrite.
@@ -2780,6 +2897,36 @@ Work-streams (WS) are the units handed to the coding tool. Each has a scope, key
 - **WS-READINESS** (Phase 5). HealthKit readiness signals as soft modifiers. *Done when:* readiness biases proposals softly and never as a medical claim.
 
 ## 49. Acceptance criteria
+
+### v2.6 active acceptance criteria
+
+The following are the current acceptance criteria. The v2.5 Trainer mode and
+client-delivery criteria retained below are historical and non-normative; they
+must not be implemented.
+
+1. A user can build and edit a complete weekly plan manually, from a template,
+   or by accepting/editing an automated coach suggestion.
+2. The automated coach generates, critiques, progresses, substitutes, and
+   explains proposals deterministically with cited rationale; it never silently
+   changes the user's plan and never acts as a human coach.
+3. Manual planning, templates, automated coach assistance, insights, execution,
+   history, partner sessions, export, and readiness features work without a
+   Pro entitlement, trial, paywall, or purchase.
+4. There is no active Trainer mode, client relationship, roster, invite/accept
+   flow, CKShare delivery, external-client packet, or human-coach result path.
+5. Private iCloud sync converges the user's own plans/results across supported
+   devices; it does not create cross-user sharing zones.
+6. A successful optional **$9.99 “Contribute to development” consumable**
+   records the contribution and displays a **Supporter** badge on Home. It
+   unlocks no feature, is not required for any workflow, and cannot make core
+   functionality unavailable when absent.
+7. Supporter badge display and contribution handling do not introduce analytics,
+   advertising, a paywall, or a direct entitlement check in planning views.
+
+The criteria numbered 12–45 below are the retained v2.5 history. Criteria 12–39
+that describe trainers, clients, Pro, external delivery, or Universal Purchase
+are retired by v2.6; the execution-compatibility criteria remain useful only
+where they concern the user's own plan and shipped training loop.
 
 **Athlete app (Phases 1–2):**
 1. A self-coached athlete can build a week by hand with per-set prescriptions (distinct reps/load/%1RM/RPE/rest/type per set) and execute it on the Watch — **on iPhone and on iPad**.
@@ -2838,6 +2985,26 @@ Work-streams (WS) are the units handed to the coding tool. Each has a scope, key
 45. A real Watch completes strength and cardio with the phone unreachable; local data, `HKWorkoutSession`, HR, audio/haptics, units, cooldown, summary, and cancel semantics remain intact, and duplicate/out-of-order WatchConnectivity delivery produces one phone workout.
 
 ## 50. Testing and QA
+
+> **v2.6 testing boundary:** remove Trainer mode, client-sharing, Pro,
+> Universal Purchase, and external-client tests from the active matrix. Add
+> automated-coach determinism, no-gating, private self-sync, and Supporter
+> contribution/badge tests. The v2.5 entries below are historical unless they
+> concern the user's own plan, execution, or shipped compatibility contract.
+
+- **No-gating test:** every core planning, automated-coach, execution, history,
+  export, partner, and readiness action remains available with no purchase,
+  no trial, and no entitlement.
+- **Supporter contribution test:** a successful $9.99 consumable transaction
+  displays the Supporter badge on Home and unlocks nothing; cancellation,
+  failure, duplicate callbacks, and no-purchase states leave core behavior
+  unchanged.
+- **Scope test:** CI fails if active product code adds Trainer mode, client
+  relationship, roster, CKShare, external-client delivery, Pro entitlement,
+  trial, or paywall behavior.
+- **Automated-coach determinism test:** identical structured input and knowledge
+  base version produce identical suggestions and cited rationale; suggestions
+  remain user-accepted edits rather than silent mutations.
 
 - **Evidence-gate CI (blocking):** citation-resolution, rule-coverage, and **shorthand alias-uniqueness per locale**.
 - **Entitlement CI (blocking):** no direct entitlement reads in views; every gated action enumerated and routed through `TrainerCapability`.

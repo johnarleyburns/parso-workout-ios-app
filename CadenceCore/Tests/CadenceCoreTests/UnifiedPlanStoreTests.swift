@@ -30,6 +30,20 @@ final class UnifiedPlanStoreTests: XCTestCase {
         XCTAssertEqual(try UnifiedPlanStore.fetch(id: newer.id, in: context), newer)
     }
 
+    func testContentEquivalentPlanDoesNotRewriteRevisionTimestamp() throws {
+        let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
+        let original = fixturePlan(title: "Stable", updatedAt: Date(timeIntervalSince1970: 200))
+        let record = try UnifiedPlanStore.upsert(original, originDevice: "iphone", in: context)
+
+        var regenerated = original
+        regenerated.updatedAt = Date(timeIntervalSince1970: 900)
+        let retained = try UnifiedPlanStore.upsert(regenerated, originDevice: "iphone", in: context)
+
+        XCTAssertTrue(record === retained)
+        XCTAssertEqual(retained.updatedAt, original.updatedAt)
+        XCTAssertEqual(try UnifiedPlanStore.fetch(id: original.id, in: context), original)
+    }
+
     func testEqualTimestampUsesStableOriginDeviceTieBreak() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let timestamp = Date(timeIntervalSince1970: 300)

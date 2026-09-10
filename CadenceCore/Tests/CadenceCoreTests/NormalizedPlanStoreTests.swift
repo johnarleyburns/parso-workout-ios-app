@@ -67,6 +67,23 @@ final class NormalizedPlanStoreTests: XCTestCase {
         XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanItem>()).count, 2)
     }
 
+    func testContentEquivalentPlanDoesNotRewriteNormalizedTree() throws {
+        let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
+        let planID = PlanID(raw: UUID())
+        let original = plan(id: planID, weekID: UUID(), dayID: UUID(), sessionID: UUID(),
+                            title: "Stable", updatedAt: 10, itemCount: 1)
+        let header = try NormalizedPlanStore.upsert(original, originDevice: "iphone", in: context)
+
+        var regenerated = original
+        regenerated.updatedAt = Date(timeIntervalSince1970: 900)
+        let retained = try NormalizedPlanStore.upsert(regenerated, originDevice: "iphone", in: context)
+
+        XCTAssertTrue(header === retained)
+        XCTAssertEqual(retained.updatedAt, original.updatedAt)
+        XCTAssertEqual(try NormalizedPlanStore.fetch(id: planID, in: context), original)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanItem>()).count, 1)
+    }
+
     func testClientRelationshipRoundTripsShareMetadataAndLifecycle() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let relationship = ClientRelationship(

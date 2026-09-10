@@ -1,4 +1,4 @@
-.PHONY: build test test-core test-features guardrails smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
+.PHONY: build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
 
 build:
 	swift build --package-path CadenceCore
@@ -21,6 +21,14 @@ guardrails:
 	bash scripts/check-engine-boundary.sh
 	bash scripts/check-history-safety.sh
 	bash scripts/check-cloudkit-schema.sh
+	bash scripts/check-watch-appicon.sh
+	bash scripts/check-xcodebuild-platform.sh
+
+check-watch-appicon:
+	bash scripts/check-watch-appicon.sh
+
+check-xcodebuild-platform:
+	bash scripts/check-xcodebuild-platform.sh
 
 # iPhone smoke gate: build once, then run the app-target launch regression and
 # the single normal UI smoke test on a pinned simulator. Manual App Store
@@ -40,10 +48,10 @@ SMOKE_SCHEME ?= Cadence
 SMOKE_SIM_NAME ?= Cadence-iPhone-16
 SMOKE_DEST ?= platform=iOS Simulator,name=$(SMOKE_SIM_NAME)
 smoke:
-	xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme "$(SMOKE_SCHEME)" \
+	bash scripts/xcodebuild-safe.sh build-for-testing -project Cadence/Cadence.xcodeproj -scheme "$(SMOKE_SCHEME)" \
 	  -testPlan Cadence -derivedDataPath .build/dd -destination '$(SMOKE_DEST)' -quiet
 	@status=0; \
-	  xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "$(SMOKE_SCHEME)" \
+	  bash scripts/xcodebuild-safe.sh test-without-building -project Cadence/Cadence.xcodeproj -scheme "$(SMOKE_SCHEME)" \
 	    -testPlan Cadence -derivedDataPath .build/dd -destination '$(SMOKE_DEST)' \
 	    -only-testing:CadenceTests/AppModelWCSessionDelegateTests/testActivationCallbackCanEnterFromWatchConnectivityQueue \
 	    -only-testing:CadenceUITests/SmokeLaunchTests/testIPhoneStrengthWorkoutPlansLogsAndCompletes \
@@ -56,15 +64,15 @@ smoke:
 # Local only: never in CI.
 WATCH_SMOKE_DEST ?= platform=watchOS Simulator,name=$(WATCH_SIM_NAME),OS=26.5
 watch-smoke:
-	xcodebuild build-for-testing -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
+	bash scripts/xcodebuild-safe.sh build-for-testing -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
 	  -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' -quiet
 	@status=0; \
-	  xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
+	  bash scripts/xcodebuild-safe.sh test-without-building -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
 	    -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' \
 	    -only-testing:"Cadence Watch App Watch AppTests" \
 	    -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 || status=$$?; \
 	  if [ $$status -eq 0 ]; then \
-	    xcodebuild test-without-building -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
+	    bash scripts/xcodebuild-safe.sh test-without-building -project Cadence/Cadence.xcodeproj -scheme "Cadence Watch App Watch App" \
 	      -derivedDataPath .build/dd-watch -destination '$(WATCH_SMOKE_DEST)' \
 	      -only-testing:"Cadence Watch App Watch AppUITests/WatchSmokeTests/testWatchStrengthWorkoutStartsLogsAndCompletes" \
 	      -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 || status=$$?; \

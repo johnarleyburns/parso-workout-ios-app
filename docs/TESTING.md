@@ -59,10 +59,10 @@ This is also what GitHub Actions runs in `.github/workflows/ios.yml`.
 Use Xcode for app/watch targets and simulator smoke tests:
 
 ```sh
-xcodebuild -project Cadence/Cadence.xcodeproj -scheme Cadence \
+bash scripts/xcodebuild-safe.sh -project Cadence/Cadence.xcodeproj -scheme Cadence \
   -destination 'platform=iOS Simulator,name=iPhone 16' build
 
-xcodebuild build -project Cadence/Cadence.xcodeproj \
+bash scripts/xcodebuild-safe.sh build -project Cadence/Cadence.xcodeproj \
   -scheme 'Cadence Watch App Watch App' \
   -destination 'generic/platform=watchOS' \
   CODE_SIGNING_ALLOWED=NO
@@ -126,7 +126,7 @@ For implementation plans and host-only verification, use:
 swift test --package-path CadenceCore
 bash scripts/check-test-pyramid.sh
 bash scripts/check-no-network.sh
-xcodebuild build -project Cadence/Cadence.xcodeproj \
+bash scripts/xcodebuild-safe.sh build -project Cadence/Cadence.xcodeproj \
   -scheme 'Cadence Watch App Watch App' \
   -destination 'generic/platform=watchOS' \
   CODE_SIGNING_ALLOWED=NO

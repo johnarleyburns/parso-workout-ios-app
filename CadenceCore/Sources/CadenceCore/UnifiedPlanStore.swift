@@ -35,6 +35,18 @@ public enum UnifiedPlanStoreError: Error, Equatable, Sendable {
 public enum UnifiedPlanStore {
     public static let currentPayloadVersion = 1
 
+    /// Coach projections are rebuilt with a fresh generation timestamp even
+    /// when their user-visible content did not change. Treat that timestamp as
+    /// a revision marker, not content, so rebuilding a projection does not
+    /// rewrite the SwiftData record or enqueue another CloudKit export.
+    public static func contentEquivalent(_ lhs: Plan, _ rhs: Plan) -> Bool {
+        var lhs = lhs
+        var rhs = rhs
+        lhs.updatedAt = .distantPast
+        rhs.updatedAt = .distantPast
+        return lhs == rhs
+    }
+
     /// Inserts a new plan or applies the newer value by `updatedAt`. Equal-date
     /// writes use the origin-device ID as a deterministic tie-breaker, matching
     /// the value-level sharing contract.
@@ -48,6 +60,11 @@ public enum UnifiedPlanStore {
         )).first
 
         if let existing {
+            if let existingPlan = try? existing.decodedPlan(),
+               contentEquivalent(plan, existingPlan),
+               existing.deletedAt == nil {
+                return existing
+            }
             let shouldReplace = plan.updatedAt > existing.updatedAt ||
                 (plan.updatedAt == existing.updatedAt && originDevice > existing.originDevice)
             guard shouldReplace else { return existing }

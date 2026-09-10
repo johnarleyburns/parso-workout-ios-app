@@ -14,12 +14,14 @@ struct PlanningView: View {
     @Environment(AppSettings.self) private var settings
     @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @Query(sort: \SessionTemplate.name) private var templates: [SessionTemplate]
+    @Query(sort: \PersistedPlan.updatedAt, order: .reverse) private var persistedPlans: [PersistedPlan]
 
     @State private var segment: Segment = .routines
     @State private var query = ""
     @State private var selectedGroup: MuscleGroup?
     @State private var browseAll = false
     @State private var templateEditorPresented = false
+    @State private var manualPlan: Plan?
 
     enum Segment: String, CaseIterable { case routines, exercises }
 
@@ -106,6 +108,9 @@ struct PlanningView: View {
             browseAll = false
         }
         .sheet(isPresented: $templateEditorPresented) { TemplateEditorView() }
+        .sheet(item: $manualPlan) { plan in
+            ManualPlanView(plan: plan, onStart: startAuthoredSession)
+        }
         .accessibilityIdentifier("planning")
     }
 
@@ -207,6 +212,35 @@ struct PlanningView: View {
 
     private var routinesList: some View {
         List {
+            Section("My plans") {
+                let plans = authoredPlans
+                if plans.isEmpty {
+                    Text("Build a week from scratch, then start any session from the plan.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(plans) { plan in
+                    Button {
+                        manualPlan = plan
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(plan.title).font(.headline)
+                            Text(planSummary(plan))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("planning.authoredPlan.\(plan.id.raw.uuidString)")
+                }
+                Button {
+                    manualPlan = ManualPlanBuilder.blankPlan()
+                } label: {
+                    Label("New blank week", systemImage: "plus.circle.fill")
+                }
+                .accessibilityIdentifier("planning.newBlankWeek")
+            }
+
             if trimmedQuery.isEmpty {
                 if !favoriteRoutines.isEmpty {
                     Section("Favorites") {
@@ -260,6 +294,51 @@ struct PlanningView: View {
         .listStyle(.insetGrouped)
         .sheet(item: $routineInfoSheet) { info in
             RoutineInfoSheet(info: info)
+        }
+    }
+
+    private var authoredPlans: [Plan] {
+        persistedPlans.compactMap { record in
+            guard let plan = try? record.decodedPlan(), plan.provenance == .selfAuthored else {
+                return nil
+            }
+            return plan
+        }
+    }
+
+    private func planSummary(_ plan: Plan) -> String {
+        let sessions = plan.weeks.flatMap(\.days).flatMap(\.sessions)
+        let count = sessions.count
+        return "\(count) session\(count == 1 ? "" : "s") · \(plan.status == .active ? "Active" : "Draft")"
+    }
+
+    private func startAuthoredSession(_ session: Session) {
+        guard active.liveWorkout.active == nil else { return }
+        let names = session.orderedItems.compactMap { item -> (String, String)? in
+            guard case let .strength(strength) = item else { return nil }
+            let key = strength.exerciseKey.raw
+            let name = ExerciseLibrary.starter.first {
+                $0.sourceExerciseID == key || ExerciseLibrary.lookupKey($0.name) == key
+            }?.name ?? key.replacingOccurrences(of: "_", with: " ").capitalized
+            return (key, name)
+        }
+        do {
+            let runtime = try WorkoutRepository.startSession(
+                from: session,
+                athlete: AthleteExecutionSnapshot(),
+                exerciseNameByKey: Dictionary(names, uniquingKeysWith: { first, _ in first }),
+                in: context)
+            guard active.startStrength(runtime) else {
+                runtime.deletedAt = Date()
+                try? context.save()
+                return
+            }
+            WorkoutCues.singleStart(enabled: settings.workoutSounds)
+            manualPlan = nil
+            switchToWorkout()
+        } catch {
+            // The runtime adapter owns validation of prescription loads. An
+            // authored plan remains saved and editable if a start is rejected.
         }
     }
 

@@ -46,6 +46,27 @@ final class PerformerSetPlannerTests: XCTestCase {
         XCTAssertEqual(resolved.weightKg, 100)
     }
 
+    func testPreviousSetWeightBeatsHistoricalEstimateWhenNoSetLoadIsPlanned() {
+        let history = PerformerSetPlanner.History(
+            repsLoggedThisSession: [8],
+            lastWeightThisSessionKg: 75,
+            weightSamples: [SetSample(weight: 100, reps: 12)])
+        let resolved = PerformerSetPlanner.resolve(
+            setIndex: 1, performerPlan: nil, ownerPlan: [], ownerLadder: nil,
+            isOwner: false, history: history)
+        XCTAssertEqual(resolved.weightKg, 75)
+        XCTAssertEqual(resolved.weightBasis, .currentSession)
+    }
+
+    func testOwnerPlanWeightBeatsPreviousSetWeight() {
+        let history = PerformerSetPlanner.History(lastWeightThisSessionKg: 75)
+        let resolved = PerformerSetPlanner.resolve(
+            setIndex: 1, performerPlan: nil, ownerPlan: plan([8, 8], weight: 80),
+            ownerLadder: nil, isOwner: true, history: history)
+        XCTAssertEqual(resolved.weightKg, 80)
+        XCTAssertEqual(resolved.weightBasis, .ownerPlan)
+    }
+
     func testSetsBeyondThePlanFallThroughToHistory() {
         let history = PerformerSetPlanner.History(
             repLadders: [[20, 18, 16]], firstWorkingWeightKg: 45)

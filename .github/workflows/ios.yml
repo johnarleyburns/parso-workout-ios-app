@@ -55,6 +55,11 @@ jobs:
       - name: History persistence safety guardrail
         run: bash scripts/check-history-safety.sh
 
+      - name: Watch AppIcon and Xcode platform guardrails
+        run: |
+          bash scripts/check-watch-appicon.sh
+          bash scripts/check-xcodebuild-platform.sh
+
   # XCUITest smoke suites are intentionally NOT run in CI: simulator-based UI
   # tests are unreliable on shared GitHub Actions runners (cold-launch timing,
   # shared CPU). The reliable CI gate is core-tests (host SwiftPM package tests +
@@ -148,7 +153,7 @@ jobs:
           TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
           set -eo pipefail
-          xcodebuild archive \
+          bash scripts/xcodebuild-safe.sh archive \
             -project Cadence/Cadence.xcodeproj \
             -scheme Cadence \
             -configuration Release \

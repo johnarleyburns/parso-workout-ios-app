@@ -1,6 +1,113 @@
 # Current Status
 
-Updated: 2026-09-07
+Updated: 2026-09-09
+
+## Current work slice — Watch AppIcon recurrence guard — COMPLETE 2026-09-09
+
+The Watch AppIcon files are present and valid, but a global `-sdk iphoneos`
+override can force the embedded Watch target through the iPhone asset compiler.
+This produces the misleading “AppIcon did not have any applicable content”
+failure even when the Watch asset is correct. The checked-in Watch AppIcon
+contract guard now validates the metadata, referenced PNG, dimensions, alpha
+channel, and effective Watch target SDK. Repository-owned Xcode builds now run
+through a wrapper that rejects explicit SDK overrides, and the destination-only
+contract is checked in local guardrails and CI. Verification passed without
+launching a simulator. The aggregate guardrail remains blocked by the existing
+Phase 1 planner view-size violations, not by this guard.
+
+## Current product scope correction — self-planned, automated coach only — COMPLETE 2026-09-09
+
+The active roadmap is now explicitly single-user. There is no personal trainer,
+client, Trainer mode, roster, human-coach delivery, invite/accept flow, CKShare
+sharing, external-client packet, Pro tier, trial, paywall, or gated feature.
+Planning is manual, template-based, or assisted by the automated scientific
+coach; the user remains the author and accepts or edits suggestions.
+
+The only planned purchase is an optional **$9.99 “Contribute to development”**
+consumable. A successful purchase adds a **Supporter** badge to Home and
+unlocks nothing. Core planning, coach assistance, execution, history, export,
+partner sessions, and readiness remain available without purchase.
+
+The authoritative plan and revision notes now mark the former trainer/client
+and Pro roadmap as historical and retired. The active sequence is manual
+self-planning, automated coach depth, optional Supporter handling, then
+platform/readiness polish. Private iCloud remains limited to the user's own
+devices. Existing compatibility code is not an invitation to expand the
+retired model; remove or migrate it only as a separate cleanup task.
+
+## Current investigation — cardio intensity credit consistency — INTERVAL-AWARE FIX IDENTIFIED, PLANNED 2026-09-09
+
+The cardio paths currently disagree. `TrainingEvent.from(cardio:userAge:)` uses
+both average and peak heart rate: at age 50, the app's age-based max HR is about
+173, so an average of 136 is 78.6% while a recorded peak of 170 is 98.3%; the
+existing peak threshold classifies that session as vigorous and gives double
+moderate-equivalent credit. The `YourWeekPresenter` intensity path uses average
+HR only, however, so it can show a lower/base intensity for the same workout and
+cannot promote it from the peak value. If the visible “base” label came from a
+coach recommendation rather than workout credit, that is a separate planned
+session classification, but the HR classification split is an obvious defect.
+
+The better fix is not to promote the entire workout from its maximum sample. A
+136 average with repeated 161 peaks at age 50 is consistent with an
+interval-like effort: 136 is about 79% of the app's estimated HRmax of 173,
+while 161 is about 93%. The current all-session buckets make that look like one
+continuous moderate workout or, in the other path, incorrectly give the whole
+session 2× credit. Official guidance also treats moderate and vigorous minutes
+as additive and uses a 2:1 vigorous-to-moderate equivalence, so the app should
+preserve the distribution of effort rather than discard it.
+
+Next fix: centralize a sample-based cardio intensity profile used by weekly
+zones, coach facts, and moderate-equivalent credit. Integrate the HR curve over
+time with zone weights (easy 0.5×, moderate 1×, vigorous 2×), and expose an
+interval-like flag when an `other` workout has at least two sustained high-HR
+bouts separated by recovery. Use hysteresis/debounce so a single noisy peak is
+not an interval; repeated Z4/Z5 bouts should be recognized even when the saved
+CardioType is `.other`. Keep the recorded modality unchanged, but let the
+derived event say interval-like and explain the weighted credit. When samples
+are unavailable, retain the age/average/peak fallback with lower confidence and
+do not infer repeated intervals from max HR alone.
+
+Add regression tests for age 50 / average 136 / repeated peak 161 asserting
+that high-zone time receives 2× credit, that the session is not treated as a
+plain brisk-walk-equivalent block, that a single isolated peak does not trigger
+interval detection, and that missing-HR fallback remains conservative. No
+simulator is required for this logic.
+
+## Current investigation — complete exercise variants and indexed search — FIX DESIGNED, PLANNED 2026-09-09
+
+The upstream coverage is present. Free Exercise DB++ v1.16.0 adds the
+vendor-neutral `Machine_Hip_Thrust` record and carries **Glute Drive** as a
+search alias, based on Hammer Strength and Matrix catalog review. The app pins
+DB++ 1.16.0, but its bridge currently drops aliases before building
+`ExerciseTemplate`, and the existing search index only sees canonical names and
+facets. This is why `glute drive` fails even though the upstream data caught it.
+
+The catalog/search model should separate **display variants** from **exercise
+identity**:
+
+- Preserve DB++ aliases through `ExerciseRecord` → `ExerciseTemplate`, keeping
+  one stable canonical exercise identity for sets, history, volume, and coach
+  logic.
+- Materialize every canonical name and alias as a visible, grouped variant in
+  the exercise view. Selecting “Glute Drive” or “Machine Hip Thrust” must resolve
+  to the same canonical exercise rather than creating duplicate database rows.
+- Build each search document from the canonical name, every full alias phrase,
+  equipment, muscles, force, mechanics, and curated synonyms. Store/recompute
+  the derived alias tokens in `Exercise.searchKeywords` so existing stores gain
+  the same coverage.
+- Replace the current per-query full-catalog scan with one reusable inverted
+  index: normalized word/prefix → matching canonical IDs/variant labels. Intersect
+  postings for multi-word AND queries, rank exact alias/phrase matches first, then
+  prefixes, names, and facets. Build once per catalog snapshot and reuse on every
+  iPhone/Watch keystroke; invalidate only when the catalog or custom-exercise set
+  changes.
+
+Add an idempotent catalog/search migration (bump the seed/index version and
+recompute derived keywords for all built-ins, not only rows whose keywords are
+empty). Add headless regression/performance tests proving that `glute drive`,
+`machine glute drive`, canonical names, aliases, prefixes, and facet terms all
+return the correct grouped variant immediately, while alias and canonical
+selection share one exercise identity and one volume/history record.
 
 ## Session restart checkpoint — CloudKit schema protection
 
@@ -43,27 +150,34 @@ pre-commit hook is configured at `scripts/git-hooks`. The follow-up CloudKit
 diagnostics, entitlement split, readiness-model registration, citation sync,
 and checkpoint edits are included in the next focused commit.
 
-### Next implementation item
+### Phase 0 closure — 2026-09-08
 
-Current Phase 0 status: the complete SwiftData/CloudKit contract is deployed and
-verified in both Development and Production; the schema tests, authenticated
-live comparison, all guardrails, and the installed pre-commit hook are green.
-The schema protection work and the follow-up CloudKit diagnostics,
-entitlement, readiness, citation, and persistence/configuration changes are
-committed.
+Phase 0 is closed. The unified model, runtime materializer, normalized
+persistence, Watch payload boundary, send preflight, private-iCloud
+configuration, CloudKit schema contract, sharing contract, and sync-performance
+hardening are implemented and covered by the automated gates.
+
+Two hardware validations are intentionally moved out of Phase 0: the plan-origin
+iPhone/Watch execution test moves to Phase 1 after real manual or automated-coach
+plan authoring exists; the same-user private-iCloud multi-device test remains a
+later self-sync validation. Human trainer/client sharing and two-Apple-ID
+invite/accept testing are removed from the roadmap.
+
+The complete SwiftData/CloudKit contract is deployed and verified in both
+Development and Production; the schema tests, authenticated live comparison,
+all guardrails, and the installed pre-commit hook are green. The schema
+protection work and the follow-up CloudKit diagnostics, entitlement, readiness,
+citation, and persistence/configuration changes are committed.
 
 The simulator gates also pass after making the Watch exercise-picker smoke
 fixture catalog-agnostic: it now selects the first available second chest
-exercise and derives its delete identifier from that row. Continue Phase 0 with
-the remaining same-user private-iCloud device verification and plan-origin
-iPhone/Watch smoke path. One iPhone, one paired Watch, and the Mac are enough
-for the same-user private-iCloud gate. The real two-Apple-ID invite/accept
-gate is intentionally deferred until the later macOS Trainer app phase, when
-the Mac can provide the second app-capable client; this project has no macOS
-target yet.
-The next code slice should prove that a generated plan retains its origin and
-prescriptions across iPhone persistence, CloudKit sync, Watch launch, and
-phone reconciliation without changing the working manual-workout path.
+exercise and derives its delete identifier from that row. The plan-origin
+iPhone/Watch smoke path and same-user private-iCloud device gate are now tracked
+in their later phases rather than blocking this closure.
+The next implementation slice is Phase 1 manual plan authoring. Once real plans
+exist, Phase 1 will prove that a generated or authored plan retains its origin
+and prescriptions across iPhone persistence, Watch launch, and phone
+reconciliation without changing the working manual-workout path.
 
 ## Sole active plan — revised Cladiron MVP v2.5
 
@@ -78,7 +192,7 @@ Visual contract:
 
 All implementation work must advance this roadmap. Earlier field-test, exercise
 database, and DB++ engine-adoption plans are historical inputs, not active plans.
-Do not start a new standalone plan when the work belongs to a v2.5 phase or work
+Do not start a new standalone plan when the work belongs to a v2.6 phase or work
 stream; update this file and the authoritative spec instead.
 
 ## Product and licensing boundary
@@ -89,8 +203,9 @@ composition, persistence, and Apple-platform integrations are covered by that
 license. The Cladiron name, icon, logo, screenshots, and other brand assets
 remain protected under `TRADEMARKS.md`; `free-exercise-db-plusplus` and its
 materials remain under their own license. Keep these boundaries consistent in
-the repository, About, support screens, paywalls, App Store metadata, and
-release documentation.
+the repository, About, support screens, App Store metadata, and release
+documentation. The optional contribution is not a paywall and must not gate
+features.
 
 ## Shipped baseline — preserve, do not rebuild
 
@@ -114,7 +229,7 @@ engine calls, no runtime network path, additive-only persistence, warning-free
 builds, stable exercise IDs, package evidence resolved to app citations, and no
 second exercise database/decoder or DB++ import site.
 
-## Immediate next task — Phase 0 unified model and Watch payload closure
+## Immediate next task — Phase 1 manual planning
 
 The required spec audit is complete in the closure map linked below. It covers
 §§7–10, §§39–42, §47.0, Phase 0, `WS-EXECUTION-COMPAT`, and Appendix AA.
@@ -146,16 +261,17 @@ behavior across device writers.
 The payload preserves legacy Watch fields, carries rich strength prescriptions
 and planned cardio, and is consumed by Watch launch and phone reconciliation.
 The reconciliation fixtures cover duplicate/out-of-order results and source-ID
-preservation; the sharing contract covers invitation/acceptance, change tokens,
-append-only results, and trainer-device plan convergence. The unified value-model
+preservation; the private self-sync contract covers change tokens, append-only
+results, and same-user multi-device plan convergence. The unified value-model
 conversion preserves strength/cardio/mobility/instruction item identity, and the
 repository has a single `Session`-based start entry point. The editable iPhone
 start path now converts its draft through that entry point while retaining
 partner and DB++ provenance metadata; the legacy `EditablePlan.apply` path
 remains compatible. Coach-generated weekly plans now also bridge into the
 unified seven-day value graph, persist through `UnifiedPlanStore`, and enrich
-Watch payloads from the same sessions. Continue with the CloudKit Apple-ID/
-device gate, normalized persistence mapping, and plan-origin device smoke path.
+Watch payloads from the same sessions. Phase 1 now starts with real manual plan
+authoring; once a plan can be authored and launched, run the deferred
+plan-origin iPhone/Watch smoke path.
 Do not
 implement later-phase UI before the Phase 0 model and sharing boundaries
 needed by it are explicit.
@@ -176,27 +292,28 @@ Watch execution smoke. GitHub Actions run `33982770430` could not start its
 test job because the repository account's payments/spending limit is blocked;
 no remote code failure was reported.
 
-The remaining Phase 0 work is the same-user private-iCloud Apple-ID/device gate
-and plan-origin iPhone/Watch smoke path; the normalized persistence mapping is
-now in place below. The live two-Apple-ID share/invite gate is deferred until
-the later macOS Trainer app phase.
+The plan-origin iPhone/Watch smoke path is now a Phase 1 validation after real
+manual or automated-coach plan authoring exists. The normalized persistence
+mapping is in place. Same-user private-iCloud convergence remains a later
+self-sync validation; human trainer/client sharing is not planned.
 
 ## Current work slice — Phase 0 persistence and send safety — SHIPPED 2026-09-05
 
 The next Phase 0 slice is implemented: unified plans now have normalized
 SwiftData header/week/day/session/item/set rows with stable IDs, coach-generated
-Home plans write the normalized tree alongside the compatibility envelope, and
-client relationship metadata persists with lifecycle and share information.
+Home plans write the normalized tree alongside the compatibility envelope. The
+legacy client-relationship/share metadata remains only as compatibility state;
+the v2.6 roadmap does not expand it.
 `PlanSendPreflight` now blocks shared plans that contain invalid or
 unsnapshotted `%1RM` loads. The Apple-ID account gate is wired into app startup
 and Settings, which reports the real iCloud account state rather than always
 claiming sync is on. Focused tests cover all item families, stable-ID updates,
 relationship round trips, preflight rejection, and account-status mapping.
 
-The remaining Phase 0 gaps are real same-user private-iCloud device
-verification and the plan-origin iPhone/Watch smoke path. The live
-two-Apple-ID invite/accept test is intentionally scheduled after the macOS
-Trainer app is available.
+The plan-origin iPhone/Watch smoke path is tracked in Phase 1 after real manual
+or automated-coach plan authoring exists. Same-user private-iCloud convergence
+is a later self-sync validation. The live two-Apple-ID invite/accept test and
+macOS Trainer dependency are removed from the roadmap.
 
 The unified cardio-to-Watch producer now preserves steady-state distance goals
 and heart-rate zones (and interval work-zone metadata) through the versioned
@@ -204,16 +321,68 @@ and heart-rate zones (and interval work-zone metadata) through the versioned
 the generated payload, including these fields; this closes a data-loss seam
 before the remaining device smoke gate.
 
+## Current work slice — private iCloud sync performance — IN PROGRESS 2026-09-08
+
+The iPhone store was audited against the reported repeated-restore behavior. The
+production path uses one SwiftData `ModelContainer` backed by Apple's managed
+private CloudKit mirror; there is no app-owned full-workout-history `CKQuery`,
+startup restore loop, or repeated manual download path. CloudKit may still import
+and export while the app is running because Apple's managed mirror controls that
+scheduling; there is no public SwiftData API that can force it to run immediately
+or restrict it to launch only.
+
+The app now coalesces short CloudKit import events before releasing Home into its
+history-derived coach rebuild, preventing one rebuild per import event. Generated
+coach plans and their normalized trees now use content-aware no-op upserts, so a
+fresh generation timestamp alone does not rewrite SwiftData or enqueue another
+CloudKit export. Settings now shows only account availability and a link to a
+separate iCloud Details & Diagnostics view; storage, legacy recovery, and status
+checks are off the main Settings screen. The diagnostics view explicitly labels
+normal sync as automatic/incremental and does not pretend its Refresh Status
+button can force Apple's managed sync.
+
+Focused persistence tests and the full CI gate pass: 1,737 tests, all guardrails,
+and the live Development/Production CloudKit schema comparison. These changes are
+intentionally uncommitted. The plan-origin iPhone/Watch smoke path is tracked in
+Phase 1 after real manual or automated-coach plan authoring exists. Same-user
+private-iCloud convergence remains a later self-device validation; there is no
+macOS Trainer dependency.
+
 ## Phase queue
+
+### Phase 1 manual planning — compact authoring slice complete 2026-09-09
+
+The Plan tab now has a real self-authored weekly-plan path: create a blank
+Monday-first week, add up to two sessions per day, edit session titles, choose
+an exercise from the bundled searchable catalog, edit set type/reps/load/%1RM,
+rest, and target RPE, and save through both the compatibility envelope and the
+normalized SwiftData plan tree. Authored plans retain stable plan/session/item/
+set IDs and can launch through the existing unified runtime materializer, so
+this slice is ready for the deferred plan-origin execution test once hardware
+validation is approved. The next implementation slice is plan-origin execution
+coverage for authored strength plans, followed by a deliberate mixed-session
+execution boundary for planned cardio and mobility.
+
+The pure `ManualPlanBuilder` contract is covered by five focused tests for
+blank-week shape, stable-ID session replacement, the two-sessions-per-day limit,
+and all four item families through envelope/normalized persistence. The compact
+authoring surface now edits strength, steady-state/interval/open cardio,
+timed-or-repetition mobility, and instruction items while retaining their stable
+IDs and preserving the existing strength-only start boundary. Mixed sessions are
+saved and handed to the unified value/runtime boundary; they remain explicitly
+blocked from the current strength-only runner until the later execution slice.
+The generic iOS device build and focused core tests pass. The Watch AppIcon guard
+and destination-based Xcode guard also pass; the unsafe global SDK invocation is
+rejected before Xcode starts. A full aggregate guard run remains blocked by the
+existing planner view-size limits, and no simulator was run.
 
 | Phase | Status | Next outcome |
 |---|---|---|
-| 0 — foundations and sync proof | **IN PROGRESS: value model + runtime + normalized persistence + send gate + Watch payload + sharing contract** | run the same-user CloudKit device gate and plan-origin iPhone/Watch smoke path; defer live two-ID sharing until the macOS Trainer phase |
-| 1 — athlete app | pending | Plan-first iPhone/iPad experience, compact authoring, partner execution, migration |
-| 2 — scientific coach | partial baseline shipped | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces |
-| 3 — iPad Trainer mode | pending | roster, planner, connected/external delivery, review, export, and Pro entitlement |
-| 4 — iPhone Trainer + native Mac | pending | compact trainer parity, native Mac shell, Universal Purchase |
-| 5 — depth and natural-language interface | pending | periodization, bounded language interface, readiness and platform polish |
+| 0 — foundations and sync proof | **COMPLETE 2026-09-08** | closed; deferred self-plan execution and private self-sync validations remain |
+| 1 — athlete app | **IN PROGRESS** | validate authored plan-origin iPhone/Watch execution; then extend mixed-session execution for planned cardio and mobility |
+| 2 — automated scientific coach | partial baseline shipped | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces |
+| 3 — self-planning depth + optional contribution | pending | periodization, personal templates/export, $9.99 optional Supporter contribution and Home badge |
+| 4 — individual-user platform polish | pending | bounded natural language, readiness, larger-surface self-planning, and accessibility/performance |
 
 ## Execution rules
 
@@ -222,24 +391,23 @@ before the remaining device smoke gate.
 - Begin each work stream with a gap test against the shipped code; do not recreate
   an already-satisfied capability under a new type without a migration reason.
 - Use the mockups as visual contracts, including dynamic type, accessibility,
-  empty, loading, error, offline, and lapsed-entitlement states required by the
+  empty, loading, error, and offline states required by the
   spec even when a static mockup shows only the primary state.
-- Keep the GPLv3/App Store Exception/open-project wording consistent in About/Help, paywalls,
+- Keep the GPLv3/App Store Exception/open-project wording consistent in About/Help,
   support screens, App Store metadata, website copy, and release documentation.
+  The optional contribution is not a paywall and must not gate features.
 - Run focused tests during development and `make ci` before a phase/work-stream
   commit. Run iPhone/watch smoke gates whenever their user flows change.
 - Hardware verification remains mandatory for HealthKit, BLE, WatchConnectivity,
-  workout runtime, private-iCloud/CloudKit sharing behavior, and Mail/share-sheet
-  handoff on iPhone, iPad, and Mac.
+  workout runtime, and private-iCloud self-device sync on supported Apple
+  surfaces. There is no human-coach sharing or Mail packet handoff gate.
 - Do not push unless explicitly authorized. Preserve unrelated user changes.
 
 ## Definition of MVP-plan completion
 
-The revised MVP is complete only when all acceptance criteria in §49 pass across
-the required idioms, the testing matrix in §50 is satisfied, the app and metadata
-state the GPLv3/App Store Exception license, the DB++ boundary remains intact,
-the free/Pro behavior matches §44 under Universal Purchase, and external-client
-delivery passes criteria 35–39 plus Appendix Z's golden renderer, adapter,
-privacy, cancellation, and idempotent manual-result tests. Criteria 40–45 and
-Appendix AA must also prove planning did not regress DB++ muscle accounting,
-iPhone set entry, partners, cardio, or real-Watch execution/reconciliation.
+The revised MVP is complete only when the active v2.6 acceptance criteria in §49
+pass, the testing matrix in §50 is satisfied, the DB++ boundary remains intact,
+the optional $9.99 contribution adds only the Home Supporter badge, and no core
+feature is gated by purchase. Appendix AA must prove planning did not regress
+DB++ muscle accounting, iPhone set entry, partners, cardio, or real-Watch
+execution/reconciliation.

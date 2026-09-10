@@ -228,6 +228,7 @@ extension SessionView {
                 .map(SetSample.from)
         }
         history.repsLoggedThisSession = loggedReps(for: exercise, performerID: performerID)
+        history.lastWeightThisSessionKg = loggedSets(for: exercise, performerID: performerID).last?.weight
         // What they lifted for this movement *today* is a better starting load
         // than what they opened with last time.
         if let last = SessionViewModel.lastSessionWeight(session: session, exercise: exercise,
@@ -254,6 +255,8 @@ extension SessionView {
             return performerID == nil ? "From your workout plan" : "From \(performer)'s workout plan"
         case .ownerPlan:
             return "From the workout plan"
+        case .currentSession:
+            return "Same load as your previous set today"
         case .exactHistory:
             return "Matched \(performer)'s previous \(exerciseName) set · rounded to a loadable increment"
         case .estimatedHistory:

@@ -138,11 +138,17 @@ struct PreWorkoutHRView: View {
                 .disabled(!PreWorkoutHRPresenter.continueEnabled(hrState))
                 .accessibilityIdentifier("prehr.start")
 
-                Button("Cancel") {
+                Button {
                     model.stopWatchWorkout()
                     onCancel()
+                } label: {
+                    Text("Cancel")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity,
+                               minHeight: CGFloat(LayoutMetrics.actionButtonHeight))
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.large)
                 .accessibilityIdentifier("prehr.cancel")
             }
             .padding(.horizontal)

@@ -16,6 +16,7 @@ struct CloudKitSyncDiagnosticsView: View {
     @State private var isRefreshing = false
     @State private var isRecovering = false
     @State private var message: String?
+    @State private var storageUsage = StorageUsageSnapshot()
 
     var body: some View {
         Form {
@@ -35,6 +36,7 @@ struct CloudKitSyncDiagnosticsView: View {
                 if let snapshot {
                     diagnosticRow("Account", value: snapshot.account.displayName)
                     diagnosticRow("Container", value: CadenceStore.cloudKitContainerID)
+                    diagnosticRow("Sync mode", value: "Automatic · incremental")
                     diagnosticRow("Legacy backup", value: snapshot.legacyBackupFound ? "Found" : "Not found")
                     if snapshot.legacyBackupFound {
                         diagnosticRow("Backup date", value: dateText(snapshot.legacyBackupDate))
@@ -54,6 +56,13 @@ struct CloudKitSyncDiagnosticsView: View {
                 }
             }
 
+            Section("Local store") {
+                diagnosticRow("Cladiron data", value: storageUsage.appDataText)
+                diagnosticRow("Workout database", value: storageUsage.workoutStoreText)
+                diagnosticRow("Free iPhone storage", value: storageUsage.deviceFreeText)
+                diagnosticRow("iCloud storage used", value: "Not exposed by Apple")
+            }
+
             Section {
                 Button {
                     Task { await refresh() }
@@ -61,7 +70,7 @@ struct CloudKitSyncDiagnosticsView: View {
                     if isRefreshing {
                         HStack { ProgressView(); Text("Checking iCloud…") }
                     } else {
-                        Label("Refresh iCloud Status", systemImage: "arrow.clockwise.icloud")
+                        Label("Refresh Status", systemImage: "arrow.clockwise.icloud")
                     }
                 }
                 .disabled(isRefreshing || isRecovering)
@@ -88,12 +97,19 @@ struct CloudKitSyncDiagnosticsView: View {
             } header: {
                 Text("Actions")
             } footer: {
-                Text("Recovery only merges records from the older Cladiron iCloud backup, if one exists. It never deletes or overwrites local history. Refresh checks status; it cannot directly force Apple's managed SwiftData sync.")
+                Text("Normal sync is managed by Apple’s SwiftData/CloudKit mirror and is incremental; this screen cannot force it. Recovery only merges records from the older Cladiron backup, if one exists. It never deletes or overwrites local history.")
             }
         }
         .navigationTitle("iCloud Diagnostics")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await refresh() }
+        .task {
+            await refresh()
+            guard !Task.isCancelled else { return }
+            let measurementContainer = container
+            storageUsage = await Task.detached(priority: .utility) {
+                StorageUsageSnapshot.measure(container: measurementContainer)
+            }.value
+        }
     }
 
     private func refresh() async {

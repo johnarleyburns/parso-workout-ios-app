@@ -110,7 +110,7 @@ public enum SessionViewModel {
                                                basis: PerformerSetPlanner.WeightBasis) -> Double {
         guard kg > 0 else { return 0 }
         switch basis {
-        case .explicitPlan, .ownerPlan:
+        case .explicitPlan, .ownerPlan, .currentSession:
             return kg
         case .exactHistory, .estimatedHistory, .priorHistory:
             let display = WorkoutMath.display(kg, in: unit)

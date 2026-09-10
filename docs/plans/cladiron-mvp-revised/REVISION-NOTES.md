@@ -1,10 +1,36 @@
-# Revision notes — Cladiron Platform Spec v1.0 → v2.5
+# Revision notes — Cladiron Platform Spec v1.0 → v2.6
 
 **v1.0:** `docs/plans/cladiron-mvp/CLADIRON_PLATFORM_SPEC.md` (3,250 lines)
 **v2.5:** `docs/plans/cladiron-mvp-revised/CLADIRON_PLATFORM_SPEC.md` + 64 mockups
-**Date:** 2026-08-10 (v2.0/v2.1), 2026-08-11 (v2.2), 2026-09-02 (v2.3–v2.5 reconciliation)
+**v2.6:** scope correction recorded 2026-09-09
+**Date:** 2026-08-10 (v2.0/v2.1), 2026-08-11 (v2.2), 2026-09-02 (v2.3–v2.5 reconciliation), 2026-09-09 (v2.6 scope correction)
 
 This file is the diff. Read it before the spec if you already know v1.0; skip it otherwise. §00000 protects the shipped training loop in v2.5, §0000 covers universal external-client delivery in v2.4, §000 covers the v2.3 reconciliation, §00 covers the v2.2 decision closure, §0 covers the v2.0 → v2.1 Mac amendment, and §1 onward is the v1.0 → v2.0 diff except where an earlier section supersedes it.
+
+---
+
+## 000000. v2.5 → v2.6 — self-planned, automated-coach-only scope (2026-09-09)
+
+This is the active product correction. It supersedes the trainer/client and Pro
+commercial model from v2.5; the older sections remain only as historical
+decision context and are not implementation requirements.
+
+- Cladiron has no personal-trainer role, client role, Trainer mode, roster,
+  invite/accept flow, CKShare delivery, external-client packet, or human-coach
+  result review. The only planning author is the individual user.
+- The automated scientific coach may generate, critique, progress, substitute,
+  and explain suggestions. The user accepts or edits them; the software is not
+  a human coach and never silently mutates the user's plan.
+- There are no gated Pro features, Pro entitlement, trial, paywall, or
+  Universal Purchase requirement. Core planning, automated coach assistance,
+  templates, insights, execution, history, export, partners, and readiness are
+  available without purchase.
+- The only purchase is an optional **$9.99 “Contribute to development”**
+  consumable. A successful transaction adds a **Supporter** badge to Home and
+  unlocks nothing else. It is not a feature gate or a subscription.
+- Private iCloud remains for the user's own devices. The active roadmap is
+  manual self-planning → automated coach depth → optional Supporter handling →
+  platform/readiness polish. Trainer/client/Mac-workbench work is retired.
 
 ---
 

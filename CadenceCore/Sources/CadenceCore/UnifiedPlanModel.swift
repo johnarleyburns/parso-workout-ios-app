@@ -410,7 +410,7 @@ public struct StrengthItem: Codable, Equatable, Sendable {
     }
 }
 
-public enum SetKind: String, Codable, Sendable {
+public enum SetKind: String, Codable, Sendable, Hashable {
     case warmup
     case working
     case backoff

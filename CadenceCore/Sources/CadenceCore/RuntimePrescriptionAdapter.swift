@@ -28,7 +28,8 @@ public struct PlanSessionSnapshot: Codable, Equatable, Sendable {
                 return .strength(StrengthItemSnapshot(
                     id: value.id,
                     exerciseKey: value.exerciseKey.raw,
-                    exerciseName: exerciseNameByKey[value.exerciseKey.raw] ?? value.exerciseKey.raw,
+                    exerciseName: Self.exerciseName(for: value.exerciseKey,
+                                                    supplied: exerciseNameByKey),
                     sets: value.sets.map { set in
                         PrescribedSetSnapshot(
                             id: set.id,
@@ -47,6 +48,20 @@ public struct PlanSessionSnapshot: Codable, Equatable, Sendable {
                 return .instruction(InstructionItemSnapshot(id: value.id, text: value.text))
             }
         }
+    }
+
+    /// Stable exercise keys outrank a stale display-name projection. This is
+    /// important when a plan was substituted after an older phone/Watch
+    /// snapshot was already materialized: the live runner must render the
+    /// current catalog exercise selected by the plan, not the old alias.
+    private static func exerciseName(for key: ExerciseKey,
+                                     supplied: [String: String]) -> String {
+        if let canonical = ExerciseLibrary.starter.first(where: {
+            $0.sourceExerciseID == key.raw || ExerciseLibrary.lookupKey($0.name) == key.raw
+        })?.name {
+            return canonical
+        }
+        return supplied[key.raw] ?? key.raw
     }
 
     private static func targetReps(for target: RepTarget) -> Int {

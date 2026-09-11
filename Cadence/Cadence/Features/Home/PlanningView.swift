@@ -23,6 +23,11 @@ struct PlanningView: View {
     @State var templateEditorPresented = false
     @State var manualPlan: Plan?
     @State var combinedLaunch: CombinedSessionLaunch?
+    /// The exercise catalog is a SwiftData graph. Keep its normalized search
+    /// representation outside the view's computed properties so typing does not
+    /// rebuild and re-rank every row on every SwiftUI redraw.
+    @State var exerciseSearchIndex = ExerciseSearchIndex<Exercise>([])
+    @State var exerciseSearchIndexedCount = -1
 
     enum Segment: String, CaseIterable { case routines, exercises }
     @State var routineInfoSheet: RoutineInfo?
@@ -51,6 +56,8 @@ struct PlanningView: View {
             selectedGroup = nil
             browseAll = false
         }
+        .onAppear { rebuildExerciseSearchIndexIfNeeded() }
+        .onChange(of: exercises.count) { _, _ in rebuildExerciseSearchIndexIfNeeded() }
         .sheet(isPresented: $templateEditorPresented) { TemplateEditorView() }
         .sheet(item: $manualPlan) { plan in
             ManualPlanView(plan: plan, onStart: startAuthoredSession)

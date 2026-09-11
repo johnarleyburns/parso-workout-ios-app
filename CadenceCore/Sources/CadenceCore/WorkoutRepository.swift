@@ -42,8 +42,14 @@ public enum WorkoutRepository {
         for t in ExerciseLibrary.starter {
             if let ex = byName[t.name.lowercased()] {
                 guard !ex.isCustom else { continue }
-                // Backfill facets on a pre-facets built-in (e.g. the legacy 25).
-                if ex.searchKeywords.isEmpty {
+                // Backfill or refresh derived facets on a pre-facets built-in
+                // (e.g. the legacy 25). A row can have a non-empty old keyword
+                // blob while still missing the newer muscle fields, so compare
+                // the complete catalog definition rather than checking only for
+                // emptiness.
+                if ex.searchKeywords != t.searchKeywords
+                    || ex.primaryMuscles != t.primaryMuscles
+                    || ex.secondaryMuscles != t.secondaryMuscles {
                     ex.categoryValue = t.category
                     ex.equipmentValue = t.equipment
                     ex.isLateral = t.isLateral

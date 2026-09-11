@@ -85,6 +85,23 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
                       "The adapter writes prescription metadata only")
     }
 
+    func testStableCatalogKeyOutranksStaleDisplayNameProjection() throws {
+        let template = try XCTUnwrap(ExerciseLibrary.starter.first { $0.name == "Bench Press" })
+        let key = try XCTUnwrap(template.sourceExerciseID)
+        let item = StrengthItem(
+            exerciseKey: ExerciseKey(raw: key), order: 0,
+            sets: [PrescribedSet(setIndex: 0, repTarget: .exact(8))])
+        let session = Session(title: "Current plan", items: [.strength(item)])
+
+        let draft = try RuntimePrescriptionAdapter().materialize(
+            planSession: session,
+            exerciseNameByKey: [key: "Old Bench Alias"],
+            athlete: AthleteExecutionSnapshot())
+
+        XCTAssertEqual(draft.plannedExerciseNames, ["Bench Press"])
+        XCTAssertEqual(draft.plannedPrescriptions.first?.exerciseName, "Bench Press")
+    }
+
     func testPercentLoadRequiresAnExerciseSpecificOneRepMax() {
         let plan = PlanSessionSnapshot(id: UUID(), title: "Push", items: [
             .strength(.init(id: UUID(), exerciseKey: "bench_press", exerciseName: "Bench Press",

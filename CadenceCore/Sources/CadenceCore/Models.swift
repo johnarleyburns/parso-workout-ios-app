@@ -601,6 +601,11 @@ public final class WorkoutSession {
                 return
             }
             plannedPrescriptionsData = String(decoding: data, as: UTF8.self)
+            // The rich prescription is the authoritative plan identity. Keep
+            // the legacy display projection in lockstep so a phone/Watch payload
+            // cannot render an older substitute while executing newer sets.
+            let names = newValue.map(\.exerciseName)
+            if !names.isEmpty { plannedExerciseNames = names }
         }
     }
 

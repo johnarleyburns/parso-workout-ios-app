@@ -90,6 +90,22 @@ final class ExerciseSearchTests: XCTestCase {
         XCTAssertFalse(bench.first?.searchKeywords.isEmpty ?? true)
     }
 
+    func testReSeedRefreshesLegacyKeywordsAndMuscles() throws {
+        let ctx = try makeContext()
+        // This represents an installed row from the pre-faceted search index:
+        // it has a name token, but no canonical muscle fields.
+        ctx.insert(Exercise(name: "Bench Press", category: .push, isCustom: false,
+                            searchKeywords: ["bench", "press"]))
+        try ctx.save()
+
+        XCTAssertTrue(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
+        let bench = try XCTUnwrap(try WorkoutRepository.allExercises(ctx)
+            .first { $0.name == "Bench Press" })
+        XCTAssertTrue(bench.primaryMuscles.contains("chest"))
+        XCTAssertTrue(bench.searchKeywords.contains("chest"))
+        XCTAssertTrue(ExerciseSearchIndex([bench]).rank("chest").contains { $0.id == bench.id })
+    }
+
     func testCustomExerciseGetsKeywords() throws {
         let ctx = try makeContext()
         let ex = try WorkoutRepository.findOrCreateExercise(

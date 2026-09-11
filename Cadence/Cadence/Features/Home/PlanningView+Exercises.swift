@@ -14,9 +14,15 @@ extension PlanningView {
         }
 
         var filteredExercises: [Exercise] {
-            if !trimmedQuery.isEmpty { return ExerciseSearch.rank(trimmedQuery, over: exercises) }
+            if !trimmedQuery.isEmpty { return exerciseSearchIndex.rank(trimmedQuery) }
             if let group = selectedGroup { return exercises.filter { $0.trainedMuscleGroups.contains(group) } }
             return browseAll ? exercises : popular
+        }
+
+        func rebuildExerciseSearchIndexIfNeeded() {
+            guard exercises.count != exerciseSearchIndexedCount else { return }
+            exerciseSearchIndex = ExerciseSearchIndex(exercises)
+            exerciseSearchIndexedCount = exercises.count
         }
 
         var grouped: [(ExerciseCategory, [Exercise])] {

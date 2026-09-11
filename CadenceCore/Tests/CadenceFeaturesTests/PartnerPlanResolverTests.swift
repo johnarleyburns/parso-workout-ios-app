@@ -285,6 +285,16 @@ final class PartnerPlanResolverTests: XCTestCase {
         XCTAssertEqual(seed.map(\.targetWeight), [100, 100])
     }
 
+    func testOwnerSeedTurnsFlatHistoricalHypertrophySetsIntoDescendingLadder() {
+        let history = PartnerPlanResolver.ExerciseHistory(
+            lastSets: [.init(weightKg: 40, reps: 12),
+                       .init(weightKg: 40, reps: 12),
+                       .init(weightKg: 40, reps: 12)])
+        let seed = PartnerPlanResolver.ownerSeedSets(history: history, defaultReps: 10)
+        XCTAssertEqual(seed.map(\.targetReps), [12, 10, 8])
+        XCTAssertEqual(seed.map(\.targetWeight), [40, 40, 40])
+    }
+
     func testOwnerSeedFallsBackToTheirRepLadderThenTheirHabit() {
         let ladderOnly = PartnerPlanResolver.ExerciseHistory(
             repLadders: [[12, 10, 8]], firstWorkingWeightKg: 40)

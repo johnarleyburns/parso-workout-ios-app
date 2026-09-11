@@ -105,8 +105,23 @@ public enum PartnerPlanResolver {
                                      defaultSetCount: Int = 1) -> [EditableSet] {
         let logged = history.lastSets.filter { $0.reps > 0 }
         if !logged.isEmpty {
-            return logged.map { EditableSet(targetReps: $0.reps,
-                                            targetWeight: $0.weightKg > 0 ? $0.weightKg : nil) }
+            let reps = logged.map(\.reps)
+            // A flat historical row is a useful load reference, but it is not a
+            // useful generated scheme for a new planner slot. Preserve varied
+            // ladders exactly; turn a flat 3/4-set hypertrophy-style history into
+            // the conventional descending prescription the editor advertises.
+            let plannedReps: [Int]
+            if reps.count >= 2, Set(reps).count == 1 {
+                let top = reps[0]
+                plannedReps = RepLadder.ladder(low: max(1, top - 4), high: top,
+                                               sets: reps.count)
+            } else {
+                plannedReps = reps
+            }
+            return logged.enumerated().map { index, set in
+                EditableSet(targetReps: plannedReps[index],
+                            targetWeight: set.weightKg > 0 ? set.weightKg : nil)
+            }
         }
         let ladder = (history.repLadders.last ?? []).filter { $0 > 0 }
         if !ladder.isEmpty {

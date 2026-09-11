@@ -989,4 +989,7 @@ public enum UnifiedPlanValidationError: Error, Equatable, Sendable {
     case duplicateSetSchemeID
     case invalidPerformanceProfile
     case invalidVolumeSnapshot
+    case invalidMesocycleLength
+    case sourceWeekNotFound(Int)
+    case sourceSessionNotFound
 }

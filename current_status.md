@@ -2,6 +2,54 @@
 
 Updated: 2026-09-10
 
+## Roadmap position — Phase 3 implementation complete; Phase 2 hardware close-out pending
+
+Phase 3 implementation is complete for the active single-user roadmap slice.
+The remaining Phase 2 work is field validation on real iPhone/Watch hardware
+and same-user private iCloud convergence; those checks are documented in
+`PHASE_2_MANUAL_TEST.md` and are intentionally not replaced by simulator runs.
+
+### Completed
+
+- **Phase 0 — foundations:** persistence, CloudKit schema and sync contracts,
+  Watch payload boundary, and guardrails are complete.
+- **Phase 1 — athlete implementation:** manual weekly planning, mixed-session
+  boundaries, Watch projection, and the combined cardio/mobility runner are
+  implemented.
+- **Phase 2 code slice:** unified plan authoring/execution support, stale
+  exercise-substitute protection, indexed/faceted exercise search, and normal
+  descending planner rep ladders are implemented and covered by tests.
+- **Phase 3:** unified-plan depth controls now expose mesocycles, periodization,
+  progression intent, repeat-session, and repeat-week operations; the coach
+  review surface exposes rationale, citations, critique, insights, progress,
+  autoregulation, and explicit substitution acceptance; the optional $9.99
+  contribution is the only StoreKit product and a successful purchase displays
+  the Home Supporter badge without gating any feature.
+- The app-side model extension was kept app-local; no upstream DB++ schema
+  change is required for the current or planned product scope.
+
+### Remaining Phase 2 close-out
+
+These are the two final real-device validations and should be run together:
+
+1. Authored/automated-coach plan → iPhone persistence → Watch execution →
+   phone reconciliation.
+2. Same-user private iCloud convergence across supported devices.
+
+Phase 2 is therefore implementation-green but not formally closed until those
+hardware and private-sync checks pass. No known commit or CI blocker remains.
+
+### Remaining product work after this Phase 3 slice
+
+- **Phase 4:** bounded natural language, readiness, widgets/App Intents/
+  Handoff, accessibility, performance, and platform polish.
+- Across the remaining roadmap: add depth to cardio, mobility, instructions,
+  larger-surface planning/templates/export, and the final v2.6 acceptance
+  matrix plus Appendix AA compatibility proof.
+
+Trainer mode, client sharing, Pro, trials, paywalls, and two-Apple-ID sharing
+remain retired non-goals.
+
 ## Current work slice — Watch AppIcon recurrence guard — COMPLETE 2026-09-09
 
 The Watch AppIcon files are present and valid, but a global `-sdk iphoneos`
@@ -74,7 +122,7 @@ plain brisk-walk-equivalent block, that a single isolated peak does not trigger
 interval detection, and that missing-HR fallback remains conservative. No
 simulator is required for this logic.
 
-## Current investigation — complete exercise variants and indexed search — FIX DESIGNED, PLANNED 2026-09-09
+## Historical investigation — complete exercise variants and indexed search — core fix shipped 2026-09-10
 
 The upstream coverage is present. Free Exercise DB++ v1.16.0 adds the
 vendor-neutral `Machine_Hip_Thrust` record and carries **Glute Drive** as a
@@ -228,7 +276,7 @@ engine calls, no runtime network path, additive-only persistence, warning-free
 builds, stable exercise IDs, package evidence resolved to app citations, and no
 second exercise database/decoder or DB++ import site.
 
-## Immediate next task — Phase 1 manual planning
+## Historical checkpoint — Phase 1 manual planning — implementation complete 2026-09-10
 
 The required spec audit is complete in the closure map linked below. It covers
 §§7–10, §§39–42, §47.0, Phase 0, `WS-EXECUTION-COMPAT`, and Appendix AA.
@@ -321,7 +369,7 @@ and heart-rate zones (and interval work-zone metadata) through the versioned
 the generated payload, including these fields; this closes a data-loss seam
 before the remaining device smoke gate.
 
-## Current work slice — private iCloud sync performance — IN PROGRESS 2026-09-08
+## Current work slice — private iCloud sync performance — SHIPPED 2026-09-10
 
 The iPhone store was audited against the reported repeated-restore behavior. The
 production path uses one SwiftData `ModelContainer` backed by Apple's managed
@@ -341,11 +389,12 @@ checks are off the main Settings screen. The diagnostics view explicitly labels
 normal sync as automatic/incremental and does not pretend its Refresh Status
 button can force Apple's managed sync.
 
-Focused persistence tests and the full CI gate pass: 1,737 tests, all guardrails,
-and the live Development/Production CloudKit schema comparison. These changes are
-intentionally uncommitted. The plan-origin iPhone/Watch smoke path and same-user
-private-iCloud convergence are paired Phase 2 close-outs after real manual and
-automated-coach plan authoring exists; there is no macOS Trainer dependency.
+Focused persistence tests and the full CI gate pass, including all guardrails
+and the live Development/Production CloudKit schema comparison. The changes are
+included in the Phase 2 implementation commit. The plan-origin iPhone/Watch
+smoke path and same-user private-iCloud convergence are paired Phase 2
+close-outs after real manual and automated-coach plan authoring exists; there is
+no macOS Trainer dependency.
 
 ## Phase queue
 
@@ -401,35 +450,30 @@ not rewrite or discard those partner fields.
 |---|---|---|
 | 0 — foundations and sync proof | **COMPLETE 2026-09-08** | closed; Phase 2 owns the deferred device close-outs |
 | 1 — athlete app | **IMPLEMENTATION COMPLETE 2026-09-10** | Phase 2 close-out validation of plan-origin execution and private self-device sync |
-| 2 — automated scientific coach | **IN PROGRESS** | extend DB++-backed engine into unified-plan Generate/Critique/Progress/Substitute/Autoregulate surfaces, then run both Phase 2 device close-outs together |
-| 3 — self-planning depth + optional contribution | pending | periodization, personal templates/export, $9.99 optional Supporter contribution and Home badge |
+| 2 — automated scientific coach | **IMPLEMENTATION GREEN; CLOSE-OUT PENDING** | run the authored/coach plan device path and same-user private-iCloud convergence together |
+| 3 — self-planning depth + optional contribution | **IMPLEMENTATION COMPLETE 2026-09-10** | field-review plan depth, coach review, contribution badge, then continue to Phase 4 |
 | 4 — individual-user platform polish | pending | bounded natural language, readiness, larger-surface self-planning, and accessibility/performance |
 
 ## Status and next task — 2026-09-10
 
-Current status: Phase 1 implementation is complete; Phase 2 is now active. The manual weekly authoring slice,
-Watch payload bridge, safe execution boundary, and combined cardio/mobility
-runner are implemented. Strength-only sessions still use the existing
-iPhone/Watch runner; pure cardio remains projectable to the existing Watch
-cardio runner and can also run through the authored-plan combined surface;
-mobility and cardio-plus-mobility sessions use the new iPhone runner, while
-instruction-only and strength-containing mixes remain blocked. Partner
-workouts and partner history remain preserved. The last committed baseline is
-`159273f`; the current boundary/bridge/runner changes are intentionally
-uncommitted. No simulator has been run.
+Current status: Phase 0 is complete, Phase 1 implementation is complete, and
+the Phase 2 implementation slice plus Phase 3 self-planning/contribution slice
+are green locally and ready for the authorized release commit. Strength-only sessions
+still use the existing iPhone/Watch runner; pure cardio remains projectable to
+the existing Watch cardio runner and can also run through the authored-plan
+combined surface; mobility and cardio-plus-mobility sessions use the new iPhone
+runner, while instruction-only and strength-containing mixes remain blocked.
+Partner workouts and partner history remain preserved.
 
-Immediate next task: advance the Phase 2 automated-coach workflows. Once those
-workflows are ready and hardware approval is available, perform the deferred
-authored plan-origin iPhone/Watch execution validation and private same-user
-self-device sync validation together. Keep the strength-only runner and all
-partner attribution/history paths unchanged, and continue using generic device
-builds and package tests without simulator runs until hardware approval.
+Immediate next task: commit and push the Phase 3 implementation after the final
+verification, then run the two Phase 2 close-outs together: the authored or
+automated-coach plan-origin iPhone/Watch execution and phone reconciliation
+path, plus same-user private-iCloud convergence. Phase 4 follows those field
+checks.
 
-Overall plan position: Phase 0 foundations and sync proof are complete. Phase 1
-athlete planning implementation is complete. Phase 2 automated scientific
-coaching is the active phase, with the two Phase 2 device close-outs scheduled
-after its planning workflows are ready. Phase 3 self-planning depth/optional
-contribution and Phase 4 individual-user polish remain queued.
+Overall plan position: Phase 3 implementation is complete and Phase 2 is
+implementation-green and field-test ready, but Phase 2 is not formally closed
+until the two real-device validations pass. Phase 4 remains queued.
 
 ## Execution rules
 

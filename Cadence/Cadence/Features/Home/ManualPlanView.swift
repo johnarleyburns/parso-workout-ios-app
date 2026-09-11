@@ -14,6 +14,8 @@ struct ManualPlanView: View {
     let onStart: (Session) -> Void
 
     @State private var sessionRoute: SessionRoute?
+    @State private var planDepthPresented = false
+    @State private var coachReviewPresented = false
     @State private var didSave = false
 
     init(plan: Plan, onStart: @escaping (Session) -> Void) {
@@ -37,6 +39,26 @@ struct ManualPlanView: View {
                     ForEach(ManualPlanBuilder.mondayFirst, id: \.self) { weekday in
                         dayRow(weekday)
                     }
+                }
+
+                Section {
+                    Button {
+                        planDepthPresented = true
+                    } label: {
+                        Label(planDepthSummary, systemImage: "calendar.badge.clock")
+                    }
+                    .accessibilityIdentifier("manualPlan.planDepth")
+
+                    Button {
+                        coachReviewPresented = true
+                    } label: {
+                        Label("Review with Coach", systemImage: "checkmark.seal")
+                    }
+                    .accessibilityIdentifier("manualPlan.coachReview")
+                } header: {
+                    Text("Plan depth")
+                } footer: {
+                    Text("Extend this plan into a periodized block, repeat sessions, or review volume, movement coverage, substitutions, progress signals, and cited rationale before accepting changes.")
                 }
             }
             .listStyle(.insetGrouped)
@@ -70,6 +92,29 @@ struct ManualPlanView: View {
                         onStart(edited)
                     })
             }
+            .sheet(isPresented: $planDepthPresented) {
+                    PlanDepthView(plan: plan) { updated in
+                        plan = updated
+                        savePlan()
+                    }
+            }
+            .sheet(isPresented: $coachReviewPresented) {
+                PlanCoachReviewView(plan: plan) { updated in
+                    plan = updated
+                    savePlan()
+                }
+            }
+        }
+    }
+
+    private var planDepthSummary: String {
+        switch plan.horizon {
+        case .singleWeek:
+            return "Extend this week"
+        case let .mesocycle(weeks):
+            return "\(weeks)-week mesocycle"
+        case let .nativeCycle(days):
+            return "\(days)-day rotation"
         }
     }
 

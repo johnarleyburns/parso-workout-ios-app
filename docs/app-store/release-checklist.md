@@ -16,11 +16,10 @@ Use this checklist for the first public App Store v1 submission.
   treatment, guaranteed results, cloud sync, social features, or nutrition
   coaching.
 - Confirm `PrivacyInfo.xcprivacy` remains Data Not Collected.
-- Confirm tip jar copy says "tip" or "support", never "donation".
-- Confirm the free/Pro boundary matches `docs/app-store/metadata.md`: the tracker
-  (logging, history, Progress, Tests, export) and the coach's *insights* are free
-  forever; **Cladiron Pro** gates only the coach's *prescription*.
-- Confirm the three Pro IAPs load and that tip-jar consumables unlock nothing.
+- Confirm contribution copy says "support" or "contribute", never "donation".
+- Confirm all planning, coaching, logging, export, and execution surfaces remain
+  available without a purchase.
+- Confirm the single optional $9.99 contribution loads and unlocks nothing.
 - Confirm product-load failure leaves the free app fully usable.
 
 ## Verification
@@ -64,33 +63,21 @@ Use this checklist for the first public App Store v1 submission.
 ## In-App Purchases
 
 - Ensure the Paid Applications agreement, banking, and tax forms are active.
-- Create three auto-renewable / non-consumable Cladiron Pro products (the paid
-  coach tier):
-  - `guru.parso.cladiron.pro.annual` - Cladiron Pro Annual - $79.99/yr, 1-month
-    free trial
-  - `guru.parso.cladiron.pro.monthly` - Cladiron Pro Monthly - $12.99/mo, no trial
-  - `guru.parso.cladiron.pro.lifetime` - Cladiron Pro Lifetime - founding $99.99
-    (full price $149.99)
-- Create three consumable tip IAP products (unlock nothing):
-  - `guru.parso.cladiron.tip.small` - Buy us a coffee - about $1.99
-  - `guru.parso.cladiron.tip.medium` - Supporter - about $4.99
-  - `guru.parso.cladiron.tip.generous` - Patron - about $9.99
-- Add English localizations matching `Cadence/Cadence.storekit`.
-- Add a review screenshot for each IAP: the paywall for the Pro products, the
-  Support Cladiron screen for the tips.
-- Add IAP review notes: Cladiron Pro unlocks the coach's prescription; the tracker
-  and the coach's insights stay free. Optional tips unlock nothing.
-- Attach all IAPs to the first app version before submission.
+- Create one consumable IAP (unlock nothing):
+  - `guru.parso.cladiron.tip.generous` - Contribute to development - $9.99
+- Add the English localization matching `Cadence/Cadence.storekit`.
+- Add a review screenshot for the Support Cladiron screen.
+- Add IAP review notes: the contribution is optional, all app features remain
+  available without purchase, and a successful purchase only adds the Home
+  Supporter badge.
+- Attach the contribution IAP to the first app version before submission.
 
-### App Review note — how to reach the paywall
+### App Review note — optional contribution
 
-The free/Pro boundary: the tracker (logging, history, Progress, Tests, JSON
-export/import) and the coach's live *insights* are free forever. **Cladiron Pro**
-gates only the coach's *prescription* (program generation, today's exact
-set/rep/load, autoregulation, deloads). To reach the paywall: complete onboarding
-→ view the generated program preview → tap **"Start training with the Coach"**
-(also reachable from the Coach card on Home). Restore Purchases is on the paywall.
-A full log → history → export loop works with zero paywall interruptions.
+The complete app is usable without purchase, including planning, coaching,
+logging, history, export, and Watch execution. The Support Cladiron screen is
+reachable from Settings and Home. A successful $9.99 contribution only records
+supporter status and displays a Supporter badge on Home; it unlocks nothing.
 
 ## Screenshot Data
 
@@ -116,6 +103,6 @@ device), per the storyboard in `docs/app-store/metadata.md`.
 
 - Install the live App Store build on a clean device.
 - Confirm onboarding, Health permissions, logging, export, and support screen.
-- Confirm live IAP products load and at least one real purchase path reaches
-  Apple's sheet.
+- Confirm the live contribution IAP loads and the purchase path reaches Apple's
+  sheet without changing feature access.
 - Confirm the App Store listing does not mention any deferred feature.

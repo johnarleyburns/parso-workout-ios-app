@@ -15,6 +15,13 @@ extension HomeView {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier("home.headerDate")
 
+                    if contributions.store.isSupporter {
+                        Label("Supporter", systemImage: "heart.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.pink)
+                            .accessibilityIdentifier("home.supporterBadge")
+                    }
+
                     if let s = resumeSession { resumeCard(s) }
                     homeActionRow
                     HomeWorkoutsTodaySection(

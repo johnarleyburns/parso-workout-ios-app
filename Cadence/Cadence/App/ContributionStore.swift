@@ -2,21 +2,16 @@ import Foundation
 import StoreKit
 import Observation
 
-/// StoreKit 2 layer for one-time contribution tips (consumables). Dormant until
-/// the product IDs below are configured in App Store Connect (no products → the
-/// Support UI shows a friendly placeholder and nothing is purchasable, so this
-/// can ship before the ASC products exist).
+/// StoreKit 2 layer for the optional $9.99 contribution. Dormant until the
+/// product ID below is configured in App Store Connect; the Support UI remains
+/// a harmless placeholder when the product is unavailable.
 ///
 /// The pure "when to prompt" decision lives in `CadenceCore.ContributionPromptEngine`
 /// (unit-tested); this shell is the StoreKit mechanism, validated on device/sandbox.
 @MainActor
 @Observable
 final class ContributionStore {
-    static let productIDs = [
-        "guru.parso.cladiron.tip.small",      // $1.99
-        "guru.parso.cladiron.tip.medium",     // $4.99
-        "guru.parso.cladiron.tip.generous",   // $9.99
-    ]
+    static let productIDs = ["guru.parso.cladiron.tip.generous"]
 
     private static let everContributedKey = "cladiron.everContributed"
 

@@ -22,22 +22,16 @@ Differentiators:
   HIIT/boxing rounds, and a full cardio suite (run, walk, cycle, swim, rowing)
   with live wrist heart rate; every watch workout saves to Apple Health and
   syncs back to the phone.
-- Complete free app, one honest upsell: the tracker, history, analytics, and
-  export are free forever. The only paid layer is **Cladiron Pro** — the coach
-  (program generation, daily prescriptions, autoregulation, deloads), with a
-  30-day free trial. Free users always see the coach's live *insights*; Pro
-  unlocks what to *do* about them.
+- Complete free app with one optional contribution: the tracker, history,
+  analytics, coach, planning, execution, and export are available without
+  purchase. A successful $9.99 contribution only adds a Supporter badge.
 
 Monetization boundary (binding — keep copy aligned):
 
 - Free forever: logging, history, PRs, trends, assessments, routines, Apple
-  Health import/write, JSON export/import, and continuous coach *insights*
-  (observations about the user's training).
-- Cladiron Pro (paid): program generation, today's exact set/rep/load
-  prescription, RIR autoregulation, deload/adaptation, and quarterly research
-  updates. Products: annual ($79.99/yr, 1-month free trial), monthly ($12.99/mo),
-  lifetime (founding $99.99 → full $149.99). Optional one-time tips also exist and
-  unlock nothing.
+  Health import/write, JSON export/import, coach generation/review, planning,
+  autoregulation, and execution. The optional contribution unlocks nothing;
+  it only records Supporter status and shows the Home badge.
 
 Avoid:
 
@@ -46,9 +40,7 @@ Avoid:
 - Claims that imply cloud sync, social feeds, or nutrition coaching. (The
   automatic iCloud backup lives in the user's own private database — call it
   "backup", never "sync".)
-- "Donation" language for in-app purchases. Use "tip" or "support".
-- Calling the app "free with no subscription" or "no paid feature gates" — the
-  coach is a paid subscription; the *rest* of the app is free.
+- "Donation" language for in-app purchases. Use "support" or "contribute".
 
 ## App Store Fields
 
@@ -67,7 +59,7 @@ Private Strength Coach
 Promotional text (≤170 chars, editable without re-review):
 
 ```text
-Cladiron reads your lifts and shows what it notices — free. Unlock the Coach for your cited program and daily prescriptions. 30-day free trial.
+Cladiron reads your lifts, builds cited plans, and shows what it notices — free. Optional support helps fund continued development.
 ```
 
 Keywords (≤100 chars, comma-separated, NO spaces; do not repeat "strength"/"coach"
@@ -86,16 +78,13 @@ Health & Fitness
 App price:
 
 ```text
-Free (with Cladiron Pro in-app subscription + one-time tips)
+Free (with one optional $9.99 development contribution)
 ```
 
 In-app purchases:
 
 ```text
-Cladiron Pro — Annual ($79.99/yr, 1-month free trial)
-Cladiron Pro — Monthly ($12.99/mo)
-Cladiron Pro — Lifetime (one-time; founding $99.99 → $149.99)
-Small / Supporter / Patron tips (optional; unlock nothing)
+Contribute to development — $9.99 (consumable; optional; unlocks nothing)
 ```
 
 Support URL (required — a real help/contact page):
@@ -133,10 +122,10 @@ The full tracker is free with no ads, no account, and no tracking:
 - Full JSON export/import so your data stays portable, plus automatic backup to your own private iCloud
 - Live coach insights: Cladiron continuously reads your logs and tells you what it notices about your training — free
 
-THE COACH (CLADIRON PRO)
-Pro turns those observations into action. It builds your program, prescribes exact sets, reps, and load for today, autoregulates from your logged performance and recovery, plans deloads, and cites the research behind every call. Quarterly research updates are included while you're Pro.
-
-Start with a 30-day free trial. Everything outside the Coach stays free forever.
+THE COACH
+Cladiron turns those observations into action. It builds and reviews your
+program, prescribes exact sets and reps, autoregulates from logged performance
+and recovery, plans deloads, and cites the research behind every call.
 
 PRIVACY BY DESIGN
 - No account, no ads, no telemetry, no developer-operated server; optional private-iCloud sync
@@ -149,11 +138,10 @@ Train phone-free from your wrist: strength with partner rotation, HIIT and boxin
 Cladiron's fitness tests and training recommendations are general educational coaching guidance, not medical advice, diagnosis, or treatment. Consult a qualified professional before starting or changing an exercise program.
 
 —
-Cladiron Pro subscription options:
-- Annual — $79.99/year, with a 1-month free trial
-- Monthly — $12.99/month
-- Lifetime — one-time purchase (no subscription)
-Payment is charged to your Apple ID. Subscriptions renew automatically unless cancelled at least 24 hours before the period ends; manage or cancel in Settings > Apple ID > Subscriptions.
+Optional contribution:
+- Contribute to development — $9.99, one-time consumable
+The contribution is processed by Apple, unlocks nothing, and only adds a
+Supporter badge to Home after a successful purchase.
 Privacy Policy: https://parso.guru/cladiron_privacy
 Terms (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 ```
@@ -163,7 +151,7 @@ Terms (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 Initial release:
 
 ```text
-Cladiron launches as an open-source, privacy-first strength app for iPhone and Apple Watch: fast logging, PRs, progress trends, Apple Health import/write, assessments, routines, a phone-free Watch app (strength, HIIT, cardio with live wrist HR), and full export/import with private-iCloud backup — all free. Cladiron Pro adds the cited coach (program generation, daily prescriptions, autoregulation) with a 30-day free trial. Cladiron is released under GPLv3-or-later with the Cladiron App Store Exception and built on the open free-exercise-db-plusplus project; its exercise database, annotations, and related tooling remain freely available for use by other applications under their own license.
+Cladiron launches as an open-source, privacy-first strength app for iPhone and Apple Watch: fast logging, PRs, progress trends, Apple Health import/write, assessments, routines, a phone-free Watch app (strength, HIIT, cardio with live wrist HR), cited coach planning, and full export/import with private-iCloud backup — all free. An optional $9.99 contribution supports development and unlocks nothing. Cladiron is released under GPLv3-or-later with the Cladiron App Store Exception and built on the open free-exercise-db-plusplus project; its exercise database, annotations, and related tooling remain freely available for use by other applications under their own license.
 ```
 
 ## Screenshot Storyboard
@@ -192,7 +180,7 @@ Use seeded, credible workout data. Do not show debug text or placeholder values.
    - Caption: `Built-in routines with cited rationale`
    - Show: routine browser or plan editor.
 8. Support
-   - Caption: `Privacy-first and ad-free, with optional tips`
+   - Caption: `Privacy-first and ad-free, with optional support`
    - Show: Support Cladiron screen with StoreKit local products.
 
 Apple Watch screenshots (required — the archive embeds a watchOS app; App Store
@@ -209,7 +197,11 @@ Cladiron is an open-source, privacy-first strength app for iPhone. It has no acc
 
 The tracker is free: logging, history, PRs, analytics, assessments, routines, Apple Health import/write, and JSON export/import. Free users also see the coach's live insights (observations about their training).
 
-Cladiron Pro is the only paid layer — it unlocks the coach: program generation, today's exact set/rep/load prescription, RIR autoregulation, and deload/adaptation guidance. Products are Cladiron Pro Annual ($79.99/yr with a 1-month free trial), Monthly ($12.99/mo), and Lifetime (founding $99.99, one-time). Separately, optional one-time tips support development and unlock nothing. To reach the paywall: complete onboarding, view the generated program, then tap "Unlock the Coach" (also available from the Coach card on Home). Restore Purchases is on the paywall. A full log → history → export loop works with zero paywall interruptions.
+All app features are available without purchase, including coach planning and
+review, logging, history, export, and Watch execution. The optional $9.99
+contribution is one-time, unlocks nothing, and only adds the Supporter badge on
+Home after a successful Apple transaction. A full log → history → export loop
+works without purchase.
 
 HealthKit is used to read steps, heart rate, and workouts recorded by Apple Watch or other apps, and to save summary workouts back to Apple Health. Detailed set/reps/weight history is stored locally because HealthKit has no structured schema for it.
 

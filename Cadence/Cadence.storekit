@@ -3,65 +3,19 @@
   "nonRenewingSubscriptions" : [],
   "products" : [
     {
-      "displayName" : "Small Tip",
+      "displayName" : "Contribute to development",
       "family" : "consumable",
       "localizations" : [
         {
-          "description" : "A small thank-you that helps support Cladiron's development.",
-          "displayName" : "Buy us a coffee",
-          "locale" : "en_US"
-        }
-      ],
-      "productID" : "guru.parso.cladiron.tip.small",
-      "price" : 1.99,
-      "referenceName" : "Cladiron Small Tip",
-      "type" : "consumable"
-    },
-    {
-      "displayName" : "Supporter Tip",
-      "family" : "consumable",
-      "localizations" : [
-        {
-          "description" : "Support continued development of this privacy-first coach.",
-          "displayName" : "Supporter",
-          "locale" : "en_US"
-        }
-      ],
-      "productID" : "guru.parso.cladiron.tip.medium",
-      "price" : 4.99,
-      "referenceName" : "Cladiron Supporter Tip",
-      "type" : "consumable"
-    },
-    {
-      "displayName" : "Patron Tip",
-      "family" : "consumable",
-      "localizations" : [
-        {
-          "description" : "A generous contribution to keep Cladiron independent, privacy-first, and ad-free.",
-          "displayName" : "Patron",
+          "description" : "An optional contribution to keep Cladiron independent, privacy-first, and ad-free. It unlocks nothing.",
+          "displayName" : "Contribute to development",
           "locale" : "en_US"
         }
       ],
       "productID" : "guru.parso.cladiron.tip.generous",
       "price" : 9.99,
-      "referenceName" : "Cladiron Patron Tip",
+      "referenceName" : "Cladiron Development Contribution",
       "type" : "consumable"
-    },
-    {
-      "displayName" : "Cladiron Pro — Lifetime",
-      "familyShareable" : true,
-      "internalID" : "B336B35C-7299-467A-BFAB-B318D6BE7FB7",
-      "localizations" : [
-        {
-          "description" : "Unlock the Coach forever with a one-time purchase. Founding price.",
-          "displayName" : "Cladiron Pro — Lifetime",
-          "locale" : "en_US"
-        }
-      ],
-      "productID" : "guru.parso.cladiron.pro.lifetime",
-      "price" : 99.99,
-      "referenceName" : "Cladiron Pro Lifetime",
-      "type" : "NonConsumable"
     }
   ],
   "settings" : {
@@ -74,70 +28,6 @@
     "_storefront" : "USA",
     "_timeRate" : "1"
   },
-  "subscriptionGroups" : [
-    {
-      "id" : "203EA32D-DF1B-47B9-81F6-DA759F5EDB68",
-      "localizations" : [
-        {
-          "description" : "The Cladiron Coach — your program, autoregulated and cited.",
-          "displayName" : "Cladiron Pro",
-          "locale" : "en_US"
-        }
-      ],
-      "name" : "Cladiron Pro",
-      "subscriptions" : [
-        {
-          "adHocOffers" : [],
-          "codeOffers" : [],
-          "displayName" : "Cladiron Pro — Annual",
-          "familyShareable" : true,
-          "groupNumber" : 1,
-          "internalID" : "367917AF-C911-4056-A161-AA8CB0CE4B43",
-          "introductoryOffer" : {
-            "internalID" : "5E6AB54B-D0A2-414D-8E26-C09E23A6B65C",
-            "paymentMode" : "free",
-            "subscriptionPeriod" : "P1M"
-          },
-          "localizations" : [
-            {
-              "description" : "Full Coach access, billed yearly. Includes a 1-month free trial.",
-              "displayName" : "Cladiron Pro — Annual",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "guru.parso.cladiron.pro.annual",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Cladiron Pro Annual",
-          "subscriptionGroupID" : "203EA32D-DF1B-47B9-81F6-DA759F5EDB68",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [],
-          "displayPrice" : "79.99"
-        },
-        {
-          "adHocOffers" : [],
-          "codeOffers" : [],
-          "displayName" : "Cladiron Pro — Monthly",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "FCB48133-13AC-40D9-B58B-58539C99893A",
-          "localizations" : [
-            {
-              "description" : "Full Coach access, billed monthly. Cancel anytime.",
-              "displayName" : "Cladiron Pro — Monthly",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "guru.parso.cladiron.pro.monthly",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Cladiron Pro Monthly",
-          "subscriptionGroupID" : "203EA32D-DF1B-47B9-81F6-DA759F5EDB68",
-          "type" : "RecurringSubscription",
-          "winbackOffers" : [],
-          "displayPrice" : "12.99"
-        }
-      ]
-    }
-  ],
   "version" : {
     "major" : 2,
     "minor" : 0

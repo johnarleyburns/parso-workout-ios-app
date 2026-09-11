@@ -1,10 +1,9 @@
 import SwiftUI
 import StoreKit
 
-/// One-time contribution tips. If the user has ever contributed, the view shows a
-/// thank-you and invites another tip. If no products load (App Store Connect not
-/// configured yet) it shows a gentle placeholder. Reached from Settings and from
-/// the Home contribution toast.
+/// One optional $9.99 development contribution. If the user has contributed, the
+/// view shows a thank-you. If the product is unavailable, it shows a gentle
+/// placeholder. Reached from Settings and from the Home contribution toast.
 struct ContributionSupportView: View {
     /// `@Observable` store — reading its properties here tracks changes for updates.
     let store: ContributionStore
@@ -19,7 +18,7 @@ struct ContributionSupportView: View {
                         Label("Thank you for your support!", systemImage: "heart.fill")
                             .foregroundStyle(.pink)
                             .font(.headline)
-                        Text("Cladiron stays independent, privacy-first, and ad-free because of people like you. Want to chip in again?")
+                        Text("Cladiron stays independent, privacy-first, and ad-free because of people like you.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -31,7 +30,7 @@ struct ContributionSupportView: View {
             }
 
             if !store.products.isEmpty {
-                Section("Tips") {
+                Section("Contribute to development") {
                     ForEach(store.products, id: \.id) { purchaseRow($0) }
                 }
             } else {
@@ -45,7 +44,7 @@ struct ContributionSupportView: View {
                 Button("Restore Purchases") { Task { await store.restore() } }
                     .accessibilityIdentifier("contribution.restore")
             } footer: {
-                Text("Tips are one-time purchases. By contributing you agree to the Terms and Privacy Policy (see About).")
+                Text("The contribution is optional, one-time, and unlocks nothing. By contributing you agree to the Terms and Privacy Policy (see About).")
             }
         }
         .navigationTitle("Support Cladiron")

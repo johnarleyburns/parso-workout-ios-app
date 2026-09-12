@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import SwiftData
 import CadenceCore
@@ -17,6 +18,7 @@ struct ManualPlanView: View {
     @State private var planDepthPresented = false
     @State private var coachReviewPresented = false
     @State private var didSave = false
+    @State private var handoffActivity: NSUserActivity?
 
     init(plan: Plan, onStart: @escaping (Session) -> Void) {
         self._plan = State(initialValue: plan)
@@ -104,7 +106,18 @@ struct ManualPlanView: View {
                     savePlan()
                 }
             }
+            .onAppear { beginHandoff() }
+            .onDisappear {
+                handoffActivity?.resignCurrent()
+                handoffActivity = nil
+            }
         }
+    }
+
+    private func beginHandoff() {
+        let activity = CadenceHandoff.activity(title: plan.title, planID: plan.id.raw)
+        activity.becomeCurrent()
+        handoffActivity = activity
     }
 
     private var planDepthSummary: String {

@@ -50,6 +50,7 @@ struct HomeView: View {
     @State var coachIllustration = HomeCoachIllustration.random()
     @State var showWorkoutConflict = false
     @State var confirmCancelPrevious = false
+    @State var readinessPresented = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
     var dashboard: HomeDashboardState {
         let snapshot = CoachSnapshot(facts: coachSnapshot.facts, coachFacts: coachSnapshot.coachFacts,
@@ -69,6 +70,10 @@ struct HomeView: View {
     var coachPlan: WeeklyPlan { coachSnapshot.plan }
     var passiveReadinessDisplay: PassiveReadinessPresenter.Display? {
         PassiveReadinessPresenter.display(for: coachSnapshot.readiness)
+    }
+    var todayReadiness: ReadinessEntry? {
+        let calendar = Calendar.current
+        return readinessEntries.first(where: { calendar.isDateInToday($0.date) })
     }
     @State var testCardOverride: TestRecommendation?
     @State var testCardDismissed = false
@@ -138,6 +143,12 @@ struct HomeView: View {
             }
         }
         model.updateWatchTodayPlan(todayPlan)
+        CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(
+            dayKey: Self.dayString(),
+            planTitle: "Coach plan",
+            sessionTitles: snapshot.plan.today?.sessions.map(\.label) ?? [],
+            readinessLabel: todayReadiness.map { ReadinessCheckInPresenter.summary(for: $0) },
+            updatedAt: Date()))
         return snapshot
     }
     func handleInsightAction(_ action: Insight.Action) {

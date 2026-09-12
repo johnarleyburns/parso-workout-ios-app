@@ -35,6 +35,12 @@ extension PlanningView {
                     Label("New blank week", systemImage: "plus.circle.fill")
                 }
                 .accessibilityIdentifier("planning.newBlankWeek")
+                Button {
+                    boundedRequestPresented = true
+                } label: {
+                    Label("Describe a plan", systemImage: "text.bubble")
+                }
+                .accessibilityIdentifier("planning.describePlan")
             }
 
             if trimmedQuery.isEmpty {

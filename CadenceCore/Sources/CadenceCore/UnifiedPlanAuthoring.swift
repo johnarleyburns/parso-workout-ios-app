@@ -48,6 +48,7 @@ public enum UnifiedPlanAuthoring {
             notes: template.evidenceNotes,
             rationale: template.rationale,
             assistance: nil,
+            planningRequest: request,
             setSchemes: template.setSchemes)
 
         if let model = request.periodization, model != .none, weeks.count == 1 {

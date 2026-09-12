@@ -24,6 +24,7 @@ extension HomeView {
 
                     if let s = resumeSession { resumeCard(s) }
                     homeActionRow
+                    readinessCard
                     HomeWorkoutsTodaySection(
                         rows: workoutsTodayRows,
                         onOpenCompleted: openTodayWorkout,
@@ -133,6 +134,9 @@ extension HomeView {
             }
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker(onSaved: workoutSaved)
+            }
+            .sheet(isPresented: $readinessPresented) {
+                ReadinessCheckInView(existing: todayReadiness)
             }
             .sheet(isPresented: $selectWorkoutPresented) {
                 SelectWorkoutView(
@@ -351,6 +355,16 @@ extension HomeView {
             // keys on counts + token, not per-session dates, so bump the token to
             // recompute the snapshot / "This Week" strip without an app relaunch.
             markWorkoutHistoryChanged()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .readinessCheckInChanged)) { _ in
+            markWorkoutHistoryChanged()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .cadenceStartTodaysWorkout)) { _ in
+            guard active.liveWorkout.active == nil else { return }
+            selectWorkoutPresented = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .cadenceShowTodaysPlan)) { _ in
+            path.append(HomeRoute.yourPlan)
         }
         .onChange(of: active.finishedSummary != nil) { _, shown in
             if shown {

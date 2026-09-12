@@ -243,6 +243,10 @@ public struct Plan: Codable, Equatable, Sendable, Identifiable {
     public var rationale: EngineRationale?
     public var engineProvenance: PlanEngineProvenance?
     public var assistance: Set<PlanAssistance>?
+    /// The structured intent that led to this plan, when it was created from
+    /// a coach or bounded natural-language request. This preserves authoring
+    /// context without making the runtime prescription depend on it.
+    public var planningRequest: PlanningRequest?
     /// Scheme definitions are app-owned authoring metadata. DB++ receives
     /// materialized planned sets, never this registry.
     public var setSchemes: [SetScheme]?
@@ -258,6 +262,7 @@ public struct Plan: Codable, Equatable, Sendable, Identifiable {
                 rationale: EngineRationale? = nil,
                 engineProvenance: PlanEngineProvenance? = nil,
                 assistance: Set<PlanAssistance>? = nil,
+                planningRequest: PlanningRequest? = nil,
                 setSchemes: [SetScheme]? = nil) {
         self.id = id
         self.revisionID = revisionID
@@ -276,6 +281,7 @@ public struct Plan: Codable, Equatable, Sendable, Identifiable {
         self.rationale = rationale
         self.engineProvenance = engineProvenance
         self.assistance = assistance
+        self.planningRequest = planningRequest
         self.setSchemes = setSchemes
     }
 
@@ -300,7 +306,7 @@ public struct Plan: Codable, Equatable, Sendable, Identifiable {
     private enum CodingKeys: String, CodingKey {
         case id, revisionID, title, provenance, goal, horizon, weeks, createdAt,
              updatedAt, cycleLengthDays, phases, authoredOnIdiom, status, notes,
-             rationale, engineProvenance, assistance, setSchemes
+             rationale, engineProvenance, assistance, planningRequest, setSchemes
     }
 
     public init(from decoder: Decoder) throws {
@@ -322,6 +328,7 @@ public struct Plan: Codable, Equatable, Sendable, Identifiable {
         rationale = try container.decodeIfPresent(EngineRationale.self, forKey: .rationale)
         engineProvenance = try container.decodeIfPresent(PlanEngineProvenance.self, forKey: .engineProvenance)
         assistance = try container.decodeIfPresent(Set<PlanAssistance>.self, forKey: .assistance)
+        planningRequest = try container.decodeIfPresent(PlanningRequest.self, forKey: .planningRequest)
         setSchemes = try container.decodeIfPresent([SetScheme].self, forKey: .setSchemes)
     }
 
@@ -344,6 +351,7 @@ public struct Plan: Codable, Equatable, Sendable, Identifiable {
         try container.encodeIfPresent(rationale, forKey: .rationale)
         try container.encodeIfPresent(engineProvenance, forKey: .engineProvenance)
         try container.encodeIfPresent(assistance, forKey: .assistance)
+        try container.encodeIfPresent(planningRequest, forKey: .planningRequest)
         try container.encodeIfPresent(setSchemes, forKey: .setSchemes)
     }
 
@@ -386,6 +394,7 @@ public struct Plan: Codable, Equatable, Sendable, Identifiable {
         for scheme in setSchemes ?? [] {
             try scheme.validate()
         }
+        try planningRequest?.validate()
         guard Set((setSchemes ?? []).map(\.id)).count == (setSchemes ?? []).count else {
             throw UnifiedPlanValidationError.duplicateSetSchemeID
         }

@@ -21,6 +21,7 @@ struct PlanningView: View {
     @State var selectedGroup: MuscleGroup?
     @State var browseAll = false
     @State var templateEditorPresented = false
+    @State var boundedRequestPresented = false
     @State var manualPlan: Plan?
     @State var combinedLaunch: CombinedSessionLaunch?
     /// The exercise catalog is a SwiftData graph. Keep its normalized search
@@ -59,6 +60,11 @@ struct PlanningView: View {
         .onAppear { rebuildExerciseSearchIndexIfNeeded() }
         .onChange(of: exercises.count) { _, _ in rebuildExerciseSearchIndexIfNeeded() }
         .sheet(isPresented: $templateEditorPresented) { TemplateEditorView() }
+        .sheet(isPresented: $boundedRequestPresented) {
+            BoundedPlanningRequestView { plan in
+                manualPlan = plan
+            }
+        }
         .sheet(item: $manualPlan) { plan in
             ManualPlanView(plan: plan, onStart: startAuthoredSession)
         }

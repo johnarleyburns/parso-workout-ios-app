@@ -1,13 +1,15 @@
 # Current Status
 
-Updated: 2026-09-10
+Updated: 2026-09-11
 
-## Roadmap position — Phase 3 implementation complete; Phase 2 hardware close-out pending
+## Roadmap position — Phase 4 implementation complete; Phase 2 hardware close-out pending
 
 Phase 3 implementation is complete for the active single-user roadmap slice.
 The remaining Phase 2 work is field validation on real iPhone/Watch hardware
 and same-user private iCloud convergence; those checks are documented in
 `PHASE_2_MANUAL_TEST.md` and are intentionally not replaced by simulator runs.
+Phase 3's human field checklist is in `PHASE_3_MANUAL_TEST.md`; the Phase 4
+platform checklist is in `PHASE_4_MANUAL_TEST.md`.
 
 ### Completed
 
@@ -25,6 +27,18 @@ and same-user private iCloud convergence; those checks are documented in
   autoregulation, and explicit substitution acceptance; the optional $9.99
   contribution is the only StoreKit product and a successful purchase displays
   the Home Supporter badge without gating any feature.
+- **Phase 4 implementation:** `BoundedPlanningRequestParser` now translates a bounded,
+  deterministic natural-language vocabulary into the existing `PlanningRequest`
+  contract. It supports goal, experience, days, duration, equipment,
+  conditioning, constraints, progression, periodization, and mesocycle terms;
+  it rejects retired trainer/client/Pro requests and never emits prescriptions.
+  The Plan tab now provides a review-first apply flow, the structured request
+  persists on the app-owned Plan, and the optional readiness check-in is now
+  user-facing on Home. App Shortcuts, Handoff, and a WidgetKit extension use a
+  privacy-preserving shared today snapshot. Focused tests cover the parser,
+  persistence, readiness presentation, and platform snapshot contract. The parser
+  now has 60+ phrase-level acceptance cases plus macOS `NaturalLanguage` tokenization
+  parity coverage; the same framework is available to the iOS target.
 - The app-side model extension was kept app-local; no upstream DB++ schema
   change is required for the current or planned product scope.
 
@@ -41,8 +55,9 @@ hardware and private-sync checks pass. No known commit or CI blocker remains.
 
 ### Remaining product work after this Phase 3 slice
 
-- **Phase 4:** bounded natural language, readiness, widgets/App Intents/
-  Handoff, accessibility, performance, and platform polish.
+- **Phase 4:** field-test the bounded request, readiness, widget, Shortcut,
+  Handoff, larger-surface, accessibility, offline, and performance behavior;
+  then complete the final acceptance matrix and Appendix AA compatibility proof.
 - Across the remaining roadmap: add depth to cardio, mobility, instructions,
   larger-surface planning/templates/export, and the final v2.6 acceptance
   matrix plus Appendix AA compatibility proof.
@@ -452,9 +467,9 @@ not rewrite or discard those partner fields.
 | 1 — athlete app | **IMPLEMENTATION COMPLETE 2026-09-10** | Phase 2 close-out validation of plan-origin execution and private self-device sync |
 | 2 — automated scientific coach | **IMPLEMENTATION GREEN; CLOSE-OUT PENDING** | run the authored/coach plan device path and same-user private-iCloud convergence together |
 | 3 — self-planning depth + optional contribution | **IMPLEMENTATION COMPLETE 2026-09-10** | field-review plan depth, coach review, contribution badge, then continue to Phase 4 |
-| 4 — individual-user platform polish | pending | bounded natural language, readiness, larger-surface self-planning, and accessibility/performance |
+| 4 — individual-user platform polish | **IMPLEMENTATION COMPLETE 2026-09-11; FIELD REVIEW PENDING** | execute `PHASE_4_MANUAL_TEST.md`, then final acceptance and Appendix AA proof |
 
-## Status and next task — 2026-09-10
+## Status and next task — 2026-09-11
 
 Current status: Phase 0 is complete, Phase 1 implementation is complete, and
 the Phase 2 implementation slice plus Phase 3 self-planning/contribution slice
@@ -465,15 +480,16 @@ combined surface; mobility and cardio-plus-mobility sessions use the new iPhone
 runner, while instruction-only and strength-containing mixes remain blocked.
 Partner workouts and partner history remain preserved.
 
-Immediate next task: commit and push the Phase 3 implementation after the final
-verification, then run the two Phase 2 close-outs together: the authored or
-automated-coach plan-origin iPhone/Watch execution and phone reconciliation
-path, plus same-user private-iCloud convergence. Phase 4 follows those field
-checks.
+Immediate next task: complete the Phase 3 and Phase 4 human field checklists.
+Phase 4's implementation slice now includes bounded request review/apply,
+readiness capture, WidgetKit, App Shortcuts, Handoff, and the shared snapshot
+contract. Phase 2 hardware and private-iCloud close-outs remain required field
+validation and are not replaced by simulator runs.
 
-Overall plan position: Phase 3 implementation is complete and Phase 2 is
-implementation-green and field-test ready, but Phase 2 is not formally closed
-until the two real-device validations pass. Phase 4 remains queued.
+Overall plan position: Phase 3 and Phase 4 implementation are complete and
+field-testable, Phase 2 is implementation-green and field-test ready but not
+formally closed until the two real-device validations pass, and the remaining
+work is field acceptance plus the final compatibility proof.
 
 ## Execution rules
 
@@ -488,7 +504,9 @@ until the two real-device validations pass. Phase 4 remains queued.
   support screens, App Store metadata, website copy, and release documentation.
   The optional contribution is not a paywall and must not gate features.
 - Run focused tests during development and `make ci` before a phase/work-stream
-  commit. Run iPhone/watch smoke gates whenever their user flows change.
+  commit. Run iPhone/watch smoke gates whenever their user flows change. For
+  this work slice, simulator and commit/push execution is intentionally deferred
+  for review.
 - Hardware verification remains mandatory for HealthKit, BLE, WatchConnectivity,
   workout runtime, and private-iCloud self-device sync on supported Apple
   surfaces. There is no human-coach sharing or Mail packet handoff gate.

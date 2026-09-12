@@ -191,6 +191,13 @@ struct RootTabView: View {
         .onChange(of: model.watchSyncState) { _, state in
             showWatchSyncToast(for: state)
         }
+        .onOpenURL { url in
+            guard url.scheme == "cladiron" else { return }
+            selection = url.host == "plan" ? .plan : .home
+        }
+        .onContinueUserActivity(CadenceHandoff.planActivityType) { _ in
+            selection = .plan
+        }
     }
 
     /// Re-adopts an in-progress session after a crash, force-quit, jetsam, or

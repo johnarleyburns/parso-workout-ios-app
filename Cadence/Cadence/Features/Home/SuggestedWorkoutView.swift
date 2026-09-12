@@ -121,6 +121,10 @@ struct SuggestedWorkoutView: View {
             state = .failed(message: "The suggestion engine did not return a plan. Retry to try again.")
             return
         }
+        guard bundle.options.contains(where: \.isLaunchable) else {
+            state = .failed(message: "No usable exercise data is available yet. Retry to refresh the exercise catalog.")
+            return
+        }
         SuggestedWorkoutSignposts.recordGeneration(bundle)
         state = .ready(bundle)
         showReadyToast()

@@ -37,6 +37,22 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
         self.sportContexts = sportContexts
     }
 
+    /// Builds the value sent to the suggestion engine from the canonical
+    /// in-memory catalog. The app uses this as a safe fallback while an existing
+    /// SwiftData store is still seeding or when an older store has unusable
+    /// exercise facets.
+    public init(template: ExerciseTemplate) {
+        self.init(id: template.sourceExerciseID ?? template.id,
+                  name: template.name,
+                  mechanics: template.mechanics,
+                  primaryMuscles: template.primaryMuscles,
+                  secondaryMuscles: template.secondaryMuscles,
+                  volumeEligible: template.volumeEligible,
+                  trainingTypes: template.trainingTypes,
+                  modalities: template.modalities,
+                  sportContexts: template.sportContexts)
+    }
+
     /// Whether this movement belongs to a training style's own pool.
     public func matches(_ style: SuggestedWorkoutStyle) -> Bool {
         switch style {
@@ -230,7 +246,7 @@ public struct SuggestedWorkoutEngineContext: Equatable, Sendable {
                 schedule: CoachSchedulePreferences = .default,
                 availableEquipment: [Equipment] = Equipment.allCases,
                 environment: String = "commercial_gym",
-                asOf: Date = Date(timeIntervalSince1970: 0)) {
+                asOf: Date = Date()) {
         self.experience = experience
         self.schedule = schedule
         self.availableEquipment = availableEquipment

@@ -75,7 +75,7 @@ extension HomeView {
     func requestSuggestedWorkout() {
         Haptics.selection()
         do {
-            let candidates = try SuggestedWorkoutSignposts.exerciseFetchAndMap {
+            let persistedCandidates = try SuggestedWorkoutSignposts.exerciseFetchAndMap {
                 try WorkoutRepository.allExercises(context).map { exercise in
                     SuggestedExerciseCandidate(
                         id: exercise.sourceExerciseID ?? exercise.id.uuidString,
@@ -89,6 +89,28 @@ extension HomeView {
                         sportContexts: exercise.sportContexts)
                 }
             }
+            // Production seeding is intentionally deferred so launch stays
+            // responsive. A user can reach this action before that background
+            // seed finishes, and older stores can contain rows without the
+            // facets the solver needs. The canonical value catalog keeps the
+            // chooser launchable in both cases without creating SwiftData rows
+            // merely to display a suggestion.
+            let candidates: [SuggestedExerciseCandidate]
+            let trackedMuscleIDs = Set(settings.coachSchedulePreferences.trackedMuscleGroups
+                .map(\.rawValue))
+            let persistedCatalogIsUsable = persistedCandidates.contains {
+                guard $0.volumeEligible else { return false }
+                return ($0.primaryMuscles + $0.secondaryMuscles).contains {
+                    guard let group = MuscleGroup.canonical($0) else { return false }
+                    return trackedMuscleIDs.isEmpty || trackedMuscleIDs.contains(group.rawValue)
+                }
+            }
+            if persistedCatalogIsUsable {
+                candidates = persistedCandidates
+            } else {
+                candidates = ExerciseLibrary.starter.map(SuggestedExerciseCandidate.init(template:))
+            }
+            let asOf = Date()
             let request = SuggestedWorkoutRequest(
                 input: SuggestedWorkoutInput(
                     completedSetsByMuscle: coachFacts.weeklySetsByMuscle,
@@ -100,7 +122,8 @@ extension HomeView {
                         experience: settings.experienceLevel,
                         schedule: settings.coachSchedulePreferences,
                         availableEquipment: Equipment.allCases,
-                        environment: "commercial_gym")),
+                        environment: "commercial_gym",
+                        asOf: asOf)),
                 unit: settings.unit,
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes)
@@ -118,7 +141,8 @@ extension HomeView {
                                                   experience: settings.experienceLevel,
                                                   schedule: settings.coachSchedulePreferences,
                                                   availableEquipment: Equipment.allCases,
-                                                  environment: "commercial_gym")),
+                                                  environment: "commercial_gym",
+                                                  asOf: Date())),
                 unit: settings.unit,
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes,

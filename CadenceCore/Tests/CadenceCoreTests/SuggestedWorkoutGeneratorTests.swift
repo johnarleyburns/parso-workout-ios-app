@@ -456,6 +456,17 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         XCTAssertEqual(plans.count, bundle.options.count)
     }
 
+    /// The app can open the chooser before its asynchronous SwiftData seed has
+    /// finished. The in-memory starter catalog is the fallback for that window,
+    /// so it must produce the same launchable five-style surface.
+    func testCanonicalStarterTemplatesProduceLaunchableOptions() {
+        let candidates = ExerciseLibrary.starter.map(SuggestedExerciseCandidate.init(template:))
+        let bundle = generate(completed: [:], candidates: candidates)
+
+        XCTAssertEqual(bundle.options.count, SuggestedWorkoutStyle.allCases.count)
+        XCTAssertTrue(bundle.options.allSatisfy(\.isLaunchable))
+    }
+
     func testRepresentativeStarterSliceVectorizesFacetsDeterministically() throws {
         let templates = Array(ExerciseLibrary.starter.filter {
             !$0.primaryMuscles.isEmpty && !$0.secondaryMuscles.isEmpty

@@ -142,6 +142,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(fitness.exists)
         XCTAssertTrue(bodyweight.exists)
         XCTAssertTrue(powerlifting.exists)
+        XCTAssertTrue(fitness.isEnabled, "Fitness suggested workout is unexpectedly disabled")
+        XCTAssertTrue(bodyweight.isEnabled, "Bodyweight suggested workout is unexpectedly disabled")
+        XCTAssertTrue(powerlifting.isEnabled, "Powerlifting suggested workout is unexpectedly disabled")
         XCTAssertEqual(fitness.label, "Fitness")
         XCTAssertEqual(bodyweight.label, "Bodyweight")
         XCTAssertEqual(powerlifting.label, "Powerlifting")
@@ -149,8 +152,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertLessThan(bodyweight.frame.minY, powerlifting.frame.minY)
         XCTAssertTrue(app.scrollToElement("suggestedWorkout.style.olympic"))
         XCTAssertEqual(olympic.label, "Olympic Weightlifting")
+        XCTAssertTrue(olympic.isEnabled, "Olympic suggested workout is unexpectedly disabled")
         XCTAssertTrue(app.scrollToElement("suggestedWorkout.style.strongman"))
         XCTAssertEqual(strongman.label, "Strongman")
+        XCTAssertTrue(strongman.isEnabled, "Strongman suggested workout is unexpectedly disabled")
         XCTAssertFalse(app.buttons["suggestedWorkout.minimum"].exists,
                        "The retired minimum/medium/maximal tiers are still on screen")
         XCTAssertTrue(app.scrollToElement("suggestedWorkout.science.iversenTimeEfficient2021"),

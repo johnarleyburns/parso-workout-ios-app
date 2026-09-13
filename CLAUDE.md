@@ -12,23 +12,25 @@ This repository is fully on Swift 6 language mode with complete strict-concurren
 - **Internal codename:** Cadence — repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, type names. Do NOT rename these.
 
 ## What this is
-Cladiron: an open-source, privacy-first, iPhone-native **strength coach** built on the open `free-exercise-db-plusplus` project. The tracker is free forever; the Coach is a paid product (see Monetization below). Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no developer-operated server, no telemetry. The exercise database, annotations, and related tooling remain freely available for use by other applications; Cladiron application code is GPLv3-or-later with the Cladiron App Store Exception.
+Cladiron: an open-source, privacy-first, iPhone-native **strength coach** built on the open `free-exercise-db-plusplus` project. The complete athlete app, including the Coach and planning, is free forever. Its prescriptions are driven by no-lab fitness tests the user administers themselves, and every recommendation cites readable, published science. Cardio is secondary/capture-only. No accounts, no developer-operated server, no telemetry. The exercise database, annotations, and related tooling remain freely available for use by other applications; Cladiron application code is GPLv3-or-later with the Cladiron App Store Exception.
 
 ## Roadmap — adopted 2026-08-11
 
-The **Cladiron Platform Spec v2.5** (`docs/plans/cladiron-mvp-revised/`) is the
-adopted forward plan. It is **not yet implemented**; everything else in this
-file describes the app as shipped and stays authoritative until a phase lands.
-Headline direction, so you don't design against the wrong target:
+The **Cladiron Platform Spec v2.5** (`docs/plans/cladiron-mvp-revised/`) is a
+historical planning document. The active roadmap and product scope are recorded
+in `current_status.md`; the retired Trainer/client-sharing/Pro direction must
+not be implemented.
+Current direction, so you don't design against the wrong target:
 
-- **One product, four native surfaces** — iPhone, iPad, a **native macOS app**,
-  and Watch — in **one App Store record under Universal Purchase** (same bundle
-  ID; configure before the first Mac release, records can never be merged).
-- **Trainer mode**: a client roster with per-set planning, review, and CloudKit
-  sharing — at full fidelity on **iPhone as well as iPad**.
-- **Tier line moves**: planning your own training becomes free everywhere
-  (including the whole Coach), and **Pro gates clients only**. $99/yr · $12/mo ·
-  $249 lifetime, 30-day trial, lifetime available indefinitely.
+- **Current shipped surfaces** — iPhone and embedded Watch, with future
+  larger-surface work limited to the active roadmap and never introducing a
+  second product or feature tier.
+- **Single-user athlete app** — planning, coaching, execution, partner sessions,
+  history, and export are free forever. Trainer mode, client sharing, Pro,
+  trials, paywalls, and two-Apple-ID sharing are retired non-goals.
+- **Supporter contribution** — the only purchase is the optional $9.99
+  `guru.parso.cladiron.tip.generous` consumable, which unlocks nothing and adds
+  a Supporter badge.
 - **Persistence unchanged** — SwiftData + CloudKit, as shipped. The spec follows
   the app here rather than the reverse.
 - **Execution unchanged underneath planning** — plans materialize through the
@@ -42,17 +44,12 @@ When a phase ships, update the sections below — not the spec.
 
 ## Monetization (as shipped)
 
-The tracker is **free forever** — logging, history, Progress, Tests, and export
-are never gated. **Cladiron Pro** gates the Coach's *prescription* (what to do);
-the Coach's *insight* (what it noticed) stays free. *(The roadmap moves this line
-so Pro gates clients instead; that change lands with trainer mode, not before.)*
-
-Products: `guru.parso.cladiron.pro.annual` / `.monthly` / `.lifetime`, plus
-tip-jar consumables that unlock nothing. StoreKit 2 only — no RevenueCat, no
-server, no third-party SDKs (this is a privacy requirement, not a shortcut).
-Entitlement resolution lives in `CadenceCore/ProEntitlement.swift`; the gate is
-`CoachSurfacePresenter`, **not** `CoachGate` (which is dead code — Phase 2
-deletes it).
+The complete app is **free forever** — logging, history, Progress, Tests, export,
+coaching, planning, and execution are never gated. StoreKit 2 contains one
+optional consumable, `guru.parso.cladiron.tip.generous`, priced at $9.99. A
+successful contribution records Supporter status locally and displays a
+Supporter badge; it unlocks nothing. There are no subscriptions, trials,
+entitlements, paywalls, or Pro targets.
 
 ## Information Architecture (3 tabs)
 - **Workout** (Home) — strength-first hero, secondary cardio, coach cards/insights, **Programs & Routines** entry (planning surface lives here).

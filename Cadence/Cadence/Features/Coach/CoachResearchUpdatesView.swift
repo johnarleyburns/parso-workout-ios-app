@@ -2,9 +2,8 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// The Coach knowledge-base changelog ("Coach research updates"). Both free and Pro
-/// users see it — for free users it reinforces the value of the coaching layer
-/// (monetization plan §4.6). Every entry renders its citations tappably.
+/// The Coach knowledge-base changelog ("Coach research updates"). Every user can
+/// read the research history, and every entry renders its citations tappably.
 struct CoachResearchUpdatesView: View {
     @Environment(AppSettings.self) private var settings
 

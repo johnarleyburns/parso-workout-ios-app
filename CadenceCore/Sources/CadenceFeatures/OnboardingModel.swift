@@ -12,7 +12,7 @@ public final class OnboardingModel {
     /// What the primary footer button does on the current step.
     public enum PrimaryAction: Equatable {
         case advance      // go to the next page
-        case complete     // final step → present the paywall / finish
+        case complete     // final step → finish onboarding
     }
 
     public let lastStep: Int
@@ -48,7 +48,7 @@ public final class OnboardingModel {
     public var isLastStep: Bool { step >= lastStep }
     public var canGoBack: Bool { step > 0 }
 
-    /// The final-step ("program ready") page presents the paywall; every other
+    /// The final-step ("program ready") page completes onboarding; every other
     /// primary tap advances.
     public var primaryAction: PrimaryAction { isLastStep ? .complete : .advance }
 

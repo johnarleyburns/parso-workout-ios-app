@@ -41,10 +41,11 @@ struct ContributionSupportView: View {
             }
 
             Section {
-                Button("Restore Purchases") { Task { await store.restore() } }
-                    .accessibilityIdentifier("contribution.restore")
-            } footer: {
                 Text("The contribution is optional, one-time, and unlocks nothing. By contributing you agree to the Terms and Privacy Policy (see About).")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } footer: {
+                Text("Supporter status is recorded on this device after a successful contribution. Consumable contributions are not restorable through Apple’s purchase history.")
             }
         }
         .navigationTitle("Support Cladiron")

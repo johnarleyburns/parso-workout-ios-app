@@ -10,7 +10,15 @@
 
 ## 1. Vision & Goals
 
-Cladiron is an open-source, privacy-first, iPhone-native **strength coach**. The tracker is free forever; the Coach is a paid product (**Cladiron Pro**). It is a no-account, on-device coaching app whose prescriptions are driven by field-testable fitness assessments the user administers themselves, and whose every recommendation cites readable, published science. Cladiron is built on the open `free-exercise-db-plusplus` project; the exercise database, annotations, and related tooling remain freely available for other applications under their own license.
+Cladiron is an open-source, privacy-first, iPhone-native **strength coach**. The
+complete athlete app—including the Coach and planning—is free forever. It is a
+no-account, on-device coaching app whose prescriptions are driven by
+field-testable fitness assessments the user administers themselves, and whose
+every recommendation cites readable, published science. The only purchase is an
+optional $9.99 consumable contribution that unlocks nothing and adds a Supporter
+badge. Cladiron is built on the open `free-exercise-db-plusplus` project; the
+exercise database, annotations, and related tooling remain freely available for
+other applications under their own license.
 
 **The competitive wedge:**
 

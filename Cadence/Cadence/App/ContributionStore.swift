@@ -65,13 +65,6 @@ final class ContributionStore {
         }
     }
 
-    func restore() async {
-        try? await AppStore.sync()
-        for await result in Transaction.currentEntitlements {
-            if case .verified = result { markContributed() }
-        }
-    }
-
     private func markContributed() {
         guard !everContributed else { return }
         everContributed = true

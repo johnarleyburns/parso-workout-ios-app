@@ -11,10 +11,10 @@ struct StructuredPlanGeneratorView: View {
 
     @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \.WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
-    @Query(sort: \.CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
-    @Query(sort: \.Assessment.date, order: .reverse) private var assessments: [Assessment]
-    @Query(sort: \.ReadinessEntry.date, order: .reverse) private var readiness: [ReadinessEntry]
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+    @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
+    @Query(sort: \Assessment.date, order: .reverse) private var assessments: [Assessment]
+    @Query(sort: \ReadinessEntry.date, order: .reverse) private var readiness: [ReadinessEntry]
     @State private var isGenerating = false
     @State private var message: String?
 

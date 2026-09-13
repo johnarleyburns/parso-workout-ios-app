@@ -11,7 +11,6 @@ struct CadenceApp: App {
     @State private var settings = AppSettings()
     @State private var active = ActiveWorkoutModel()
     @State private var contributions = ContributionCoordinator()
-    @State private var store = StoreService()
     private let uiTestMode: Bool
     let container: ModelContainer
 
@@ -74,7 +73,6 @@ struct CadenceApp: App {
                 .environment(settings)
                 .environment(active)
                 .environment(contributions)
-                .environment(store)
                 .environment(\.cadenceModelContainer, container)
                 .task { model.activateWCSession() }
                 .task { model.refreshCloudKitAccountStatus() }
@@ -82,7 +80,6 @@ struct CadenceApp: App {
                 .task { model.configureWatchSync(settings: settings, container: container, active: active) }
                 .task { contributions.beginSession() }
                 .task { await preparePersistentStore() }
-                .task { await store.start() }
         }
         .modelContainer(container)
     }

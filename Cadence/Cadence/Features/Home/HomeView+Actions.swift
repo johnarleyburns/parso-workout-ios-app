@@ -180,20 +180,6 @@ extension HomeView {
         }
     }
 
-    /// Quiet trial status shown above the Coach card while on the free trial.
-    func trialBanner(daysLeft: Int) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "gift.fill").font(.caption)
-            Text("Trial — \(daysLeft) day\(daysLeft == 1 ? "" : "s") left")
-                .font(.caption.weight(.medium))
-            Spacer()
-        }
-        .foregroundStyle(.green)
-        .padding(.horizontal, 12).padding(.vertical, 7)
-        .background(.green.opacity(0.10), in: Capsule())
-        .accessibilityIdentifier("coach.trialBanner")
-    }
-
     var weekStripSection: some View {
         _ = historyRefreshToken
         return WeekStripView(

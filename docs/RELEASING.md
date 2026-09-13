@@ -2,7 +2,7 @@
 
 The Coach knowledge base is versioned in-repo and ships with the app. A quarterly
 "protocol pack" is just an app update that bumps the KB and surfaces a changelog
-(monetization plan §4.6, §6). No server, no remote config.
+(product plan). No server, no remote config, and no monetization gate.
 
 ## What a pack must contain (minimum bar)
 
@@ -32,6 +32,6 @@ in the changelog rather than padding — the credibility *is* the product.
 
 ## Notes
 
-- The KB version is display/changelog only; entitlement is unaffected. Pro and free
-  users both see the changelog (free sees it as paywall reinforcement).
+- The KB version is display/changelog only. Every user sees the same research
+  updates; the optional Supporter contribution does not affect access.
 - Schema changes to the app's local store must remain additive (see CLAUDE.md).

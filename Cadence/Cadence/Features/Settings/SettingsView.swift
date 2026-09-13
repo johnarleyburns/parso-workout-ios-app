@@ -6,7 +6,6 @@ struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(AppSettings.self) private var settingsObject
     @Environment(ContributionCoordinator.self) private var contributions
-    @Environment(StoreService.self) private var store
 
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false
@@ -138,23 +137,6 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings.coachUpdates")
 
-                if store.isPro {
-                    HStack {
-                        Label("Cladiron Pro", systemImage: "checkmark.seal.fill")
-                            .foregroundStyle(.green)
-                        Spacer()
-                        Text(proStatusText).font(.caption).foregroundStyle(.secondary)
-                    }
-                    .accessibilityIdentifier("settings.proStatus")
-                } else {
-                    Button {
-                        Task { await store.restore() }
-                    } label: {
-                        Label("Restore Purchases", systemImage: "arrow.clockwise")
-                    }
-                    .accessibilityIdentifier("settings.restore")
-                }
-
                 NavigationLink {
                     CoachMethodologyView()
                 } label: {
@@ -250,15 +232,6 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .sheet(isPresented: $primingPresented) {
             HealthPrimingView { status in healthStatus = status }
-        }
-    }
-
-    private var proStatusText: String {
-        switch store.entitlement.source {
-        case .lifetime: return "Lifetime"
-        case .subscription: return "Subscribed"
-        case .trial: return store.trialDaysRemaining.map { "Trial — \($0)d left" } ?? "Trial"
-        case .none: return ""
         }
     }
 

@@ -1,6 +1,6 @@
 # Cladiron
 
-An open-source, privacy-first, science-based **strength app** for iPhone and Apple Watch. Logging, history, Progress, Tests, and export are never gated. The **Coach** is a paid product (**Cladiron Pro**). Log strength workouts with per-set tracking and partner rotation from your wrist, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported on both phone and watch. **Companion Apple Watch app included** — run a full "watch-only fitness" session without your phone: strength (with partners, lbs, warm-up/cool-down), HIIT/Boxing with customizable rounds, and cardio (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live HR streams from the wrist; every completed workout saves to HealthKit for rings credit and auto-ingests back to the phone. Your data stays on-device and in your private iCloud, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
+An open-source, privacy-first, science-based **strength app** for iPhone and Apple Watch. The complete app—including logging, history, Progress, Tests, Coach, planning, and export—is free forever. An optional one-time $9.99 Supporter contribution unlocks nothing and only adds a Supporter badge. Log strength workouts with per-set tracking and partner rotation from your wrist, get cited coaching recommendations grounded in published research, track PRs, and review your training history. Cardio recording and HIIT intervals are supported on both phone and watch. **Companion Apple Watch app included** — run a full "watch-only fitness" session without your phone: strength (with partners, lbs, warm-up/cool-down), HIIT/Boxing with customizable rounds, and cardio (Run/Walk/Cycle indoor & outdoor, Swim with lap counter, Rowing, Other). Live HR streams from the wrist; every completed workout saves to HealthKit for rings credit and auto-ingests back to the phone. Your data stays on-device and in your private iCloud, with a full JSON export/import so you can back it up or move it to a fresh install at any time.
 
 **Every single coaching output cites published, user-navigable science.** Cladiron never makes a recommendation, insight, warning, or deferred decision without a tappable "The science >" link to the study behind it.
 
@@ -98,8 +98,7 @@ Cladiron's interface, app-specific coaching composition, persistence, HealthKit
 integration, Watch experience, and other application code are covered by the
 GPLv3-or-later terms and App Store Exception above.
 
-Free users see the coach's **live insights** continuously — real, cited
-observations about their own training that update after every workout. What Pro
-unlocks is the **prescription**: the exact sets, reps, and load the coach would
-have you do next, plus the adapting weekly plan. The free experience is never an
-ad — the upsell only surfaces occasionally, while the insights are always on.
+All users see the coach's **live insights** continuously — real, cited
+observations about their own training that update after every workout. The coach
+also provides editable prescriptions and adapting weekly plans to every user.
+The optional Supporter contribution is an ad-free tip jar and unlocks nothing.

@@ -64,7 +64,8 @@ legacy backup recovery. Those are retired non-goals.
    planning/execution action.
 3. In the StoreKit/TestFlight environment, complete a purchase if you want to
    test it. Confirm the Home **Supporter** badge appears after a successful
-   transaction and after relaunch. Test restore if offered.
+   transaction and after relaunch. No restore control should be offered for the
+   one-time consumable; Supporter status is intentionally device-local.
 4. Confirm all planning, coaching, export, partner execution, Watch execution,
    and sync workflows remain available without purchasing.
 

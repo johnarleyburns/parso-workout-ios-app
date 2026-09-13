@@ -1,6 +1,6 @@
 # Current Status
 
-Updated: 2026-09-11
+Updated: 2026-09-12
 
 ## Roadmap position — Phase 4 implementation complete; Phase 2 hardware close-out pending
 
@@ -41,6 +41,10 @@ platform checklist is in `PHASE_4_MANUAL_TEST.md`.
   parity coverage; the same framework is available to the iOS target.
 - The app-side model extension was kept app-local; no upstream DB++ schema
   change is required for the current or planned product scope.
+- **StoreKit cleanup:** the retired Pro subscription/trial/paywall path is
+  removed from app launch, Settings, core models, and tests. `Cadence.storekit`
+  contains only the optional `guru.parso.cladiron.tip.generous` consumable;
+  successful purchase remains the sole path to the local Home Supporter badge.
 
 ### Remaining Phase 2 close-out
 

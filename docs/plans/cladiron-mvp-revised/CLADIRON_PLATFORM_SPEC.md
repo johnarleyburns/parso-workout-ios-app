@@ -68,7 +68,7 @@ notices must describe only `free-exercise-db-plusplus`, upstream exercise data,
 and their related tooling.
 
 **Shipped DB++ baseline (normative starting point).** The repository already pins
-`free-exercise-db-plusplus` **1.15.4** as a Swift package dependency and routes it
+`free-exercise-db-plusplus` **1.16.0** as a Swift package dependency and routes it
 through the sole import boundary `TrainingEngineBridge`. The current catalog has
 **873 exercises**, a normalized **20-muscle ontology**, evidence-audited muscle
 roles and volume credits, movement classification, deterministic self-planning,
@@ -457,7 +457,7 @@ The platform comprises **one product**, built from **two app targets plus an emb
 ### 7.3 The expert-system placement
 
 The shipped implementation delegates reusable exercise intelligence and core
-deterministic training operations to the open `free-exercise-db-plusplus` 1.15.4
+deterministic training operations to the open `free-exercise-db-plusplus` 1.16.0
 package. `CadenceCore/TrainingEngineBridge.swift` is the only Swift source allowed
 to import that package. `CadenceCore` translates app profiles, targets, plans,
 and history at this boundary, then composes DB++ outcomes with Cladiron's
@@ -2708,7 +2708,7 @@ engine contract tests.
 
 Before new feature work, preserve these invariants:
 
-- exact DB++ 1.15.4 pin and a single `TrainingEngineBridge` import boundary;
+- exact DB++ 1.16.0 pin and a single `TrainingEngineBridge` import boundary;
 - 873 built-in catalog records and the 20-muscle ontology;
 - deterministic explicit-date engine calls and persisted-plan re-evaluation;
 - DB++ package evidence resolved into app citation identifiers;
@@ -3343,7 +3343,7 @@ are picker/search grouping only.
   `WS-EXTERNAL-CLIENTS` work stream, and implementable Appendix Z. Hosted links,
   inbox access, tracking, and a delivery server remain non-goals.
 - **v2.3 (this document) — DB++ baseline and proprietary boundary.** Reconciles
-  the roadmap with the shipped `free-exercise-db-plusplus` 1.15.4 integration:
+  the roadmap with the shipped `free-exercise-db-plusplus` 1.16.0 integration:
   one bridge import, 873 exercises, 20 muscles, deterministic planning/history/
   adaptation primitives, evidence resolution, and app-owned readiness and
   eligibility composition. Makes Cladiron proprietary and closed source,

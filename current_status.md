@@ -52,6 +52,10 @@ platform checklist is in `PHASE_4_MANUAL_TEST.md`.
   recovery paths. Home visibly reports HealthKit ingestion and coach refresh
   while they are running; no authored plan is changed without explicit review
   and Apply.
+- **iPad delivery smoke:** the iOS target now delivers to iPhone and iPad. The
+  focused iPad smoke reuses the existing iPhone smoke method and checks only
+  launch, Plan, bounded planning, Settings, and Transparency & Control; it does
+  not duplicate the iPhone workout flow.
 
 ### Remaining Phase 2 close-out
 
@@ -288,7 +292,7 @@ The revised MVP starts from a mature iPhone/Watch app, not a greenfield project:
 - iPhone and Watch strength, partner, cardio, and interval execution;
 - HealthKit, BLE heart rate, WatchConnectivity, workout history, and export/import;
 - cited observations, suggestions, progress, assessments, and StoreKit scaffolding;
-- `free-exercise-db-plusplus` 1.15.4 pinned behind the sole
+- `free-exercise-db-plusplus` 1.16.0 pinned behind the sole
   `TrainingEngineBridge` import boundary;
 - 873 built-in exercises, 20 normalized muscles, evidence-audited roles and
   volume credits, movement classifications, and package-backed evidence;

@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 /// The one normal iPhone XCUITest. It covers the minimum end-to-end surface that
 /// needs a real simulator: launch, Home expansion, planning, Quick Start, ending,
@@ -23,6 +24,36 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "iPhone app terminated or failed to reach the foreground during cold launch")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
                       "Home did not load")
+
+        // The iPad delivery check intentionally covers only regular-width
+        // planning/settings surfaces. The full end-to-end flow below remains
+        // the single iPhone smoke path.
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // iPadOS exposes both the floating tab cell and its child view with
+            // the same identifier; use the first deterministic match here.
+            XCTAssertTrue(app.buttons.matching(identifier: "tab.plan").firstMatch.waitTap(timeout: 10),
+                          "iPad Plan tab did not open")
+            XCTAssertTrue(app.descendants(matching: .any)["planning"].waitForExistence(timeout: 10),
+                          "iPad planning surface did not render")
+            XCTAssertTrue(app.scrollToHittableAndTap("planning.describePlan"),
+                          "iPad planning surface did not expose bounded planning")
+            XCTAssertTrue(app.navigationBars["Describe a plan"].waitForExistence(timeout: 10),
+                          "iPad bounded planning sheet did not open")
+            XCTAssertTrue(app.buttons["boundedPlan.cancel"].waitTap(timeout: 5),
+                          "iPad bounded planning sheet could not close")
+            XCTAssertTrue(app.buttons.matching(identifier: "tab.home").firstMatch.waitTap(timeout: 10),
+                          "iPad Home tab did not reopen")
+            XCTAssertTrue(app.scrollToHittableAndTap("home.settings"),
+                          "iPad Home did not expose Settings")
+            // Settings is a lazy Form on iPad; use the helper that swipes before
+            // resolving the row so the identifier can materialize off-screen.
+            XCTAssertTrue(app.scrollToAndTapButton("settings.transparency", maxSwipes: 20),
+                          "iPad Settings did not expose Transparency & Control")
+            XCTAssertTrue(app.navigationBars["Transparency & Control"].waitForExistence(timeout: 10),
+                          "iPad Transparency & Control did not open")
+            return
+        }
+
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10),
                       "Coach card did not render on Home")
         XCTAssertTrue(app.buttons["home.logWorkout"].waitForExistence(timeout: 5),
@@ -126,7 +157,11 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.suggestWorkout"),
                       "Start Workout did not open suggested workouts")
-        XCTAssertTrue(app.descendants(matching: .any)["suggestedWorkout.ready"].waitForExistence(timeout: 15),
+        // The chooser snapshots the catalog on the main actor and then runs the
+        // full deterministic solve off-main. A cold simulator can need longer
+        // than the normal warm-path latency; wait for the state transition rather
+        // than making the smoke test fail under host contention.
+        XCTAssertTrue(app.descendants(matching: .any)["suggestedWorkout.ready"].waitForExistence(timeout: 45),
                       "Suggested workouts did not become ready")
         XCTAssertTrue(app.descendants(matching: .any)["suggestedWorkout.readyToast"].waitForExistence(timeout: 3),
                       "Suggested-workout readiness did not notify the user")

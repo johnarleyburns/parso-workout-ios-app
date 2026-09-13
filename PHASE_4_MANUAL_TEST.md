@@ -47,14 +47,18 @@ WatchConnectivity, Handoff, or iCloud behavior.
 
 ## 4. Larger surface and accessibility
 
-1. Review Plan on iPad/regular width. Confirm the list remains readable, rows
+1. For the focused iPad smoke check, run `make ipad-smoke` with an available
+   iPad simulator. This intentionally checks only launch, Plan, bounded
+   planning, Settings, and Transparency & Control; it does not repeat the
+   iPhone workout smoke flow.
+2. Review Plan on a physical iPad/regular width. Confirm the list remains readable, rows
    remain tappable, and no planning data is hidden behind compact-only layout.
-2. Test Dynamic Type at the largest accessibility size. Confirm no exercise,
+3. Test Dynamic Type at the largest accessibility size. Confirm no exercise,
    session, readiness, or action label truncates the essential value.
-3. Navigate the Plan, Readiness, Home, and active-workout surfaces with
+4. Navigate the Plan, Readiness, Home, and active-workout surfaces with
    VoiceOver. Confirm controls announce purpose, current values, and safety
    context; decorative icons are not announced as required actions.
-4. Enable Reduce Motion and confirm planning, sheet presentation, and workout
+5. Enable Reduce Motion and confirm planning, sheet presentation, and workout
    entry remain usable.
 
 ## Result

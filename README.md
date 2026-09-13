@@ -93,7 +93,7 @@ Cladiron is built on the open free-exercise-db-plusplus project. The exercise
 database, annotations, and related tooling remain freely available for use by
 other applications under their own license.
 
-The app pins `free-exercise-db-plusplus` 1.15.4 behind one import boundary.
+The app pins `free-exercise-db-plusplus` 1.16.0 behind one import boundary.
 Cladiron's interface, app-specific coaching composition, persistence, HealthKit
 integration, Watch experience, and other application code are covered by the
 GPLv3-or-later terms and App Store Exception above.

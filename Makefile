@@ -1,4 +1,4 @@
-.PHONY: build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
+.PHONY: build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform smoke ipad-smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
 
 build:
 	swift build --package-path CadenceCore
@@ -59,6 +59,23 @@ smoke:
 	  $(MAKE) --no-print-directory shutdown-sims; \
 	  exit $$status
 
+# Regular-width iPad smoke gate: this reuses the one iPhone smoke test and
+# takes its small iPad-only branch. It checks launch, Plan, bounded planning,
+# Settings, and Transparency & Control; it does not replay the phone workout
+# flow or add a second end-to-end test suite.
+IPAD_SIM_NAME ?= Cadence-iPad-11
+IPAD_SMOKE_DEST ?= platform=iOS Simulator,name=$(IPAD_SIM_NAME)
+ipad-smoke:
+	bash scripts/xcodebuild-safe.sh build-for-testing -project Cadence/Cadence.xcodeproj -scheme "$(SMOKE_SCHEME)" \
+	  -testPlan Cadence -derivedDataPath .build/dd-ipad -destination '$(IPAD_SMOKE_DEST)' -quiet
+	@status=0; \
+	  bash scripts/xcodebuild-safe.sh test-without-building -project Cadence/Cadence.xcodeproj -scheme "$(SMOKE_SCHEME)" \
+	    -testPlan Cadence -derivedDataPath .build/dd-ipad -destination '$(IPAD_SMOKE_DEST)' \
+	    -only-testing:CadenceUITests/SmokeLaunchTests/testIPhoneStrengthWorkoutPlansLogsAndCompletes \
+	    -parallel-testing-enabled NO -maximum-concurrent-test-simulator-destinations 1 || status=$$?; \
+	  $(MAKE) --no-print-directory shutdown-sims; \
+	  exit $$status
+
 # Watch smoke gate: build once, run the watch unit regressions, then exactly ONE
 # UI test (start -> log -> complete strength) on the single named simulator.
 # Local only: never in CI.
@@ -92,6 +109,7 @@ watch-smoke:
 WATCH_SIM_NAME ?= Watch-Large
 shutdown-sims:
 	@xcrun simctl shutdown "$(SMOKE_SIM_NAME)" >/dev/null 2>&1 || true
+	@xcrun simctl shutdown "$(IPAD_SIM_NAME)" >/dev/null 2>&1 || true
 	@xcrun simctl shutdown "$(WATCH_SIM_NAME)" >/dev/null 2>&1 || true
 	@if ! xcrun simctl list devices booted 2>/dev/null | grep -q "(Booted)"; then \
 	  pkill -x Simulator >/dev/null 2>&1 || true; \
@@ -101,8 +119,8 @@ shutdown-sims:
 	fi
 
 # Full regression suite (opt-in, not part of the commit gate): SwiftPM suite +
-# iPhone and watch UI smoke.
-all-tests: test smoke watch-smoke
+# iPhone, iPad planning, and watch UI smoke.
+all-tests: test smoke ipad-smoke watch-smoke
 
 # CI-equivalent host gate without simulators.
 ci: build test guardrails
@@ -110,7 +128,7 @@ ci: build test guardrails
 # Commit gate: guards + SwiftPM unit tests + both app-target smoke tests. The
 # Watch launch path is a required regression gate because it shares the Swift 6
 # app-entry actor boundary that can terminate before the first view renders.
-pre-commit: guardrails test smoke watch-smoke
+pre-commit: guardrails test smoke ipad-smoke watch-smoke
 
 # Push gate: no tests. The commit gate already ran guards, unit tests, and both
 # app-target smoke suites; pushes stay fast.

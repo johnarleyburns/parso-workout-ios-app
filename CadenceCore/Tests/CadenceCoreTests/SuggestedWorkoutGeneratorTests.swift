@@ -485,17 +485,29 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
                       "history produced empty options: \(bundle.options.map { ($0.style, $0.exercises.count) })")
     }
 
-    func testAlreadySatisfiedStylesAreEmptyAndNonLaunchable() {
+    func testAlreadySatisfiedStylesStillOfferMaintenanceWorkouts() {
         let completed = satisfied(at: 4)
         let candidates = [candidate("chest", "Chest", primary: ["chest"])]
 
         for option in generate(completed: completed, candidates: candidates).options {
-            XCTAssertTrue(option.exercises.isEmpty)
-            XCTAssertTrue(option.plan.items.isEmpty)
-            XCTAssertEqual(option.plannedSetTotal, 0)
-            XCTAssertFalse(option.isLaunchable)
+            XCTAssertTrue(option.isLaunchable)
+            XCTAssertEqual(option.exercises.count, 1)
+            XCTAssertEqual(option.plan.items.count, 1)
+            XCTAssertEqual(option.plannedSetTotal, 3)
+            XCTAssertEqual(Array(option.remainingDeficits.values),
+                           Array(repeating: 0.0, count: option.remainingDeficits.count))
             XCTAssertFalse(option.capTrimmingOccurred)
         }
+    }
+
+    func testRealCatalogStaysLaunchableWhenThisWeekHasNoRemainingGaps() {
+        let completed = Dictionary(uniqueKeysWithValues: MuscleGroup.defaultTracked.map {
+            ($0.rawValue, Double(suggestedWorkoutTargetSetsPerGroup))
+        })
+        let bundle = generate(completed: completed, candidates: starterCandidates())
+
+        XCTAssertTrue(bundle.options.allSatisfy(\.isLaunchable),
+                      "covered weekly gaps must not disable the chooser")
     }
 
     func testPlansAndCitationsAreExactAndResolvable() {

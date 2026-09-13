@@ -167,10 +167,19 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Suggested-workout readiness did not notify the user")
         XCTAssertTrue(app.navigationBars["View Suggested Workout"].exists,
                       "Suggested-workout chooser has the wrong title")
-        XCTAssertEqual(app.buttons.matching(identifier: "suggestedWorkout.close").count, 1,
+        let suggestionNavigationBar = app.navigationBars["View Suggested Workout"].firstMatch
+        XCTAssertEqual(app.navigationBars.matching(NSPredicate(format: "label == %@", "View Suggested Workout")).count, 1,
+                       "Suggested-workout chooser rendered more than one navigation host")
+        XCTAssertEqual(suggestionNavigationBar.buttons.matching(identifier: "suggestedWorkout.close").count, 1,
                        "Suggested-workout chooser duplicated its Close control")
-        XCTAssertEqual(app.buttons.matching(identifier: "suggestedWorkout.about").count, 1,
+        XCTAssertEqual(suggestionNavigationBar.buttons.matching(NSPredicate(format: "label == %@", "Close")).count, 1,
+                       "Suggested-workout chooser rendered more than one visible Close label")
+        XCTAssertEqual(suggestionNavigationBar.buttons.matching(identifier: "suggestedWorkout.about").count, 1,
                        "Suggested-workout chooser duplicated its About control")
+        XCTAssertEqual(suggestionNavigationBar.buttons.matching(NSPredicate(format: "label == %@", "About suggested workouts")).count, 1,
+                       "Suggested-workout chooser rendered more than one visible About control")
+        XCTAssertFalse(app.staticTexts["No usable exercise data is available yet. Retry to refresh the exercise catalog."].exists,
+                       "Suggested-workout chooser reported missing exercise data after becoming ready")
         // Five training styles at one set target, not three lengths of the same
         // workout (DB++ adoption, decision D6).
         let fitness = app.buttons["suggestedWorkout.style.fitness"]

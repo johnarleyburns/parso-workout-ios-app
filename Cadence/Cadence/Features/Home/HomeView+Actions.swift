@@ -182,23 +182,30 @@ extension HomeView {
     }
 
     private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {
-        if selectWorkoutPresented || weightsStartPresented {
-            // Dismiss the workout-start sheet fully before presenting the
-            // chooser sheet. Presenting both during the same transition can
-            // leave two NavigationStack toolbars alive on the suggestion
-            // header (two Close and About controls on device).
+        if selectWorkoutPresented || weightsStartPresented || cardioPickerPresented {
+            // Do not set the chooser item while another Home sheet is presented.
+            // SwiftUI can retain both navigation hosts during a transition,
+            // which rendered duplicate Close/About controls in the chooser.
+            pendingSuggestedWorkoutRequest = request
             selectWorkoutPresented = false
             weightsStartPresented = false
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(750))
-                guard !Task.isCancelled,
-                      !selectWorkoutPresented,
-                      !weightsStartPresented else { return }
-                suggestedWorkoutRequest = request
-            }
+            cardioPickerPresented = false
         } else {
             suggestedWorkoutRequest = request
         }
+    }
+
+    /// Called from the originating sheet's `onDismiss`. This is the only place
+    /// where a queued suggestion becomes presentable, so the old sheet and its
+    /// NavigationStack are gone before the chooser is constructed.
+    func presentPendingSuggestedWorkout() {
+        guard !selectWorkoutPresented,
+              !weightsStartPresented,
+              !cardioPickerPresented,
+              suggestedWorkoutRequest == nil,
+              let request = pendingSuggestedWorkoutRequest else { return }
+        pendingSuggestedWorkoutRequest = nil
+        suggestedWorkoutRequest = request
     }
 
     var weekStripSection: some View {

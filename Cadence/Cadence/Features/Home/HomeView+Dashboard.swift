@@ -152,7 +152,7 @@ extension HomeView {
             .sheet(isPresented: $readinessPresented) {
                 ReadinessCheckInView(existing: todayReadiness)
             }
-            .sheet(isPresented: $selectWorkoutPresented) {
+            .sheet(isPresented: $selectWorkoutPresented, onDismiss: presentPendingSuggestedWorkout) {
                 SelectWorkoutView(
                     onQuickStart: {
                         selectWorkoutPresented = false
@@ -232,7 +232,7 @@ extension HomeView {
                 Text("This removes the in-progress workout and its \(active.strengthSession?.orderedSets.count ?? 0) logged sets from your active workout. The record is kept in history and can be restored there.")
             }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
-            .sheet(isPresented: $cardioPickerPresented) {
+            .sheet(isPresented: $cardioPickerPresented, onDismiss: presentPendingSuggestedWorkout) {
                 WorkoutTypePicker(onSelect: { cardioPickerPresented = false; start($0) },
                                   onEditorStart: { _ in },
                                   onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
@@ -241,7 +241,7 @@ extension HomeView {
                                   title: "Start Cardio")
             }
             // Volume tile (batch 8) → strength start (Quick Start / Warm-Up / Reuse / presets).
-            .sheet(isPresented: $weightsStartPresented) {
+            .sheet(isPresented: $weightsStartPresented, onDismiss: presentPendingSuggestedWorkout) {
                 NavigationStack {
                     WeightsStartView(
                         onEditorStart: { plan in weightsStartPresented = false; handleEditorStart(plan) },

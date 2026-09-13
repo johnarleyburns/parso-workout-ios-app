@@ -533,6 +533,20 @@ public enum SuggestedWorkoutGenerator {
         fill(restrictedToStyle: true)
         fill(restrictedToStyle: false)
 
+        // A suggestion is an on-demand workout, not only a gap-filling alert.
+        // Once this week's tracked gaps are already covered, the old solver
+        // returned an empty option and the UI incorrectly reported that the
+        // exercise catalog was unavailable. Keep the same style preference and
+        // offer one maintenance movement so users with substantial history can
+        // still review and edit a workout.
+        if choices.isEmpty, let maintenance = maintenanceSelection(index: index, inStyle: inStyle) {
+            let exercise = index.exercises[maintenance]
+            choices.append(outputExercise(
+                exercise, preferredSets: preferredSets, repRange: goal.repRange,
+                score: 0, isInStyle: inStyle[maintenance],
+                muscleSpace: index.muscleSpace))
+        }
+
         let untrimmedCount = choices.count
         while choices.count * preferredSets > suggestedWorkoutPlannedSetCap {
             choices.removeLast()
@@ -560,6 +574,30 @@ public enum SuggestedWorkoutGenerator {
             capTrimmingOccurred: choices.count != untrimmedCount,
             citationIDs: suggestedWorkoutCitationIDs
         )
+    }
+
+    /// Deterministically chooses a style movement for a maintenance suggestion.
+    /// If a style has no catalog member, the general catalog fallback preserves
+    /// the same disclosure used by gap-filling suggestions.
+    private static func maintenanceSelection(
+        index: SuggestedWorkoutVectorIndex,
+        inStyle: [Bool]
+    ) -> Int? {
+        let preferred = index.exercises.indices.filter { inStyle[$0] }
+        let fallback = index.exercises.indices.filter { !inStyle[$0] }
+        return (preferred + fallback).sorted { lhs, rhs in
+            let left = index.exercises[lhs]
+            let right = index.exercises[rhs]
+            if left.candidate.mechanics != right.candidate.mechanics {
+                return left.candidate.mechanics == .compound
+            }
+            if left.elements.count != right.elements.count {
+                return left.elements.count > right.elements.count
+            }
+            let nameOrder = left.candidate.name.localizedCaseInsensitiveCompare(right.candidate.name)
+            if nameOrder != .orderedSame { return nameOrder == .orderedAscending }
+            return left.candidate.id < right.candidate.id
+        }.first
     }
 
     private static func score(_ exercise: SuggestedWorkoutIndexedExercise,

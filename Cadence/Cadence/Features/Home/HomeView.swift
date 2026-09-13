@@ -46,6 +46,10 @@ struct HomeView: View {
     @State var pendingAddGapsDeficits: [MuscleGroup: Double]?
     @State var suggestionsExpanded = false
     @State var suggestedWorkoutRequest: SuggestedWorkoutRequest?
+    /// Holds a suggestion until the start sheet that launched it has finished
+    /// dismissing. Two independent `.sheet` presenters must never be active for
+    /// the same user action; doing so can duplicate the chooser toolbar on device.
+    @State var pendingSuggestedWorkoutRequest: SuggestedWorkoutRequest?
     @State var weeklyVolumeExpanded = false
     @State var coachIllustration = HomeCoachIllustration.random()
     @State var showWorkoutConflict = false

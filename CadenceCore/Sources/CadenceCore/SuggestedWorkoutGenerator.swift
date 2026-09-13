@@ -109,6 +109,14 @@ public let suggestedWorkoutTargetSetsPerGroup = 4
 /// Total planned sets a single suggestion may prescribe.
 public let suggestedWorkoutPlannedSetCap = 20
 
+/// How much completed strength history the suggestion can use. A limited or
+/// unavailable history is a warning, never a reason to block generation.
+public enum SuggestedWorkoutHistoryQuality: Equatable, Sendable {
+    case sufficient
+    case limited(workoutCount: Int, workingSetCount: Int)
+    case unavailable
+}
+
 public struct SuggestedMuscleContribution: Equatable, Sendable {
     public let muscleID: String
     public let weight: Double
@@ -220,10 +228,13 @@ public struct SuggestedWorkoutDiagnostics: Equatable, Sendable {
 public struct SuggestedWorkoutBundle: Equatable, Sendable {
     public let options: [SuggestedWorkoutOption]
     public let diagnostics: SuggestedWorkoutDiagnostics
+    public let historyQuality: SuggestedWorkoutHistoryQuality
 
-    public init(options: [SuggestedWorkoutOption], diagnostics: SuggestedWorkoutDiagnostics) {
+    public init(options: [SuggestedWorkoutOption], diagnostics: SuggestedWorkoutDiagnostics,
+                historyQuality: SuggestedWorkoutHistoryQuality = .sufficient) {
         self.options = options
         self.diagnostics = diagnostics
+        self.historyQuality = historyQuality
     }
 
     /// One option per style, in `SuggestedWorkoutStyle.allCases` order.
@@ -258,6 +269,11 @@ public struct SuggestedWorkoutEngineContext: Equatable, Sendable {
 public struct SuggestedWorkoutInput: Equatable, Sendable {
     public let completedSetsByMuscle: [String: Double]
     public let candidates: [SuggestedExerciseCandidate]
+    /// Encoded finalized app history for DB++'s optional history-aware planning.
+    /// The app owns extraction; the engine receives only this immutable snapshot.
+    public let historyData: Data?
+    public let historyWorkoutCount: Int
+    public let historyWorkingSetCount: Int
     /// The muscle groups the plan targets. Deficits are computed over these only —
     /// otherwise the solver spends slots on groups the catalog cannot train
     /// (decision D4).
@@ -268,12 +284,18 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
 
     public init(completedSetsByMuscle: [String: Double],
                 candidates: [SuggestedExerciseCandidate],
+                historyData: Data? = nil,
+                historyWorkoutCount: Int = 0,
+                historyWorkingSetCount: Int = 0,
                 trackedGroups: Set<MuscleGroup> = MuscleGroup.defaultTracked,
                 preferredSetsPerExercise: Int,
                 trainingGoal: TrainingGoal,
                 engineContext: SuggestedWorkoutEngineContext? = nil) {
         self.completedSetsByMuscle = completedSetsByMuscle
         self.candidates = candidates
+        self.historyData = historyData
+        self.historyWorkoutCount = max(0, historyWorkoutCount)
+        self.historyWorkingSetCount = max(0, historyWorkingSetCount)
         self.trackedGroups = trackedGroups.isEmpty ? MuscleGroup.defaultTracked : trackedGroups
         self.preferredSetsPerExercise = preferredSetsPerExercise
         self.trainingGoal = trainingGoal
@@ -283,8 +305,23 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
 
 public enum SuggestedWorkoutGenerator {
     public static let epsilon = 1e-9
+    public static let minimumHistoryWorkouts = 3
+    public static let minimumHistoryWorkingSets = 12
+
+    public static func historyQuality(for input: SuggestedWorkoutInput) -> SuggestedWorkoutHistoryQuality {
+        guard input.historyWorkoutCount > 0 || input.historyWorkingSetCount > 0 else {
+            return .unavailable
+        }
+        guard input.historyWorkoutCount >= minimumHistoryWorkouts,
+              input.historyWorkingSetCount >= minimumHistoryWorkingSets else {
+            return .limited(workoutCount: input.historyWorkoutCount,
+                            workingSetCount: input.historyWorkingSetCount)
+        }
+        return .sufficient
+    }
 
     public static func generate(input: SuggestedWorkoutInput) -> SuggestedWorkoutBundle {
+        let historyQuality = historyQuality(for: input)
         if let context = input.engineContext,
            let engineBundle = generateWithEngine(input: input, context: context) {
             return engineBundle
@@ -317,8 +354,8 @@ public enum SuggestedWorkoutGenerator {
                 invertedCandidateVisitCount: counters.visits,
                 fullCatalogScanCount: 0,
                 vectorIndexBuildDuration: indexDuration,
-                allStylesGenerationDuration: generationDuration
-            )
+                allStylesGenerationDuration: generationDuration),
+            historyQuality: historyQuality
         )
     }
 
@@ -349,7 +386,8 @@ public enum SuggestedWorkoutGenerator {
             allStylesGenerationDuration: duration)
         return SuggestedWorkoutBundle(
             options: options,
-            diagnostics: diagnostics)
+            diagnostics: diagnostics,
+            historyQuality: historyQuality(for: input))
     }
 
     private struct Counters {

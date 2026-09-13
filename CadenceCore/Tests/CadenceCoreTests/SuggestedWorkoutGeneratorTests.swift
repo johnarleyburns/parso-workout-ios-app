@@ -21,6 +21,35 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         }
     }
 
+    func testLimitedHistoryDoesNotBlockPreferenceBasedSuggestion() {
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: [:],
+            candidates: [candidate("chest", "Bench Press", primary: ["chest"])],
+            historyWorkoutCount: 1,
+            historyWorkingSetCount: 4,
+            trackedGroups: [.chest],
+            preferredSetsPerExercise: 4,
+            trainingGoal: .hypertrophy)
+
+        let bundle = SuggestedWorkoutGenerator.generate(input: input)
+
+        XCTAssertEqual(bundle.historyQuality, .limited(workoutCount: 1, workingSetCount: 4))
+        XCTAssertTrue(bundle.option(.fitness).isLaunchable,
+                      "limited history must warn without blocking generation")
+    }
+
+    func testHistoryAwareIntentRequestsHistoryWhenSnapshotExists() {
+        let intent = TrainingEngineBridge.workoutIntent(
+            goal: .hypertrophy,
+            environment: "commercial_gym",
+            schedule: .default,
+            useHistory: true,
+            historyWindow: "last_28_days")
+
+        XCTAssertEqual(intent.useHistory, true)
+        XCTAssertEqual(intent.historyWindow, "last_28_days")
+    }
+
     /// Only tracked groups get a deficit — otherwise the solver spends slots on
     /// groups the catalog does not target by default (decision D4).
     func testUntrackedGroupsGetNoDeficit() {

@@ -121,6 +121,9 @@ extension ExercisePickerView {
                     if let muscles = muscleSubtitle(ex) {
                         Text(muscles).font(.caption).foregroundStyle(.secondary)
                     }
+                    if let focus = primaryFocusLabel(ex) {
+                        Text(focus).font(.caption2.weight(.medium)).foregroundStyle(.tint)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "info.circle")

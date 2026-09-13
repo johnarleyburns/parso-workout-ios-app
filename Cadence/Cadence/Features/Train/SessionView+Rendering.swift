@@ -142,14 +142,16 @@ extension SessionView {
         .sheet(item: $swapTarget) { target in
             let pickAction: ExercisePickerView.PickAction = {
                 switch target {
-                case .logged: return .use
+                // A logged exercise has a known source, so restore the similarity
+                // ranked swap surface instead of falling through to plain search.
+                case .logged: return .swap
                 case .planned: return .swap
                 }
             }()
             ExercisePickerView(action: pickAction, source: {
                 switch target {
                 case .logged(let exerciseID): return exerciseForID(exerciseID)
-                case .planned(let oldName): return session.exercisesInOrder.first { $0.name == oldName }
+                case .planned(let oldName): return plannedExerciseIndex[oldName]
                 }
             }()) { picked in
                 switch target {

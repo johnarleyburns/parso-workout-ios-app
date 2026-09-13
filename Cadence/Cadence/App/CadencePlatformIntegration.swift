@@ -16,7 +16,9 @@ enum CadenceHandoff {
         activity.isEligibleForHandoff = true
         activity.isEligibleForSearch = true
         activity.isEligibleForPublicIndexing = false
-        activity.webpageURL = URL(string: "cladiron://plan")
+        // `webpageURL` must be a real HTTP(S) webpage/universal link. The app's
+        // custom `cladiron://` route is handled by RootTabView's `onOpenURL` and
+        // assigning it here causes NSUserActivity to abort on device.
         if let planID {
             activity.userInfo = ["planID": planID.uuidString]
         }

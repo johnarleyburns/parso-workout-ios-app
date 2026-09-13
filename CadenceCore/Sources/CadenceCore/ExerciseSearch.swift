@@ -6,6 +6,13 @@ public protocol ExerciseSearchable {
     var name: String { get }
     var searchKeywords: [String] { get }
     var isCustom: Bool { get }
+    /// Canonical primary muscles used to rank an exact muscle-group search.
+    /// A default keeps lightweight search fixtures source-compatible.
+    var primaryMuscleGroups: [MuscleGroup] { get }
+}
+
+public extension ExerciseSearchable {
+    var primaryMuscleGroups: [MuscleGroup] { [] }
 }
 
 /// Ranked, keyword-aware exercise search. Pure and headless-testable; replaces
@@ -47,6 +54,32 @@ public enum ExerciseSearch {
         ExerciseSearchIndex(candidates).rank(query)
     }
 
+    /// Returns a unique muscle group for a single-term query. Broad region terms
+    /// such as "back" intentionally return nil because they map to several groups;
+    /// the ordinary keyword score remains the right ordering for those queries.
+    public static func primaryMuscleGroup(matching query: String) -> MuscleGroup? {
+        let normalized = normalize(query)
+        guard terms(query).count == 1 else { return nil }
+        let matches = MuscleGroup.allCases.filter { group in
+            let terms = Set(group.searchTerms.map(normalize))
+            return terms.contains(normalized)
+        }
+        return matches.count == 1 ? matches[0] : nil
+    }
+
+    /// The catalog does not claim per-muscle EMG percentages. When a source row
+    /// names multiple primary groups, this transparent equal-share proxy lets the
+    /// picker rank and label the requested primary focus without inventing data.
+    public static func primaryFocusPercent(primaryMuscles: [MuscleGroup],
+                                           group: MuscleGroup) -> Int {
+        var unique: [MuscleGroup] = []
+        for muscle in primaryMuscles where !unique.contains(muscle) {
+            unique.append(muscle)
+        }
+        guard unique.contains(group), !unique.isEmpty else { return 0 }
+        return max(1, Int((100.0 / Double(unique.count)).rounded()))
+    }
+
     // MARK: Scoring
 
     static func termScore(_ term: String, name: String, keywords: [String]) -> Int {
@@ -62,11 +95,12 @@ public enum ExerciseSearch {
         normalize(query).split(separator: " ").map(String.init).filter { !$0.isEmpty }
     }
 
-    /// Lowercased, diacritic-folded, whitespace-collapsed. Regex-free — the old
+    /// Lowercased, diacritic-folded, underscore/whitespace-collapsed. Regex-free — the old
     /// `\s+` regular expression was the dominant cost when normalizing thousands
     /// of strings per keystroke.
     public static func normalize(_ s: String) -> String {
-        s.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+        s.replacingOccurrences(of: "_", with: " ")
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
             .split(whereSeparator: { $0.isWhitespace })
             .joined(separator: " ")
     }
@@ -83,6 +117,7 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
         let name: String
         let keywords: [String]
         let isCustom: Bool
+        let primaryMuscles: [MuscleGroup]
     }
 
     private let indexed: [Indexed]
@@ -92,7 +127,8 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
             Indexed(item: item,
                     name: ExerciseSearch.normalize(item.name),
                     keywords: item.searchKeywords.map(ExerciseSearch.normalize),
-                    isCustom: item.isCustom)
+                    isCustom: item.isCustom,
+                    primaryMuscles: item.primaryMuscleGroups)
         }
     }
 
@@ -105,7 +141,8 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
         indexed.map { ($0.item, $0.name, $0.isCustom) }
     }
 
-    public func rank(_ query: String) -> [T] {
+    public func rank(_ query: String,
+                     prioritizingPrimaryMuscle group: MuscleGroup? = nil) -> [T] {
         let terms = ExerciseSearch.terms(query)
         // Both tie-breaks compare the PRE-normalized name. Reading `item.name`
         // here meant a SwiftData property access (and, inside a SwiftUI body, an
@@ -119,16 +156,24 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
                 return lhs.name < rhs.name
             }.map(\.item)
         }
-        let scored: [(Indexed, Int)] = indexed.compactMap { entry in
+        let scored: [(Indexed, Int, Int)] = indexed.compactMap { entry in
             var total = 0
             for term in terms {
                 let s = ExerciseSearch.termScore(term, name: entry.name, keywords: entry.keywords)
                 if s == 0 { return nil }          // every term must match (AND)
                 total += s
             }
-            return (entry, total)
+            let primaryPercent = group.map {
+                ExerciseSearch.primaryFocusPercent(primaryMuscles: entry.primaryMuscles, group: $0)
+            } ?? 0
+            // An exact muscle-group query is an intentional programming request:
+            // keep secondary-only matches out so a movement cannot look like a
+            // primary solution for a volume gap.
+            if group != nil && primaryPercent == 0 { return nil }
+            return (entry, total, primaryPercent)
         }
         return scored.sorted { a, b in
+            if a.2 != b.2 { return a.2 > b.2 }
             if a.1 != b.1 { return a.1 > b.1 }
             if a.0.isCustom != b.0.isCustom { return !a.0.isCustom }
             return a.0.name < b.0.name

@@ -146,6 +146,9 @@ struct PlanCoachReviewView: View {
                                         Text(substitution.candidateName)
                                             .font(.headline)
                                         Spacer()
+                                        Text("\(Int((substitution.score * 100).rounded()))% similar")
+                                            .font(.caption.monospacedDigit())
+                                            .foregroundStyle(.secondary)
                                         Button("Apply") { apply(substitution) }
                                             .buttonStyle(.bordered)
                                     }

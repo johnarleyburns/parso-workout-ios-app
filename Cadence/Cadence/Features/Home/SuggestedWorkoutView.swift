@@ -149,6 +149,15 @@ struct SuggestedWorkoutView: View {
                 Text(SuggestedWorkoutPresenter.chooserIntro)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if let notice = SuggestedWorkoutPresenter.historyNotice(for: bundle.historyQuality) {
+                    Label(notice, systemImage: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+                        .accessibilityIdentifier("suggestedWorkout.historyNotice")
+                }
                 ForEach(SuggestedWorkoutPresenter.choices(for: bundle)) { choice in
                     choiceButton(choice)
                 }

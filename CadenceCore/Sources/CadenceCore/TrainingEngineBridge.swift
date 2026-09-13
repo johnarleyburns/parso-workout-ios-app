@@ -296,7 +296,9 @@ extension TrainingEngineBridge {
         schedule: CoachSchedulePreferences,
         style: SuggestedWorkoutStyle? = nil,
         constraints: FreeExerciseDBPlusPlus.ExerciseConstraints? = nil,
-        sessionExerciseCount: Int? = nil
+        sessionExerciseCount: Int? = nil,
+        useHistory: Bool? = nil,
+        historyWindow: String? = nil
     ) -> FreeExerciseDBPlusPlus.WorkoutIntent {
         let fixedRestDays: [String]
         switch schedule.restPreference {
@@ -331,7 +333,9 @@ extension TrainingEngineBridge {
             },
             exerciseConstraints: constraints,
             preferences: preferences,
-            continuity: "preserve")
+            continuity: "preserve",
+            useHistory: useHistory,
+            historyWindow: historyWindow)
     }
 
     private static func equipmentStrings(for equipment: Equipment) -> [String] {
@@ -437,13 +441,19 @@ extension TrainingEngineBridge {
             environment: context.environment,
             schedule: schedule,
             style: style,
-            sessionExerciseCount: exerciseLimit)
+            sessionExerciseCount: exerciseLimit,
+            useHistory: input.historyData != nil,
+            historyWindow: "last_28_days")
+        let history = input.historyData.flatMap {
+            try? JSONDecoder().decode(FreeExerciseDBPlusPlus.TrainingHistory.self, from: $0)
+        }
         let result = run(
             .generateFromIntent,
             asOf: context.asOf,
             intent: intent,
             profile: profile,
-            target: target)
+            target: target,
+            history: history)
         guard case let .ok(enginePlan) = outcome(for: result, payload: result?.plan),
               let sourceSession = enginePlan.sessions.sorted(by: {
                   ($0.dayOffset, $0.planSessionId) < ($1.dayOffset, $1.planSessionId)

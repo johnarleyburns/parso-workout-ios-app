@@ -43,6 +43,7 @@ public struct ExerciseTemplate: Equatable, Sendable, Identifiable, ExerciseSearc
 
     public var id: String { name }
     public var isCustom: Bool { false }
+    public var primaryMuscleGroups: [MuscleGroup] { MuscleGroup.canonicalize(primaryMuscles) }
     /// Legacy flat tags (kept for back-compat).
     public var muscleGroups: [String] { primaryMuscles + secondaryMuscles }
     /// Derived search tokens (not stored; computed from facets).

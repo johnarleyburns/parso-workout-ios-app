@@ -101,7 +101,9 @@ extension PlanningView {
 
     var authoredPlans: [Plan] {
         persistedPlans.compactMap { record in
-            guard let plan = try? record.decodedPlan(), plan.provenance == .selfAuthored else {
+            guard let plan = try? record.decodedPlan(),
+                  plan.provenance == .selfAuthored,
+                  !plan.isCoachGenerated else {
                 return nil
             }
             return plan

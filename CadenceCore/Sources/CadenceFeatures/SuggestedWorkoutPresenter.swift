@@ -27,6 +27,17 @@ public enum SuggestedWorkoutPresenter {
     public static let chooserIntro = "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting."
     public static let choosingAPlan = "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track, under one \(suggestedWorkoutPlannedSetCap)-set safety cap, so a capped plan can still show remaining gaps. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself."
 
+    public static func historyNotice(for quality: SuggestedWorkoutHistoryQuality) -> String? {
+        switch quality {
+        case .sufficient:
+            return nil
+        case .unavailable:
+            return "No completed strength history was available. This suggestion uses your onboarding preferences and the exercise catalog; future suggestions can become more specific after you log a workout."
+        case .limited(let workoutCount, let workingSetCount):
+            return "Limited history: (workoutCount) workout\(workoutCount == 1 ? "" : "s"), (workingSetCount) working set\(workingSetCount == 1 ? "" : "s"). This suggestion also uses your onboarding preferences, so review it before starting."
+        }
+    }
+
     public static func choices(for bundle: SuggestedWorkoutBundle) -> [SuggestedWorkoutChoice] {
         bundle.options.map(choice(for:))
     }

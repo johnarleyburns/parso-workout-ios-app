@@ -22,6 +22,7 @@ public enum WeeklyPlanUnifiedBridge {
         return Plan(
             id: id ?? PlanID(raw: stableUUID("coach-plan|\(dateKey(weekStart, calendar: calendar))")),
             title: title,
+            provenance: .coachGenerated,
             goal: goal,
             horizon: .singleWeek,
             weeks: [PlanWeek(id: stableUUID("week|\(dateKey(weekStart, calendar: calendar))"),

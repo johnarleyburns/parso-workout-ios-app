@@ -60,6 +60,14 @@ struct ExercisePickerView: View {
 
     var trimmedQuery: String { outcome.query }
 
+    var exerciseCatalogRevision: Date {
+        exercises.map(\.updatedAt).max() ?? .distantPast
+    }
+
+    var searchedPrimaryGroup: MuscleGroup? {
+        ExerciseSearch.primaryMuscleGroup(matching: trimmedQuery)
+    }
+
     var popular: [Exercise] { search.popular }
 
     var filtered: [Exercise] {
@@ -106,6 +114,14 @@ struct ExercisePickerView: View {
         guard search.rebuildIfNeeded(exercises) else { return }
         facetIndex = ExerciseFacetIndex(exercises)
         if !query.isEmpty { outcome = search.outcome(for: query) }
+    }
+
+    func primaryFocusLabel(_ ex: Exercise) -> String? {
+        guard let group = searchedPrimaryGroup else { return nil }
+        let percent = ExerciseSearch.primaryFocusPercent(primaryMuscles: ex.primaryMuscleGroups,
+                                                         group: group)
+        guard percent > 0 else { return nil }
+        return group.displayName + " primary focus " + String(percent) + "%"
     }
 
     var grouped: [(ExerciseCategory, [Exercise])] {
@@ -267,7 +283,7 @@ struct ExercisePickerView: View {
             loadRecents()
             if recents.isEmpty { selectedTab = .popular }
         }
-        .onChange(of: exercises.count) { _, _ in rebuildIndexIfNeeded() }
+        .onChange(of: exerciseCatalogRevision) { _, _ in rebuildIndexIfNeeded() }
         .onChange(of: selectedGroup) { _, _ in selectedEquipment = nil }
         .onChange(of: selectedTab) { _, newTab in
             if newTab == .browse { selectedEquipment = nil; selectedGroup = nil }
@@ -282,6 +298,7 @@ struct ExercisePickerView: View {
             }
             try? await Task.sleep(nanoseconds: 120_000_000)
             guard !Task.isCancelled else { return }
+            rebuildIndexIfNeeded()
             outcome = search.outcome(for: query)
         }
         .sheet(isPresented: $showCreationSheet) { creationSheet }

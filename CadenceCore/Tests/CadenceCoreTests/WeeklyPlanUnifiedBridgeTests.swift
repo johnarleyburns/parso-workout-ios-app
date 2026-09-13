@@ -33,6 +33,8 @@ final class WeeklyPlanUnifiedBridgeTests: XCTestCase {
         try first.validate()
 
         XCTAssertEqual(first, second, "IDs must not change when the same coach plan is rebuilt")
+        XCTAssertEqual(first.provenance, .coachGenerated)
+        XCTAssertTrue(first.isCoachGenerated)
         XCTAssertEqual(first.weeks.first?.days.count, 7)
         XCTAssertEqual(first.weeks.first?.days.first?.sessions.count, 2)
         let sessions = first.weeks.first?.days.first?.sessions ?? []

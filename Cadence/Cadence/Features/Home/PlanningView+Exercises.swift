@@ -4,7 +4,15 @@ import CadenceCore
 import CadenceFeatures
 
 extension PlanningView {
-    var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+        var trimmedQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        var exerciseCatalogRevision: Date {
+            exercises.map(\.updatedAt).max() ?? .distantPast
+        }
+
+        var searchedPrimaryGroup: MuscleGroup? {
+            ExerciseSearch.primaryMuscleGroup(matching: trimmedQuery)
+        }
 
         // MARK: Exercise filtering
 
@@ -14,15 +22,21 @@ extension PlanningView {
         }
 
         var filteredExercises: [Exercise] {
-            if !trimmedQuery.isEmpty { return exerciseSearchIndex.rank(trimmedQuery) }
+            if !trimmedQuery.isEmpty {
+                return exerciseSearchIndex.rank(trimmedQuery,
+                                                prioritizingPrimaryMuscle: searchedPrimaryGroup)
+            }
             if let group = selectedGroup { return exercises.filter { $0.trainedMuscleGroups.contains(group) } }
             return browseAll ? exercises : popular
         }
 
         func rebuildExerciseSearchIndexIfNeeded() {
-            guard exercises.count != exerciseSearchIndexedCount else { return }
+            let revision = exerciseCatalogRevision
+            guard exercises.count != exerciseSearchIndexedCount
+                    || revision != exerciseSearchIndexedRevision else { return }
             exerciseSearchIndex = ExerciseSearchIndex(exercises)
             exerciseSearchIndexedCount = exercises.count
+            exerciseSearchIndexedRevision = revision
         }
 
         var grouped: [(ExerciseCategory, [Exercise])] {
@@ -138,6 +152,9 @@ extension PlanningView {
                     if let muscles = muscleSubtitle(ex) {
                         Text(muscles).font(.caption).foregroundStyle(.secondary)
                     }
+                    if let focus = primaryFocusLabel(ex) {
+                        Text(focus).font(.caption2.weight(.medium)).foregroundStyle(.tint)
+                    }
                 }
             }
             .accessibilityIdentifier("planning.exercise.\(ex.name)")
@@ -156,5 +173,13 @@ extension PlanningView {
             return ids.prefix(3).map { id in
                 id.split(separator: "-").map { $0.capitalized }.joined(separator: " ")
             }.joined(separator: ", ")
+        }
+
+        func primaryFocusLabel(_ ex: Exercise) -> String? {
+            guard let group = searchedPrimaryGroup else { return nil }
+            let percent = ExerciseSearch.primaryFocusPercent(primaryMuscles: ex.primaryMuscleGroups,
+                                                             group: group)
+            guard percent > 0 else { return nil }
+            return group.displayName + " primary focus " + String(percent) + "%"
         }
 }

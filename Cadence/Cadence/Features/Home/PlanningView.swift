@@ -29,6 +29,7 @@ struct PlanningView: View {
     /// rebuild and re-rank every row on every SwiftUI redraw.
     @State var exerciseSearchIndex = ExerciseSearchIndex<Exercise>([])
     @State var exerciseSearchIndexedCount = -1
+    @State var exerciseSearchIndexedRevision: Date = .distantPast
 
     enum Segment: String, CaseIterable { case routines, exercises }
     @State var routineInfoSheet: RoutineInfo?
@@ -58,7 +59,7 @@ struct PlanningView: View {
             browseAll = false
         }
         .onAppear { rebuildExerciseSearchIndexIfNeeded() }
-        .onChange(of: exercises.count) { _, _ in rebuildExerciseSearchIndexIfNeeded() }
+        .onChange(of: exerciseCatalogRevision) { _, _ in rebuildExerciseSearchIndexIfNeeded() }
         .sheet(isPresented: $templateEditorPresented) { TemplateEditorView() }
         .sheet(isPresented: $boundedRequestPresented) {
             BoundedPlanningRequestView { plan in

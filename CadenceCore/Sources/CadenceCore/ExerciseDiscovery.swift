@@ -71,6 +71,11 @@ public extension ExerciseLibrary {
 }
 
 public extension Exercise {
+    /// Primary catalog muscles used by the shared search index. This remains
+    /// separate from DB++ direct/indirect roles: search answers "what is this
+    /// movement primarily tagged for?", while volume answers "what gets credit?".
+    var primaryMuscleGroups: [MuscleGroup] { MuscleGroup.canonicalize(primaryMuscles) }
+
     /// The muscle groups this (possibly custom) exercise trains — the picker's and
     /// facet index's classification dimension. Reads the DB++ roles that already
     /// back `volumeCredits`, so the picker and the volume ledger cannot disagree;

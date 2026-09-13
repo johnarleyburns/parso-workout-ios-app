@@ -26,6 +26,10 @@ struct ExerciseDetailView: View {
 
                 facets
 
+                if !exercise.volumeEligible {
+                    volumeEligibilityNotice
+                }
+
                 if !exercise.directMuscles.isEmpty || !exercise.indirectMuscles.isEmpty || !exercise.stabilizerMuscles.isEmpty {
                     muscles
                 }
@@ -141,6 +145,18 @@ struct ExerciseDetailView: View {
             if !exercise.stabilizerMuscles.isEmpty { roleRow("Stabilises", exercise.stabilizerMuscles) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var volumeEligibilityNotice: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "info.circle.fill").foregroundStyle(.orange)
+            Text("This movement is classified as non-volume-eligible, so its sets do not add to weekly muscle-volume totals. It can still be useful for power, conditioning, or skill work.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityIdentifier("exercise.volumeEligibilityNotice")
     }
 
     private var evidence: some View {

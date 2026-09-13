@@ -49,6 +49,16 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
         XCTAssertEqual(empty.styleDescription, SuggestedWorkoutStyle.strongman.subtitle)
     }
 
+    func testHistoryNoticeWarnsWithoutTurningSuggestionIntoFailure() {
+        let limited = SuggestedWorkoutPresenter.historyNotice(
+            for: .limited(workoutCount: 1, workingSetCount: 4))
+        XCTAssertTrue(limited?.contains("Limited history") == true)
+        XCTAssertTrue(limited?.contains("onboarding preferences") == true)
+
+        XCTAssertNotNil(SuggestedWorkoutPresenter.historyNotice(for: .unavailable))
+        XCTAssertNil(SuggestedWorkoutPresenter.historyNotice(for: .sufficient))
+    }
+
     func testGapsAndTrimAreDisclosed() {
         let partial = SuggestedWorkoutPresenter.choice(
             for: option(style: .olympic, exercises: [exercise()],

@@ -61,6 +61,9 @@ public enum AuthorRef: Codable, Equatable, Sendable {
 
 public enum PlanProvenance: Codable, Equatable, Sendable {
     case selfAuthored
+    /// Automatically computed coach projection. It is persisted for Home/Watch
+    /// synchronization, but is not a user-authored plan in the Plan tab.
+    case coachGenerated
     case trainerAuthored(trainer: TrainerRef)
     case templateAuthored(templateID: TemplateID, adaptedBy: AuthorRef)
 }
@@ -250,6 +253,16 @@ public struct Plan: Codable, Equatable, Sendable, Identifiable {
     /// Scheme definitions are app-owned authoring metadata. DB++ receives
     /// materialized planned sets, never this registry.
     public var setSchemes: [SetScheme]?
+
+    /// Legacy coach projections were originally serialized as `selfAuthored`
+    /// before coach provenance had its own case. Their stable title/status lets
+    /// the Plan tab hide those old records after the model correction.
+    public var isCoachGenerated: Bool {
+        if case .coachGenerated = provenance { return true }
+        return status == .active
+            && title.trimmingCharacters(in: .whitespacesAndNewlines)
+                .caseInsensitiveCompare("Coach plan") == .orderedSame
+    }
 
     public init(id: PlanID = PlanID(), revisionID: String = "r1", title: String,
                 provenance: PlanProvenance = .selfAuthored,

@@ -11,10 +11,13 @@ final class ExerciseSearchIndexTests: XCTestCase {
         let name: String
         let searchKeywords: [String]
         let isCustom: Bool
-        init(_ name: String, keywords: [String] = [], custom: Bool = false) {
+        let primaryMuscleGroups: [MuscleGroup]
+        init(_ name: String, keywords: [String] = [], custom: Bool = false,
+             primary: [MuscleGroup] = []) {
             self.name = name
             self.searchKeywords = keywords
             self.isCustom = custom
+            self.primaryMuscleGroups = primary
         }
     }
 
@@ -85,6 +88,26 @@ final class ExerciseSearchIndexTests: XCTestCase {
         // "Bench Press" (name prefix, score 4) outranks "My Bench" (contains, score 3)
         XCTAssertLessThan(benchNames.firstIndex(of: "Bench Press")!,
                           benchNames.firstIndex(of: "My Bench")!)
+    }
+
+    func testExactMuscleQueryRanksPrimaryFocusAndExposesTransparentShare() {
+        let exercises = [
+            MockExercise("Cable Fly", keywords: ["chest"], primary: [.chest]),
+            MockExercise("Press", keywords: ["chest"], primary: [.chest, .triceps]),
+            MockExercise("Triceps Press", keywords: ["chest"], primary: [.triceps])
+        ]
+        let index = ExerciseSearchIndex(exercises)
+        let ranked = index.rank("chest", prioritizingPrimaryMuscle: .chest)
+
+        XCTAssertEqual(ranked.map(\.name), ["Cable Fly", "Press"])
+        XCTAssertEqual(ExerciseSearch.primaryFocusPercent(primaryMuscles: [.chest], group: .chest), 100)
+        XCTAssertEqual(ExerciseSearch.primaryFocusPercent(primaryMuscles: [.chest, .triceps], group: .chest), 50)
+    }
+
+    func testMuscleSynonymResolvesForPrimaryRanking() {
+        XCTAssertEqual(ExerciseSearch.primaryMuscleGroup(matching: "pecs"), .chest)
+        XCTAssertNil(ExerciseSearch.primaryMuscleGroup(matching: "back"),
+                     "broad region terms map to several muscle groups")
     }
 
     // MARK: Parity with the reference one-shot API

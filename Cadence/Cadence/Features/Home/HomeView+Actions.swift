@@ -110,11 +110,27 @@ extension HomeView {
             } else {
                 candidates = ExerciseLibrary.starter.map(SuggestedExerciseCandidate.init(template:))
             }
+            let completedHistorySessions = sessions.filter {
+                $0.deletedAt == nil && ($0.endedAt != nil || $0.isLogged)
+            }
+            let historyWorkingSetCount = completedHistorySessions.reduce(0) { count, session in
+                count + session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }.count
+            }
+            let historyWorkoutCount = completedHistorySessions.filter { session in
+                session.orderedSets.contains { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }
+            }.count
+            let historyData = historyWorkingSetCount > 0
+                ? TrainingEngineBridge.historyData(from: completedHistorySessions,
+                                                   subjectId: "cladiron-local")
+                : nil
             let asOf = Date()
             let request = SuggestedWorkoutRequest(
                 input: SuggestedWorkoutInput(
                     completedSetsByMuscle: coachFacts.weeklySetsByMuscle,
                     candidates: candidates,
+                    historyData: historyData,
+                    historyWorkoutCount: historyWorkoutCount,
+                    historyWorkingSetCount: historyWorkingSetCount,
                     trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
                     preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
                     trainingGoal: settings.trainingGoal,

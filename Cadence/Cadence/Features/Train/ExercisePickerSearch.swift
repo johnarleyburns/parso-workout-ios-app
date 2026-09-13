@@ -41,16 +41,21 @@ struct ExercisePickerSearch {
     private var builtInNames: Set<String> = []
     private var popularCache: [Exercise] = []
     private(set) var indexedCount = -1
+    private(set) var indexedRevision: Date = .distantPast
 
-    /// Rebuilds when the catalog size changes. Cheap to call speculatively.
+    /// Rebuilds when the catalog size or any row's metadata revision changes.
+    /// Seeding refreshes keywords/muscles in-place, so count-only invalidation
+    /// leaves an index that can search names but not newly seeded muscle facets.
     mutating func rebuildIfNeeded(_ exercises: [Exercise]) -> Bool {
-        guard exercises.count != indexedCount else { return false }
+        let revision = exercises.map(\.updatedAt).max() ?? .distantPast
+        guard exercises.count != indexedCount || revision != indexedRevision else { return false }
         index = ExerciseSearchIndex(exercises)
         names = index.normalizedNames
         normalizedNameByID = Dictionary(uniqueKeysWithValues: names.map { ($0.item.id, $0.name) })
         builtInNames = Set(names.lazy.filter { !$0.isCustom }.map(\.name))
         libraryIndex = ExerciseSearchIndex(exercises.filter { !$0.isCustom })
         indexedCount = exercises.count
+        indexedRevision = revision
         let byName = Dictionary(names.map { ($0.name, $0.item) }, uniquingKeysWith: { first, _ in first })
         popularCache = ExerciseLibrary.popularNames.compactMap { byName[ExerciseSearch.normalize($0)] }
         return true
@@ -63,7 +68,9 @@ struct ExercisePickerSearch {
         let trimmed = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .empty }
         let normalized = ExerciseSearch.normalize(trimmed)
-        var outcome = Outcome(query: trimmed, results: index.rank(trimmed))
+        var outcome = Outcome(query: trimmed,
+                              results: index.rank(trimmed,
+                                                  prioritizingPrimaryMuscle: ExerciseSearch.primaryMuscleGroup(matching: trimmed)))
         outcome.exactMatch = builtInNames.contains(normalized) || names.contains { $0.isCustom && $0.name == normalized }
         outcome.bestMatch = bestLibraryMatch(normalized: normalized, query: trimmed)
         return outcome

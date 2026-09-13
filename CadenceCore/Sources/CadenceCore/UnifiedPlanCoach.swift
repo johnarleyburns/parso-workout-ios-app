@@ -242,6 +242,7 @@ public enum UnifiedPlanCoachError: Error, Equatable, Sendable {
     case missingCoachFacts
     case invalidPlan(UnifiedPlanValidationError)
     case exerciseNotFound(ExerciseKey)
+    case proposalNoLongerApplies
 }
 
 /// The Phase 2 plan-level adapter. Existing Coach/DB++ engines remain the
@@ -322,24 +323,102 @@ public enum UnifiedPlanCoachEngine {
     public static func apply(_ substitution: UnifiedPlanSubstitution,
                              to plan: Plan, at date: Date = Date()) throws -> Plan {
         try plan.validate()
-        var copy = plan
-        for weekIndex in copy.weeks.indices {
-            for dayIndex in copy.weeks[weekIndex].days.indices {
-                for sessionIndex in copy.weeks[weekIndex].days[dayIndex].sessions.indices {
-                    var session = copy.weeks[weekIndex].days[dayIndex].sessions[sessionIndex]
-                    guard let itemIndex = session.items.firstIndex(where: { $0.id == substitution.itemID }) else { continue }
-                    guard case var .strength(item) = session.items[itemIndex], item.id == substitution.itemID else { continue }
-                    guard item.exerciseKey == substitution.sourceExerciseKey else { continue }
-                    item.alternateExerciseKey = substitution.sourceExerciseKey
-                    item.exerciseKey = substitution.candidateExerciseKey
-                    session.items[itemIndex] = .strength(item)
-                    copy.weeks[weekIndex].days[dayIndex].sessions[sessionIndex] = session
-                    copy.updatedAt = date
-                    return copy
+        return try mutate(plan, assistance: .substituted, at: date) { copy in
+            for weekIndex in copy.weeks.indices {
+                for dayIndex in copy.weeks[weekIndex].days.indices {
+                    for sessionIndex in copy.weeks[weekIndex].days[dayIndex].sessions.indices {
+                        var session = copy.weeks[weekIndex].days[dayIndex].sessions[sessionIndex]
+                        guard let itemIndex = session.items.firstIndex(where: { $0.id == substitution.itemID }) else { continue }
+                        guard case var .strength(item) = session.items[itemIndex], item.id == substitution.itemID else { continue }
+                        guard item.exerciseKey == substitution.sourceExerciseKey else {
+                            throw UnifiedPlanCoachError.proposalNoLongerApplies
+                        }
+                        item.alternateExerciseKey = substitution.sourceExerciseKey
+                        item.exerciseKey = substitution.candidateExerciseKey
+                        session.items[itemIndex] = .strength(item)
+                        copy.weeks[weekIndex].days[dayIndex].sessions[sessionIndex] = session
+                        return true
+                    }
                 }
             }
+            throw UnifiedPlanCoachError.exerciseNotFound(substitution.sourceExerciseKey)
         }
-        throw UnifiedPlanCoachError.exerciseNotFound(substitution.sourceExerciseKey)
+    }
+
+    /// Accepts one evidence-backed progression proposal. The proposal is
+    /// optimistic: if the underlying set changed since it was shown, it is
+    /// rejected instead of overwriting the user's newer edit.
+    public static func apply(_ proposal: UnifiedPlanProgressionProposal,
+                             to plan: Plan, at date: Date = Date()) throws -> Plan {
+        try plan.validate()
+        return try mutate(plan, assistance: .progressed, at: date) { copy in
+            for weekIndex in copy.weeks.indices {
+                for dayIndex in copy.weeks[weekIndex].days.indices {
+                    for sessionIndex in copy.weeks[weekIndex].days[dayIndex].sessions.indices {
+                        var session = copy.weeks[weekIndex].days[dayIndex].sessions[sessionIndex]
+                        guard session.id == proposal.sessionID,
+                              let itemIndex = session.items.firstIndex(where: { $0.id == proposal.itemID }) else { continue }
+                        guard case var .strength(item) = session.items[itemIndex],
+                              item.exerciseKey == proposal.exerciseKey,
+                              let setIndex = item.sets.firstIndex(where: { $0.id == proposal.setID }) else {
+                            throw UnifiedPlanCoachError.proposalNoLongerApplies
+                        }
+                        guard item.sets[setIndex] == proposal.current else {
+                            throw UnifiedPlanCoachError.proposalNoLongerApplies
+                        }
+                        item.sets[setIndex] = proposal.proposed
+                        session.items[itemIndex] = .strength(item)
+                        copy.weeks[weekIndex].days[dayIndex].sessions[sessionIndex] = session
+                        return true
+                    }
+                }
+            }
+            throw UnifiedPlanCoachError.proposalNoLongerApplies
+        }
+    }
+
+    /// Accepts an autoregulation proposal for one strength item. Load changes
+    /// are applied only to load-bearing prescriptions; volume changes remove
+    /// the last working set while preserving warmups and at least one working
+    /// set. Nothing is silently applied by the engine.
+    public static func apply(_ proposal: UnifiedPlanAutoregulationProposal,
+                             to plan: Plan, at date: Date = Date()) throws -> Plan {
+        try plan.validate()
+        return try mutate(plan, assistance: .autoregulated, at: date) { copy in
+            for weekIndex in copy.weeks.indices {
+                for dayIndex in copy.weeks[weekIndex].days.indices {
+                    for sessionIndex in copy.weeks[weekIndex].days[dayIndex].sessions.indices {
+                        var session = copy.weeks[weekIndex].days[dayIndex].sessions[sessionIndex]
+                        guard session.id == proposal.sessionID,
+                              let itemIndex = session.items.firstIndex(where: { $0.id == proposal.itemID }) else { continue }
+                        guard case var .strength(item) = session.items[itemIndex] else {
+                            throw UnifiedPlanCoachError.proposalNoLongerApplies
+                        }
+                        if let adjustment = proposal.workingSetAdjustment, adjustment < 0 {
+                            let removable = min(-adjustment,
+                                                max(0, item.sets.filter { $0.kind != .warmup }.count - 1))
+                            var remaining = removable
+                            item.sets.removeAll { set in
+                                guard remaining > 0, set.kind != .warmup else { return false }
+                                remaining -= 1
+                                return true
+                            }
+                        }
+                        if let adjustment = proposal.loadAdjustmentPercent {
+                            item.sets = item.sets.map { set in
+                                var adjusted = set
+                                adjusted.load = adjusted.load.scaled(by: 1 + adjustment)
+                                return adjusted
+                            }
+                        }
+                        session.items[itemIndex] = .strength(item)
+                        copy.weeks[weekIndex].days[dayIndex].sessions[sessionIndex] = session
+                        return true
+                    }
+                }
+            }
+            throw UnifiedPlanCoachError.proposalNoLongerApplies
+        }
     }
 
     public static func insights(for plan: Plan,
@@ -529,6 +608,24 @@ public enum UnifiedPlanCoachEngine {
                     suggestedFix: "Add a load, %1RM, or effort target if the engine is expected to progress this set.",
                     citationIDs: ["rpeAutoregulation", "oneRMEstimation"], confidence: .moderate))
             }
+            if located.item.defaultRestSeconds == nil && working.allSatisfy({ $0.restSeconds == nil }) {
+                findings.append(UnifiedPlanCoachCritique(
+                    id: "critique|rest|" + located.item.id.uuidString, kind: .rest,
+                    severity: .info, title: "Rest is not specified",
+                    detail: located.item.exerciseKey.raw + " has no rest target, so the execution surface must rely on a generic timer.",
+                    suggestedFix: "Set a rest target appropriate to the exercise and goal, then adjust it from actual performance.",
+                    citationIDs: ["schoenfeld2021", "rpeAutoregulation"], confidence: .moderate))
+            }
+        }
+
+        for session in plan.weeks.flatMap({ $0.days }).flatMap(\.sessions)
+            where session.painFlag?.present == true {
+            findings.append(UnifiedPlanCoachCritique(
+                id: "critique|safety|pain|" + session.id.uuidString, kind: .safety,
+                severity: .warning, title: "Pain or illness is flagged",
+                detail: session.title + " carries a pain or illness flag. The plan should not be treated as a clearance to train through symptoms.",
+                suggestedFix: "Pause hard work, choose rest or gentle movement, and seek qualified advice if symptoms persist.",
+                citationIDs: ["meeusenOvertraining2013", "sawMonitoring2016"], confidence: .limited))
         }
 
         if plan.weeks.contains(where: \.isDeload) == false,
@@ -677,6 +774,23 @@ public enum UnifiedPlanCoachEngine {
         prepared.id
     }
 
+    private static func mutate(_ plan: Plan, assistance: PlanAssistance, at date: Date,
+                               _ body: (inout Plan) throws -> Bool) throws -> Plan {
+        var copy = plan
+        guard try body(&copy) else { throw UnifiedPlanCoachError.proposalNoLongerApplies }
+        copy.revisionID = nextRevisionID(copy.revisionID)
+        copy.assistance = (copy.assistance ?? []).union([assistance])
+        copy.updatedAt = date
+        try copy.validate()
+        return copy
+    }
+
+    private static func nextRevisionID(_ revisionID: String) -> String {
+        guard revisionID.first == "r",
+              let number = Int(revisionID.dropFirst()) else { return "\(revisionID)+1" }
+        return "r\(max(1, number + 1))"
+    }
+
     private static func stableUUID(_ value: String) -> UUID {
         var first: UInt64 = 14_695_981_039_346_656_037
         var second: UInt64 = 10_995_116_282_311_906_951
@@ -693,5 +807,22 @@ public enum UnifiedPlanCoachEngine {
             result.1 += length
         }.0
         return UUID(uuidString: groups.joined(separator: "-")) ?? UUID()
+    }
+}
+
+private extension LoadPrescription {
+    func scaled(by factor: Double) -> LoadPrescription {
+        guard factor > 0 else { return self }
+        switch self {
+        case let .absoluteWeight(value, unit):
+            return .absoluteWeight(value: value * factor, unit: unit)
+        case let .percent1RM(percent, calculatedWeight):
+            return .percent1RM(percent: min(1, max(0, percent * factor)),
+                               calculatedWeight: calculatedWeight.map { $0 * factor })
+        case let .bodyweightPlus(value, unit):
+            return .bodyweightPlus(value: value * factor, unit: unit)
+        default:
+            return self
+        }
     }
 }

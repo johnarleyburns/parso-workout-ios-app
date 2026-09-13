@@ -170,6 +170,28 @@ final class TrainingEngineBridgeTests: XCTestCase {
         XCTAssertTrue(set.completed)
     }
 
+    func testTrainingHistoryRecoversLegacyRecordedWorkoutsWithoutEndMarker() throws {
+        let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
+        let start = Date(timeIntervalSince1970: 1_750_000_000)
+        let session = try WorkoutRepository.createSession(
+            title: "Legacy history", date: start, in: context)
+        let exercise = try WorkoutRepository.findOrCreateExercise(
+            named: "Legacy Bench", primaryMuscles: [MuscleGroup.chest.rawValue], in: context)
+        _ = try WorkoutRepository.addSet(
+            to: session, exercise: exercise, weightKg: 60, reps: 10,
+            completedAt: start.addingTimeInterval(60), in: context)
+
+        XCTAssertNil(session.endedAt)
+        XCTAssertFalse(session.isLogged)
+        XCTAssertTrue(session.countsAsStrengthHistory)
+        XCTAssertEqual(session.completedOwnerWorkingSetCount, 1)
+
+        let history = TrainingEngineBridge.trainingHistory(
+            from: [session], subjectId: "legacy-history")
+        XCTAssertEqual(history.workouts.count, 1)
+        XCTAssertEqual(history.workouts.first?.exercises.first?.sets.first?.reps, 10)
+    }
+
     func testObservationSnapshotUsesDBPlusPlusEffectiveSets() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let now = Date(timeIntervalSince1970: 1_750_000_000)

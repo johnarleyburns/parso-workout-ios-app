@@ -19,6 +19,7 @@ struct PlanCoachReviewView: View {
     @State private var autoregulation: [UnifiedPlanAutoregulationProposal] = []
     @State private var insights: [UnifiedPlanCoachInsight] = []
     @State private var substitutions: [UnifiedPlanSubstitution] = []
+    @State private var appliedProposalIDs: Set<String> = []
     @State private var selectedItemID: UUID?
     @State private var errorMessage: String?
 
@@ -95,24 +96,36 @@ struct PlanCoachReviewView: View {
                 }
 
                 Section("Progress and autoregulation") {
-                    if progression.isEmpty && autoregulation.isEmpty {
+                    let pendingProgression = progression.filter { !appliedProposalIDs.contains($0.id) }
+                    let pendingAutoregulation = autoregulation.filter { !appliedProposalIDs.contains($0.id) }
+                    if pendingProgression.isEmpty && pendingAutoregulation.isEmpty {
                         Text("No progress or autoregulation proposal is active. Log completed working sets and readiness to make these surfaces actionable.")
                             .foregroundStyle(.secondary)
                     }
-                    ForEach(progression) { proposal in
+                    ForEach(pendingProgression) { proposal in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Progress: \(proposal.exerciseKey.raw.replacingOccurrences(of: "_", with: " ").capitalized)")
-                                .font(.headline)
+                            HStack {
+                                Text("Progress: \(proposal.exerciseKey.raw.replacingOccurrences(of: "_", with: " ").capitalized)")
+                                    .font(.headline)
+                                Spacer()
+                                Button("Apply") { apply(proposal) }
+                                    .buttonStyle(.bordered)
+                            }
                             Text(proposal.reason)
                             Text(citationSummary(proposal.citationIDs))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    ForEach(autoregulation) { proposal in
+                    ForEach(pendingAutoregulation) { proposal in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Autoregulation: \(proposal.direction.rawValue.capitalized)")
-                                .font(.headline)
+                            HStack {
+                                Text("Autoregulation: \(proposal.direction.rawValue.capitalized)")
+                                    .font(.headline)
+                                Spacer()
+                                Button("Apply") { apply(proposal) }
+                                    .buttonStyle(.bordered)
+                            }
                             Text(proposal.detail)
                             Text(citationSummary(proposal.citationIDs))
                                 .font(.caption)
@@ -219,6 +232,28 @@ struct PlanCoachReviewView: View {
             refresh()
         } catch {
             errorMessage = "Could not apply substitution: \(error.localizedDescription)"
+        }
+    }
+
+    private func apply(_ proposal: UnifiedPlanProgressionProposal) {
+        do {
+            plan = try UnifiedPlanCoachEngine.apply(proposal, to: plan)
+            appliedProposalIDs.insert(proposal.id)
+            onApply(plan)
+            refresh()
+        } catch {
+            errorMessage = "Could not apply progression: \(error.localizedDescription)"
+        }
+    }
+
+    private func apply(_ proposal: UnifiedPlanAutoregulationProposal) {
+        do {
+            plan = try UnifiedPlanCoachEngine.apply(proposal, to: plan)
+            appliedProposalIDs.insert(proposal.id)
+            onApply(plan)
+            refresh()
+        } catch {
+            errorMessage = "Could not apply autoregulation: \(error.localizedDescription)"
         }
     }
 

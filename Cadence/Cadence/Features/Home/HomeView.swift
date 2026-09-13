@@ -126,8 +126,12 @@ struct HomeView: View {
             from: snapshot.plan,
             goal: settings.trainingGoal,
             title: "Coach plan")
-        _ = try? UnifiedPlanStore.upsert(unifiedPlan, originDevice: "iphone", in: context)
-        _ = try? NormalizedPlanStore.upsert(unifiedPlan, originDevice: "iphone", in: context)
+        // This is an ephemeral Home projection, not an authored plan. Do not
+        // persist it: every coach refresh creates a fresh PlanID, so storing it
+        // here accumulated duplicate "Coach plan" rows and kept CloudKit
+        // exporting an ever-growing queue while the app was suspended
+        // (RUNNINGBOARD 0xdead10cc). Explicit Plan-tab generation/save is the
+        // only path that should create a persisted coach plan.
 
         var todayPlan = WatchSync.TodayPlan.from(day: snapshot.plan.today,
                                                  updatedAt: unifiedPlan.updatedAt)

@@ -41,6 +41,12 @@ extension PlanningView {
                     Label("Describe a plan", systemImage: "text.bubble")
                 }
                 .accessibilityIdentifier("planning.describePlan")
+                Button {
+                    coachGeneratorPresented = true
+                } label: {
+                    Label("Generate with Coach", systemImage: "wand.and.stars")
+                }
+                .accessibilityIdentifier("planning.generateWithCoach")
             }
 
             if trimmedQuery.isEmpty {

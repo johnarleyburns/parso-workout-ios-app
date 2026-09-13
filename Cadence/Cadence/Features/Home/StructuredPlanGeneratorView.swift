@@ -1,16 +1,20 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-/// Structured, deterministic plan generation from existing app controls. There
-/// is no text parser here: the engine receives the user's stored goal, schedule,
-/// experience, equipment vocabulary, and a style bias.
+/// Structured, deterministic plan generation from existing app controls. The
+/// Plan tab uses the unified coach boundary so generated plans carry rationale,
+/// provenance, and the same report used by coach review.
 struct StructuredPlanGeneratorView: View {
-    let onGenerated: (EditablePlan) -> Void
+    let onGenerated: (Plan) -> Void
 
     @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
-    @State private var style: SuggestedWorkoutStyle = .fitness
+    @Query(sort: \.WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+    @Query(sort: \.CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
+    @Query(sort: \.Assessment.date, order: .reverse) private var assessments: [Assessment]
+    @Query(sort: \.ReadinessEntry.date, order: .reverse) private var readiness: [ReadinessEntry]
     @State private var isGenerating = false
     @State private var message: String?
 
@@ -18,15 +22,8 @@ struct StructuredPlanGeneratorView: View {
         NavigationStack {
             Form {
                 Section {
-                    Picker("Movement style", selection: $style) {
-                        ForEach(SuggestedWorkoutStyle.allCases, id: \.rawValue) { style in
-                            Text(style.displayName).tag(style)
-                        }
-                    }
-                    .accessibilityIdentifier("structuredPlan.style")
-                    Text(style.subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text("The unified coach uses your goal, schedule, recent training, readiness, and the exercise catalog to build a reviewable draft.")
+                        .font(.subheadline)
                 } header: {
                     Text("Generate a plan")
                 } footer: {
@@ -71,32 +68,37 @@ struct StructuredPlanGeneratorView: View {
         message = nil
         isGenerating = true
         let settingsSnapshot = settings
-        let input = SuggestedWorkoutInput(
-            completedSetsByMuscle: [:],
-            candidates: [],
-            trackedGroups: settingsSnapshot.coachSchedulePreferences.trackedMuscleGroups,
-            preferredSetsPerExercise: settingsSnapshot.coachSchedulePreferences.desiredSetsPerExercise,
-            trainingGoal: settingsSnapshot.trainingGoal,
-            engineContext: SuggestedWorkoutEngineContext(
-                experience: settingsSnapshot.experienceLevel,
-                schedule: settingsSnapshot.coachSchedulePreferences,
-                availableEquipment: Equipment.allCases,
-                environment: "commercial_gym"))
+        let now = Date()
+        let trainingFacts = TrainingFacts.make(
+            sessions: sessions, assessments: assessments, now: now,
+            goal: settingsSnapshot.trainingGoal,
+            experience: settingsSnapshot.experienceLevel,
+            formula: settingsSnapshot.formula)
+        let events = CoachSnapshotBuilder.trainingEvents(
+            sessions: sessions, cardio: cardio, assessments: assessments,
+            formula: settingsSnapshot.formula, userAge: settingsSnapshot.userAge)
+        let coachFacts = CoachFacts.make(
+            from: events, goal: settingsSnapshot.trainingGoal,
+            experience: settingsSnapshot.experienceLevel,
+            assessments: AssessmentMath.summaries(from: assessments),
+            readinessEntry: readiness.first, formula: settingsSnapshot.formula,
+            now: now)
+        let request = UnifiedPlanCoachRequest(
+            goal: settingsSnapshot.trainingGoal,
+            experience: settingsSnapshot.experienceLevel,
+            schedulePreferences: settingsSnapshot.coachSchedulePreferences,
+            title: "Coach plan", referenceDate: now,
+            trainingFacts: trainingFacts, coachFacts: coachFacts)
         Task {
             let bundle = await Task.detached(priority: .userInitiated) {
-                SuggestedWorkoutGenerator.generate(input: input)
+                try? UnifiedPlanCoachEngine.generate(request)
             }.value
             guard !Task.isCancelled else { return }
-            let option = bundle.option(style)
-            if option.isLaunchable {
-                let draft = SuggestedWorkoutPresenter.editablePlan(
-                    for: option,
-                    unit: settingsSnapshot.unit,
-                    warmupMinutes: settingsSnapshot.warmupMinutes,
-                    cooldownMinutes: settingsSnapshot.cooldownMinutes)
-                onGenerated(draft)
+            if let bundle {
+                onGenerated(bundle.plan)
+                dismiss()
             } else {
-                message = "The engine could not find an eligible movement for this request."
+                message = "The unified coach could not generate an eligible plan from the current history."
                 isGenerating = false
             }
         }

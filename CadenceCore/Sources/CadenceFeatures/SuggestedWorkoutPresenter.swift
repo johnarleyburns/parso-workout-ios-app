@@ -34,7 +34,10 @@ public enum SuggestedWorkoutPresenter {
         case .unavailable:
             return "No completed strength history was available. This suggestion uses your onboarding preferences and the exercise catalog; future suggestions can become more specific after you log a workout."
         case .limited(let workoutCount, let workingSetCount):
-            return "Limited history: (workoutCount) workout\(workoutCount == 1 ? "" : "s"), (workingSetCount) working set\(workingSetCount == 1 ? "" : "s"). This suggestion also uses your onboarding preferences, so review it before starting."
+            return "Limited history: " + String(workoutCount) + " workout" +
+                (workoutCount == 1 ? "" : "s") + ", " + String(workingSetCount) +
+                " working set" + (workingSetCount == 1 ? "" : "s") +
+                ". This suggestion also uses your onboarding preferences, so review it before starting."
         }
     }
 

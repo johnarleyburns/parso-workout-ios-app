@@ -709,6 +709,20 @@ public final class WorkoutSession {
         endedAt == nil && deletedAt == nil && !isLogged
     }
 
+    /// A non-warmup owner set with entered reps is durable training history.
+    /// Legacy stores predate `endedAt` and can therefore contain real completed
+    /// workouts with both `endedAt == nil` and `isLogged == false`.
+    public var completedOwnerWorkingSetCount: Int {
+        orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }.count
+    }
+
+    /// Shared history boundary for coaching and engine exports. The explicit
+    /// lifecycle flags remain authoritative for current sessions; recorded
+    /// working sets provide the back-compat path for older stores.
+    public var countsAsStrengthHistory: Bool {
+        deletedAt == nil && (endedAt != nil || isLogged || completedOwnerWorkingSetCount > 0)
+    }
+
     /// Total working volume (kg) across the owner's non-warmup sets. Partner
     /// sets are excluded (field-testing §04, decision #13). Uses effective load
     /// for new-accounting sets, raw weight for legacy sets.

@@ -810,7 +810,7 @@ extension TrainingEngineBridge {
         subjectId: String
     ) -> FreeExerciseDBPlusPlus.TrainingHistory {
         let liveSessions = sessions
-            .filter { $0.deletedAt == nil && ($0.endedAt != nil || $0.isLogged) }
+            .filter(\.countsAsStrengthHistory)
             .sorted { ($0.date, $0.id.uuidString) < ($1.date, $1.id.uuidString) }
 
         let sessionPlans = liveSessions.compactMap { session -> FreeExerciseDBPlusPlus.WorkoutPlan? in

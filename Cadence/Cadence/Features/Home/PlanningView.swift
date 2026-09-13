@@ -22,6 +22,7 @@ struct PlanningView: View {
     @State var browseAll = false
     @State var templateEditorPresented = false
     @State var boundedRequestPresented = false
+    @State var coachGeneratorPresented = false
     @State var manualPlan: Plan?
     @State var combinedLaunch: CombinedSessionLaunch?
     /// The exercise catalog is a SwiftData graph. Keep its normalized search
@@ -64,6 +65,11 @@ struct PlanningView: View {
         .sheet(isPresented: $boundedRequestPresented) {
             BoundedPlanningRequestView { plan in
                 manualPlan = plan
+            }
+        }
+        .sheet(isPresented: $coachGeneratorPresented) {
+            StructuredPlanGeneratorView { generated in
+                manualPlan = generated
             }
         }
         .sheet(item: $manualPlan) { plan in

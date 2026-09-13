@@ -222,8 +222,12 @@ struct ManualPlanView: View {
         plan.authoredOnIdiom = .compact
         plan.status = .active
         plan.updatedAt = Date()
+        // Persist the compact value envelope as the single CloudKit write
+        // surface. The normalized graph is retained for migration and direct
+        // local callers, but duplicating every authored plan into a large
+        // parent/child export graph made suspension-time CloudKit saves prone
+        // to watchdog termination.
         _ = try? UnifiedPlanStore.upsert(plan, originDevice: "iphone", in: context)
-        _ = try? NormalizedPlanStore.upsert(plan, originDevice: "iphone", in: context)
         appModel.updateWatchTodayPlan(ManualPlanWatchBridge.todayPlan(
             from: plan,
             date: Date(),

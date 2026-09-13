@@ -110,14 +110,15 @@ extension HomeView {
             } else {
                 candidates = ExerciseLibrary.starter.map(SuggestedExerciseCandidate.init(template:))
             }
+            let activeSessionID = active.strengthSession?.id
             let completedHistorySessions = sessions.filter {
-                $0.deletedAt == nil && ($0.endedAt != nil || $0.isLogged)
+                $0.id != activeSessionID && $0.countsAsStrengthHistory
             }
             let historyWorkingSetCount = completedHistorySessions.reduce(0) { count, session in
-                count + session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }.count
+                count + session.completedOwnerWorkingSetCount
             }
             let historyWorkoutCount = completedHistorySessions.filter { session in
-                session.orderedSets.contains { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }
+                session.completedOwnerWorkingSetCount > 0
             }.count
             let historyData = historyWorkingSetCount > 0
                 ? TrainingEngineBridge.historyData(from: completedHistorySessions,

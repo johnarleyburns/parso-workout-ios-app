@@ -53,6 +53,7 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
         let limited = SuggestedWorkoutPresenter.historyNotice(
             for: .limited(workoutCount: 1, workingSetCount: 4))
         XCTAssertTrue(limited?.contains("Limited history") == true)
+        XCTAssertTrue(limited?.contains("1 workout, 4 working sets") == true, limited ?? "")
         XCTAssertTrue(limited?.contains("onboarding preferences") == true)
 
         XCTAssertNotNil(SuggestedWorkoutPresenter.historyNotice(for: .unavailable))

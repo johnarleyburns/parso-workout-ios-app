@@ -155,6 +155,13 @@ struct HomeView: View {
             updatedAt: Date()))
         return snapshot
     }
+
+    func refreshCoachSnapshot() async {
+        guard !model.isRestoringCloudKitHistory else { return }
+        model.coachRefreshInProgress = true
+        defer { model.coachRefreshInProgress = false }
+        coachSnapshot = await buildCoachSnapshot()
+    }
     func handleInsightAction(_ action: Insight.Action) {
         switch action {
         case .addGapsToPlan(let deficits):

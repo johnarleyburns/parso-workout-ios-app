@@ -31,12 +31,26 @@ extension HomeView {
         ContributionCoordinator.recordWorkoutCompleted()
     }
     /// Pulls any new Watch/Health-recorded cardio into the local store (FR-2.1).
-    /// Formerly auto-run by the now-removed Cardio screen (feedback batch 3).
+    /// This runs after Home loads and on pull-to-refresh. The status is published
+    /// so the user can see what is happening instead of experiencing a silent
+    /// background import.
     func syncCardioFromHealth() async {
-        let new = await model.health.newWorkouts(since: model.lastHealthSync)
-        let inserted = (try? WorkoutRepository.ingest(new, in: context)) ?? 0
-        model.lastHealthSync = Date()
-        if inserted > 0 { markWorkoutHistoryChanged() }
+        guard !model.healthSyncStatus.isInProgress else { return }
+        model.healthSyncStatus = .syncing
+        do {
+            let new = await model.health.newWorkouts(since: model.lastHealthSync)
+            guard !Task.isCancelled else {
+                model.healthSyncStatus = .idle
+                return
+            }
+            let inserted = try WorkoutRepository.ingest(new, in: context)
+            let completedAt = Date()
+            model.lastHealthSync = completedAt
+            model.healthSyncStatus = .completed(completedAt, insertedCount: inserted)
+            if inserted > 0 { markWorkoutHistoryChanged() }
+        } catch {
+            model.healthSyncStatus = .failed(error.localizedDescription)
+        }
     }
     var homeActionRow: some View {
         VStack(spacing: CGFloat(LayoutMetrics.actionButtonSpacing)) {

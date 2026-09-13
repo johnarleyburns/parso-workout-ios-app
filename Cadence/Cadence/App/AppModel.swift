@@ -24,6 +24,30 @@ import CadenceFixtures
 final class AppModel: NSObject, @unchecked Sendable {
     private static let liveWatchHREnabled = true
 
+    enum HealthSyncStatus: Equatable, Sendable {
+        case idle
+        case syncing
+        case completed(Date, insertedCount: Int)
+        case failed(String)
+
+        var isInProgress: Bool {
+            if case .syncing = self { return true }
+            return false
+        }
+
+        var detailText: String {
+            switch self {
+            case .idle: return "Not run yet"
+            case .syncing: return "Checking Apple Health…"
+            case .completed(_, let insertedCount):
+                return insertedCount == 0
+                    ? "Checked; no new workouts"
+                    : "Imported (insertedCount) workout\(insertedCount == 1 ? "" : "s")"
+            case .failed(let message): return "Couldn’t check Apple Health: \(message)"
+            }
+        }
+    }
+
     let health: HealthDataProviding
     let hrm: HeartRateMonitor
     let location: LocationTracker
@@ -73,6 +97,11 @@ final class AppModel: NSObject, @unchecked Sendable {
     private var cloudKitImportQuietTask: Task<Void, Never>?
 
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
+    var healthSyncStatus: HealthSyncStatus = .idle
+    /// Published while Home recomputes its ephemeral coach projection so the
+    /// operation is visible both on Home and in Settings → Transparency & Control.
+    var coachRefreshInProgress = false
+
     var lastHealthSync: Date? {
         get { (UserDefaults.standard.object(forKey: SettingsKey.lastHealthSync) as? Double).map { Date(timeIntervalSince1970: $0) } }
         set { UserDefaults.standard.set(newValue?.timeIntervalSince1970, forKey: SettingsKey.lastHealthSync) }

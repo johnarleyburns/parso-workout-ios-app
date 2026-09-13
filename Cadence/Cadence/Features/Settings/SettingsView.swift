@@ -177,6 +177,17 @@ struct SettingsView: View {
             }
 
             Section {
+                NavigationLink {
+                    TransparencyCenterView()
+                } label: {
+                    Label("Transparency & Control", systemImage: "eye")
+                }
+                .accessibilityIdentifier("settings.transparency")
+            } footer: {
+                Text("See what Cladiron is doing automatically, why it happened, and how to edit, stop, retry, undo, or restore it when supported.")
+            }
+
+            Section {
                 Toggle("Workout sounds", isOn: $settings.workoutSounds)
                     .accessibilityIdentifier("settings.workoutSounds")
             } header: {

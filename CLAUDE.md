@@ -123,6 +123,21 @@ outputs are advice *attached to* the plan (e.g. `PlannedSession.adviceNote`/
 `recommendsLighter`), never a silent replacement of a requested session. Every coach
 surface must leave an escape hatch (alternatives, full cardio picker, strength-anyway).
 
+## HARD RULE: Transparency and user control
+Always tell the user what Cladiron is doing, especially when work is automatic,
+backgrounded, delayed, or changes stored data. Every non-trivial operation must
+have a visible in-progress/result/failure state, plain-language explanation, and
+a deeper explanation in Settings. Never create, import, sync, recompute, replace,
+or apply something as unexplained "magic": the user must be able to understand
+the trigger and inputs, edit the result where applicable, stop or cancel work
+where the platform permits it, and retry, undo, restore, or redo it where that
+operation is reversible. Coach proposals and plan mutations require explicit
+review/apply; automatic refreshes may update ephemeral projections but must not
+silently mutate an authored plan. If Apple controls an operation (for example,
+private iCloud scheduling), say so honestly and provide the available retry,
+diagnostic, export, or recovery path instead of implying a control the app does
+not have.
+
 ## Workflow rules for Claude Code
 - **`current_status.md` is the active task plan and handoff.** At the start of every task, read it and continue from its documented overall position and immediate next task. Before implementing, update it with the intended task/step when the work meaningfully changes the plan. After implementation, update it with what changed, verification results, remaining work, and the next task. Do not rely on stale conversation context instead of this file.
 - For any non-trivial feature, **propose a plan first** (plan mode), wait for approval, then implement.

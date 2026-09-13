@@ -22,6 +22,21 @@ extension HomeView {
                             .accessibilityIdentifier("home.supporterBadge")
                     }
 
+                    if model.healthSyncStatus.isInProgress {
+                        Label(model.healthSyncStatus.detailText,
+                              systemImage: "heart.text.square")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("home.healthSync.status")
+                    }
+
+                    if model.coachRefreshInProgress {
+                        Label("Updating coaching guidance…", systemImage: "arrow.triangle.2.circlepath")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("home.coachCompute.status")
+                    }
+
                     if let s = resumeSession { resumeCard(s) }
                     homeActionRow
                     readinessCard
@@ -74,9 +89,8 @@ extension HomeView {
                 case .settings: SettingsView()
                 case .history: HistoryView(path: $path)
                 case .coach:
-                    // Observations are free and continuous for everyone; only the
-                    // prescription behind them is Pro. Free users still get the
-                    // full, live insights list here.
+                    // Observations and editable coaching guidance are available to
+                    // every user; any plan mutation still requires explicit apply.
                     CoachInsightsView(insights: coachInsights,
                                       onFixCustomExercises: { path.append(HomeRoute.customExercises) },
                                       onInsightAction: { handleInsightAction($0) })
@@ -380,14 +394,12 @@ extension HomeView {
         .task(id: HomeCoachTaskIdentity(
             signature: coachSignature,
             isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
-            guard !model.isRestoringCloudKitHistory else { return }
-            coachSnapshot = await buildCoachSnapshot()
+            await refreshCoachSnapshot()
         }
         // Passive HealthKit samples arrive asynchronously after the initial pipeline
         // run; rebuild the snapshot once they land (and whenever they change).
         .onChange(of: passiveSamples) {
-            guard !model.isRestoringCloudKitHistory else { return }
-            Task { coachSnapshot = await buildCoachSnapshot() }
+            Task { await refreshCoachSnapshot() }
         }
         .coachOverrideConfirmation(
             pending: $pendingAddGapsDeficits,

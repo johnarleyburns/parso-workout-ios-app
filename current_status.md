@@ -45,6 +45,13 @@ platform checklist is in `PHASE_4_MANUAL_TEST.md`.
   removed from app launch, Settings, core models, and tests. `Cadence.storekit`
   contains only the optional `guru.parso.cladiron.tip.generous` consumable;
   successful purchase remains the sole path to the local Home Supporter badge.
+- **Transparency and user control:** the project now requires visible status and
+  plain-language control for automatic/background work. Settings exposes a
+  Transparency & Control drill-down for HealthKit, Coach refresh, Watch
+  projection, iCloud mirroring, Supporter prompts, and available retry/undo/
+  recovery paths. Home visibly reports HealthKit ingestion and coach refresh
+  while they are running; no authored plan is changed without explicit review
+  and Apply.
 
 ### Remaining Phase 2 close-out
 

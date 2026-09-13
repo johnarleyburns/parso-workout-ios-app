@@ -373,7 +373,14 @@ public enum SuggestedWorkoutGenerator {
             input: input,
             context: context,
             style: .fitness) else { return nil }
+        // DB++ may return a structurally valid plan with no usable exercises
+        // when a device's history, tracked-muscle set, or available facets make
+        // the request over-constrained. That is not a terminal chooser failure:
+        // the app-side catalog solver below still has enough information to make
+        // a transparent, editable suggestion from the user's preferences.
+        guard base.option.isLaunchable else { return nil }
         let options = styles.map { restyle(base.option, as: $0) }
+        guard options.contains(where: \.isLaunchable) else { return nil }
         let duration = generationStart.duration(to: ContinuousClock.now)
         let diagnostics = SuggestedWorkoutDiagnostics(
             rawCandidateCount: input.candidates.count,

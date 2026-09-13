@@ -1,4 +1,5 @@
 import XCTest
+import SwiftData
 @testable import CadenceCore
 
 /// The generator after the DB++ adoption (decision D6): one 4-set-per-group
@@ -423,6 +424,65 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
             XCTAssertEqual(option.initialDeficits["chest"], 4)
             XCTAssertEqual(option.initialDeficits["lats"], 4)
         }
+    }
+
+    func testEngineContextGeneratesLaunchableOptionsForDefaultTrackedGroups() {
+        let bundle = SuggestedWorkoutGenerator.generate(input: SuggestedWorkoutInput(
+            completedSetsByMuscle: [:],
+            candidates: ExerciseLibrary.starter.map(SuggestedExerciseCandidate.init(template:)),
+            trackedGroups: MuscleGroup.defaultTracked,
+            preferredSetsPerExercise: CoachSchedulePreferences.default.desiredSetsPerExercise,
+            trainingGoal: .hypertrophy,
+            engineContext: SuggestedWorkoutEngineContext(
+                schedule: .default,
+                availableEquipment: Equipment.allCases,
+                asOf: Date(timeIntervalSince1970: 1_750_000_000))))
+
+        XCTAssertTrue(bundle.options.allSatisfy(\.isLaunchable),
+                      "default tracked groups produced empty options: \(bundle.options.map { ($0.style, $0.exercises.count) })")
+    }
+
+    func testEngineContextWithCompletedHistoryStillGeneratesLaunchableOptions() throws {
+        let asOf = Date(timeIntervalSince1970: 1_750_000_000)
+        let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
+        let session = try WorkoutRepository.createSession(
+            title: "Prior workout", date: asOf.addingTimeInterval(-86_400), in: context)
+        let record = try XCTUnwrap(
+            TrainingEngineBridge.exerciseRecords.first { $0.volumeEligible && !$0.direct.isEmpty })
+        let exercise = Exercise(
+            name: record.name,
+            category: .push,
+            primaryMuscles: record.primaryMuscles,
+            secondaryMuscles: record.secondaryMuscles,
+            directMuscles: record.direct.compactMap(MuscleGroup.canonical),
+            indirectMuscles: record.indirect.compactMap(MuscleGroup.canonical),
+            stabilizerMuscles: record.stabilizers.compactMap(MuscleGroup.canonical),
+            volumeEligible: record.volumeEligible,
+            sourceExerciseID: record.exerciseId)
+        context.insert(exercise)
+        _ = try WorkoutRepository.addSet(
+            to: session, exercise: exercise, weightKg: 50, reps: 8,
+            completedAt: session.date, in: context)
+        session.endedAt = session.date.addingTimeInterval(600)
+        let historyData = try XCTUnwrap(
+            TrainingEngineBridge.historyData(from: [session], subjectId: "suggestion-test"))
+
+        let bundle = SuggestedWorkoutGenerator.generate(input: SuggestedWorkoutInput(
+            completedSetsByMuscle: [:],
+            candidates: ExerciseLibrary.starter.map(SuggestedExerciseCandidate.init(template:)),
+            historyData: historyData,
+            historyWorkoutCount: 1,
+            historyWorkingSetCount: 1,
+            trackedGroups: MuscleGroup.defaultTracked,
+            preferredSetsPerExercise: CoachSchedulePreferences.default.desiredSetsPerExercise,
+            trainingGoal: .hypertrophy,
+            engineContext: SuggestedWorkoutEngineContext(
+                schedule: .default,
+                availableEquipment: Equipment.allCases,
+                asOf: asOf)))
+
+        XCTAssertTrue(bundle.options.allSatisfy(\.isLaunchable),
+                      "history produced empty options: \(bundle.options.map { ($0.style, $0.exercises.count) })")
     }
 
     func testAlreadySatisfiedStylesAreEmptyAndNonLaunchable() {

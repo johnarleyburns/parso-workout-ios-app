@@ -167,6 +167,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Suggested-workout readiness did not notify the user")
         XCTAssertTrue(app.navigationBars["View Suggested Workout"].exists,
                       "Suggested-workout chooser has the wrong title")
+        XCTAssertEqual(app.buttons.matching(identifier: "suggestedWorkout.close").count, 1,
+                       "Suggested-workout chooser duplicated its Close control")
+        XCTAssertEqual(app.buttons.matching(identifier: "suggestedWorkout.about").count, 1,
+                       "Suggested-workout chooser duplicated its About control")
         // Five training styles at one set target, not three lengths of the same
         // workout (DB++ adoption, decision D6).
         let fitness = app.buttons["suggestedWorkout.style.fitness"]

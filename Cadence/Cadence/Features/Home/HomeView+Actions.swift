@@ -183,10 +183,17 @@ extension HomeView {
 
     private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {
         if selectWorkoutPresented || weightsStartPresented {
+            // Dismiss the workout-start sheet fully before presenting the
+            // chooser sheet. Presenting both during the same transition can
+            // leave two NavigationStack toolbars alive on the suggestion
+            // header (two Close and About controls on device).
             selectWorkoutPresented = false
             weightsStartPresented = false
             Task { @MainActor in
-                await Task.yield()
+                try? await Task.sleep(for: .milliseconds(750))
+                guard !Task.isCancelled,
+                      !selectWorkoutPresented,
+                      !weightsStartPresented else { return }
                 suggestedWorkoutRequest = request
             }
         } else {

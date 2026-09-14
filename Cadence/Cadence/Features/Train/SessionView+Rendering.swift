@@ -7,6 +7,9 @@ extension SessionView {
     @ViewBuilder
     var scrollContent: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
+            if active.strengthSession?.id == session.id {
+                LiveWorkoutVolumeSummary(state: liveVolumeState, expanded: $liveVolumeExpanded)
+            }
             if isManualLog { loggedDateBanner }
             if active.strengthSession?.id != session.id && !isManualLog {
                 editableMetadataRow
@@ -107,6 +110,7 @@ extension SessionView {
             generalRepLadders = SessionRenderModel.generalRepLadders(recentSessions: recent,
                                                                      excluding: session)
             plannedExerciseIndex = indexedPlannedExercises()
+            refreshLiveVolume()
             cache.refresh(signature: refreshSignature) {
                 SessionRenderModel.build(session: session, prRule: settings.prRule,
                                          formula: settings.formula, allPeople: allPeople,

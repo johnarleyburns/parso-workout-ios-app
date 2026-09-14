@@ -87,7 +87,11 @@ struct WorkoutPlanEditor: View {
                     addExerciseButton
                 } else {
                     ForEach(plan.exercises) { exercise in
-                        CompactExerciseRow(exercise: exercise, unit: settings.unit)
+                        CompactExerciseRow(
+                            exercise: exercise,
+                            unit: settings.unit,
+                            exerciseInfo: exerciseIndex[exercise.name.lowercased()] ??
+                                allExercises.first { $0.name == exercise.name })
                             .workoutPlanCard()
                     }
                     settingsButton

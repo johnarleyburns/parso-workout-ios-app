@@ -97,6 +97,7 @@ extension HomeView {
                         mechanics: exercise.mechanicsValue ?? .compound,
                         primaryMuscles: exercise.primaryMuscles,
                         secondaryMuscles: exercise.secondaryMuscles,
+                        equipment: exercise.equipmentValue,
                         volumeEligible: exercise.volumeEligible,
                         trainingTypes: exercise.trainingTypes,
                         modalities: exercise.modalities,

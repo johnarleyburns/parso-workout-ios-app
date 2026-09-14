@@ -297,6 +297,25 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         XCTAssertFalse(option.exercises.contains { $0.name.localizedCaseInsensitiveContains("clean and jerk") })
     }
 
+    func testExplicitExternalEquipmentOverridesAStaleBodyweightModalityTag() {
+        var completed = satisfied(at: 4)
+        completed["chest"] = 0
+        let staleClean = SuggestedExerciseCandidate(
+            id: "stale-clean", name: "Clean and Jerk", mechanics: .compound,
+            primaryMuscles: ["chest"], equipment: .barbell,
+            trainingTypes: [.strength], modalities: [.bodyweight])
+        let pushUp = SuggestedExerciseCandidate(
+            id: "push-up", name: "Push-Up", mechanics: .compound,
+            primaryMuscles: ["chest"], equipment: .bodyweight,
+            trainingTypes: [.strength], modalities: [.bodyweight])
+
+        let option = generate(completed: completed, candidates: [staleClean, pushUp])
+            .option(.bodyweight)
+
+        XCTAssertEqual(option.exercises.first?.candidateID, "push-up")
+        XCTAssertFalse(option.exercises.contains { $0.name == "Clean and Jerk" })
+    }
+
     /// NFR-8: a style narrows the movements, it does not abandon a muscle. When
     /// the style pool cannot reach a gap, the second pass fills it from the whole
     /// catalog and the option reports how much it borrowed.

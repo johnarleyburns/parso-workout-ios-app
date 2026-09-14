@@ -192,8 +192,15 @@ struct ManualPlanView: View {
             return value
         }
         let sets = strength.reduce(0) { $0 + $1.sets.count }
-        if strength.isEmpty { return "No items yet" }
-        return "\(strength.count) exercise\(strength.count == 1 ? "" : "s") · \(sets) sets"
+        let cardio = session.orderedItems.contains { if case .cardio = $0 { return true }; return false }
+        let mobility = session.orderedItems.contains { if case .mobility = $0 { return true }; return false }
+        let instructions = session.orderedItems.contains { if case .instruction = $0 { return true }; return false }
+        var parts: [String] = []
+        if !strength.isEmpty { parts.append("\(strength.count) exercise\(strength.count == 1 ? "" : "s") · \(sets) sets") }
+        if cardio { parts.append("Cardio") }
+        if mobility { parts.append("Mobility") }
+        if instructions { parts.append("Instructions") }
+        return parts.isEmpty ? "No items yet" : parts.joined(separator: " · ")
     }
 
     private func addSession(to weekday: Weekday) {

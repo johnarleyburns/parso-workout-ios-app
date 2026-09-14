@@ -592,6 +592,12 @@ extension AppModel {
         guard let data = info["payload"] as? Data,
               let completion = try? WatchCardioCompletion.decode(data),
               let container = _modelContainer else { return false }
+        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Import Watch cardio")
+        defer {
+            if backgroundTask != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTask)
+            }
+        }
         let ctx = ModelContext(container)
         do {
             _ = try WorkoutRepository.ingest(completion, in: ctx)
@@ -616,6 +622,12 @@ extension AppModel {
 
     private func handleWatchStrengthMutation(_ info: [String: Any]) {
         guard let container = _modelContainer else { return }
+        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Import Watch strength")
+        defer {
+            if backgroundTask != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTask)
+            }
+        }
         let ctx = ModelContext(container)
         do {
             let action = try WatchStrengthSyncApplier.apply(

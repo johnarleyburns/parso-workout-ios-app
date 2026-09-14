@@ -176,7 +176,7 @@ public enum HomeDashboardPresenter {
 
     public static func make(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences,
                             goal: TrainingGoal, experience: ExperienceLevel,
-                            userAge: Int?) -> HomeDashboardState {
+                            userAge: Int?, liveVolumeDelta: [MuscleGroup: Double] = [:]) -> HomeDashboardState {
         let balance = snapshot.decision.weeklyBalance
         let strengthTarget = Double(max(1, schedule.strengthDaysPerWeek))
         let strength = HomeDashboardState.Progress(completed: Double(balance.strengthDays), target: strengthTarget,
@@ -185,11 +185,14 @@ public enum HomeDashboardPresenter {
         let cardio = HomeDashboardState.Progress(completed: balance.moderateEquivalentMinutes, target: 150,
             displayText: "\(Int(balance.moderateEquivalentMinutes.rounded())) of 150 min",
             normalized: min(1, max(0, balance.moderateEquivalentMinutes / 150)))
-        let volume = volumeRows(
-            setsByGroup: weeklyVolume(
-                engine: snapshot.engineObservation?.effectiveSetsByGroup,
-                facts: snapshot.facts.weeklySetsByGroup),
-            tracked: schedule.trackedMuscleGroups)
+        var currentWeekVolume = weeklyVolume(
+            engine: snapshot.engineObservation?.effectiveSetsByGroup,
+            facts: snapshot.facts.weeklySetsByGroup)
+        for (group, delta) in liveVolumeDelta where delta != 0 {
+            currentWeekVolume[group, default: 0] += delta
+        }
+        let volume = volumeRows(setsByGroup: currentWeekVolume,
+                                tracked: schedule.trackedMuscleGroups)
         // Averaged over the TRACKED rows only, so half a set of incidental neck
         // work cannot drag the headline number down.
         let averageSets = averageCappedSets(volume.filter(\.isTracked).map(\.sets))

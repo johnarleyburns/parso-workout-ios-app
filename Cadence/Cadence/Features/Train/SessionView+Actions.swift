@@ -288,13 +288,24 @@ extension SessionView {
         let isPR = person == nil && WorkoutRepository.wouldBePR(exercise: exercise, weightKg: weightKg, reps: reps,
                                                isWarmup: isWarmup, rule: settings.prRule, formula: settings.formula)
         let when = session.isLogged ? session.date : Date()
-        _ = try? WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: weightKg,
-                                          reps: reps, rpe: rpe, isWarmup: isWarmup,
-                                          usesBodyweight: usesBodyweight, note: note,
-                                          completedAt: when, performedBy: person, in: context)
+        if let _ = try? WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: weightKg,
+                                                 reps: reps, rpe: rpe, isWarmup: isWarmup,
+                                                 usesBodyweight: usesBodyweight, note: note,
+                                                 completedAt: when, performedBy: person, in: context) {
+            postVolumeChange(date: when,
+                             delta: isWarmup || person != nil ? [:] : exercise.volumeCredits)
+            refreshLiveVolume()
+        }
         if isPR { Haptics.prAchieved() } else { Haptics.setLogged() }
         if settings.autoStartRest && !isWarmup && !isManualLog && active.strengthSession?.id == session.id {
             rest.start(seconds: settings.restSeconds)
         }
+    }
+
+    func postVolumeChange(date: Date, delta: [MuscleGroup: Double]) {
+        guard !delta.isEmpty else { return }
+        NotificationCenter.default.post(
+            name: .workoutVolumeChanged,
+            object: WorkoutVolumeChange(sessionID: session.id, date: date, delta: delta))
     }
 }

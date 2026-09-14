@@ -68,9 +68,18 @@ struct ExercisePickerSearch {
         let trimmed = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .empty }
         let normalized = ExerciseSearch.normalize(trimmed)
+        let primaryGroup = ExerciseSearch.primaryMuscleGroup(matching: trimmed)
         var outcome = Outcome(query: trimmed,
                               results: index.rank(trimmed,
-                                                  prioritizingPrimaryMuscle: ExerciseSearch.primaryMuscleGroup(matching: trimmed)))
+                                                  prioritizingPrimaryMuscle: primaryGroup))
+        // A muscle-group query is a primary-muscle request. Ranking alone is not
+        // enough: secondary-only exercises must not appear as solutions to a
+        // volume gap.
+        if let primaryGroup {
+            outcome.results = outcome.results.filter {
+                $0.primaryMuscleGroups.contains(primaryGroup)
+            }
+        }
         outcome.exactMatch = builtInNames.contains(normalized) || names.contains { $0.isCustom && $0.name == normalized }
         outcome.bestMatch = bestLibraryMatch(normalized: normalized, query: trimmed)
         return outcome

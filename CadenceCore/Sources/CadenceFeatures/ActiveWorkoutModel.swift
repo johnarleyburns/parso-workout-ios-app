@@ -8,6 +8,22 @@ public extension Notification.Name {
     /// strip recompute immediately — the `CoachSignature` keys on counts + token, not
     /// individual session dates, so a pure date edit would otherwise go unnoticed.
     static let workoutHistoryChanged = Notification.Name("cadence.workoutHistoryChanged")
+    /// A lightweight per-set volume callback. The set is already persisted when
+    /// this is posted; consumers update their projections without rebuilding the
+    /// whole coach pipeline on the UI thread.
+    static let workoutVolumeChanged = Notification.Name("cadence.workoutVolumeChanged")
+}
+
+public struct WorkoutVolumeChange: Sendable {
+    public let sessionID: UUID
+    public let date: Date
+    public let delta: [MuscleGroup: Double]
+
+    public init(sessionID: UUID, date: Date, delta: [MuscleGroup: Double]) {
+        self.sessionID = sessionID
+        self.date = date
+        self.delta = delta
+    }
 }
 
 /// The just-finished workout's summary, presented over Home (P1 #9).

@@ -79,6 +79,7 @@ struct SuggestedWorkoutVectorIndex: Sendable {
             var identity: SuggestedExerciseCandidate
             var primaryMuscles: [String]
             var secondaryMuscles: [String]
+            var equipment: Equipment?
             var volumeEligible: Bool
             var trainingTypes: [ExerciseTrainingType]
             var modalities: [ExerciseModality]
@@ -97,6 +98,7 @@ struct SuggestedWorkoutVectorIndex: Sendable {
                 if candidate.id < group.identity.id { group.identity = candidate }
                 group.primaryMuscles.append(contentsOf: candidate.primaryMuscles)
                 group.secondaryMuscles.append(contentsOf: candidate.secondaryMuscles)
+                if group.equipment == nil { group.equipment = candidate.equipment }
                 // Two rows of one movement collapse to the union of what each knew.
                 group.volumeEligible = group.volumeEligible || candidate.volumeEligible
                 for type in candidate.trainingTypes where !group.trainingTypes.contains(type) {
@@ -115,12 +117,14 @@ struct SuggestedWorkoutVectorIndex: Sendable {
                         id: candidate.id, name: trimmedName, mechanics: candidate.mechanics,
                         primaryMuscles: candidate.primaryMuscles,
                         secondaryMuscles: candidate.secondaryMuscles,
+                        equipment: candidate.equipment,
                         volumeEligible: candidate.volumeEligible,
                         trainingTypes: candidate.trainingTypes,
                         modalities: candidate.modalities,
                         sportContexts: candidate.sportContexts),
                     primaryMuscles: candidate.primaryMuscles,
                     secondaryMuscles: candidate.secondaryMuscles,
+                    equipment: candidate.equipment,
                     volumeEligible: candidate.volumeEligible,
                     trainingTypes: candidate.trainingTypes,
                     modalities: candidate.modalities,
@@ -154,6 +158,7 @@ struct SuggestedWorkoutVectorIndex: Sendable {
                 id: group.identity.id, name: group.identity.name,
                 mechanics: group.identity.mechanics,
                 primaryMuscles: group.primaryMuscles, secondaryMuscles: group.secondaryMuscles,
+                equipment: group.equipment,
                 volumeEligible: group.volumeEligible, trainingTypes: group.trainingTypes,
                 modalities: group.modalities, sportContexts: group.sportContexts)
             built.append(.init(candidate: identity, elements: elements, coverageMask: mask))

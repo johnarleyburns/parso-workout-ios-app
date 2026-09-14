@@ -65,11 +65,14 @@ struct SessionView: View {
     /// with `findOrCreateExercise` inside `body` fetched — and could insert — on
     /// every redraw (field test 2026-08-19 #4).
     @State var plannedExerciseIndex: [String: Exercise] = [:]
+    @State var liveVolumeState = LiveWorkoutVolumeState()
+    @State var liveVolumeExpanded = false
     /// Exercise the scroll view should bring to the top on the next redraw.
     @State var scrollTarget: UUID?
     /// Set after a save; consumed once the render cache contains the exercise's
     /// card, which may only appear on the rebuild that the save triggered.
     @State var pendingScrollExerciseID: UUID?
+    @Query(sort: \WorkoutSession.date, order: .reverse) var allWorkoutSessions: [WorkoutSession]
     var refreshSignature: SessionRenderModel.Signature {
         SessionRenderModel.signature(session: session, prRule: settings.prRule, formula: settings.formula)
     }

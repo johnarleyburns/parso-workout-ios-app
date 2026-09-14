@@ -37,7 +37,13 @@ public enum WeeklyPlanUnifiedBridge {
     /// also used by the Home edge to build the rich Watch payload for today.
     public static func session(_ planned: PlannedSession) -> Session {
         let items: [WorkoutItem]
-        if planned.kind == .strength, let exercises = planned.exercises {
+        if planned.kind == .strength {
+            // A coach-generated strength session is never allowed to cross the
+            // unified boundary without executable items. History-only outlines
+            // can legitimately omit their prescription, but the Plan tab still
+            // needs a reviewable draft, so use a conservative concrete fallback.
+            let exercises = planned.exercises.flatMap { $0.isEmpty ? nil : $0 }
+                ?? fallbackStrengthExercises
             items = exercises.enumerated().map { index, exercise in
                 .strength(StrengthItem(
                     id: stableUUID("item|\(planned.id)|\(index)|\(exercise.name)"),
@@ -58,6 +64,15 @@ public enum WeeklyPlanUnifiedBridge {
                        estimatedDurationMinutes: planned.cardioDurationMinutes,
                        status: planned.sourceWorkoutId == nil ? .planned : .completed)
     }
+
+    private static let fallbackStrengthExercises: [CoachSession.RecommendedExercise] = [
+        .init(name: "Back Squat", sets: 3, repsLow: 6, repsHigh: 10,
+              repLadder: [10, 9, 8]),
+        .init(name: "Bench Press", sets: 3, repsLow: 6, repsHigh: 10,
+              repLadder: [10, 9, 8]),
+        .init(name: "Barbell Row", sets: 3, repsLow: 6, repsHigh: 10,
+              repLadder: [10, 9, 8])
+    ]
 
     private static func sets(for exercise: CoachSession.RecommendedExercise,
                              namespace: String) -> [PrescribedSet] {

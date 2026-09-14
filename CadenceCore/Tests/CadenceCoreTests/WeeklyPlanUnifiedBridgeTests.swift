@@ -2,6 +2,30 @@ import XCTest
 @testable import CadenceCore
 
 final class WeeklyPlanUnifiedBridgeTests: XCTestCase {
+    func testEmptyStrengthPreviewGetsLaunchableFallbackItems() throws {
+        let monday = WeeklyStats.weekStart(now: Date(timeIntervalSince1970: 1_000_000))
+        let emptyStrength = PlannedSession(
+            id: "empty-strength", kind: .strength, label: "Strength",
+            isHard: true, isRest: false, exercises: nil)
+        let outlines = (0..<7).map { offset in
+            WeeklyPlan.DayOutline(
+                date: Calendar.current.date(byAdding: .day, value: offset, to: monday)!,
+                label: offset == 0 ? "Strength" : "Rest",
+                sessions: offset == 0 ? [emptyStrength] : [])
+        }
+
+        let plan = WeeklyPlanUnifiedBridge.plan(
+            from: WeeklyPlan(days: outlines, generatedAt: monday))
+        let session = try XCTUnwrap(plan.weeks.first?.days.first?.sessions.first)
+        let strengthItems = session.items.compactMap { item -> StrengthItem? in
+            if case let .strength(value) = item { return value }
+            return nil
+        }
+
+        XCTAssertFalse(strengthItems.isEmpty)
+        XCTAssertFalse(strengthItems.flatMap(\.sets).isEmpty)
+    }
+
     func testBridgeProducesValidatedSevenDayPlanWithRichStrengthAndCardio() throws {
         let calendar = Calendar.current
         let monday = WeeklyStats.weekStart(now: Date(timeIntervalSince1970: 1_000_000))

@@ -23,7 +23,7 @@ struct ExercisePickerView: View {
         }
     }
 
-    enum PickerTab: String, CaseIterable { case recents, popular, browse }
+    enum PickerTab: String, CaseIterable { case browse, recents, popular }
 
     enum BrowseMode: String, CaseIterable { case byMuscleGroup, byEquipment }
 
@@ -38,7 +38,7 @@ struct ExercisePickerView: View {
     @State var search = ExercisePickerSearch()
     @State var outcome = ExercisePickerSearch.Outcome.empty
     @State var facetIndex = ExerciseFacetIndex<Exercise>([])
-    @State var selectedTab: PickerTab = .recents
+    @State var selectedTab: PickerTab = .browse
     @State var selectedGroup: MuscleGroup?
     @State var selectedEquipment: Equipment?
     @State var browseMode: BrowseMode = .byMuscleGroup
@@ -117,7 +117,8 @@ struct ExercisePickerView: View {
     }
 
     func primaryFocusLabel(_ ex: Exercise) -> String? {
-        guard let group = searchedPrimaryGroup else { return nil }
+        let group = searchedPrimaryGroup ?? ex.primaryMuscleGroups.first
+        guard let group else { return nil }
         let percent = ExerciseSearch.primaryFocusPercent(primaryMuscles: ex.primaryMuscleGroups,
                                                          group: group)
         guard percent > 0 else { return nil }
@@ -190,9 +191,9 @@ struct ExercisePickerView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("Tab", selection: $selectedTab) {
+                    Text("Browse").tag(PickerTab.browse)
                     Text("Recents").tag(PickerTab.recents)
                     Text("Popular").tag(PickerTab.popular)
-                    Text("Browse").tag(PickerTab.browse)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 12)
@@ -281,7 +282,6 @@ struct ExercisePickerView: View {
         .onAppear {
             rebuildIndexIfNeeded()
             loadRecents()
-            if recents.isEmpty { selectedTab = .popular }
         }
         .onChange(of: exerciseCatalogRevision) { _, _ in rebuildIndexIfNeeded() }
         .onChange(of: selectedGroup) { _, _ in selectedEquipment = nil }

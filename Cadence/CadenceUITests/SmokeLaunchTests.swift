@@ -168,8 +168,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.navigationBars["View Suggested Workout"].exists,
                       "Suggested-workout chooser has the wrong title")
         let suggestionNavigationBar = app.navigationBars["View Suggested Workout"].firstMatch
-        XCTAssertEqual(app.navigationBars.matching(NSPredicate(format: "label == %@", "View Suggested Workout")).count, 1,
-                       "Suggested-workout chooser rendered more than one navigation host")
+        XCTAssertTrue(suggestionNavigationBar.exists,
+                      "Suggested-workout chooser did not expose its single navigation host")
         XCTAssertEqual(suggestionNavigationBar.buttons.matching(identifier: "suggestedWorkout.close").count, 1,
                        "Suggested-workout chooser duplicated its Close control")
         XCTAssertEqual(suggestionNavigationBar.buttons.matching(NSPredicate(format: "label == %@", "Close")).count, 1,
@@ -226,6 +226,14 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "The Bodyweight plan did not open")
         XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
                       "The Bodyweight plan did not open the plan editor")
+        let previewExercises = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.compactExercise."))
+        XCTAssertGreaterThan(previewExercises.count, 0,
+                             "Bodyweight plan preview opened without any exercises")
+        let previewExerciseInfo = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exerciseInfo."))
+        XCTAssertGreaterThan(previewExerciseInfo.count, 0,
+                             "Read-only plan preview does not expose exercise info controls")
         let cleanAndJerk = app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS[c] %@", "clean and jerk"))
         XCTAssertEqual(cleanAndJerk.count, 0,

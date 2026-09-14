@@ -1,0 +1,179 @@
+import SwiftUI
+import SwiftData
+import CadenceCore
+import CadenceFeatures
+
+struct LiveWorkoutVolumeState: Equatable, Sendable {
+    var current: [MuscleGroup: Double] = [:]
+    var weekly: [MuscleGroup: Double] = [:]
+    var planned: [MuscleGroup: Double] = [:]
+
+    var groups: [MuscleGroup] {
+        MuscleGroup.canonicalOrder.filter {
+            (current[$0] ?? 0) > 0 || (weekly[$0] ?? 0) > 0 || (planned[$0] ?? 0) > 0
+        }
+    }
+}
+
+struct LiveWorkoutVolumeSet: Sendable {
+    let date: Date
+    let isWarmup: Bool
+    let isOwner: Bool
+    let credits: [MuscleGroup: Double]
+}
+
+enum LiveWorkoutVolumeCalculator {
+    static func totals(_ sets: [LiveWorkoutVolumeSet], since start: Date? = nil)
+    -> [MuscleGroup: Double] {
+        sets.reduce(into: [:]) { result, set in
+            guard !set.isWarmup, set.isOwner, start.map({ set.date >= $0 }) ?? true else { return }
+            for (group, credit) in set.credits where credit > 0 {
+                result[group, default: 0] += credit
+            }
+        }
+    }
+
+    static func plannedTotals(_ prescriptions: [PlannedExercisePrescription],
+                              creditsByName: [String: [MuscleGroup: Double]]) -> [MuscleGroup: Double] {
+        prescriptions.reduce(into: [:]) { result, prescription in
+            guard let credits = creditsByName[prescription.exerciseName.lowercased()] else { return }
+            let count = prescription.sets.filter { !$0.isWarmup }.count
+            guard count > 0 else { return }
+            for (group, credit) in credits where credit > 0 {
+                result[group, default: 0] += Double(count) * credit
+            }
+        }
+    }
+
+    static func weekStart(now: Date = Date()) -> Date {
+        WeeklyStats.weekStart(now: now)
+    }
+}
+
+struct LiveWorkoutVolumeSummary: View {
+    let state: LiveWorkoutVolumeState
+    @Binding var expanded: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Volume Summary").font(.headline)
+                Spacer()
+                Text("This workout").font(.caption).foregroundStyle(.secondary)
+            }
+            if state.groups.isEmpty {
+                Text("Save a working set to see muscle-group volume here.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                ForEach(expanded ? state.groups : Array(state.groups.prefix(4)), id: \.self) { group in
+                    row(group)
+                }
+                Button(expanded ? "Show less" : "Show more…") {
+                    withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+                }
+                .font(.subheadline.weight(.semibold))
+                .accessibilityIdentifier(expanded ? "session.volume.showLess" : "session.volume.showMore")
+            }
+        }
+        .padding(CGFloat(LayoutMetrics.cardPadding))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
+        .accessibilityIdentifier("session.volumeSummary")
+    }
+
+    private func row(_ group: MuscleGroup) -> some View {
+        let current = state.current[group] ?? 0
+        let weekly = state.weekly[group] ?? 0
+        let planned = state.planned[group] ?? 0
+        let scale = max(4, current, weekly, planned)
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(group.displayName).font(.caption.weight(.medium))
+                Spacer()
+                Text(valueText(current: current, planned: planned))
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.secondary.opacity(0.12))
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.blue.opacity(0.18))
+                        .frame(width: proxy.size.width * min(1, weekly / scale))
+                    RoundedRectangle(cornerRadius: 4)
+                        .fill(Color.green)
+                        .frame(width: proxy.size.width * min(1, current / scale))
+                    Rectangle()
+                        .fill(Color.secondary.opacity(0.55))
+                        .frame(width: 1)
+                        .offset(x: proxy.size.width * min(1, 4 / scale))
+                }
+            }
+            .frame(height: 8)
+            if weekly > 0 {
+                Text("Weekly background: (format(weekly)) sets")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("session.volume.\(group.rawValue)")
+        .accessibilityValue("\(format(current)) sets\(planned > 0 ? ", (format(planned)) planned" : "")")
+    }
+
+    private func valueText(current: Double, planned: Double) -> String {
+        planned > 0 ? "\(format(current))/\(format(planned)) planned" : "\(format(current)) sets"
+    }
+
+    private func format(_ value: Double) -> String {
+        value.rounded() == value ? String(Int(value)) : String(format: "%.1f", value)
+    }
+}
+
+extension SessionView {
+    func refreshLiveVolume() {
+        guard active.strengthSession?.id == session.id else { return }
+        let currentSets = liveVolumeSets(from: session)
+        let weekStart = LiveWorkoutVolumeCalculator.weekStart()
+        let weeklySets = allWorkoutSessions
+            .filter { $0.deletedAt == nil && $0.countsAsStrengthHistory }
+            .flatMap { liveVolumeSets(from: $0) }
+        let creditsByName = plannedCreditsByName()
+        let prescriptions = session.plannedPrescriptions
+        Task.detached(priority: .userInitiated) {
+            let current = LiveWorkoutVolumeCalculator.totals(currentSets)
+            let weekly = LiveWorkoutVolumeCalculator.totals(weeklySets, since: weekStart)
+            let planned = LiveWorkoutVolumeCalculator.plannedTotals(
+                prescriptions, creditsByName: creditsByName)
+            let next = LiveWorkoutVolumeState(current: current, weekly: weekly, planned: planned)
+            await MainActor.run { [next] in
+                liveVolumeState = next
+            }
+        }
+    }
+
+    private func liveVolumeSets(from workout: WorkoutSession) -> [LiveWorkoutVolumeSet] {
+        workout.orderedSets.map { set in
+            LiveWorkoutVolumeSet(date: set.completedAt,
+                                 isWarmup: set.isWarmup,
+                                 isOwner: set.isOwnerSet,
+                                 credits: set.exercise?.volumeCredits
+                                    ?? ExerciseLibrary.template(matching: set.exercise?.name ?? "")?.volumeCredits
+                                    ?? [:])
+        }
+    }
+
+    private func plannedCreditsByName() -> [String: [MuscleGroup: Double]] {
+        var result: [String: [MuscleGroup: Double]] = [:]
+        for exercise in session.exercisesInOrder {
+            result[exercise.name.lowercased()] = exercise.volumeCredits
+        }
+        for prescription in session.plannedPrescriptions {
+            if result[prescription.exerciseName.lowercased()] == nil {
+                result[prescription.exerciseName.lowercased()] =
+                    ExerciseLibrary.template(matching: prescription.exerciseName)?.volumeCredits ?? [:]
+            }
+        }
+        return result
+    }
+}

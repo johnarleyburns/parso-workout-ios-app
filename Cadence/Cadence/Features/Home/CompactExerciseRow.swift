@@ -5,10 +5,33 @@ import CadenceFeatures
 struct CompactExerciseRow: View {
     let exercise: EditableExercise
     let unit: MeasurementUnitPreference
+    let exerciseInfo: Exercise?
+
+    init(exercise: EditableExercise, unit: MeasurementUnitPreference,
+         exerciseInfo: Exercise? = nil) {
+        self.exercise = exercise
+        self.unit = unit
+        self.exerciseInfo = exerciseInfo
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
-            Text(exercise.name).font(.headline)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(exercise.name).font(.headline)
+                Spacer(minLength: 4)
+                if let exerciseInfo {
+                    NavigationLink {
+                        ExerciseDetailView(exercise: exerciseInfo)
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.headline)
+                            .foregroundStyle(.tint)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("editor.exerciseInfo.\(exercise.name)")
+                    .accessibilityLabel("\(exercise.name) details")
+                }
+            }
             if performerPlans.isEmpty {
                 Text(ownerLine)
                     .font(.subheadline.monospacedDigit())

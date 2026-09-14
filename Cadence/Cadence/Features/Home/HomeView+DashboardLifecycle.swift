@@ -20,6 +20,14 @@ extension HomeView {
                 // recompute the snapshot / "This Week" strip without an app relaunch.
                 markWorkoutHistoryChanged()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .workoutVolumeChanged)) { note in
+                guard let change = note.object as? WorkoutVolumeChange,
+                      Calendar.current.isDate(change.date, equalTo: Date(), toGranularity: .weekOfYear)
+                else { return }
+                for (group, delta) in change.delta {
+                    liveVolumeDelta[group, default: 0] += delta
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .readinessCheckInChanged)) { _ in
                 markWorkoutHistoryChanged()
             }

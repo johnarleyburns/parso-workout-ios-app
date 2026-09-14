@@ -33,6 +33,7 @@ struct HomeView: View {
     @State var activityTrend: [DayActivity] = []
     @State var passiveSamples: [PassiveReadinessSample] = []
     @State var historyRefreshToken = UUID()
+    @State var liveVolumeDelta: [MuscleGroup: Double] = [:]
     @State var timerCardioSetup: TimerCardioSetup?
     @State var pendingPlan: EditablePlan?
     @State var captureHR = false
@@ -65,7 +66,7 @@ struct HomeView: View {
                                      engineObservation: coachSnapshot.engineObservation)
         return HomeDashboardPresenter.make(snapshot: snapshot, schedule: settings.coachSchedulePreferences,
                                     goal: settings.trainingGoal, experience: settings.experienceLevel,
-                                    userAge: settings.userAge)
+                                    userAge: settings.userAge, liveVolumeDelta: liveVolumeDelta)
     }
     var coachFacts: TrainingFacts { coachSnapshot.facts }
     var coachInsights: [Insight] { coachSnapshot.insights }
@@ -165,6 +166,7 @@ struct HomeView: View {
         model.coachRefreshInProgress = true
         defer { model.coachRefreshInProgress = false }
         coachSnapshot = await buildCoachSnapshot()
+        liveVolumeDelta = [:]
     }
     func handleInsightAction(_ action: Insight.Action) {
         switch action {

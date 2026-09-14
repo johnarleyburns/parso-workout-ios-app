@@ -132,11 +132,17 @@ extension SessionView {
         let rpe = draft.rpe.map(Double.init)
         if let editingSetID = inlineEditingSetID,
            let editing = session.orderedSets.first(where: { $0.id == editingSetID }) {
+            let before: [MuscleGroup: Double] = editing.isWarmup || !editing.isOwnerSet
+                ? [:] : (editing.exercise?.volumeCredits ?? [:])
             try? WorkoutRepository.updateSet(editing, weightKg: kg, reps: draft.reps,
                                              rpe: .some(rpe),
                                              usesBodyweight: draft.bodyweight,
                                              performedBy: .some(people(for: draft.performerID)),
                                              in: context)
+            let after: [MuscleGroup: Double] = draft.performerID == nil ? exercise.volumeCredits : [:]
+            postVolumeChange(date: editing.completedAt,
+                             delta: after.merging(before.mapValues { -$0 }) { $0 + $1 })
+            refreshLiveVolume()
         } else {
             addSet(to: exercise, weightKg: kg, reps: draft.reps, rpe: rpe, isWarmup: false,
                    usesBodyweight: draft.bodyweight, note: nil, performedBy: people(for: draft.performerID))
@@ -148,7 +154,12 @@ extension SessionView {
     func deleteInlineSet() {
         guard let setID = inlineEditingSetID,
               let set = session.orderedSets.first(where: { $0.id == setID }) else { return }
+        let delta: [MuscleGroup: Double] = set.isWarmup || !set.isOwnerSet
+            ? [:] : (set.exercise?.volumeCredits ?? [:]).mapValues { -$0 }
+        let completedAt = set.completedAt
         try? WorkoutRepository.deleteSet(set, in: context)
+        postVolumeChange(date: completedAt, delta: delta)
+        refreshLiveVolume()
         closeInlineEditor()
     }
     func people(for id: UUID?) -> Person? {

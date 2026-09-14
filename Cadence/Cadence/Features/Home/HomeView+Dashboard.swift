@@ -53,15 +53,24 @@ extension HomeView {
                 .padding()
             }
             .background { CadenceGlassBackdrop(tint: .green) }
-            .navigationTitle("Today")
+            .navigationTitle("")
             .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    if contributions.store.isSupporter {
-                        Label("Supporter", systemImage: "heart.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.pink)
-                            .accessibilityIdentifier("home.supporterBadge")
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Text("Today").font(.headline)
+                        Spacer(minLength: 8)
+                        if contributions.store.isSupporter {
+                            Label("Supporter", systemImage: "heart.fill")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.pink)
+                                .accessibilityIdentifier("home.supporterBadge")
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("home.todayTitleLine")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button { Haptics.selection(); path.append(HomeRoute.settings) } label: {
                         Image(systemName: "gearshape")
                             .imageScale(.large)

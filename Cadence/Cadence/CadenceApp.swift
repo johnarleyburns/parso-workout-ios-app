@@ -11,6 +11,7 @@ struct CadenceApp: App {
     @State private var settings = AppSettings()
     @State private var active = ActiveWorkoutModel()
     @State private var contributions = ContributionCoordinator()
+    @Environment(\.scenePhase) private var scenePhase
     private let uiTestMode: Bool
     let container: ModelContainer
 
@@ -79,7 +80,10 @@ struct CadenceApp: App {
                 .task { WorkoutLiveActivityCoordinator.shared.endAllStale() }
                 .task { model.configureWatchSync(settings: settings, container: container, active: active) }
                 .task { contributions.beginSession() }
-                .task { await preparePersistentStore() }
+                .task(id: scenePhase) {
+                    guard scenePhase == .active else { return }
+                    await preparePersistentStore()
+                }
         }
         .modelContainer(container)
     }
@@ -93,6 +97,12 @@ struct CadenceApp: App {
         // main actor.
         await Task.yield()
         let container = container
+        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Prepare exercise catalog")
+        defer {
+            if backgroundTask != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTask)
+            }
+        }
         let defaultDeviceID = await Task.detached(priority: .utility) {
             let ctx = ModelContext(container)
             _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)

@@ -13,6 +13,9 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
     public let mechanics: Mechanics
     public let primaryMuscles: [String]
     public let secondaryMuscles: [String]
+    /// Explicit equipment is a stronger style boundary than a legacy modality
+    /// tag. Older stores can carry incomplete modality facets.
+    public let equipment: Equipment?
     /// False for stretching, plyometrics and cardio: such a movement can never be
     /// suggested as strength work, whatever muscles it lists (decision D3).
     public let volumeEligible: Bool
@@ -22,6 +25,7 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
 
     public init(id: String, name: String, mechanics: Mechanics,
                 primaryMuscles: [String], secondaryMuscles: [String] = [],
+                equipment: Equipment? = nil,
                 volumeEligible: Bool = true,
                 trainingTypes: [ExerciseTrainingType] = [.strength],
                 modalities: [ExerciseModality] = [],
@@ -31,6 +35,7 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
         self.mechanics = mechanics
         self.primaryMuscles = primaryMuscles
         self.secondaryMuscles = secondaryMuscles
+        self.equipment = equipment
         self.volumeEligible = volumeEligible
         self.trainingTypes = trainingTypes
         self.modalities = modalities
@@ -47,6 +52,7 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
                   mechanics: template.mechanics,
                   primaryMuscles: template.primaryMuscles,
                   secondaryMuscles: template.secondaryMuscles,
+                  equipment: template.equipment,
                   volumeEligible: template.volumeEligible,
                   trainingTypes: template.trainingTypes,
                   modalities: template.modalities,
@@ -59,7 +65,8 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
         case .fitness:
             return trainingTypes.contains(.strength) && sportContexts == [.generalFitness]
         case .bodyweight:
-            return modalities.contains(.bodyweight)
+            return equipment == .bodyweight
+                || (equipment == nil && modalities.contains(.bodyweight))
         case .powerlifting:
             return trainingTypes.contains(.powerlifting)
         case .olympic:

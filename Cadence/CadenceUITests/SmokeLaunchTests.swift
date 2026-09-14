@@ -222,6 +222,17 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.scrollToElement("suggestedWorkout.about.style.strongman"),
                       "About suggested workouts does not explain what each style is")
         app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["suggestedWorkout.style.bodyweight"].waitTap(timeout: 5),
+                      "The Bodyweight plan did not open")
+        XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
+                      "The Bodyweight plan did not open the plan editor")
+        let cleanAndJerk = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "clean and jerk"))
+        XCTAssertEqual(cleanAndJerk.count, 0,
+                       "Bodyweight suggestion leaked the Fitness Clean and Jerk movement")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["View Suggested Workout"].waitForExistence(timeout: 5),
+                      "Back did not return from the Bodyweight plan")
         XCTAssertTrue(app.buttons["suggestedWorkout.style.fitness"].waitTap(timeout: 5),
                       "The Fitness plan did not open")
         XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),

@@ -426,6 +426,9 @@ extension TrainingEngineBridge {
         let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
         let exerciseLimit = max(1, suggestedWorkoutPlannedSetCap / preferredSets)
         var schedule = context.schedule
+        let isBodyweight = style == .bodyweight
+        let styleEnvironment = isBodyweight ? "bodyweight_only" : context.environment
+        let styleEquipment = isBodyweight ? [Equipment.bodyweight] : context.availableEquipment
         // A suggestion is one launchable workout. The user's weekly schedule
         // still informs the request shape, but does not create duplicate chips.
         schedule.strengthDaysPerWeek = 1
@@ -433,12 +436,12 @@ extension TrainingEngineBridge {
         let profile = trainingProfile(
             experience: context.experience,
             schedule: schedule,
-            availableEquipment: context.availableEquipment,
+            availableEquipment: styleEquipment,
             exercisesPerSession: exerciseLimit)
         let target = fourSetTarget(for: input.trackedGroups)
         let intent = workoutIntent(
             goal: input.trainingGoal,
-            environment: context.environment,
+            environment: styleEnvironment,
             schedule: schedule,
             style: style,
             sessionExerciseCount: exerciseLimit,
@@ -498,6 +501,11 @@ extension TrainingEngineBridge {
             goal: input.trainingGoal,
             preferredSets: preferredSets)
         guard !exercises.isEmpty else { return nil }
+        // Bodyweight is an explicit chooser style, not a soft hint. The engine
+        // receives a bodyweight-only environment/profile above, and this final
+        // boundary check prevents a malformed or older engine result from ever
+        // surfacing an external-load movement under the Bodyweight button.
+        if isBodyweight && !exercises.allSatisfy(\.isInStyle) { return nil }
         let initial = deficits(
             trackedGroups: input.trackedGroups,
             completed: input.completedSetsByMuscle)

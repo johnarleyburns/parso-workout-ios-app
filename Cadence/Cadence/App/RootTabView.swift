@@ -83,35 +83,34 @@ struct RootTabView: View {
                     .transition(.opacity)
             }
 
-            if let watchSyncToast {
-                // SplashView intentionally ignores the safe area. Measure the
-                // real top inset here so the transient Watch status cannot be
-                // drawn underneath the iPhone status area or splash content.
+            // Keep startup/status toasts in one non-layout-affecting host. The
+            // old independent overlays used different safe-area rules, so one
+            // could sit under the status area while the other appeared below
+            // the Today navigation title. The fixed offset puts both below the
+            // navigation bar and stacks them without moving Home content.
+            if watchSyncToast != nil || model.isRestoringCloudKitHistory || model.cloudKitRestoreNotice != nil {
                 GeometryReader { proxy in
-                    VStack(spacing: 0) {
-                        WatchSyncToastView(toast: watchSyncToast)
+                    VStack(spacing: 8) {
+                        if let watchSyncToast {
+                            WatchSyncToastView(toast: watchSyncToast)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                        if model.isRestoringCloudKitHistory || model.cloudKitRestoreNotice != nil {
+                            CloudKitRestoreToastView(
+                                text: model.isRestoringCloudKitHistory
+                                    ? "Restoring iCloud history…"
+                                    : (model.cloudKitRestoreNotice ?? "iCloud history restored"),
+                                isRestoring: model.isRestoringCloudKitHistory)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
                         Spacer()
                     }
-                    .padding(.top, proxy.safeAreaInsets.top + 8)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, proxy.safeAreaInsets.top + 52)
                 }
                 .ignoresSafeArea()
+                .allowsHitTesting(false)
                 .zIndex(20)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
-
-            if model.isRestoringCloudKitHistory || model.cloudKitRestoreNotice != nil {
-                VStack(spacing: 0) {
-                    CloudKitRestoreToastView(
-                        text: model.isRestoringCloudKitHistory
-                            ? "Restoring iCloud history…"
-                            : (model.cloudKitRestoreNotice ?? "iCloud history restored"),
-                        isRestoring: model.isRestoringCloudKitHistory)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaPadding(.top, 48)
-                .zIndex(19)
-                .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             if model.isUITestMode {

@@ -55,6 +55,13 @@ public final class WatchHRRelay {
         case .live(let id, _, _):
             guard requestID == id else { return false }
             state = .live(requestID: id, bpm: bpm, receivedAt: now); return true
+        case .timedOut:
+            // A timeout means the transport went quiet, not that the Watch
+            // workout was proven to have ended. Keep the request identity so a
+            // later sample can recover the phone UI after a transient
+            // WatchConnectivity/Apple Fitness interruption.
+            guard requestID == self.requestID else { return false }
+            state = .live(requestID: requestID, bpm: bpm, receivedAt: now); return true
         default: return false
         }
     }

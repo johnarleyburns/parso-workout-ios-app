@@ -3,6 +3,24 @@ import HealthKit
 import CadenceFeatures
 
 extension WatchWorkoutManager {
+    enum BLEConnectionState { case scanning, connected, disconnected }
+
+    static func activityType(for rawType: String) -> HKWorkoutActivityType {
+        switch rawType {
+        case "boxing": return .boxing
+        case "hiit": return .highIntensityIntervalTraining
+        case "run": return .running
+        case "cycle": return .cycling
+        case "swim": return .swimming
+        case "walk": return .walking
+        case "rowing": return .rowing
+        case "other": return .other
+        default: return .functionalStrengthTraining
+        }
+    }
+}
+
+extension WatchWorkoutManager {
     /// Reattaches to a HealthKit workout that survived a Watch app crash or
     /// process relaunch. HealthKit owns the workout session, so reopening the
     /// app must recover that session instead of starting a second one.
@@ -45,6 +63,7 @@ extension WatchWorkoutManager {
             b.delegate = self; builder = b; s.delegate = self
             s.startActivity(with: Date())
             b.beginCollection(withStart: Date(), completion: { _, _ in })
+            startHeartRateRelayPolling()
             if hrSource == .bluetooth { startBLE() }
             if isSwimSession { enableWaterLock() }
         } catch {

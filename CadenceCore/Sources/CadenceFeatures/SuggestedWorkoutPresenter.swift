@@ -106,7 +106,7 @@ public enum SuggestedWorkoutPresenter {
         "Calculates a \(suggestedWorkoutTargetSetsPerGroup)-set weekly gap for every muscle group you track.",
         "Considers the largest remaining gap first; equal gaps use a fixed largest-to-smallest muscle order.",
         "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles.",
-        "Falls back to general strength movements only where the style has nothing left that closes a gap, so a style narrows the movements without leaving a gap unaddressed on purpose.",
+        "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement.",
         "Adds each winning movement with your set preference, then trims from the end to a \(suggestedWorkoutPlannedSetCap)-set safety cap and recomputes what is still uncovered.",
         "Produces a deterministic suggestion to review and edit, not a medical prescription or guarantee of an individualized optimum."
     ]
@@ -116,7 +116,7 @@ public enum SuggestedWorkoutPresenter {
         "while a deficit remains: muscle = largest deficit; ties use descending muscle mass",
         "score each unused movement = sum(min(remaining gap, planned sets × direct/indirect credit))",
         "on equal score for that muscle: in-style > out-of-style; compound > isolation; then more muscles involved",
-        "pass 1 considers only movements of the chosen style; pass 2 considers every movement",
+        "pass 1 considers only movements of the chosen style; pass 2 considers every movement for non-Bodyweight styles, while Bodyweight remains bodyweight-only",
         "remove tail movements above the \(suggestedWorkoutPlannedSetCap)-set cap; recompute remaining gaps"
     ]
 

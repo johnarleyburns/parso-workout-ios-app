@@ -365,29 +365,38 @@ public enum SuggestedWorkoutGenerator {
     ) -> SuggestedWorkoutBundle? {
         let generationStart = ContinuousClock.now
         let styles = SuggestedWorkoutStyle.allCases
-        // One chooser request should have one canonical engine plan. The style
-        // buttons are soft presentation biases over that plan; projecting them
-        // here avoids five independent planner/evaluator passes on device while
-        // preserving each option's style membership and engine provenance.
-        guard let base = TrainingEngineBridge.suggestedWorkout(
+        // Keep the engine call for one canonical Fitness plan and use the
+        // already-indexed app solver for the remaining style projections. The
+        // old implementation generated Fitness once and relabeled that plan
+        // five ways, which made Bodyweight show Clean and Jerk. Five independent
+        // engine passes would fix that but make the chooser unnecessarily slow
+        // on a full catalog. The app solver has the explicit style facets and
+        // remains deterministic, fast, and editable.
+        let index = SuggestedWorkoutVectorIndex(candidates: input.candidates,
+                                                tracked: input.trackedGroups)
+        let completed = index.muscleSpace.completedVector(input.completedSetsByMuscle)
+        let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
+        var counters = Counters()
+        var options = styles.map {
+            solve(style: $0, completed: completed, preferredSets: preferredSets,
+                  goal: input.trainingGoal, index: index, counters: &counters)
+        }
+        if let engineOption = TrainingEngineBridge.suggestedWorkout(
             input: input,
             context: context,
-            style: .fitness) else { return nil }
-        // DB++ may return a structurally valid plan with no usable exercises
-        // when a device's history, tracked-muscle set, or available facets make
-        // the request over-constrained. That is not a terminal chooser failure:
-        // the app-side catalog solver below still has enough information to make
-        // a transparent, editable suggestion from the user's preferences.
-        guard base.option.isLaunchable else { return nil }
-        let options = styles.map { restyle(base.option, as: $0) }
-        guard options.contains(where: \.isLaunchable) else { return nil }
+            style: .fitness)?.option,
+           let fitnessIndex = styles.firstIndex(of: .fitness),
+           engineOption.isLaunchable {
+            options[fitnessIndex] = engineOption
+        }
+        guard options.allSatisfy(\.isLaunchable) else { return nil }
         let duration = generationStart.duration(to: ContinuousClock.now)
         let diagnostics = SuggestedWorkoutDiagnostics(
             rawCandidateCount: input.candidates.count,
-            indexedCandidateCount: TrainingEngineBridge.exerciseRecords.count,
+            indexedCandidateCount: index.exercises.count,
             indexBuildCount: 1,
-            invertedListLookupCount: 0,
-            invertedCandidateVisitCount: 0,
+            invertedListLookupCount: counters.lookups,
+            invertedCandidateVisitCount: counters.visits,
             fullCatalogScanCount: 0,
             vectorIndexBuildDuration: .zero,
             allStylesGenerationDuration: duration)
@@ -400,44 +409,6 @@ public enum SuggestedWorkoutGenerator {
     private struct Counters {
         var lookups = 0
         var visits = 0
-    }
-
-    private static func restyle(
-        _ option: SuggestedWorkoutOption,
-        as style: SuggestedWorkoutStyle
-    ) -> SuggestedWorkoutOption {
-        guard style != option.style else { return option }
-        let styleIDs = Set(TrainingEngineBridge.preferredExerciseIDs(for: style))
-        let exercises = option.exercises.map { exercise in
-            SuggestedWorkoutExercise(
-                candidateID: exercise.candidateID,
-                name: exercise.name,
-                mechanics: exercise.mechanics,
-                plannedSets: exercise.plannedSets,
-                repRange: exercise.repRange,
-                contributions: exercise.contributions,
-                selectionScore: exercise.selectionScore,
-                isInStyle: styleIDs.contains(exercise.candidateID))
-        }
-        let plan = WorkoutPlan(
-            id: "coach-suggested-\(style.rawValue)",
-            name: style.planName,
-            source: option.plan.source,
-            scheme: option.plan.scheme,
-            items: option.plan.items,
-            notes: option.plan.notes)
-        return SuggestedWorkoutOption(
-            style: style,
-            plan: plan,
-            exercises: exercises,
-            initialDeficits: option.initialDeficits,
-            remainingDeficits: option.remainingDeficits,
-            plannedSetTotal: option.plannedSetTotal,
-            capTrimmingOccurred: option.capTrimmingOccurred,
-            citationIDs: option.citationIDs,
-            enginePlanID: option.enginePlanID,
-            engineRevisionID: option.engineRevisionID,
-            enginePlanJSON: option.enginePlanJSON)
     }
 
     private struct Score {
@@ -455,9 +426,8 @@ public enum SuggestedWorkoutGenerator {
     /// Two passes, because no sport pool can cover the ontology — Olympic
     /// weightlifting reaches six of twenty muscle groups directly. Pass one fills
     /// the plan from the style's own movements; pass two continues over everything
-    /// else, but only for gaps the style could not close. A style therefore
-    /// narrows the movements without ever leaving a gap unaddressed on purpose
-    /// (NFR-8: the coach suggests, it does not proscribe).
+    /// else for styles that allow general-strength borrowing. Bodyweight is an
+    /// explicit equipment boundary and never borrows an external-load movement.
     private static func solve(style: SuggestedWorkoutStyle, completed: [Double],
                               preferredSets: Int, goal: TrainingGoal,
                               index: SuggestedWorkoutVectorIndex,
@@ -531,7 +501,9 @@ public enum SuggestedWorkoutGenerator {
         }
 
         fill(restrictedToStyle: true)
-        fill(restrictedToStyle: false)
+        if style != .bodyweight || !inStyle.contains(true) {
+            fill(restrictedToStyle: false)
+        }
 
         // A suggestion is an on-demand workout, not only a gap-filling alert.
         // Once this week's tracked gaps are already covered, the old solver

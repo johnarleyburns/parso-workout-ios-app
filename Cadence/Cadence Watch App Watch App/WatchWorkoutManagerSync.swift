@@ -25,6 +25,15 @@ extension WatchWorkoutManager {
 }
 
 extension WatchWorkoutManager: WCSessionDelegate {
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        let reachable = session.isReachable
+        Task { @MainActor [weak self] in
+            guard let self, reachable, self.isActive || self.isMonitoring,
+                  let bpm = self.currentBPM else { return }
+            self.relayBPM(bpm)
+        }
+    }
+
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         guard activationState == .activated else { return }
         let applicationContext = UncheckedWatchPayload(value: session.receivedApplicationContext)

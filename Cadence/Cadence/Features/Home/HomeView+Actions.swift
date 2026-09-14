@@ -118,7 +118,7 @@ extension HomeView {
                     guard let group = MuscleGroup.canonical($0) else { return false }
                     return trackedMuscleIDs.isEmpty || trackedMuscleIDs.contains(group.rawValue)
                 }
-            }
+            } && persistedCandidates.contains(where: { $0.matches(.bodyweight) })
             if persistedCatalogIsUsable {
                 candidates = persistedCandidates
             } else {

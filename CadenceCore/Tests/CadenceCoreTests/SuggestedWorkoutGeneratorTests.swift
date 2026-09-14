@@ -283,6 +283,20 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         }
     }
 
+    func testBodyweightNeverBorrowsAnExternalLoadWhenItsPoolExists() {
+        var completed = satisfied(at: 4)
+        completed["chest"] = 0
+        let bodyweight = styled("body", "Push-Up", ["chest"], types: [.strength],
+                               modalities: [.bodyweight])
+        let barbell = styled("barbell", "Clean and Jerk", ["chest"], types: [.strength])
+
+        let option = generate(completed: completed, candidates: [barbell, bodyweight]).option(.bodyweight)
+
+        XCTAssertEqual(option.exercises.map(\.candidateID), ["body"])
+        XCTAssertTrue(option.exercises.allSatisfy(\.isInStyle))
+        XCTAssertFalse(option.exercises.contains { $0.name.localizedCaseInsensitiveContains("clean and jerk") })
+    }
+
     /// NFR-8: a style narrows the movements, it does not abandon a muscle. When
     /// the style pool cannot reach a gap, the second pass fills it from the whole
     /// catalog and the option reports how much it borrowed.
@@ -400,7 +414,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
                     : record.category == "olympic weightlifting" ? ["strength", "olympic_weightlifting"]
                     : record.category == "strongman" ? ["strength", "strongman"]
                     : ["strength"]),
-                modalities: [],
+                modalities: record.equipment?.lowercased() == "body only" ? [.bodyweight] : [],
                 sportContexts: [.generalFitness])
         }
         let bundle = SuggestedWorkoutGenerator.generate(input: SuggestedWorkoutInput(
@@ -418,12 +432,24 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         for option in bundle.options {
             XCTAssertTrue(option.isLaunchable)
             XCTAssertLessThanOrEqual(option.plannedSetTotal, suggestedWorkoutPlannedSetCap)
-            XCTAssertEqual(option.enginePlanID, "generated-plan")
-            XCTAssertEqual(option.engineRevisionID, "r1")
-            XCTAssertNotNil(option.enginePlanJSON)
+            if option.style == .fitness {
+                XCTAssertEqual(option.enginePlanID, "generated-plan")
+                XCTAssertEqual(option.engineRevisionID, "r1")
+                XCTAssertNotNil(option.enginePlanJSON)
+            } else {
+                XCTAssertNil(option.enginePlanID,
+                             "non-Fitness style should use the fast facet-aware app solver")
+            }
             XCTAssertEqual(option.initialDeficits["chest"], 4)
             XCTAssertEqual(option.initialDeficits["lats"], 4)
         }
+        let bodyweight = bundle.option(.bodyweight)
+        let bodyweightIDs = Set(TrainingEngineBridge.preferredExerciseIDs(for: .bodyweight))
+        XCTAssertFalse(bodyweight.exercises.isEmpty)
+        XCTAssertTrue(bodyweight.exercises.allSatisfy { bodyweightIDs.contains($0.candidateID) },
+                      "Bodyweight chooser leaked a non-bodyweight movement: " +
+                      bodyweight.exercises.map(\.name).joined(separator: ", "))
+        XCTAssertFalse(bodyweight.exercises.contains { $0.name.localizedCaseInsensitiveContains("clean and jerk") })
     }
 
     func testEngineContextGeneratesLaunchableOptionsForDefaultTrackedGroups() {

@@ -512,6 +512,14 @@ extension AppModel {
         watchAppInstalled = installed
     }
 
+    fileprivate func watchReachabilityChanged(reachable: Bool) {
+        guard reachable, watchHRRelay.activeRequestID != nil else { return }
+        // The Watch retries its latest sample after reachability returns. This
+        // keeps a transient Apple Fitness/WatchConnectivity interruption from
+        // becoming a permanent phone-side HR failure.
+        watchError = nil
+    }
+
     fileprivate func handleWatchMessage(_ message: [String: Any],
                                          replyHandler: (([String: Any]) -> Void)? = nil) {
         if let requestIDString = message["requestID"] as? String,
@@ -549,9 +557,9 @@ extension AppModel {
         }
         Task { @MainActor [weak self] in
             guard let self else { return }
-            self.watchTimeout?.invalidate(); self.watchTimeout = nil
-            self.watchError = nil
             if self.watchHRRelay.receive(bpm: Int(bpm), requestID: requestID) {
+                self.watchTimeout?.invalidate(); self.watchTimeout = nil
+                self.watchError = nil
                 self.watchActive = true
                 self.hrm.injectExternalBPM(bpm)
             }
@@ -667,6 +675,13 @@ private final class WatchSessionDelegateProxy: NSObject, WCSessionDelegate, @unc
         let installed = session.isWatchAppInstalled
         Task { @MainActor [weak owner] in
             owner?.watchStateChanged(installed: installed)
+        }
+    }
+
+    func sessionReachabilityDidChange(_ session: WCSession) {
+        let reachable = session.isReachable
+        Task { @MainActor [weak owner] in
+            owner?.watchReachabilityChanged(reachable: reachable)
         }
     }
 

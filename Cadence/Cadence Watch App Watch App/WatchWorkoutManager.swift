@@ -57,6 +57,7 @@ final class WatchWorkoutManager: NSObject {
     var session: HKWorkoutSession?
     var builder: HKLiveWorkoutBuilder?
     private var hrPollTimer: Timer?
+    private var relayTimer: Timer?
     private var ble: WatchHeartRateBLE?
     var sessionStart: Date?
     var phoneRequestID: String?
@@ -192,6 +193,7 @@ final class WatchWorkoutManager: NSObject {
         }
         let b = builder; let s = session
         hrPollTimer?.invalidate(); hrPollTimer = nil
+        relayTimer?.invalidate(); relayTimer = nil
         builder = nil; session = nil
         ble?.disconnect(); ble = nil; currentBPM = nil
         isActive = false; isMonitoring = false; workoutType = nil; bleState = nil
@@ -294,10 +296,27 @@ final class WatchWorkoutManager: NSObject {
         return elapsedTracker.elapsed(since: sessionStart)
     }
 
-    private func relayBPM(_ bpm: Double) {
+    func relayBPM(_ bpm: Double) {
         guard let session = wcSession, session.isReachable else { return }
         guard let requestID = phoneRequestID else { return }
         session.sendMessage(["bpm": bpm, "active": true, "requestID": requestID], replyHandler: nil, errorHandler: nil)
+    }
+
+    /// Apple Fitness auto-detection can briefly interrupt WatchConnectivity
+    /// reachability while Cladiron still has a live HealthKit sample stream.
+    /// Retry the latest value so the phone recovers without a second workout
+    /// start.
+    func startHeartRateRelayPolling() {
+        relayTimer?.invalidate()
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.isActive || self.isMonitoring,
+                      let bpm = self.currentBPM else { return }
+                self.relayBPM(bpm)
+            }
+        }
+        relayTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     /// HealthKit's builder delegate may batch callbacks for tens of seconds.
@@ -332,30 +351,9 @@ final class WatchWorkoutManager: NSObject {
         relayBPM(bpm)
     }
 
-    static func activityType(for rawType: String) -> HKWorkoutActivityType {
-        switch rawType {
-        case "boxing": return .boxing
-        case "hiit": return .highIntensityIntervalTraining
-        case "run": return .running
-        case "cycle": return .cycling
-        case "swim": return .swimming
-        case "walk": return .walking
-        case "rowing": return .rowing
-        case "other": return .other
-        default: return .functionalStrengthTraining
-        }
-    }
-
-}
-
-extension WatchWorkoutManager {
-    enum BLEConnectionState { case scanning, connected, disconnected }
-}
-
-extension WatchWorkoutManager {
     /// The values one `HKLiveWorkoutBuilder` callback carries, extracted on
     /// HealthKit's own queue so nothing non-`Sendable` crosses into the main
-    /// actor. See `WatchWorkoutManagerHealthKit.swift` for why that matters.
+    /// actor. The delegate boundary is kept in WatchWorkoutManagerHealthKit.
     struct CollectedSample: Sendable {
         var bpm: Double?
         var distanceMeters: Double?
@@ -386,7 +384,12 @@ extension WatchWorkoutManager {
     func handleSessionFailure() { stopWorkout(save: false) }
 
     func handleSessionStateChange(_ state: HKWorkoutSessionState) {
-        if state == .running { startHeartRatePolling() }
-        else if state == .ended, isActive || isMonitoring { stopWorkout(save: false) }
+        if state == .running {
+            startHeartRatePolling()
+            startHeartRateRelayPolling()
+        } else if (state == .ended || state == .stopped), isActive || isMonitoring {
+            stopWorkout(save: false)
+        }
     }
+
 }

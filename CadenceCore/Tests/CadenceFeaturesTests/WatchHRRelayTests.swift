@@ -26,6 +26,19 @@ final class WatchHRRelayTests: XCTestCase {
         XCTAssertNil(relay.freshBPM(at: start.addingTimeInterval(11.01)))
     }
 
+    func testTimedOutRelayRecoversWhenTheSameWatchSessionResumes() {
+        let relay = WatchHRRelay()
+        let request = UUID()
+        let start = Date(timeIntervalSince1970: 250)
+        relay.begin(requestID: request, now: start)
+        relay.acknowledged(now: start.addingTimeInterval(1))
+        relay.timeout()
+
+        XCTAssertTrue(relay.receive(bpm: 128, requestID: request, now: start.addingTimeInterval(20)))
+        XCTAssertEqual(relay.freshBPM(at: start.addingTimeInterval(20)), 128)
+        XCTAssertFalse(relay.receive(bpm: 128, requestID: UUID(), now: start.addingTimeInterval(20)))
+    }
+
     func testAlreadyActiveShouldRetryAfterStop() {
         XCTAssertTrue(WatchHRRelay.shouldRetryAfterStop(rejection: .alreadyActive))
     }

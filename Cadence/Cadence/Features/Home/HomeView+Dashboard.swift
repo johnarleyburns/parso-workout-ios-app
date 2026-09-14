@@ -15,13 +15,6 @@ extension HomeView {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier("home.headerDate")
 
-                    if contributions.store.isSupporter {
-                        Label("Supporter", systemImage: "heart.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.pink)
-                            .accessibilityIdentifier("home.supporterBadge")
-                    }
-
                     if model.healthSyncStatus.isInProgress {
                         Label(model.healthSyncStatus.detailText,
                               systemImage: "heart.text.square")
@@ -62,7 +55,13 @@ extension HomeView {
             .background { CadenceGlassBackdrop(tint: .green) }
             .navigationTitle("Today")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if contributions.store.isSupporter {
+                        Label("Supporter", systemImage: "heart.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.pink)
+                            .accessibilityIdentifier("home.supporterBadge")
+                    }
                     Button { Haptics.selection(); path.append(HomeRoute.settings) } label: {
                         Image(systemName: "gearshape")
                             .imageScale(.large)

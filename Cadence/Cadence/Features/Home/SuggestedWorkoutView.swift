@@ -87,11 +87,16 @@ struct SuggestedWorkoutView: View {
                 NavigationStack { AboutSuggestedWorkoutsView() }
             }
         }
-        .overlay(alignment: .top) {
+        .overlay {
             if let readyToast {
-                SuggestedWorkoutToastView(toast: readyToast)
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                GeometryReader { proxy in
+                    SuggestedWorkoutToastView(toast: readyToast)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .padding(.top, proxy.safeAreaInsets.top + 52)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
             }
         }
         .animation(.easeInOut(duration: 0.18), value: readyToast?.id)

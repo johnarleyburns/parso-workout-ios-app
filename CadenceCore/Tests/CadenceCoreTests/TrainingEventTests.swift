@@ -66,6 +66,32 @@ final class TrainingEventTests: XCTestCase {
         XCTAssertEqual(d.intensityConfidence, .moderate)
     }
 
+    func testSampledCardioPreservesIntervalDistributionAndWeightedCredit() throws {
+        let ctx = try makeContext()
+        let start = testNow.addingTimeInterval(-1800)
+        let cardio = CardioWorkout(type: .other, start: start,
+                                   end: start.addingTimeInterval(1200), source: .iphone)
+        ctx.insert(cardio)
+        let samples = [
+            (0.0, 136.0), (120.0, 161.0), (180.0, 136.0),
+            (300.0, 161.0), (360.0, 136.0)
+        ]
+        for (t, bpm) in samples {
+            ctx.insert(HRSample(t: t, bpm: bpm, cardio: cardio))
+        }
+        try ctx.save()
+
+        let event = TrainingEvent.from(cardio: cardio, userAge: 50)
+        guard case .intervals(let details) = event.kind else {
+            XCTFail("Repeated high-HR bouts should be classified as interval-like")
+            return
+        }
+        XCTAssertEqual(details.moderateMinutes, 18, accuracy: 0.001)
+        XCTAssertEqual(details.vigorousMinutes, 2, accuracy: 0.001)
+        XCTAssertEqual(details.moderateEquivalentMinutes, 22, accuracy: 0.001)
+        XCTAssertEqual(details.intensityConfidence, .high)
+    }
+
     func testCardioWorkoutWithoutHRDefaultsToModerateLowConfidence() throws {
         let ctx = try makeContext()
         let cardio = CardioWorkout(type: .walk, start: testNow.addingTimeInterval(-3600),

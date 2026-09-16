@@ -54,19 +54,31 @@ public enum YourWeekPresenter {
     }
 
     /// Rough intensity from average HR against an age-based HRmax when present;
+    /// sample-based sessions use the same effort distribution as coach facts;
     /// else inferred from modality (boxing/run lean harder than walk).
     public static func intensity(for c: CardioWorkout, age: Int?) -> CoachSession.AerobicIntensity {
+        let fallback: CoachSession.AerobicIntensity
         if let avg = c.avgHeartRate, avg > 0 {
             let maxHR = CardioMath.defaultMaxHR(age: age)
             let pct = avg / maxHR
-            if pct >= 0.80 { return .vigorous }
-            if pct >= 0.65 { return .moderate }
-            return .easy
+            if pct >= 0.80 { fallback = .vigorous }
+            else if pct >= 0.65 { fallback = .moderate }
+            else { fallback = .easy }
+        } else {
+            switch c.typeValue {
+            case .boxing: fallback = .vigorous
+            case .run, .rowing: fallback = .moderate
+            default: fallback = .easy
+            }
         }
-        switch c.typeValue {
-        case .boxing: return .vigorous
-        case .run, .rowing: return .moderate
-        default: return .easy
-        }
+        let session = CardioZoneAggregator.Session(
+            modality: modality(for: c.typeValue),
+            intensity: fallback,
+            durationMinutes: max(0, (c.end ?? c.start.addingTimeInterval(600)).timeIntervalSince(c.start) / 60),
+            hrSamples: (c.hrSamples ?? []).map {
+                CardioZoneAggregator.HRPoint(t: $0.t, bpm: $0.bpm)
+            })
+        return CardioZoneAggregator.intensityProfile(
+            for: session, maxHR: CardioMath.defaultMaxHR(age: age)).dominantIntensity
     }
 }

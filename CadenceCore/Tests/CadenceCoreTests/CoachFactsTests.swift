@@ -154,6 +154,26 @@ final class CoachFactsTests: XCTestCase {
                        "Vigorous counts double, easy counts half: 60 + 30")
     }
 
+    func testSampledIntervalsUseWeightedDistributionInWeeklyBalance() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let start = now.addingTimeInterval(-1800)
+        let cardio = CardioWorkout(type: .other, start: start,
+                                   end: start.addingTimeInterval(1200), source: .iphone)
+        ctx.insert(cardio)
+        for (t, bpm) in [(0.0, 136.0), (120.0, 161.0), (180.0, 136.0),
+                         (300.0, 161.0), (360.0, 136.0)] {
+            ctx.insert(HRSample(t: t, bpm: bpm, cardio: cardio))
+        }
+        let event = TrainingEvent.from(cardio: cardio, userAge: 50)
+        let balance = CoachFacts.make(from: [event], goal: .strength,
+                                      experience: .intermediate, now: now).weeklyBalance
+        XCTAssertEqual(balance.easyMinutesLogged, 0, accuracy: 0.001)
+        XCTAssertEqual(balance.moderateMinutesLogged, 18, accuracy: 0.001)
+        XCTAssertEqual(balance.vigorousMinutesLogged, 2, accuracy: 0.001)
+        XCTAssertEqual(balance.moderateEquivalentMinutes, 22, accuracy: 0.001)
+    }
+
     func testMissingHRIntensityIsLowConfidence() throws {
         let ctx = try makeContext()
         let now = testNow

@@ -74,6 +74,12 @@ public struct AerobicEventDetails: Sendable, Equatable {
     public let duration: TimeInterval
     public let intensity: IntensityClassification
     public let intensityConfidence: FactConfidence
+    /// Wall-clock minutes distributed by observed effort. These are distinct
+    /// from `duration` so an interval session does not report every minute as
+    /// vigorous merely because it reached a high peak.
+    public let easyMinutes: Double
+    public let moderateMinutes: Double
+    public let vigorousMinutes: Double
     public let moderateEquivalentMinutes: Double
     public let lowerBodyLoading: Bool
     public let isInterval: Bool
@@ -239,8 +245,10 @@ extension TrainingEvent {
     /// - **Modality floor** — HIIT, boxing, and interval sessions classify at
     ///   least `.vigorous` regardless of HR (they are intense by construction;
     ///   averaging rest intervals must not wash them out).
-    /// - **Peak-aware for intervals/combat** — a peak ≥90% HRmax marks the
-    ///     session vigorous even when the average sits below 80%.
+    /// - **Peak-aware fallback for intervals/combat** — without a sample
+    ///     distribution, a peak ≥90% HRmax marks the session vigorous even when
+    ///     the average sits below 80%; sampled sessions use their integrated
+    ///     effort profile instead.
     public static func from(cardio: CardioWorkout, userAge: Int? = nil) -> TrainingEvent {
         let cardioEnd = cardio.end ?? cardio.start.addingTimeInterval(600)
         let completion: EventCompletion = cardioEnd > cardio.start ? .completed : .inProgress
@@ -272,10 +280,10 @@ extension TrainingEvent {
         let computedPeakHR = hasHR ? samples.map(\.bpm).max() : nil
         let peakHR = cardio.maxHeartRate ?? computedPeakHR
 
-        let isInterval = cardioType == .hiit
+        let isIntervalByType = cardioType == .hiit
         // HIIT/boxing/interval work is intense by construction — HR may raise,
         // never lower, the classification (user decision #1).
-        let intenseByModality = isInterval || modality == .hiit || modality == .boxing
+        let intenseByModality = isIntervalByType || modality == .hiit || modality == .boxing
 
         let intensity: AerobicEventDetails.IntensityClassification
         let intensityConfidence: FactConfidence
@@ -300,12 +308,25 @@ extension TrainingEvent {
             intensityConfidence = .low
         }
 
-        let moderateEquivalent: Double
-        switch intensity {
-        case .vigorous: moderateEquivalent = duration / 60 * 2
-        case .moderate: moderateEquivalent = duration / 60
-        case .easy: moderateEquivalent = duration / 60 * 0.5
+        let profileSession = CardioZoneAggregator.Session(
+            modality: YourWeekModalityBridge.modality(for: cardioType),
+            intensity: YourWeekModalityBridge.intensity(for: intensity),
+            durationMinutes: duration / 60,
+            hrSamples: samples.map { CardioZoneAggregator.HRPoint(t: $0.t, bpm: $0.bpm) })
+        let profile = CardioZoneAggregator.intensityProfile(for: profileSession, maxHR: maxHR)
+        let hasObservedInterval = profile.isIntervalLike
+        let isInterval = isIntervalByType || hasObservedInterval
+        let finalIntensity: AerobicEventDetails.IntensityClassification = switch profile.dominantIntensity {
+        case .easy: .easy
+        case .moderate: .moderate
+        case .vigorous: .vigorous
         }
+        // Modality floors remain authoritative for HIIT/boxing, but observed
+        // sample distribution controls ordinary cardio classification.
+        let resolvedIntensity: AerobicEventDetails.IntensityClassification = intenseByModality
+            ? .vigorous : finalIntensity
+        let moderateEquivalent = intenseByModality && !profile.hasHeartRateSamples
+            ? duration / 60 * 2 : profile.moderateEquivalentMinutes
 
         let lowerBody: Bool = switch modality {
         case .running, .walking, .cycling, .hiit, .rowing: true
@@ -316,8 +337,11 @@ extension TrainingEvent {
             modality: modality,
             impact: impact,
             duration: duration,
-            intensity: intensity,
-            intensityConfidence: intensityConfidence,
+            intensity: resolvedIntensity,
+            intensityConfidence: profile.hasHeartRateSamples ? .high : intensityConfidence,
+            easyMinutes: profile.hasHeartRateSamples ? profile.easyMinutes : (resolvedIntensity == .easy ? duration / 60 : 0),
+            moderateMinutes: profile.hasHeartRateSamples ? profile.moderateMinutes : (resolvedIntensity == .moderate ? duration / 60 : 0),
+            vigorousMinutes: profile.hasHeartRateSamples ? profile.vigorousMinutes : (resolvedIntensity == .vigorous ? duration / 60 : 0),
             moderateEquivalentMinutes: moderateEquivalent,
             lowerBodyLoading: lowerBody,
             isInterval: isInterval
@@ -342,5 +366,31 @@ extension TrainingEvent {
             source: .assessment,
             completion: .completed
         )
+    }
+}
+
+/// Keeps the core cardio model independent from the feature presenter module.
+/// The two enums intentionally have the same cases but live in different
+/// layers, so this is the single conversion point used by TrainingEvent.
+private enum YourWeekModalityBridge {
+    static func modality(for type: CardioType) -> CoachSession.AerobicModality {
+        switch type {
+        case .walk: return .walk
+        case .run: return .run
+        case .cycle: return .cycle
+        case .swim: return .swim
+        case .rowing: return .row
+        case .boxing: return .boxing
+        default: return .other
+        }
+    }
+
+    static func intensity(for value: AerobicEventDetails.IntensityClassification)
+        -> CoachSession.AerobicIntensity {
+        switch value {
+        case .easy: return .easy
+        case .moderate: return .moderate
+        case .vigorous: return .vigorous
+        }
     }
 }

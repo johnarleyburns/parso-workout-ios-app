@@ -32,6 +32,41 @@ final class CardioZoneAggregatorTests: XCTestCase {
         XCTAssertEqual(z[5] ?? 0, 5, accuracy: 0.001)
     }
 
+    func testIntensityProfileWeightsRepeatedHighBoutsWithoutPromotingWholeSession() {
+        // Age 50 → HRmax 173. 136 bpm is Z3; 161 bpm is Z5. Two one-minute
+        // high bouts are separated by recovery, so this is interval-like but
+        // still mostly moderate work.
+        let samples = [
+            CardioZoneAggregator.HRPoint(t: 0, bpm: 136),
+            CardioZoneAggregator.HRPoint(t: 120, bpm: 161),
+            CardioZoneAggregator.HRPoint(t: 180, bpm: 136),
+            CardioZoneAggregator.HRPoint(t: 300, bpm: 161),
+            CardioZoneAggregator.HRPoint(t: 360, bpm: 136)
+        ]
+        let session = CardioZoneAggregator.Session(modality: .other, intensity: .moderate,
+                                                     durationMinutes: 20, hrSamples: samples)
+        let profile = CardioZoneAggregator.intensityProfile(for: session, maxHR: 173)
+        XCTAssertEqual(profile.moderateMinutes, 18, accuracy: 0.001)
+        XCTAssertEqual(profile.vigorousMinutes, 2, accuracy: 0.001)
+        XCTAssertEqual(profile.moderateEquivalentMinutes, 22, accuracy: 0.001)
+        XCTAssertTrue(profile.isIntervalLike)
+        XCTAssertEqual(profile.dominantIntensity, .vigorous,
+                       "interval intent is retained without treating all 20 minutes as vigorous")
+    }
+
+    func testOneShortHighPeakDoesNotTriggerIntervalDetection() {
+        let samples = [
+            CardioZoneAggregator.HRPoint(t: 0, bpm: 136),
+            CardioZoneAggregator.HRPoint(t: 120, bpm: 161),
+            CardioZoneAggregator.HRPoint(t: 130, bpm: 136)
+        ]
+        let session = CardioZoneAggregator.Session(modality: .other, intensity: .moderate,
+                                                     durationMinutes: 20, hrSamples: samples)
+        let profile = CardioZoneAggregator.intensityProfile(for: session, maxHR: 173)
+        XCTAssertFalse(profile.isIntervalLike)
+        XCTAssertEqual(profile.dominantIntensity, .moderate)
+    }
+
     func testEmptyAndZeroDurationIgnored() {
         let empty = CardioZoneAggregator.Session(modality: .run, intensity: .easy, durationMinutes: 0)
         XCTAssertTrue(CardioZoneAggregator.weeklyZoneMinutes(sessions: [empty], age: 40).isEmpty)

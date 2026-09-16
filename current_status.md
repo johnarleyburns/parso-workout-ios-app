@@ -1,6 +1,6 @@
 # Current Status
 
-Updated: 2026-09-12
+Updated: 2026-09-15
 
 ## Roadmap position — Phase 4 implementation complete; Phase 2 hardware close-out pending
 
@@ -114,17 +114,15 @@ platform/readiness polish. Private iCloud remains limited to the user's own
 devices. Existing compatibility code is not an invitation to expand the
 retired model; remove or migrate it only as a separate cleanup task.
 
-## Current investigation — cardio intensity credit consistency — INTERVAL-AWARE FIX IDENTIFIED, PLANNED 2026-09-09
+## Current investigation — cardio intensity credit consistency — INTERVAL-AWARE FIX COMPLETE 2026-09-15
 
-The cardio paths currently disagree. `TrainingEvent.from(cardio:userAge:)` uses
-both average and peak heart rate: at age 50, the app's age-based max HR is about
-173, so an average of 136 is 78.6% while a recorded peak of 170 is 98.3%; the
-existing peak threshold classifies that session as vigorous and gives double
-moderate-equivalent credit. The `YourWeekPresenter` intensity path uses average
-HR only, however, so it can show a lower/base intensity for the same workout and
-cannot promote it from the peak value. If the visible “base” label came from a
-coach recommendation rather than workout credit, that is a separate planned
-session classification, but the HR classification split is an obvious defect.
+Before this fix, the cardio paths disagreed. `TrainingEvent.from(cardio:userAge:)`
+used both average and peak heart rate: at age 50, the app's age-based max HR is
+about 173, so an average of 136 is 78.6% while a recorded peak of 170 is 98.3%;
+the old peak threshold classified that session as vigorous and gave double
+moderate-equivalent credit. The `YourWeekPresenter` intensity path used average
+HR only, so it could show a lower/base intensity for the same workout. The HR
+classification split was the defect addressed by the completed profile fix.
 
 The better fix is not to promote the entire workout from its maximum sample. A
 136 average with repeated 161 peaks at age 50 is consistent with an
@@ -135,22 +133,20 @@ session 2× credit. Official guidance also treats moderate and vigorous minutes
 as additive and uses a 2:1 vigorous-to-moderate equivalence, so the app should
 preserve the distribution of effort rather than discard it.
 
-Next fix: centralize a sample-based cardio intensity profile used by weekly
-zones, coach facts, and moderate-equivalent credit. Integrate the HR curve over
-time with zone weights (easy 0.5×, moderate 1×, vigorous 2×), and expose an
-interval-like flag when an `other` workout has at least two sustained high-HR
-bouts separated by recovery. Use hysteresis/debounce so a single noisy peak is
-not an interval; repeated Z4/Z5 bouts should be recognized even when the saved
-CardioType is `.other`. Keep the recorded modality unchanged, but let the
-derived event say interval-like and explain the weighted credit. When samples
-are unavailable, retain the age/average/peak fallback with lower confidence and
-do not infer repeated intervals from max HR alone.
+Implemented: `CardioZoneAggregator.IntensityProfile` now integrates the HR
+curve over time with zone weights (easy 0.5×, moderate 1×, vigorous 2×). The
+same profile feeds weekly zones, `TrainingEvent`, `CoachFacts`, and the Your
+Week intensity surface. An `other` workout with at least two sustained Z4/Z5
+bouts separated by recovery is marked interval-like without changing its
+recorded modality. A single short peak does not trigger interval detection.
+When samples are unavailable, the age/average/peak fallback remains in place
+with lower confidence.
 
-Add regression tests for age 50 / average 136 / repeated peak 161 asserting
-that high-zone time receives 2× credit, that the session is not treated as a
-plain brisk-walk-equivalent block, that a single isolated peak does not trigger
-interval detection, and that missing-HR fallback remains conservative. No
-simulator is required for this logic.
+Regression coverage now includes age 50 / average 136 / repeated peak 161,
+weighted high-zone credit, interval-like detection, isolated-peak rejection,
+sampled `TrainingEvent` values, and conservative missing-HR fallback. The full
+headless package suite passes with 1,772 tests; no simulator is required for
+this logic.
 
 ## Historical investigation — complete exercise variants and indexed search — core fix shipped 2026-09-10
 

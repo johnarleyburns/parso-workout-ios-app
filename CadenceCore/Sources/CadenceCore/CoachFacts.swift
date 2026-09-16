@@ -499,14 +499,23 @@ public extension CoachFacts {
             case .intervals(let ad): d = ad
             default: continue
             }
-            let mins = d.duration / 60
-            switch d.intensity {
-            case .easy: moderateMinutes += mins * 0.5; easyLogged += mins
-            case .moderate: moderateMinutes += mins; moderateLogged += mins
-            case .vigorous: vigorousMinutes += mins; vigorousLogged += mins
+            // Use the sample-derived split carried by the event. Rebuilding
+            // the total from one session-wide label would turn a short HR
+            // spike into a full-session vigorous workout.
+            moderateMinutes += d.easyMinutes * 0.5 + d.moderateMinutes
+            vigorousMinutes += d.vigorousMinutes
+            easyLogged += d.easyMinutes
+            moderateLogged += d.moderateMinutes
+            vigorousLogged += d.vigorousMinutes
+        }
+        let modEquiv = aerobicEvents.reduce(0.0) { total, event in
+            switch event.kind {
+            case .aerobic(let details), .intervals(let details):
+                return total + details.moderateEquivalentMinutes
+            default:
+                return total
             }
         }
-        let modEquiv = moderateMinutes + 2 * vigorousMinutes
 
         var hardDays = Set<Date>()
         for event in completed where event.isHard {

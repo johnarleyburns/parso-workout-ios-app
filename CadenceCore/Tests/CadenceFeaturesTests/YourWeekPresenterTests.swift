@@ -42,6 +42,19 @@ final class YourWeekPresenterTests: XCTestCase {
         XCTAssertEqual(YourWeekPresenter.intensity(for: walk, age: nil), .easy)
     }
 
+    func testSampledIntervalUsesTheSharedEffortProfile() throws {
+        let ctx = try makeContext()
+        let start = Date()
+        let cardio = CardioWorkout(type: .other, start: start,
+                                   end: start.addingTimeInterval(1200), source: .iphone)
+        ctx.insert(cardio)
+        for (t, bpm) in [(0.0, 136.0), (120.0, 161.0), (180.0, 136.0),
+                         (300.0, 161.0), (360.0, 136.0)] {
+            ctx.insert(HRSample(t: t, bpm: bpm, cardio: cardio))
+        }
+        XCTAssertEqual(YourWeekPresenter.intensity(for: cardio, age: 50), .vigorous)
+    }
+
     func testWeeklyZoneMinutesExcludesBeforeWindow() throws {
         let ctx = try makeContext()
         let now = Date()

@@ -10,43 +10,6 @@ final class SmokeLaunchTests: CadenceUITestCase {
     private let exerciseName = "Bench Press"
 
     @MainActor
-    func testHIITInfoUnrollsTabataOutline() {
-        let app = XCUIApplication.launched()
-
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(timeout: 15),
-                      "Home Start Workout did not open")
-        XCTAssertTrue(app.scrollToHittableAndTap("startType.hiit"),
-                      "Start Workout did not offer HIIT")
-        XCTAssertTrue(app.navigationBars["HIIT"].waitForExistence(timeout: 10),
-                      "HIIT setup did not open")
-        XCTAssertTrue(app.buttons["About Tabata"].waitTap(timeout: 10),
-                      "HIIT setup did not expose Tabata info")
-        XCTAssertTrue(app.navigationBars["Tabata"].waitForExistence(timeout: 10),
-                      "Tabata info sheet did not open")
-
-        let outline = app.descendants(matching: .any)["interval.info.outline"]
-        XCTAssertTrue(outline.waitForExistence(timeout: 5),
-                      "Tabata info did not show the expanded outline")
-        let phases = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH 'interval.info.outline.phase.'"))
-        XCTAssertEqual(phases.count, 18,
-                       "Tabata outline must show warm-up, 8 work/rest pairs, and cool-down")
-        XCTAssertTrue(phases.element(boundBy: 0).label.contains("Warm Up"))
-        XCTAssertTrue(phases.element(boundBy: 0).label.contains("5:00"))
-        XCTAssertTrue(phases.element(boundBy: 1).label.contains("20 sec"))
-        XCTAssertTrue(phases.element(boundBy: 2).label.contains("10 sec"))
-        XCTAssertTrue(phases.element(boundBy: 17).label.contains("Cool Down"))
-        XCTAssertTrue(phases.element(boundBy: 17).label.contains("5:00"))
-
-        XCTAssertTrue(app.buttons["Done"].waitTap(timeout: 5),
-                      "Tabata info sheet did not close")
-        XCTAssertTrue(app.buttons["interval.cancel"].waitTap(timeout: 5),
-                      "HIIT setup did not close")
-        XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitTap(timeout: 5),
-                      "Start Workout did not close after HIIT info")
-    }
-
-    @MainActor
     func testIPhoneStrengthWorkoutPlansLogsAndCompletes() {
         // A seeded partner gives the session a real roster, so the flow can log a
         // set for someone other than the owner (field test 2026-08-18 §5b). The
@@ -90,6 +53,38 @@ final class SmokeLaunchTests: CadenceUITestCase {
                           "iPad Transparency & Control did not open")
             return
         }
+
+        // HIIT info must expose the exact expanded runner sequence. This stays
+        // inside the single iPhone smoke flow required by the test-pyramid
+        // guardrail, while proving the new outline is not merely a compact
+        // rounds/work/rest summary.
+        XCTAssertTrue(app.scrollToHittableAndTap("startType.hiit"),
+                      "Start Workout did not offer HIIT")
+        XCTAssertTrue(app.navigationBars["HIIT"].waitForExistence(timeout: 10),
+                      "HIIT setup did not open")
+        XCTAssertTrue(app.buttons["About Tabata"].waitTap(timeout: 10),
+                      "HIIT setup did not expose Tabata info")
+        XCTAssertTrue(app.navigationBars["Tabata"].waitForExistence(timeout: 10),
+                      "Tabata info sheet did not open")
+        let intervalOutline = app.descendants(matching: .any)["interval.info.outline"]
+        XCTAssertTrue(intervalOutline.waitForExistence(timeout: 5),
+                      "Tabata info did not show the expanded outline")
+        let intervalPhases = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'interval.info.outline.phase.'"))
+        XCTAssertEqual(intervalPhases.count, 18,
+                       "Tabata outline must show warm-up, 8 work/rest pairs, and cool-down")
+        XCTAssertTrue(intervalPhases.element(boundBy: 0).label.contains("Warm Up"))
+        XCTAssertTrue(intervalPhases.element(boundBy: 0).label.contains("5:00"))
+        XCTAssertTrue(intervalPhases.element(boundBy: 1).label.contains("20 sec"))
+        XCTAssertTrue(intervalPhases.element(boundBy: 2).label.contains("10 sec"))
+        XCTAssertTrue(intervalPhases.element(boundBy: 17).label.contains("Cool Down"))
+        XCTAssertTrue(intervalPhases.element(boundBy: 17).label.contains("5:00"))
+        XCTAssertTrue(app.buttons["Done"].waitTap(timeout: 5),
+                      "Tabata info sheet did not close")
+        XCTAssertTrue(app.buttons["interval.cancel"].waitTap(timeout: 5),
+                      "HIIT setup did not close")
+        XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitTap(timeout: 5),
+                      "Start Workout did not close after HIIT info")
 
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10),
                       "Coach card did not render on Home")

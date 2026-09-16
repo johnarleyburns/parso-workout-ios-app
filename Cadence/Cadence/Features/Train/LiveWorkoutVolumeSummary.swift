@@ -23,6 +23,17 @@ struct LiveWorkoutVolumeSet: Sendable {
 }
 
 enum LiveWorkoutVolumeCalculator {
+    static func sets(from workout: WorkoutSession) -> [LiveWorkoutVolumeSet] {
+        workout.orderedSets.map { set in
+            LiveWorkoutVolumeSet(date: set.completedAt,
+                                 isWarmup: set.isWarmup,
+                                 isOwner: set.isOwnerSet,
+                                 credits: set.exercise?.volumeCredits
+                                    ?? ExerciseLibrary.template(matching: set.exercise?.name ?? "")?.volumeCredits
+                                    ?? [:])
+        }
+    }
+
     static func totals(_ sets: [LiveWorkoutVolumeSet], since start: Date? = nil)
     -> [MuscleGroup: Double] {
         sets.reduce(into: [:]) { result, set in
@@ -50,19 +61,29 @@ enum LiveWorkoutVolumeCalculator {
     }
 }
 
+enum WorkoutVolumeSummaryPresentation: Equatable {
+    case active
+    case planned
+}
+
 struct LiveWorkoutVolumeSummary: View {
     let state: LiveWorkoutVolumeState
     @Binding var expanded: Bool
+    var presentation: WorkoutVolumeSummaryPresentation = .active
+    var accessibilityPrefix: String = "session"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Volume Summary").font(.headline)
                 Spacer()
-                Text("This workout").font(.caption).foregroundStyle(.secondary)
+                Text(presentation == .planned ? "Planned" : "This workout")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             if state.groups.isEmpty {
-                Text("Save a working set to see muscle-group volume here.")
+                Text(presentation == .planned
+                     ? "Add a volume-eligible strength exercise to see planned muscle-group volume here."
+                     : "Save a working set to see muscle-group volume here.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 ForEach(expanded ? state.groups : Array(state.groups.prefix(4)), id: \.self) { group in
@@ -72,13 +93,15 @@ struct LiveWorkoutVolumeSummary: View {
                     withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
                 }
                 .font(.subheadline.weight(.semibold))
-                .accessibilityIdentifier(expanded ? "session.volume.showLess" : "session.volume.showMore")
+                .accessibilityIdentifier(expanded
+                                         ? "\(accessibilityPrefix).volume.showLess"
+                                         : "\(accessibilityPrefix).volume.showMore")
             }
         }
         .padding(CGFloat(LayoutMetrics.cardPadding))
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
-        .accessibilityIdentifier("session.volumeSummary")
+        .accessibilityIdentifier("\(accessibilityPrefix).volumeSummary")
     }
 
     private func row(_ group: MuscleGroup) -> some View {
@@ -117,12 +140,17 @@ struct LiveWorkoutVolumeSummary: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("session.volume.\(group.rawValue)")
-        .accessibilityValue("\(format(current)) sets\(planned > 0 ? ", \(format(planned)) planned" : "")")
+        .accessibilityIdentifier("\(accessibilityPrefix).volume.\(group.rawValue)")
+        .accessibilityValue(presentation == .planned
+                           ? "\(format(current)) planned sets"
+                           : "\(format(current)) sets\(planned > 0 ? ", \(format(planned)) planned" : "")")
     }
 
     private func valueText(current: Double, planned: Double) -> String {
-        planned > 0 ? "\(format(current))/\(format(planned)) planned" : "\(format(current)) sets"
+        if presentation == .planned {
+            return "\(format(current)) planned sets"
+        }
+        return planned > 0 ? "\(format(current))/\(format(planned)) planned" : "\(format(current)) sets"
     }
 
     private func format(_ value: Double) -> String {
@@ -153,14 +181,7 @@ extension SessionView {
     }
 
     private func liveVolumeSets(from workout: WorkoutSession) -> [LiveWorkoutVolumeSet] {
-        workout.orderedSets.map { set in
-            LiveWorkoutVolumeSet(date: set.completedAt,
-                                 isWarmup: set.isWarmup,
-                                 isOwner: set.isOwnerSet,
-                                 credits: set.exercise?.volumeCredits
-                                    ?? ExerciseLibrary.template(matching: set.exercise?.name ?? "")?.volumeCredits
-                                    ?? [:])
-        }
+        LiveWorkoutVolumeCalculator.sets(from: workout)
     }
 
     private func plannedCreditsByName() -> [String: [MuscleGroup: Double]] {

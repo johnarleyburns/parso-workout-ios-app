@@ -45,6 +45,7 @@ struct WorkoutPlanEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Person.name) private var allPeople: [Person]
     @Query(sort: \Exercise.name) private var allExercises: [Exercise]
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var allWorkoutSessions: [WorkoutSession]
     @State private var exercisePickerIntent: ExercisePickerIntent?
 
     @State private var restSeconds: Int
@@ -63,6 +64,9 @@ struct WorkoutPlanEditor: View {
     @State private var exclusionExercise: Exercise?
     @State private var isRegeneratingAfterExclusion = false
     @State private var regenerationFailed = false
+    @State private var planVolumeState = LiveWorkoutVolumeState()
+    @State private var planVolumeExpanded = false
+    @State private var planVolumeRevision = UUID()
     let allowsStart: Bool
 
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
@@ -88,6 +92,11 @@ struct WorkoutPlanEditor: View {
         ScrollView {
             VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
                 if allowsStart { startButton }
+
+                LiveWorkoutVolumeSummary(state: planVolumeState,
+                                         expanded: $planVolumeExpanded,
+                                         presentation: .planned,
+                                         accessibilityPrefix: "plan")
 
                 WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
                                           isEditing: isEditing,
@@ -136,7 +145,10 @@ struct WorkoutPlanEditor: View {
                 resolvePartnerPlans()
                 didResolvePartnerPlans = true
             }
+            refreshPlanVolume()
         }
+        .onChange(of: plan) { _, _ in refreshPlanVolume() }
+        .onChange(of: allWorkoutSessions.count) { _, _ in refreshPlanVolume() }
         .navigationTitle("Workout Plan")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -220,6 +232,48 @@ struct WorkoutPlanEditor: View {
         } message: {
             Text("The exercise was excluded from future suggestions, but this plan could not be recalculated. You can remove it manually below.")
         }
+    }
+
+    /// Builds the plan preview from the same volume ledger used by an active
+    /// workout. The SwiftData objects are reduced to Sendable snapshots before
+    /// the aggregation leaves the main actor, so changing a plan never blocks
+    /// the editor while the user's weekly history is scanned.
+    private func refreshPlanVolume() {
+        let revision = UUID()
+        planVolumeRevision = revision
+        let weeklySets = allWorkoutSessions
+            .filter { $0.deletedAt == nil && $0.countsAsStrengthHistory }
+            .flatMap(LiveWorkoutVolumeCalculator.sets(from:))
+        let weekStart = LiveWorkoutVolumeCalculator.weekStart()
+        let prescriptions = plan.exercises.map { exercise in
+            PlannedExercisePrescription(
+                exerciseName: exercise.name,
+                sets: exercise.sets.map { PlannedSetPrescription(targetReps: $0.targetReps,
+                                                                  targetWeightKg: $0.targetWeight) })
+        }
+        let credits = planVolumeCreditsByName()
+        Task.detached(priority: .userInitiated) {
+            let weekly = LiveWorkoutVolumeCalculator.totals(weeklySets, since: weekStart)
+            let planned = LiveWorkoutVolumeCalculator.plannedTotals(
+                prescriptions, creditsByName: credits)
+            let next = LiveWorkoutVolumeState(current: planned, weekly: weekly, planned: [:])
+            await MainActor.run {
+                guard planVolumeRevision == revision else { return }
+                planVolumeState = next
+            }
+        }
+    }
+
+    private func planVolumeCreditsByName() -> [String: [MuscleGroup: Double]] {
+        var result: [String: [MuscleGroup: Double]] = [:]
+        for exercise in allExercises {
+            result[exercise.name.lowercased()] = exercise.volumeCredits
+        }
+        for exercise in plan.exercises where result[exercise.name.lowercased()] == nil {
+            result[exercise.name.lowercased()] =
+                ExerciseLibrary.template(matching: exercise.name)?.volumeCredits ?? [:]
+        }
+        return result
     }
 
     /// Regenerates the whole suggested plan from scratch now that `exercise`

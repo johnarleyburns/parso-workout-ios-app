@@ -64,13 +64,10 @@ struct PreWorkoutHRView: View {
     }
 
     private var watchStatus: String {
-        switch model.watchHRRelay.state {
-        case .connecting: return "Connecting to Apple Watch…"
-        case .waitingForSample: return "Watch connected · waiting for heart rate…"
-        case .live: return watchBPM == nil ? "Heart rate is stale · retry on Watch" : "Live from Apple Watch"
-        case .timedOut(let message), .failed(let message): return message
-        case .actionRequired(let message), .unavailable(let message): return message
+        if case .live = model.watchHRRelay.state, watchBPM == nil {
+            return "Heart rate is stale · retry on Watch"
         }
+        return model.watchConnectionStatus
     }
 
     var body: some View {
@@ -100,13 +97,29 @@ struct PreWorkoutHRView: View {
                             .accessibilityIdentifier("prehr.watch.check")
                     }
                     if watchSelected {
-                        Text("Open Cladiron on your Apple Watch and keep it visible.")
-                            .font(.caption).foregroundStyle(.secondary)
-                            .accessibilityIdentifier("prehr.watch.instructions")
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Apple Watch connection may take up to a minute. Keep Cladiron open on your Watch.")
+                            Text("You can also start an exercise directly in Cladiron on your Apple Watch.")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("prehr.watch.instructions")
+                        if model.watchConnectionInProgress {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .accessibilityIdentifier("prehr.watch.spinner")
+                                Text(watchStatus)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityIdentifier("prehr.watch.status")
+                            }
+                        }
                         if let watchBPM {
                             HRValueLabel(bpm: watchBPM, note: "LIVE · from Apple Watch", noteColor: .green)
                                 .accessibilityIdentifier("prehr.watchBPM")
-                        } else {
+                        } else if !model.watchConnectionInProgress {
                             Text(watchStatus).font(.caption).foregroundStyle(.secondary)
                                 .accessibilityIdentifier("prehr.watch.status")
                         }

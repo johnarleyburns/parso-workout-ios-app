@@ -57,8 +57,8 @@ public enum PreWorkoutHRPresenter {
     }
 
     /// ALWAYS true — never blocks on `.connecting` / `.waitingForSample`. Each
-    /// tap begins a fresh `start_workout` with a new requestID; the existing 15 s
-    /// timeout and P5B's `.alreadyActive` recovery keep it honest.
+    /// tap begins a fresh `start_workout` with a new requestID; the visible
+    /// progress state and one-minute timeout keep the connection attempt honest.
     public static func checkEnabled(_ s: PreWorkoutHRState) -> Bool {
         true
     }

@@ -55,6 +55,10 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     /// Whether the Apple Watch is actively streaming HR (FR-8).
     private(set) var watchActive: Bool = false
+    /// True from the user's request until the Watch produces a live sample or
+    /// the connection attempt fails. This keeps the HR gate honest while
+    /// WatchConnectivity activates or the Watch launches its workout session.
+    private(set) var watchStartInProgress: Bool = false
     /// When set, the watch was told to start but never confirmed.
     private(set) var watchError: String?
     let watchHRRelay: WatchHRRelay
@@ -150,6 +154,33 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// synchronous IPC calls from SwiftUI body evaluation.
     var watchAvailable: Bool {
         Self.liveWatchHREnabled && !isUITestMode && watchAppInstalled
+    }
+
+    /// A user-facing description of the current Watch connection step. The HR
+    /// gate shows this beside a spinner so a slow WatchConnectivity handoff
+    /// never looks like a frozen screen.
+    var watchConnectionStatus: String {
+        if let watchError { return watchError }
+        switch watchHRRelay.state {
+        case .connecting:
+            return "Sending the workout request to your Apple Watch…"
+        case .waitingForSample:
+            return "Apple Watch accepted · waiting for live heart rate…"
+        case .live:
+            return "Live heart rate from Apple Watch"
+        case .timedOut(let message), .failed(let message):
+            return message
+        case .unavailable(let reason):
+            if watchStartInProgress { return "Activating Apple Watch connection…" }
+            return reason
+        case .actionRequired(let message):
+            if watchStartInProgress { return "Activating Apple Watch connection…" }
+            return message
+        }
+    }
+
+    var watchConnectionInProgress: Bool {
+        watchStartInProgress
     }
 
     /// Activates the WCSession and caches `isWatchAppInstalled`. Called once from
@@ -319,6 +350,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// raw type string and begin streaming live heart rate.
     func startWatchWorkout(rawType: String) {
         watchRetryArmed = false
+        watchStartInProgress = true
+        watchError = nil
         if !isUITestMode, WCSession.isSupported(), WCSession.default.activationState != .activated {
             pendingWatchStartType = rawType
             activateWCSession()
@@ -328,7 +361,9 @@ final class AppModel: NSObject, @unchecked Sendable {
     }
 
     private func performWatchStart(rawType: String, retryType: String, allowsRetry: Bool) {
+        watchStartInProgress = true
         guard watchAvailable, let session = wcSession else {
+            watchStartInProgress = false
             watchError = "Apple Watch is unavailable — open Cladiron on your Watch and try again"
             return
         }
@@ -336,6 +371,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchTimeout?.invalidate()
 
         guard session.isReachable else {
+            watchStartInProgress = false
             watchError = "Open the companion Watch app and keep the screen on"
             return
         }
@@ -355,7 +391,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             errorHandler: Self.watchErrorHandler(owner: self))
         watchActive = false
         watchTimeout = Timer.scheduledTimer(
-            withTimeInterval: 15,
+            withTimeInterval: 60,
             repeats: false,
             block: Self.watchTimeoutHandler(owner: self))
     }
@@ -392,6 +428,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
         guard WatchHRRelay.shouldRetryAfterStop(rejection: rejection),
               let activeRequestID, allowsRetry, !watchRetryArmed else {
+            watchStartInProgress = false
             watchHRRelay.fail("Apple Watch rejected heart-rate monitoring (\(rejection?.rawValue ?? "unavailable"))")
             return
         }
@@ -410,6 +447,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             Task { @MainActor [weak owner] in
                 guard let owner else { return }
                 owner.watchActive = false
+                owner.watchStartInProgress = false
                 owner.watchError = "Watch connection failed — make sure Cladiron is open on your Watch"
                 owner.watchTimeout?.invalidate()
             }
@@ -422,6 +460,7 @@ final class AppModel: NSObject, @unchecked Sendable {
                 guard let owner, owner.watchHRRelay.freshBPM == nil else { return }
                 owner.watchHRRelay.timeout()
                 owner.watchActive = false
+                owner.watchStartInProgress = false
                 owner.watchError = "No heart rate received — check that Cladiron is running on your Watch"
                 owner.watchTimeout?.invalidate()
             }
@@ -444,6 +483,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             UserDefaults.standard.set(watchStopCount, forKey: "uitest.watchStopCount")
         }
         watchActive = false
+        watchStartInProgress = false
         watchError = nil
         guard let targetRequestID, let session = wcSession else { return }
         let command = WatchHRCommand(action: .stop, requestID: targetRequestID,
@@ -561,6 +601,7 @@ extension AppModel {
                 self.watchTimeout?.invalidate(); self.watchTimeout = nil
                 self.watchError = nil
                 self.watchActive = true
+                self.watchStartInProgress = false
                 self.hrm.injectExternalBPM(bpm)
             }
         }

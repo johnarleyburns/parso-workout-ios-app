@@ -3,7 +3,7 @@ import SwiftData
 @testable import CadenceCore
 
 /// The generator after the DB++ adoption (decision D6): one 4-set-per-group
-/// target, five training styles, and a fallback pass that keeps a style from
+/// target, six training styles, and a fallback pass that keeps a style from
 /// silently abandoning a muscle it cannot reach.
 final class SuggestedWorkoutGeneratorTests: XCTestCase {
 
@@ -13,8 +13,8 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         let bundle = generate(completed: [:], candidates: [])
 
         XCTAssertEqual(bundle.options.map(\.style), SuggestedWorkoutStyle.allCases)
-        XCTAssertEqual(bundle.options.count, 5)
-        for option in bundle.options {
+        XCTAssertEqual(bundle.options.count, SuggestedWorkoutStyle.allCases.count)
+        for option in bundle.options where option.style != .personalized {
             XCTAssertEqual(option.initialDeficits.count, MuscleGroup.defaultTracked.count)
             XCTAssertTrue(option.initialDeficits.values.allSatisfy { $0 == 4 })
             XCTAssertEqual(option.remainingDeficits, option.initialDeficits)
@@ -69,6 +69,53 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
 
         XCTAssertEqual(bundle.option(.fitness).initialDeficits["lats"], 0)
         XCTAssertNil(bundle.option(.fitness).initialDeficits["unknown"])
+    }
+
+    // MARK: - Regenerating after excluding an exercise
+
+    /// Real user report: excluding an exercise from a suggested workout left
+    /// it sitting right there in the plan, because the exclusion only
+    /// changed *future* suggestion runs. `excluding(candidateID:)` +
+    /// `generate` must recompute the plan from scratch without that
+    /// candidate at all, not just remove it from the existing plan (which
+    /// could leave a gap the solver would otherwise have filled with a
+    /// substitute).
+    func testExcludingACandidateAndRegeneratingReplacesItWithASubstitute() {
+        let excluded = candidate("chest-bench", "Bench Press", primary: ["chest"])
+        let substitute = candidate("chest-fly", "Cable Fly", mechanics: .isolation, primary: ["chest"])
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: [:],
+            candidates: [excluded, substitute],
+            trackedGroups: [.chest],
+            preferredSetsPerExercise: 4,
+            trainingGoal: .hypertrophy)
+
+        let original = SuggestedWorkoutGenerator.generate(input: input)
+        XCTAssertTrue(original.option(.fitness).exercises.contains { $0.name == "Bench Press" })
+
+        let regenerated = SuggestedWorkoutGenerator.generate(
+            input: input.excluding(candidateID: "chest-bench"))
+
+        XCTAssertFalse(
+            regenerated.option(.fitness).exercises.contains { $0.name == "Bench Press" },
+            "the excluded exercise must never reappear in a from-scratch regeneration")
+        XCTAssertTrue(
+            regenerated.option(.fitness).exercises.contains { $0.name == "Cable Fly" },
+            "the solver must fill the same gap with the remaining candidate, not leave it open")
+    }
+
+    /// Excluding a candidate that is not in the pool at all (already
+    /// excluded, or never matched) is a safe no-op — the regenerated input
+    /// is equal to the original.
+    func testExcludingAnUnknownCandidateIDIsANoOp() {
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: [:],
+            candidates: [candidate("chest-bench", "Bench Press", primary: ["chest"])],
+            trackedGroups: [.chest],
+            preferredSetsPerExercise: 4,
+            trainingGoal: .hypertrophy)
+
+        XCTAssertEqual(input.excluding(candidateID: "not-present"), input)
     }
 
     // MARK: - Greedy selection
@@ -250,7 +297,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
 
         let bundle = generate(completed: completed, candidates: [stretch])
 
-        for option in bundle.options {
+        for option in bundle.options where option.style != .personalized {
             XCTAssertTrue(option.exercises.isEmpty, "\(option.style) suggested a stretch")
             XCTAssertEqual(option.remainingDeficits["hamstrings"], 4)
         }
@@ -278,7 +325,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         XCTAssertEqual(bundle.option(.fitness).exercises.first?.candidateID, "general")
         // A 4-set gap and 3 sets per exercise leaves a remainder, so each plan
         // takes a second movement too — but the style's own is always picked first.
-        for option in bundle.options {
+        for option in bundle.options where option.style != .personalized {
             XCTAssertEqual(option.exercises.first?.isInStyle, true, "\(option.style)")
         }
     }
@@ -373,7 +420,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         }
         let bundle = generate(completed: [:], candidates: candidates)
 
-        for option in bundle.options {
+        for option in bundle.options where option.style != .personalized {
             XCTAssertLessThanOrEqual(option.plannedSetTotal, suggestedWorkoutPlannedSetCap)
             XCTAssertTrue(option.capTrimmingOccurred)
         }
@@ -412,7 +459,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
 
         let bundle = generate(completed: completed, candidates: [chest])
 
-        for option in bundle.options {
+        for option in bundle.options where option.style != .personalized {
             XCTAssertEqual(option.initialDeficits["chest"], 4)
             XCTAssertEqual(option.remainingDeficits["chest"], 1)
             XCTAssertEqual(option.exercises.count, 1)
@@ -448,7 +495,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
                 asOf: Date(timeIntervalSince1970: 1_750_000_000))))
 
         XCTAssertEqual(bundle.options.map(\.style), SuggestedWorkoutStyle.allCases)
-        for option in bundle.options {
+        for option in bundle.options where option.style != .personalized {
             XCTAssertTrue(option.isLaunchable)
             XCTAssertLessThanOrEqual(option.plannedSetTotal, suggestedWorkoutPlannedSetCap)
             if option.style == .fitness {
@@ -483,7 +530,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
                 availableEquipment: Equipment.allCases,
                 asOf: Date(timeIntervalSince1970: 1_750_000_000))))
 
-        XCTAssertTrue(bundle.options.allSatisfy(\.isLaunchable),
+        XCTAssertTrue(bundle.options.filter { $0.style != .personalized }.allSatisfy(\.isLaunchable),
                       "default tracked groups produced empty options: \(bundle.options.map { ($0.style, $0.exercises.count) })")
     }
 
@@ -526,7 +573,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
                 availableEquipment: Equipment.allCases,
                 asOf: asOf)))
 
-        XCTAssertTrue(bundle.options.allSatisfy(\.isLaunchable),
+        XCTAssertTrue(bundle.options.filter { $0.style != .personalized }.allSatisfy(\.isLaunchable),
                       "history produced empty options: \(bundle.options.map { ($0.style, $0.exercises.count) })")
     }
 
@@ -534,7 +581,8 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         let completed = satisfied(at: 4)
         let candidates = [candidate("chest", "Chest", primary: ["chest"])]
 
-        for option in generate(completed: completed, candidates: candidates).options {
+        for option in generate(completed: completed, candidates: candidates).options
+            where option.style != .personalized {
             XCTAssertTrue(option.isLaunchable)
             XCTAssertEqual(option.exercises.count, 1)
             XCTAssertEqual(option.plan.items.count, 1)
@@ -551,7 +599,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         })
         let bundle = generate(completed: completed, candidates: starterCandidates())
 
-        XCTAssertTrue(bundle.options.allSatisfy(\.isLaunchable),
+        XCTAssertTrue(bundle.options.filter { $0.style != .personalized }.allSatisfy(\.isLaunchable),
                       "covered weekly gaps must not disable the chooser")
     }
 
@@ -562,9 +610,9 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         let bundle = generate(completed: [:], candidates: candidates, sets: 4, goal: .endurance)
 
         XCTAssertEqual(bundle.options.map { $0.plan.name },
-                       ["Fitness Plan", "Bodyweight Plan", "Powerlifting Plan",
+                       ["Personalized Plan", "Fitness Plan", "Bodyweight Plan", "Powerlifting Plan",
                         "Olympic Weightlifting Plan", "Strongman Plan"])
-        for option in bundle.options {
+        for option in bundle.options where option.style != .personalized {
             XCTAssertEqual(option.plan.id, "coach-suggested-\(option.style.rawValue)")
             XCTAssertEqual(option.plan.source, .coachSuggested)
             XCTAssertEqual(option.plan.scheme, .strength)
@@ -590,7 +638,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
     func testEveryStyleIsLaunchableFromTheRealCatalog() {
         let bundle = generate(completed: [:], candidates: starterCandidates())
 
-        for option in bundle.options {
+        for option in bundle.options where option.style != .personalized {
             XCTAssertTrue(option.isLaunchable, "\(option.style) produced no plan")
             XCTAssertLessThanOrEqual(option.plannedSetTotal, suggestedWorkoutPlannedSetCap)
             XCTAssertGreaterThan(option.inStyleExerciseCount, 0,
@@ -598,19 +646,20 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         }
         // Distinct styles must not collapse into the same plan — that was the
         // failure mode of the three tiers this replaced.
-        let plans = Set(bundle.options.map { $0.exercises.map(\.candidateID) })
-        XCTAssertEqual(plans.count, bundle.options.count)
+        let nonPersonalized = bundle.options.filter { $0.style != .personalized }
+        let plans = Set(nonPersonalized.map { $0.exercises.map(\.candidateID) })
+        XCTAssertEqual(plans.count, nonPersonalized.count)
     }
 
     /// The app can open the chooser before its asynchronous SwiftData seed has
     /// finished. The in-memory starter catalog is the fallback for that window,
-    /// so it must produce the same launchable five-style surface.
+    /// so it must produce the same launchable non-personalized style surface.
     func testCanonicalStarterTemplatesProduceLaunchableOptions() {
         let candidates = ExerciseLibrary.starter.map(SuggestedExerciseCandidate.init(template:))
         let bundle = generate(completed: [:], candidates: candidates)
 
         XCTAssertEqual(bundle.options.count, SuggestedWorkoutStyle.allCases.count)
-        XCTAssertTrue(bundle.options.allSatisfy(\.isLaunchable))
+        XCTAssertTrue(bundle.options.filter { $0.style != .personalized }.allSatisfy(\.isLaunchable))
     }
 
     func testRepresentativeStarterSliceVectorizesFacetsDeterministically() throws {
@@ -672,7 +721,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         indexMilliseconds.sort()
         generationMilliseconds.sort()
         print("SuggestedWorkout median vector index: \(indexMilliseconds[3]) ms")
-        print("SuggestedWorkout median five-style solve: \(generationMilliseconds[3]) ms")
+        print("SuggestedWorkout median six-style solve: \(generationMilliseconds[3]) ms")
     }
 
     // MARK: - Helpers

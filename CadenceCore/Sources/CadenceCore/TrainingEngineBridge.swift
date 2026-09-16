@@ -360,6 +360,8 @@ extension TrainingEngineBridge {
         exerciseRecords
             .filter { record in
                 switch style {
+                case .personalized:
+                    return false
                 case .fitness:
                     return record.category != "powerlifting"
                         && record.category != "olympic weightlifting"

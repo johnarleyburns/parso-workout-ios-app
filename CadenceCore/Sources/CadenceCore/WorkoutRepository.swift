@@ -1234,8 +1234,17 @@ public enum WorkoutRepository {
                     annotationConfidence: ex.annotationConfidence,
                     sourceExerciseID: ex.sourceExerciseID)
             }
+        let suggestionExclusions = try context.fetch(FetchDescriptor<ExerciseSuggestionExclusion>(
+            predicate: #Predicate { $0.isActive },
+            sortBy: [SortDescriptor(\ExerciseSuggestionExclusion.exerciseNameSnapshot)]))
+            .map {
+                ExportSuggestionExclusion(exerciseKey: $0.exerciseKey,
+                                          exerciseName: $0.exerciseNameSnapshot,
+                                          reasonRaw: $0.reasonRaw)
+            }
         return CadenceExport(sessions: sessions, cardio: cardio, assessments: assessments,
                              exercises: customExercises,
+                             suggestionExclusions: suggestionExclusions,
                              coachPreferences: coachPreferences, preferences: preferences)
     }
 
@@ -1477,6 +1486,27 @@ public enum WorkoutRepository {
                                inputEndingHR: ea.inputEndingHR, inputAge: ea.inputAge, inputSex: ea.inputSex)
             context.insert(a)
             added += 1
+        }
+
+        // Personal suggestion preferences are separate from catalog data and
+        // round-trip through backup/restore without affecting workout counts.
+        for ee in export.suggestionExclusions {
+            let existing = try context.fetch(FetchDescriptor<ExerciseSuggestionExclusion>(
+                predicate: #Predicate { $0.exerciseKey == ee.exerciseKey })).first
+            let reason = ExerciseSuggestionExclusionReason(rawValue: ee.reasonRaw)
+                ?? .personalPreference
+            if let existing {
+                existing.exerciseNameSnapshot = ee.exerciseName
+                existing.reason = reason
+                existing.isActive = true
+                existing.updatedAt = Date()
+            } else {
+                context.insert(ExerciseSuggestionExclusion(
+                    exerciseKey: ee.exerciseKey,
+                    exerciseNameSnapshot: ee.exerciseName,
+                    reason: reason,
+                    originDevice: "import"))
+            }
         }
 
         try context.save()

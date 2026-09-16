@@ -28,7 +28,8 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
             PersistedPlanSession.self,
             PersistedPlanItem.self,
             PersistedPlanSet.self,
-            PersistedClientRelationship.self
+            PersistedClientRelationship.self,
+            ExerciseSuggestionExclusion.self
         ]
 
         // `Schema.entity(for:)` is unavailable on the package's macOS 14
@@ -88,6 +89,8 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
             "PersistedPlanSet": ["id", "itemID", "payloadData", "setIndex"],
             "PersistedPlanWeek": ["id", "index", "intendedProgressionRaw", "isDeload",
                                   "planID"],
+            "ExerciseSuggestionExclusion": ["createdAt", "exerciseKey", "exerciseNameSnapshot",
+                                              "id", "isActive", "originDevice", "reasonRaw", "updatedAt"],
             "Person": ["createdAt", "id", "isMe", "name", "originDevice", "updatedAt"],
             "ReadinessEntry": ["date", "fatigueEnergy", "hasPainOrIllnessConcern", "id",
                                 "muscleSoreness", "sleepQuality", "stressMood", "updatedAt"],

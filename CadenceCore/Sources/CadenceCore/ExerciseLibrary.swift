@@ -121,7 +121,7 @@ public enum ExerciseLibrary {
 
     /// Built-in catalog seeded on first launch and version-upgraded thereafter.
     /// Bump `seedVersion` when entries are added so existing stores backfill.
-    public static let seedVersion = 9
+    public static let seedVersion = 10
 
     /// Our hand-curated catalog — the authoritative facet source (our muscle ids,
     /// movement-split categories, the "popular" shortlist all reference these).
@@ -460,12 +460,12 @@ public enum ExerciseLibrary {
     // MARK: Olympic / carries / full-body
     private static let olympicAndCarry: [ExerciseTemplate] = [
         .init("Power Clean", .pull, .barbell, .pull, .compound, primary: ["traps", "glutes", "quads"], secondary: ["hamstrings", "delts"]),
-        .init("Clean and Jerk", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "delts"], secondary: ["traps"]),
-        .init("Snatch", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "delts"], secondary: ["traps", "lower-back"]),
+        .init("Clean and Jerk", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "delts"], secondary: ["traps"], trainingTypes: [.olympicWeightlifting]),
+        .init("Snatch", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "delts"], secondary: ["traps", "lower-back"], trainingTypes: [.olympicWeightlifting]),
         .init("Kettlebell Clean", .pull, .kettlebell, .pull, .compound, primary: ["glutes", "traps"], secondary: ["quads"], lateral: true),
         .init("Farmer's Carry", .legs, .dumbbell, .static, .compound, primary: ["forearms", "traps"], secondary: ["abs", "quads"]),
         .init("Thruster", .legs, .barbell, .push, .compound, primary: ["quads", "delts"], secondary: ["glutes", "triceps"]),
-        .init("Clean and Press", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "delts"], secondary: ["triceps", "traps"]),
+        .init("Clean and Press", .pull, .barbell, .pull, .compound, primary: ["quads", "glutes", "delts"], secondary: ["triceps", "traps"], trainingTypes: [.olympicWeightlifting]),
         .init("Turkish Get-Up", .core, .kettlebell, .push, .compound, primary: ["delts", "abs", "glutes"], secondary: ["quads", "triceps"]),
     ]
 

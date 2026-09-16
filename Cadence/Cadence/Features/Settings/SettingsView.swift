@@ -163,6 +163,13 @@ struct SettingsView: View {
                     Label("Custom Exercises", systemImage: "figure.strengthtraining.traditional")
                 }
                 .accessibilityIdentifier("settings.customExercises")
+
+                NavigationLink {
+                    ExcludedExercisesView()
+                } label: {
+                    Label("Excluded Exercises", systemImage: "hand.raised")
+                }
+                .accessibilityIdentifier("settings.excludedExercises")
             }
 
             Section("Data") {

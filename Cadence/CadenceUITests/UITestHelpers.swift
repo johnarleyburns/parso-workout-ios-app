@@ -345,6 +345,16 @@ extension XCUIElement {
         return true
     }
 
+    /// The inverse of `waitForExistence` — polls until the element is gone,
+    /// or `timeout` elapses. XCTest has no built-in `waitForNonExistence`;
+    /// this is the standard `NSPredicate`-driven wait for it.
+    @discardableResult
+    func waitForDisappearance(timeout: TimeInterval = 5) -> Bool {
+        let predicate = NSPredicate(format: "exists == false")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: self)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
     /// Clears and types into a text field. Taps the right edge first so the
     /// caret lands after the (often right-aligned) text and backspaces clear it.
     func clearAndType(_ text: String) {

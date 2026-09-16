@@ -6,12 +6,14 @@ struct CompactExerciseRow: View {
     let exercise: EditableExercise
     let unit: MeasurementUnitPreference
     let exerciseInfo: Exercise?
+    let onExclude: (() -> Void)?
 
     init(exercise: EditableExercise, unit: MeasurementUnitPreference,
-         exerciseInfo: Exercise? = nil) {
+         exerciseInfo: Exercise? = nil, onExclude: (() -> Void)? = nil) {
         self.exercise = exercise
         self.unit = unit
         self.exerciseInfo = exerciseInfo
+        self.onExclude = onExclude
     }
 
     var body: some View {
@@ -30,6 +32,18 @@ struct CompactExerciseRow: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("editor.exerciseInfo.\(exercise.name)")
                     .accessibilityLabel("\(exercise.name) details")
+                }
+                if onExclude != nil, exerciseInfo != nil {
+                    Button {
+                        onExclude?()
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("editor.exerciseMenu.\(exercise.name)")
+                    .accessibilityLabel("Exercise options")
                 }
             }
             if performerPlans.isEmpty {

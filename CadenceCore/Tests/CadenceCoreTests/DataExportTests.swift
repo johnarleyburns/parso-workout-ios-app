@@ -155,7 +155,7 @@ final class DataExportTests: XCTestCase {
         let exportA = try WorkoutRepository.buildExport(ctxA, preferences: prefs)
         let json = try DataExport.encodeJSON(exportA)
         let decoded = try DataExport.decodeJSON(json)
-        XCTAssertEqual(decoded.version, 6)
+        XCTAssertEqual(decoded.version, CadenceExport.currentVersion)
 
         // Merge into a brand-new store, then re-export.
         let ctxB = try makeStore()
@@ -316,7 +316,7 @@ final class DataExportTests: XCTestCase {
         try ctx.save()
 
         let export = try WorkoutRepository.buildExport(ctx)
-        XCTAssertEqual(export.version, 6)
+        XCTAssertEqual(export.version, CadenceExport.currentVersion)
         XCTAssertEqual(export.exercises.count, 1)
         XCTAssertEqual(export.exercises.first?.name, "rotary torso")
         XCTAssertEqual(export.exercises.first?.primaryMuscles, ["abs"],
@@ -738,7 +738,7 @@ final class DataExportTests: XCTestCase {
 
         // Phase 2: decode & verify.
         let decoded = try DataExport.decodeJSON(encodedJSON)
-        XCTAssertEqual(decoded.version, 6)
+        XCTAssertEqual(decoded.version, CadenceExport.currentVersion)
         XCTAssertEqual(decoded.sessions.count, 2)
         XCTAssertEqual(decoded.cardio.count, 1)
         XCTAssertEqual(decoded.assessments.count, 1)

@@ -130,7 +130,7 @@ final class ExerciseMigrationTests: XCTestCase {
     }
 }
 
-/// Export v6 carries the annotation; older files still import unchanged.
+/// Current export carries the annotation; older files still import unchanged.
 final class ExportAnnotationRoundTripTests: XCTestCase {
 
     private func makeStore() throws -> ModelContext {
@@ -141,7 +141,7 @@ final class ExportAnnotationRoundTripTests: XCTestCase {
         return ModelContext(container)
     }
 
-    func testV6RoundTripPreservesTheAnnotation() throws {
+    func testCurrentExportRoundTripPreservesTheAnnotation() throws {
         let ctx = try makeStore()
         let custom = Exercise(name: "Annotated Custom", isCustom: true,
                               primaryMuscles: ["chest"], secondaryMuscles: ["triceps"],
@@ -156,7 +156,7 @@ final class ExportAnnotationRoundTripTests: XCTestCase {
         try ctx.save()
 
         let export = try WorkoutRepository.buildExport(ctx)
-        XCTAssertEqual(export.version, 6)
+        XCTAssertEqual(export.version, CadenceExport.currentVersion)
         let decoded = try DataExport.decodeJSON(try DataExport.encodeJSON(export))
 
         let newCtx = try makeStore()

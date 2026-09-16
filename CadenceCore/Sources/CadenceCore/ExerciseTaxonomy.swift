@@ -87,6 +87,21 @@ public enum ExerciseTrainingType: String, CaseIterable, Codable, Sendable {
         }
     }
 
+    /// Some upstream records use the broad `strength` category even when their
+    /// name is an Olympic lift. Keep the suggestion policy stable across those
+    /// records and across older persisted Exercise rows.
+    public static func isOlympicOnlyMovement(named name: String) -> Bool {
+        let normalized = name
+            .lowercased()
+            .replacingOccurrences(of: "&", with: "and")
+            .replacingOccurrences(of: "-", with: " ")
+            .split(whereSeparator: { $0 == " " || $0 == "\t" })
+            .joined(separator: " ")
+        return normalized.contains("snatch")
+            || normalized.contains("clean and jerk")
+            || normalized.contains("clean and press")
+    }
+
     /// Drops values this build does not know rather than failing the decode.
     public static func decode(_ values: [String]) -> [ExerciseTrainingType] {
         values.compactMap(ExerciseTrainingType.init(rawValue:))

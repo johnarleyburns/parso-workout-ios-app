@@ -35,7 +35,7 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
             options: SuggestedWorkoutStyle.allCases.map { option(style: $0, exercises: [exercise()]) },
             diagnostics: diagnostics)
         XCTAssertEqual(SuggestedWorkoutPresenter.choices(for: bundle).map(\.title),
-                       ["Fitness", "Bodyweight", "Powerlifting", "Olympic Weightlifting", "Strongman"])
+                       ["Personalized", "Fitness", "Bodyweight", "Powerlifting", "Olympic Weightlifting", "Strongman"])
         XCTAssertEqual(SuggestedWorkoutPresenter.choices(for: bundle).map(\.id),
                        SuggestedWorkoutStyle.allCases)
     }

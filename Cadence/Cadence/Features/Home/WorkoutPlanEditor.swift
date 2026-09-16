@@ -25,6 +25,21 @@ private enum ExercisePickerIntent: Identifiable {
 struct WorkoutPlanEditor: View {
     @State var plan: EditablePlan
     let onStart: (EditablePlan) -> Void
+    /// Supplied only when this plan came from the suggested-workout chooser.
+    /// Real report: excluding an exercise from a suggested workout left it
+    /// sitting right there in the plan, because excluding only ever changed
+    /// *future* suggestion runs. When set, excluding an exercise here
+    /// recomputes the whole plan from scratch (not a patch) with that
+    /// exercise's candidate removed, for the SAME chosen style, and replaces
+    /// `plan` with the result. Every other entry point (a saved routine, a
+    /// custom/manual plan) leaves this `nil`, so excluding there keeps the
+    /// previous "affects future suggestions only" behavior.
+    ///
+    /// Takes the plain `ExerciseSuggestionExclusionKey` string rather than
+    /// the SwiftData `Exercise` itself — `Exercise` is main-actor model
+    /// state, not `Sendable`, and this closure crosses into a background
+    /// `Task` to run the (CPU-heavy) regeneration off the main actor.
+    var onExcludeAndRegenerate: ((String) async -> EditablePlan?)? = nil
 
     @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
@@ -45,12 +60,17 @@ struct WorkoutPlanEditor: View {
     @State private var historyIndex: WorkoutPlanPartnerHistory.Index?
     @State private var didResolvePartnerPlans = false
     @State private var exerciseIndex: [String: Exercise] = [:]
+    @State private var exclusionExercise: Exercise?
+    @State private var isRegeneratingAfterExclusion = false
+    @State private var regenerationFailed = false
     let allowsStart: Bool
 
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
+         onExcludeAndRegenerate: ((String) async -> EditablePlan?)? = nil,
          onStart: @escaping (EditablePlan) -> Void) {
         self._plan = State(initialValue: plan)
         self.onStart = onStart
+        self.onExcludeAndRegenerate = onExcludeAndRegenerate
         self._isEditing = State(initialValue: startInEditMode)
         self._originalPlan = State(initialValue: plan)
         self.allowsStart = allowsStart
@@ -82,7 +102,9 @@ struct WorkoutPlanEditor: View {
                             exerciseInfo: exerciseIndex[exercise.name.lowercased()] ??
                                 allExercises.first { $0.name == exercise.name },
                             onSwap: { exercisePickerIntent = .swap(exercise.id) },
-                            onRemove: { removeExercise(id: exercise.id) })
+                            onRemove: { removeExercise(id: exercise.id) },
+                            onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] ??
+                                allExercises.first { $0.name == exercise.name } })
                     }
                     addExerciseButton
                 } else {
@@ -91,7 +113,9 @@ struct WorkoutPlanEditor: View {
                             exercise: exercise,
                             unit: settings.unit,
                             exerciseInfo: exerciseIndex[exercise.name.lowercased()] ??
-                                allExercises.first { $0.name == exercise.name })
+                                allExercises.first { $0.name == exercise.name },
+                            onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] ??
+                                allExercises.first { $0.name == exercise.name } })
                             .workoutPlanCard()
                     }
                     settingsButton
@@ -175,6 +199,49 @@ struct WorkoutPlanEditor: View {
                 plateRounding: $plateRounding,
                 useHR: $useHR)
         }
+        .sheet(item: $exclusionExercise) { exercise in
+            ExerciseSuggestionExclusionSheet(exercise: exercise, onExcluded: {
+                regenerateAfterExcluding(exercise)
+            })
+        }
+        .overlay {
+            if isRegeneratingAfterExclusion {
+                ZStack {
+                    Color.black.opacity(0.15).ignoresSafeArea()
+                    ProgressView("Rebuilding your suggested workout…")
+                        .padding(20)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                }
+                .accessibilityIdentifier("editor.regenerating")
+            }
+        }
+        .alert("Couldn't rebuild this workout", isPresented: $regenerationFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("The exercise was excluded from future suggestions, but this plan could not be recalculated. You can remove it manually below.")
+        }
+    }
+
+    /// Regenerates the whole suggested plan from scratch now that `exercise`
+    /// is excluded — never a patch that just deletes the row and leaves
+    /// whatever gap that opens unaddressed. No-op (and never shown) at any
+    /// entry point other than the suggested-workout chooser, since only that
+    /// flow supplies `onExcludeAndRegenerate`.
+    private func regenerateAfterExcluding(_ exercise: Exercise) {
+        guard let onExcludeAndRegenerate else { return }
+        let candidateID = ExerciseSuggestionExclusionKey.forExercise(exercise)
+        isRegeneratingAfterExclusion = true
+        Task {
+            let newPlan = await onExcludeAndRegenerate(candidateID)
+            isRegeneratingAfterExclusion = false
+            guard let newPlan else {
+                regenerationFailed = true
+                return
+            }
+            plan = newPlan
+            originalPlan = newPlan
+            resolvePartnerPlans()
+        }
     }
 
     private var startButton: some View {
@@ -214,6 +281,15 @@ struct WorkoutPlanEditor: View {
     }
 
     private func saveAndStart() {
+        // Starting from edit mode (every suggested-workout plan opens this
+        // way) must commit whatever the user changed first — the same thing
+        // the explicit Save button does — rather than silently discarding
+        // it if the session that follows ever reads `originalPlan` again
+        // (e.g. a subsequent Cancel on a re-presented editor).
+        if isEditing {
+            originalPlan = plan
+            isEditing = false
+        }
         let ws = WorkoutSettings(
             restSeconds: restSeconds,
             autoStartRest: autoStartRest,

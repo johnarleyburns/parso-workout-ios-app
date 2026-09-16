@@ -174,7 +174,8 @@ struct SuggestedWorkoutView: View {
     }
 
     private func choiceButton(_ choice: SuggestedWorkoutChoice) -> some View {
-        NavigationLink {
+        let style = choice.option.style
+        return NavigationLink {
             WorkoutPlanEditor(
                 plan: SuggestedWorkoutPresenter.editablePlan(
                     for: choice.option,
@@ -182,6 +183,9 @@ struct SuggestedWorkoutView: View {
                     warmupMinutes: request.warmupMinutes,
                     cooldownMinutes: request.cooldownMinutes),
                 startInEditMode: true,
+                onExcludeAndRegenerate: { candidateID in
+                    await regeneratedPlan(excludingCandidateID: candidateID, style: style)
+                },
                 onStart: onStart)
         } label: {
             VStack(alignment: .leading, spacing: 5) {
@@ -198,6 +202,31 @@ struct SuggestedWorkoutView: View {
         .accessibilityIdentifier("suggestedWorkout.style.\(choice.option.style.rawValue)")
         .accessibilityLabel(choice.title)
         .accessibilityValue("\(choice.styleDescription) \(choice.subtitle)")
+    }
+
+    /// Reruns the full generator with `candidateID`'s exercise removed from
+    /// the pool, for the same style the user was already reviewing, and
+    /// materializes a fresh `EditablePlan` from the result — a real
+    /// from-scratch regeneration, not a patch of the plan already on
+    /// screen. `nil` when the style has nothing left to suggest at all
+    /// (e.g. excluding the only remaining candidate for every gap); the
+    /// caller still keeps the exclusion (it already saved) and simply
+    /// cannot refresh this particular plan.
+    private func regeneratedPlan(
+        excludingCandidateID candidateID: String, style: SuggestedWorkoutStyle
+    ) async -> EditablePlan? {
+        let newInput = request.input.excluding(candidateID: candidateID)
+        // Same reasoning as the initial calculate(): DB++ generation is real
+        // CPU work and must stay off the main actor so this sheet's spinner
+        // keeps rendering while it runs.
+        let bundle = await Task.detached(priority: .userInitiated) {
+            SuggestedWorkoutGenerator.generate(input: newInput)
+        }.value
+        let option = bundle.option(style)
+        guard option.isLaunchable else { return nil }
+        return SuggestedWorkoutPresenter.editablePlan(
+            for: option, unit: request.unit, warmupMinutes: request.warmupMinutes,
+            cooldownMinutes: request.cooldownMinutes)
     }
 
     @ViewBuilder

@@ -84,6 +84,7 @@ struct SuggestedWorkoutVectorIndex: Sendable {
             var trainingTypes: [ExerciseTrainingType]
             var modalities: [ExerciseModality]
             var sportContexts: [ExerciseSportContext]
+            var isPersonalized: Bool
         }
 
         var groups: [String: CandidateGroup] = [:]
@@ -96,6 +97,7 @@ struct SuggestedWorkoutVectorIndex: Sendable {
             let key = trimmedName.lowercased()
             if var group = groups[key] {
                 if candidate.id < group.identity.id { group.identity = candidate }
+                group.isPersonalized = group.isPersonalized || candidate.isPersonalized
                 group.primaryMuscles.append(contentsOf: candidate.primaryMuscles)
                 group.secondaryMuscles.append(contentsOf: candidate.secondaryMuscles)
                 if group.equipment == nil { group.equipment = candidate.equipment }
@@ -121,14 +123,16 @@ struct SuggestedWorkoutVectorIndex: Sendable {
                         volumeEligible: candidate.volumeEligible,
                         trainingTypes: candidate.trainingTypes,
                         modalities: candidate.modalities,
-                        sportContexts: candidate.sportContexts),
+                        sportContexts: candidate.sportContexts,
+                        isPersonalized: candidate.isPersonalized),
                     primaryMuscles: candidate.primaryMuscles,
                     secondaryMuscles: candidate.secondaryMuscles,
                     equipment: candidate.equipment,
                     volumeEligible: candidate.volumeEligible,
                     trainingTypes: candidate.trainingTypes,
                     modalities: candidate.modalities,
-                    sportContexts: candidate.sportContexts
+                    sportContexts: candidate.sportContexts,
+                    isPersonalized: candidate.isPersonalized
                 )
             }
         }
@@ -160,7 +164,8 @@ struct SuggestedWorkoutVectorIndex: Sendable {
                 primaryMuscles: group.primaryMuscles, secondaryMuscles: group.secondaryMuscles,
                 equipment: group.equipment,
                 volumeEligible: group.volumeEligible, trainingTypes: group.trainingTypes,
-                modalities: group.modalities, sportContexts: group.sportContexts)
+                modalities: group.modalities, sportContexts: group.sportContexts,
+                isPersonalized: group.isPersonalized)
             built.append(.init(candidate: identity, elements: elements, coverageMask: mask))
         }
         exercises = built

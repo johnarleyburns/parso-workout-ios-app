@@ -12,6 +12,7 @@ public struct CadenceExport: Codable, Equatable, Sendable {
     public var cardio: [ExportCardio]
     public var assessments: [ExportAssessment]
     public var exercises: [ExportExercise]
+    public var suggestionExclusions: [ExportSuggestionExclusion]
     public var coachPreferences: ExportCoachPreferences?
     /// All app/user preferences (settings + schedule) so a fresh install round-trips
     /// completely (v4). nil for legacy exports.
@@ -23,6 +24,7 @@ public struct CadenceExport: Codable, Equatable, Sendable {
                 cardio: [ExportCardio] = [],
                 assessments: [ExportAssessment] = [],
                 exercises: [ExportExercise] = [],
+                suggestionExclusions: [ExportSuggestionExclusion] = [],
                 coachPreferences: ExportCoachPreferences? = nil,
                 preferences: ExportPreferences? = nil) {
         self.version = version
@@ -31,12 +33,14 @@ public struct CadenceExport: Codable, Equatable, Sendable {
         self.cardio = cardio
         self.assessments = assessments
         self.exercises = exercises
+        self.suggestionExclusions = suggestionExclusions
         self.coachPreferences = coachPreferences
         self.preferences = preferences
     }
 
     enum CodingKeys: String, CodingKey {
-        case version, exportedAt, sessions, cardio, assessments, exercises, coachPreferences, preferences
+        case version, exportedAt, sessions, cardio, assessments, exercises,
+             suggestionExclusions, coachPreferences, preferences
     }
 
     // Custom decode so older exports (v1–v4) that lack `exercises`/
@@ -49,6 +53,8 @@ public struct CadenceExport: Codable, Equatable, Sendable {
         cardio = try c.decodeIfPresent([ExportCardio].self, forKey: .cardio) ?? []
         assessments = try c.decodeIfPresent([ExportAssessment].self, forKey: .assessments) ?? []
         exercises = try c.decodeIfPresent([ExportExercise].self, forKey: .exercises) ?? []
+        suggestionExclusions = try c.decodeIfPresent([ExportSuggestionExclusion].self,
+                                                     forKey: .suggestionExclusions) ?? []
         coachPreferences = try c.decodeIfPresent(ExportCoachPreferences.self, forKey: .coachPreferences)
         preferences = try c.decodeIfPresent(ExportPreferences.self, forKey: .preferences)
     }
@@ -58,7 +64,20 @@ public struct CadenceExport: Codable, Equatable, Sendable {
     /// v6 adds the free-exercise-db++ annotation on exported exercises: muscle
     /// roles, volume eligibility, classification and movement patterns. Every new
     /// field is optional, so a v1–v5 file still imports exactly as it always did.
-    public static let currentVersion = 6
+    /// v7 adds personal automatic-suggestion exclusions.
+    public static let currentVersion = 7
+}
+
+public struct ExportSuggestionExclusion: Codable, Equatable, Sendable {
+    public var exerciseKey: String
+    public var exerciseName: String
+    public var reasonRaw: String
+
+    public init(exerciseKey: String, exerciseName: String, reasonRaw: String) {
+        self.exerciseKey = exerciseKey
+        self.exerciseName = exerciseName
+        self.reasonRaw = reasonRaw
+    }
 }
 
 public struct ExportExercise: Codable, Equatable, Sendable {

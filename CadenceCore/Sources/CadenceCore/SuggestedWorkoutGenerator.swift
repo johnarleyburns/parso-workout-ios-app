@@ -22,6 +22,9 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
     public let trainingTypes: [ExerciseTrainingType]
     public let modalities: [ExerciseModality]
     public let sportContexts: [ExerciseSportContext]
+    /// Marks a catalog movement that the app has observed in this user's
+    /// completed history. Used only by the Personalized chooser option.
+    public let isPersonalized: Bool
 
     public init(id: String, name: String, mechanics: Mechanics,
                 primaryMuscles: [String], secondaryMuscles: [String] = [],
@@ -29,7 +32,8 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
                 volumeEligible: Bool = true,
                 trainingTypes: [ExerciseTrainingType] = [.strength],
                 modalities: [ExerciseModality] = [],
-                sportContexts: [ExerciseSportContext] = [.generalFitness]) {
+                sportContexts: [ExerciseSportContext] = [.generalFitness],
+                isPersonalized: Bool = false) {
         self.id = id
         self.name = name
         self.mechanics = mechanics
@@ -40,6 +44,7 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
         self.trainingTypes = trainingTypes
         self.modalities = modalities
         self.sportContexts = sportContexts
+        self.isPersonalized = isPersonalized
     }
 
     /// Builds the value sent to the suggestion engine from the canonical
@@ -47,7 +52,7 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
     /// SwiftData store is still seeding or when an older store has unusable
     /// exercise facets.
     public init(template: ExerciseTemplate) {
-        self.init(id: template.sourceExerciseID ?? template.id,
+        self.init(id: ExerciseSuggestionExclusionKey.forTemplate(template),
                   name: template.name,
                   mechanics: template.mechanics,
                   primaryMuscles: template.primaryMuscles,
@@ -61,9 +66,15 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
 
     /// Whether this movement belongs to a training style's own pool.
     public func matches(_ style: SuggestedWorkoutStyle) -> Bool {
+        let isOlympicOnly = trainingTypes.contains(.olympicWeightlifting)
+            || ExerciseTrainingType.isOlympicOnlyMovement(named: name)
         switch style {
         case .fitness:
-            return trainingTypes.contains(.strength) && sportContexts == [.generalFitness]
+            return trainingTypes.contains(.strength)
+                && !isOlympicOnly
+                && sportContexts == [.generalFitness]
+        case .personalized:
+            return isPersonalized
         case .bodyweight:
             return equipment == .bodyweight
                 || (equipment == nil && modalities.contains(.bodyweight))
@@ -86,10 +97,11 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
 /// same minimum target, and what varies is the movements, which is what actually
 /// differs between training populations.
 public enum SuggestedWorkoutStyle: String, CaseIterable, Equatable, Sendable {
-    case fitness, bodyweight, powerlifting, olympic, strongman
+    case personalized, fitness, bodyweight, powerlifting, olympic, strongman
 
     public var displayName: String {
         switch self {
+        case .personalized: "Personalized"
         case .fitness: "Fitness"
         case .bodyweight: "Bodyweight"
         case .powerlifting: "Powerlifting"
@@ -102,6 +114,7 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Equatable, Sendable {
 
     public var subtitle: String {
         switch self {
+        case .personalized: "Only movements from your completed workout history."
         case .fitness: "General gym movements — machines, cables and free weights."
         case .bodyweight: "No equipment — movements you load with your own body."
         case .powerlifting: "Squat, bench and deadlift variations and their accessories."
@@ -236,12 +249,15 @@ public struct SuggestedWorkoutBundle: Equatable, Sendable {
     public let options: [SuggestedWorkoutOption]
     public let diagnostics: SuggestedWorkoutDiagnostics
     public let historyQuality: SuggestedWorkoutHistoryQuality
+    public let personalizedHistoryWorkoutCount: Int
 
     public init(options: [SuggestedWorkoutOption], diagnostics: SuggestedWorkoutDiagnostics,
-                historyQuality: SuggestedWorkoutHistoryQuality = .sufficient) {
+                historyQuality: SuggestedWorkoutHistoryQuality = .sufficient,
+                personalizedHistoryWorkoutCount: Int = 0) {
         self.options = options
         self.diagnostics = diagnostics
         self.historyQuality = historyQuality
+        self.personalizedHistoryWorkoutCount = max(0, personalizedHistoryWorkoutCount)
     }
 
     /// One option per style, in `SuggestedWorkoutStyle.allCases` order.
@@ -308,12 +324,40 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
         self.trainingGoal = trainingGoal
         self.engineContext = engineContext
     }
+
+    /// A copy with one more candidate removed from the pool, by
+    /// `SuggestedExerciseCandidate.id` (the same key
+    /// `ExerciseSuggestionExclusionKey.forExercise`/`.forTemplate` produce).
+    ///
+    /// Exists so the app can regenerate a suggested workout in place the
+    /// moment the user excludes one of its exercises — real user report:
+    /// excluding an exercise from a suggested workout left it sitting right
+    /// there in the plan, because the exclusion only ever affected *future*
+    /// suggestion runs, never the one already on screen. `candidates` here
+    /// already reflects whatever exclusions were active when the original
+    /// suggestion was generated, so this only ever needs to remove the one
+    /// newly-excluded id and hand the result straight back to
+    /// `SuggestedWorkoutGenerator.generate` for a real from-scratch rerun —
+    /// never a patch of the existing plan.
+    public func excluding(candidateID: String) -> SuggestedWorkoutInput {
+        SuggestedWorkoutInput(
+            completedSetsByMuscle: completedSetsByMuscle,
+            candidates: candidates.filter { $0.id != candidateID },
+            historyData: historyData,
+            historyWorkoutCount: historyWorkoutCount,
+            historyWorkingSetCount: historyWorkingSetCount,
+            trackedGroups: trackedGroups,
+            preferredSetsPerExercise: preferredSetsPerExercise,
+            trainingGoal: trainingGoal,
+            engineContext: engineContext)
+    }
 }
 
 public enum SuggestedWorkoutGenerator {
     public static let epsilon = 1e-9
     public static let minimumHistoryWorkouts = 3
     public static let minimumHistoryWorkingSets = 12
+    public static let minimumPersonalizedWorkouts = 5
 
     public static func historyQuality(for input: SuggestedWorkoutInput) -> SuggestedWorkoutHistoryQuality {
         guard input.historyWorkoutCount > 0 || input.historyWorkingSetCount > 0 else {
@@ -343,11 +387,12 @@ public enum SuggestedWorkoutGenerator {
 
         var counters = Counters()
         let generationStart = clock.now
-        // One index, five styles: every style solves the same 4-set-per-group
+        // One index, six styles: every style solves the same 4-set-per-group
         // target and differs only in which movements it reaches for first.
         let options = SuggestedWorkoutStyle.allCases.map {
             solve(style: $0, completed: completed, preferredSets: preferredSets,
-                  goal: input.trainingGoal, index: index, counters: &counters)
+                  goal: input.trainingGoal, historyWorkoutCount: input.historyWorkoutCount,
+                  index: index, counters: &counters)
         }
         let generationDuration = generationStart.duration(to: clock.now)
 
@@ -362,7 +407,8 @@ public enum SuggestedWorkoutGenerator {
                 fullCatalogScanCount: 0,
                 vectorIndexBuildDuration: indexDuration,
                 allStylesGenerationDuration: generationDuration),
-            historyQuality: historyQuality
+            historyQuality: historyQuality,
+            personalizedHistoryWorkoutCount: input.historyWorkoutCount
         )
     }
 
@@ -375,7 +421,7 @@ public enum SuggestedWorkoutGenerator {
         // Keep the engine call for one canonical Fitness plan and use the
         // already-indexed app solver for the remaining style projections. The
         // old implementation generated Fitness once and relabeled that plan
-        // five ways, which made Bodyweight show Clean and Jerk. Five independent
+        // six ways, which made Bodyweight show Clean and Jerk. Six independent
         // engine passes would fix that but make the chooser unnecessarily slow
         // on a full catalog. The app solver has the explicit style facets and
         // remains deterministic, fast, and editable.
@@ -386,17 +432,30 @@ public enum SuggestedWorkoutGenerator {
         var counters = Counters()
         var options = styles.map {
             solve(style: $0, completed: completed, preferredSets: preferredSets,
-                  goal: input.trainingGoal, index: index, counters: &counters)
+                  goal: input.trainingGoal, historyWorkoutCount: input.historyWorkoutCount,
+                  index: index, counters: &counters)
         }
+        let olympicCandidateIDs = Set(input.candidates
+            .filter { $0.trainingTypes.contains(.olympicWeightlifting)
+                || ExerciseTrainingType.isOlympicOnlyMovement(named: $0.name) }
+            .map(\.id))
+        let olympicCandidateNames = Set(input.candidates
+            .filter { $0.trainingTypes.contains(.olympicWeightlifting)
+                || ExerciseTrainingType.isOlympicOnlyMovement(named: $0.name) }
+            .map { $0.name.localizedLowercase })
         if let engineOption = TrainingEngineBridge.suggestedWorkout(
             input: input,
             context: context,
             style: .fitness)?.option,
            let fitnessIndex = styles.firstIndex(of: .fitness),
-           engineOption.isLaunchable {
+           engineOption.isLaunchable,
+           engineOption.exercises.allSatisfy({ exercise in
+               !olympicCandidateIDs.contains(exercise.candidateID)
+                   && !olympicCandidateNames.contains(exercise.name.localizedLowercase)
+           }) {
             options[fitnessIndex] = engineOption
         }
-        guard options.allSatisfy(\.isLaunchable) else { return nil }
+        guard options.filter({ $0.style != .personalized }).allSatisfy(\.isLaunchable) else { return nil }
         let duration = generationStart.duration(to: ContinuousClock.now)
         let diagnostics = SuggestedWorkoutDiagnostics(
             rawCandidateCount: input.candidates.count,
@@ -410,7 +469,8 @@ public enum SuggestedWorkoutGenerator {
         return SuggestedWorkoutBundle(
             options: options,
             diagnostics: diagnostics,
-            historyQuality: historyQuality(for: input))
+            historyQuality: historyQuality(for: input),
+            personalizedHistoryWorkoutCount: input.historyWorkoutCount)
     }
 
     private struct Counters {
@@ -437,6 +497,7 @@ public enum SuggestedWorkoutGenerator {
     /// explicit equipment boundary and never borrows an external-load movement.
     private static func solve(style: SuggestedWorkoutStyle, completed: [Double],
                               preferredSets: Int, goal: TrainingGoal,
+                              historyWorkoutCount: Int,
                               index: SuggestedWorkoutVectorIndex,
                               counters: inout Counters) -> SuggestedWorkoutOption {
         let target = Double(suggestedWorkoutTargetSetsPerGroup)
@@ -445,6 +506,11 @@ public enum SuggestedWorkoutGenerator {
         var selected = Array(repeating: false, count: index.exercises.count)
         var choices: [SuggestedWorkoutExercise] = []
         let inStyle = index.styleMembership[style] ?? Array(repeating: true, count: index.exercises.count)
+
+        if style == .personalized && historyWorkoutCount < minimumPersonalizedWorkouts {
+            return emptyOption(style: style, goal: goal, initial: initial,
+                               muscleSpace: index.muscleSpace)
+        }
 
         func fill(restrictedToStyle: Bool) {
             var generations = Array(repeating: 0, count: deficits.count)
@@ -467,6 +533,11 @@ public enum SuggestedWorkoutGenerator {
                     if restrictedToStyle && !inStyle[candidateIndex] { continue }
                     counters.visits += 1
                     let exercise = index.exercises[candidateIndex]
+                    if style != .olympic,
+                       (exercise.candidate.trainingTypes.contains(.olympicWeightlifting)
+                        || ExerciseTrainingType.isOlympicOnlyMovement(named: exercise.candidate.name)) {
+                        continue
+                    }
                     guard exercise.coverageMask & activeMask != 0 else { continue }
                     let score = score(exercise, deficits: deficits, preferredSets: preferredSets)
                     guard score.total > epsilon else { continue }
@@ -508,7 +579,7 @@ public enum SuggestedWorkoutGenerator {
         }
 
         fill(restrictedToStyle: true)
-        if style != .bodyweight || !inStyle.contains(true) {
+        if style != .personalized && (style != .bodyweight || !inStyle.contains(true)) {
             fill(restrictedToStyle: false)
         }
 
@@ -518,7 +589,8 @@ public enum SuggestedWorkoutGenerator {
         // exercise catalog was unavailable. Keep the same style preference and
         // offer one maintenance movement so users with substantial history can
         // still review and edit a workout.
-        if choices.isEmpty, let maintenance = maintenanceSelection(index: index, inStyle: inStyle) {
+        if choices.isEmpty,
+           let maintenance = maintenanceSelection(style: style, index: index, inStyle: inStyle) {
             let exercise = index.exercises[maintenance]
             choices.append(outputExercise(
                 exercise, preferredSets: preferredSets, repRange: goal.repRange,
@@ -555,16 +627,38 @@ public enum SuggestedWorkoutGenerator {
         )
     }
 
+    private static func emptyOption(style: SuggestedWorkoutStyle, goal: TrainingGoal,
+                                    initial: [Double],
+                                    muscleSpace: SuggestedWorkoutMuscleSpace) -> SuggestedWorkoutOption {
+        let plan = WorkoutPlan(id: "coach-suggested-\(style.rawValue)",
+                               name: style.planName, source: .coachSuggested,
+                               scheme: .strength, items: [])
+        return SuggestedWorkoutOption(
+            style: style, plan: plan, exercises: [],
+            initialDeficits: muscleSpace.dictionary(initial),
+            remainingDeficits: muscleSpace.dictionary(initial),
+            plannedSetTotal: 0, capTrimmingOccurred: false,
+            citationIDs: suggestedWorkoutCitationIDs)
+    }
+
     /// Deterministically chooses a style movement for a maintenance suggestion.
     /// If a style has no catalog member, the general catalog fallback preserves
     /// the same disclosure used by gap-filling suggestions.
     private static func maintenanceSelection(
+        style: SuggestedWorkoutStyle,
         index: SuggestedWorkoutVectorIndex,
         inStyle: [Bool]
     ) -> Int? {
         let preferred = index.exercises.indices.filter { inStyle[$0] }
-        let fallback = index.exercises.indices.filter { !inStyle[$0] }
-        return (preferred + fallback).sorted { lhs, rhs in
+        let fallback = index.exercises.indices.filter {
+            !inStyle[$0]
+                && (style == .olympic
+                    || (!index.exercises[$0].candidate.trainingTypes.contains(.olympicWeightlifting)
+                        && !ExerciseTrainingType.isOlympicOnlyMovement(
+                            named: index.exercises[$0].candidate.name)))
+        }
+        let pool = style == .personalized ? preferred : preferred + fallback
+        return pool.sorted { lhs, rhs in
             let left = index.exercises[lhs]
             let right = index.exercises[rhs]
             if left.candidate.mechanics != right.candidate.mechanics {

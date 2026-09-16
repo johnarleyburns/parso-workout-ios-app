@@ -106,6 +106,13 @@ struct CadenceApp: App {
         let defaultDeviceID = await Task.detached(priority: .utility) {
             let ctx = ModelContext(container)
             _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
+            // Build the app-only Personalized projection from the complete
+            // canonical history during store preparation. This includes old
+            // workouts on existing installs before the user opens Suggestions;
+            // the request path independently verifies the source signature.
+            if let history = try? WorkoutRepository.allSessions(ctx) {
+                _ = try? ExerciseHistoryIndexStore.rebuildIfNeeded(sessions: history)
+            }
             return try? ctx.fetch(FetchDescriptor<HRMDevice>(predicate: #Predicate { $0.isDefault }))
                 .first?.id
         }.value

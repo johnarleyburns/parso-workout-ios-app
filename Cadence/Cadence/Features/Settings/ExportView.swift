@@ -284,9 +284,13 @@ struct ExportView: View {
                 let added = try WorkoutRepository.merge(export, in: ctx)
                 await MainActor.run {
                     if let prefs = export.preferences { prefsSink.applyImportedPreferences(prefs) }
-                    let noData = added == 0 && export.sessions.isEmpty && export.cardio.isEmpty && export.assessments.isEmpty
+                    let noData = added == 0 && export.sessions.isEmpty && export.cardio.isEmpty
+                        && export.assessments.isEmpty && export.suggestionExclusions.isEmpty
                     self.restoreMessage = "Restored \(added) workout\(added == 1 ? "" : "s")"
                         + (noData ? " (file contained no data)" : "")
+                        + (!export.suggestionExclusions.isEmpty
+                           ? " and \(export.suggestionExclusions.count) suggestion preference\(export.suggestionExclusions.count == 1 ? "" : "s")"
+                           : "")
                         + (export.preferences != nil ? " and your preferences" : "") + "."
                     self.isRestoring = false
                     self.rebuild()

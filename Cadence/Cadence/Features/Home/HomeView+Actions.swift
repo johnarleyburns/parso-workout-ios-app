@@ -89,10 +89,29 @@ extension HomeView {
     func requestSuggestedWorkout() {
         Haptics.selection()
         do {
+            let activeSessionID = active.strengthSession?.id
+            let completedHistorySessions = sessions.filter {
+                $0.id != activeSessionID && $0.countsAsStrengthHistory
+            }
+            let historyWorkingSetCount = completedHistorySessions.reduce(0) { count, session in
+                count + session.completedOwnerWorkingSetCount
+            }
+            let historyWorkoutCount = completedHistorySessions.filter { session in
+                session.completedOwnerWorkingSetCount > 0
+            }.count
+            // Personalized history is a complete per-exercise projection, not a
+            // newest-first set scan. The first request backfills every existing
+            // workout (including legacy installs with 100+ workouts); subsequent
+            // requests read the compact index and rebuild only when its source
+            // signature changes.
+            let historyExerciseKeys = try ExerciseHistoryIndexStore.personalizedExerciseKeys(
+                sessions: completedHistorySessions,
+                storageURL: model.isUITestMode ? nil : ExerciseHistoryIndexStore.defaultStorageURL())
+
             let persistedCandidates = try SuggestedWorkoutSignposts.exerciseFetchAndMap {
                 try WorkoutRepository.allExercises(context).map { exercise in
                     SuggestedExerciseCandidate(
-                        id: exercise.sourceExerciseID ?? exercise.id.uuidString,
+                        id: ExerciseSuggestionExclusionKey.forExercise(exercise),
                         name: exercise.name,
                         mechanics: exercise.mechanicsValue ?? .compound,
                         primaryMuscles: exercise.primaryMuscles,
@@ -101,7 +120,9 @@ extension HomeView {
                         volumeEligible: exercise.volumeEligible,
                         trainingTypes: exercise.trainingTypes,
                         modalities: exercise.modalities,
-                        sportContexts: exercise.sportContexts)
+                        sportContexts: exercise.sportContexts,
+                        isPersonalized: historyExerciseKeys.contains(
+                            ExerciseSuggestionExclusionKey.forExercise(exercise)))
                 }
             }
             // Production seeding is intentionally deferred so launch stays
@@ -120,21 +141,35 @@ extension HomeView {
                     return trackedMuscleIDs.isEmpty || trackedMuscleIDs.contains(group.rawValue)
                 }
             } && persistedCandidates.contains(where: { $0.matches(.bodyweight) })
+            let exclusionKeys = try ExerciseSuggestionExclusionStore.activeKeys(in: context)
             if persistedCatalogIsUsable {
-                candidates = persistedCandidates
+                candidates = SuggestedExerciseFilter.excluding(persistedCandidates, keys: exclusionKeys)
             } else {
-                candidates = ExerciseLibrary.starter.map(SuggestedExerciseCandidate.init(template:))
+                let starterCandidates = ExerciseLibrary.starter.map { template in
+                    let candidate = SuggestedExerciseCandidate(template: template)
+                    return SuggestedExerciseCandidate(
+                        id: candidate.id,
+                        name: candidate.name,
+                        mechanics: candidate.mechanics,
+                        primaryMuscles: candidate.primaryMuscles,
+                        secondaryMuscles: candidate.secondaryMuscles,
+                        equipment: candidate.equipment,
+                        volumeEligible: candidate.volumeEligible,
+                        trainingTypes: candidate.trainingTypes,
+                        modalities: candidate.modalities,
+                        sportContexts: candidate.sportContexts,
+                        isPersonalized: historyExerciseKeys.contains(candidate.id))
+                }
+                // Keep a user's own historical movements even while the
+                // asynchronous catalog seed is incomplete. General styles use
+                // the canonical starter fallback; Personalized must never lose
+                // a custom or newly imported movement just because that fallback
+                // is active.
+                let historicalCandidates = persistedCandidates.filter(\.isPersonalized)
+                candidates = SuggestedExerciseFilter.excluding(
+                    starterCandidates + historicalCandidates,
+                    keys: exclusionKeys)
             }
-            let activeSessionID = active.strengthSession?.id
-            let completedHistorySessions = sessions.filter {
-                $0.id != activeSessionID && $0.countsAsStrengthHistory
-            }
-            let historyWorkingSetCount = completedHistorySessions.reduce(0) { count, session in
-                count + session.completedOwnerWorkingSetCount
-            }
-            let historyWorkoutCount = completedHistorySessions.filter { session in
-                session.completedOwnerWorkingSetCount > 0
-            }.count
             let historyData = historyWorkingSetCount > 0
                 ? TrainingEngineBridge.historyData(from: completedHistorySessions,
                                                    subjectId: "cladiron-local")

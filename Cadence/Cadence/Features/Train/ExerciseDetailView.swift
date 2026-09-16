@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 
 struct ExerciseDetailView: View {
@@ -10,6 +11,8 @@ struct ExerciseDetailView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var showEditSheet = false
+    @State private var showExclusionSheet = false
+    @Query private var exclusions: [ExerciseSuggestionExclusion]
 
     private var imageURLs: [URL] { ExerciseLibrary.imageURLs(forImageName: exercise.imageName) }
 
@@ -23,6 +26,8 @@ struct ExerciseDetailView: View {
                 if exercise.isCustom {
                     customEditBanner
                 }
+
+                suggestionPreference
 
                 facets
 
@@ -68,6 +73,9 @@ struct ExerciseDetailView: View {
         .sheet(isPresented: $showEditSheet) {
             CustomExerciseEditView(exercise: exercise)
         }
+        .sheet(isPresented: $showExclusionSheet) {
+            ExerciseSuggestionExclusionSheet(exercise: exercise)
+        }
     }
 
     // MARK: Sections
@@ -88,6 +96,42 @@ struct ExerciseDetailView: View {
         }
         .padding(12)
         .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var suggestionPreference: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Suggestion Preferences")
+                .font(.headline)
+            if let record = activeExclusion {
+                Label("Excluded from automatic suggestions", systemImage: "hand.raised.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(.orange)
+                Text("Reason: \(record.reason.displayName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Allow This Exercise in Suggestions") {
+                    try? ExerciseSuggestionExclusionStore.allow(record, in: context)
+                }
+                .buttonStyle(.bordered)
+            } else {
+                Text("This affects automatic suggestions only. The exercise remains available for manual plans and logging.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Don't Suggest This Exercise") {
+                    showExclusionSheet = true
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityIdentifier("exercise.suggestionPreferences")
+    }
+
+    private var activeExclusion: ExerciseSuggestionExclusion? {
+        let key = ExerciseSuggestionExclusionKey.forExercise(exercise)
+        return exclusions.first { $0.isActive && $0.exerciseKey == key }
     }
 
     // MARK: - Image/Content Sections

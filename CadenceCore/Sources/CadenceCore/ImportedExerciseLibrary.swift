@@ -99,6 +99,9 @@ public enum ImportedExerciseLibrary {
     }
 
     private static func trainingTypes(for record: TrainingEngineBridge.ExerciseRecord) -> [ExerciseTrainingType] {
+        if ExerciseTrainingType.isOlympicOnlyMovement(named: record.name) {
+            return [.strength, .olympicWeightlifting]
+        }
         switch record.category {
         case "cardio": return [.cardio]
         case "plyometrics": return [.plyometrics]

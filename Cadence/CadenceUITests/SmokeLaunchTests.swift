@@ -212,13 +212,19 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Suggested-workout chooser rendered more than one visible About control")
         XCTAssertFalse(app.staticTexts["No usable exercise data is available yet. Retry to refresh the exercise catalog."].exists,
                        "Suggested-workout chooser reported missing exercise data after becoming ready")
-        // Five training styles at one set target, not three lengths of the same
-        // workout (DB++ adoption, decision D6).
+        // Personalized is intentionally first and disabled for a fresh user;
+        // the remaining five training styles stay launchable at one set target.
+        // This also guards the five-workout history threshold at the UI boundary.
+        let personalized = app.buttons["suggestedWorkout.style.personalized"]
         let fitness = app.buttons["suggestedWorkout.style.fitness"]
         let bodyweight = app.buttons["suggestedWorkout.style.bodyweight"]
         let powerlifting = app.buttons["suggestedWorkout.style.powerlifting"]
         let olympic = app.buttons["suggestedWorkout.style.olympic"]
         let strongman = app.buttons["suggestedWorkout.style.strongman"]
+        XCTAssertTrue(personalized.exists)
+        XCTAssertEqual(personalized.label, "Personalized")
+        XCTAssertFalse(personalized.isEnabled,
+                       "Personalized suggestions must stay disabled below five workouts")
         XCTAssertTrue(fitness.exists)
         XCTAssertTrue(bodyweight.exists)
         XCTAssertTrue(powerlifting.exists)
@@ -228,6 +234,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertEqual(fitness.label, "Fitness")
         XCTAssertEqual(bodyweight.label, "Bodyweight")
         XCTAssertEqual(powerlifting.label, "Powerlifting")
+        XCTAssertLessThan(personalized.frame.minY, fitness.frame.minY)
         XCTAssertLessThan(fitness.frame.minY, bodyweight.frame.minY)
         XCTAssertLessThan(bodyweight.frame.minY, powerlifting.frame.minY)
         XCTAssertTrue(app.scrollToElement("suggestedWorkout.style.olympic"))
@@ -266,6 +273,34 @@ final class SmokeLaunchTests: CadenceUITestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exerciseInfo."))
         XCTAssertGreaterThan(editableExerciseInfo.count, 0,
                              "Editable suggested plan does not expose exercise info controls")
+
+        // Real user report: excluding an exercise from a suggested workout
+        // left it sitting right there in the plan — excluding only affected
+        // *future* suggestions. It must regenerate the whole plan from
+        // scratch instead, so the excluded exercise's own row is gone
+        // afterward (not merely deleted while everything else stays put).
+        let excludeAction = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "editor.exerciseMenu.")).firstMatch
+        XCTAssertTrue(excludeAction.waitForExistence(timeout: 5),
+                      "Editable suggested plan does not expose an exclude action on its exercises")
+        let excludedIdentifier = excludeAction.identifier
+        XCTAssertTrue(excludeAction.waitTap(timeout: 5),
+                      "Could not open the exclude action for a suggested exercise")
+        XCTAssertTrue(app.navigationBars["Exclude Exercise"].waitForExistence(timeout: 5),
+                      "Exclude action did not open the exclusion sheet")
+        XCTAssertTrue(app.buttons["exclude.confirm"].waitTap(timeout: 5),
+                      "Exclude Exercise sheet did not offer to confirm the exclusion")
+        // Regeneration is real solver work (rebuilds the candidate vector
+        // index), so give it the same cold-simulator latitude as the initial
+        // suggested-workout calculation above.
+        let excludedRow = app.buttons[excludedIdentifier]
+        excludedRow.waitForDisappearance(timeout: 45)
+        XCTAssertFalse(excludedRow.exists,
+                       "Excluding an exercise from a suggested workout did not regenerate the plan without it")
+        XCTAssertFalse(app.alerts["Couldn't rebuild this workout"].exists,
+                       "Regenerating the suggested workout after a real exclusion failed unexpectedly")
+        XCTAssertGreaterThan(editableExercises.count, 0,
+                             "The regenerated suggested plan lost every exercise")
         XCTAssertEqual(app.buttons["editor.edit"].label, "Done",
                        "Suggested workout did not open in edit mode")
         XCTAssertTrue(app.buttons["editor.edit"].waitTap(timeout: 5),

@@ -12,6 +12,7 @@ struct WorkoutPlanExerciseSection: View {
     let exerciseInfo: Exercise?
     let onSwap: () -> Void
     let onRemove: () -> Void
+    let onExclude: (() -> Void)?
 
     /// nil is the owner ("Me"), which is also the default selection.
     @State private var selectedPerformerID: UUID?
@@ -69,6 +70,14 @@ struct WorkoutPlanExerciseSection: View {
 
                 Button { showRepSchemes = true } label: {
                     Label("Change Rep Structure", systemImage: "list.number")
+                }
+
+                if onExclude != nil, exerciseInfo != nil {
+                    Button {
+                        onExclude?()
+                    } label: {
+                        Label("Don't Suggest This Exercise", systemImage: "hand.raised")
+                    }
                 }
 
                 Button(role: .destructive, action: onRemove) {

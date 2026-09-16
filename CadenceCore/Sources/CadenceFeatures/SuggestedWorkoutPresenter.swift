@@ -42,19 +42,37 @@ public enum SuggestedWorkoutPresenter {
     }
 
     public static func choices(for bundle: SuggestedWorkoutBundle) -> [SuggestedWorkoutChoice] {
-        bundle.options.map(choice(for:))
+        bundle.options.map {
+            choice(for: $0, personalizedHistoryWorkoutCount: bundle.personalizedHistoryWorkoutCount)
+        }
     }
 
     public static func choice(for option: SuggestedWorkoutOption) -> SuggestedWorkoutChoice {
+        choice(for: option, personalizedHistoryWorkoutCount: .max)
+    }
+
+    public static func choice(for option: SuggestedWorkoutOption,
+                              personalizedHistoryWorkoutCount: Int) -> SuggestedWorkoutChoice {
         let style = option.style
         let gaps = remainingGapText(option)
         let trim = option.capTrimmingOccurred ? " Safety cap trimmed the final exercises." : ""
+        if style == .personalized,
+           personalizedHistoryWorkoutCount < SuggestedWorkoutGenerator.minimumPersonalizedWorkouts {
+            return SuggestedWorkoutChoice(
+                option: option,
+                title: style.displayName,
+                styleDescription: style.subtitle,
+                subtitle: "Need at least \(SuggestedWorkoutGenerator.minimumPersonalizedWorkouts) completed workouts; you have \(personalizedHistoryWorkoutCount).",
+                isDisabled: true)
+        }
         if !option.isLaunchable {
             return SuggestedWorkoutChoice(
                 option: option,
                 title: style.displayName,
                 styleDescription: style.subtitle,
-                subtitle: "No available \(style.displayName.lowercased()) exercises cover this week's gaps.",
+                subtitle: style == .personalized
+                    ? "No exercises from your history cover this week's gaps."
+                    : "No available \(style.displayName.lowercased()) exercises cover this week's gaps.",
                 isDisabled: true)
         }
         return SuggestedWorkoutChoice(

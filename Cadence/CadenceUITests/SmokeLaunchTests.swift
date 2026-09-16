@@ -258,10 +258,22 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "The Bodyweight plan did not open")
         XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
                       "The Bodyweight plan did not open the plan editor")
+        let editableExercises = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exercise."))
+        XCTAssertGreaterThan(editableExercises.count, 0,
+                             "Suggested Bodyweight plan did not open in edit mode with exercises")
+        let editableExerciseInfo = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exerciseInfo."))
+        XCTAssertGreaterThan(editableExerciseInfo.count, 0,
+                             "Editable suggested plan does not expose exercise info controls")
+        XCTAssertEqual(app.buttons["editor.edit"].label, "Done",
+                       "Suggested workout did not open in edit mode")
+        XCTAssertTrue(app.buttons["editor.edit"].waitTap(timeout: 5),
+                      "Suggested workout could not switch to read-only mode")
         let previewExercises = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.compactExercise."))
         XCTAssertGreaterThan(previewExercises.count, 0,
-                             "Bodyweight plan preview opened without any exercises")
+                             "Read-only suggested plan preview has no exercises")
         let previewExerciseInfo = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exerciseInfo."))
         XCTAssertGreaterThan(previewExerciseInfo.count, 0,

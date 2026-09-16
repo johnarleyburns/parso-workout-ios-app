@@ -181,6 +181,7 @@ struct SuggestedWorkoutView: View {
                     unit: request.unit,
                     warmupMinutes: request.warmupMinutes,
                     cooldownMinutes: request.cooldownMinutes),
+                startInEditMode: true,
                 onStart: onStart)
         } label: {
             VStack(alignment: .leading, spacing: 5) {

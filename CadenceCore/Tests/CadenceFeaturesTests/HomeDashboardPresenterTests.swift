@@ -80,13 +80,48 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertEqual(dashboard.volume.first { $0.group == .abdominals }?.sets, 3)
     }
 
-    func testWeeklyVolumeKeepsEngineValuesAndFillsUnmappedNativeFacts() {
+    func testWeeklyVolumeUsesTheExplicitCurrentWeekFacts() {
         let volume = HomeDashboardPresenter.weeklyVolume(
             engine: [.chest: 4],
             facts: [.chest: 3, .abdominals: 3])
 
-        XCTAssertEqual(volume[.chest], 4)
+        XCTAssertEqual(volume[.chest], 3,
+                       "A stale or differently-windowed engine value must not widen Home's week")
         XCTAssertEqual(volume[.abdominals], 3)
+    }
+
+    func testDashboardDoesNotLetEngineObservationAddOlderMuscleVolume() throws {
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+        let context = try makeContext()
+        let recent = try WorkoutRepository.createSession(
+            date: now.addingTimeInterval(-3_600), in: context)
+        let exercise = try WorkoutRepository.findOrCreateExercise(
+            named: "Current Week Bench", primaryMuscles: [MuscleGroup.chest.rawValue], in: context)
+        for _ in 0..<3 {
+            _ = try WorkoutRepository.addSet(to: recent, exercise: exercise,
+                                             weightKg: 60, reps: 8, in: context)
+        }
+        recent.endedAt = now
+        try context.save()
+        let sessions = try context.fetch(FetchDescriptor<WorkoutSession>())
+        let base = CoachSnapshotBuilder.build(
+            sessions: sessions, cardio: [], assessments: [], hasPainToday: false,
+            goal: .strength, experience: .intermediate, formula: .epley,
+            schedulePreferences: .default, profile: .empty, now: now)
+        let staleEngine = EngineObservationSnapshot(
+            subjectId: "test", asOf: now, stateVersion: "test",
+            effectiveSetsByMuscle: [MuscleGroup.chest.rawValue: 24])
+        let snapshot = CoachSnapshot(
+            facts: base.facts, coachFacts: base.coachFacts, insights: base.insights,
+            recommendation: base.recommendation, decision: base.decision,
+            plan: base.plan, behindPlan: base.behindPlan, addOn: base.addOn,
+            readiness: base.readiness, optimizedPlan: base.optimizedPlan,
+            engineObservation: staleEngine)
+
+        let dashboard = HomeDashboardPresenter.make(
+            snapshot: snapshot, schedule: .default, goal: .strength,
+            experience: .intermediate, userAge: nil)
+        XCTAssertEqual(dashboard.volume.first { $0.group == .chest }?.sets, 3)
     }
 
     func testProgressStatusChangesOnlyAtTarget() {

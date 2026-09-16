@@ -112,13 +112,13 @@ struct LiveWorkoutVolumeSummary: View {
             }
             .frame(height: 8)
             if weekly > 0 {
-                Text("Weekly background: (format(weekly)) sets")
+                Text("Weekly background: \(format(weekly)) sets")
                     .font(.caption2).foregroundStyle(.secondary)
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("session.volume.\(group.rawValue)")
-        .accessibilityValue("\(format(current)) sets\(planned > 0 ? ", (format(planned)) planned" : "")")
+        .accessibilityValue("\(format(current)) sets\(planned > 0 ? ", \(format(planned)) planned" : "")")
     }
 
     private func valueText(current: Double, planned: Double) -> String {

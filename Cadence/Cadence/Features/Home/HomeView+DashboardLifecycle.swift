@@ -21,8 +21,10 @@ extension HomeView {
                 markWorkoutHistoryChanged()
             }
             .onReceive(NotificationCenter.default.publisher(for: .workoutVolumeChanged)) { note in
+                let now = Date()
                 guard let change = note.object as? WorkoutVolumeChange,
-                      Calendar.current.isDate(change.date, equalTo: Date(), toGranularity: .weekOfYear)
+                      change.date >= WeeklyStats.weekStart(now: now),
+                      change.date <= now
                 else { return }
                 for (group, delta) in change.delta {
                     liveVolumeDelta[group, default: 0] += delta

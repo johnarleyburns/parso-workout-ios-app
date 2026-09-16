@@ -185,9 +185,12 @@ public enum HomeDashboardPresenter {
         let cardio = HomeDashboardState.Progress(completed: balance.moderateEquivalentMinutes, target: 150,
             displayText: "\(Int(balance.moderateEquivalentMinutes.rounded())) of 150 min",
             normalized: min(1, max(0, balance.moderateEquivalentMinutes / 150)))
-        var currentWeekVolume = weeklyVolume(
-            engine: snapshot.engineObservation?.effectiveSetsByGroup,
-            facts: snapshot.facts.weeklySetsByGroup)
+        // Home's visible volume must use the same explicit Monday-to-now
+        // boundary as the Strength and Cardio rows. DB++'s observation is still
+        // used by coaching/adherence, but merging it here allowed a stale or
+        // differently-windowed engine projection to make this card look like
+        // it contained multiple weeks of muscle volume.
+        var currentWeekVolume = snapshot.facts.weeklySetsByGroup
         for (group, delta) in liveVolumeDelta where delta != 0 {
             currentWeekVolume[group, default: 0] += delta
         }
@@ -216,16 +219,15 @@ public enum HomeDashboardPresenter {
                      suggestions: suggestions(snapshot: snapshot, schedule: schedule))
     }
 
-    /// DB++ cannot resolve app-created exercises because they have no catalog ID.
-    /// Keep the engine's values for catalog exercises, while retaining the native
-    /// facts as a lower-bound compatibility fallback for unmapped custom work.
+    /// Compatibility helper for callers that still provide an engine observation.
+    /// The Home card intentionally uses the app facts as its source of truth:
+    /// `TrainingFacts.weeklySetsByGroup` is explicitly Monday-to-now and includes
+    /// both catalog and app-created exercises. The engine remains available for
+    /// coaching/adherence surfaces, but must not widen this visible week window.
     public static func weeklyVolume(engine: [MuscleGroup: Double]?,
                                     facts: [MuscleGroup: Double]) -> [MuscleGroup: Double] {
-        guard var engine else { return facts }
-        for (group, factSets) in facts {
-            engine[group] = max(engine[group] ?? 0, factSets)
-        }
-        return engine
+        _ = engine
+        return facts
     }
 
     /// Every tracked muscle group, plus any untracked group the user has actually

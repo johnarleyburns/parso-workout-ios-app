@@ -242,6 +242,8 @@ struct IntervalSetupView: View {
                     Text(preset.description)
                         .font(.body)
 
+                    intervalOutline(preset.make())
+
                     if !preset.citationIds.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("The science")
@@ -264,6 +266,69 @@ struct IntervalSetupView: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// Shows the exact sequence the interval runner will execute. This is
+    /// intentionally driven by the expanded `IntervalPlan`, rather than a
+    /// compact rounds/work/rest summary, so every work and recovery phase is
+    /// visible before the user starts.
+    private func intervalOutline(_ plan: IntervalPlan) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Outline")
+                .font(.headline)
+            Text("Every phase, in order")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 0) {
+                ForEach(plan.phases) { phase in
+                    HStack(spacing: 10) {
+                        Image(systemName: phaseSymbol(for: phase.kind))
+                            .foregroundStyle(phaseTint(for: phase.kind))
+                            .frame(width: 22)
+                            .accessibilityHidden(true)
+                        Text(phase.label)
+                            .font(.subheadline)
+                        Spacer(minLength: 8)
+                        Text(outlineDuration(phase.duration))
+                            .font(.subheadline.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 9)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("interval.info.outline.phase.\(phase.id)")
+                    if phase.id != plan.phases.last?.id {
+                        Divider()
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .accessibilityIdentifier("interval.info.outline")
+    }
+
+    private func outlineDuration(_ seconds: TimeInterval) -> String {
+        let rounded = Int(seconds.rounded())
+        return rounded < 60 ? "\(rounded) sec" : Format.duration(seconds)
+    }
+
+    private func phaseSymbol(for kind: IntervalPhaseKind) -> String {
+        switch kind {
+        case .warmup: return "figure.walk"
+        case .work: return "bolt.fill"
+        case .rest: return "pause.fill"
+        case .cooldown: return "figure.cooldown"
+        }
+    }
+
+    private func phaseTint(for kind: IntervalPhaseKind) -> Color {
+        switch kind {
+        case .warmup: return .orange
+        case .work: return .red
+        case .rest: return .blue
+        case .cooldown: return .green
+        }
     }
 
     private func rowLabel(_ id: String, _ title: String, _ subtitle: String) -> some View {

@@ -7,6 +7,7 @@ import CadenceFeatures
 struct CoachPartVolumeSection: View {
     let trainingFacts: TrainingFacts
     let optimizedPlan: OptimizedCoachPlan
+    @State private var volumeWarningMessage: String?
 
     var body: some View {
         Section {
@@ -25,6 +26,13 @@ struct CoachPartVolumeSection: View {
                 CitationLink(citation: citation, compact: true)
             }
         }
+        .alert("Volume warning", isPresented: Binding(
+            get: { volumeWarningMessage != nil },
+            set: { if !$0 { volumeWarningMessage = nil } })) {
+                Button("OK", role: .cancel) { volumeWarningMessage = nil }
+            } message: {
+                Text(volumeWarningMessage ?? "")
+            }
         .accessibilityIdentifier("yourPlan.partVolume")
     }
 
@@ -45,7 +53,7 @@ struct CoachPartVolumeSection: View {
             HStack {
                 Text("Sets this week").font(.subheadline.weight(.semibold))
                 Spacer()
-                Text("\(Format.sets(volumeSummary.doneSets)) done + \(Format.sets(volumeSummary.plannedSets)) planned")
+                Text("\(Format.sets(volumeSummary.doneSets)) sets")
                     .font(.subheadline.bold()).monospacedDigit()
             }
             HStack(spacing: 0) {
@@ -74,17 +82,21 @@ struct CoachPartVolumeSection: View {
                 Text(row.displayName).font(.subheadline)
                     .accessibilityHidden(true)
                 Spacer()
-                Group {
-                    if row.plannedSets > 0 {
-                        Text("\(Format.sets(row.doneSets)) done + \(Format.sets(row.plannedSets)) planned")
-                    } else {
-                        Text("\(Format.sets(row.doneSets)) done")
+                HStack(spacing: 4) {
+                    Text("\(Format.sets(row.doneSets)) sets")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if warningMessage(for: row) != nil {
+                        Button {
+                            volumeWarningMessage = warningMessage(for: row)
+                        } label: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.orange)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Volume warning for \(row.displayName)")
                     }
                 }
-                .font(.caption).foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-
-                statusChip(row.status)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("yourPlan.partVolume.\(row.group.rawValue)")
@@ -130,29 +142,15 @@ struct CoachPartVolumeSection: View {
 
     // MARK: - Helpers
 
-    private func statusChip(_ status: WeekVolumePresenter.PartRow.Status) -> some View {
-        Group {
-            switch status {
-            case .targetMet:
-                Text("✓ target met")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.green)
-            case .onTrack:
-                Text("✓ target range")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.teal)
-            case .short(let toGo):
-                Text("⚠ \(Int(toGo.rounded())) to go")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.orange)
-            case .high:
-                Text("↑ high")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-            }
+    private func warningMessage(for row: WeekVolumePresenter.PartRow) -> String? {
+        switch row.status {
+        case .short(let toGo):
+            return "\(row.displayName) is \(Format.sets(toGo)) sets below the current minimum. You can add work if that fits your recovery and plan."
+        case .high:
+            return "\(row.displayName) is above the current recommended range. Consider reducing volume or allowing more recovery before adding more work."
+        case .targetMet, .onTrack:
+            return nil
         }
-        .padding(.horizontal, 6).padding(.vertical, 2)
-        .background(chipBackground(for: status), in: RoundedRectangle(cornerRadius: 5))
     }
 
     private func barColor(for status: WeekVolumePresenter.PartRow.Status) -> Color {
@@ -160,15 +158,6 @@ struct CoachPartVolumeSection: View {
         case .targetMet, .onTrack: return .green
         case .short: return .orange
         case .high: return .gray
-        }
-    }
-
-    private func chipBackground(for status: WeekVolumePresenter.PartRow.Status) -> Color {
-        switch status {
-        case .targetMet: return .green.opacity(0.14)
-        case .onTrack: return .teal.opacity(0.14)
-        case .short: return .orange.opacity(0.16)
-        case .high: return Color(.systemGray5)
         }
     }
 

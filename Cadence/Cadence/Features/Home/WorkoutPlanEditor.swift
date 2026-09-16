@@ -91,7 +91,7 @@ struct WorkoutPlanEditor: View {
     }
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
+            LazyVStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
                 if allowsStart { startButton }
 
                 LiveWorkoutVolumeSummary(state: planVolumeState,
@@ -109,12 +109,10 @@ struct WorkoutPlanEditor: View {
                         WorkoutPlanExerciseSection(
                             exercise: $exercise,
                             unit: settings.unit,
-                            exerciseInfo: exerciseIndex[exercise.name.lowercased()] ??
-                                allExercises.first { $0.name == exercise.name },
+                            exerciseInfo: exerciseIndex[exercise.name.lowercased()],
                             onSwap: { exercisePickerIntent = .swap(exercise.id) },
                             onRemove: { removeExercise(id: exercise.id) },
-                            onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] ??
-                                allExercises.first { $0.name == exercise.name } })
+                            onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] })
                     }
                     addExerciseButton
                 } else {
@@ -122,10 +120,8 @@ struct WorkoutPlanEditor: View {
                         CompactExerciseRow(
                             exercise: exercise,
                             unit: settings.unit,
-                            exerciseInfo: exerciseIndex[exercise.name.lowercased()] ??
-                                allExercises.first { $0.name == exercise.name },
-                            onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] ??
-                                allExercises.first { $0.name == exercise.name } })
+                            exerciseInfo: exerciseIndex[exercise.name.lowercased()],
+                            onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] })
                             .workoutPlanCard()
                     }
                     settingsButton
@@ -197,7 +193,7 @@ struct WorkoutPlanEditor: View {
                 ExercisePickerView(action: intent.pickerAction, source: {
                     if case .swap(let id) = intent,
                        let name = plan.exercises.first(where: { $0.id == id })?.name {
-                        return allExercises.first { $0.name == name }
+                        return exerciseIndex[name.lowercased()]
                     }
                     return nil
                 }()) { exercise in
@@ -226,8 +222,7 @@ struct WorkoutPlanEditor: View {
         .sheet(item: $suggestExerciseRequest) { request in
             SuggestExerciseView(request: request,
                                 exerciseForName: { name in
-                                    exerciseIndex[name.lowercased()] ??
-                                        allExercises.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+                                    exerciseIndex[name.lowercased()]
                                 },
                                 onAdd: addSuggestedExercise)
         }

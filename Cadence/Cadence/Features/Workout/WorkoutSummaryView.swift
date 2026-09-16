@@ -27,6 +27,7 @@ struct WorkoutSummaryView: View {
     /// Which exercises are showing their read-only set detail. Per-exercise, so
     /// several can be open at once (field test 2026-08-18 #1).
     @State private var expandedExerciseIDs: Set<String> = []
+    @State private var summaryVolumeExpanded = false
 
     var body: some View {
         if onDone != nil {
@@ -41,6 +42,13 @@ struct WorkoutSummaryView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 metricsGrid
+                if data.kind == .strength, !data.volume.isEmpty {
+                    LiveWorkoutVolumeSummary(
+                        state: LiveWorkoutVolumeState(current: data.volume),
+                        expanded: $summaryVolumeExpanded,
+                        presentation: .active,
+                        accessibilityPrefix: "summary")
+                }
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
                 if let interval = data.interval { intervalSection(interval) }

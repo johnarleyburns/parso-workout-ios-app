@@ -141,7 +141,7 @@ final class HomeDashboardPresenterTests: XCTestCase {
         let tracked = Double(MuscleGroup.defaultTracked.count)
         XCTAssertEqual(state.volume.count, MuscleGroup.defaultTracked.count)
         XCTAssertEqual(state.volumeCoverage.completed, 8.0 / tracked, accuracy: 0.001)
-        XCTAssertEqual(state.volumeCoverage.displayText, "0.6 avg sets")
+        XCTAssertEqual(state.volumeCoverage.displayText, "0.6 sets")
         XCTAssertEqual(state.volumeCoverage.normalized, 8.0 / tracked / 12.0, accuracy: 0.001)
     }
 

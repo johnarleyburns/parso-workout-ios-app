@@ -201,7 +201,7 @@ public enum HomeDashboardPresenter {
         let averageSets = averageCappedSets(volume.filter(\.isTracked).map(\.sets))
         let volumeCoverage = HomeDashboardState.Progress(
             completed: averageSets, target: WeeklySetProgress.maximum,
-            displayText: "\(format(averageSets)) avg sets",
+            displayText: "\(format(averageSets)) sets",
             normalized: WeeklySetProgress.normalized(averageSets))
         let cardioDetail = HomeDashboardState.CardioDetail(
             loggedMinutes: balance.loggedAerobicMinutes,

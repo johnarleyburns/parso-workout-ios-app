@@ -31,6 +31,10 @@ struct ExerciseDetailView: View {
 
                 facets
 
+                if !volumeMuscles.isEmpty {
+                    volumeSection
+                }
+
                 if !exercise.volumeEligible {
                     volumeEligibilityNotice
                 }
@@ -189,6 +193,41 @@ struct ExerciseDetailView: View {
             if !exercise.stabilizerMuscles.isEmpty { roleRow("Stabilises", exercise.stabilizerMuscles) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// A compact visual summary of the same volume roles used by the weekly
+    /// ledger: primary muscles receive a full green bar, and indirect muscles
+    /// receive a half yellow bar. This intentionally contains no set counts;
+    /// set counts belong to a workout, not to an exercise definition.
+    private var volumeSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Volume").font(.headline)
+            ForEach(volumeMuscles, id: \.group) { muscle in
+                HStack(spacing: 10) {
+                    Text(muscle.group.displayName)
+                        .font(.subheadline)
+                        .frame(width: 116, alignment: .leading)
+                    ProgressView(value: muscle.primary ? 1 : 0.5)
+                        .tint(muscle.primary ? .green : .yellow)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityValue(muscle.primary ? "Primary" : "Indirect")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityIdentifier("exercise.volumeSummary")
+    }
+
+    private var volumeMuscles: [(group: MuscleGroup, primary: Bool)] {
+        let direct = Set(exercise.directMuscles)
+        let indirect = Set(exercise.indirectMuscles)
+        return MuscleGroup.canonicalOrder.compactMap { group in
+            if direct.contains(group) { return (group, true) }
+            if indirect.contains(group) { return (group, false) }
+            return nil
+        }
     }
 
     private var volumeEligibilityNotice: some View {

@@ -11,6 +11,7 @@ struct HomeWeekDashboardSection: View {
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
     let onOpenCoachSettings: () -> Void
+    @State private var volumeWarningMessage: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
@@ -41,6 +42,13 @@ struct HomeWeekDashboardSection: View {
         .padding(CGFloat(LayoutMetrics.cardPadding))
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
+        .alert("Volume warning", isPresented: Binding(
+            get: { volumeWarningMessage != nil },
+            set: { if !$0 { volumeWarningMessage = nil } })) {
+                Button("OK", role: .cancel) { volumeWarningMessage = nil }
+            } message: {
+                Text(volumeWarningMessage ?? "")
+            }
     }
 
     private var header: some View {
@@ -189,23 +197,26 @@ struct HomeWeekDashboardSection: View {
             }
             .frame(width: 116, alignment: .leading)
             ProgressView(value: row.normalized).tint(tint(for: row.zone))
-            VStack(alignment: .trailing, spacing: 1) {
+            HStack(spacing: 4) {
                 Text("\(formattedSets(row.sets)) sets")
                     .font(.caption.weight(.semibold).monospacedDigit())
-                if row.zone == .aboveMaximum {
-                    Label("Above 12-set maximum", systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.red)
-                } else {
-                    Text(row.rangeText)
-                        .font(.caption2).foregroundStyle(.secondary)
+                if let warning = volumeWarning(for: row) {
+                    Button {
+                        volumeWarningMessage = warning
+                    } label: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Volume warning for \(row.displayName)")
                 }
             }
             .frame(width: 88, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(row.displayName)
-        .accessibilityValue("\(formattedSets(row.sets)) sets, \(row.rangeText)")
+        .accessibilityValue("\(formattedSets(row.sets)) sets")
         .accessibilityHint(row.isTracked ? "" : "Not a tracked muscle group")
         .accessibilityIdentifier("home.volume.\(row.group.rawValue)")
     }
@@ -231,6 +242,18 @@ struct HomeWeekDashboardSection: View {
 
     private func formattedSets(_ sets: Double) -> String {
         sets.formatted(.number.precision(.fractionLength(sets.rounded() == sets ? 0 : 1)))
+    }
+
+    private func volumeWarning(for row: HomeDashboardState.VolumeRow) -> String? {
+        switch row.zone {
+        case .belowMinimum:
+            let remaining = max(0, WeeklySetProgress.minimum - row.sets)
+            return "\(row.displayName) is \(formattedSets(remaining)) sets below the current minimum. You can add work if that fits your recovery and plan."
+        case .aboveMaximum:
+            return "\(row.displayName) is above the 12-set maximum for this week. Consider reducing volume or allowing more recovery before adding more work."
+        case .building, .productive:
+            return nil
+        }
     }
 
     private var weeklySetCaption: String {

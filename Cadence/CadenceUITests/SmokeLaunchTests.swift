@@ -482,6 +482,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["summary.title"].waitForExistence(timeout: 15),
                       "post-workout summary did not render")
+        XCTAssertTrue(app.descendants(matching: .any)["summary.volumeSummary"].waitForExistence(timeout: 10),
+                      "post-workout summary did not render the workout volume section")
 
         // Field test 2026-08-18 #1: the summary expands an exercise read-only, one
         // row per performer. Unguarded — the flow above logged the sets, so an
@@ -527,6 +529,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         app.buttons["session.row"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["summary.title"].waitForExistence(timeout: 10),
                       "History workout row did not open its summary")
+        XCTAssertTrue(app.descendants(matching: .any)["summary.volumeSummary"].waitForExistence(timeout: 10),
+                      "History summary did not render the workout volume section")
         XCTAssertTrue(app.buttons["summary.back"].waitTap(timeout: 5),
                       "History summary did not expose the Phase 8 Back action")
         XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 10),

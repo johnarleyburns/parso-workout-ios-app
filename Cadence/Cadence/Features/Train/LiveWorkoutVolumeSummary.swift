@@ -134,23 +134,14 @@ struct LiveWorkoutVolumeSummary: View {
                 }
             }
             .frame(height: 8)
-            if weekly > 0 {
-                Text("Weekly background: \(format(weekly)) sets")
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("\(accessibilityPrefix).volume.\(group.rawValue)")
-        .accessibilityValue(presentation == .planned
-                           ? "\(format(current)) planned sets"
-                           : "\(format(current)) sets\(planned > 0 ? ", \(format(planned)) planned" : "")")
+        .accessibilityValue("\(format(current)) sets")
     }
 
-    private func valueText(current: Double, planned: Double) -> String {
-        if presentation == .planned {
-            return "\(format(current)) planned sets"
-        }
-        return planned > 0 ? "\(format(current))/\(format(planned)) planned" : "\(format(current)) sets"
+    private func valueText(current: Double, planned _: Double) -> String {
+        "\(format(current)) sets"
     }
 
     private func format(_ value: Double) -> String {

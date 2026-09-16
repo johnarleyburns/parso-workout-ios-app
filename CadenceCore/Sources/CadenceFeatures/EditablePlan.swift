@@ -17,11 +17,15 @@ public struct EditablePlan: Hashable {
     public var enginePlanId: String?
     public var engineRevisionId: String?
     public var enginePlanJSON: Data?
+    /// Retained only on an in-memory suggested draft so “Suggest Exercise…”
+    /// keeps the same style boundary. Custom and legacy plans remain Fitness.
+    public var suggestedWorkoutStyle: SuggestedWorkoutStyle?
 
     public init(title: String = "Workout", warmupMinutes: Int, cooldownMinutes: Int,
                 exercises: [EditableExercise], partnerIDs: [UUID] = [],
                 enginePlanId: String? = nil, engineRevisionId: String? = nil,
-                enginePlanJSON: Data? = nil) {
+                enginePlanJSON: Data? = nil,
+                suggestedWorkoutStyle: SuggestedWorkoutStyle? = nil) {
         self.title = title
         self.warmupMinutes = warmupMinutes
         self.cooldownMinutes = cooldownMinutes
@@ -30,6 +34,7 @@ public struct EditablePlan: Hashable {
         self.enginePlanId = enginePlanId
         self.engineRevisionId = engineRevisionId
         self.enginePlanJSON = enginePlanJSON
+        self.suggestedWorkoutStyle = suggestedWorkoutStyle
     }
 
     public static func empty(warmup: Int, cooldown: Int) -> EditablePlan {

@@ -184,7 +184,7 @@ extension SessionView {
         LiveWorkoutVolumeCalculator.sets(from: workout)
     }
 
-    private func plannedCreditsByName() -> [String: [MuscleGroup: Double]] {
+    func plannedCreditsByName() -> [String: [MuscleGroup: Double]] {
         var result: [String: [MuscleGroup: Double]] = [:]
         for exercise in session.exercisesInOrder {
             result[exercise.name.lowercased()] = exercise.volumeCredits

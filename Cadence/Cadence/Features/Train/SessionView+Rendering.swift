@@ -7,7 +7,7 @@ extension SessionView {
     @ViewBuilder
     var scrollContent: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-            if active.strengthSession?.id == session.id {
+            if isActiveSession {
                 LiveWorkoutVolumeSummary(state: liveVolumeState, expanded: $liveVolumeExpanded)
             }
             if isManualLog { loggedDateBanner }
@@ -47,6 +47,8 @@ extension SessionView {
                 pickerPresented = true
             }
             .accessibilityIdentifier("session.addExercise")
+
+            suggestExerciseButton
 
             if active.strengthSession?.id == session.id {
                 WorkoutControlBar(
@@ -143,6 +145,13 @@ extension SessionView {
                 openInlineEditor(for: exercise)
             }
         }
+        .sheet(item: $suggestExerciseRequest) { request in
+            SuggestExerciseView(request: request,
+                                exerciseForName: { name in
+                                    plannedExerciseIndex[name] ?? exerciseForName(named: name)
+                                },
+                                onAdd: addSuggestedExercise)
+        }
         .sheet(item: $swapTarget) { target in
             let pickAction: ExercisePickerView.PickAction = {
                 switch target {
@@ -185,6 +194,11 @@ extension SessionView {
         .sheet(isPresented: $showWeightInfo) { weightInfoSheet }
         .sheet(isPresented: $showDumbbellInfo) { dumbbellInfoSheet }
         .sheet(isPresented: $showKettlebellInfo) { kettlebellInfoSheet }
+        .alert("Couldn't suggest an exercise", isPresented: $suggestExerciseFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Exercise data could not be read. Try again after the catalog finishes loading.")
+        }
         .fullScreenCover(item: $setEditorRoute) { _ in
             if let cfg = inlineEditorConfig(), let ex = inlineExercise {
                 InlineSetEditorView(config: cfg,
@@ -225,7 +239,7 @@ extension SessionView {
         .onDisappear { if isManualLog { cleanupEmptyLog() } }
         .onReceive(idleTimer) { _ in
             handleIdleTick()
-            if active.strengthSession?.id == session.id {
+            if isActiveSession {
                 sampleHR()
                 active.writeHeartbeat()
             }
@@ -285,10 +299,8 @@ extension SessionView {
             }
             .presentationDetents([.medium])
         }
-        .confirmationDialog("Remove this exercise?", isPresented: Binding(
-            get: { exerciseToRemove != nil },
-            set: { if !$0 { exerciseToRemove = nil } }
-        ), titleVisibility: .visible) {
+        .confirmationDialog("Remove this exercise?", isPresented: exerciseRemovalPresented,
+                           titleVisibility: .visible) {
             Button("Remove exercise and all its sets", role: .destructive) {
                 if let ex = exerciseToRemove {
                     _ = try? WorkoutRepository.removeExercise(ex, from: session, in: context)

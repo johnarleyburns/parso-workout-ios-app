@@ -3,7 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-private enum ExercisePickerIntent: Identifiable {
+enum ExercisePickerIntent: Identifiable {
     case add
     case swap(UUID)
 
@@ -41,11 +41,11 @@ struct WorkoutPlanEditor: View {
     /// `Task` to run the (CPU-heavy) regeneration off the main actor.
     var onExcludeAndRegenerate: ((String) async -> EditablePlan?)? = nil
 
-    @Environment(AppSettings.self) private var settings
+    @Environment(AppSettings.self) var settings
     @Environment(\.modelContext) var modelContext
     @Query(sort: \Person.name) private var allPeople: [Person]
     @Query(sort: \Exercise.name) private var allExercises: [Exercise]
-    @State private var exercisePickerIntent: ExercisePickerIntent?
+    @State var exercisePickerIntent: ExercisePickerIntent?
 
     @State private var restSeconds: Int
     @State private var autoStartRest: Bool
@@ -54,7 +54,7 @@ struct WorkoutPlanEditor: View {
     @State private var idleTimeoutMinutes: Int
     @State private var plateRounding: Bool
     @State private var useHR: Bool
-    @State private var isEditing = false
+    @State var isEditing = false
     @State private var originalPlan: EditablePlan
     @State var settingsPresented = false
     @State private var historyIndex: WorkoutPlanPartnerHistory.Index?
@@ -66,6 +66,8 @@ struct WorkoutPlanEditor: View {
     @State var planVolumeState = LiveWorkoutVolumeState()
     @State var planVolumeWeekly: [MuscleGroup: Double] = [:]
     @State private var planVolumeExpanded = false
+    @State var suggestExerciseRequest: SuggestedExerciseRequest?
+    @State var suggestExerciseFailed = false
     let allowsStart: Bool
 
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
@@ -128,6 +130,7 @@ struct WorkoutPlanEditor: View {
                     }
                     settingsButton
                 }
+                suggestExerciseButton
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
         }
@@ -220,6 +223,14 @@ struct WorkoutPlanEditor: View {
                 regenerateAfterExcluding(exercise)
             })
         }
+        .sheet(item: $suggestExerciseRequest) { request in
+            SuggestExerciseView(request: request,
+                                exerciseForName: { name in
+                                    exerciseIndex[name.lowercased()] ??
+                                        allExercises.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+                                },
+                                onAdd: addSuggestedExercise)
+        }
         .overlay {
             if isRegeneratingAfterExclusion {
                 ZStack {
@@ -235,6 +246,11 @@ struct WorkoutPlanEditor: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("The exercise was excluded from future suggestions, but this plan could not be recalculated. You can remove it manually below.")
+        }
+        .alert("Couldn't suggest an exercise", isPresented: $suggestExerciseFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Exercise data could not be read. Try again after the catalog finishes loading.")
         }
     }
 
@@ -258,15 +274,6 @@ struct WorkoutPlanEditor: View {
             originalPlan = newPlan
             resolvePartnerPlans()
         }
-    }
-
-    private var addExerciseButton: some View {
-        CadenceActionButton(title: "Add Exercise",
-                            systemImage: "plus.circle.fill",
-                            emphasis: .secondary) {
-            exercisePickerIntent = .add
-        }
-        .accessibilityIdentifier("editor.addExercise")
     }
 
     private func loadSettings() {
@@ -319,14 +326,10 @@ struct WorkoutPlanEditor: View {
         onStart(plan)
     }
 
-    private func removeExercise(id: UUID) {
-        plan.exercises.removeAll { $0.id == id }
-    }
-
     /// Fills every partner's plan from *their* history for the owner's
     /// exercises (field test 2026-08-18 #4). Runs on appear, on roster changes
     /// and after an exercise is added or swapped — never per keystroke.
-    private func resolvePartnerPlans() {
+    func resolvePartnerPlans() {
         let roster = rosterMembers()
         guard !plan.exercises.isEmpty else { return }
         let index: WorkoutPlanPartnerHistory.Index

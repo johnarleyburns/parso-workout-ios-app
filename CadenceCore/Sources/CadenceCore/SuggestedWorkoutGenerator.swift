@@ -412,6 +412,100 @@ public enum SuggestedWorkoutGenerator {
         )
     }
 
+    /// Chooses exactly one movement for an existing plan or live workout. The
+    /// plan's own prescribed/completed work is added to the weekly vector before
+    /// scoring, so this is the same gap solver as full suggestions rather than a
+    /// generic random exercise picker.
+    public static func suggestSingleExercise(
+        input: SuggestedWorkoutInput,
+        style: SuggestedWorkoutStyle,
+        alreadyAllocatedByMuscle: [String: Double] = [:],
+        excludingCandidateIDs: Set<String> = []
+    ) -> SuggestedWorkoutExercise? {
+        guard style != .personalized || input.historyWorkoutCount >= minimumPersonalizedWorkouts else {
+            return nil
+        }
+        let index = SuggestedWorkoutVectorIndex(candidates: input.candidates,
+                                                tracked: input.trackedGroups)
+        let completed = index.muscleSpace.completedVector(input.completedSetsByMuscle)
+        let allocated = index.muscleSpace.completedVector(alreadyAllocatedByMuscle)
+        let target = Double(suggestedWorkoutTargetSetsPerGroup)
+        let deficits = index.muscleSpace.muscleIDs.indices.map { dimension in
+            max(0, target - completed[dimension] - allocated[dimension])
+        }
+        let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
+        let inStyle = index.styleMembership[style] ??
+            Array(repeating: true, count: index.exercises.count)
+
+        func allowed(_ candidateIndex: Int, restrictedToStyle: Bool) -> Bool {
+            guard !excludingCandidateIDs.contains(index.exercises[candidateIndex].candidate.id) else {
+                return false
+            }
+            guard !restrictedToStyle || inStyle[candidateIndex] else { return false }
+            let candidate = index.exercises[candidateIndex].candidate
+            if style != .olympic,
+               candidate.trainingTypes.contains(.olympicWeightlifting)
+                || ExerciseTrainingType.isOlympicOnlyMovement(named: candidate.name) {
+                return false
+            }
+            return true
+        }
+
+        func bestCandidate(restrictedToStyle: Bool) -> Selection? {
+            var best: Selection?
+            for candidateIndex in index.exercises.indices where allowed(candidateIndex,
+                                                                        restrictedToStyle: restrictedToStyle) {
+                let exercise = index.exercises[candidateIndex]
+                let candidateScore = score(exercise, deficits: deficits, preferredSets: preferredSets)
+                guard candidateScore.total > epsilon else { continue }
+                let selection = Selection(candidateIndex: candidateIndex,
+                                          score: candidateScore,
+                                          isInStyle: inStyle[candidateIndex])
+                if best == nil || isBetter(selection, than: best!, index: index) {
+                    best = selection
+                }
+            }
+            return best
+        }
+
+        if let best = bestCandidate(restrictedToStyle: true) ??
+            (style != .bodyweight ? bestCandidate(restrictedToStyle: false) : nil) {
+            let exercise = index.exercises[best.candidateIndex]
+            return outputExercise(exercise, preferredSets: preferredSets,
+                                  repRange: input.trainingGoal.repRange,
+                                  score: best.score.total,
+                                  isInStyle: best.isInStyle,
+                                  muscleSpace: index.muscleSpace)
+        }
+
+        // A fully covered workout can still need one useful add-on. Keep the
+        // style boundary and omit every movement already in the workout.
+        let maintenancePool = index.exercises.indices.filter {
+            allowed($0, restrictedToStyle: true)
+        }
+        let fallbackPool = style == .bodyweight ? [] : index.exercises.indices.filter {
+            allowed($0, restrictedToStyle: false) && !inStyle[$0]
+        }
+        let maintenance = (maintenancePool + fallbackPool).sorted { lhs, rhs in
+            let left = index.exercises[lhs]
+            let right = index.exercises[rhs]
+            if left.candidate.mechanics != right.candidate.mechanics {
+                return left.candidate.mechanics == .compound
+            }
+            if left.elements.count != right.elements.count {
+                return left.elements.count > right.elements.count
+            }
+            let nameOrder = left.candidate.name.localizedCaseInsensitiveCompare(right.candidate.name)
+            return nameOrder == .orderedAscending ||
+                (nameOrder == .orderedSame && left.candidate.id < right.candidate.id)
+        }.first
+        guard let maintenance else { return nil }
+        return outputExercise(index.exercises[maintenance], preferredSets: preferredSets,
+                              repRange: input.trainingGoal.repRange,
+                              score: 0, isInStyle: inStyle[maintenance],
+                              muscleSpace: index.muscleSpace)
+    }
+
     private static func generateWithEngine(
         input: SuggestedWorkoutInput,
         context: SuggestedWorkoutEngineContext

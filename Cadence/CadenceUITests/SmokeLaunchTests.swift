@@ -269,6 +269,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exercise."))
         XCTAssertGreaterThan(editableExercises.count, 0,
                              "Suggested Bodyweight plan did not open in edit mode with exercises")
+        XCTAssertTrue(app.buttons["editor.suggestExercise"].waitForExistence(timeout: 5),
+                      "Suggested Workout Plan lost Suggest Exercise")
         let editableExerciseInfo = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exerciseInfo."))
         XCTAssertGreaterThan(editableExerciseInfo.count, 0,
@@ -373,6 +375,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Workout Plan Start Workout is a different height from Start Workout's actions")
         XCTAssertTrue(app.buttons["editor.addExercise"].waitForExistence(timeout: 5),
                       "Custom Workout did not open in edit mode")
+        XCTAssertTrue(app.buttons["editor.suggestExercise"].waitForExistence(timeout: 5),
+                      "Custom Workout Plan lost Suggest Exercise")
         // Field test 2026-08-18 #5: the plan editor is a Home-rhythm scroll surface.
         XCTAssertTrue(app.descendants(matching: .any)["editor.partners"].waitForExistence(timeout: 5),
                       "Workout Plan lost its Training partners card")
@@ -412,6 +416,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "Quick Start did not enter the workout")
         XCTAssertFalse(app.buttons["editor.showSettings"].exists,
                        "Quick Start unexpectedly opened workout settings")
+        XCTAssertTrue(app.buttons["session.suggestExercise"].waitForExistence(timeout: 5),
+                      "Active workout lost Suggest Exercise")
 
         // Field test 2026-08-18 §5b: the flow logs real sets with a partner, the
         // way the watch smoke test does. Without this every summary assertion

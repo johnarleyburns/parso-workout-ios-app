@@ -84,6 +84,45 @@ final class PersonalizedSuggestionTests: XCTestCase {
         XCTAssertEqual(Set(option.exercises.map(\.candidateID)), ["history"])
     }
 
+    func testSingleSuggestionReturnsOneMovementAndExcludesExistingAllocation() {
+        let press = SuggestedExerciseCandidate(
+            id: "press", name: "Bench Press", mechanics: .compound,
+            primaryMuscles: ["chest"])
+        let row = SuggestedExerciseCandidate(
+            id: "row", name: "Barbell Row", mechanics: .compound,
+            primaryMuscles: ["lats"])
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: [:], candidates: [press, row],
+            trackedGroups: [.chest, .lats], preferredSetsPerExercise: 3,
+            trainingGoal: .hypertrophy)
+
+        let suggestion = SuggestedWorkoutGenerator.suggestSingleExercise(
+            input: input, style: .fitness,
+            alreadyAllocatedByMuscle: ["chest": 4],
+            excludingCandidateIDs: ["press"])
+
+        XCTAssertEqual(suggestion?.candidateID, "row")
+        XCTAssertEqual(suggestion?.plannedSets, 3)
+    }
+
+    func testSingleSuggestionKeepsFitnessFreeOfOlympicMovements() {
+        let clean = SuggestedExerciseCandidate(
+            id: "clean", name: "Clean and Press", mechanics: .compound,
+            primaryMuscles: ["quads"], trainingTypes: [.olympicWeightlifting])
+        let squat = SuggestedExerciseCandidate(
+            id: "squat", name: "Back Squat", mechanics: .compound,
+            primaryMuscles: ["quads"], trainingTypes: [.strength])
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: [:], candidates: [clean, squat],
+            trackedGroups: [.quadriceps], preferredSetsPerExercise: 3,
+            trainingGoal: .hypertrophy)
+
+        let suggestion = SuggestedWorkoutGenerator.suggestSingleExercise(
+            input: input, style: .fitness)
+
+        XCTAssertEqual(suggestion?.candidateID, "squat")
+    }
+
     func testHistoryIndexBackfillsAllExistingWorkoutsAndStableAliases() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let exercise = try WorkoutRepository.findOrCreateExercise(

@@ -4,6 +4,14 @@ import CadenceCore
 import CadenceFeatures
 
 extension SessionView {
+    var exerciseRemovalPresented: Binding<Bool> {
+        Binding(
+            get: { exerciseToRemove != nil },
+            set: { isPresented in
+                if !isPresented { exerciseToRemove = nil }
+            })
+    }
+
     func isBodyweight(_ exercise: Exercise) -> Bool {
         SessionViewModel.isBodyweight(exercise)
     }

@@ -72,9 +72,14 @@ struct SessionView: View {
     /// Set after a save; consumed once the render cache contains the exercise's
     /// card, which may only appear on the rebuild that the save triggered.
     @State var pendingScrollExerciseID: UUID?
+    @State var suggestExerciseRequest: SuggestedExerciseRequest?
+    @State var suggestExerciseFailed = false
     @Query(sort: \WorkoutSession.date, order: .reverse) var allWorkoutSessions: [WorkoutSession]
     var refreshSignature: SessionRenderModel.Signature {
         SessionRenderModel.signature(session: session, prRule: settings.prRule, formula: settings.formula)
+    }
+    var isActiveSession: Bool {
+        active.strengthSession?.id == session.id
     }
     var rosterEntries: [RosterEntry] {
         roster.map { person in

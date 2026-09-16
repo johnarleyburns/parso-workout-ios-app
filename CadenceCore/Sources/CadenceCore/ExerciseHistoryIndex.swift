@@ -165,8 +165,6 @@ public enum ExerciseHistoryIndexStore {
                                        excludingSessionIDs: Set<UUID> = []) -> String {
         struct SetStamp: Codable {
             let id: String
-            let updatedAt: TimeInterval
-            let completedAt: TimeInterval
             let reps: Int
             let isWarmup: Bool
             let isOwner: Bool
@@ -174,10 +172,8 @@ public enum ExerciseHistoryIndexStore {
         }
         struct SessionStamp: Codable {
             let id: String
-            let updatedAt: TimeInterval
-            let date: TimeInterval
-            let endedAt: TimeInterval?
-            let deletedAt: TimeInterval?
+            let isEnded: Bool
+            let isDeleted: Bool
             let isLogged: Bool
             let sets: [SetStamp]
         }
@@ -187,16 +183,12 @@ public enum ExerciseHistoryIndexStore {
             .map { session in
                 SessionStamp(
                     id: session.id.uuidString,
-                    updatedAt: session.updatedAt.timeIntervalSinceReferenceDate,
-                    date: session.date.timeIntervalSinceReferenceDate,
-                    endedAt: session.endedAt?.timeIntervalSinceReferenceDate,
-                    deletedAt: session.deletedAt?.timeIntervalSinceReferenceDate,
+                    isEnded: session.endedAt != nil,
+                    isDeleted: session.deletedAt != nil,
                     isLogged: session.isLogged,
                     sets: session.orderedSets.map { set in
                         SetStamp(
                             id: set.id.uuidString,
-                            updatedAt: set.updatedAt.timeIntervalSinceReferenceDate,
-                            completedAt: set.completedAt.timeIntervalSinceReferenceDate,
                             reps: set.reps,
                             isWarmup: set.isWarmup,
                             isOwner: set.isOwnerSet,

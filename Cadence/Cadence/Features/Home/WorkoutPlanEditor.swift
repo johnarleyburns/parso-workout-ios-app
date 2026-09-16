@@ -42,10 +42,9 @@ struct WorkoutPlanEditor: View {
     var onExcludeAndRegenerate: ((String) async -> EditablePlan?)? = nil
 
     @Environment(AppSettings.self) private var settings
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.modelContext) var modelContext
     @Query(sort: \Person.name) private var allPeople: [Person]
     @Query(sort: \Exercise.name) private var allExercises: [Exercise]
-    @Query(sort: \WorkoutSession.date, order: .reverse) private var allWorkoutSessions: [WorkoutSession]
     @State private var exercisePickerIntent: ExercisePickerIntent?
 
     @State private var restSeconds: Int
@@ -57,16 +56,16 @@ struct WorkoutPlanEditor: View {
     @State private var useHR: Bool
     @State private var isEditing = false
     @State private var originalPlan: EditablePlan
-    @State private var settingsPresented = false
+    @State var settingsPresented = false
     @State private var historyIndex: WorkoutPlanPartnerHistory.Index?
     @State private var didResolvePartnerPlans = false
-    @State private var exerciseIndex: [String: Exercise] = [:]
+    @State var exerciseIndex: [String: Exercise] = [:]
     @State private var exclusionExercise: Exercise?
     @State private var isRegeneratingAfterExclusion = false
     @State private var regenerationFailed = false
-    @State private var planVolumeState = LiveWorkoutVolumeState()
+    @State var planVolumeState = LiveWorkoutVolumeState()
+    @State var planVolumeWeekly: [MuscleGroup: Double] = [:]
     @State private var planVolumeExpanded = false
-    @State private var planVolumeRevision = UUID()
     let allowsStart: Bool
 
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
@@ -146,9 +145,14 @@ struct WorkoutPlanEditor: View {
                 didResolvePartnerPlans = true
             }
             refreshPlanVolume()
+            refreshPlanWeeklyVolume()
         }
         .onChange(of: plan) { _, _ in refreshPlanVolume() }
-        .onChange(of: allWorkoutSessions.count) { _, _ in refreshPlanVolume() }
+        .onChange(of: allExercises.count) { _, _ in
+            exerciseIndex = Dictionary(allExercises.map { ($0.name.lowercased(), $0) },
+                                       uniquingKeysWith: { first, _ in first })
+            refreshPlanVolume()
+        }
         .navigationTitle("Workout Plan")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -234,48 +238,6 @@ struct WorkoutPlanEditor: View {
         }
     }
 
-    /// Builds the plan preview from the same volume ledger used by an active
-    /// workout. The SwiftData objects are reduced to Sendable snapshots before
-    /// the aggregation leaves the main actor, so changing a plan never blocks
-    /// the editor while the user's weekly history is scanned.
-    private func refreshPlanVolume() {
-        let revision = UUID()
-        planVolumeRevision = revision
-        let weeklySets = allWorkoutSessions
-            .filter { $0.deletedAt == nil && $0.countsAsStrengthHistory }
-            .flatMap(LiveWorkoutVolumeCalculator.sets(from:))
-        let weekStart = LiveWorkoutVolumeCalculator.weekStart()
-        let prescriptions = plan.exercises.map { exercise in
-            PlannedExercisePrescription(
-                exerciseName: exercise.name,
-                sets: exercise.sets.map { PlannedSetPrescription(targetReps: $0.targetReps,
-                                                                  targetWeightKg: $0.targetWeight) })
-        }
-        let credits = planVolumeCreditsByName()
-        Task.detached(priority: .userInitiated) {
-            let weekly = LiveWorkoutVolumeCalculator.totals(weeklySets, since: weekStart)
-            let planned = LiveWorkoutVolumeCalculator.plannedTotals(
-                prescriptions, creditsByName: credits)
-            let next = LiveWorkoutVolumeState(current: planned, weekly: weekly, planned: [:])
-            await MainActor.run {
-                guard planVolumeRevision == revision else { return }
-                planVolumeState = next
-            }
-        }
-    }
-
-    private func planVolumeCreditsByName() -> [String: [MuscleGroup: Double]] {
-        var result: [String: [MuscleGroup: Double]] = [:]
-        for exercise in allExercises {
-            result[exercise.name.lowercased()] = exercise.volumeCredits
-        }
-        for exercise in plan.exercises where result[exercise.name.lowercased()] == nil {
-            result[exercise.name.lowercased()] =
-                ExerciseLibrary.template(matching: exercise.name)?.volumeCredits ?? [:]
-        }
-        return result
-    }
-
     /// Regenerates the whole suggested plan from scratch now that `exercise`
     /// is excluded — never a patch that just deletes the row and leaves
     /// whatever gap that opens unaddressed. No-op (and never shown) at any
@@ -298,13 +260,6 @@ struct WorkoutPlanEditor: View {
         }
     }
 
-    private var startButton: some View {
-        CadenceActionButton(title: "Start Workout", systemImage: "play.fill") {
-            saveAndStart()
-        }
-        .accessibilityIdentifier("editor.start")
-    }
-
     private var addExerciseButton: some View {
         CadenceActionButton(title: "Add Exercise",
                             systemImage: "plus.circle.fill",
@@ -312,15 +267,6 @@ struct WorkoutPlanEditor: View {
             exercisePickerIntent = .add
         }
         .accessibilityIdentifier("editor.addExercise")
-    }
-
-    private var settingsButton: some View {
-        CadenceActionButton(title: "Show workout settings\u{2026}",
-                            systemImage: "gearshape",
-                            emphasis: .secondary) {
-            settingsPresented = true
-        }
-        .accessibilityIdentifier("editor.showSettings")
     }
 
     private func loadSettings() {
@@ -334,7 +280,7 @@ struct WorkoutPlanEditor: View {
         useHR = ws.useHRMonitoring
     }
 
-    private func saveAndStart() {
+    func saveAndStart() {
         // Starting from edit mode (every suggested-workout plan opens this
         // way) must commit whatever the user changed first — the same thing
         // the explicit Save button does — rather than silently discarding

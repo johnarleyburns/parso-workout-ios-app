@@ -195,8 +195,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // than making the smoke test fail under host contention.
         XCTAssertTrue(app.descendants(matching: .any)["suggestedWorkout.ready"].waitForExistence(timeout: 45),
                       "Suggested workouts did not become ready")
-        XCTAssertTrue(app.descendants(matching: .any)["suggestedWorkout.readyToast"].waitForExistence(timeout: 3),
-                      "Suggested-workout readiness did not notify the user")
+        XCTAssertFalse(app.descendants(matching: .any)["suggestedWorkout.calculating"].exists,
+                       "Suggested-workout spinner remained visible after generation completed")
         XCTAssertTrue(app.navigationBars["View Suggested Workout"].exists,
                       "Suggested-workout chooser has the wrong title")
         let suggestionNavigationBar = app.navigationBars["View Suggested Workout"].firstMatch

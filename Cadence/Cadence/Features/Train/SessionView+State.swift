@@ -204,7 +204,7 @@ extension SessionView {
                 let sets = WorkoutRepository.lastTimeSets(for: exercise, performedBy: person, excluding: session)
                 guard !sets.isEmpty else { return nil }
                 let label = performerID == nil ? "Me" : (person?.name ?? "Partner")
-                return "(label): " + sets.map { SessionRenderModel.setLineText(
+                return "\(label): " + sets.map { SessionRenderModel.setLineText(
                     SessionRenderModel.SetDisplay(setID: $0.id, weight: $0.weight, reps: $0.reps,
                                                   rpe: $0.rpe, isWarmup: $0.isWarmup,
                                                   usesBodyweight: $0.usesBodyweight,

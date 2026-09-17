@@ -172,7 +172,10 @@ public enum ExerciseHistoryIndexStore {
         }
         struct SessionStamp: Codable {
             let id: String
-            let updatedAt: Date
+            // SwiftData can normalize Date precision when a model is saved.
+            // Hash a stable millisecond value so an unchanged session does not
+            // look dirty only on a different runtime (notably CI).
+            let updatedAtMilliseconds: Int64
             let isEnded: Bool
             let isDeleted: Bool
             let isLogged: Bool
@@ -184,7 +187,8 @@ public enum ExerciseHistoryIndexStore {
             .map { session in
                 SessionStamp(
                     id: session.id.uuidString,
-                    updatedAt: session.updatedAt,
+                    updatedAtMilliseconds: Int64(
+                        (session.updatedAt.timeIntervalSince1970 * 1_000).rounded()),
                     isEnded: session.endedAt != nil,
                     isDeleted: session.deletedAt != nil,
                     isLogged: session.isLogged,

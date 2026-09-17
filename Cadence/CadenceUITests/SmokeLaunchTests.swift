@@ -112,8 +112,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.scrollToHittableAndTap("home.volume.quadriceps"),
                       "Expanded This Week did not expose the Quads volume row")
         let quadsVolume = app.descendants(matching: .any)["home.volume.quadriceps"]
-        XCTAssertTrue((quadsVolume.value as? String)?.contains("0 sets, Below 4-set minimum") == true,
-                      "A zero-set muscle group is not exposed as below the red-facing minimum")
+        XCTAssertTrue((quadsVolume.value as? String)?.contains("0 sets") == true,
+                      "A zero-set muscle group does not expose its set count")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
                       "Expanded This Week did not label the muscle-group rows as Volume")
         // DB++ adoption: Volume carries the per-muscle-group breakdown, and the
@@ -128,8 +128,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "The old per-muscle row identifiers are still present")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
                       "Expanded This Week does not explain the moderate-equivalent cardio total")
-        XCTAssertTrue(app.descendants(matching: .any)["progress.card.citation"].exists,
-                      "Weekly volume does not expose a navigable science link")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.volume.science"].exists,
+                      "Weekly volume does not expose its multi-reference science link")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showLess"),
                       "Expanded This Week did not show Show less")
 

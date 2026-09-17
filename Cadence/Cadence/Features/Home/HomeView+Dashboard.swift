@@ -32,7 +32,6 @@ extension HomeView {
 
                     if let s = resumeSession { resumeCard(s) }
                     homeActionRow
-                    readinessCard
                     HomeWorkoutsTodaySection(
                         rows: workoutsTodayRows,
                         onOpenCompleted: openTodayWorkout,
@@ -49,28 +48,20 @@ extension HomeView {
                         suggestions: dashboard.suggestions,
                         illustration: coachIllustration,
                         expanded: $suggestionsExpanded)
+                    readinessCard
                 }
                 .padding()
             }
             .background { CadenceGlassBackdrop(tint: .green) }
-            .navigationTitle("")
+            .navigationTitle("Today")
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 8) {
-                        Text("Today").font(.headline)
-                        Spacer(minLength: 8)
-                        if contributions.store.isSupporter {
-                            Label("Supporter", systemImage: "heart.fill")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.pink)
-                                .accessibilityIdentifier("home.supporterBadge")
-                        }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if contributions.store.isSupporter {
+                        Label("Supporter", systemImage: "heart.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.pink)
+                            .accessibilityIdentifier("home.supporterBadge")
                     }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier("home.todayTitleLine")
-                }
-                ToolbarItem(placement: .topBarTrailing) {
                     Button { Haptics.selection(); path.append(HomeRoute.settings) } label: {
                         Image(systemName: "gearshape")
                             .imageScale(.large)

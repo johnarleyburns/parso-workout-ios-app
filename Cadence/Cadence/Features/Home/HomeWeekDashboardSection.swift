@@ -93,16 +93,9 @@ struct HomeWeekDashboardSection: View {
             ForEach(dashboard.volume) { row in
                 volumeRow(row)
             }
-            if let citation = CitationRegistry.citation(forId: CitationRegistry.iversenTimeEfficient2021.id) {
-                CitationLink(citation: citation,
-                             context: "Weekly set volume is shown on a shared 4-to-12-set scale for each muscle group.",
-                             compact: true)
-            }
-            if let citation = CitationRegistry.citation(forId: VolumeCredit.citationID) {
-                CitationLink(citation: citation,
-                             context: "A set counts once for a muscle the movement trains directly and half for one it trains indirectly. A muscle that only stabilises does not count.",
-                             compact: true)
-            }
+            CoachSourcesLink(
+                citationIds: CitationRegistry.strengthVolumePool.citationIds,
+                identifier: "home.week.volume.science")
             Divider()
             HStack {
                 Text("Total Volume").font(.subheadline.weight(.semibold))
@@ -148,9 +141,6 @@ struct HomeWeekDashboardSection: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("home.week.cardio.total")
-            Text(dashboard.cardioDetail.explanation)
-                .font(.caption2).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             if let citation = CitationRegistry.citation(forId: dashboard.cardioDetail.citationID) {
                 CitationLink(citation: citation, context: dashboard.cardioDetail.explanation, compact: true)
             }

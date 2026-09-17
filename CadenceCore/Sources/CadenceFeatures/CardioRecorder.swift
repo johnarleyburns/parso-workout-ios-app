@@ -16,6 +16,9 @@ public final class CardioRecorder {
     public let maxHR: Double
 
     public private(set) var type: CardioType = .run
+    /// GPS is a per-session choice: a distance-capable activity can be
+    /// recorded indoors without starting location services.
+    public private(set) var usesGPS = false
     public private(set) var isRecording = false
     public private(set) var isPaused = false
     public private(set) var elapsed: Int = 0
@@ -30,14 +33,15 @@ public final class CardioRecorder {
 
     // MARK: Control
 
-    public func start(type: CardioType) {
+    public func start(type: CardioType, usesGPS: Bool? = nil) {
         self.type = type
+        self.usesGPS = usesGPS ?? type.usesGPS
         elapsed = 0
         hrSamples = []
         startDate = Date()
         isRecording = true
         isPaused = false
-        if type.usesGPS { location.start() }
+        if self.usesGPS { location.start() }
     }
 
     public func tick() {
@@ -59,20 +63,20 @@ public final class CardioRecorder {
     /// Ends recording and returns a summary ready to persist (FR-2.5).
     public func end() -> CardioWorkoutSummary {
         isRecording = false
-        if type.usesGPS { location.stop() }
+        if usesGPS { location.stop() }
         let summary = CardioWorkoutSummary(
             id: UUID(), type: type, start: startDate, end: Date(),
-            distanceMeters: type.usesGPS ? location.distanceMeters : nil,
+            distanceMeters: usesGPS ? location.distanceMeters : nil,
             activeEnergyKcal: calories,
             hrSamples: hrSamples,
-            route: type.usesGPS ? location.fixes : [])
+            route: usesGPS ? location.fixes : [])
         return summary
     }
 
     // MARK: Derived metrics
 
     public var currentBPM: Double? { hrm.currentBPM }
-    public var distanceMeters: Double { type.usesGPS ? location.distanceMeters : 0 }
+    public var distanceMeters: Double { usesGPS ? location.distanceMeters : 0 }
     public var pace: Double? { CardioMath.paceSecPerKm(distanceMeters: distanceMeters, seconds: TimeInterval(elapsed)) }
     public var avgHR: Double? {
         let v = hrSamples.map(\.bpm).filter { $0 > 0 }

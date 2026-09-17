@@ -160,7 +160,11 @@ extension HomeView {
                         startOtherCardio(description: description, gps: gps)
                     })
             }
-            .sheet(item: $cardioType, onDismiss: releaseCardioWorkout) { RecordCardioView(initialType: $0, customTitle: otherCardioTitle, captureHR: captureHR, onSaved: { _ in workoutSaved(); releaseCardioWorkout() }) }
+            .sheet(item: $cardioType, onDismiss: releaseCardioWorkout) {
+                RecordCardioView(initialType: $0, tracksGPS: cardioTracksGPS,
+                                 customTitle: otherCardioTitle, captureHR: captureHR,
+                                 onSaved: { _ in workoutSaved(); releaseCardioWorkout() })
+            }
             .fullScreenCover(item: $outdoorType, onDismiss: releaseCardioWorkout) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR, onSaved: { _ in workoutSaved(); releaseCardioWorkout() }) }
             .sheet(item: $timerCardioSetup, onDismiss: releaseCardioWorkout) { setup in
                 TimerCardioSetupView(type: setup.type, suggestedMinutes: setup.suggestedMinutes,
@@ -260,10 +264,11 @@ extension HomeView {
             }
             // Optional distance goal before a run/walk/cycle (batch 8).
             .sheet(item: $cardioGoalFor) { type in
-                CardioGoalSheet(type: type) { goal in
+                CardioGoalSheet(type: type) { goal, indoors in
                     outdoorGoalMeters = goal
                     cardioGoalFor = nil
-                    begin(.outdoor(type))
+                    cardioTracksGPS = indoors ? false : nil
+                    begin(indoors ? .timer(type) : .outdoor(type))
                 }
             }
             .sheet(item: $intervalType) { wType in

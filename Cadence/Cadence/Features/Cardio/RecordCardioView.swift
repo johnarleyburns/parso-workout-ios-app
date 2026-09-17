@@ -10,6 +10,9 @@ struct RecordCardioView: View {
     /// When set (from the Start Workout picker, field-testing §02), recording
     /// begins immediately for this type after the HR gate.
     var initialType: CardioType? = nil
+    /// Overrides the activity's default GPS behavior for an explicit indoor
+    /// session. Nil preserves the standalone recorder picker behavior.
+    var tracksGPS: Bool? = nil
     var customTitle: String? = nil
     var captureHR = false
     /// Notifies the presenter (Home) the instant a workout is persisted, so its
@@ -59,7 +62,7 @@ struct RecordCardioView: View {
 
     private func startRecorder(_ type: CardioType) {
         let r = CardioRecorder(location: model.location, hrm: model.hrm)
-        r.start(type: type)
+        r.start(type: type, usesGPS: tracksGPS)
         recorder = r
         started = true
         WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
@@ -101,7 +104,7 @@ struct RecordCardioView: View {
                 .monospacedDigit()
                 .accessibilityIdentifier("record.elapsed")
 
-            if recorder.type.usesGPS {
+            if recorder.usesGPS {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                     metric("Distance", Format.distance(recorder.distanceMeters), id: "record.distance")
                     metric("Pace", CardioMath.formatPace(secPerKm: recorder.pace), id: "record.pace")

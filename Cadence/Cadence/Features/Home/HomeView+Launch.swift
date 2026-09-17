@@ -52,6 +52,7 @@ extension HomeView {
     /// route to the GPS recorder or the indoor timer per the user's GPS toggle.
     func startOtherCardio(description: String, gps: Bool) {
         outdoorGoalMeters = nil   // Other Cardio carries no distance goal.
+        cardioTracksGPS = nil
         let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
         otherCardioTitle = trimmed.isEmpty ? nil : trimmed
         begin(gps ? .outdoor(.other) : .timer(.other))
@@ -168,6 +169,7 @@ extension HomeView {
 
     func releaseCardioWorkout() {
         guard active.strengthSession == nil else { return } // Every cardio dismiss here stops the watch session (2026-08-20 #5).
+        cardioTracksGPS = nil
         model.stopWatchWorkout(); if let lease = active.liveWorkout.lease { _ = active.liveWorkout.release(lease) }
     }
 

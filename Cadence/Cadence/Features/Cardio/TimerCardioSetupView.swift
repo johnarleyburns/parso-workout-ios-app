@@ -18,6 +18,7 @@ struct TimerCardioSetupView: View {
     @State private var started = false
     @State private var preWorkoutCountdown: Int
     @State private var useHR: Bool
+    @State private var indoors = true
 
     init(type: CardioType, suggestedMinutes: Int? = nil, onSaved: @escaping (CardioWorkout) -> Void = { _ in }) {
         self.type = type
@@ -30,7 +31,8 @@ struct TimerCardioSetupView: View {
 
     var body: some View {
         if started {
-            RecordCardioView(initialType: type, captureHR: settings.useHRMonitoring, onSaved: onSaved)
+            RecordCardioView(initialType: type, tracksGPS: type.usesGPS ? !indoors : nil,
+                             captureHR: settings.useHRMonitoring, onSaved: onSaved)
         } else {
             setupScreen
         }
@@ -62,11 +64,34 @@ struct TimerCardioSetupView: View {
                 Button {
                     saveAndStart()
                 } label: {
-                    Label("Start", systemImage: "play.fill")
+                    Label("Start \(type.displayName)", systemImage: "play.fill")
                         .font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 56)
                 }
                 .cadenceGlassButton(prominent: true, tint: .green)
                 .accessibilityIdentifier("timerCardio.start")
+
+                if type.usesGPS {
+                    Menu {
+                        Button("Indoors") { indoors = true }
+                            .accessibilityIdentifier("timerCardio.indoors")
+                        Button("Outdoors — use GPS") { indoors = false }
+                            .accessibilityIdentifier("timerCardio.outdoors")
+                    } label: {
+                        HStack {
+                            Label("Indoors/Outdoors", systemImage: indoors ? "house.fill" : "location.fill")
+                            Spacer()
+                            Text(indoors ? "Indoors" : "Outdoors")
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("timerCardio.indoorsOutdoors")
+                }
 
                 Spacer()
             }

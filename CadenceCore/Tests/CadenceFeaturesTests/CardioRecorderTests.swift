@@ -45,6 +45,23 @@ final class CardioRecorderTests: XCTestCase {
         XCTAssertFalse(loc.started)
     }
 
+    func testIndoorDistanceActivityDoesNotStartLocationOrSaveRoute() {
+        let loc = FakeLocation(); let hrm = FakeHRM()
+        loc.fixes = [LocationFix(t: 0, lat: 0, lon: 0), LocationFix(t: 10, lat: 0.001, lon: 0.001)]
+        let rec = CardioRecorder(location: loc, hrm: hrm)
+        rec.start(type: .run, usesGPS: false)
+
+        XCTAssertTrue(rec.isRecording)
+        XCTAssertFalse(rec.usesGPS)
+        XCTAssertFalse(loc.started)
+        XCTAssertEqual(rec.distanceMeters, 0)
+
+        let summary = rec.end()
+        XCTAssertFalse(loc.stopped)
+        XCTAssertNil(summary.distanceMeters)
+        XCTAssertTrue(summary.route.isEmpty)
+    }
+
     func testTickCapturesHeartRateSamples() {
         let loc = FakeLocation(); let hrm = FakeHRM()
         hrm.currentBPM = 150

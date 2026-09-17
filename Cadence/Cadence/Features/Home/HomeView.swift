@@ -26,6 +26,9 @@ struct HomeView: View {
     @State var selectWorkoutPresented = false
     @State var path = NavigationPath()
     @State var cardioType: CardioType?
+    /// Explicit indoor/outdoor choice for distance-capable cardio. nil keeps
+    /// the standalone recorder's legacy default for non-distance flows.
+    @State var cardioTracksGPS: Bool?
     @State var outdoorType: CardioType?
     @State var otherCardioTitle: String?
     @State var intervalType: WorkoutType?

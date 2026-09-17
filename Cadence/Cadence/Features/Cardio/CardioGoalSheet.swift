@@ -4,7 +4,7 @@ import CadenceFeatures
 
 struct CardioGoalSheet: View {
     let type: CardioType
-    let onStart: (_ goalMeters: Double?) -> Void
+    let onStart: (_ goalMeters: Double?, _ indoors: Bool) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
@@ -13,12 +13,14 @@ struct CardioGoalSheet: View {
     @State private var gpsHighAccuracy: Bool
     @State private var autoPause: Bool
     @State private var useHR: Bool
+    @State private var indoors = true
+    @State private var selectedGoalMeters: Double?
 
     private let presets: [(label: String, meters: Double)] = [
         ("5K", 5000), ("10K", 10000), ("Half Marathon", 21097), ("Marathon", 42195),
     ]
 
-    init(type: CardioType, onStart: @escaping (Double?) -> Void) {
+    init(type: CardioType, onStart: @escaping (Double?, Bool) -> Void) {
         self.type = type
         self.onStart = onStart
         let ws = WorkoutSettings.default
@@ -33,40 +35,68 @@ struct CardioGoalSheet: View {
             Form {
                 Section {
                     Button {
-                        saveAndStart(nil)
+                        saveAndStart()
                     } label: {
-                        Label("No goal — just start", systemImage: "play.fill")
+                        Label("Start \(type.displayName)", systemImage: "play.fill")
+                            .font(.headline)
                             .frame(maxWidth: .infinity)
                     }
                     .cadenceGlassButton(prominent: true, tint: .green)
                     .accessibilityIdentifier("goal.none")
                     .listRowBackground(Color.clear)
-                }
-                Section("Distance goal") {
-                    ForEach(presets, id: \.label) { preset in
-                        Button {
-                            saveAndStart(preset.meters)
-                        } label: {
-                            HStack {
-                                Text(preset.label)
-                                Spacer()
-                                Text(Format.distance(preset.meters)).foregroundStyle(.secondary)
-                            }
+
+                    Menu {
+                        Button("Indoors") { indoors = true }
+                            .accessibilityIdentifier("goal.indoors")
+                        Button("Outdoors — use GPS") { indoors = false }
+                            .accessibilityIdentifier("goal.outdoors")
+                    } label: {
+                        HStack {
+                            Label("Indoors/Outdoors", systemImage: indoors ? "house.fill" : "location.fill")
+                            Spacer()
+                            Text(indoors ? "Indoors" : "Outdoors")
+                                .foregroundStyle(.secondary)
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
                         }
-                        .accessibilityIdentifier("goal.preset.\(preset.label)")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                     }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("goal.indoorsOutdoors")
+                    .listRowBackground(Color.clear)
                 }
-                Section("Custom (km)") {
-                    HStack {
-                        TextField("e.g. 7.5", text: $customKm)
-                            .keyboardType(.decimalPad)
-                            .accessibilityIdentifier("goal.customKm")
-                        Button("Start") {
-                            let km = Double(customKm.replacingOccurrences(of: ",", with: "."))
-                            saveAndStart((km ?? 0) > 0 ? (km! * 1000) : nil)
+                if !indoors {
+                    Section("Distance goal") {
+                        ForEach(presets, id: \.label) { preset in
+                            Button {
+                                selectedGoalMeters = preset.meters
+                            } label: {
+                                HStack {
+                                    Text(preset.label)
+                                    Spacer()
+                                    if selectedGoalMeters == preset.meters {
+                                        Image(systemName: "checkmark").foregroundStyle(.tint)
+                                    }
+                                    Text(Format.distance(preset.meters)).foregroundStyle(.secondary)
+                                }
+                            }
+                            .accessibilityIdentifier("goal.preset.\(preset.label)")
                         }
-                        .disabled((Double(customKm.replacingOccurrences(of: ",", with: ".")) ?? 0) <= 0)
-                        .accessibilityIdentifier("goal.customStart")
+                    }
+                    Section("Custom (km)") {
+                        HStack {
+                            TextField("e.g. 7.5", text: $customKm)
+                                .keyboardType(.decimalPad)
+                                .accessibilityIdentifier("goal.customKm")
+                            Button("Use") {
+                                let km = Double(customKm.replacingOccurrences(of: ",", with: "."))
+                                selectedGoalMeters = (km ?? 0) > 0 ? (km! * 1000) : nil
+                            }
+                            .disabled((Double(customKm.replacingOccurrences(of: ",", with: ".")) ?? 0) <= 0)
+                            .accessibilityIdentifier("goal.customStart")
+                        }
                     }
                 }
                 Section {
@@ -74,13 +104,15 @@ struct CardioGoalSheet: View {
                             value: $preWorkoutCountdown, in: 0...60, step: 5)
                         .accessibilityIdentifier("goal.countdown")
                 }
-                Section {
-                    Toggle("High-accuracy GPS", isOn: $gpsHighAccuracy)
-                        .accessibilityIdentifier("goal.gpsHighAccuracy")
-                    Toggle("Auto-pause when stopped", isOn: $autoPause)
-                        .accessibilityIdentifier("goal.autoPause")
-                } header: {
-                    Text("GPS")
+                if !indoors {
+                    Section {
+                        Toggle("High-accuracy GPS", isOn: $gpsHighAccuracy)
+                            .accessibilityIdentifier("goal.gpsHighAccuracy")
+                        Toggle("Auto-pause when stopped", isOn: $autoPause)
+                            .accessibilityIdentifier("goal.autoPause")
+                    } header: {
+                        Text("GPS")
+                    }
                 }
                 Section {
                     Toggle("Use HR monitoring", isOn: $useHR)
@@ -108,7 +140,7 @@ struct CardioGoalSheet: View {
         useHR = ws.useHRMonitoring
     }
 
-    private func saveAndStart(_ goalMeters: Double?) {
+    private func saveAndStart() {
         let ws = WorkoutSettings(
             restSeconds: settings.lastCardioSettings.restSeconds,
             autoStartRest: settings.lastCardioSettings.autoStartRest,
@@ -132,6 +164,6 @@ struct CardioGoalSheet: View {
         settings.useHRMonitoring = useHR
 
         dismiss()
-        onStart(goalMeters)
+        onStart(indoors ? nil : selectedGoalMeters, indoors)
     }
 }

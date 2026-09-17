@@ -57,16 +57,31 @@ struct HomeView: View {
     @State var confirmCancelPrevious = false
     @State var readinessPresented = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
+    // Historical Home projections are cached separately from the coach
+    // snapshot. Recomputing SwiftData relationships from the render path made
+    // Home stutter whenever SwiftData published an unrelated change.
+    @State var cachedWorkoutsTodayRows: [WorkoutsTodayPresenter.Row] = []
+    @State var cachedWeekStrengthEntries: [TodayActivityPresenter.Entry] = []
+    @State var cachedWeekCardioEntries: [TodayActivityPresenter.Entry] = []
+    @State var cachedWeeklyVolumeKg = 0.0
+    @State var cachedDashboard: HomeDashboardState?
     var dashboard: HomeDashboardState {
+        if let cachedDashboard { return cachedDashboard }
+        return makeDashboard()
+    }
+    func makeDashboard() -> HomeDashboardState {
         let snapshot = CoachSnapshot(facts: coachSnapshot.facts, coachFacts: coachSnapshot.coachFacts,
                                      insights: coachSnapshot.insights, recommendation: coachSnapshot.recommendation,
                                      decision: coachSnapshot.decision, plan: coachSnapshot.plan,
                                      behindPlan: coachSnapshot.behindPlan, addOn: coachSnapshot.addOn,
                                      readiness: coachSnapshot.readiness, optimizedPlan: coachSnapshot.optimizedPlan,
                                      engineObservation: coachSnapshot.engineObservation)
-        return HomeDashboardPresenter.make(snapshot: snapshot, schedule: settings.coachSchedulePreferences,
-                                    goal: settings.trainingGoal, experience: settings.experienceLevel,
-                                    userAge: settings.userAge, liveVolumeDelta: liveVolumeDelta)
+        return HomeDashboardPresenter.make(snapshot: snapshot,
+                                           schedule: settings.coachSchedulePreferences,
+                                           goal: settings.trainingGoal,
+                                           experience: settings.experienceLevel,
+                                           userAge: settings.userAge,
+                                           liveVolumeDelta: liveVolumeDelta)
     }
     var coachFacts: TrainingFacts { coachSnapshot.facts }
     var coachInsights: [Insight] { coachSnapshot.insights }
@@ -167,6 +182,7 @@ struct HomeView: View {
         defer { model.coachRefreshInProgress = false }
         coachSnapshot = await buildCoachSnapshot()
         liveVolumeDelta = [:]
+        cachedDashboard = makeDashboard()
     }
     func handleInsightAction(_ action: Insight.Action) {
         switch action {
@@ -241,13 +257,17 @@ struct HomeView: View {
 
     var todayStrength: (hasStrength: Bool, exerciseNames: [String]) { TodayLogHelper.completedStrength(sessions: sessions) }
     var weeklyVolumeKg: Double {
-        WeeklyStats.volumeKg(
-            sessions.filter { $0.deletedAt == nil },
-            since: WeeklyStats.weekStart())
+        cachedWeeklyVolumeKg
     }
 }
 
 struct HomeCoachTaskIdentity: Equatable {
     let signature: HomeCoachModel.Signature
     let isRestoringCloudKitHistory: Bool
+}
+
+struct HomeActivityTaskIdentity: Equatable {
+    let historyRefreshToken: UUID
+    let sessionCount: Int
+    let cardioCount: Int
 }

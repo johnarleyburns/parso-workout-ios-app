@@ -31,6 +31,11 @@ struct PlanningView: View {
     @State var exerciseSearchIndex = ExerciseSearchIndex<Exercise>([])
     @State var exerciseSearchIndexedCount = -1
     @State var exerciseSearchIndexedRevision: Date = .distantPast
+    /// Decoding persisted plan JSON is much more expensive than rendering the
+    /// Plan tab. Keep it out of every tab-transition/body evaluation.
+    @State var cachedAuthoredPlans: [Plan] = []
+    @State var authoredPlansCachedCount = -1
+    @State var authoredPlansCachedRevision: Date = .distantPast
 
     enum Segment: String, CaseIterable { case routines, exercises }
     @State var routineInfoSheet: RoutineInfo?
@@ -59,8 +64,13 @@ struct PlanningView: View {
             selectedGroup = nil
             browseAll = false
         }
-        .onAppear { rebuildExerciseSearchIndexIfNeeded() }
+        .onAppear {
+            rebuildExerciseSearchIndexIfNeeded()
+            rebuildAuthoredPlansIfNeeded()
+        }
         .onChange(of: exerciseCatalogRevision) { _, _ in rebuildExerciseSearchIndexIfNeeded() }
+        .onChange(of: persistedPlans.count) { _, _ in rebuildAuthoredPlansIfNeeded() }
+        .onChange(of: persistedPlans.first?.updatedAt) { _, _ in rebuildAuthoredPlansIfNeeded() }
         .sheet(isPresented: $templateEditorPresented) { TemplateEditorView() }
         .sheet(isPresented: $boundedRequestPresented) {
             BoundedPlanningRequestView { plan in

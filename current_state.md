@@ -58,7 +58,7 @@ Minimum/Medium/Maximal plans for 4/8/12 weekly sets. The
 chooser renders a real calculating state, handles recoverable fetch failures,
 reports unresolved gaps and 20/30/40-set cap trims, provides an About sheet with
 pseudocode and both evidence links (`iversenTimeEfficient2021` and
-`pellandFractionalSets2024`), and routes a selected plan through the existing
+`pellandDoseResponse2026`), and routes a selected plan through the existing
 Workout Plan editor/start path.
 
 The shared generator reuses one sparse inverted vector index for all three tiers.

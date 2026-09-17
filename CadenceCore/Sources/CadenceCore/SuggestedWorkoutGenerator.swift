@@ -2,8 +2,8 @@ import Foundation
 
 public let suggestedWorkoutCitationIDs = [
     "iversenTimeEfficient2021",
-    "pellandFractionalSets2024",
-    // The direct/indirect credit split is stated in the About sheet, so it cites.
+    // The final peer-reviewed Pelland paper covers both dose-response and
+    // fractional direct/indirect-set accounting.
     "pellandDoseResponse2026",
 ]
 
@@ -110,7 +110,8 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Equatable, Sendable {
         }
     }
 
-    public var planName: String { "\(displayName) Plan" }
+    /// These are user-facing workout titles, not saved program/plan names.
+    public var planName: String { "\(displayName) Workout" }
 
     public var subtitle: String {
         switch self {

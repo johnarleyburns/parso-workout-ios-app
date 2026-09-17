@@ -610,8 +610,8 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         let bundle = generate(completed: [:], candidates: candidates, sets: 4, goal: .endurance)
 
         XCTAssertEqual(bundle.options.map { $0.plan.name },
-                       ["Personalized Plan", "Fitness Plan", "Bodyweight Plan", "Powerlifting Plan",
-                        "Olympic Weightlifting Plan", "Strongman Plan"])
+                       ["Personalized Workout", "Fitness Workout", "Bodyweight Workout", "Powerlifting Workout",
+                        "Olympic Weightlifting Workout", "Strongman Workout"])
         for option in bundle.options where option.style != .personalized {
             XCTAssertEqual(option.plan.id, "coach-suggested-\(option.style.rawValue)")
             XCTAssertEqual(option.plan.source, .coachSuggested)
@@ -627,8 +627,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
             }
         }
         XCTAssertEqual(suggestedWorkoutCitationIDs,
-                       ["iversenTimeEfficient2021", "pellandFractionalSets2024",
-                        "pellandDoseResponse2026"])
+                       ["iversenTimeEfficient2021", "pellandDoseResponse2026"])
     }
 
     // MARK: - The real catalog

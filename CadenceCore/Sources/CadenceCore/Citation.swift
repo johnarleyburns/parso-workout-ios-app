@@ -259,19 +259,8 @@ public enum CitationRegistry {
         authors: "Pelland, Remmert, Robinson, Hinson & Zourdos",
         year: 2026,
         title: "The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains",
-        source: "Sports Medicine",
+        source: "Sports Medicine 56(2):481–505",
         url: "https://doi.org/10.1007/s40279-025-02344-w"
-    )
-
-    /// Preprint meta-regression used for the Home accounting explanation: a
-    /// primary set contributes 1.0 and an indirect set contributes 0.5.
-    public static let pellandFractionalSets2024 = Citation(
-        id: "pellandFractionalSets2024",
-        authors: "Pelland, Remmert, Robinson, Hinson & Zourdos",
-        year: 2024,
-        title: "The Resistance Training Dose-Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gain",
-        source: "SportRxiv",
-        url: "https://sportrxiv.org/index.php/server/preprint/view/460/967"
     )
 
     public static let ramosCampoSplit2024 = Citation(
@@ -663,7 +652,7 @@ public enum CitationRegistry {
         krieger2010, rheaPeriodization, calatayudBodyweight, channellOlympic,
         zourdosDUP, amirthalingamGVT, williamsLinearPeriodization, tufanoCluster,
         ekelundActivityMortality2016,
-        pellandDoseResponse2026, pellandFractionalSets2024, ramosCampoSplit2024, parejaBlancoRecovery2020,
+        pellandDoseResponse2026, ramosCampoSplit2024, parejaBlancoRecovery2020,
         sawMonitoring2016, meeusenOvertraining2013, schumannConcurrent2022,
         crowleyVO2Intensity2022, poonHIIT2024,
         mooreLeisureActivity2012, aremDoseResponse2015, saintMauriceSteps2020,
@@ -713,8 +702,7 @@ public enum CitationRegistry {
         "williamsLinearPeriodization": "Linear periodization effectiveness — backs linear programs (5/3/1) and periodization claims.",
         "tufanoCluster": "Cluster set training — backs the cluster-set program routine.",
         "ekelundActivityMortality2016": "Physical activity attenuates sitting-time mortality risk — backs aerobic-base recommendations and the 150-min floor.",
-        "pellandDoseResponse2026": "Resistance training dose-response meta-regression — backs volume personalization and over-MRV trim warnings.",
-        "pellandFractionalSets2024": "Resistance-training dose-response preprint — backs the fractional weekly-set model where primary sets count 1.0 and indirect sets count 0.5.",
+        "pellandDoseResponse2026": "Resistance-training dose-response meta-regression — backs volume personalization, diminishing-return warnings, and the fractional weekly-set model where primary sets count 1.0 and indirect sets count 0.5.",
         "ramosCampoSplit2024": "Full-body vs split routine effects on strength and hypertrophy — backs session-structure choices in the weekly plan.",
         "parejaBlancoRecovery2020": "48-hour same-lift recovery window after training to failure — backs the session eligibility deferral gates.",
         "sawMonitoring2016": "Self-reported measures trump objective monitoring — backs the readiness check-in system, recovery recommendations, and the passive-readiness FUSION rule (self-report wins wherever present; passive signals only fill the gap).",
@@ -840,7 +828,6 @@ public enum CitationRegistry {
         "volumeDoseResponse",
         "iversenTimeEfficient2021",
         "pellandDoseResponse2026",
-        "pellandFractionalSets2024",
     ])
 
     public static let strengthIntensityPool = CitationPool(id: "strengthIntensity", citationIds: [

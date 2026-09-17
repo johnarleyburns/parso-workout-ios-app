@@ -21,13 +21,11 @@ struct HomeWeekDashboardSection: View {
                         tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow)
             progressRow(id: "home.week.cardio", title: "Cardio", value: dashboard.cardio.displayText,
                         progress: dashboard.cardio.normalized,
-                        tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
-                        caption: dashboard.cardioDetail.summary)
+                        tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow)
             progressRow(id: "home.week.volume", title: "Volume",
                         value: dashboard.volumeCoverage.displayText,
                         progress: dashboard.volumeCoverage.normalized,
-                        tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
-                        caption: weeklySetCaption)
+                        tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)))
 
             if volumeExpanded {
                 expandedWeek

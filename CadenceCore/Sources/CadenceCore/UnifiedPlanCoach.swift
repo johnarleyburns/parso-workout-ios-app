@@ -315,7 +315,7 @@ public enum UnifiedPlanCoachEngine {
                 score: $0.score,
                 preserves: "Direct stimulus overlaps \(direct) (\(overlap)% direct overlap).",
                 tradeoff: $0.candidate.equipment.map { "Equipment: \($0.displayName)" },
-                citationIDs: ["schoenfeld2021", "pellandFractionalSets2024"],
+                citationIDs: ["schoenfeld2021", "pellandDoseResponse2026"],
                 confidence: $0.directOverlap >= 0.5 ? .moderate : .limited)
         }
     }
@@ -437,7 +437,7 @@ public enum UnifiedPlanCoachEngine {
                     title: "\(group.displayName) is lightly planned",
                     message: "The plan provides \(Format.sets(planned)) sets against a \(Format.sets(bands.mev)) starting minimum.",
                     detail: "This is a planning signal, not a diagnosis. Add volume only if recovery and the user's goal support it.",
-                    citationIDs: ["pellandDoseResponse2026", "pellandFractionalSets2024"],
+                    citationIDs: ["pellandDoseResponse2026"],
                     confidence: .moderate))
             } else if planned >= bands.mrv {
                 output.append(UnifiedPlanCoachInsight(
@@ -522,7 +522,7 @@ public enum UnifiedPlanCoachEngine {
                 id: stableUUID("rationale|volume|\(plan.id.raw.uuidString)"),
                 claim: "Weekly working-set volume is distributed across the scheduled sessions.",
                 basis: "The coach uses experience-scaled starting landmarks and spreads volume rather than maximizing one session.",
-                citationIDs: ["pellandDoseResponse2026", "pellandFractionalSets2024"],
+                citationIDs: ["pellandDoseResponse2026"],
                 confidence: .moderate),
             RationaleDecision(
                 id: stableUUID("rationale|effort|\(plan.id.raw.uuidString)"),
@@ -574,7 +574,7 @@ public enum UnifiedPlanCoachEngine {
                     severity: .attention, title: "\(group.displayName) volume is below the starting range",
                     detail: "The plan assigns \(Format.sets(sets)) working sets, below the starting MEV band of \(Format.sets(bands.mev)).",
                     suggestedFix: "Add a compatible movement or accept this as a maintenance/recovery choice.",
-                    citationIDs: ["pellandDoseResponse2026", "pellandFractionalSets2024"], confidence: .moderate))
+                    citationIDs: ["pellandDoseResponse2026"], confidence: .moderate))
             }
         }
 

@@ -9,8 +9,8 @@ final class CitationIntegrityTests: XCTestCase {
 
         let required = [
             "ekelundActivityMortality2016",
-            "iversenTimeEfficient2021", "pellandFractionalSets2024",
-            "pellandDoseResponse2026", "ramosCampoSplit2024",
+            "iversenTimeEfficient2021", "pellandDoseResponse2026",
+            "ramosCampoSplit2024",
             "parejaBlancoRecovery2020", "sawMonitoring2016", "meeusenOvertraining2013",
             "schumannConcurrent2022", "crowleyVO2Intensity2022", "poonHIIT2024",
             "mooreLeisureActivity2012", "aremDoseResponse2015", "saintMauriceSteps2020",
@@ -191,9 +191,9 @@ final class CitationIntegrityTests: XCTestCase {
         XCTAssertEqual(iversen?.url, "https://pmc.ncbi.nlm.nih.gov/articles/PMC8449772/")
         XCTAssertTrue(CitationRegistry.usageReason(forId: "iversenTimeEfficient2021")?.contains("4-to-12") == true)
 
-        let fractional = CitationRegistry.citation(forId: "pellandFractionalSets2024")
-        XCTAssertEqual(fractional?.url, "https://sportrxiv.org/index.php/server/preprint/view/460/967")
-        let reason = CitationRegistry.usageReason(forId: "pellandFractionalSets2024") ?? ""
+        let fractional = CitationRegistry.citation(forId: "pellandDoseResponse2026")
+        XCTAssertEqual(fractional?.url, "https://doi.org/10.1007/s40279-025-02344-w")
+        let reason = CitationRegistry.usageReason(forId: "pellandDoseResponse2026") ?? ""
         XCTAssertTrue(reason.contains("1.0") && reason.contains("0.5"))
     }
 

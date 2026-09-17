@@ -280,17 +280,6 @@ Muscle Hypertrophy and Strength Gains.* **Sports Medicine.**
   useful for volume distribution than as an independent hypertrophy driver.
 - **Metadata corrected (2026-06-25):** authors and title updated to match PMID 41343037.
 
-### `pellandFractionalSets2024` — fractional indirect-set accounting
-Pelland, Remmert, Robinson, Hinson & Zourdos (2024). *The Resistance Training
-Dose-Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency
-on Muscle Hypertrophy and Strength Gain.* **SportRxiv.**
-<https://sportrxiv.org/index.php/server/preprint/view/460/967>
-
-- **Used by:** the weekly-set accounting explanation and generated-plan results.
-- **What it supports:** Cladiron's fractional model counts a primary set as **1.0**
-  and an indirect/secondary set as **0.5**; this is a transparent modeling choice,
-  not a claim that every exercise has identical secondary-muscle loading.
-
 ### `parejaBlancoRecovery2020` — recovery after training to failure
 Pareja-Blanco et al. (2020). *Recovery of neuromuscular performance after resistance
 training to failure.* **European Journal of Applied Physiology.**
@@ -617,7 +606,7 @@ citation pool via `CitationRegistry.citationPool(for:)`. A pool curated for one 
 | `stepsHealth` | stepsHealthPool | saintMauriceSteps2020, leeAccelerometer2019 |
 | `aerobicBase` | aerobicBasePool | ekelundActivityMortality2016, mooreLeisureActivity2012, aremDoseResponse2015 |
 | `strengthFrequency` | strengthFrequencyPool | frequencyMeta |
-| `strengthVolume` | strengthVolumePool | volumeDoseResponse, iversenTimeEfficient2021, pellandDoseResponse2026, pellandFractionalSets2024 |
+| `strengthVolume` | strengthVolumePool | volumeDoseResponse, iversenTimeEfficient2021, pellandDoseResponse2026 |
 | `strengthIntensity` | strengthIntensityPool | schoenfeld2021, zourdosRIR2016, rpeAutoregulation |
 | `periodization` | periodizationPool | williamsLinearPeriodization, rheaPeriodization |
 | `vo2Training` | vo2TrainingPool | crowleyVO2Intensity2022, poonHIIT2024, milanovicHIIT2015, hiitVo2max |

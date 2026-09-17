@@ -91,7 +91,7 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
         let result = SuggestedWorkoutPresenter.editablePlan(
             for: option(style: .bodyweight, exercises: [exercise(sets: 4)]),
             unit: .kilograms, warmupMinutes: 5, cooldownMinutes: 3)
-        XCTAssertEqual(result.title, "Bodyweight Plan")
+        XCTAssertEqual(result.title, "Bodyweight Workout")
         XCTAssertEqual(result.exercises.first?.sets.count, 4)
         XCTAssertEqual(result.exercises.first?.sets.map { $0.targetReps }, [8, 8, 8, 8])
         XCTAssertEqual(result.warmupMinutes, 5)
@@ -100,7 +100,7 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
 
     func testAboutContractIncludesEveryAlgorithmStepAndResolvableCitations() {
         XCTAssertEqual(SuggestedWorkoutPresenter.citationIDs, suggestedWorkoutCitationIDs)
-        XCTAssertEqual(SuggestedWorkoutPresenter.citationIDs.count, 3)
+        XCTAssertEqual(SuggestedWorkoutPresenter.citationIDs.count, 2)
         XCTAssertTrue(SuggestedWorkoutPresenter.citationsResolve)
         XCTAssertEqual(SuggestedWorkoutPresenter.aboutSteps.count, 7)
         let about = SuggestedWorkoutPresenter.aboutSteps.joined(separator: " ")
@@ -126,7 +126,7 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
             .contains("\(suggestedWorkoutPlannedSetCap)-set safety cap"))
         for style in SuggestedWorkoutStyle.allCases {
             XCTAssertFalse(style.subtitle.isEmpty)
-            XCTAssertEqual(style.planName, "\(style.displayName) Plan")
+            XCTAssertEqual(style.planName, "\(style.displayName) Workout")
         }
     }
 

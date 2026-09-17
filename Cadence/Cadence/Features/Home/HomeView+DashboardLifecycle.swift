@@ -29,6 +29,7 @@ extension HomeView {
                 for (group, delta) in change.delta {
                     liveVolumeDelta[group, default: 0] += delta
                 }
+                cachedDashboard = makeDashboard()
             }
             .onReceive(NotificationCenter.default.publisher(for: .readinessCheckInChanged)) { _ in
                 markWorkoutHistoryChanged()
@@ -54,6 +55,15 @@ extension HomeView {
                 signature: coachSignature,
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
                 await refreshCoachSnapshot()
+            }
+            .task(id: HomeActivityTaskIdentity(
+                historyRefreshToken: historyRefreshToken,
+                sessionCount: sessions.count,
+                cardioCount: cardio.count)) {
+                // Let the first interactive frame render before walking the
+                // historical SwiftData relationships for these compact rows.
+                await Task.yield()
+                refreshHomeActivitySnapshot()
             }
             // Passive HealthKit samples arrive asynchronously after the initial
             // pipeline run; rebuild the snapshot whenever they change.

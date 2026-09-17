@@ -106,7 +106,14 @@ extension PlanningView {
     }
 
     var authoredPlans: [Plan] {
-        persistedPlans.compactMap { record in
+        cachedAuthoredPlans
+    }
+
+    func rebuildAuthoredPlansIfNeeded() {
+        let revision = persistedPlans.first?.updatedAt ?? .distantPast
+        guard persistedPlans.count != authoredPlansCachedCount
+                || revision != authoredPlansCachedRevision else { return }
+        cachedAuthoredPlans = persistedPlans.compactMap { record in
             guard let plan = try? record.decodedPlan(),
                   plan.provenance == .selfAuthored,
                   !plan.isCoachGenerated else {
@@ -114,6 +121,8 @@ extension PlanningView {
             }
             return plan
         }
+        authoredPlansCachedCount = persistedPlans.count
+        authoredPlansCachedRevision = revision
     }
 
     func planSummary(_ plan: Plan) -> String {

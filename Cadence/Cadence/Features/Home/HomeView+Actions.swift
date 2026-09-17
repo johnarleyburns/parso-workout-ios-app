@@ -71,15 +71,29 @@ extension HomeView {
     /// Workouts completed today; coach recommendations stay in the coach and
     /// Start Workout surfaces rather than appearing as historical activity.
     var workoutsTodayRows: [WorkoutsTodayPresenter.Row] {
-        WorkoutsTodayPresenter.historicalRows(
-            sessions: sessions,
-            cardio: cardio)
+        cachedWorkoutsTodayRows
+    }
+
+    /// Rebuilds historical display projections once per refresh rather than once
+    /// for every SwiftUI body evaluation. Active set-entry changes do not alter
+    /// these rows; completion and edits bump `historyRefreshToken`.
+    func refreshHomeActivitySnapshot() {
+        cachedWorkoutsTodayRows = WorkoutsTodayPresenter.historicalRows(
+            sessions: sessions, cardio: cardio)
+        let week = TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio)
+        cachedWeekStrengthEntries = week.strength
+        cachedWeekCardioEntries = week.cardio
+        cachedWeeklyVolumeKg = WeeklyStats.volumeKg(
+            sessions.filter { $0.deletedAt == nil },
+            since: WeeklyStats.weekStart())
     }
     func openTodayWorkout(_ row: WorkoutsTodayPresenter.Row) {
         guard let id = UUID(uuidString: row.sourceKey) else { return }
         switch row.modality {
         case .strength:
-            if let s = sessions.first(where: { $0.id == id }) { path.append(s) }
+            if let s = sessions.first(where: { $0.id == id }) {
+                path.append(HistorySummaryRoute.strength(s))
+            }
         case .cardio:
             if let c = cardio.first(where: { $0.id == id }) { path.append(c) }
         }
@@ -338,13 +352,14 @@ extension HomeView {
     }
 
     var weekActivity: (strength: [TodayActivityPresenter.Entry], cardio: [TodayActivityPresenter.Entry]) {
-        _ = historyRefreshToken
-        return TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio)
+        (strength: cachedWeekStrengthEntries, cardio: cachedWeekCardioEntries)
     }
     func openWeekWorkout(_ entry: TodayActivityPresenter.Entry) {
         switch entry.kind {
         case .strength:
-            if let s = sessions.first(where: { $0.id == entry.sourceId }) { path.append(s) }
+            if let s = sessions.first(where: { $0.id == entry.sourceId }) {
+                path.append(HistorySummaryRoute.strength(s))
+            }
         case .cardio:
             if let c = cardio.first(where: { $0.id == entry.sourceId }) { path.append(c) }
         }

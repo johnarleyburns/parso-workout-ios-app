@@ -19,6 +19,7 @@ public final class OnboardingModel {
     public var step: Int
     public var goal: TrainingGoal
     public var experience: ExperienceLevel
+    public var preferredWorkoutStyle: SuggestedWorkoutStyle
     public var unit: MeasurementUnitPreference
     public var strengthDays: Int
     public var cardioDays: Int
@@ -27,15 +28,17 @@ public final class OnboardingModel {
 
     public init(goal: TrainingGoal = .strength,
                 experience: ExperienceLevel = .intermediate,
+                preferredWorkoutStyle: SuggestedWorkoutStyle = .fitness,
                 unit: MeasurementUnitPreference = .pounds,
                 strengthDays: Int = 2,
                 cardioDays: Int = 3,
                 age: Int = 40,
                 ageProvided: Bool = false,
                 step: Int = 0,
-                lastStep: Int = 6) {
+                lastStep: Int = 7) {
         self.goal = goal
         self.experience = experience
+        self.preferredWorkoutStyle = preferredWorkoutStyle == .personalized ? .fitness : preferredWorkoutStyle
         self.unit = unit
         self.strengthDays = strengthDays
         self.cardioDays = cardioDays
@@ -52,11 +55,11 @@ public final class OnboardingModel {
     /// primary tap advances.
     public var primaryAction: PrimaryAction { isLastStep ? .complete : .advance }
 
-    /// Footer button title per step (index 5 is the medical disclaimer).
+    /// Footer button title per step (index 6 is the medical disclaimer).
     public var footerTitle: String {
         switch step {
         case lastStep: return "Start training with the Coach"
-        case 5: return "I understand"
+        case 6: return "I understand"
         default: return "Continue"
         }
     }

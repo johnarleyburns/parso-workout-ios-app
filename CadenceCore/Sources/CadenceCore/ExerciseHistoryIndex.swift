@@ -172,6 +172,7 @@ public enum ExerciseHistoryIndexStore {
         }
         struct SessionStamp: Codable {
             let id: String
+            let updatedAt: Date
             let isEnded: Bool
             let isDeleted: Bool
             let isLogged: Bool
@@ -183,6 +184,7 @@ public enum ExerciseHistoryIndexStore {
             .map { session in
                 SessionStamp(
                     id: session.id.uuidString,
+                    updatedAt: session.updatedAt,
                     isEnded: session.endedAt != nil,
                     isDeleted: session.deletedAt != nil,
                     isLogged: session.isLogged,

@@ -320,6 +320,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
     public var preWorkoutCountdown: Int?
     public var trainingGoal: String?
     public var experienceLevel: String?
+    public var preferredWorkoutStyle: String?
     public var useHRMonitoring: Bool?
     public var recoveryAwareCoachV2: Bool?
     public var favoriteRoutineIDs: [String]?
@@ -342,6 +343,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
                 intervalColorBlind: Bool? = nil, spokenCues: Bool? = nil, plateRounding: Bool? = nil,
                 autoSaveHealth: Bool? = nil, autoEndOnIdle: Bool? = nil, workoutSounds: Bool? = nil,
                 preWorkoutCountdown: Int? = nil, trainingGoal: String? = nil, experienceLevel: String? = nil,
+                preferredWorkoutStyle: String? = nil,
                 useHRMonitoring: Bool? = nil, recoveryAwareCoachV2: Bool? = nil,
                 favoriteRoutineIDs: [String]? = nil, hasCompletedOnboarding: Bool? = nil,
                 schedulePreferences: CoachSchedulePreferences? = nil,
@@ -358,6 +360,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
         self.autoSaveHealth = autoSaveHealth; self.autoEndOnIdle = autoEndOnIdle; self.workoutSounds = workoutSounds
         self.preWorkoutCountdown = preWorkoutCountdown; self.trainingGoal = trainingGoal
         self.experienceLevel = experienceLevel; self.useHRMonitoring = useHRMonitoring
+        self.preferredWorkoutStyle = preferredWorkoutStyle
         self.recoveryAwareCoachV2 = recoveryAwareCoachV2; self.favoriteRoutineIDs = favoriteRoutineIDs
         self.hasCompletedOnboarding = hasCompletedOnboarding; self.schedulePreferences = schedulePreferences
         self.coachProfile = coachProfile

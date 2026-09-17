@@ -34,9 +34,9 @@ extension WorkoutPlanEditor {
         }
         let planned = LiveWorkoutVolumeCalculator.plannedTotals(
             prescriptions, creditsByName: planVolumeCreditsByName())
-        planVolumeState = LiveWorkoutVolumeState(current: planned,
+        planVolumeState = LiveWorkoutVolumeState(current: [:],
                                                  weekly: planVolumeWeekly,
-                                                 planned: [:])
+                                                 planned: planned)
     }
 
     /// Only the current training week is fetched. The previous implementation

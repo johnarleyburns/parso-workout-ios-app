@@ -12,7 +12,7 @@ extension SessionView {
                 suggestExerciseRequest = try SuggestedExerciseRequestFactory.make(
                     context: context,
                     settings: settings,
-                    style: .fitness,
+                    style: .personalized,
                     existingExerciseNames: sessionExerciseNames,
                     alreadyAllocatedByMuscle: activeAllocatedVolume(),
                     excludingSessionID: session.id)

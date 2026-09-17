@@ -114,7 +114,7 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Equatable, Sendable {
 
     public var subtitle: String {
         switch self {
-        case .personalized: "Only movements from your completed workout history."
+        case .personalized: "History-first movements, with your preferred style filling any gaps."
         case .fitness: "General gym movements — machines, cables and free weights."
         case .bodyweight: "No equipment — movements you load with your own body."
         case .powerlifting: "Squat, bench and deadlift variations and their accessories."
@@ -303,6 +303,10 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
     public let trackedGroups: Set<MuscleGroup>
     public let preferredSetsPerExercise: Int
     public let trainingGoal: TrainingGoal
+    /// The user's preferred workout family. It is a fallback for Personalized
+    /// generation when history has no relevant movement, never a replacement for
+    /// a relevant movement already found in history.
+    public let preferredStyle: SuggestedWorkoutStyle
     public let engineContext: SuggestedWorkoutEngineContext?
 
     public init(completedSetsByMuscle: [String: Double],
@@ -313,6 +317,7 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
                 trackedGroups: Set<MuscleGroup> = MuscleGroup.defaultTracked,
                 preferredSetsPerExercise: Int,
                 trainingGoal: TrainingGoal,
+                preferredStyle: SuggestedWorkoutStyle = .fitness,
                 engineContext: SuggestedWorkoutEngineContext? = nil) {
         self.completedSetsByMuscle = completedSetsByMuscle
         self.candidates = candidates
@@ -322,6 +327,7 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
         self.trackedGroups = trackedGroups.isEmpty ? MuscleGroup.defaultTracked : trackedGroups
         self.preferredSetsPerExercise = preferredSetsPerExercise
         self.trainingGoal = trainingGoal
+        self.preferredStyle = preferredStyle == .personalized ? .fitness : preferredStyle
         self.engineContext = engineContext
     }
 
@@ -349,6 +355,7 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
             trackedGroups: trackedGroups,
             preferredSetsPerExercise: preferredSetsPerExercise,
             trainingGoal: trainingGoal,
+            preferredStyle: preferredStyle,
             engineContext: engineContext)
     }
 }
@@ -412,6 +419,41 @@ public enum SuggestedWorkoutGenerator {
         )
     }
 
+    /// Generates the single user-facing Personalized workout. Unlike the old
+    /// chooser API, this deliberately returns one option and remains launchable
+    /// before five workouts: historical movements are preferred once available;
+    /// the onboarding style fills only gaps (or supplies the initial pool).
+    public static func generatePersonalized(input: SuggestedWorkoutInput) -> SuggestedWorkoutOption {
+        let clock = ContinuousClock()
+        let indexStart = clock.now
+        let index = SuggestedWorkoutVectorIndex(candidates: input.candidates,
+                                                tracked: input.trackedGroups)
+        let indexDuration = indexStart.duration(to: clock.now)
+        let completed = index.muscleSpace.completedVector(input.completedSetsByMuscle)
+        let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
+        var counters = Counters()
+        let generationStart = clock.now
+        let option = solve(style: .personalized,
+                           completed: completed,
+                           preferredSets: preferredSets,
+                           goal: input.trainingGoal,
+                           historyWorkoutCount: input.historyWorkoutCount,
+                           preferredStyle: input.preferredStyle,
+                           allowPersonalizedFallback: true,
+                           index: index,
+                           counters: &counters)
+        _ = SuggestedWorkoutDiagnostics(
+            rawCandidateCount: index.rawCandidateCount,
+            indexedCandidateCount: index.exercises.count,
+            indexBuildCount: 1,
+            invertedListLookupCount: counters.lookups,
+            invertedCandidateVisitCount: counters.visits,
+            fullCatalogScanCount: 0,
+            vectorIndexBuildDuration: indexDuration,
+            allStylesGenerationDuration: generationStart.duration(to: clock.now))
+        return option
+    }
+
     /// Chooses exactly one movement for an existing plan or live workout. The
     /// plan's own prescribed/completed work is added to the weekly vector before
     /// scoring, so this is the same gap solver as full suggestions rather than a
@@ -420,9 +462,11 @@ public enum SuggestedWorkoutGenerator {
         input: SuggestedWorkoutInput,
         style: SuggestedWorkoutStyle,
         alreadyAllocatedByMuscle: [String: Double] = [:],
-        excludingCandidateIDs: Set<String> = []
+        excludingCandidateIDs: Set<String> = [],
+        allowPersonalizedFallback: Bool = false
     ) -> SuggestedWorkoutExercise? {
-        guard style != .personalized || input.historyWorkoutCount >= minimumPersonalizedWorkouts else {
+        guard style != .personalized || allowPersonalizedFallback
+            || input.historyWorkoutCount >= minimumPersonalizedWorkouts else {
             return nil
         }
         let index = SuggestedWorkoutVectorIndex(candidates: input.candidates,
@@ -434,8 +478,14 @@ public enum SuggestedWorkoutGenerator {
             max(0, target - completed[dimension] - allocated[dimension])
         }
         let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
-        let inStyle = index.styleMembership[style] ??
+        let historyMembership = index.styleMembership[.personalized] ??
+            Array(repeating: false, count: index.exercises.count)
+        let biasMembership = index.styleMembership[input.preferredStyle] ??
             Array(repeating: true, count: index.exercises.count)
+        let inStyle = style == .personalized
+            ? (input.historyWorkoutCount >= minimumPersonalizedWorkouts
+               ? historyMembership : biasMembership)
+            : (index.styleMembership[style] ?? Array(repeating: true, count: index.exercises.count))
 
         func allowed(_ candidateIndex: Int, restrictedToStyle: Bool) -> Bool {
             guard !excludingCandidateIDs.contains(index.exercises[candidateIndex].candidate.id) else {
@@ -443,7 +493,8 @@ public enum SuggestedWorkoutGenerator {
             }
             guard !restrictedToStyle || inStyle[candidateIndex] else { return false }
             let candidate = index.exercises[candidateIndex].candidate
-            if style != .olympic,
+            let policyStyle = style == .personalized ? input.preferredStyle : style
+            if policyStyle != .olympic,
                candidate.trainingTypes.contains(.olympicWeightlifting)
                 || ExerciseTrainingType.isOlympicOnlyMovement(named: candidate.name) {
                 return false
@@ -469,6 +520,8 @@ public enum SuggestedWorkoutGenerator {
         }
 
         if let best = bestCandidate(restrictedToStyle: true) ??
+            (style == .personalized && input.historyWorkoutCount >= minimumPersonalizedWorkouts
+             ? bestCandidateForMembership(biasMembership) : nil) ??
             (style != .bodyweight ? bestCandidate(restrictedToStyle: false) : nil) {
             let exercise = index.exercises[best.candidateIndex]
             return outputExercise(exercise, preferredSets: preferredSets,
@@ -504,6 +557,24 @@ public enum SuggestedWorkoutGenerator {
                               repRange: input.trainingGoal.repRange,
                               score: 0, isInStyle: inStyle[maintenance],
                               muscleSpace: index.muscleSpace)
+
+        func bestCandidateForMembership(_ membership: [Bool]) -> Selection? {
+            var best: Selection?
+            for candidateIndex in index.exercises.indices where membership[candidateIndex] {
+                guard !excludingCandidateIDs.contains(index.exercises[candidateIndex].candidate.id) else { continue }
+                let candidate = index.exercises[candidateIndex].candidate
+                let policyStyle = style == .personalized ? input.preferredStyle : style
+                if policyStyle != .olympic && (candidate.trainingTypes.contains(.olympicWeightlifting)
+                    || ExerciseTrainingType.isOlympicOnlyMovement(named: candidate.name)) { continue }
+                let candidateScore = score(index.exercises[candidateIndex], deficits: deficits,
+                                           preferredSets: preferredSets)
+                guard candidateScore.total > epsilon else { continue }
+                let selection = Selection(candidateIndex: candidateIndex, score: candidateScore,
+                                          isInStyle: membership[candidateIndex])
+                if best == nil || isBetter(selection, than: best!, index: index) { best = selection }
+            }
+            return best
+        }
     }
 
     private static func generateWithEngine(
@@ -592,6 +663,8 @@ public enum SuggestedWorkoutGenerator {
     private static func solve(style: SuggestedWorkoutStyle, completed: [Double],
                               preferredSets: Int, goal: TrainingGoal,
                               historyWorkoutCount: Int,
+                              preferredStyle: SuggestedWorkoutStyle = .fitness,
+                              allowPersonalizedFallback: Bool = false,
                               index: SuggestedWorkoutVectorIndex,
                               counters: inout Counters) -> SuggestedWorkoutOption {
         let target = Double(suggestedWorkoutTargetSetsPerGroup)
@@ -599,14 +672,20 @@ public enum SuggestedWorkoutGenerator {
         var deficits = initial
         var selected = Array(repeating: false, count: index.exercises.count)
         var choices: [SuggestedWorkoutExercise] = []
-        let inStyle = index.styleMembership[style] ?? Array(repeating: true, count: index.exercises.count)
+        let historyMembership = index.styleMembership[.personalized] ??
+            Array(repeating: false, count: index.exercises.count)
+        let biasMembership = index.styleMembership[preferredStyle] ??
+            Array(repeating: true, count: index.exercises.count)
+        let inStyle = style == .personalized && allowPersonalizedFallback
+            ? (historyWorkoutCount >= minimumPersonalizedWorkouts ? historyMembership : biasMembership)
+            : (index.styleMembership[style] ?? Array(repeating: true, count: index.exercises.count))
 
-        if style == .personalized && historyWorkoutCount < minimumPersonalizedWorkouts {
+        if style == .personalized && historyWorkoutCount < minimumPersonalizedWorkouts && !allowPersonalizedFallback {
             return emptyOption(style: style, goal: goal, initial: initial,
                                muscleSpace: index.muscleSpace)
         }
 
-        func fill(restrictedToStyle: Bool) {
+        func fill(restrictedToStyle: Bool, membership: [Bool], outputMembership: [Bool]) {
             var generations = Array(repeating: 0, count: deficits.count)
             var activeMask = UInt32(0)
             var heap = SuggestedWorkoutDeficitHeap()
@@ -624,10 +703,11 @@ public enum SuggestedWorkoutGenerator {
                 counters.lookups += 1
                 var best: Selection?
                 for candidateIndex in index.inverted[entry.dimension] where !selected[candidateIndex] {
-                    if restrictedToStyle && !inStyle[candidateIndex] { continue }
+                    if restrictedToStyle && !membership[candidateIndex] { continue }
                     counters.visits += 1
                     let exercise = index.exercises[candidateIndex]
-                    if style != .olympic,
+                    let policyStyle = style == .personalized ? preferredStyle : style
+                    if policyStyle != .olympic,
                        (exercise.candidate.trainingTypes.contains(.olympicWeightlifting)
                         || ExerciseTrainingType.isOlympicOnlyMovement(named: exercise.candidate.name)) {
                         continue
@@ -652,7 +732,7 @@ public enum SuggestedWorkoutGenerator {
                 let exercise = index.exercises[best.candidateIndex]
                 choices.append(outputExercise(exercise, preferredSets: preferredSets,
                                               repRange: goal.repRange, score: best.score.total,
-                                              isInStyle: best.isInStyle,
+                                              isInStyle: outputMembership[best.candidateIndex],
                                               muscleSpace: index.muscleSpace))
                 for element in exercise.elements where deficits[element.dimension] > epsilon {
                     deficits[element.dimension] = max(
@@ -672,9 +752,16 @@ public enum SuggestedWorkoutGenerator {
             }
         }
 
-        fill(restrictedToStyle: true)
+        fill(restrictedToStyle: true, membership: inStyle, outputMembership: inStyle)
+        if style == .personalized && allowPersonalizedFallback,
+           historyWorkoutCount >= minimumPersonalizedWorkouts {
+            // Keep history-first ordering, then use the onboarding bias only for
+            // muscle gaps history could not cover.
+            fill(restrictedToStyle: true, membership: biasMembership,
+                 outputMembership: biasMembership)
+        }
         if style != .personalized && (style != .bodyweight || !inStyle.contains(true)) {
-            fill(restrictedToStyle: false)
+            fill(restrictedToStyle: false, membership: inStyle, outputMembership: inStyle)
         }
 
         // A suggestion is an on-demand workout, not only a gap-filling alert.
@@ -684,7 +771,8 @@ public enum SuggestedWorkoutGenerator {
         // offer one maintenance movement so users with substantial history can
         // still review and edit a workout.
         if choices.isEmpty,
-           let maintenance = maintenanceSelection(style: style, index: index, inStyle: inStyle) {
+           let maintenance = maintenanceSelection(style: style, index: index,
+                                                   inStyle: inStyle) {
             let exercise = index.exercises[maintenance]
             choices.append(outputExercise(
                 exercise, preferredSets: preferredSets, repRange: goal.repRange,

@@ -112,7 +112,12 @@ public enum SessionViewModel {
         switch basis {
         case .explicitPlan, .ownerPlan, .currentSession:
             return kg
-        case .exactHistory, .estimatedHistory, .priorHistory:
+        case .exactHistory, .priorHistory:
+            // A repeated historical load is authoritative. Machines, cables,
+            // and dumbbells commonly use fractional increments that must survive
+            // autofill exactly as logged.
+            return kg
+        case .estimatedHistory:
             let display = WorkoutMath.display(kg, in: unit)
             let increment = unit == .pounds ? 5.0 : 2.5
             return WorkoutMath.canonical((display / increment).rounded() * increment, from: unit)

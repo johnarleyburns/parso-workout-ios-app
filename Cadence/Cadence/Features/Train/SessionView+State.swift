@@ -198,7 +198,20 @@ extension SessionView {
                                                          basis: resolved.weightBasis)
             }
             let pc = ctx?.performerContexts.first { $0.performerID == performerID }
-            let lastTime = pc.flatMap { SessionRenderModel.lastTimeSegment(label: $0.label, sets: $0.lastTimeSets, unit: settings.unit) }
+            let cachedLastTime = pc.flatMap { SessionRenderModel.lastTimeSegment(label: $0.label, sets: $0.lastTimeSets, unit: settings.unit) }
+            let repositoryLastTime: String? = {
+                let person = performerID.flatMap(people(for:))
+                let sets = WorkoutRepository.lastTimeSets(for: exercise, performedBy: person, excluding: session)
+                guard !sets.isEmpty else { return nil }
+                let label = performerID == nil ? "Me" : (person?.name ?? "Partner")
+                return "(label): " + sets.map { SessionRenderModel.setLineText(
+                    SessionRenderModel.SetDisplay(setID: $0.id, weight: $0.weight, reps: $0.reps,
+                                                  rpe: $0.rpe, isWarmup: $0.isWarmup,
+                                                  usesBodyweight: $0.usesBodyweight,
+                                                  isOwnerSet: $0.isOwnerSet, performedBy: nil,
+                                                  isAllTimePR: false), unit: settings.unit) }.joined(separator: ", ")
+            }()
+            let lastTime = cachedLastTime ?? repositoryLastTime
             let lastSet = SetHistoryText.lastSetThisSession(loggedSets(for: exercise, performerID: performerID).last, unit: settings.unit)
             return InlineEditorConfig.PerformerDefault(
                 performerID: performerID, reps: resolved.reps, weightKg: weightKg,
@@ -277,11 +290,11 @@ extension SessionView {
         case .currentSession:
             return "Same load as your previous set today"
         case .exactHistory:
-            return "Matched \(performer)'s previous \(exerciseName) set · rounded to a loadable increment"
+            return "Matched \(performer)'s previous \(exerciseName) set · exact historical load"
         case .estimatedHistory:
             return "Estimated from \(performer)'s previous \(exerciseName) sets · rounded to a loadable increment"
         case .priorHistory:
-            return "From \(performer)'s previous \(exerciseName) history · rounded to a loadable increment"
+            return "From \(performer)'s previous \(exerciseName) history · exact historical load"
         case .none:
             return nil
         }

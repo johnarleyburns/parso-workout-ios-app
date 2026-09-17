@@ -24,7 +24,7 @@ extension WorkoutPlanEditor {
                 suggestExerciseRequest = try SuggestedExerciseRequestFactory.make(
                     context: modelContext,
                     settings: settings,
-                    style: plan.suggestedWorkoutStyle ?? .fitness,
+                    style: .personalized,
                     existingExerciseNames: plan.exercises.map(\.name),
                     alreadyAllocatedByMuscle: planAllocatedVolume())
             } catch {

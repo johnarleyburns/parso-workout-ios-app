@@ -86,7 +86,7 @@ struct LiveWorkoutVolumeSummary: View {
                      : "Save a working set to see muscle-group volume here.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                ForEach(expanded ? state.groups : Array(state.groups.prefix(4)), id: \.self) { group in
+                ForEach(expanded ? groupsForDisplay : Array(groupsForDisplay.prefix(4)), id: \.self) { group in
                     row(group)
                 }
                 Button(expanded ? "Show less" : "Show more…") {
@@ -104,16 +104,33 @@ struct LiveWorkoutVolumeSummary: View {
         .accessibilityIdentifier("\(accessibilityPrefix).volumeSummary")
     }
 
+    /// Show only groups that have volume in this workout/plan. Sort the actual
+    /// workout contribution first, then use a stable alphabetical tie-breaker;
+    /// weekly background volume must not pull an otherwise empty group into view.
+    private var groupsForDisplay: [MuscleGroup] {
+        let values: (MuscleGroup) -> Double = { group in
+            presentation == .planned ? (state.planned[group] ?? 0) : (state.current[group] ?? 0)
+        }
+        return MuscleGroup.canonicalOrder
+            .filter { values($0) > 0 }
+            .sorted {
+                let left = values($0), right = values($1)
+                if left != right { return left > right }
+                return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+            }
+    }
+
     private func row(_ group: MuscleGroup) -> some View {
         let current = state.current[group] ?? 0
         let weekly = state.weekly[group] ?? 0
         let planned = state.planned[group] ?? 0
-        let scale = max(4, current, weekly, planned)
+        let workout = presentation == .planned ? planned : current
+        let scale = max(4, workout, weekly, planned)
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text(group.displayName).font(.caption.weight(.medium))
                 Spacer()
-                Text(valueText(current: current, planned: planned))
+                Text("\(format(workout)) sets")
                     .font(.caption.weight(.semibold).monospacedDigit())
                     .foregroundStyle(.secondary)
             }
@@ -126,7 +143,7 @@ struct LiveWorkoutVolumeSummary: View {
                         .frame(width: proxy.size.width * min(1, weekly / scale))
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color.green)
-                        .frame(width: proxy.size.width * min(1, current / scale))
+                        .frame(width: proxy.size.width * min(1, workout / scale))
                     Rectangle()
                         .fill(Color.secondary.opacity(0.55))
                         .frame(width: 1)
@@ -138,10 +155,6 @@ struct LiveWorkoutVolumeSummary: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("\(accessibilityPrefix).volume.\(group.rawValue)")
         .accessibilityValue("\(format(current)) sets")
-    }
-
-    private func valueText(current: Double, planned _: Double) -> String {
-        "\(format(current)) sets"
     }
 
     private func format(_ value: Double) -> String {

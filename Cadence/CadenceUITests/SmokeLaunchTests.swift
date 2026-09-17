@@ -188,87 +188,18 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Suggest a Workout is a different height from Quick Start")
 
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.suggestWorkout"),
-                      "Start Workout did not open suggested workouts")
-        // The chooser snapshots the catalog on the main actor and then runs the
-        // full deterministic solve off-main. A cold simulator can need longer
-        // than the normal warm-path latency; wait for the state transition rather
-        // than making the smoke test fail under host contention.
-        XCTAssertTrue(app.descendants(matching: .any)["suggestedWorkout.ready"].waitForExistence(timeout: 45),
-                      "Suggested workouts did not become ready")
-        XCTAssertFalse(app.descendants(matching: .any)["suggestedWorkout.calculating"].exists,
-                       "Suggested-workout spinner remained visible after generation completed")
-        XCTAssertTrue(app.navigationBars["View Suggested Workout"].exists,
-                      "Suggested-workout chooser has the wrong title")
-        let suggestionNavigationBar = app.navigationBars["View Suggested Workout"].firstMatch
-        XCTAssertTrue(suggestionNavigationBar.exists,
-                      "Suggested-workout chooser did not expose its single navigation host")
-        XCTAssertEqual(suggestionNavigationBar.buttons.matching(identifier: "suggestedWorkout.close").count, 1,
-                       "Suggested-workout chooser duplicated its Close control")
-        XCTAssertEqual(suggestionNavigationBar.buttons.matching(NSPredicate(format: "label == %@", "Close")).count, 1,
-                       "Suggested-workout chooser rendered more than one visible Close label")
-        XCTAssertEqual(suggestionNavigationBar.buttons.matching(identifier: "suggestedWorkout.about").count, 1,
-                       "Suggested-workout chooser duplicated its About control")
-        XCTAssertEqual(suggestionNavigationBar.buttons.matching(NSPredicate(format: "label == %@", "About suggested workouts")).count, 1,
-                       "Suggested-workout chooser rendered more than one visible About control")
-        XCTAssertFalse(app.staticTexts["No usable exercise data is available yet. Retry to refresh the exercise catalog."].exists,
-                       "Suggested-workout chooser reported missing exercise data after becoming ready")
-        // Personalized is intentionally first and disabled for a fresh user;
-        // the remaining five training styles stay launchable at one set target.
-        // This also guards the five-workout history threshold at the UI boundary.
-        let personalized = app.buttons["suggestedWorkout.style.personalized"]
-        let fitness = app.buttons["suggestedWorkout.style.fitness"]
-        let bodyweight = app.buttons["suggestedWorkout.style.bodyweight"]
-        let powerlifting = app.buttons["suggestedWorkout.style.powerlifting"]
-        let olympic = app.buttons["suggestedWorkout.style.olympic"]
-        let strongman = app.buttons["suggestedWorkout.style.strongman"]
-        XCTAssertTrue(personalized.exists)
-        XCTAssertEqual(personalized.label, "Personalized")
-        XCTAssertFalse(personalized.isEnabled,
-                       "Personalized suggestions must stay disabled below five workouts")
-        XCTAssertTrue(fitness.exists)
-        XCTAssertTrue(bodyweight.exists)
-        XCTAssertTrue(powerlifting.exists)
-        XCTAssertTrue(fitness.isEnabled, "Fitness suggested workout is unexpectedly disabled")
-        XCTAssertTrue(bodyweight.isEnabled, "Bodyweight suggested workout is unexpectedly disabled")
-        XCTAssertTrue(powerlifting.isEnabled, "Powerlifting suggested workout is unexpectedly disabled")
-        XCTAssertEqual(fitness.label, "Fitness")
-        XCTAssertEqual(bodyweight.label, "Bodyweight")
-        XCTAssertEqual(powerlifting.label, "Powerlifting")
-        XCTAssertLessThan(personalized.frame.minY, fitness.frame.minY)
-        XCTAssertLessThan(fitness.frame.minY, bodyweight.frame.minY)
-        XCTAssertLessThan(bodyweight.frame.minY, powerlifting.frame.minY)
-        XCTAssertTrue(app.scrollToElement("suggestedWorkout.style.olympic"))
-        XCTAssertEqual(olympic.label, "Olympic Weightlifting")
-        XCTAssertTrue(olympic.isEnabled, "Olympic suggested workout is unexpectedly disabled")
-        XCTAssertTrue(app.scrollToElement("suggestedWorkout.style.strongman"))
-        XCTAssertEqual(strongman.label, "Strongman")
-        XCTAssertTrue(strongman.isEnabled, "Strongman suggested workout is unexpectedly disabled")
-        XCTAssertFalse(app.buttons["suggestedWorkout.minimum"].exists,
-                       "The retired minimum/medium/maximal tiers are still on screen")
-        XCTAssertTrue(app.scrollToElement("suggestedWorkout.science.iversenTimeEfficient2021"),
-                      "Chooser result does not expose the Iversen citation link")
-        XCTAssertTrue(app.scrollToElement("suggestedWorkout.science.pellandFractionalSets2024"),
-                      "Chooser result does not expose the Pelland citation link")
-        XCTAssertTrue(app.buttons["suggestedWorkout.about"].waitTap(timeout: 5),
-                      "Suggested-workout chooser lacks its About button")
-        XCTAssertTrue(app.staticTexts["No Time to Lift? Designing Time-Efficient Training Programs for Strength and Hypertrophy: A Narrative Review"].waitForExistence(timeout: 5),
-                      "About suggested workouts does not show the Iversen study title")
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "The Resistance Training Dose-Response")).firstMatch.exists,
-                      "About suggested workouts does not show the Pelland study title")
-        XCTAssertTrue(app.scrollToElement("suggestedWorkout.about.science.iversenTimeEfficient2021"))
-        XCTAssertTrue(app.scrollToElement("suggestedWorkout.about.science.pellandFractionalSets2024"),
-                      "About suggested workouts does not expose both science links")
-        XCTAssertTrue(app.scrollToElement("suggestedWorkout.about.style.strongman"),
-                      "About suggested workouts does not explain what each style is")
-        app.buttons["Done"].tap()
-        XCTAssertTrue(app.buttons["suggestedWorkout.style.bodyweight"].waitTap(timeout: 5),
-                      "The Bodyweight plan did not open")
-        XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
-                      "The Bodyweight plan did not open the plan editor")
+                      "Start Workout did not generate a personalized workout")
+        // Personalized generation is now a single direct transition to the
+        // editable plan. Keep the cold-path allowance here because catalog
+        // indexing and the solver run off-main and can be slow on CI hosts.
+        XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 45),
+                      "Personalized generation did not open the plan editor")
+        XCTAssertFalse(app.navigationBars["View Suggested Workout"].exists,
+                       "The retired suggested-workout chooser is still reachable")
         let editableExercises = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exercise."))
         XCTAssertGreaterThan(editableExercises.count, 0,
-                             "Suggested Bodyweight plan did not open in edit mode with exercises")
+                             "Personalized plan did not open in edit mode with exercises")
         XCTAssertTrue(app.buttons["editor.suggestExercise"].waitForExistence(timeout: 5),
                       "Suggested Workout Plan lost Suggest Exercise")
         let editableExerciseInfo = app.descendants(matching: .any)
@@ -318,23 +249,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
         let cleanAndJerk = app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS[c] %@", "clean and jerk"))
         XCTAssertEqual(cleanAndJerk.count, 0,
-                       "Bodyweight suggestion leaked the Fitness Clean and Jerk movement")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.navigationBars["View Suggested Workout"].waitForExistence(timeout: 5),
-                      "Back did not return from the Bodyweight plan")
-        XCTAssertTrue(app.buttons["suggestedWorkout.style.fitness"].waitTap(timeout: 5),
-                      "The Fitness plan did not open")
-        XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
-                      "The Fitness plan did not open the plan editor")
+                       "Personalized suggestion leaked the Olympic-only Clean and Jerk movement")
         XCTAssertTrue(app.buttons["editor.start"].exists,
-                      "Suggested plan editor lacks Start Workout")
+                       "Suggested plan editor lacks Start Workout")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.navigationBars["View Suggested Workout"].waitForExistence(timeout: 5),
-                      "Back did not return to suggested workouts")
-        XCTAssertTrue(app.buttons["suggestedWorkout.close"].waitTap(timeout: 5),
-                      "Suggested-workout sheet lacks its Close action")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
-                      "Suggested-workout sheet did not close back to Home")
+                      "Personalized plan did not close back to Home")
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
                       "Home Start Workout did not reopen after suggested workouts")

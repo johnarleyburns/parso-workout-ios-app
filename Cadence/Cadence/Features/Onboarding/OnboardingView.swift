@@ -20,11 +20,12 @@ struct OnboardingView: View {
             TabView(selection: $flow.step) {
                 welcomePage.tag(0)
                 goalPage.tag(1)
-                experiencePage.tag(2)
-                schedulePage.tag(3)
-                unitsPage.tag(4)
-                disclaimerPage.tag(5)
-                programPage.tag(6)
+                workoutTypePage.tag(2)
+                experiencePage.tag(3)
+                schedulePage.tag(4)
+                unitsPage.tag(5)
+                disclaimerPage.tag(6)
+                programPage.tag(7)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut, value: flow.step)
@@ -34,6 +35,7 @@ struct OnboardingView: View {
         .onAppear {
             flow.goal = settings.trainingGoal
             flow.experience = settings.experienceLevel
+            flow.preferredWorkoutStyle = settings.preferredWorkoutStyle
             flow.unit = settings.unit
         }
     }
@@ -72,7 +74,7 @@ struct OnboardingView: View {
                 Text(flow.footerTitle)
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 15)
                     .foregroundStyle(.white)
-                    .background(flow.step == 5 || flow.isLastStep ? AnyShapeStyle(.green) : AnyShapeStyle(.tint),
+                    .background(flow.step == 6 || flow.isLastStep ? AnyShapeStyle(.green) : AnyShapeStyle(.tint),
                                 in: RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
@@ -142,6 +144,21 @@ struct OnboardingView: View {
             ForEach(ExperienceLevel.allCases) { e in
                 selectCard(title: e.displayName, subtitle: e.summary,
                            systemImage: experienceSymbol(e), selected: flow.experience == e) { flow.experience = e }
+            }
+        }
+    }
+
+    private var workoutTypePage: some View {
+        pageScaffold(title: "What kind of workouts do you prefer?",
+                     subtitle: "This guides Personalized plans until your workout history provides enough signal.") {
+            ForEach([SuggestedWorkoutStyle.fitness, .bodyweight, .powerlifting, .olympic, .strongman], id: \.self) { style in
+                selectCard(title: style == .olympic ? "Olympic" : style.displayName,
+                           subtitle: style.subtitle,
+                           systemImage: workoutTypeSymbol(style),
+                           selected: flow.preferredWorkoutStyle == style) {
+                    flow.preferredWorkoutStyle = style
+                }
+                .accessibilityIdentifier("onboarding.workoutType.\(style.rawValue)")
             }
         }
     }
@@ -334,9 +351,21 @@ struct OnboardingView: View {
         }
     }
 
+    private func workoutTypeSymbol(_ style: SuggestedWorkoutStyle) -> String {
+        switch style {
+        case .fitness: "dumbbell.fill"
+        case .bodyweight: "figure.flexibility"
+        case .powerlifting: "scalemass.fill"
+        case .olympic: "figure.strengthtraining.traditional"
+        case .strongman: "figure.strengthtraining.functional"
+        case .personalized: "sparkles"
+        }
+    }
+
     private func finish() {
         settings.trainingGoal = flow.goal
         settings.experienceLevel = flow.experience
+        settings.preferredWorkoutStyle = flow.preferredWorkoutStyle
         settings.unit = flow.unit
         settings.coachSchedulePreferences = flow.schedulePreferences
         settings.hasCompletedOnboarding = true

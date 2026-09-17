@@ -94,6 +94,7 @@ enum SuggestedExerciseRequestFactory {
             trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
             preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
             trainingGoal: settings.trainingGoal,
+            preferredStyle: settings.preferredWorkoutStyle,
             engineContext: SuggestedWorkoutEngineContext(
                 experience: settings.experienceLevel,
                 schedule: settings.coachSchedulePreferences,

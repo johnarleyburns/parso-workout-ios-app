@@ -69,7 +69,8 @@ struct SuggestExerciseView: View {
                 input: input,
                 style: style,
                 alreadyAllocatedByMuscle: allocated,
-                excludingCandidateIDs: excluded)
+                excludingCandidateIDs: excluded,
+                allowPersonalizedFallback: style == .personalized)
         }.value
         guard !Task.isCancelled else { return }
         if let result {

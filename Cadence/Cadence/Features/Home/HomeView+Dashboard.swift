@@ -247,11 +247,21 @@ extension HomeView {
                         onSuggestedWorkout: { requestSuggestedWorkout() })
                 }
             }
-            .sheet(item: $suggestedWorkoutRequest) { request in
-                SuggestedWorkoutView(request: request, onStart: { plan in
-                    suggestedWorkoutRequest = nil
-                    handleEditorStart(plan)
-                }, onRetry: requestSuggestedWorkout)
+            .overlay {
+                if suggestedWorkoutCalculating {
+                    ProgressView("Building your Personalized workout…")
+                        .padding(20)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                        .accessibilityIdentifier("suggestedWorkout.calculating")
+                }
+            }
+            .alert("Couldn’t calculate your Personalized workout", isPresented: Binding(
+                get: { suggestedWorkoutFailure != nil },
+                set: { if !$0 { suggestedWorkoutFailure = nil } })) {
+                Button("Try Again") { suggestedWorkoutFailure = nil; requestSuggestedWorkout() }
+                Button("Cancel", role: .cancel) { suggestedWorkoutFailure = nil }
+            } message: {
+                Text(suggestedWorkoutFailure ?? "")
             }
             // Optional distance goal before a run/walk/cycle (batch 8).
             .sheet(item: $cardioGoalFor) { type in

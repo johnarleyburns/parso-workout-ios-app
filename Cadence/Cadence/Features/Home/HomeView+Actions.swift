@@ -185,6 +185,7 @@ extension HomeView {
                     trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
                     preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
                     trainingGoal: settings.trainingGoal,
+                    preferredStyle: settings.preferredWorkoutStyle,
                     engineContext: SuggestedWorkoutEngineContext(
                         experience: settings.experienceLevel,
                         schedule: settings.coachSchedulePreferences,
@@ -196,14 +197,15 @@ extension HomeView {
                 cooldownMinutes: settings.cooldownMinutes)
             presentSuggestedWorkout(request)
         } catch {
-            // The chooser renders a recoverable failure state for generator work;
-            // a fetch failure has no safe partial candidate snapshot to present.
-            suggestedWorkoutRequest = SuggestedWorkoutRequest(
+            // Generation has no safe partial candidate snapshot to present when
+            // the catalog fetch fails, so show a retryable error at Home.
+            presentSuggestedWorkout(SuggestedWorkoutRequest(
                 input: SuggestedWorkoutInput(completedSetsByMuscle: coachFacts.weeklySetsByMuscle,
                                               candidates: [],
                                               trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
                                               preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
                                               trainingGoal: settings.trainingGoal,
+                                              preferredStyle: settings.preferredWorkoutStyle,
                                               engineContext: SuggestedWorkoutEngineContext(
                                                   experience: settings.experienceLevel,
                                                   schedule: settings.coachSchedulePreferences,
@@ -213,21 +215,18 @@ extension HomeView {
                 unit: settings.unit,
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes,
-                failureMessage: "Exercise data could not be read. Retry to try again.")
+                failureMessage: "Exercise data could not be read. Try again to refresh the exercise catalog."))
         }
     }
 
     private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {
         if selectWorkoutPresented || weightsStartPresented || cardioPickerPresented {
-            // Do not set the chooser item while another Home sheet is presented.
-            // SwiftUI can retain both navigation hosts during a transition,
-            // which rendered duplicate Close/About controls in the chooser.
             pendingSuggestedWorkoutRequest = request
             selectWorkoutPresented = false
             weightsStartPresented = false
             cardioPickerPresented = false
         } else {
-            suggestedWorkoutRequest = request
+            generateAndOpenPersonalizedWorkout(request)
         }
     }
 
@@ -238,10 +237,36 @@ extension HomeView {
         guard !selectWorkoutPresented,
               !weightsStartPresented,
               !cardioPickerPresented,
-              suggestedWorkoutRequest == nil,
               let request = pendingSuggestedWorkoutRequest else { return }
         pendingSuggestedWorkoutRequest = nil
-        suggestedWorkoutRequest = request
+        generateAndOpenPersonalizedWorkout(request)
+    }
+
+    private func generateAndOpenPersonalizedWorkout(_ request: SuggestedWorkoutRequest) {
+        guard !suggestedWorkoutCalculating else { return }
+        if let failure = request.failureMessage {
+            suggestedWorkoutFailure = failure
+            return
+        }
+        suggestedWorkoutCalculating = true
+        Task {
+            let option = await Task.detached(priority: .userInitiated) {
+                SuggestedWorkoutGenerator.generatePersonalized(input: request.input)
+            }.value
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                suggestedWorkoutCalculating = false
+                guard option.isLaunchable else {
+                    suggestedWorkoutFailure = "No usable exercise data is available yet. Try again to refresh the exercise catalog."
+                    return
+                }
+                let plan = SuggestedWorkoutPresenter.editablePlan(
+                    for: option, unit: request.unit,
+                    warmupMinutes: request.warmupMinutes,
+                    cooldownMinutes: request.cooldownMinutes)
+                path.append(HomeRoute.workoutEditor(plan))
+            }
+        }
     }
 
     var weekStripSection: some View {

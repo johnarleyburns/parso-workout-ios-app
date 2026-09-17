@@ -28,6 +28,7 @@ public final class AppSettings {
                         "settings.preWorkoutCountdown", "settings.autoSaveHealth",
                         "settings.autoEndOnIdle", "settings.workoutSounds",
                         "settings.trainingGoal", "settings.experienceLevel",
+                        "settings.preferredWorkoutStyle",
                         "settings.useHRMonitoring",
                         "settings.coachPreferenceProfile",
                         "settings.coachSchedulePreferences",
@@ -68,6 +69,7 @@ public final class AppSettings {
         // goal/experience onboarding intake comes in P7; sensible defaults until then.
         self.trainingGoal = Self.read(defaults, "settings.trainingGoal", TrainingGoal.self) ?? .hypertrophy
         self.experienceLevel = Self.read(defaults, "settings.experienceLevel", ExperienceLevel.self) ?? .intermediate
+        self.preferredWorkoutStyle = Self.read(defaults, "settings.preferredWorkoutStyle", SuggestedWorkoutStyle.self) ?? .fitness
         self.userAge = defaults.object(forKey: "settings.userAge") as? Int
         self.useHRMonitoring = defaults.object(forKey: "settings.useHRMonitoring") as? Bool ?? false
         self.recoveryAwareCoachV2 = defaults.object(forKey: "settings.recoveryAwareCoachV2") as? Bool ?? true
@@ -163,6 +165,9 @@ public final class AppSettings {
     public var trainingGoal: TrainingGoal { didSet { defaults.set(trainingGoal.rawValue, forKey: "settings.trainingGoal") } }
     /// Training experience, scaling the engine's volume landmarks (P3).
     public var experienceLevel: ExperienceLevel { didSet { defaults.set(experienceLevel.rawValue, forKey: "settings.experienceLevel") } }
+    /// Workout-family bias for Personalized suggestions. Fitness is intentionally
+    /// the safe default and is only a fallback when history lacks a movement.
+    public var preferredWorkoutStyle: SuggestedWorkoutStyle { didSet { defaults.set(preferredWorkoutStyle.rawValue, forKey: "settings.preferredWorkoutStyle") } }
     /// Optional user age (issue 7) for HR-zone estimation (Tanaka HRmax). nil until
     /// collected in onboarding; the HR-zone estimator defaults to 40 (US median).
     public var userAge: Int? { didSet { defaults.set(userAge, forKey: "settings.userAge") } }
@@ -294,7 +299,8 @@ public extension AppSettings {
             intervalColorBlind: intervalColorBlind, spokenCues: spokenCues, plateRounding: plateRounding,
             autoSaveHealth: autoSaveHealth, autoEndOnIdle: autoEndOnIdle, workoutSounds: workoutSounds,
             preWorkoutCountdown: preWorkoutCountdown, trainingGoal: trainingGoal.rawValue,
-            experienceLevel: experienceLevel.rawValue, useHRMonitoring: useHRMonitoring,
+            experienceLevel: experienceLevel.rawValue, preferredWorkoutStyle: preferredWorkoutStyle.rawValue,
+            useHRMonitoring: useHRMonitoring,
             recoveryAwareCoachV2: recoveryAwareCoachV2, favoriteRoutineIDs: Array(favoriteRoutineIDs),
             hasCompletedOnboarding: hasCompletedOnboarding,
             schedulePreferences: coachSchedulePreferences, coachProfile: coachPreferenceProfile,
@@ -328,6 +334,7 @@ public extension AppSettings {
         if let v = p.preWorkoutCountdown { preWorkoutCountdown = v }
         if let v = p.trainingGoal.flatMap(TrainingGoal.init(rawValue:)) { trainingGoal = v }
         if let v = p.experienceLevel.flatMap(ExperienceLevel.init(rawValue:)) { experienceLevel = v }
+        if let v = p.preferredWorkoutStyle.flatMap(SuggestedWorkoutStyle.init(rawValue:)) { preferredWorkoutStyle = v }
         if let v = p.useHRMonitoring { useHRMonitoring = v }
         if let v = p.recoveryAwareCoachV2 { recoveryAwareCoachV2 = v }
         if let v = p.favoriteRoutineIDs { favoriteRoutineIDs = Set(v) }

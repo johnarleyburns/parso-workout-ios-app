@@ -43,12 +43,30 @@ public struct ExerciseHistoryIndexSnapshot: Codable, Equatable, Sendable {
     }
 }
 
+private final class ExerciseHistoryIndexSignatureCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [String: String] = [:]
+
+    func contains(_ signature: String, for key: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return values[key] == signature
+    }
+
+    func set(_ signature: String, for key: String) {
+        lock.lock()
+        values[key] = signature
+        lock.unlock()
+    }
+}
+
 /// Builds and persists the derived historical-exercise projection. Callers pass
 /// only sessions that are eligible for the current user's history; in production
 /// that excludes the active session so a half-entered workout cannot personalize
 /// its own suggestion.
 public enum ExerciseHistoryIndexStore {
     public static let fileName = "exercise-history-index.json"
+    private static let signatureCache = ExerciseHistoryIndexSignatureCache()
 
     /// Returns the app-support location used by the iPhone. A nil URL means an
     /// in-memory index, which is used by tests and isolated UI-test stores.
@@ -68,15 +86,23 @@ public enum ExerciseHistoryIndexStore {
                                        excludingSessionIDs: Set<UUID> = [],
                                        storageURL: URL? = defaultStorageURL()) throws -> Bool {
         let signature = sourceSignature(for: sessions, excludingSessionIDs: excludingSessionIDs)
+        let cacheKey = storageURL?.standardizedFileURL.path ?? "memory"
+        // Avoid a second rebuild in the same process when the filesystem has
+        // not yet surfaced the just-written snapshot to a concurrent reader.
+        // The key is still the complete content signature, so any workout/set
+        // edit or deletion invalidates this fast path.
+        if signatureCache.contains(signature, for: cacheKey) { return false }
         if let existing = try load(from: storageURL),
            existing.version == ExerciseHistoryIndexSnapshot.currentVersion,
            existing.sourceSignature == signature {
+            signatureCache.set(signature, for: cacheKey)
             return false
         }
 
         let snapshot = build(sessions: sessions, excludingSessionIDs: excludingSessionIDs,
                              sourceSignature: signature)
         try save(snapshot, to: storageURL)
+        signatureCache.set(signature, for: cacheKey)
         return true
     }
 

@@ -264,30 +264,28 @@ struct OnboardingView: View {
     }
 
     private var programPage: some View {
-        let days = flow.previewPlan(formula: settings.formula).days.filter { !$0.sessions.isEmpty }
         return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Your program is ready").font(.title.bold()).padding(.top, 4)
-                Text("Built from your goals and schedule. The Coach fills in the exact sets, reps, and loads — then adapts them to what you log, and cites the research for every call.")
+                Text("Your first workout is ready").font(.title.bold()).padding(.top, 4)
+                Text("Cladiron uses your preferences until you have enough workout history for a fully personalized workout. Each workout is shown for your review before anything is started or saved.")
                     .font(.subheadline).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                if days.isEmpty {
-                    Text("A balanced week tuned to your \(flow.goal.displayName.lowercased()) goal.")
-                        .font(.subheadline)
-                        .padding().frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
-                } else {
-                    VStack(spacing: 0) {
-                        ForEach(Array(days.enumerated()), id: \.element.id) { index, day in
-                            if index > 0 { Divider().padding(.leading, 38) }
-                            CoachPlanDayRow(day: day)
-                        }
-                    }
-                    .padding()
-                    .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
-                    .accessibilityIdentifier("onboarding.programPreview")
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Personalized Workout", systemImage: "wand.and.stars")
+                        .font(.headline)
+                    Text("After five completed workouts, suggestions prioritize movements you have actually used. Before then, your selected workout type fills any missing movement needs.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    Label("Nothing is scheduled automatically", systemImage: "calendar.badge.checkmark")
+                        .font(.headline)
+                        .padding(.top, 4)
+                    Text("You choose whether to start or schedule each reviewed workout.")
+                        .font(.subheadline).foregroundStyle(.secondary)
                 }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+                .accessibilityIdentifier("onboarding.workoutFlowPreview")
 
                 Text("Everything else in Cladiron — logging, history, trends, export — is free forever.")
                     .font(.caption).foregroundStyle(.secondary)

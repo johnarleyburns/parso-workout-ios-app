@@ -43,6 +43,7 @@ struct WorkoutPlanEditor: View {
 
     @Environment(AppSettings.self) var settings
     @Environment(\.modelContext) var modelContext
+    @Environment(\.dismiss) private var dismiss
     @Query(sort: \Person.name) private var allPeople: [Person]
     @Query(sort: \Exercise.name) private var allExercises: [Exercise]
     @State var exercisePickerIntent: ExercisePickerIntent?
@@ -67,10 +68,13 @@ struct WorkoutPlanEditor: View {
     @State var planVolumeWeekly: [MuscleGroup: Double] = [:]
     @State private var planVolumeExpanded = false
     @State var suggestExerciseRequest: SuggestedExerciseRequest?
+    @State private var schedulePresented = false
     @State var suggestExerciseFailed = false
     let allowsStart: Bool
+    let allowsSchedule: Bool
 
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
+         allowsSchedule: Bool = true,
          onExcludeAndRegenerate: ((String) async -> EditablePlan?)? = nil,
          onStart: @escaping (EditablePlan) -> Void) {
         self._plan = State(initialValue: plan)
@@ -79,6 +83,7 @@ struct WorkoutPlanEditor: View {
         self._isEditing = State(initialValue: startInEditMode)
         self._originalPlan = State(initialValue: plan)
         self.allowsStart = allowsStart
+        self.allowsSchedule = allowsSchedule
 
         let ws = WorkoutSettings.default
         self._restSeconds = State(initialValue: ws.restSeconds)
@@ -92,7 +97,10 @@ struct WorkoutPlanEditor: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                if allowsStart { startButton }
+                if allowsStart {
+                    startButton
+                    if allowsSchedule { scheduleButton }
+                }
 
                 LiveWorkoutVolumeSummary(state: planVolumeState,
                                          expanded: $planVolumeExpanded,
@@ -214,6 +222,11 @@ struct WorkoutPlanEditor: View {
                 plateRounding: $plateRounding,
                 useHR: $useHR)
         }
+        .sheet(isPresented: $schedulePresented) {
+            ScheduleWorkoutSheet(title: plan.title) { date in
+                try schedule(plan: plan, for: date)
+            }
+        }
         .sheet(item: $exclusionExercise) { exercise in
             ExerciseSuggestionExclusionSheet(exercise: exercise, onExcluded: {
                 regenerateAfterExcluding(exercise)
@@ -247,6 +260,12 @@ struct WorkoutPlanEditor: View {
         } message: {
             Text("Exercise data could not be read. Try again after the catalog finishes loading.")
         }
+    }
+
+    private func schedule(plan: EditablePlan, for date: Date) throws {
+        _ = try ScheduledWorkoutStore.schedule(plan: plan, for: date, in: modelContext)
+        NotificationCenter.default.post(name: .scheduledWorkoutCreated, object: nil)
+        dismiss()
     }
 
     /// Regenerates the whole suggested plan from scratch now that `exercise`

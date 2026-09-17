@@ -510,6 +510,9 @@ public final class WorkoutSession {
     /// Source plan-session identity for the unified planning adapter. Optional
     /// so legacy sessions remain unchanged and manual workouts stay plan-free.
     public var planSessionID: UUID?
+    /// Links a live session back to the one-off scheduled workout that created
+    /// it. Optional for legacy and unscheduled sessions.
+    public var scheduledWorkoutID: UUID?
     /// Links to the summary HKWorkout written for this session (FR-4.3) or the
     /// Watch-ingested workout this came from (FR-2.1). Used for de-dup.
     public var healthKitWorkoutUUID: UUID?
@@ -550,6 +553,7 @@ public final class WorkoutSession {
                 cooldownSeconds: Double = 0,
                 activePartnerIDsData: String = "",
                 planSessionID: UUID? = nil,
+                scheduledWorkoutID: UUID? = nil,
                 updatedAt: Date = Date(),
                 originDevice: String = "") {
         self.id = id
@@ -564,6 +568,7 @@ public final class WorkoutSession {
         self.cooldownSeconds = cooldownSeconds
         self.activePartnerIDsData = activePartnerIDsData
         self.planSessionID = planSessionID
+        self.scheduledWorkoutID = scheduledWorkoutID
         self.updatedAt = updatedAt
         self.originDevice = originDevice
     }

@@ -1,6 +1,115 @@
 # Current Status
 
-Updated: 2026-09-15
+Updated: 2026-09-17
+
+## Active task — remove weekly planning; add individual scheduled workouts
+
+The implementation target is now a single-workout workflow. Remove the
+permanent Plan tab and retire weekly coach-plan creation from the user-facing
+product. Preserve legacy weekly-plan SwiftData records and compatibility types
+so existing private iCloud data is not destroyed.
+
+### Product contract
+
+- Home, Tests, and Progress remain top-level tabs; Plan is removed.
+- Personalized Workout and Custom Workout remain the primary planning flows.
+- Workout Plan View gets a `Schedule this Workout` button immediately below
+  `Start Workout`, using the same button size and style family.
+- Scheduling stores an exact snapshot of the reviewed workout, including
+  exercises, notes, sets, reps, fractional historical weights, load modes,
+  warm-up/cool-down, and partner prescriptions.
+- Scheduling is app-internal date scheduling. Do not request EventKit access or
+  create an Apple Calendar event in this task.
+- After a successful save, the date sheet and Workout Plan close and Home is
+  shown.
+- Home gets `Planned Workouts` immediately below `Workouts Today`. Its compact
+  section shows today’s scheduled workouts; `Show More…` shows today and future
+  workouts, with overdue uncompleted items still recoverable in the full view.
+- Starting a scheduled workout uses the normal live-workout path. Completed
+  scheduled items leave Planned Workouts and appear in completed history.
+- No DB++ schema change is required: schedule dates and execution lifecycle are
+  app-owned private-user state.
+
+### Persistence contract
+
+Add an additive CloudKit-compatible `ScheduledWorkout` SwiftData model with:
+`id`, normalized `scheduledDate`, semantic `scheduledDayKey`, timezone ID,
+title, versioned payload data, payload version, scheduled/started/completed/
+cancelled status, optional started-session ID, created/updated dates,
+`deletedAt`, and `originDevice`. Use tombstones, not destructive deletion.
+Add it to `CadenceStore.schema` and both CloudKit schema guardrail maps.
+Keep `PersistedPlan` and normalized weekly-plan models in the schema, but stop
+creating or displaying new weekly coach plans.
+
+The scheduled payload is a versioned Codable app-side snapshot. It is not a
+mutable reference to a generated plan. Existing Workout Plan edits must be
+captured at the moment the user taps Save.
+
+### Weekly-planning removal
+
+Remove `Tab.plan`, `PlanningView`, weekly-plan generation/editing affordances,
+`Generate with Coach`, `Describe a plan`, `New blank week`, weekly-plan routes,
+and weekly-plan onboarding copy. Retain coach facts, insights, readiness,
+training preferences, citations, and Personalized Workout inputs where still
+needed. Old `cladiron://plan` and Handoff links must safely route Home rather
+than expose a dead route.
+
+### Schedule UI and lifecycle
+
+Add a date-only schedule sheet with today/future validation, explicit Save and
+Cancel, persistence error handling, and a visible confirmation. Thread an
+`onSchedule` callback through the suggested and custom Workout Plan routes; the
+root Home route performs the final navigation reset after persistence succeeds.
+Do not create a `WorkoutSession` merely by scheduling. On start, copy the exact
+payload into a session, link it with `scheduledWorkoutID`, and mark the schedule
+started. Mark it completed only when the workout actually ends. Reschedule,
+start-now, delete, crash recovery, and duplicate same-day schedules must all be
+explicit and deterministic.
+
+### Performance work required in this task
+
+- Move Home coach value extraction (`TrainingFacts`, events, engine history,
+  custom-volume extraction) off the main actor using a SwiftData model actor or
+  background value-snapshot worker; only publish the final immutable snapshot on
+  MainActor.
+- Move Watch settings/custom-exercise payload construction off the main actor.
+- Cache and hash Watch payloads; coalesce repeated foreground/settings sends and
+  skip unchanged `updateApplicationContext` calls.
+- Keep CloudKit event handlers tiny and debounce import bursts. Refresh Home only
+  when a relevant workout/cardio/scheduled-workout signature changes; do not
+  rebuild the coach for every imported entity or notification.
+- Move bulk HealthKit ingestion/save work off the main SwiftData context.
+- Add signposts around coach extraction, Home projections, HealthKit ingestion,
+  Watch payload construction/transmission, and CloudKit import handling.
+
+### Acceptance requirements
+
+Core tests must cover payload round-trip, fractional weights, reps, partners,
+timezone/DST date semantics, today/future/overdue filtering, tombstones,
+duplicate same-day schedules, and start/complete/abandon/delete lifecycle.
+Smoke tests must prove there is no Plan tab, no weekly coach-generation action,
+both Personalized and Custom Workout Plan screens expose equal-sized Start and
+Schedule buttons, scheduling returns Home, Planned Workouts renders today and
+future entries, and starting a scheduled workout preserves its exact plan.
+No simulator is part of this implementation pass. Commit with `--no-verify`
+only after code and focused verification are complete, then push.
+
+### Implementation completed in this pass
+
+- Added `ScheduledWorkout` as an additive app-owned SwiftData/CloudKit model,
+  including versioned exact-plan payloads, fractional loads, partner plans,
+  tombstones, date-only timezone semantics, and linked session lifecycle.
+- Added Schedule Workout UI below Start Workout, Home Planned Workouts today and
+  future/overdue views, rescheduling, deletion, start/resume routing, and return
+  to Home after save. The former Plan tab and unreachable weekly authoring views
+  are removed; legacy weekly records remain in the schema.
+- Removed automatic weekly coach-plan projection to Watch/widgets. Watch payload
+  construction is detached, fingerprinted, and coalesced; Home coach extraction
+  and HealthKit ingestion use background SwiftData contexts. CloudKit import,
+  coach, Home projection, HealthKit, and Watch payload signposts are present.
+- Added headless scheduled-workout payload/presenter/lifecycle/schema coverage
+  and updated smoke/screenshot contracts to assert Plan is absent and scheduling
+  is available. No simulator was run.
 
 ## Roadmap position — Phase 4 implementation complete; Phase 2 hardware close-out pending
 
@@ -32,9 +141,10 @@ platform checklist is in `PHASE_4_MANUAL_TEST.md`.
   contract. It supports goal, experience, days, duration, equipment,
   conditioning, constraints, progression, periodization, and mesocycle terms;
   it rejects retired trainer/client/Pro requests and never emits prescriptions.
-  The Plan tab now provides a review-first apply flow, the structured request
-  persists on the app-owned Plan, and the optional readiness check-in is now
-  user-facing on Home. App Shortcuts, Handoff, and a WidgetKit extension use a
+  The former Plan tab and weekly coach authoring flow are now retired from the
+  user-facing app; legacy planning models remain for migration compatibility.
+  The optional readiness check-in is user-facing on Home. App Shortcuts,
+  Handoff, and a WidgetKit extension use a
   privacy-preserving shared today snapshot. Focused tests cover the parser,
   persistence, readiness presentation, and platform snapshot contract. The parser
   now has 60+ phrase-level acceptance cases plus macOS `NaturalLanguage` tokenization

@@ -4,7 +4,7 @@ import CadenceCore
 import CadenceFeatures
 
 struct RootTabView: View {
-    enum Tab: Hashable { case home, plan, tests, progress }
+    enum Tab: Hashable { case home, tests, progress }
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
     @Environment(ActiveWorkoutModel.self) private var active
@@ -48,13 +48,6 @@ struct RootTabView: View {
                             .accessibilityIdentifier("tab.home")
                     }
                     .tag(Tab.home)
-
-                NavigationStack { PlanningView(switchToWorkout: { selection = .home }) }
-                    .tabItem {
-                        Label("Plan", systemImage: "calendar")
-                            .accessibilityIdentifier("tab.plan")
-                    }
-                    .tag(Tab.plan)
 
                 TestsView()
                     .tabItem {
@@ -172,6 +165,10 @@ struct RootTabView: View {
             // surface. A workout is never auto-ended or discarded, no matter
             // how stale. Manual minimization remains a deliberate path to Home.
             recoverActiveSessionIfNeeded()
+            // Clear the legacy weekly Today-plan projection from older builds.
+            // Current Watch/widget projections are populated only from explicit
+            // one-off scheduled workouts.
+            model.clearWatchTodayPlan()
             // The training log syncs live via SwiftData↔CloudKit (private DB);
             // there is nothing to restore or upload here — SwiftData mirrors the
             // store automatically on launch and as changes happen.
@@ -192,10 +189,12 @@ struct RootTabView: View {
         }
         .onOpenURL { url in
             guard url.scheme == "cladiron" else { return }
-            selection = url.host == "plan" ? .plan : .home
+            // Old weekly-plan deep links remain safe after the Plan tab is
+            // retired: one-off scheduled workouts are reached from Home.
+            selection = .home
         }
         .onContinueUserActivity(CadenceHandoff.planActivityType) { _ in
-            selection = .plan
+            selection = .home
         }
     }
 

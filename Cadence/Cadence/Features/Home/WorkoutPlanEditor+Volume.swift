@@ -11,6 +11,19 @@ extension WorkoutPlanEditor {
         .accessibilityIdentifier("editor.start")
     }
 
+    var scheduleButton: some View {
+        CadenceActionButton(title: "Schedule this Workout",
+                            systemImage: "calendar.badge.plus",
+                            emphasis: .secondary) {
+            if isEditing {
+                originalPlan = plan
+                isEditing = false
+            }
+            schedulePresented = true
+        }
+        .accessibilityIdentifier("editor.schedule")
+    }
+
     var settingsButton: some View {
         CadenceActionButton(title: "Show workout settings\u{2026}",
                             systemImage: "gearshape",

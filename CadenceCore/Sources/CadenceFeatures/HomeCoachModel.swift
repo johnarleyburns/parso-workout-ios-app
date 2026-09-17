@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import CadenceCore
 
 /// Home's coach pipeline logic, lifted out of `HomeView` (test-pyramid Phase 3).
@@ -192,6 +193,43 @@ public enum HomeCoachModel {
                 constraintPolicy: constraintPolicy,
                 engineObservation: engineObservation,
                 engineSuggestion: engineSuggestion)
+        }.value
+    }
+
+    /// Background-context variant used by the Home dashboard. SwiftData model
+    /// relationships are never faulted on the main actor: a short-lived
+    /// `ModelContext` is created inside the detached worker, all value
+    /// extraction and coach computation happen there, and only the immutable
+    /// `CoachSnapshot` crosses back to SwiftUI.
+    public static func snapshotAsync(container: ModelContainer,
+                                     goal: TrainingGoal,
+                                     experience: ExperienceLevel,
+                                     formula: OneRepMaxFormula,
+                                     schedule: CoachSchedulePreferences,
+                                     profile: CoachPreferenceProfile,
+                                     passiveSamples: [PassiveReadinessSample] = [],
+                                     userAge: Int? = nil,
+                                     now: Date = Date(),
+                                     constraintPolicy: PlanningConstraintPolicy = .safe) async -> CoachSnapshot {
+        await Task.detached(priority: .userInitiated) {
+            let context = ModelContext(container)
+            let sessions = (try? WorkoutRepository.allSessions(context)) ?? []
+            let cardio = (try? WorkoutRepository.allCardio(context)) ?? []
+            let assessments = (try? context.fetch(FetchDescriptor<Assessment>())) ?? []
+            let readiness = (try? context.fetch(FetchDescriptor<ReadinessEntry>())) ?? []
+            return snapshot(sessions: sessions,
+                            cardio: cardio,
+                            assessments: assessments,
+                            readiness: readiness,
+                            goal: goal,
+                            experience: experience,
+                            formula: formula,
+                            schedule: schedule,
+                            profile: profile,
+                            passiveSamples: passiveSamples,
+                            userAge: userAge,
+                            now: now,
+                            constraintPolicy: constraintPolicy)
         }.value
     }
 

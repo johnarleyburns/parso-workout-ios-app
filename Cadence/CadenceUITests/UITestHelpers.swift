@@ -39,10 +39,6 @@ extension XCUIApplication {
     /// so existence alone isn't enough on the Home dashboard.
     @discardableResult
     func scrollToHittableAndTap(_ id: String, maxSwipes: Int = 8) -> Bool {
-        if id == "tab.plan" {
-            let tab = tabBars.buttons["Plan"]
-            if tab.waitForExistence(timeout: 6) { tab.tap(); return true }
-        }
         let button = buttons[id]
         let el = button.exists ? button : descendants(matching: .any)[id]
         guard el.waitForExistence(timeout: 6) else { return false }
@@ -115,8 +111,8 @@ extension XCUIApplication {
         return revealed()
     }
 
-    /// Navigates from anywhere back to the Home launchpad, then into the
-    /// destination that used to be a tab (field-testing §01).
+    /// Navigates from anywhere back to the Home launchpad, then into a
+    /// destination represented by a Home card.
     func goToTab(_ label: String) {
         popToHome()
         switch label {

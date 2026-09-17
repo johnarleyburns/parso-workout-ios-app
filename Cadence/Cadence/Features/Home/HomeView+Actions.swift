@@ -2,8 +2,10 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import os
 
 extension HomeView {
+    private static let healthIngestLog = OSLog(subsystem: "guru.parso.cladiron", category: "HealthIngestion")
     var contributionPromptAllowed: Bool {
         active.strengthSession == nil && hrGateKind == nil && pending == nil && !warmupActive
     }
@@ -30,12 +32,22 @@ extension HomeView {
         markWorkoutHistoryChanged()
         ContributionCoordinator.recordWorkoutCompleted()
     }
+
+    func startScheduledWorkout(_ record: ScheduledWorkout) {
+        guard let plan = try? ScheduledWorkoutStore.decode(record.payloadData,
+                                                           version: record.payloadVersion) else { return }
+        scheduledWorkoutBeingStarted = record.id
+        path.append(HomeRoute.workoutEditor(plan))
+    }
     /// Pulls any new Watch/Health-recorded cardio into the local store (FR-2.1).
     /// This runs after Home loads and on pull-to-refresh. The status is published
     /// so the user can see what is happening instead of experiencing a silent
     /// background import.
     func syncCardioFromHealth() async {
         guard !model.healthSyncStatus.isInProgress else { return }
+        let signpostID = OSSignpostID(log: Self.healthIngestLog)
+        os_signpost(.begin, log: Self.healthIngestLog, name: "healthIngest", signpostID: signpostID)
+        defer { os_signpost(.end, log: Self.healthIngestLog, name: "healthIngest", signpostID: signpostID) }
         model.healthSyncStatus = .syncing
         do {
             let new = await model.health.newWorkouts(since: model.lastHealthSync)
@@ -43,7 +55,15 @@ extension HomeView {
                 model.healthSyncStatus = .idle
                 return
             }
-            let inserted = try WorkoutRepository.ingest(new, in: context)
+            let inserted: Int
+            if let cadenceModelContainer {
+                inserted = await Task.detached(priority: .utility) {
+                    let backgroundContext = ModelContext(cadenceModelContainer)
+                    return (try? WorkoutRepository.ingest(new, in: backgroundContext)) ?? 0
+                }.value
+            } else {
+                inserted = try WorkoutRepository.ingest(new, in: context)
+            }
             let completedAt = Date()
             model.lastHealthSync = completedAt
             model.healthSyncStatus = .completed(completedAt, insertedCount: inserted)
@@ -78,6 +98,9 @@ extension HomeView {
     /// for every SwiftUI body evaluation. Active set-entry changes do not alter
     /// these rows; completion and edits bump `historyRefreshToken`.
     func refreshHomeActivitySnapshot() {
+        let signpostID = OSSignpostID(log: Self.healthIngestLog)
+        os_signpost(.begin, log: Self.healthIngestLog, name: "homeActivityProjection", signpostID: signpostID)
+        defer { os_signpost(.end, log: Self.healthIngestLog, name: "homeActivityProjection", signpostID: signpostID) }
         cachedWorkoutsTodayRows = WorkoutsTodayPresenter.historicalRows(
             sessions: sessions, cardio: cardio)
         let week = TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio)
@@ -293,7 +316,7 @@ extension HomeView {
                 Haptics.selection()
                 switch HomePlanPresenter.weekStripTapRoute() {
                 case .yourPlan:
-                    path.append(HomeRoute.yourPlan)
+                    path.append(HomeRoute.plannedWorkouts)
                 }
             }
         )

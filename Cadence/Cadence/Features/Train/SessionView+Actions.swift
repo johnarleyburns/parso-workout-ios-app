@@ -184,6 +184,11 @@ extension SessionView {
             Task { await saveToHealth() }
         }
         active.endStrength()
+        if let scheduledID = session.scheduledWorkoutID,
+           let scheduled = try? context.fetch(FetchDescriptor<ScheduledWorkout>(
+               predicate: #Predicate { $0.id == scheduledID })).first {
+            _ = try? ScheduledWorkoutStore.markCompleted(recordID: scheduled.id, in: context)
+        }
         try? context.save()
         active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples), session: session)
     }
@@ -215,6 +220,9 @@ extension SessionView {
 
     func cleanupEmptyLog() {
         guard isManualLog, session.orderedSets.isEmpty else { return }
+        if let scheduledID = session.scheduledWorkoutID {
+            _ = try? ScheduledWorkoutStore.markAbandoned(recordID: scheduledID, in: context)
+        }
         context.delete(session); try? context.save()
     }
 

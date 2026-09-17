@@ -4,6 +4,19 @@ import CadenceCore
 import CadenceFeatures
 
 extension HomeView {
+    /// Starts a scheduled snapshot through the same reviewed Workout Plan
+    /// surface used by custom and personalized workouts. The schedule remains
+    /// `scheduled` until the user actually commits Start Workout; this avoids
+    /// manufacturing a session merely because a row was tapped.
+    func consumeScheduledWorkoutStart(_ request: ScheduledWorkoutStartRequest) {
+        guard active.liveWorkout.active == nil else {
+            showWorkoutConflict = true
+            return
+        }
+        scheduledWorkoutBeingStarted = request.recordID
+        path.append(HomeRoute.workoutEditor(request.plan))
+    }
+
     func start(_ type: WorkoutType) {
         // Only "Other Cardio" carries a custom title; clear any stale one first.
         otherCardioTitle = nil
@@ -289,6 +302,15 @@ extension HomeView {
         session.activePartnerIDs = plan.partnerIDs.map(\.uuidString)
         session.plannedPerformerPrescriptions = plan.performerPrescriptions()
         session.cooldownSeconds = Double(plan.cooldownMinutes * 60)
+        if let scheduledID = scheduledWorkoutBeingStarted,
+           let scheduled = try? context.fetch(FetchDescriptor<ScheduledWorkout>(
+               predicate: #Predicate { $0.id == scheduledID })).first {
+            session.scheduledWorkoutID = scheduledID
+            _ = try? ScheduledWorkoutStore.markStarted(recordID: scheduled.id,
+                                                       sessionID: session.id,
+                                                       in: context)
+            scheduledWorkoutBeingStarted = nil
+        }
         try context.save()
         return session
     }

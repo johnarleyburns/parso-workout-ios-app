@@ -7,6 +7,7 @@ import CloudKit
 import CoreData
 import CadenceCore
 import CadenceFeatures
+import os
 #if DEBUG
 import CadenceFixtures
 #endif
@@ -23,6 +24,7 @@ import CadenceFixtures
 @MainActor @Observable
 final class AppModel: NSObject, @unchecked Sendable {
     private static let liveWatchHREnabled = true
+    private static let performanceLog = OSLog(subsystem: "guru.parso.cladiron", category: "AppPerformance")
 
     enum HealthSyncStatus: Equatable, Sendable {
         case idle
@@ -201,10 +203,16 @@ final class AppModel: NSObject, @unchecked Sendable {
     private var _settings: AppSettings?
     private var _modelContainer: ModelContainer?
     private var _active: ActiveWorkoutModel?
-    /// The most recently computed Home plan. Foreground/settings sync reuses
-    /// this value rather than walking SwiftData and rebuilding the coach plan
-    /// synchronously during an unlock transition.
+    /// Legacy Watch Today-plan cache retained only for migration/tests. New
+    /// builds do not populate it from the Home coach pipeline.
     private var cachedTodayPlan: WatchSync.TodayPlan?
+    private var watchPayloadTask: Task<Void, Never>?
+    private var lastWatchPayloadFingerprint: Int?
+
+    private struct WatchPayloadSnapshot: Sendable {
+        let customExercises: [WatchSync.CustomExercise]
+        let recentPartnerNames: [String]
+    }
 
     #if DEBUG
     var cachedTodayPlanForTesting: WatchSync.TodayPlan? { cachedTodayPlan }
@@ -255,6 +263,9 @@ final class AppModel: NSObject, @unchecked Sendable {
     }
 
     private func applyCloudKitImport(isInProgress: Bool, succeeded: Bool) {
+        let signpostID = OSSignpostID(log: Self.performanceLog)
+        os_signpost(.event, log: Self.performanceLog, name: "cloudKitImportEvent", signpostID: signpostID,
+                    "inProgress=%{public}d succeeded=%{public}d", isInProgress, succeeded)
         cloudKitRestoreNoticeTask?.cancel()
         cloudKitImportQuietTask?.cancel()
         if isInProgress {
@@ -293,35 +304,95 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
         let now = Date()
         watchSyncState = .syncing(now)
-        let prefs = WatchSync.Preferences(
+        let basePreferences = WatchSync.Preferences(
             unit: settings.unit,
             intervalColorBlind: settings.intervalColorBlind,
             restSeconds: settings.restSeconds,
             warmupMinutes: settings.warmupMinutes,
             cooldownMinutes: settings.cooldownMinutes,
             workoutSounds: settings.workoutSounds,
-            recentPartnerNames: recentPartnerNames()
+            recentPartnerNames: []
         )
-        var context = WatchSync.Preferences.contextDict(prefs, updatedAt: now)
-        if let todayPlan = cachedTodayPlan {
-            context.merge(WatchSync.TodayPlan.contextDict(todayPlan)) { _, new in new }
+        let container = _modelContainer
+        watchPayloadTask?.cancel()
+        watchPayloadTask = Task { [weak self] in
+            let signpostID = OSSignpostID(log: Self.performanceLog)
+            os_signpost(.begin, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
+            let payload = await Task.detached(priority: .utility) {
+                guard let container else {
+                    return WatchPayloadSnapshot(customExercises: [], recentPartnerNames: [])
+                }
+                let context = ModelContext(container)
+                let exercises = (try? WorkoutRepository.allExercises(context)) ?? []
+                var peopleDescriptor = FetchDescriptor<Person>(
+                    sortBy: [SortDescriptor(\Person.updatedAt, order: .reverse)])
+                peopleDescriptor.fetchLimit = 6
+                let people = (try? context.fetch(peopleDescriptor)) ?? []
+                let names = Array(people
+                    .filter { !$0.isMe && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                    .map(\.name)
+                    .prefix(3))
+                return WatchPayloadSnapshot(
+                    customExercises: exercises.filter(\.isCustom).map(WatchSync.CustomExercise.init),
+                    recentPartnerNames: names)
+            }.value
+            os_signpost(.end, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                self.finishWatchSettingsContext(basePreferences: basePreferences,
+                                                payload: payload, at: now,
+                                                force: force, session: session)
+            }
         }
-        if let container = _modelContainer {
-            let ctx = ModelContext(container)
-            let exercises = (try? WorkoutRepository.allExercises(ctx)) ?? []
-            context[WatchSync.Key.customExercises] = WatchSync.customExercisesContext(exercises)
+    }
+
+    private func finishWatchSettingsContext(basePreferences: WatchSync.Preferences,
+                                            payload: WatchPayloadSnapshot,
+                                            at date: Date,
+                                            force: Bool,
+                                            session: WCSession) {
+        var prefs = basePreferences
+        prefs.recentPartnerNames = payload.recentPartnerNames
+        var fingerprint = Hasher()
+        fingerprint.combine(prefs.unit.rawValue)
+        fingerprint.combine(prefs.intervalColorBlind)
+        fingerprint.combine(prefs.restSeconds)
+        fingerprint.combine(prefs.warmupMinutes)
+        fingerprint.combine(prefs.cooldownMinutes)
+        fingerprint.combine(prefs.workoutSounds)
+        fingerprint.combine(prefs.recentPartnerNames)
+        for exercise in payload.customExercises.sorted(by: { $0.id.uuidString < $1.id.uuidString }) {
+            fingerprint.combine(exercise.id)
+            fingerprint.combine(exercise.name)
+            fingerprint.combine(exercise.updatedAt)
+            fingerprint.combine(exercise.primaryMuscles)
+            fingerprint.combine(exercise.secondaryMuscles)
         }
+        let value = fingerprint.finalize()
+        guard force || lastWatchPayloadFingerprint != value else {
+            watchSyncState = .synced(lastWatchSyncAt ?? date)
+            return
+        }
+        lastWatchPayloadFingerprint = value
+
+        var context = WatchSync.Preferences.contextDict(prefs, updatedAt: date)
+        context[WatchSync.Key.customExercises] = payload.customExercises.map(\.propertyList)
+        // Explicitly remove the retired weekly plan keys. A context is merged
+        // on the receiving side, so merely omitting them would leave a stale
+        // plan from an older app build visible on the Watch.
+        context.removeValue(forKey: WatchSync.Key.todayPlanSessions)
+        context.removeValue(forKey: WatchSync.Key.todayPlanUpdatedAt)
         do {
             try session.updateApplicationContext(context)
-            recordWatchSyncSuccess(now)
+            recordWatchSyncSuccess(date)
         } catch {
             recordWatchSyncFailure(error.localizedDescription)
         }
     }
 
-    /// Publishes the plan Home already computed asynchronously. This is kept
-    /// separate from settings sync so a foreground transition never has to
-    /// fetch the complete workout history just to update the Watch.
+    /// Legacy compatibility hook for older callers. New Home code no longer
+    /// publishes an automatic weekly coach plan to the Watch.
     func updateWatchTodayPlan(_ plan: WatchSync.TodayPlan) {
         cachedTodayPlan = plan
         guard let session = wcSession, session.isWatchAppInstalled else { return }
@@ -330,6 +401,24 @@ final class AppModel: NSObject, @unchecked Sendable {
         do {
             try session.updateApplicationContext(context)
             recordWatchSyncSuccess(plan.updatedAt)
+        } catch {
+            recordWatchSyncFailure(error.localizedDescription)
+        }
+    }
+
+    /// Removes the retired weekly Today-plan projection from the Watch's
+    /// application context. This is idempotent and safe during migration from
+    /// older builds that still sent an automatic coach plan.
+    func clearWatchTodayPlan() {
+        cachedTodayPlan = nil
+        watchPayloadTask?.cancel()
+        guard let session = wcSession, session.isWatchAppInstalled else { return }
+        var context = session.applicationContext
+        context.removeValue(forKey: WatchSync.Key.todayPlanSessions)
+        context.removeValue(forKey: WatchSync.Key.todayPlanUpdatedAt)
+        do {
+            try session.updateApplicationContext(context)
+            recordWatchSyncSuccess(Date())
         } catch {
             recordWatchSyncFailure(error.localizedDescription)
         }

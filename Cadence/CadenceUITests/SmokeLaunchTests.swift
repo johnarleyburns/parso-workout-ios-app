@@ -2,7 +2,7 @@ import XCTest
 import UIKit
 
 /// The one normal iPhone XCUITest. It covers the minimum end-to-end surface that
-/// needs a real simulator: launch, Home expansion, planning, Quick Start, ending,
+/// needs a real simulator: launch, Home expansion, scheduled-workout entry, Quick Start, ending,
 /// and the post-workout summary. Everything else belongs in headless `swift test`.
 final class SmokeLaunchTests: CadenceUITestCase {
     /// The exercise the logging flow adds. A catalog staple, so the picker's
@@ -26,23 +26,11 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Home did not load")
 
         // The iPad delivery check intentionally covers only regular-width
-        // planning/settings surfaces. The full end-to-end flow below remains
+        // Home/settings surfaces. The full end-to-end flow below remains
         // the single iPhone smoke path.
         if UIDevice.current.userInterfaceIdiom == .pad {
-            // iPadOS exposes both the floating tab cell and its child view with
-            // the same identifier; use the first deterministic match here.
-            XCTAssertTrue(app.buttons.matching(identifier: "tab.plan").firstMatch.waitTap(timeout: 10),
-                          "iPad Plan tab did not open")
-            XCTAssertTrue(app.descendants(matching: .any)["planning"].waitForExistence(timeout: 10),
-                          "iPad planning surface did not render")
-            XCTAssertTrue(app.scrollToHittableAndTap("planning.describePlan"),
-                          "iPad planning surface did not expose bounded planning")
-            XCTAssertTrue(app.navigationBars["Describe a plan"].waitForExistence(timeout: 10),
-                          "iPad bounded planning sheet did not open")
-            XCTAssertTrue(app.buttons["boundedPlan.cancel"].waitTap(timeout: 5),
-                          "iPad bounded planning sheet could not close")
-            XCTAssertTrue(app.buttons.matching(identifier: "tab.home").firstMatch.waitTap(timeout: 10),
-                          "iPad Home tab did not reopen")
+            XCTAssertFalse(app.tabBars.buttons["Plan"].exists,
+                           "Retired Plan tab is still exposed on iPad")
             XCTAssertTrue(app.scrollToHittableAndTap("home.settings"),
                           "iPad Home did not expose Settings")
             // Settings is a lazy Form on iPad; use the helper that swipes before
@@ -323,15 +311,31 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["editor.exercisePerformer.\(exerciseName).Me"].exists,
                       "The owner's own line disappeared once a partner was added")
 
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitForExistence(timeout: 5),
-                      "Could not return to Start Workout")
-        app.buttons["selectWorkout.cancel"].tap()
+        // One-off scheduling is the only planning surface now. It must sit
+        // directly under Start Workout, use the same control height, persist
+        // the reviewed custom snapshot, and return to Home without exposing a
+        // weekly planner.
+        XCTAssertTrue(app.buttons["editor.schedule"].waitForExistence(timeout: 5),
+                      "Custom Workout Plan lost Schedule this Workout")
+        XCTAssertEqual(app.buttons["editor.start"].frame.height,
+                       app.buttons["editor.schedule"].frame.height,
+                       accuracy: 1,
+                       "Schedule this Workout is not the same size as Start Workout")
+        XCTAssertTrue(app.buttons["editor.schedule"].waitTap(timeout: 5),
+                      "Schedule this Workout did not open")
+        XCTAssertTrue(app.navigationBars["Schedule Workout"].waitForExistence(timeout: 5),
+                      "Schedule Workout sheet did not open")
+        XCTAssertTrue(app.buttons["scheduleWorkout.save"].waitTap(timeout: 5),
+                      "Schedule Workout sheet did not save")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Saving a scheduled workout did not return Home")
+        XCTAssertTrue(app.descendants(matching: .any)["home.plannedWorkouts"].waitForExistence(timeout: 10),
+                      "Home did not render Planned Workouts")
+        XCTAssertTrue(app.scrollToElement("home.planned.showMore"),
+                      "Planned Workouts did not offer the today/future detail view")
 
-        XCTAssertTrue(app.scrollToHittableAndTap("tab.plan"), "Plan tab did not open")
-        XCTAssertTrue(app.descendants(matching: .any)["planning"].waitForExistence(timeout: 10),
-                      "Programs screen did not render")
-        app.popToHome()
+        XCTAssertFalse(app.tabBars.buttons["Plan"].exists,
+                       "Retired Plan tab is still exposed")
 
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "Quick Start did not enter the workout")
         XCTAssertFalse(app.buttons["editor.showSettings"].exists,

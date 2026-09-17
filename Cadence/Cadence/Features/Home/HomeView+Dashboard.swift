@@ -36,6 +36,10 @@ extension HomeView {
                         rows: workoutsTodayRows,
                         onOpenCompleted: openTodayWorkout,
                         onShowMoreHistory: { path.append(HomeRoute.history) })
+                    HomePlannedWorkoutsSection(
+                        records: scheduledWorkouts,
+                        onOpenAll: { path.append(HomeRoute.plannedWorkouts) },
+                        onStart: startScheduledWorkout)
                     HomeWeekDashboardSection(
                         dashboard: dashboard,
                         volumeExpanded: $weeklyVolumeExpanded,
@@ -87,6 +91,7 @@ extension HomeView {
                 switch route {
                 case .settings: SettingsView()
                 case .history: HistoryView(path: $path)
+                case .plannedWorkouts: PlannedWorkoutsListView()
                 case .coach:
                     // Observations and editable coaching guidance are available to
                     // every user; any plan mutation still requires explicit apply.
@@ -94,16 +99,6 @@ extension HomeView {
                                       onFixCustomExercises: { path.append(HomeRoute.customExercises) },
                                       onInsightAction: { handleInsightAction($0) })
                 case .coachPreferences: CoachSchedulePreferencesView()
-                case .yourPlan:
-                    let facts = coachSnapshot.coachFacts.withStepSummary(from: activityTrend)
-                    let plan = HomePlanPresenter.yourPlanDestinationPlan(cachedPlan: coachSnapshot.plan)
-                    YourWeekView(decision: coachDecision, facts: facts,
-                                 trainingFacts: coachSnapshot.facts,
-                                 optimizedPlan: coachSnapshot.optimizedPlan,
-                                 plan: plan,
-                                 sessions: sessions.filter { $0.deletedAt == nil },
-                                 cardio: cardio.filter { $0.deletedAt == nil },
-                                 path: $path)
                 case .workoutEditor(let plan):
                     WorkoutPlanEditor(plan: plan, onStart: { plan in
                         handleEditorStart(plan)

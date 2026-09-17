@@ -34,12 +34,28 @@ extension HomeView {
             .onReceive(NotificationCenter.default.publisher(for: .readinessCheckInChanged)) { _ in
                 markWorkoutHistoryChanged()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .scheduledWorkoutCreated)) { _ in
+                // A schedule can be created from a nested Workout Plan inside
+                // the start sheet. Clear every Home-owned presentation layer
+                // so the user always lands back on Home after saving.
+                path = NavigationPath()
+                selectWorkoutPresented = false
+                weightsStartPresented = false
+                scheduledWorkoutBeingStarted = nil
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .scheduledWorkoutStartRequested)) { note in
+                guard let request = note.object as? ScheduledWorkoutStartRequest else { return }
+                path = NavigationPath()
+                selectWorkoutPresented = false
+                weightsStartPresented = false
+                consumeScheduledWorkoutStart(request)
+            }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceStartTodaysWorkout)) { _ in
                 guard active.liveWorkout.active == nil else { return }
                 selectWorkoutPresented = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceShowTodaysPlan)) { _ in
-                path.append(HomeRoute.yourPlan)
+                path.append(HomeRoute.plannedWorkouts)
             }
             .onChange(of: active.finishedSummary != nil) { _, shown in
                 if shown {

@@ -35,7 +35,8 @@ public enum CadenceStore {
         PersistedPlanItem.self,
         PersistedPlanSet.self,
         PersistedClientRelationship.self,
-        ExerciseSuggestionExclusion.self
+        ExerciseSuggestionExclusion.self,
+        ScheduledWorkout.self
     ])
 
     /// - Parameters:

@@ -40,7 +40,7 @@ struct StartTodaysWorkoutIntent: AppIntent {
 
 struct ShowTodaysPlanIntent: AppIntent {
     static let title: LocalizedStringResource = "Show Today's Plan"
-    static let description = IntentDescription("Open Cladiron to today's self-authored and coach plan.")
+    static let description = IntentDescription("Open Cladiron to today's planned workouts.")
     static var openAppWhenRun: Bool { true }
 
     @MainActor

@@ -29,7 +29,8 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
             PersistedPlanItem.self,
             PersistedPlanSet.self,
             PersistedClientRelationship.self,
-            ExerciseSuggestionExclusion.self
+            ExerciseSuggestionExclusion.self,
+            ScheduledWorkout.self
         ]
 
         // `Schema.entity(for:)` is unavailable on the package's macOS 14
@@ -91,6 +92,9 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
                                   "planID"],
             "ExerciseSuggestionExclusion": ["createdAt", "exerciseKey", "exerciseNameSnapshot",
                                               "id", "isActive", "originDevice", "reasonRaw", "updatedAt"],
+            "ScheduledWorkout": ["createdAt", "deletedAt", "id", "originDevice", "payloadData",
+                                  "payloadVersion", "scheduledDate", "scheduledDayKey", "startedSessionID",
+                                  "statusRaw", "timeZoneIdentifier", "title", "updatedAt"],
             "Person": ["createdAt", "id", "isMe", "name", "originDevice", "updatedAt"],
             "ReadinessEntry": ["date", "fatigueEnergy", "hasPainOrIllnessConcern", "id",
                                 "muscleSoreness", "sleepQuality", "stressMood", "updatedAt"],
@@ -105,7 +109,7 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
                                 "healthKitWorkoutUUID", "id", "isLogged", "notes", "originDevice", "planKey",
                                 "planSessionID", "plannedExerciseNamesData", "plannedPerformerPrescriptionsData",
                                 "plannedPrescriptionsData", "plannedRepLadderData", "prescribedLoadKg",
-                                "templateName", "title", "updatedAt", "warmupSeconds"]
+                                "scheduledWorkoutID", "templateName", "title", "updatedAt", "warmupSeconds"]
         ]
 
         let actual = Dictionary(uniqueKeysWithValues: CadenceStore.schema.entities.map {

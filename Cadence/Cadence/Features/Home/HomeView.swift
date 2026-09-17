@@ -2,18 +2,24 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import os
 /// Home dashboard.
 struct HomeView: View {
+    private static let performanceLog = OSLog(subsystem: "guru.parso.cladiron", category: "HomePerformance")
     @Environment(\.modelContext) var context
     @Environment(AppModel.self) var model
     @Environment(AppSettings.self) var settings
     @Environment(ActiveWorkoutModel.self) var active
     @Environment(ContributionCoordinator.self) var contributions
     @Environment(\.scenePhase) var scenePhase
+    @Environment(\.cadenceModelContainer) var cadenceModelContainer
     @Query(sort: \WorkoutSession.date, order: .reverse) var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .reverse) var assessments: [Assessment]
     @Query(sort: \ReadinessEntry.date, order: .reverse) var readinessEntries: [ReadinessEntry]
+    @Query(sort: [SortDescriptor(\ScheduledWorkout.scheduledDate),
+                  SortDescriptor(\ScheduledWorkout.title)])
+    var scheduledWorkouts: [ScheduledWorkout]
     @Query(filter: #Predicate<Exercise> { $0.isFavorite }, sort: \Exercise.name) var favoriteExercises: [Exercise]
 
     @State var logPickerPresented = false
@@ -54,6 +60,7 @@ struct HomeView: View {
     @State var weeklyVolumeExpanded = false
     @State var coachIllustration = HomeCoachIllustration.random()
     @State var showWorkoutConflict = false
+    @State var scheduledWorkoutBeingStarted: UUID?
     @State var confirmCancelPrevious = false
     @State var readinessPresented = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
@@ -128,49 +135,50 @@ struct HomeView: View {
             overrideWeekKey: settings.coachPlanOverrideWeekKey)
     }
     func buildCoachSnapshot() async -> HomeCoachSnapshot {
+        let signpostID = OSSignpostID(log: Self.performanceLog)
+        os_signpost(.begin, log: Self.performanceLog, name: "coachExtractionAndBuild", signpostID: signpostID)
+        defer { os_signpost(.end, log: Self.performanceLog, name: "coachExtractionAndBuild", signpostID: signpostID) }
         let policy: PlanningConstraintPolicy = settings.isPlanOverrideActive() ? .meetDeficits : .safe
-        let snapshot = HomeCoachSnapshot(await HomeCoachModel.snapshotAsync(
-            sessions: sessions,
-            cardio: cardio,
-            assessments: assessments,
-            readiness: readinessEntries,
-            goal: settings.trainingGoal,
-            experience: settings.experienceLevel,
-            formula: settings.formula,
-            schedule: settings.coachSchedulePreferences,
-            profile: settings.coachPreferenceProfile,
-            passiveSamples: passiveSamples,
-            userAge: settings.userAge,
-            constraintPolicy: policy))
-        let unifiedPlan = WeeklyPlanUnifiedBridge.plan(
-            from: snapshot.plan,
-            goal: settings.trainingGoal,
-            title: "Coach plan")
-        // This is an ephemeral Home projection, not an authored plan. Do not
-        // persist it: every coach refresh creates a fresh PlanID, so storing it
-        // here accumulated duplicate "Coach plan" rows and kept CloudKit
-        // exporting an ever-growing queue while the app was suspended
-        // (RUNNINGBOARD 0xdead10cc). Explicit Plan-tab generation/save is the
-        // only path that should create a persisted coach plan.
-
-        var todayPlan = WatchSync.TodayPlan.from(day: snapshot.plan.today,
-                                                 updatedAt: unifiedPlan.updatedAt)
-        if let today = snapshot.plan.today {
-            for (index, planned) in today.sessions.enumerated()
-                where index < todayPlan.sessions.count {
-                let unifiedSession = WeeklyPlanUnifiedBridge.session(planned)
-                if let payload = try? WatchPlanPayload.make(
-                    from: PlanSessionSnapshot(session: unifiedSession),
-                    athlete: AthleteExecutionSnapshot()) {
-                    todayPlan.sessions[index].planPayload = payload
-                }
-            }
+        let computed: CoachSnapshot
+        if let cadenceModelContainer {
+            computed = await HomeCoachModel.snapshotAsync(
+                container: cadenceModelContainer,
+                goal: settings.trainingGoal,
+                experience: settings.experienceLevel,
+                formula: settings.formula,
+                schedule: settings.coachSchedulePreferences,
+                profile: settings.coachPreferenceProfile,
+                passiveSamples: passiveSamples,
+                userAge: settings.userAge,
+                constraintPolicy: policy)
+        } else {
+            computed = await HomeCoachModel.snapshotAsync(
+                sessions: sessions,
+                cardio: cardio,
+                assessments: assessments,
+                readiness: readinessEntries,
+                goal: settings.trainingGoal,
+                experience: settings.experienceLevel,
+                formula: settings.formula,
+                schedule: settings.coachSchedulePreferences,
+                profile: settings.coachPreferenceProfile,
+                passiveSamples: passiveSamples,
+                userAge: settings.userAge,
+                constraintPolicy: policy)
         }
-        model.updateWatchTodayPlan(todayPlan)
+        let snapshot = HomeCoachSnapshot(computed)
+
+        // Weekly coach plans are no longer a user-facing or Watch execution
+        // surface. Widgets and the Watch receive only explicitly scheduled
+        // workout records; do not recreate a hidden weekly plan on every Home
+        // refresh. This also removes a large plan-payload build from the Home
+        // refresh path.
+        let todayScheduled = PlannedWorkoutsPresenter.today(
+            scheduledWorkouts.map(HomePlannedWorkoutsSection.item))
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(
             dayKey: Self.dayString(),
-            planTitle: "Coach plan",
-            sessionTitles: snapshot.plan.today?.sessions.map(\.label) ?? [],
+            planTitle: "Planned Workouts",
+            sessionTitles: todayScheduled.map(\.title),
             readinessLabel: todayReadiness.map { ReadinessCheckInPresenter.summary(for: $0) },
             updatedAt: Date()))
         return snapshot

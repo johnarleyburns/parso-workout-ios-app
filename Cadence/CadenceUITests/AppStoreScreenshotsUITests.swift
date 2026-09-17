@@ -55,11 +55,11 @@ final class AppStoreScreenshotsUITests: CadenceUITestCase {
                       "Progress screen")
         try capture("06-progress", app: progressApp)
 
-        let planningApp = launchSeededApp(["coachCyclePreference"])
-        XCTAssertTrue(planningApp.scrollToHittableAndTap("tab.plan"), "open Plan")
-        XCTAssertTrue(planningApp.descendants(matching: .any)["planning"].waitForExistence(timeout: 10),
-                      "Programs screen")
-        try capture("07-programs", app: planningApp)
+        let plannedApp = launchSeededApp(["coachCyclePreference"])
+        XCTAssertFalse(plannedApp.tabBars.buttons["Plan"].exists, "retired Plan tab is visible")
+        XCTAssertTrue(plannedApp.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Home screen")
+        try capture("07-home-planning-retired", app: plannedApp)
 
         let settingsApp = launchSeededApp(["coachCyclePreference"])
         XCTAssertTrue(settingsApp.scrollToHittableAndTap("home.settings"), "open Settings")

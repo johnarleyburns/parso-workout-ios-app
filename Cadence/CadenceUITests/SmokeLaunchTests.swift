@@ -151,6 +151,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "A zero-set muscle group does not expose its set count")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
                       "Expanded This Week did not label the muscle-group rows as Volume")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.group.strength"].exists,
+                      "Expanded This Week did not expose strength workout history")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.group.cardio"].exists,
+                      "Expanded This Week did not expose cardio workout history")
         // DB++ adoption: Volume carries the per-muscle-group breakdown, and the
         // redundant Muscles row and section are gone.
         XCTAssertTrue(app.descendants(matching: .any)["home.volume.chest"].exists,
@@ -221,6 +225,16 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertFalse(app.buttons["selectWorkout.coach"].exists)
         XCTAssertEqual(quickHeight, coach.frame.height, accuracy: 1,
                        "Suggest a Workout is a different height from Quick Start")
+
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
+                      "Start Workout did not expose more strength options")
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.previousLink"),
+                      "Start Workout did not expose previous workouts")
+        XCTAssertTrue(app.navigationBars["Previous Workouts"].waitForExistence(timeout: 5),
+                      "Previous Workouts route did not open")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["selectWorkout.suggestWorkout"].waitForExistence(timeout: 5),
+                      "Returning from Previous Workouts did not restore Start Workout")
 
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.suggestWorkout"),
                       "Start Workout did not generate a personalized workout")

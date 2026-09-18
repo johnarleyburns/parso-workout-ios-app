@@ -242,6 +242,11 @@ struct AboutView: View {
                 Link("CC BY-SA 4.0 license", destination: URL(string: "https://creativecommons.org/licenses/by-sa/4.0/")!)
             }
             .font(.footnote)
+            Text("This Week muscle map: “Muscles front and back.svg” by Patrick J. Lynch, licensed under CC BY-SA 4.0 and included locally.")
+                .font(.footnote).foregroundStyle(.secondary)
+            Link("View muscle map on Wikimedia Commons",
+                 destination: URL(string: "https://commons.wikimedia.org/wiki/File:Muscles_front_and_back.svg")!)
+                .font(.footnote)
         }
     }
 }

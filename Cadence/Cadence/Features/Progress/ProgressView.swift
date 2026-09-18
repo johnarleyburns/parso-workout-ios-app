@@ -14,6 +14,11 @@ struct TrainingProgressView: View {
     @Query(sort: \Assessment.date, order: .forward) private var allAssessments: [Assessment]
 
     @State private var path = NavigationPath()
+    @State private var strengthExpanded = true
+    @State private var trendsExpanded = false
+    @State private var intensityExpanded = false
+    @State private var effortExpanded = false
+    @State private var testsExpanded = false
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
     private var facts: TrainingFacts {
@@ -30,12 +35,30 @@ struct TrainingProgressView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     scienceBanner
-                    strengthCard
-                    PRTimelineView(sessions: activeSessions)
-                    ConsistencyHeatmapView(sessions: activeSessions)
-                    intensityCard
-                    HStack(alignment: .top, spacing: 12) { effortCard; frequencyCard }
-                    testResultsCard
+                    progressDisclosure("Strength over time", expanded: $strengthExpanded,
+                                       identifier: "progress.strengthDisclosure") { strengthCard }
+                    progressDisclosure("Tests", expanded: $testsExpanded,
+                                       identifier: "progress.testsDisclosure") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            NavigationLink { TestsView() } label: {
+                                Label("Perform a Test…", systemImage: "checkmark.seal")
+                            }
+                            testResultsCard
+                        }
+                    }
+                    progressDisclosure("Trends", expanded: $trendsExpanded,
+                                       identifier: "progress.trendsDisclosure") {
+                        VStack(spacing: 14) {
+                            PRTimelineView(sessions: activeSessions)
+                            ConsistencyHeatmapView(sessions: activeSessions)
+                        }
+                    }
+                    progressDisclosure("Intensity", expanded: $intensityExpanded,
+                                       identifier: "progress.intensityDisclosure") { intensityCard }
+                    progressDisclosure("Effort and frequency", expanded: $effortExpanded,
+                                       identifier: "progress.effortDisclosure") {
+                        HStack(alignment: .top, spacing: 12) { effortCard; frequencyCard }
+                    }
                     historyLink
                 }
                 .padding()
@@ -58,6 +81,30 @@ struct TrainingProgressView: View {
     }
 
     // MARK: - Card helper
+
+    @ViewBuilder
+    private func progressDisclosure<Content: View>(_ title: String,
+                                                   expanded: Binding<Bool>,
+                                                   identifier: String,
+                                                   @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { expanded.wrappedValue.toggle() }
+            } label: {
+                HStack {
+                    Text(title).font(.headline)
+                    Spacer()
+                    Image(systemName: expanded.wrappedValue ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(identifier)
+            .accessibilityValue(expanded.wrappedValue ? "Expanded" : "Collapsed")
+            if expanded.wrappedValue { content().transition(.opacity) }
+        }
+    }
 
     @ViewBuilder
     private func card<Content: View>(title: String, subtitle: String? = nil,

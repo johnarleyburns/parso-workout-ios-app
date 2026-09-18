@@ -390,6 +390,7 @@ extension CardioType {
         case .hiit: return .hiit
         case .boxing: return .boxing
         case .rowing: return .rowing
+        case .elliptical, .stairClimber: return .other
         case .other: return .other
         }
     }

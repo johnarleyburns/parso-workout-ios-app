@@ -4,7 +4,7 @@ import CadenceCore
 import CadenceFeatures
 
 struct RootTabView: View {
-    enum Tab: Hashable { case home, progress }
+    enum Tab: Hashable { case home, progress, settings }
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
     @Environment(ActiveWorkoutModel.self) private var active
@@ -21,41 +21,11 @@ struct RootTabView: View {
     /// Root-level so it keeps beating while the workout is minimized.
     private let heartbeatTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
 
-    init() {
-        // Normalize tab-bar item layout so icons + titles sit vertically centered
-        // (issue 5). Applied via appearance so it holds across iOS versions; a
-        // pure SwiftUI TabView otherwise inherits the system default which read as
-        // "too high" on some devices. Best-effort per the P8 decision.
-        let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
-        for item in [appearance.stackedLayoutAppearance,
-                     appearance.inlineLayoutAppearance,
-                     appearance.compactInlineLayoutAppearance] {
-            item.normal.titlePositionAdjustment = .zero
-            item.selected.titlePositionAdjustment = .zero
-        }
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
-    }
-
     var body: some View {
         @Bindable var active = active
         return ZStack {
-            TabView(selection: $selection) {
-                HomeView()
-                    .tabItem {
-                        Label("Today", systemImage: "house.fill")
-                            .accessibilityIdentifier("tab.home")
-                    }
-                    .tag(Tab.home)
-
-                TrainingProgressView()
-                    .tabItem {
-                        Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
-                            .accessibilityIdentifier("tab.progress")
-                    }
-                    .tag(Tab.progress)
-            }
+            selectedTabContent
+                .safeAreaInset(edge: .bottom, spacing: 0) { glassDock }
             .fullScreenCover(isPresented: Binding(
                 get: { !settings.hasCompletedOnboarding },
                 set: { presented in if !presented { settings.hasCompletedOnboarding = true } }
@@ -69,24 +39,14 @@ struct RootTabView: View {
                     .transition(.opacity)
             }
 
-            // Keep startup/status toasts in one non-layout-affecting host. The
-            // old independent overlays used different safe-area rules, so one
-            // could sit under the status area while the other appeared below
-            // the Today navigation title. The fixed offset puts both below the
-            // navigation bar and stacks them without moving Home content.
-            if watchSyncToast != nil || model.isRestoringCloudKitHistory || model.cloudKitRestoreNotice != nil {
+            // Explicit Watch action results use one non-layout-affecting host.
+            // Automatic CloudKit restore state stays in Settings/diagnostics so
+            // it never shifts the Today dashboard during launch.
+            if watchSyncToast != nil {
                 GeometryReader { proxy in
                     VStack(spacing: 8) {
                         if let watchSyncToast {
                             WatchSyncToastView(toast: watchSyncToast)
-                                .transition(.move(edge: .top).combined(with: .opacity))
-                        }
-                        if model.isRestoringCloudKitHistory || model.cloudKitRestoreNotice != nil {
-                            CloudKitRestoreToastView(
-                                text: model.isRestoringCloudKitHistory
-                                    ? "Restoring iCloud history…"
-                                    : (model.cloudKitRestoreNotice ?? "iCloud history restored"),
-                                isRestoring: model.isRestoringCloudKitHistory)
                                 .transition(.move(edge: .top).combined(with: .opacity))
                         }
                         Spacer()
@@ -189,6 +149,51 @@ struct RootTabView: View {
         .onContinueUserActivity(CadenceHandoff.planActivityType) { _ in
             selection = .home
         }
+    }
+
+    @ViewBuilder
+    private var selectedTabContent: some View {
+        switch selection {
+        case .home: HomeView()
+        case .progress: TrainingProgressView()
+        case .settings: NavigationStack { SettingsView() }
+        }
+    }
+
+    private var glassDock: some View {
+        HStack(spacing: 8) {
+            dockButton(.home, title: "Today", symbol: "house.fill")
+            dockButton(.progress, title: "Progress", symbol: "chart.line.uptrend.xyaxis")
+            dockButton(.settings, title: "Settings", symbol: "gearshape.fill")
+        }
+        .padding(8)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 0.7))
+        .shadow(color: .black.opacity(0.14), radius: 14, y: 5)
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("tabBar.glass")
+    }
+
+    private func dockButton(_ tab: Tab, title: String, symbol: String) -> some View {
+        Button {
+            Haptics.selection()
+            selection = tab
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: symbol).font(.headline)
+                Text(title).font(.caption2.weight(.semibold))
+            }
+            .foregroundStyle(selection == tab ? Color.accentColor : Color.secondary)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("tab.\(title.lowercased())")
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(selection == tab ? .isSelected : [])
     }
 
     /// Re-adopts an in-progress session after a crash, force-quit, jetsam, or

@@ -104,28 +104,25 @@ extension XCUIApplication {
         return revealed()
     }
 
-    /// Navigates from anywhere back to Home, then into a current More or Home
-    /// destination. The old Train/Settings launchpad IDs are intentionally not
-    /// used: those surfaces were retired when the app moved to Today + More.
+    /// Navigates from anywhere back to a current root or replacement surface.
     func goToTab(_ label: String) {
         popToHome()
         switch label {
         case "Today":
             return  // activity (step count + weekly tiles) lives on Home now
         case "More":
-            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
+            XCTFail("More was retired; use Settings or the dedicated Today surface")
         case "Settings":
-            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
-            XCTAssertTrue(scrollToHittableAndTap("more.settings"), "More Settings not found")
+            XCTAssertTrue(buttons["tab.settings"].waitTap(timeout: 10), "Settings tab not found")
         case "History":
-            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
-            XCTAssertTrue(scrollToHittableAndTap("more.history"), "More History not found")
+            XCTAssertTrue(buttons["tab.progress"].waitTap(timeout: 10), "Progress tab not found")
+            XCTAssertTrue(scrollToHittableAndTap("progress.fullHistory"), "Progress History not found")
         case "Planned Workouts":
-            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
-            XCTAssertTrue(scrollToHittableAndTap("more.plannedWorkouts"), "More Planned Workouts not found")
+            XCTAssertTrue(buttons["tab.today"].waitTap(timeout: 10), "Today tab not found")
+            XCTAssertTrue(scrollToHittableAndTap("home.myWorkouts.showMore"), "Planned workouts link not found")
         case "Tests":
-            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
-            XCTAssertTrue(scrollToHittableAndTap("more.tests"), "More Tests not found")
+            XCTAssertTrue(buttons["tab.progress"].waitTap(timeout: 10), "Progress tab not found")
+            XCTAssertTrue(scrollToHittableAndTap("progress.testsDisclosure"), "Progress Tests not found")
         default:
             XCTFail("unknown destination \(label)")
         }
@@ -324,7 +321,7 @@ extension XCUIApplication {
         // Home is the Today surface in the current launchpad layout. A
         // navigation-bar Back tap cannot leave the Progress tab, so select
         // Today first when a caller started from another primary tab.
-        let homeTab = tabBars.buttons["Today"]
+        let homeTab = buttons["tab.today"]
         if homeTab.exists && homeTab.isHittable { homeTab.tap() }
         let homeMarker = buttons["home.startWorkout"]
         var guardCount = 0

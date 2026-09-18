@@ -5,91 +5,16 @@ import CadenceFeatures
 
 extension HomeView {
     var dashboardContent: some View {
-        ZStack {
-        NavigationStack(path: $path) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    HStack {
-                        Text(headerDateText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("home.headerDate")
-                        Spacer(minLength: 8)
-                        if contributions.store.isSupporter {
-                            Label("Supporter", systemImage: "heart.fill")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.pink)
-                                .accessibilityIdentifier("home.supporterBadge")
-                        }
-                    }
+        AnyView(ZStack {
+            dashboardNavigation
+            dashboardTransientOverlays
+        })
+    }
 
-                    if model.healthSyncStatus.isInProgress {
-                        Label(model.healthSyncStatus.detailText,
-                              systemImage: "heart.text.square")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("home.healthSync.status")
-                    }
-
-                    if model.coachRefreshInProgress {
-                        Label("Updating coaching guidance…", systemImage: "arrow.triangle.2.circlepath")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("home.coachCompute.status")
-                    }
-
-                    if let s = resumeSession { resumeCard(s) }
-                    homeActionRow
-                    HomeWorkoutsTodaySection(
-                        rows: workoutsTodayRows,
-                        onOpenCompleted: openTodayWorkout,
-                        onShowMoreHistory: { path.append(HomeRoute.history) })
-                    HomePlannedWorkoutsSection(
-                        records: scheduledWorkouts,
-                        onOpenAll: { path.append(HomeRoute.plannedWorkouts) },
-                        onStart: startScheduledWorkout)
-                    HomeWeekDashboardSection(
-                        dashboard: dashboard,
-                        volumeExpanded: $weeklyVolumeExpanded,
-                        strengthEntries: weekActivity.strength,
-                        cardioEntries: weekActivity.cardio,
-                        totalVolumeKg: weeklyVolumeKg,
-                        unit: settings.unit, onOpenWorkout: openWeekWorkout,
-                        onOpenCoachSettings: { path.append(HomeRoute.coachPreferences) })
-                    homeDetailDisclosure(
-                        title: "Observations",
-                        subtitle: dashboard.suggestions.isEmpty ? "No new suggestions" : "Coach guidance and rationale",
-                        expanded: $observationsExpanded,
-                        identifier: "home.observations.show")
-                    if observationsExpanded {
-                        HomeCoachSuggestionsSection(
-                            suggestions: dashboard.suggestions,
-                            illustration: coachIllustration,
-                            expanded: $suggestionsExpanded)
-                    }
-
-                    homeDetailDisclosure(
-                        title: todayReadiness == nil ? "Readiness" : "Today's readiness",
-                        subtitle: todayReadiness == nil ? "Optional check-in" : ReadinessCheckInPresenter.summary(for: todayReadiness!),
-                        expanded: $readinessExpanded,
-                        identifier: "home.readiness.show")
-                    if readinessExpanded { readinessCard }
-                }
-                .padding()
-            }
-            .background { CadenceGlassBackdrop(tint: .green) }
-            .navigationTitle("Today")
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button { Haptics.selection(); path.append(HomeRoute.more) } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .imageScale(.large)
-                            .frame(width: 44, height: 44, alignment: .center)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityIdentifier("home.more").accessibilityLabel("More")
-                }
-            }
+    private var dashboardNavigation: some View {
+        AnyView(NavigationStack(path: $path) {
+            dashboardScrollContent
+        }
             .navigationDestination(for: WorkoutSession.self) { SessionView(session: $0) }
             .navigationDestination(for: CardioWorkout.self) { CardioDetailView(workout: $0) }
             .navigationDestination(for: HistorySummaryRoute.self) { route in
@@ -104,7 +29,6 @@ extension HomeView {
             }
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {
-                case .more: MoreView()
                 case .settings: SettingsView()
                 case .history: HistoryView(path: $path)
                 case .plannedWorkouts: PlannedWorkoutsListView()
@@ -179,7 +103,8 @@ extension HomeView {
                     onOtherCardio: { description, gps in
                         selectWorkoutPresented = false
                         startOtherCardio(description: description, gps: gps)
-                    })
+                    },
+                    recentCardioTypes: recentCardioTypes)
             }
             .sheet(item: $cardioType, onDismiss: releaseCardioWorkout) {
                 RecordCardioView(initialType: $0, tracksGPS: cardioTracksGPS,
@@ -256,7 +181,7 @@ extension HomeView {
                                   onEditorStart: { _ in },
                                   onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
                                   onSuggestedWorkout: { requestSuggestedWorkout() },
-                                  types: [.run, .walk, .cycle, .rowing, .swim, .hiit, .boxing, .other],
+                                  types: [.run, .walk, .cycle, .rowing, .swim, .elliptical, .stairClimber, .hiit, .boxing, .other],
                                   title: "Start Cardio")
             }
             // Volume tile (batch 8) → strength start (Quick Start / Warm-Up / Reuse / presets).
@@ -275,9 +200,7 @@ extension HomeView {
                         .accessibilityIdentifier("suggestedWorkout.calculating")
                 }
             }
-            .alert("Couldn’t calculate your Personalized workout", isPresented: Binding(
-                get: { suggestedWorkoutFailure != nil },
-                set: { if !$0 { suggestedWorkoutFailure = nil } })) {
+            .alert("Couldn’t calculate your Personalized workout", isPresented: suggestedWorkoutFailurePresented) {
                 Button("Try Again") { suggestedWorkoutFailure = nil; requestSuggestedWorkout() }
                 Button("Cancel", role: .cancel) { suggestedWorkoutFailure = nil }
             } message: {
@@ -327,17 +250,26 @@ extension HomeView {
             } message: { _ in
                 Text("Recovery may be the limiting factor. You can continue, but keep it easy if performance drops.")
             }
-        }
+        )
+    }
 
-        // Get-ready countdown as a plain opaque overlay above the whole
-        // NavigationStack — not a fullScreenCover (P1 #5 follow-up). As a sibling
-        // view (not a modal) it can appear in the same frame the Start sheet
-        // dismisses, so Home never shows between the two. On finish we push the
-        // session and drop the overlay in one animation-disabled transaction, so the
-        // session is already on screen when the overlay vanishes — no Home flash
-        // before the warm-up, and none after it.
-        // HR gate — appears BEFORE the get-ready countdown.  Lets the
-        // user connect HR, see live data, then press "Start Workout".
+    private var dashboardScrollContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                dashboardTopContent
+                dashboardWeekContent
+                dashboardBottomContent
+            }
+            .padding()
+        }
+        .background { CadenceGlassBackdrop(tint: .green) }
+        .navigationTitle("Today")
+    }
+
+    @ViewBuilder
+    private var dashboardTransientOverlays: some View {
+        // HR gate — appears before the get-ready countdown so the user can
+        // connect HR, see live data, then press Start Workout.
         if let kind = hrGateKind {
             PreWorkoutHRView(
                 workoutType: kind.cardioType,
@@ -346,12 +278,10 @@ extension HomeView {
                     captureHR = source != .none
                     proceedFromHRGate(kind, useHR: source != .none)
                 },
-                onCancel: { hrGateKind = nil }
-            )
-            .transition(.identity)
-            .zIndex(2)
+                onCancel: { hrGateKind = nil })
+                .transition(.identity)
+                .zIndex(2)
         }
-
         if let p = pending {
             PreWorkoutCountdownView(
                 seconds: settings.preWorkoutCountdown,
@@ -364,9 +294,6 @@ extension HomeView {
                 .transition(.identity)
                 .zIndex(1)
         }
-
-        // "Start with Warm-Up" (feedback batch 4): a guided warm-up runs above the
-        // stack, then opens a blank strength session (same no-flash transaction).
         if warmupActive {
             GuidedPhaseOverlay(
                 title: "Warm Up",
@@ -374,9 +301,7 @@ extension HomeView {
                 tint: .orange,
                 idPrefix: "warmup",
                 soundsEnabled: settings.workoutSounds,
-                onFinish: { secs in
-                    finishWarmup(elapsedSeconds: secs, startCue: .countdown)
-                },
+                onFinish: { secs in finishWarmup(elapsedSeconds: secs, startCue: .countdown) },
                 onSkip: { secs in
                     WorkoutCues.cancelPendingSounds()
                     finishWarmup(elapsedSeconds: secs, startCue: .single)
@@ -384,7 +309,70 @@ extension HomeView {
                 .transition(.identity)
                 .zIndex(1)
         }
+    }
+
+    @ViewBuilder
+    private var dashboardTopContent: some View {
+        HStack {
+            Text(headerDateText)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("home.headerDate")
+            Spacer(minLength: 8)
+            if contributions.store.isSupporter {
+                Label("Supporter", systemImage: "heart.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.pink)
+                    .accessibilityIdentifier("home.supporterBadge")
+            }
         }
+        if let s = resumeSession { resumeCard(s) }
+        homeActionRow
+        HomeMyWorkoutsSection(
+            completed: workoutsTodayRows,
+            scheduled: scheduledWorkouts,
+            onOpenCompleted: openTodayWorkout,
+            onStartScheduled: startScheduledWorkout,
+            onShowMorePlanned: { path.append(HomeRoute.plannedWorkouts) })
+    }
+
+    private var dashboardWeekContent: some View {
+        HomeWeekDashboardSection(
+            dashboard: dashboard,
+            strengthExpanded: $weeklyStrengthExpanded,
+            cardioExpanded: $weeklyCardioExpanded,
+            volumeExpanded: $weeklyVolumeExpanded,
+            strengthEntries: weekActivity.strength,
+            cardioEntries: weekActivity.cardio,
+            totalVolumeKg: weeklyVolumeKg,
+            unit: settings.unit,
+            onOpenWorkout: openWeekWorkout,
+            onOpenCoachSettings: { path.append(HomeRoute.coachPreferences) })
+    }
+
+    @ViewBuilder
+    private var dashboardBottomContent: some View {
+        homeDetailDisclosure(
+            title: "Observations",
+            subtitle: dashboard.suggestions.isEmpty ? "No new suggestions" : "Coach guidance and rationale",
+            expanded: $observationsExpanded,
+            identifier: "home.observations.show")
+        if observationsExpanded {
+            HomeCoachSuggestionsSection(
+                suggestions: dashboard.suggestions,
+                illustration: coachIllustration,
+                expanded: $suggestionsExpanded)
+        }
+        homeDetailDisclosure(
+            title: homeReadinessTitle,
+            subtitle: homeReadinessSubtitle,
+            expanded: $readinessExpanded,
+            identifier: "home.readiness.show")
+        if readinessExpanded { readinessCard }
+        HomeMyHistorySection(
+            entries: homeWeekHistoryEntries,
+            onOpen: openWeekWorkout,
+            onShowMore: { path.append(HomeRoute.history) })
     }
 
 }

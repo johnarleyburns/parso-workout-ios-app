@@ -60,6 +60,8 @@ struct HomeView: View {
     /// Holds a request until the start sheet that launched it has finished
     /// dismissing, then opens the generated Personalized plan directly.
     @State var pendingSuggestedWorkoutRequest: SuggestedWorkoutRequest?
+    @State var weeklyStrengthExpanded = false
+    @State var weeklyCardioExpanded = false
     @State var weeklyVolumeExpanded = false
     @State var coachIllustration = HomeCoachIllustration.random()
     @State var showWorkoutConflict = false

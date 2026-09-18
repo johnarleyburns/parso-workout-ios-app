@@ -4,6 +4,8 @@ import CadenceFeatures
 
 struct HomeWeekDashboardSection: View {
     let dashboard: HomeDashboardState
+    @Binding var strengthExpanded: Bool
+    @Binding var cardioExpanded: Bool
     @Binding var volumeExpanded: Bool
     let strengthEntries: [TodayActivityPresenter.Entry]
     let cardioEntries: [TodayActivityPresenter.Entry]
@@ -16,26 +18,29 @@ struct HomeWeekDashboardSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
             header
-            progressRow(id: "home.week.strength", title: "Strength", value: dashboard.strength.displayText,
-                        progress: dashboard.strength.normalized,
-                        tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow)
-            progressRow(id: "home.week.cardio", title: "Cardio", value: dashboard.cardio.displayText,
-                        progress: dashboard.cardio.normalized,
-                        tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow)
-            progressRow(id: "home.week.volume", title: "Volume",
-                        value: dashboard.volumeCoverage.displayText,
-                        progress: dashboard.volumeCoverage.normalized,
-                        tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)))
-
-            if volumeExpanded {
-                expandedWeek
+            muscleMapSummary
+            disclosureRow(title: "Strength", value: dashboard.strength.displayText,
+                          progress: dashboard.strength.normalized,
+                          tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow,
+                          expanded: $strengthExpanded, identifier: "home.week.strength") {
+                workoutGroup(title: "Strength", entries: strengthEntries)
             }
-
-            Button(volumeExpanded ? "Show less" : "Show more…") {
-                withAnimation { volumeExpanded.toggle() }
+            disclosureRow(title: "Cardio", value: dashboard.cardio.displayText,
+                          progress: dashboard.cardio.normalized,
+                          tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
+                          expanded: $cardioExpanded, identifier: "home.week.cardio") {
+                VStack(alignment: .leading, spacing: 10) {
+                    workoutGroup(title: "Cardio", entries: cardioEntries)
+                    cardioMinutes
+                    if let dose = dashboard.activityDose { activityDose(dose) }
+                }
             }
-            .font(.subheadline.weight(.semibold))
-            .accessibilityIdentifier(volumeExpanded ? "home.week.showLess" : "home.week.showMore")
+            disclosureRow(title: "Volume", value: dashboard.volumeCoverage.displayText,
+                          progress: dashboard.volumeCoverage.normalized,
+                          tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
+                          expanded: $volumeExpanded, identifier: "home.week.volume") {
+                volumeDetail
+            }
         }
         .padding(CGFloat(LayoutMetrics.cardPadding))
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -72,34 +77,18 @@ struct HomeWeekDashboardSection: View {
         }
     }
 
-    private var expandedWeek: some View {
+    private var volumeDetail: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Divider()
-            workoutGroup(title: "Strength", entries: strengthEntries)
-            workoutGroup(title: "Cardio", entries: cardioEntries)
-
-            Divider().padding(.top, 2)
-            cardioMinutes
-
-            if let dose = dashboard.activityDose {
-                Divider().padding(.top, 2)
-                activityDose(dose)
-            }
-
-            Divider().padding(.top, 2)
             Text("Volume")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier("home.week.volumeHeading")
-            Text(weeklySetCaption)
-                .font(.caption2).foregroundStyle(.secondary)
             ForEach(dashboard.volume) { row in
                 volumeRow(row)
             }
             CoachSourcesLink(
                 citationIds: CitationRegistry.strengthVolumePool.citationIds,
                 identifier: "home.week.volume.science")
-            Divider()
             HStack {
                 Text("Total Volume").font(.subheadline.weight(.semibold))
                 Spacer()
@@ -114,6 +103,70 @@ struct HomeWeekDashboardSection: View {
         .accessibilityIdentifier("home.thisWeek.expanded")
     }
 
+    private var muscleMapSummary: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Muscle map")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.orange)
+            ZStack(alignment: .topTrailing) {
+                Image("MusclesFrontBack")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 190)
+                    .accessibilityLabel("Front and back muscle map for this week's volume")
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) { cardioExpanded = true }
+                } label: {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Image(systemName: "heart.fill").foregroundStyle(.pink)
+                        Text("Cardio · \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) min")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .padding(8)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Cardio, \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) minutes this week")
+            }
+        }
+        .padding(10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityIdentifier("home.week.muscleMap")
+    }
+
+    private func disclosureRow<Content: View>(title: String, value: String,
+                                              progress: Double, tint: Color,
+                                              expanded: Binding<Bool>, identifier: String,
+                                              @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) { expanded.wrappedValue.toggle() }
+            } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(title).font(.headline).foregroundStyle(tint)
+                        Spacer()
+                        Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                        Image(systemName: expanded.wrappedValue ? "chevron.up" : "chevron.down")
+                            .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    }
+                    ProgressView(value: progress).tint(tint)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(identifier)
+            .accessibilityValue(expanded.wrappedValue ? "Expanded" : "Collapsed")
+            if expanded.wrappedValue {
+                content()
+                    .padding(.top, 2)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
     /// Field test 2026-08-19 #7: five short but hard sessions read as "158 of 150
     /// min" against 80 minutes on the clock. The weighting is real public-health
     /// arithmetic, so the fix is to show it rather than hide it.
@@ -126,7 +179,7 @@ struct HomeWeekDashboardSection: View {
             HStack {
                 Text("Actual exercise").font(.caption)
                 Spacer()
-                Text("(Int(dashboard.cardioDetail.loggedMinutes.rounded())) min")
+                Text("\(Int(dashboard.cardioDetail.loggedMinutes.rounded())) min")
                     .font(.caption.monospacedDigit().weight(.semibold))
                     .foregroundStyle(.secondary)
             }
@@ -152,7 +205,7 @@ struct HomeWeekDashboardSection: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("home.week.cardio.total")
             if dashboard.cardioDetail.unclassifiedMinutes > 0 {
-                Text("(Int(dashboard.cardioDetail.unclassifiedMinutes.rounded())) min could not be intensity-classified")
+                Text("\(Int(dashboard.cardioDetail.unclassifiedMinutes.rounded())) min could not be intensity-classified")
                     .font(.caption2).foregroundStyle(.secondary)
             }
             if !dashboard.cardioDetail.zoneMinutes.isEmpty {
@@ -163,7 +216,7 @@ struct HomeWeekDashboardSection: View {
                     HStack {
                         Text(zone.displayName).font(.caption)
                         Spacer()
-                        Text("(Int((dashboard.cardioDetail.zoneMinutes[zone] ?? 0).rounded())) min")
+                        Text("\(Int((dashboard.cardioDetail.zoneMinutes[zone] ?? 0).rounded())) min")
                             .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                     }
                 }
@@ -270,25 +323,6 @@ struct HomeWeekDashboardSection: View {
         .accessibilityIdentifier("home.volume.\(row.group.rawValue)")
     }
 
-    private func progressRow(id: String, title: String, value: String,
-                             progress: Double, tint: Color,
-                             caption: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title).font(.headline).foregroundStyle(tint)
-                Spacer()
-                Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-            }
-            ProgressView(value: progress).tint(tint)
-            if let caption {
-                Text(caption).font(.caption2).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier(id)
-    }
-
     private func formattedSets(_ sets: Double) -> String {
         sets.formatted(.number.precision(.fractionLength(sets.rounded() == sets ? 0 : 1)))
     }
@@ -303,10 +337,6 @@ struct HomeWeekDashboardSection: View {
         case .building, .productive:
             return nil
         }
-    }
-
-    private var weeklySetCaption: String {
-        "4 minimum · 8+ productive · 12 maximum"
     }
 
     private func tint(for zone: WeeklySetZone) -> Color {

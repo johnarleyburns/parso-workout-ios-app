@@ -26,13 +26,13 @@ struct SplashView: View {
                 VStack(spacing: 4) {
                     Text("Cladiron")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
-                    Text("Your strength coach")
+                    Text("Your Fitness, Your Way")
                         .font(.headline.weight(.medium))
                         .foregroundStyle(.white.opacity(0.85))
                 }
                 .foregroundStyle(.white)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("Cladiron, your strength coach")
+                .accessibilityLabel("Cladiron, Your Fitness, Your Way")
             }
             .scaleEffect(scale)
             .opacity(opacity)

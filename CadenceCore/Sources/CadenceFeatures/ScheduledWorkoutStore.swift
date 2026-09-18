@@ -176,7 +176,7 @@ public enum ScheduledWorkoutStore {
                                 now: Date = Date(),
                                 in context: ModelContext) throws -> ScheduledWorkout {
         let normalized = ScheduledWorkoutDate.normalize(date, calendar: calendar)
-        guard normalized >= calendar.startOfDay(for: now) else {
+        guard normalized >= ScheduledWorkoutDate.normalize(now, calendar: calendar) else {
             throw ScheduledWorkoutStoreError.dateMustBeTodayOrFuture
         }
         let record = ScheduledWorkout(
@@ -201,7 +201,7 @@ public enum ScheduledWorkoutStore {
                                   now: Date = Date(),
                                   in context: ModelContext) throws -> Bool {
         let normalized = ScheduledWorkoutDate.normalize(date, calendar: calendar)
-        guard normalized >= calendar.startOfDay(for: now) else {
+        guard normalized >= ScheduledWorkoutDate.normalize(now, calendar: calendar) else {
             throw ScheduledWorkoutStoreError.dateMustBeTodayOrFuture
         }
         guard let record = try record(recordID, in: context), record.isVisible else {

@@ -350,6 +350,8 @@ final class HealthKitProvider: HealthDataProviding {
         case .hiit: return .highIntensityIntervalTraining
         case .walk: return .walking
         case .rowing: return .rowing
+        case .elliptical: return .elliptical
+        case .stairClimber: return .stairClimbing
         case .other: return .mixedCardio
         }
     }
@@ -379,6 +381,8 @@ final class HealthKitProvider: HealthDataProviding {
         case .highIntensityIntervalTraining: return .hiit
         case .walking: return .walk
         case .rowing: return .rowing
+        case .elliptical: return .elliptical
+        case .stairClimbing, .stairs, .stepTraining: return .stairClimber
         default: return .other
         }
     }

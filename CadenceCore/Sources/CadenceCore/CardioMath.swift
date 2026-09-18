@@ -80,6 +80,8 @@ public enum CardioMath {
         case .hiit: met = 8.5
         case .rowing: met = 7.0
         case .walk: met = 3.8
+        case .elliptical: met = 5.0
+        case .stairClimber: met = 8.8
         case .other: met = 6.0
         }
         // kcal = MET · weight(kg) · time(h)

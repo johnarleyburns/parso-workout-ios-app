@@ -1147,7 +1147,20 @@ public final class CardioWorkout {
 }
 
 public enum CardioType: String, CaseIterable, Codable, Sendable, Identifiable {
-    case run, cycle, swim, boxing, hiit, walk, rowing, other
+    case run, cycle, swim, boxing, hiit, walk, rowing, elliptical, stairClimber, other
+
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        switch raw {
+        case "stairs", "stair_climber", "stairClimber": self = .stairClimber
+        default: self = CardioType(rawValue: raw) ?? .other
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
@@ -1158,6 +1171,8 @@ public enum CardioType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .hiit: return "HIIT"
         case .walk: return "Walk"
         case .rowing: return "Rowing"
+        case .elliptical: return "Elliptical"
+        case .stairClimber: return "Stair Climber"
         case .other: return "Other"
         }
     }
@@ -1170,6 +1185,8 @@ public enum CardioType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .hiit: return "figure.highintensity.intervaltraining"
         case .walk: return "figure.walk"
         case .rowing: return "figure.rower"
+        case .elliptical: return "figure.elliptical"
+        case .stairClimber: return "figure.stairs"
         case .other: return "figure.mixed.cardio"
         }
     }
@@ -1195,7 +1212,7 @@ public extension CardioType {
         case .cycle: .cycling
         case .swim: .swimming
         case .rowing: .rowing
-        case .boxing, .hiit, .other: .walkingRunning
+        case .boxing, .hiit, .elliptical, .stairClimber, .other: .walkingRunning
         }
     }
 }

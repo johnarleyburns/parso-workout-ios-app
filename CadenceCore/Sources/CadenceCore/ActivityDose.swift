@@ -49,6 +49,8 @@ public enum CompendiumMETCatalog {
         case .rowing: return 7.0
         case .hiit: return 7.5
         case .boxing: return 9.0
+        case .elliptical: return 5.0
+        case .stairClimber: return 8.8
         case .other: return 6.0
         }
     }
@@ -165,6 +167,7 @@ public enum WeeklyActivityDoseAggregator {
         case .rowing: return .rowing
         case .hiit: return .hiit
         case .boxing: return .boxing
+        case .elliptical, .stairClimber: return .otherCardio
         case .other: return .otherCardio
         }
     }

@@ -57,6 +57,7 @@ public struct WatchCardioCompletion: Codable, Equatable, Sendable {
         case .rowing: return .rowing
         case .hiit: return .hiit
         case .boxing: return .boxing
+        case .elliptical, .stairClimber: return .other
         case .other: return .other
         }
     }

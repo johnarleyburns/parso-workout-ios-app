@@ -263,6 +263,7 @@ extension TrainingEvent {
         case .rowing: .rowing
         case .hiit: .hiit
         case .boxing: .boxing
+        case .elliptical, .stairClimber: .other
         case .other: .other
         }
 

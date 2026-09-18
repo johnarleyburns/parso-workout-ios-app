@@ -1,6 +1,36 @@
 # Current Status
 
-Updated: 2026-09-17
+Updated: 2026-09-18
+
+## Active task — field-testing UI simplification implementation
+
+The field-testing UI plan is implemented. Today now uses a
+single My Workouts queue plus bottom My History, This Week has an embedded
+locally-bundled front/back anatomy map and independent Strength/Cardio/Volume
+disclosures, scheduling preserves local date and time, Start Workout has the
+three-column recent-cardio picker with Elliptical/Stair Climber, Progress is
+summary-first, Settings is a glass-dock tab, and the transient automatic
+loading labels are removed from Today. The old Today More route is retired.
+
+The anatomy comparison mockups remain review artifacts in `~/Downloads`; the
+canonical HTML comparison embeds its three preview images as data URLs and no
+longer references `file://` resources.
+
+Verification constraint for this pass: use headless Swift package tests and
+static/build checks only; do not run simulator flows while the owner reviews
+the anatomy mockups.
+
+Verification so far:
+
+- Full `CadenceCore` test suite is green: 1,813 tests, 0 failures.
+- Native iOS generic-device build is green with signing disabled; this compiled
+  the iPhone, Watch, widget, and package targets without launching a simulator.
+- The final audit covers the plan's navigation, scheduling, anatomy-map,
+  disclosure, cardio-picker, and loading-label requirements. No known plan gap
+  remains in this pass.
+- The anatomy comparison HTML is self-contained: its three preview images are
+  embedded data URLs and it contains no `file://` or external Lucide request.
+- `git diff --check` is clean.
 
 ## Repository reconciliation — 2026-09-17
 

@@ -24,27 +24,27 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "iPhone app terminated or failed to reach the foreground during cold launch")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
                       "Home did not load")
-        XCTAssertTrue(app.tabBars.buttons["Today"].exists,
+        XCTAssertTrue(app.buttons["tab.today"].exists,
                       "Today is not exposed as the primary activity tab")
-        XCTAssertTrue(app.tabBars.buttons["Progress"].exists,
+        XCTAssertTrue(app.buttons["tab.progress"].exists,
                       "Progress is not exposed as a primary tab")
-        XCTAssertFalse(app.tabBars.buttons["Home"].exists,
+        XCTAssertTrue(app.buttons["tab.settings"].exists,
+                      "Settings is not exposed as a primary tab")
+        XCTAssertFalse(app.buttons["tab.home"].exists,
                        "The retired Home tab label is still exposed")
-        XCTAssertFalse(app.tabBars.buttons["Tests"].exists,
+        XCTAssertFalse(app.buttons["tab.tests"].exists,
                        "Tests is still exposed as a primary tab")
-        XCTAssertFalse(app.tabBars.buttons["Plan"].exists,
+        XCTAssertFalse(app.buttons["tab.plan"].exists,
                        "Retired Plan is still exposed as a primary tab")
 
         // The iPad delivery check intentionally covers only regular-width
         // Home/settings surfaces. The full end-to-end flow below remains
         // the single iPhone smoke path.
         if UIDevice.current.userInterfaceIdiom == .pad {
-            XCTAssertFalse(app.tabBars.buttons["Plan"].exists,
+            XCTAssertFalse(app.buttons["tab.plan"].exists,
                            "Retired Plan tab is still exposed on iPad")
-            XCTAssertTrue(app.scrollToHittableAndTap("home.more"),
-                          "iPad Home did not expose More")
-            XCTAssertTrue(app.scrollToHittableAndTap("more.settings"),
-                          "iPad More did not expose Settings")
+            XCTAssertTrue(app.buttons["tab.settings"].waitTap(timeout: 10),
+                          "iPad Home did not expose Settings tab")
             // Settings is a lazy Form on iPad; use the helper that swipes before
             // resolving the row so the identifier can materialize off-screen.
             XCTAssertTrue(app.scrollToAndTapButton("settings.transparency", maxSwipes: 20),
@@ -54,27 +54,18 @@ final class SmokeLaunchTests: CadenceUITestCase {
             return
         }
 
-        XCTAssertTrue(app.scrollToHittableAndTap("home.more"),
-                      "Home did not expose More")
-        XCTAssertTrue(app.navigationBars["More"].waitForExistence(timeout: 5),
-                      "More destination did not open")
-        for identifier in ["more.history", "more.plannedWorkouts", "more.tests",
-                           "more.savedWorkouts",
-                           "more.exercises", "more.coachPreferences",
-                           "more.coachInsights", "more.coachMethodology",
-                           "more.coachResearch", "more.coachAbout"] {
-            XCTAssertTrue(app.scrollToHittableAndTap(identifier),
-                          "More did not expose \(identifier)")
+        XCTAssertTrue(app.buttons["tab.settings"].waitTap(timeout: 10),
+                      "Settings tab did not open")
+        for identifier in ["settings.savedWorkouts", "settings.customExercises",
+                           "settings.excludedExercises", "settings.coach.insights",
+                           "settings.coach.methodology", "settings.coachUpdates",
+                           "settings.about", "settings.support"] {
+            XCTAssertTrue(app.scrollToAndTapButton(identifier, maxSwipes: 20),
+                          "Settings did not expose \(identifier)")
             app.navigationBars.buttons.element(boundBy: 0).tap()
         }
-        XCTAssertTrue(app.scrollToHittableAndTap("more.settings"),
-                      "More did not expose more.settings")
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5),
-                      "More Settings route did not open")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.navigationBars["More"].waitForExistence(timeout: 5),
-                      "Returning from Settings did not land on More")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
+                      "Returning to Today did not land on Today")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from More did not land on Home")
 
@@ -122,6 +113,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Coach card did not render on Home")
         XCTAssertTrue(app.scrollToHittableAndTap("home.moreActions"),
                       "Home did not expose More actions")
+        XCTAssertTrue(app.buttons["home.scheduleWorkout"].waitForExistence(timeout: 5),
+                      "More actions did not expose Schedule Workout")
         XCTAssertTrue(app.buttons["home.logWorkout"].waitForExistence(timeout: 5),
                       "Home did not show the previous-workout log action")
         XCTAssertTrue(app.scrollToHittableAndTap("home.logWorkout"),
@@ -155,10 +148,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
                         .waitForExistence(timeout: 5),
                       "Readiness disclosure did not reveal its check-in card")
 
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.showMore"),
-                      "This Week did not offer Show more")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleMap"].waitForExistence(timeout: 5),
+                      "This Week did not show the compact muscle map")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume"),
+                      "This Week did not expose the independent Volume disclosure")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].waitForExistence(timeout: 5),
-                      "This Week did not expand in place")
+                      "Volume did not expand in place")
         XCTAssertTrue(app.scrollToHittableAndTap("home.volume.quadriceps"),
                       "Expanded This Week did not expose the Quads volume row")
         let quadsVolume = app.descendants(matching: .any)["home.volume.quadriceps"]
@@ -166,10 +161,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "A zero-set muscle group does not expose its set count")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
                       "Expanded This Week did not label the muscle-group rows as Volume")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.group.strength"].exists,
-                      "Expanded This Week did not expose strength workout history")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.group.cardio"].exists,
-                      "Expanded This Week did not expose cardio workout history")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.group.strength"].exists,
+                       "Opening Volume also exposed strength history")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.group.cardio"].exists,
+                       "Opening Volume also exposed cardio history")
         // DB++ adoption: Volume carries the per-muscle-group breakdown, and the
         // redundant Muscles row and section are gone.
         XCTAssertTrue(app.descendants(matching: .any)["home.volume.chest"].exists,
@@ -180,12 +175,14 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "The redundant Muscles breakdown is still on Home")
         XCTAssertFalse(app.descendants(matching: .any)["home.muscle.chest"].exists,
                        "The old per-muscle row identifiers are still present")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
-                      "Expanded This Week does not explain the moderate-equivalent cardio total")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volume.science"].exists,
                       "Weekly volume does not expose its multi-reference science link")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.showLess"),
-                      "Expanded This Week did not show Show less")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume"),
+                      "Volume disclosure did not collapse")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.cardio"),
+                      "This Week did not expose the independent Cardio disclosure")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
+                      "Expanded Cardio does not explain the moderate-equivalent cardio total")
 
         // Field test 2026-08-18 #7: the This Week gear deep-links to Coach & Plan
         // and backs out to Home, not to Settings.
@@ -208,8 +205,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Home still contains the duplicate Workout History card")
 
         // Field test 2026-08-18 #6: Workouts Today rows carry a plan-source badge.
-        XCTAssertTrue(app.descendants(matching: .any)["home.workoutsToday"].waitForExistence(timeout: 10),
-                      "Workouts Today card is missing")
+        XCTAssertTrue(app.descendants(matching: .any)["home.myWorkouts"].waitForExistence(timeout: 10),
+                      "My Workouts card is missing")
         XCTAssertFalse(app.staticTexts["PLANNED"].exists,
                        "Workouts Today still uses the bare PLANNED badge")
 
@@ -331,8 +328,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Personalized scheduling sheet did not save")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
                       "Personalized scheduling did not return Home")
-        XCTAssertTrue(app.descendants(matching: .any)["home.plannedWorkouts"].waitForExistence(timeout: 10),
-                      "Personalized scheduling did not render Planned Workouts")
+        XCTAssertTrue(app.descendants(matching: .any)["home.myWorkouts"].waitForExistence(timeout: 10),
+                      "Personalized scheduling did not render My Workouts")
 
         let scheduledStart = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@", "home.planned.start.")).firstMatch
@@ -352,11 +349,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.cardioChoices"),
                       "Start Workout did not reopen its cardio choices")
 
-        // Field test 2026-08-20 issue 8: Rowing is a cardio box in the entry
-        // taxonomy, placed after Cycle in the cardio grid. The 2-column grid
-        // renders Cycle + Rowing on the same row (Cycle left, Rowing right), so
-        // "after Cycle" is a horizontal comparison; Rowing must also sit above
-        // the next row (Swim).
+        // Field test 2026-08-20 issue 8: Rowing remains in the expanded cardio
+        // taxonomy, which now uses three columns.
         XCTAssertTrue(app.scrollToElement("startType.rowing"),
                       "Start Workout did not offer Rowing")
         let cycle = app.buttons["startType.cycle"]
@@ -376,6 +370,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(timeout: 10),
                       "Home Start Workout did not reopen after taxonomy checks")
 
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
+                      "Start Workout did not offer the strength Show more disclosure")
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
                       "Start Workout did not offer Custom Workout beneath Quick Start")
         XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10),
@@ -458,12 +454,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Schedule Workout sheet did not save")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
                       "Saving a scheduled workout did not return Home")
-        XCTAssertTrue(app.descendants(matching: .any)["home.plannedWorkouts"].waitForExistence(timeout: 10),
-                      "Home did not render Planned Workouts")
-        XCTAssertTrue(app.scrollToElement("home.planned.showMore"),
-                      "Planned Workouts did not offer the today/future detail view")
+        XCTAssertTrue(app.descendants(matching: .any)["home.myWorkouts"].waitForExistence(timeout: 10),
+                      "Home did not render My Workouts")
+        XCTAssertTrue(app.scrollToElement("home.myWorkouts.showMore"),
+                      "My Workouts did not offer the today/future detail view")
 
-        XCTAssertFalse(app.tabBars.buttons["Plan"].exists,
+        XCTAssertFalse(app.buttons["tab.plan"].exists,
                        "Retired Plan tab is still exposed")
 
         XCTAssertTrue(app.startEmptyStrengthWorkout(), "Quick Start did not enter the workout")

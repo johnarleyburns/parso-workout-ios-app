@@ -70,12 +70,16 @@ struct HomePlannedWorkoutsSection: View {
 
     static func item(_ record: ScheduledWorkout) -> PlannedWorkoutsPresenter.Item {
         let detail: String
+        let time = ScheduledWorkoutDate.hasExplicitTime(record.scheduledDate)
+            ? record.scheduledDate.formatted(date: .omitted, time: .shortened)
+            : nil
         if let plan = try? ScheduledWorkoutStore.decode(record.payloadData,
                                                         version: record.payloadVersion) {
             let sets = plan.exercises.reduce(0) { $0 + $1.sets.count }
-            detail = "\(plan.exercises.count) exercise\(plan.exercises.count == 1 ? "" : "s") · \(sets) sets"
+            let body = "\(plan.exercises.count) exercise\(plan.exercises.count == 1 ? "" : "s") · \(sets) sets"
+            detail = [time, body].compactMap { $0 }.joined(separator: " · ")
         } else {
-            detail = "Workout plan"
+            detail = [time, "Workout plan"].compactMap { $0 }.joined(separator: " · ")
         }
         return PlannedWorkoutsPresenter.Item(id: record.id, date: record.scheduledDate,
                                              title: record.title, detail: detail,

@@ -12,3 +12,12 @@ provides attribution and links to the source records in Settings → About.
 - [Coach Using a Whistle Cartoon.svg](https://commons.wikimedia.org/wiki/File:Coach_Using_a_Whistle_Cartoon.svg)
 - [Coach Yelling Cartoon.svg](https://commons.wikimedia.org/wiki/File:Coach_Yelling_Cartoon.svg)
 - [CC BY-SA 4.0 license](https://creativecommons.org/licenses/by-sa/4.0/)
+
+## Muscle map
+
+The This Week muscle-map illustration is “Muscles front and back.svg” by
+Patrick J. Lynch, licensed under CC BY-SA 4.0 and included locally so the app
+does not make a network request while rendering the dashboard.
+
+- [Muscles front and back.svg](https://commons.wikimedia.org/wiki/File:Muscles_front_and_back.svg)
+- [CC BY-SA 4.0 license](https://creativecommons.org/licenses/by-sa/4.0/)

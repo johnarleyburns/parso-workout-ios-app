@@ -41,7 +41,7 @@ final class ScheduledWorkoutTests: XCTestCase {
         XCTAssertEqual(decoded.exercises.first?.performerPlans.first?.sets.first?.targetWeight, 20.5)
     }
 
-    func testSchedulingIsDateOnlyAndDuplicateSameDayRecordsRemainDeterministic() throws {
+    func testSchedulingPreservesTimeAndDuplicateSameDayRecordsRemainDeterministic() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let context = ModelContext(container)
         var calendar = Calendar(identifier: .gregorian)
@@ -58,7 +58,7 @@ final class ScheduledWorkoutTests: XCTestCase {
                                cooldownMinutes: 0, exercises: []),
             for: noon.addingTimeInterval(3600), calendar: calendar, in: context)
 
-        XCTAssertEqual(first.scheduledDate, calendar.startOfDay(for: noon))
+        XCTAssertEqual(first.scheduledDate, ScheduledWorkoutDate.normalize(noon, calendar: calendar))
         XCTAssertEqual(first.scheduledDayKey, "2026-09-20")
         XCTAssertEqual(second.scheduledDayKey, first.scheduledDayKey)
         let active = try ScheduledWorkoutStore.active(in: context)

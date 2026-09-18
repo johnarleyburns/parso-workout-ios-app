@@ -100,6 +100,16 @@ extension HomeView {
             .accessibilityIdentifier("home.moreActions")
 
             if homeActionsExpanded {
+                CadenceActionButton(title: "Schedule Workout",
+                                    systemImage: "calendar.badge.plus",
+                                    emphasis: .secondary) {
+                    Haptics.selection()
+                    path.append(HomeRoute.workoutEditor(
+                        .empty(warmup: settings.warmupMinutes,
+                               cooldown: settings.cooldownMinutes)))
+                }
+                .accessibilityIdentifier("home.scheduleWorkout")
+
                 CadenceActionButton(title: "Log Previous Workout",
                                     systemImage: "square.and.pencil",
                                     emphasis: .secondary) {
@@ -114,6 +124,25 @@ extension HomeView {
     /// Start Workout surfaces rather than appearing as historical activity.
     var workoutsTodayRows: [WorkoutsTodayPresenter.Row] {
         cachedWorkoutsTodayRows
+    }
+
+    var recentCardioTypes: [WorkoutType] {
+        cardio.filter { $0.deletedAt == nil }
+            .sorted { $0.start > $1.start }
+            .compactMap { workout in
+                switch workout.typeValue {
+                case .run: return .run
+                case .walk: return .walk
+                case .cycle: return .cycle
+                case .rowing: return .rowing
+                case .swim: return .swim
+                case .elliptical: return .elliptical
+                case .stairClimber: return .stairClimber
+                case .hiit: return .hiit
+                case .boxing: return .boxing
+                case .other: return nil
+                }
+            }
     }
 
     /// Rebuilds historical display projections once per refresh rather than once
@@ -348,6 +377,22 @@ extension HomeView {
 
     var weekActivity: (strength: [TodayActivityPresenter.Entry], cardio: [TodayActivityPresenter.Entry]) {
         (strength: cachedWeekStrengthEntries, cardio: cachedWeekCardioEntries)
+    }
+    var homeWeekHistoryEntries: [TodayActivityPresenter.Entry] {
+        (cachedWeekStrengthEntries + cachedWeekCardioEntries)
+            .sorted { $0.occurredAt > $1.occurredAt }
+    }
+    var homeReadinessTitle: String {
+        todayReadiness == nil ? "Readiness" : "Today's readiness"
+    }
+    var homeReadinessSubtitle: String {
+        guard let todayReadiness else { return "Optional check-in" }
+        return ReadinessCheckInPresenter.summary(for: todayReadiness)
+    }
+    var suggestedWorkoutFailurePresented: Binding<Bool> {
+        Binding(
+            get: { suggestedWorkoutFailure != nil },
+            set: { if !$0 { suggestedWorkoutFailure = nil } })
     }
     func openWeekWorkout(_ entry: TodayActivityPresenter.Entry) {
         switch entry.kind {

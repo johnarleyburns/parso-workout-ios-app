@@ -63,6 +63,6 @@ final class SessionEngineTests: XCTestCase {
         XCTAssertTrue(WorkoutType.rowing.usesGPS)
         XCTAssertFalse(WorkoutType.boxing.usesGPS)
         XCTAssertFalse(WorkoutType.swim.usesGPS)
-        XCTAssertEqual(WorkoutType.allCases.count, 9)
+        XCTAssertEqual(WorkoutType.allCases.count, 11)
     }
 }

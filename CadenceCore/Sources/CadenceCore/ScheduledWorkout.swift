@@ -7,8 +7,9 @@ import SwiftData
 @Model
 public final class ScheduledWorkout {
     public var id: UUID = UUID()
-    /// Normalized start of day in the creator's calendar, retained for sorting
-    /// and range queries.
+    /// Normalized local date and time in the creator's calendar, retained for
+    /// sorting and range queries. Older records may contain local midnight;
+    /// those remain valid date-only schedules.
     public var scheduledDate: Date = Date()
     /// Date-only semantic value (yyyy-MM-dd) so timezone changes do not silently
     /// move a user's scheduled workout to another displayed day.
@@ -75,7 +76,15 @@ public enum ScheduledWorkoutDate {
     }()
 
     public static func normalize(_ date: Date, calendar: Calendar = .current) -> Date {
-        calendar.startOfDay(for: date)
+        // Schedule pickers operate at minute precision. Preserve the selected
+        // local time while removing incidental seconds so same-minute edits
+        // remain deterministic across devices.
+        calendar.date(bySetting: .second, value: 0, of: date) ?? date
+    }
+
+    public static func hasExplicitTime(_ date: Date, calendar: Calendar = .current) -> Bool {
+        let components = calendar.dateComponents([.hour, .minute], from: date)
+        return components.hour != 0 || components.minute != 0
     }
 
     public static func dayKey(_ date: Date, calendar: Calendar = .current) -> String {

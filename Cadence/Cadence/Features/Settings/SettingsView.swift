@@ -157,6 +157,13 @@ struct SettingsView: View {
                     Label("Coach & Plan", systemImage: "gearshape")
                 }
                 .accessibilityIdentifier("settings.coach.plan")
+
+                NavigationLink {
+                    CoachMethodologyView()
+                } label: {
+                    Label("Coach Insights & Methodology", systemImage: "lightbulb")
+                }
+                .accessibilityIdentifier("settings.coach.insights")
             } header: {
                 Text("Coach")
             } footer: {
@@ -164,6 +171,13 @@ struct SettingsView: View {
             }
 
             Section("Exercises") {
+                NavigationLink {
+                    TemplatesView(onStart: { _ in })
+                } label: {
+                    Label("Saved Workouts", systemImage: "square.stack.3d.up")
+                }
+                .accessibilityIdentifier("settings.savedWorkouts")
+
                 NavigationLink {
                     CustomExerciseListView()
                 } label: {

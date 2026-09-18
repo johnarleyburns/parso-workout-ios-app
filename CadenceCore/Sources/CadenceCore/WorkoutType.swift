@@ -11,6 +11,8 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
     case cycle
     case rowing
     case swim
+    case elliptical
+    case stairClimber
     case hiit
     case boxing
     case other
@@ -25,6 +27,8 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .cycle: return "Cycle"
         case .rowing: return "Rowing"
         case .swim: return "Swim"
+        case .elliptical: return "Elliptical"
+        case .stairClimber: return "Stair Climber"
         case .hiit: return "HIIT"
         case .boxing: return "Boxing"
         case .other: return "Other"
@@ -39,6 +43,8 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .cycle: return "figure.outdoor.cycle"
         case .rowing: return "figure.rower"
         case .swim: return "figure.pool.swim"
+        case .elliptical: return "figure.elliptical"
+        case .stairClimber: return "figure.stairs"
         case .hiit: return "figure.highintensity.intervaltraining"
         case .boxing: return "figure.boxing"
         case .other: return "figure.mixed.cardio"
@@ -67,6 +73,8 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .cycle: return .cycle
         case .rowing: return .rowing
         case .swim: return .swim
+        case .elliptical: return .elliptical
+        case .stairClimber: return .stairClimber
         case .hiit: return .hiit
         case .boxing: return .boxing
         case .other: return .other

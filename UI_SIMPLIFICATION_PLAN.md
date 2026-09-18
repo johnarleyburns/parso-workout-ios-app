@@ -1,6 +1,7 @@
 # Cladiron interface simplification plan
 
-Status: implemented in one UI simplification change, 2026-09-17
+Status: implemented in one UI simplification change, with acceptance coverage
+audited through 2026-09-18
 
 ## Goal
 
@@ -11,13 +12,13 @@ advanced editing remain available through explicit drill-downs.
 
 ## Findings
 
-The current root surface exposes Home, Tests, and Progress as peer tabs. Home
-then presents start/log actions, completed workouts, planned workouts, three
-weekly progress meters, expandable cardio and muscle volume, observations,
-readiness, health/watch status, and contribution/settings controls. The start
-sheet also presents quick start, custom, suggested, previous, and seven cardio
-choices at once. This is capability-rich but makes the first decision harder
-than it needs to be.
+Before this simplification, the root surface exposed Home, Tests, and Progress
+as peer tabs. Home then presented start/log actions, completed workouts,
+planned workouts, three weekly progress meters, expandable cardio and muscle
+volume, observations, readiness, health/watch status, and
+contribution/settings controls. The start sheet also presented quick start,
+custom, suggested, previous, and seven cardio choices at once. This was
+capability-rich but made the first decision harder than it needed to be.
 
 The implementation already has the right boundaries for a simplification:
 `WorkoutPlanEditor` is the single review/start/schedule surface, `Progress` and

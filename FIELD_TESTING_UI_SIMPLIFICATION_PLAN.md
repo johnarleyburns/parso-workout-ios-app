@@ -414,8 +414,9 @@ Implementation:
   switching tabs if the current architecture supports it; otherwise reset only
   the selected tab’s path deliberately and test that behavior.
 - Remove the `UITabBarAppearance` setup once no native tab bar is used.
-- Preserve minimum hit targets, selected-state VoiceOver traits, and UI-test
-  identifiers (`tab.home`, `tab.progress`, plus `tab.settings`).
+- Preserve minimum hit targets, selected-state VoiceOver traits, and the
+  current UI-test identifiers (`tab.today`, `tab.progress`, plus
+  `tab.settings`).
 - Verify the dock does not obscure a live workout or bottom action: all roots
   must receive the safe-area inset, and the active workout surface remains the
   existing root-level cover.

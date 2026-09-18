@@ -4,7 +4,7 @@ import CadenceCore
 import CadenceFeatures
 
 struct RootTabView: View {
-    enum Tab: Hashable { case home, progress, settings }
+    enum Tab: Hashable { case home, thisWeek, progress, settings }
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
     @Environment(ActiveWorkoutModel.self) private var active
@@ -142,9 +142,13 @@ struct RootTabView: View {
         }
         .onOpenURL { url in
             guard url.scheme == "cladiron" else { return }
-            // Old weekly-plan deep links remain safe after the Plan tab is
-            // retired: one-off scheduled workouts are reached from Home.
-            selection = .home
+            if url.host == "this-week" || url.path == "/this-week" {
+                selection = .thisWeek
+            } else {
+                // Old weekly-plan deep links remain safe after the Plan tab is
+                // retired: one-off scheduled workouts are reached from Home.
+                selection = .home
+            }
         }
         .onContinueUserActivity(CadenceHandoff.planActivityType) { _ in
             selection = .home
@@ -155,29 +159,33 @@ struct RootTabView: View {
     private var selectedTabContent: some View {
         switch selection {
         case .home: HomeView()
+        case .thisWeek: ThisWeekView()
         case .progress: TrainingProgressView()
         case .settings: NavigationStack { SettingsView() }
         }
     }
 
     private var glassDock: some View {
-        HStack(spacing: 8) {
-            dockButton(.home, title: "Today", symbol: "house.fill")
-            dockButton(.progress, title: "Progress", symbol: "chart.line.uptrend.xyaxis")
-            dockButton(.settings, title: "Settings", symbol: "gearshape.fill")
+        HStack(spacing: 0) {
+            dockButton(.home, title: "Today", identifier: "tab.today", symbol: "house.fill")
+            dockButton(.thisWeek, title: "This Week", identifier: "tab.thisWeek", symbol: "calendar")
+            dockButton(.progress, title: "Progress", identifier: "tab.progress", symbol: "chart.line.uptrend.xyaxis")
+            dockButton(.settings, title: "Settings", identifier: "tab.settings", symbol: "gearshape.fill")
         }
-        .padding(8)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(.white.opacity(0.25), lineWidth: 0.7))
-        .shadow(color: .black.opacity(0.14), radius: 14, y: 5)
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
+        // Match Tonearm's compact dock geometry: 12pt outer inset, 6pt
+        // horizontal and 9pt vertical tab padding, with a 26pt glass radius.
+        .padding(.horizontal, 6)
+        .padding(.vertical, 9)
+        .cadenceGlass(in: RoundedRectangle(cornerRadius: 26, style: .continuous),
+                      fallback: .ultraThinMaterial)
+        .padding(.horizontal, 12)
+        .padding(.top, 4)
         .padding(.bottom, 4)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tabBar.glass")
     }
 
-    private func dockButton(_ tab: Tab, title: String, symbol: String) -> some View {
+    private func dockButton(_ tab: Tab, title: String, identifier: String, symbol: String) -> some View {
         Button {
             Haptics.selection()
             selection = tab
@@ -191,7 +199,7 @@ struct RootTabView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("tab.\(title.lowercased())")
+        .accessibilityIdentifier(identifier)
         .accessibilityLabel(title)
         .accessibilityAddTraits(selection == tab ? .isSelected : [])
     }

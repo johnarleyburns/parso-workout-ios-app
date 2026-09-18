@@ -116,6 +116,7 @@ struct PlannedWorkoutsListView: View {
     private var records: [ScheduledWorkout]
     @State private var rescheduleRecord: ScheduledWorkout?
     @State private var projectedItems: [PlannedWorkoutsPresenter.Item] = []
+    @State private var failedStartRecordID: UUID?
 
     private var projectionSignature: [ScheduledWorkoutTaskSignature] {
         records.map {
@@ -160,6 +161,19 @@ struct PlannedWorkoutsListView: View {
                                                          in: context)
             }
         }
+        .alert("Couldn't open this workout", isPresented: Binding(
+            get: { failedStartRecordID != nil },
+            set: { if !$0 { failedStartRecordID = nil } })) {
+                Button("Try Again") {
+                    if let id = failedStartRecordID,
+                       let record = records.first(where: { $0.id == id }) {
+                        start(record)
+                    }
+                }
+                Button("Close", role: .cancel) { failedStartRecordID = nil }
+            } message: {
+                Text("The saved workout could not be read. Try again, or reschedule/delete it from this list if the problem continues.")
+            }
     }
 
     @ViewBuilder
@@ -180,11 +194,7 @@ struct PlannedWorkoutsListView: View {
                         }
                         HStack {
                             Button(item.status == .started ? "Resume" : "Start") {
-                                guard let plan = try? ScheduledWorkoutStore.decode(record.payloadData,
-                                                                                   version: record.payloadVersion) else { return }
-                                NotificationCenter.default.post(
-                                    name: .scheduledWorkoutStartRequested,
-                                    object: ScheduledWorkoutStartRequest(recordID: record.id, plan: plan))
+                                start(record)
                             }
                             .buttonStyle(.borderedProminent)
                             Button("Reschedule") { rescheduleRecord = record }
@@ -200,6 +210,18 @@ struct PlannedWorkoutsListView: View {
                 }
             }
         }
+    }
+
+    private func start(_ record: ScheduledWorkout) {
+        guard let plan = try? ScheduledWorkoutStore.decode(record.payloadData,
+                                                           version: record.payloadVersion) else {
+            failedStartRecordID = record.id
+            return
+        }
+        failedStartRecordID = nil
+        NotificationCenter.default.post(
+            name: .scheduledWorkoutStartRequested,
+            object: ScheduledWorkoutStartRequest(recordID: record.id, plan: plan))
     }
 }
 

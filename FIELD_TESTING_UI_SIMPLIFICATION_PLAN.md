@@ -1,6 +1,8 @@
 # Field-testing UI simplification and Today workflow plan
 
-Status: implemented and audited in the current working tree; the audit fixes
+Status: implemented and audited in the current working tree; the latest audit
+also repaired the smoke contract's stale completed-workout identifier so it
+now exercises the current collapsed My History path. The audit fixes
 below keep Settings destinations accurate and move Home history projections off
 the main actor, including scheduled-row decoding and recent-cardio derivation.
 The audit also centralizes Cardio Minutes formatting, covers it with headless

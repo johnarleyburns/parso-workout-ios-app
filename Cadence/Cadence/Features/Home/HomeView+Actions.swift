@@ -35,9 +35,22 @@ extension HomeView {
 
     func startScheduledWorkout(_ record: ScheduledWorkout) {
         guard let plan = try? ScheduledWorkoutStore.decode(record.payloadData,
-                                                           version: record.payloadVersion) else { return }
+                                                           version: record.payloadVersion) else {
+            routeFailure = .scheduledWorkout(record.id)
+            return
+        }
         scheduledWorkoutBeingStarted = record.id
         path.append(HomeRoute.workoutEditor(plan))
+    }
+
+    func retryRouteFailure(_ failure: HomeRouteFailure) {
+        switch failure {
+        case .scheduledWorkout(let id):
+            routeFailure = nil
+            if let record = scheduledWorkouts.first(where: { $0.id == id }) {
+                startScheduledWorkout(record)
+            }
+        }
     }
     /// Pulls any new Watch/Health-recorded cardio into the local store (FR-2.1).
     /// This runs after Home loads and on pull-to-refresh. The status is published

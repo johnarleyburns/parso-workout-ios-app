@@ -272,7 +272,7 @@ struct OnboardingView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("Personalized Workout", systemImage: "wand.and.stars")
+                    Label("Workout for You", systemImage: "wand.and.stars")
                         .font(.headline)
                     Text("After five completed workouts, suggestions prioritize movements you have actually used. Before then, your selected workout type fills any missing movement needs.")
                         .font(.subheadline).foregroundStyle(.secondary)

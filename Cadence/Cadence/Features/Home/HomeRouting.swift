@@ -48,3 +48,25 @@ enum HomeRoute: Hashable {
     case customExercises
     case runAssessment(AssessmentKind)
 }
+
+/// A route must fail visibly and recoverably. In particular, an older or
+/// partially migrated scheduled payload must never leave SwiftUI on a blank
+/// destination (the field-tested yellow warning page).
+enum HomeRouteFailure: Identifiable {
+    case scheduledWorkout(UUID)
+
+    var id: String {
+        switch self {
+        case .scheduledWorkout(let id): "scheduled-workout-\(id.uuidString)"
+        }
+    }
+
+    var title: String { "Couldn't open this workout" }
+
+    var message: String {
+        switch self {
+        case .scheduledWorkout:
+            "This scheduled workout could not be read. It is still saved, and you can try opening it again or edit it from Planned Workouts."
+        }
+    }
+}

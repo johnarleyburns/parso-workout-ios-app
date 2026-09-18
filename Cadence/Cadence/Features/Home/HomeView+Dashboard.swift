@@ -206,6 +206,16 @@ extension HomeView {
             } message: {
                 Text(suggestedWorkoutFailure ?? "")
             }
+            .alert("Couldn't open this workout", isPresented: Binding(
+                get: { routeFailure != nil },
+                set: { if !$0 { routeFailure = nil } })) {
+                Button("Try Again") {
+                    if let failure = routeFailure { retryRouteFailure(failure) }
+                }
+                Button("Close", role: .cancel) { routeFailure = nil }
+            } message: {
+                Text(routeFailure?.message ?? "")
+            }
             // Optional distance goal before a run/walk/cycle (batch 8).
             .sheet(item: $cardioGoalFor) { type in
                 CardioGoalSheet(type: type) { goal, indoors in
@@ -256,14 +266,27 @@ extension HomeView {
     private var dashboardScrollContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                dashboardTopContent
-                dashboardWeekContent
-                dashboardBottomContent
+                if surface == .today {
+                    dashboardTopContent
+                    dashboardBottomContent
+                } else {
+                    thisWeekContent
+                }
             }
             .padding()
         }
         .background { CadenceGlassBackdrop(tint: .green) }
-        .navigationTitle("Today")
+        .navigationTitle(surface.title)
+    }
+
+    private var thisWeekContent: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            dashboardWeekContent
+            HomeMyHistorySection(
+                entries: homeWeekHistoryEntries,
+                onOpen: openWeekWorkout,
+                onShowMore: { path.append(HomeRoute.history) })
+        }
     }
 
     @ViewBuilder
@@ -371,10 +394,6 @@ extension HomeView {
             expanded: $readinessExpanded,
             identifier: "home.readiness.show")
         if readinessExpanded { readinessCard }
-        HomeMyHistorySection(
-            entries: homeWeekHistoryEntries,
-            onOpen: openWeekWorkout,
-            onShowMore: { path.append(HomeRoute.history) })
     }
 
 }

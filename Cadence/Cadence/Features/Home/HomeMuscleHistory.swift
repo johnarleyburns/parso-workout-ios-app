@@ -104,41 +104,10 @@ enum HomeMuscleHistoryPresenter {
     }
 }
 
-private struct HomeMuscleMapRegion: Identifiable {
-    enum Side { case front, back }
-
-    let group: MuscleGroup
-    let side: Side
-    let x: CGFloat
-    let y: CGFloat
-    let width: CGFloat
-    let height: CGFloat
-
-    var id: String { "\(side)-\(group.rawValue)" }
-
-    var sideName: String {
-        switch side {
-        case .front: "front"
-        case .back: "back"
-        }
-    }
-}
-
 struct HomeMuscleMapView: View {
     let dashboard: HomeDashboardState
     let onSelect: (MuscleGroup) -> Void
     let onOpenCardio: () -> Void
-
-    private static let sourceRatio: CGFloat = 406.99026 / 354.43411
-    private static let halfRatio: CGFloat = 203.49526 / 354.43411
-    private static let regions: [HomeMuscleMapRegion] = [
-        .init(group: .chest, side: .front, x: 0.50, y: 0.32, width: 0.56, height: 0.13),
-        .init(group: .shoulders, side: .front, x: 0.27, y: 0.25, width: 0.34, height: 0.11),
-        .init(group: .quadriceps, side: .front, x: 0.50, y: 0.61, width: 0.62, height: 0.20),
-        .init(group: .lats, side: .back, x: 0.50, y: 0.33, width: 0.65, height: 0.18),
-        .init(group: .glutes, side: .back, x: 0.50, y: 0.53, width: 0.58, height: 0.13),
-        .init(group: .hamstrings, side: .back, x: 0.50, y: 0.68, width: 0.62, height: 0.19)
-    ]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -146,8 +115,8 @@ struct HomeMuscleMapView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.orange)
             HStack(alignment: .top, spacing: 6) {
-                panel(side: .front, title: "FRONT")
-                panel(side: .back, title: "BACK")
+                calloutPanel(.front, title: "FRONT")
+                calloutPanel(.back, title: "BACK")
             }
             Button(action: onOpenCardio) {
                 Label("Cardio · \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) min",
@@ -166,53 +135,14 @@ struct HomeMuscleMapView: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
-    private func panel(side: HomeMuscleMapRegion.Side, title: String) -> some View {
-        GeometryReader { proxy in
-            let imageHeight = proxy.size.height
-            let imageWidth = imageHeight * Self.sourceRatio
-            let imageX = side == .front ? 0 : proxy.size.width - imageWidth
-            ZStack(alignment: .topLeading) {
-                Color.black.opacity(0.04)
-                Image("MusclesFrontBack")
-                    .resizable()
-                    .frame(width: imageWidth, height: imageHeight)
-                    .offset(x: imageX)
-                Text(title)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .padding(5)
-                ForEach(Self.regions.filter { $0.side == side }) { region in
-                    Button {
-                        onSelect(region.group)
-                    } label: {
-                        Text(regionLabel(for: region.group))
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(.white)
-                            .multilineTextAlignment(.center)
-                            .padding(3)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(statusColor(for: region.group).opacity(0.78),
-                                        in: RoundedRectangle(cornerRadius: 7))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 7)
-                                    .stroke(.white.opacity(0.75), lineWidth: 1)
-                            }
-                    }
-                    .buttonStyle(.plain)
-                    .frame(width: proxy.size.width * region.width,
-                           height: proxy.size.height * region.height)
-                    .position(x: proxy.size.width * region.x,
-                              y: proxy.size.height * region.y)
-                    .accessibilityLabel("\(region.group.displayName), \(setsLabel(for: region.group)) this week")
-                    .accessibilityHint("Shows direct and indirect exercise history")
-                    .accessibilityIdentifier("home.week.muscle.\(region.sideName).\(region.group.rawValue)")
-                }
-            }
-            .clipped()
-        }
-        .aspectRatio(Self.halfRatio, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .accessibilityLabel("\(title.lowercased()) muscle map")
+    private func calloutPanel(_ panel: MuscleMapPanel, title: String) -> some View {
+        MuscleMapSideView(
+            panel: panel,
+            title: title,
+            callouts: MuscleMapLayout.callouts(for: panel),
+            setsLabel: setsLabel(for:),
+            statusColor: statusColor(for:),
+            onSelect: onSelect)
     }
 
     private func regionLabel(for group: MuscleGroup) -> String {
@@ -232,6 +162,131 @@ struct HomeMuscleMapView: View {
         case .productive: return .green
         case .aboveMaximum: return .red
         }
+    }
+}
+
+private struct MuscleMapSideView: View {
+    let panel: MuscleMapPanel
+    let title: String
+    let callouts: [MuscleMapCallout]
+    let setsLabel: (MuscleGroup) -> String
+    let statusColor: (MuscleGroup) -> Color
+    let onSelect: (MuscleGroup) -> Void
+
+    private let labelWidth: CGFloat = 70
+    private let imageWidth: CGFloat = 92
+    private let rowHeight: CGFloat = 44
+    private let rowSpacing: CGFloat = 3
+
+    private var imageHeight: CGFloat { imageWidth / CGFloat(MuscleMapLayout.halfRatio) }
+    private var contentHeight: CGFloat {
+        max(imageHeight, CGFloat(callouts.count) * rowHeight + CGFloat(max(0, callouts.count - 1)) * rowSpacing)
+    }
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(title)
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: panel == .front ? .trailing : .leading)
+            ZStack {
+                HStack(spacing: 4) {
+                    if panel == .back { image }
+                    calloutColumn
+                    if panel == .front { image }
+                }
+                connectorLines
+            }
+            .frame(height: contentHeight)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(title.lowercased()) muscle map")
+    }
+
+    private var calloutColumn: some View {
+        VStack(spacing: rowSpacing) {
+            ForEach(callouts) { callout in
+                Button {
+                    onSelect(callout.group)
+                } label: {
+                    Text("\(callout.group.displayName)\n\(setsLabel(callout.group))")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(panel == .front ? .trailing : .leading)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.72)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity,
+                               alignment: panel == .front ? .trailing : .leading)
+                        .padding(.horizontal, 4)
+                        .background(statusColor(callout.group).opacity(0.20),
+                                    in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .stroke(statusColor(callout.group).opacity(0.65), lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .frame(width: labelWidth, height: rowHeight)
+                .contentShape(Rectangle())
+                .accessibilityLabel("\(callout.group.displayName), \(setsLabel(callout.group)) this week")
+                .accessibilityHint("Shows direct and indirect exercise history")
+                .accessibilityIdentifier("home.week.muscle.\(callout.panel.rawValue).\(callout.group.rawValue)")
+            }
+        }
+    }
+
+    private var image: some View {
+        ZStack(alignment: .topLeading) {
+            Color.black.opacity(0.04)
+            Image("MusclesFrontBack")
+                .resizable()
+                .frame(width: imageWidth * 2, height: imageHeight)
+                .offset(x: panel == .front ? 0 : -imageWidth)
+                .accessibilityHidden(true)
+            ForEach(callouts) { callout in
+                Button {
+                    onSelect(callout.group)
+                } label: {
+                    Circle()
+                        .fill(statusColor(callout.group).opacity(0.88))
+                        .overlay { Circle().stroke(.white, lineWidth: 1.5) }
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.plain)
+                .position(x: CGFloat(callout.anchorX) * imageWidth,
+                          y: CGFloat(callout.anchorY) * imageHeight)
+                .accessibilityLabel("\(callout.group.displayName), \(setsLabel(callout.group)) this week")
+                .accessibilityHint("Shows direct and indirect exercise history")
+                .accessibilityIdentifier("home.week.muscle.region.\(callout.panel.rawValue).\(callout.group.rawValue)")
+            }
+        }
+        .frame(width: imageWidth, height: imageHeight)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipped()
+    }
+
+    private var connectorLines: some View {
+        Canvas { context, size in
+            let imageOriginX: CGFloat = panel == .front ? labelWidth + 4 : 0
+            let imageOriginY = (contentHeight - imageHeight) / 2
+                for (index, callout) in callouts.enumerated() {
+                let rowY = CGFloat(index) * (rowHeight + rowSpacing) + rowHeight / 2
+                let anchorX = imageOriginX + CGFloat(callout.anchorX) * imageWidth
+                let anchorY = imageOriginY + CGFloat(callout.anchorY) * imageHeight
+                let startX = panel == .front ? labelWidth : imageWidth
+                var path = Path()
+                path.move(to: CGPoint(x: startX, y: rowY))
+                path.addLine(to: CGPoint(x: anchorX, y: anchorY))
+                context.stroke(path,
+                               with: .color(statusColor(callout.group).opacity(0.75)),
+                               style: StrokeStyle(lineWidth: 1, lineCap: .round))
+                context.fill(Path(ellipseIn: CGRect(x: anchorX - 2, y: anchorY - 2,
+                                                     width: 4, height: 4)),
+                              with: .color(statusColor(callout.group)))
+            }
+        }
+        .allowsHitTesting(false)
+        .frame(width: labelWidth + imageWidth + 4, height: contentHeight)
     }
 }
 

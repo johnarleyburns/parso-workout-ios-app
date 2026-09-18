@@ -124,7 +124,7 @@ struct SelectWorkoutView: View {
                 .accessibilityIdentifier("selectWorkout.quickStart")
 
                 Button(action: onSuggestedWorkout) {
-                    workoutChoiceLabel("Personalized Workout", symbol: "wand.and.stars")
+                    workoutChoiceLabel("Workout for You", symbol: "wand.and.stars")
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("selectWorkout.suggestWorkout")
@@ -132,7 +132,7 @@ struct SelectWorkoutView: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.18)) { moreStrengthExpanded.toggle() }
                 } label: {
-                    HStack {
+                        HStack {
                         Text(moreStrengthExpanded ? "Show less" : "Show more…")
                         Spacer()
                         Image(systemName: moreStrengthExpanded ? "chevron.up" : "chevron.down")
@@ -166,6 +166,9 @@ struct SelectWorkoutView: View {
                         }
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.tint)
+                        .frame(maxWidth: .infinity,
+                               minHeight: CGFloat(LayoutMetrics.actionButtonHeight))
+                        .contentShape(Rectangle())
                     }
                     .accessibilityIdentifier("selectWorkout.previousLink")
                 }
@@ -186,7 +189,7 @@ struct SelectWorkoutView: View {
             LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(initialCardioTypes) { type in
                         Button { onSelect(type) } label: {
-                            WorkoutHero(type: type)
+                            WorkoutHero(type: type, compact: true)
                         }
                         .buttonStyle(.plain)
                         .tapHaptic()
@@ -205,19 +208,22 @@ struct SelectWorkoutView: View {
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.tint)
+                    .frame(maxWidth: .infinity,
+                           minHeight: CGFloat(LayoutMetrics.actionButtonHeight))
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("selectWorkout.cardioChoices")
             if cardioChoicesExpanded {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(additionalCardioTypes) { type in
-                            Button { onSelect(type) } label: { WorkoutHero(type: type) }
+                            Button { onSelect(type) } label: { WorkoutHero(type: type, compact: true) }
                                 .buttonStyle(.plain).tapHaptic()
                                 .accessibilityIdentifier("startType.\(type.rawValue)")
                                 .accessibilityLabel(type.displayName)
                         }
                         NavigationLink { OtherCardioEntryView(onStart: onOtherCardio) } label: {
-                            WorkoutHero(type: .other)
+                            WorkoutHero(type: .other, compact: true)
                         }
                         .buttonStyle(.plain).tapHaptic()
                         .accessibilityIdentifier("startType.other")
@@ -289,6 +295,7 @@ private struct PreviousWorkoutsView: View {
 
 struct WorkoutHero: View {
     let type: WorkoutType
+    var compact = false
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -299,17 +306,22 @@ struct WorkoutHero: View {
                                             startPoint: .top, endPoint: .bottom))
             }
             VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: type.symbol).scaledSystemFont(30, relativeTo: .title, weight: .bold)
-                Text(type.displayName).font(.title3.bold())
+                Image(systemName: type.symbol)
+                    .scaledSystemFont(compact ? 22 : 30, relativeTo: compact ? .headline : .title,
+                                      weight: .bold)
+                Text(type.displayName).font(compact ? .headline.bold() : .title3.bold())
             }
             .foregroundStyle(.white)
-            .padding(12)
+            .padding(compact ? 8 : 12)
             .cadenceGlassIfAvailable(
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous),
                 interactive: true)
             .padding(2)
         }
-        .frame(maxWidth: .infinity, minHeight: 120, alignment: .bottomLeading)
+        .frame(maxWidth: .infinity,
+               minHeight: compact ? 0 : 120,
+               alignment: .bottomLeading)
+        .aspectRatio(compact ? 1 : nil, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 

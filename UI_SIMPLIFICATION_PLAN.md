@@ -1,7 +1,11 @@
-# Cladiron interface simplification plan
+# Cladiron interface simplification plan (superseded)
 
-Status: implemented in one UI simplification change, with acceptance coverage
-audited through 2026-09-18
+Status: historical input. The active implementation contract is
+`FIELD_TESTING_UI_SIMPLIFICATION_PLAN.md`, which reflects the later decision
+to retire the Today More route and the weekly Plan tab in favor of direct
+Settings, My Workouts/My History, and one-off scheduled workouts. This document
+is retained for decision history; its earlier More-destination and automatic
+Home-status requirements must not be used as current acceptance criteria.
 
 ## Goal
 

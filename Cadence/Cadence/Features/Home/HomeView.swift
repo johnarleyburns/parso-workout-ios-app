@@ -5,6 +5,24 @@ import CadenceFeatures
 import os
 /// Home dashboard.
 struct HomeView: View {
+    enum Surface: Equatable {
+        case today
+        case thisWeek
+
+        var title: String {
+            switch self {
+            case .today: return "Today"
+            case .thisWeek: return "This Week"
+            }
+        }
+    }
+
+    let surface: Surface
+
+    init(surface: Surface = .today) {
+        self.surface = surface
+    }
+
     private static let performanceLog = OSLog(subsystem: "guru.parso.cladiron", category: "HomePerformance")
     @Environment(\.modelContext) var context
     @Environment(AppModel.self) var model
@@ -66,6 +84,7 @@ struct HomeView: View {
     @State var coachIllustration = HomeCoachIllustration.random()
     @State var showWorkoutConflict = false
     @State var scheduledWorkoutBeingStarted: UUID?
+    @State var routeFailure: HomeRouteFailure?
     @State var confirmCancelPrevious = false
     @State var readinessPresented = false
     @State var homeActionsExpanded = false

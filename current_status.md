@@ -2,9 +2,26 @@
 
 Updated: 2026-09-18
 
+## Latest audit — 2026-09-18
+
+The implementation audit against the active field-testing plan found and fixed
+one repository gap: the iPhone smoke contract still used the retired
+`home.completed.showMore` identifier and skipped the new collapsed `My
+History` → `View full history` interaction. It now asserts the current
+`home.history.showMore` and `home.history.fullHistory` path.
+
+Headless verification for this audit remains simulator-free. The local package
+suite passed with 1,816 tests, the generic iOS build passed, and the updated
+smoke contract is diff-clean and ready for the next release smoke run.
+
+The previously open CloudKit schema gap is resolved: the additive
+`ExerciseSuggestionExclusion` record type is now deployed to Production.
+`make guardrails` passes its live Development/Production comparison.
+
 ## Active task — field-testing UI simplification implementation
 
-The field-testing UI plan is implemented and audited. Today now uses a
+The field-testing UI plan and its follow-up plan are implemented and audited.
+Today now uses a
 single My Workouts queue plus bottom My History, This Week has an embedded
 locally-bundled front/back anatomy map and independent Strength/Cardio/Volume
 disclosures, scheduling preserves local date and time, Start Workout has the
@@ -45,10 +62,13 @@ the anatomy mockups.
 
 Verification so far:
 
-- Full `CadenceCore` test suite is green: 1,813 tests, 0 failures.
+- Full `CadenceCore` test suite is green: 1,819 tests, 0 failures.
 - Native iOS generic-device build is green with signing disabled; this compiled
   the iPhone, Watch, widget, and package targets without launching a simulator.
-- The final audit covers the plan's navigation, scheduling, anatomy-map,
+- All repository guardrails are green, including test-pyramid, no-network,
+  citations, engine boundary, history safety, live CloudKit schema parity, and
+  Watch AppIcon checks.
+- The final audit covers the follow-up plan's navigation, scheduling, anatomy-map,
   disclosure, cardio-picker, loading-label, and Home render-path requirements.
   Scheduled rows and recent cardio choices are now cached projections rather
   than per-render payload work. No known plan gap remains in this pass.

@@ -323,8 +323,8 @@ extension XCUIApplication {
     func popToHome() {
         // Home is the Today surface in the current launchpad layout. A
         // navigation-bar Back tap cannot leave the Progress tab, so select
-        // Home first when a caller started from another primary tab.
-        let homeTab = tabBars.buttons["Home"]
+        // Today first when a caller started from another primary tab.
+        let homeTab = tabBars.buttons["Today"]
         if homeTab.exists && homeTab.isHittable { homeTab.tap() }
         let homeMarker = buttons["home.startWorkout"]
         var guardCount = 0

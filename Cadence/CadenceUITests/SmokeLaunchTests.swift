@@ -24,6 +24,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "iPhone app terminated or failed to reach the foreground during cold launch")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
                       "Home did not load")
+        XCTAssertTrue(app.tabBars.buttons["Today"].exists,
+                      "Today is not exposed as the primary activity tab")
+        XCTAssertTrue(app.tabBars.buttons["Progress"].exists,
+                      "Progress is not exposed as a primary tab")
+        XCTAssertFalse(app.tabBars.buttons["Home"].exists,
+                       "The retired Home tab label is still exposed")
         XCTAssertFalse(app.tabBars.buttons["Tests"].exists,
                        "Tests is still exposed as a primary tab")
         XCTAssertFalse(app.tabBars.buttons["Plan"].exists,

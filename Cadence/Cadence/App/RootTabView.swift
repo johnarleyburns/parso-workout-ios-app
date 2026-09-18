@@ -44,7 +44,7 @@ struct RootTabView: View {
             TabView(selection: $selection) {
                 HomeView()
                     .tabItem {
-                        Label("Home", systemImage: "house.fill")
+                        Label("Today", systemImage: "house.fill")
                             .accessibilityIdentifier("tab.home")
                     }
                     .tag(Tab.home)

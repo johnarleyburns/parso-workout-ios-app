@@ -8,6 +8,7 @@ struct ManualStrengthItemEditor: View {
     @Environment(AppModel.self) private var appModel
     @State private var item: StrengthItem
     @State private var exerciseName: String
+    @State private var supersetGroupText: String
     @State private var pickerPresented = false
     @State private var sets: [ManualSetDraft]
     let onSave: (WorkoutItem) -> Void
@@ -18,6 +19,7 @@ struct ManualStrengthItemEditor: View {
             $0.sourceExerciseID == item.exerciseKey.raw || ExerciseLibrary.lookupKey($0.name) == item.exerciseKey.raw
         }?.name ?? item.exerciseKey.raw.replacingOccurrences(of: "_", with: " ").capitalized
         self._exerciseName = State(initialValue: name)
+        self._supersetGroupText = State(initialValue: item.supersetGroup?.raw ?? "")
         self._sets = State(initialValue: item.sets.map(ManualSetDraft.init))
         self.onSave = onSave
     }
@@ -54,8 +56,8 @@ struct ManualStrengthItemEditor: View {
                                 .buttonStyle(.plain)
                             }
                             Picker("Type", selection: $set.kind) {
-                                ForEach([SetKind.warmup, .working, .backoff, .amrap, .drop], id: \.self) { kind in
-                                    Text(kind.rawValue.capitalized).tag(kind)
+                                ForEach(SetKind.allCases, id: \.self) { kind in
+                                    Text(kind.displayName).tag(kind)
                                 }
                             }
                             TextField("Reps or AMRAP", text: $set.repsText)
@@ -85,6 +87,14 @@ struct ManualStrengthItemEditor: View {
                     .disabled(sets.isEmpty)
                     .accessibilityIdentifier("manualStrength.duplicateSet")
                 }
+
+                Section("Superset (optional)") {
+                    TextField("Group name, e.g. A", text: $supersetGroupText)
+                        .textInputAutocapitalization(.characters)
+                        .accessibilityIdentifier("manualStrength.supersetGroup")
+                    Text("Give exercises the same group name to perform them as a superset.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             .navigationTitle("Strength item")
             .navigationBarTitleDisplayMode(.inline)
@@ -109,6 +119,8 @@ struct ManualStrengthItemEditor: View {
     }
 
     private func save() {
+        let group = supersetGroupText.trimmingCharacters(in: .whitespacesAndNewlines)
+        item.supersetGroup = group.isEmpty ? nil : SupersetGroupID(raw: group)
         let mapped = sets.enumerated().map { index, draft in
             draft.prescribedSet(index: index)
         }

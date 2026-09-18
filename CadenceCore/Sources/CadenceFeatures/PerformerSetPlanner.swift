@@ -36,11 +36,14 @@ public enum PerformerSetPlanner {
         public var reps: Int
         public var weightKg: Double?
         public var weightBasis: WeightBasis
+        public var kind: SetKind
 
-        public init(reps: Int, weightKg: Double?, weightBasis: WeightBasis = .none) {
+        public init(reps: Int, weightKg: Double?, weightBasis: WeightBasis = .none,
+                    kind: SetKind = .working) {
             self.reps = reps
             self.weightKg = weightKg
             self.weightBasis = weightBasis
+            self.kind = kind
         }
     }
 
@@ -171,7 +174,8 @@ public enum PerformerSetPlanner {
                                    ownerLadder: isOwner ? ownerLadder : nil,
                                    history: history),
                         weightKg: (weight ?? 0) > 0 ? weight : nil,
-                        weightBasis: weightBasis)
+                        weightBasis: weightBasis,
+                        kind: planned?.kind ?? ownerPlanned?.kind ?? .working)
     }
 
     private static func reps(setIndex: Int,

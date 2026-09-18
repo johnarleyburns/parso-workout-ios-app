@@ -22,6 +22,19 @@ struct WorkoutPlanExerciseSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
             header
+            if isEditingOwner {
+                TextField("Superset group (optional)", text: Binding(
+                    get: { exercise.supersetGroup?.raw ?? "" },
+                    set: { raw in
+                        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                        exercise.supersetGroup = trimmed.isEmpty ? nil : SupersetGroupID(raw: trimmed)
+                    }))
+                    .textFieldStyle(.roundedBorder)
+                    .accessibilityIdentifier("editor.supersetGroup.\(exercise.name)")
+            } else if let group = exercise.supersetGroup?.raw {
+                Label("Superset \(group)", systemImage: "link")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             if performerPlans.count > 1 { performerPicker }
             VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
                 ForEach(Array(editedSets.enumerated()), id: \.element.id) { index, set in

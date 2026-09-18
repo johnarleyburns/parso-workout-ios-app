@@ -59,6 +59,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.navigationBars["More"].waitForExistence(timeout: 5),
                       "More destination did not open")
         for identifier in ["more.history", "more.plannedWorkouts", "more.tests",
+                           "more.savedWorkouts",
                            "more.exercises", "more.coachPreferences",
                            "more.coachInsights", "more.coachMethodology",
                            "more.coachResearch", "more.coachAbout"] {
@@ -398,8 +399,32 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // owner's exercise. Unguarded: every step below fails if it is missing.
         XCTAssertTrue(app.buttons["editor.addExercise"].waitTap(timeout: 5),
                       "Plan editor did not offer Add Exercise")
-        XCTAssertTrue(app.pickExerciseFromPresentedPicker(exerciseName),
-                      "Could not add \(exerciseName) to the plan")
+        // Exercise-level progression is reachable from the same picker used to
+        // add a movement. Keep this in the single iPhone smoke path so the
+        // drill-down cannot silently disappear while the normal add flow still
+        // passes.
+        let pickerRow = app.buttons["picker.row.\(exerciseName)"]
+        let pickerSearch = app.searchFields.firstMatch
+        XCTAssertTrue(pickerSearch.waitForExistence(timeout: 10),
+                      "Exercise picker did not expose search")
+        pickerSearch.tap()
+        pickerSearch.typeText(exerciseName)
+        XCTAssertTrue(pickerRow.waitTap(timeout: 10),
+                      "Exercise picker did not expose \(exerciseName)")
+        XCTAssertTrue(app.buttons["exercise.progress.open"].waitTap(timeout: 10),
+                      "Exercise detail did not expose View Progress")
+        XCTAssertTrue(app.navigationBars["Exercise Progress"].waitForExistence(timeout: 10),
+                      "Exercise Progress did not open from exercise detail")
+        XCTAssertTrue(app.descendants(matching: .any)["exercise.progress.summary"]
+                        .waitForExistence(timeout: 5),
+                      "Exercise Progress did not render its summary")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["Add Exercise"].waitForExistence(timeout: 5),
+                      "Exercise Progress did not return to the picker")
+        XCTAssertTrue(app.buttons["picker.row.\(exerciseName)"].waitTap(timeout: 10),
+                      "Exercise picker did not reopen exercise detail")
+        XCTAssertTrue(app.buttons["detail.add"].waitTap(timeout: 10),
+                      "Exercise detail did not return the selected exercise")
         XCTAssertTrue(app.buttons["editor.edit"].waitTap(timeout: 5),
                       "Plan editor did not offer Done")
         XCTAssertTrue(app.scrollToHittableAndTap("editor.showPartnerPicker"),

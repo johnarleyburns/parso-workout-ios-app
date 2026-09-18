@@ -35,6 +35,15 @@ struct ExerciseDetailView: View {
                     volumeSection
                 }
 
+                NavigationLink {
+                    ExerciseProgressView(exercise: exercise)
+                } label: {
+                    Label("View Progress", systemImage: "chart.line.uptrend.xyaxis")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("exercise.progress.open")
+
                 if !exercise.volumeEligible {
                     volumeEligibilityNotice
                 }

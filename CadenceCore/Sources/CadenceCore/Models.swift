@@ -25,6 +25,9 @@ public struct PlannedSetPrescription: Codable, Equatable, Sendable {
     public var targetRPE: Double?
     public var restSeconds: Int?
     public var isWarmup: Bool
+    /// The plan-level set semantic. Legacy JSON omitted this field and decodes
+    /// as `.working` below.
+    public var kind: SetKind
 
     /// Source-compatible initializer retained for clients compiled against the
     /// shipped prescription shape.
@@ -38,7 +41,7 @@ public struct PlannedSetPrescription: Codable, Equatable, Sendable {
     public init(sourceSetID: UUID? = nil, targetReps: Int, targetWeightKg: Double? = nil,
                 targetLoadMode: String? = nil, oneRepMaxPercent: Double? = nil,
                 targetRPE: Double? = nil, restSeconds: Int? = nil,
-                isWarmup: Bool = false) {
+                isWarmup: Bool = false, kind: SetKind = .working) {
         self.sourceSetID = sourceSetID
         self.targetReps = targetReps
         self.targetWeightKg = targetWeightKg
@@ -47,6 +50,7 @@ public struct PlannedSetPrescription: Codable, Equatable, Sendable {
         self.targetRPE = targetRPE
         self.restSeconds = restSeconds
         self.isWarmup = isWarmup
+        self.kind = kind == .warmup || isWarmup ? .warmup : kind
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -58,6 +62,7 @@ public struct PlannedSetPrescription: Codable, Equatable, Sendable {
         case targetRPE
         case restSeconds
         case isWarmup
+        case kind
     }
 
     public init(from decoder: Decoder) throws {
@@ -71,6 +76,8 @@ public struct PlannedSetPrescription: Codable, Equatable, Sendable {
         self.restSeconds = try container.decodeIfPresent(Int.self, forKey: .restSeconds)
         // `isWarmup` was added after the original export shape.
         self.isWarmup = try container.decodeIfPresent(Bool.self, forKey: .isWarmup) ?? false
+        self.kind = try container.decodeIfPresent(SetKind.self, forKey: .kind)
+            ?? (self.isWarmup ? .warmup : .working)
     }
 }
 
@@ -79,19 +86,23 @@ public struct PlannedExercisePrescription: Codable, Equatable, Sendable {
     public var exerciseKey: String?
     public var exerciseName: String
     public var sets: [PlannedSetPrescription]
+    public var supersetGroup: String?
 
     /// Source-compatible initializer retained for clients compiled against the
     /// shipped prescription shape.
-    public init(exerciseName: String, sets: [PlannedSetPrescription]) {
-        self.init(sourceItemID: nil, exerciseKey: nil, exerciseName: exerciseName, sets: sets)
+    public init(exerciseName: String, sets: [PlannedSetPrescription], supersetGroup: String? = nil) {
+        self.init(sourceItemID: nil, exerciseKey: nil, exerciseName: exerciseName,
+                  sets: sets, supersetGroup: supersetGroup)
     }
 
     public init(sourceItemID: UUID? = nil, exerciseKey: String? = nil,
-                exerciseName: String, sets: [PlannedSetPrescription]) {
+                exerciseName: String, sets: [PlannedSetPrescription],
+                supersetGroup: String? = nil) {
         self.sourceItemID = sourceItemID
         self.exerciseKey = exerciseKey
         self.exerciseName = exerciseName
         self.sets = sets
+        self.supersetGroup = supersetGroup
     }
 }
 

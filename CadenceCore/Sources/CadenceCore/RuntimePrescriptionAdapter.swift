@@ -30,6 +30,7 @@ public struct PlanSessionSnapshot: Codable, Equatable, Sendable {
                     exerciseKey: value.exerciseKey.raw,
                     exerciseName: Self.exerciseName(for: value.exerciseKey,
                                                     supplied: exerciseNameByKey),
+                    supersetGroup: value.supersetGroup?.raw,
                     sets: value.sets.map { set in
                         PrescribedSetSnapshot(
                             id: set.id,
@@ -37,7 +38,8 @@ public struct PlanSessionSnapshot: Codable, Equatable, Sendable {
                             load: Self.loadIntent(for: set.load),
                             targetRPE: set.targetRPE,
                             restSeconds: set.restSeconds,
-                            isWarmup: set.kind == .warmup)
+                            isWarmup: set.kind == .warmup,
+                            kind: set.kind)
                     }))
             case let .cardio(value):
                 return .cardio(Self.cardioSnapshot(value))
@@ -151,13 +153,16 @@ public struct StrengthItemSnapshot: Codable, Equatable, Sendable {
     /// for legacy and locally-authored plans.
     public var exerciseKey: String
     public var exerciseName: String
+    public var supersetGroup: String?
     public var sets: [PrescribedSetSnapshot]
 
     public init(id: UUID, exerciseKey: String, exerciseName: String,
+                supersetGroup: String? = nil,
                 sets: [PrescribedSetSnapshot]) {
         self.id = id
         self.exerciseKey = exerciseKey
         self.exerciseName = exerciseName
+        self.supersetGroup = supersetGroup
         self.sets = sets
     }
 }
@@ -224,17 +229,19 @@ public struct PrescribedSetSnapshot: Codable, Equatable, Sendable {
     public var targetRPE: Double?
     public var restSeconds: Int?
     public var isWarmup: Bool
+    public var kind: SetKind
 
     public init(id: UUID, targetReps: Int,
                 load: PrescribedLoadIntent = .none,
                 targetRPE: Double? = nil, restSeconds: Int? = nil,
-                isWarmup: Bool = false) {
+                isWarmup: Bool = false, kind: SetKind = .working) {
         self.id = id
         self.targetReps = targetReps
         self.load = load
         self.targetRPE = targetRPE
         self.restSeconds = restSeconds
         self.isWarmup = isWarmup
+        self.kind = kind == .warmup || isWarmup ? .warmup : kind
     }
 }
 
@@ -323,8 +330,10 @@ public struct RuntimePrescriptionAdapter: Sendable {
                         oneRepMaxPercent: resolved.percent,
                         targetRPE: set.targetRPE,
                         restSeconds: set.restSeconds,
-                        isWarmup: set.isWarmup)
-                })
+                        isWarmup: set.isWarmup,
+                        kind: set.kind)
+                },
+                supersetGroup: item.supersetGroup)
         }
         let firstSets = prescriptions.first?.sets ?? []
         let firstWeight = firstSets.compactMap(\.targetWeightKg).first ?? 0

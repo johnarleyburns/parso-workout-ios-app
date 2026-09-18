@@ -308,9 +308,10 @@ struct ExerciseCardView: View {
                 } else {
                     setIndexBadge(
                         String(pending.setIndex + 1),
-                        isWarmup: false)
+                        isWarmup: pending.kind == .warmup)
                 }
-                Text("\(pending.targetReps) reps").font(.subheadline).foregroundStyle(.tertiary)
+                Text("\(pending.targetReps) reps · \(pending.kind.displayName)")
+                    .font(.subheadline).foregroundStyle(.tertiary)
                     .frame(maxWidth: .infinity)
                 Color.clear.frame(width: SetCol.reps)
                 Color.clear.frame(width: SetCol.rpe)

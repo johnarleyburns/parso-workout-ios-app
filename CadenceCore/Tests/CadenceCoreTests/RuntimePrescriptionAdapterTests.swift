@@ -2,6 +2,17 @@ import XCTest
 @testable import CadenceCore
 
 final class RuntimePrescriptionAdapterTests: XCTestCase {
+    func testMaterializePreservesSetKindAndSupersetGroup() throws {
+        let plan = PlanSessionSnapshot(id: UUID(), title: "Superset", items: [
+            .strength(.init(id: UUID(), exerciseKey: "bench", exerciseName: "Bench Press",
+                            supersetGroup: "A",
+                            sets: [.init(id: UUID(), targetReps: 8, kind: .failure)]))
+        ])
+        let draft = try RuntimePrescriptionAdapter().materialize(planSession: plan, athlete: .init())
+        XCTAssertEqual(draft.plannedPrescriptions.first?.supersetGroup, "A")
+        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.kind, .failure)
+    }
+
     func testMaterializeResolvesPercentAndPreservesIntentAndSourceIDs() throws {
         let itemID = UUID()
         let setID = UUID()

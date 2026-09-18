@@ -658,12 +658,26 @@ public struct StrengthItem: Codable, Equatable, Sendable {
     }
 }
 
-public enum SetKind: String, Codable, Sendable, Hashable {
+public enum SetKind: String, Codable, Sendable, Hashable, CaseIterable {
     case warmup
     case working
     case backoff
     case amrap
     case drop
+    /// A final set intentionally taken to technical failure. This is additive
+    /// so plans written before failure sets existed continue to decode.
+    case failure
+
+    public var displayName: String {
+        switch self {
+        case .warmup: return "Warm-up"
+        case .working: return "Working"
+        case .backoff: return "Back-off"
+        case .amrap: return "AMRAP"
+        case .drop: return "Drop"
+        case .failure: return "Failure"
+        }
+    }
 }
 
 public enum RepTarget: Codable, Equatable, Sendable {

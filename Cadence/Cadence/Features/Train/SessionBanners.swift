@@ -16,10 +16,27 @@ extension SessionView {
             if let notes = plan.notes {
                 Text(notes).font(.caption).foregroundStyle(.secondary)
             }
+            supersetSummary
         }
         .padding(CGFloat(LayoutMetrics.cardPadding))
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .accentColor)
+    }
+
+    @ViewBuilder
+    private var supersetSummary: some View {
+        let groups = Dictionary(grouping: session.plannedPrescriptions.compactMap { prescription -> (String, String)? in
+            guard let group = prescription.supersetGroup, !group.isEmpty else { return nil }
+            return (group, prescription.exerciseName)
+        }, by: \.0)
+        if !groups.isEmpty {
+            ForEach(groups.keys.sorted(), id: \.self) { group in
+                let names = groups[group, default: []].map(\.1).joined(separator: " + ")
+                Label("Superset \(group): \(names)", systemImage: "link")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("session.superset.\(group)")
+            }
+        }
     }
 
     var loggedDateBanner: some View {

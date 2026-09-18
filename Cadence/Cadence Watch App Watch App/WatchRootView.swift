@@ -153,9 +153,11 @@ struct WatchRootView: View {
                     Button {
                         watchManager.requestSettingsSync()
                     } label: {
-                        Label("Sync now", systemImage: "arrow.triangle.2.circlepath")
+                        Label(watchManager.phoneSyncState.isFailure ? "Retry sync" : "Sync now",
+                              systemImage: "arrow.triangle.2.circlepath")
                     }
                     .disabled(watchManager.phoneSyncState.isInProgress)
+                    .accessibilityIdentifier("watch.phoneSync.retry")
                 }
 
                 Section {

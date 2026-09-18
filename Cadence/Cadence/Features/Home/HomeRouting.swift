@@ -43,7 +43,7 @@ enum WorkoutStartCue {
 /// Pushed destinations reachable from Home.
 enum HomeRoute: Hashable {
     case more
-    case settings, coach, coachPreferences
+    case settings, coach, coachPreferences, savedWorkouts
     case history, plannedWorkouts
     case workoutEditor(EditablePlan)
     case customExercises
@@ -71,6 +71,10 @@ struct MoreView: View {
             }
 
             Section("Customize") {
+                NavigationLink(value: HomeRoute.savedWorkouts) {
+                    Label("Saved Workouts", systemImage: "square.stack.3d.up")
+                }
+                .accessibilityIdentifier("more.savedWorkouts")
                 NavigationLink(value: HomeRoute.customExercises) {
                     Label("Exercises", systemImage: "figure.strengthtraining.traditional")
                 }

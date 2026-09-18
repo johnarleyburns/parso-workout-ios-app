@@ -3,6 +3,26 @@ import XCTest
 @testable import CadenceCore
 
 final class UnifiedPlanModelTests: XCTestCase {
+    func testFailureAndSupersetSemanticsRoundTripThroughTheUnifiedPlan() throws {
+        let failure = PrescribedSet(setIndex: 0, kind: .failure, repTarget: .exact(8))
+        let item = StrengthItem(exerciseKey: ExerciseKey(raw: "bench_press"), order: 0,
+                                sets: [failure], supersetGroup: SupersetGroupID(raw: "A"))
+        let session = Session(title: "Superset", items: [.strength(item)])
+        let snapshot = PlanSessionSnapshot(session: session)
+
+        XCTAssertEqual(snapshot.strengthItems.first?.supersetGroup, "A")
+        XCTAssertEqual(snapshot.strengthItems.first?.sets.first?.kind, .failure)
+        let data = try JSONEncoder().encode(snapshot)
+        let decoded = try JSONDecoder().decode(PlanSessionSnapshot.self, from: data)
+        XCTAssertEqual(decoded, snapshot)
+    }
+
+    func testLegacyPlannedSetDefaultsToWorkingKind() throws {
+        let legacy = Data(#"{"targetReps":8,"targetWeightKg":60}"#.utf8)
+        let decoded = try JSONDecoder().decode(PlannedSetPrescription.self, from: legacy)
+        XCTAssertEqual(decoded.kind, .working)
+    }
+
     func testUnifiedPlanRoundTripsAllItemFamiliesAndProvenance() throws {
         let set = PrescribedSet(
             setIndex: 0,

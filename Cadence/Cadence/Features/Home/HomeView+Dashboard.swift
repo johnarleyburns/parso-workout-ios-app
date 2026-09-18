@@ -108,6 +108,11 @@ extension HomeView {
                 case .settings: SettingsView()
                 case .history: HistoryView(path: $path)
                 case .plannedWorkouts: PlannedWorkoutsListView()
+                case .savedWorkouts:
+                    TemplatesView(onStart: { plan in
+                        path = NavigationPath()
+                        handleEditorStart(plan)
+                    })
                 case .coach:
                     // Observations and editable coaching guidance are available to
                     // every user; any plan mutation still requires explicit apply.

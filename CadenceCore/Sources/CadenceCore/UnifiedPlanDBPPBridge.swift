@@ -201,7 +201,7 @@ public enum UnifiedPlanDBPPBridge {
         case .warmup: return "warmup"
         case .working: return "working"
         case .backoff: return "backoff"
-        case .amrap, .drop: return "other"
+        case .amrap, .drop, .failure: return "other"
         }
     }
 

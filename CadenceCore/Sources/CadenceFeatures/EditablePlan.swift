@@ -41,6 +41,27 @@ public struct EditablePlan: Hashable {
         EditablePlan(warmupMinutes: warmup, cooldownMinutes: cooldown, exercises: [])
     }
 
+    /// Converts a reusable SwiftData template into the same editable draft
+    /// used by personalized and custom workouts. Keeping this conversion here
+    /// makes template reuse follow one start boundary and preserves the
+    /// template's ordered set prescription.
+    public static func from(template: SessionTemplate,
+                            warmupMinutes: Int = 0,
+                            cooldownMinutes: Int = 0) -> EditablePlan {
+        EditablePlan(
+            title: template.name,
+            warmupMinutes: warmupMinutes,
+            cooldownMinutes: cooldownMinutes,
+            exercises: template.orderedExercises.map { exercise in
+                EditableExercise(
+                    name: exercise.exerciseName,
+                    sets: Array(repeating: EditableSet(targetReps: exercise.targetReps,
+                                                       targetWeight: nil),
+                                count: max(1, exercise.targetSets)),
+                    notes: "")
+            })
+    }
+
     public static func from(session: WorkoutSession) -> EditablePlan {
         let performerNames = Dictionary(
             session.orderedSets.compactMap { set -> (String, String)? in
@@ -105,7 +126,8 @@ public struct EditablePlan: Hashable {
                     targetReps: $0.targetReps,
                     targetWeightKg: $0.targetWeight,
                     targetLoadMode: $0.loadMode == .straight ? nil : $0.loadMode.rawValue,
-                    oneRepMaxPercent: $0.oneRepMaxPercent) })
+                    oneRepMaxPercent: $0.oneRepMaxPercent) },
+                supersetGroup: exercise.supersetGroup?.raw)
         }
         session.plannedRepLadder = exercises.first?.sets.map(\.targetReps) ?? []
         let firstWeights = exercises.compactMap { $0.sets.first?.targetWeight }
@@ -136,7 +158,8 @@ public struct EditablePlan: Hashable {
                         repTarget: .exact(set.targetReps),
                         load: unifiedLoad(for: set),
                         targetRIR: targetRIR(in: exercise.notes))
-                }))
+                },
+                supersetGroup: exercise.supersetGroup))
         }
         return Session(id: id, title: title, items: items)
     }
@@ -275,7 +298,8 @@ public struct EditablePlan: Hashable {
                     sets: plan.sets.map { PlannedSetPrescription(targetReps: $0.targetReps,
                                                                  targetWeightKg: $0.targetWeight,
                                                                  targetLoadMode: $0.loadMode == .straight ? nil : $0.loadMode.rawValue,
-                                                                 oneRepMaxPercent: $0.oneRepMaxPercent) }))
+                                                                 oneRepMaxPercent: $0.oneRepMaxPercent) },
+                    supersetGroup: exercise.supersetGroup?.raw))
             }
         }
         return order.map { performerID in
@@ -298,17 +322,20 @@ public struct EditableExercise: Identifiable, Hashable {
     public var name: String
     public var sets: [EditableSet]
     public var notes: String
+    public var supersetGroup: SupersetGroupID?
     /// Per-performer plans, "Me" first (field test 2026-08-18 #4). Empty means a
     /// solo workout; `sets` remains the owner's plan and the source of truth for
     /// set COUNT for every performer (decision **D12**).
     public var performerPlans: [EditablePerformerPlan] = []
 
     public init(name: String, sets: [EditableSet], notes: String,
-                performerPlans: [EditablePerformerPlan] = []) {
+                performerPlans: [EditablePerformerPlan] = [],
+                supersetGroup: SupersetGroupID? = nil) {
         self.name = name
         self.sets = sets
         self.notes = notes
         self.performerPlans = performerPlans
+        self.supersetGroup = supersetGroup
     }
 }
 

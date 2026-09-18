@@ -794,6 +794,11 @@ public enum WorkoutRepository {
         public var date: Date
         public var value: Double
         public var id: Date { date }
+
+        public init(date: Date, value: Double) {
+            self.date = date
+            self.value = value
+        }
     }
 
     /// Best metric per training day for an exercise, ascending by date (FR-5.1).

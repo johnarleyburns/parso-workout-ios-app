@@ -1,13 +1,19 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 /// Manage reusable session templates (FR-1.6).
 struct TemplatesView: View {
+    let onStart: (EditablePlan) -> Void
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \SessionTemplate.name) private var templates: [SessionTemplate]
     @State private var editorPresented = false
+
+    init(onStart: @escaping (EditablePlan) -> Void = { _ in }) {
+        self.onStart = onStart
+    }
 
     var body: some View {
         NavigationStack {
@@ -18,10 +24,21 @@ struct TemplatesView: View {
                                            description: Text("Create a reusable day like “Push Day”."))
                 }
                 ForEach(templates) { t in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(t.name).font(.headline)
-                        Text(t.orderedExercises.map(\.exerciseName).joined(separator: ", "))
-                            .font(.caption).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(t.name).font(.headline)
+                            Text(t.orderedExercises.map(\.exerciseName).joined(separator: ", "))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Button {
+                            onStart(EditablePlan.from(template: t))
+                        } label: {
+                            Label("Start Workout", systemImage: "play.fill")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .accessibilityIdentifier("templateRow.start.\(t.name)")
                     }
                     .accessibilityIdentifier("templateRow.\(t.name)")
                     .swipeActions {
@@ -31,7 +48,7 @@ struct TemplatesView: View {
                     }
                 }
             }
-            .navigationTitle("Templates")
+            .navigationTitle("Saved Workouts")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("New") { editorPresented = true }

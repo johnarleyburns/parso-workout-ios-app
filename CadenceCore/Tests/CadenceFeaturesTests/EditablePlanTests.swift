@@ -11,6 +11,19 @@ final class EditablePlanTests: XCTestCase {
         return ModelContext(container)
     }
 
+    func testTemplateConvertsToAStartableEditablePlan() throws {
+        let ctx = try makeContext()
+        let template = try WorkoutRepository.createTemplate(
+            name: "Push Day", exercises: [("Bench Press", 3, 8)], in: ctx)
+
+        let plan = EditablePlan.from(template: template, warmupMinutes: 5, cooldownMinutes: 3)
+        XCTAssertEqual(plan.title, "Push Day")
+        XCTAssertEqual(plan.warmupMinutes, 5)
+        XCTAssertEqual(plan.cooldownMinutes, 3)
+        XCTAssertEqual(plan.exercises.first?.name, "Bench Press")
+        XCTAssertEqual(plan.exercises.first?.sets.map(\.targetReps), [8, 8, 8])
+    }
+
     func testFromSessionCopiesOwnerSets() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)

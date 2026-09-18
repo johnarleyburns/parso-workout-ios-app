@@ -173,14 +173,16 @@ public enum SessionRenderModel {
         public var setIndex: Int
         public var targetReps: Int
         public var targetWeightKg: Double?
+        public var kind: SetKind
 
         public init(performerID: UUID?, performerName: String, setIndex: Int,
-                    targetReps: Int, targetWeightKg: Double?) {
+                    targetReps: Int, targetWeightKg: Double?, kind: SetKind = .working) {
             self.performerID = performerID
             self.performerName = performerName
             self.setIndex = setIndex
             self.targetReps = targetReps
             self.targetWeightKg = targetWeightKg
+            self.kind = kind
         }
     }
 
@@ -412,7 +414,7 @@ public enum SessionRenderModel {
                         rows.append(PendingSetDisplay(
                             performerID: performer.performerID, performerName: performer.label,
                             setIndex: index, targetReps: resolved.reps,
-                            targetWeightKg: resolved.weightKg))
+                            targetWeightKg: resolved.weightKg, kind: resolved.kind))
                     }
                 }
                 pendingByPerformer.append((performer.performerID, rows))

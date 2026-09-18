@@ -3,6 +3,18 @@ import XCTest
 @testable import CadenceCore
 
 final class UnifiedPlanDBPPBridgeTests: XCTestCase {
+    func testFailureSetProjectsAsAppCompatibleOtherType() throws {
+        let strength = StrengthItem(
+            exerciseKey: ExerciseKey(raw: "barbell_bench_press"), order: 0,
+            sets: [PrescribedSet(setIndex: 0, kind: .failure, repTarget: .exact(8))])
+        let days = Weekday.mondayThroughSunday.map { weekday in
+            PlanDay(weekday: weekday, sessions: weekday == .monday
+                ? [Session(title: "Failure", items: [.strength(strength)])] : [])
+        }
+        let projection = UnifiedPlanDBPPBridge.project(Plan(title: "Failure", weeks: [PlanWeek(index: 0, days: days)]))
+        XCTAssertEqual(projection.plan.sessions.first?.exercises.first?.plannedSets?.first?.setType, "other")
+    }
+
     func testProjectionKeepsDBPPResistanceShapeAndReportsAppOnlyItems() throws {
         let strength = StrengthItem(
             exerciseKey: ExerciseKey(raw: "barbell_bench_press"),

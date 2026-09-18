@@ -173,8 +173,12 @@ public enum ScheduledWorkoutStore {
     public static func schedule(plan: EditablePlan, for date: Date,
                                 calendar: Calendar = .current,
                                 originDevice: String = "iphone",
+                                now: Date = Date(),
                                 in context: ModelContext) throws -> ScheduledWorkout {
         let normalized = ScheduledWorkoutDate.normalize(date, calendar: calendar)
+        guard normalized >= calendar.startOfDay(for: now) else {
+            throw ScheduledWorkoutStoreError.dateMustBeTodayOrFuture
+        }
         let record = ScheduledWorkout(
             scheduledDate: normalized,
             scheduledDayKey: ScheduledWorkoutDate.dayKey(normalized, calendar: calendar),
@@ -186,6 +190,31 @@ public enum ScheduledWorkoutStore {
         context.insert(record)
         try context.save()
         return record
+    }
+
+    /// Moves an existing visible schedule to a new date. Rescheduling a
+    /// started item deliberately returns it to `scheduled` and clears the
+    /// previous session link; the user must explicitly start the moved copy.
+    @discardableResult
+    public static func reschedule(recordID: UUID, to date: Date,
+                                  calendar: Calendar = .current,
+                                  now: Date = Date(),
+                                  in context: ModelContext) throws -> Bool {
+        let normalized = ScheduledWorkoutDate.normalize(date, calendar: calendar)
+        guard normalized >= calendar.startOfDay(for: now) else {
+            throw ScheduledWorkoutStoreError.dateMustBeTodayOrFuture
+        }
+        guard let record = try record(recordID, in: context), record.isVisible else {
+            return false
+        }
+        record.scheduledDate = normalized
+        record.scheduledDayKey = ScheduledWorkoutDate.dayKey(normalized, calendar: calendar)
+        record.timeZoneIdentifier = calendar.timeZone.identifier
+        record.status = .scheduled
+        record.startedSessionID = nil
+        record.updatedAt = Date()
+        try context.save()
+        return true
     }
 
     public static func active(in context: ModelContext) throws -> [ScheduledWorkout] {
@@ -248,4 +277,16 @@ public enum ScheduledWorkoutStore {
 
 public enum ScheduledWorkoutStoreError: Error, Equatable, Sendable {
     case unsupportedPayloadVersion(Int)
+    case dateMustBeTodayOrFuture
+}
+
+extension ScheduledWorkoutStoreError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .unsupportedPayloadVersion(let version):
+            return "This workout was saved by an unsupported version (payload \(version))."
+        case .dateMustBeTodayOrFuture:
+            return "Choose today or a future date for a planned workout."
+        }
+    }
 }

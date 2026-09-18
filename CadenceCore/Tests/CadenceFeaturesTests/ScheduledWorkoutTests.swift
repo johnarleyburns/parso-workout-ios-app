@@ -70,6 +70,41 @@ final class ScheduledWorkoutTests: XCTestCase {
         XCTAssertEqual(try ScheduledWorkoutStore.active(in: context).map(\.title), ["Evening Workout"])
     }
 
+    func testSchedulingRejectsPastDaysAndReschedulingResetsStartedLifecycle() throws {
+        let container = try CadenceStore.makeModelContainer(inMemory: true)
+        let context = ModelContext(container)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Chicago")!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 20,
+                                                       hour: 9))!
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: now)!
+        let plan = EditablePlan(title: "Move me", warmupMinutes: 0,
+                                cooldownMinutes: 0, exercises: [])
+
+        XCTAssertThrowsError(try ScheduledWorkoutStore.schedule(plan: plan,
+                                                                 for: yesterday,
+                                                                 calendar: calendar,
+                                                                 now: now,
+                                                                 in: context)) { error in
+            XCTAssertEqual(error as? ScheduledWorkoutStoreError, .dateMustBeTodayOrFuture)
+        }
+        let record = try ScheduledWorkoutStore.schedule(plan: plan, for: now,
+                                                         calendar: calendar, now: now,
+                                                         in: context)
+        let sessionID = UUID()
+        XCTAssertTrue(try ScheduledWorkoutStore.markStarted(recordID: record.id,
+                                                             sessionID: sessionID, in: context))
+        XCTAssertTrue(try ScheduledWorkoutStore.reschedule(recordID: record.id,
+                                                           to: tomorrow,
+                                                           calendar: calendar,
+                                                           now: now,
+                                                           in: context))
+        XCTAssertEqual(record.scheduledDayKey, "2026-09-21")
+        XCTAssertEqual(record.status, .scheduled)
+        XCTAssertNil(record.startedSessionID)
+    }
+
     func testPresenterSeparatesTodayFutureAndOverdueAndHidesCompleted() {
         let now = Date(timeIntervalSince1970: 1_000_000)
         let calendar = Calendar(identifier: .gregorian)

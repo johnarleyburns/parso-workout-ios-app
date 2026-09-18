@@ -110,12 +110,9 @@ struct PlannedWorkoutsListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $rescheduleRecord) { record in
             ScheduleWorkoutSheet(title: record.title) { date in
-                let calendar = Calendar.current
-                record.scheduledDate = ScheduledWorkoutDate.normalize(date, calendar: calendar)
-                record.scheduledDayKey = ScheduledWorkoutDate.dayKey(date, calendar: calendar)
-                record.timeZoneIdentifier = calendar.timeZone.identifier
-                record.updatedAt = Date()
-                try context.save()
+                _ = try ScheduledWorkoutStore.reschedule(recordID: record.id,
+                                                         to: date,
+                                                         in: context)
             }
         }
     }

@@ -2,6 +2,21 @@
 
 Updated: 2026-09-17
 
+## Repository reconciliation — 2026-09-17
+
+The working tree is clean and `main` is two commits ahead of `origin/main`:
+the scheduled-workout/Plan-removal implementation and the scientific cardio
+intensity implementation are already present in the repository. This pass
+keeps those shipped slices intact, closes the remaining persistence boundary
+for scheduling, and records the exact release state below. No simulator is
+part of this pass.
+
+The scheduling API now rejects dates before the user's current local day and
+owns rescheduling as an atomic lifecycle operation. Rescheduling clears a
+stale started-session link and returns the item to `scheduled`; focused tests
+cover past-date rejection and that transition. The UI continues to use a
+date-only app-internal schedule and does not request EventKit access.
+
 ## Active task — remove weekly planning; add individual scheduled workouts
 
 The implementation target is now a single-workout workflow. Remove the
@@ -176,7 +191,9 @@ These are the two final real-device validations and should be run together:
 2. Same-user private iCloud convergence across supported devices.
 
 Phase 2 is therefore implementation-green but not formally closed until those
-hardware and private-sync checks pass. No known commit or CI blocker remains.
+hardware and private-sync checks pass. The current release branch still needs
+to be pushed; CI status will be reported after that push. No simulator is
+required for this release pass.
 
 ### Remaining product work after this Phase 3 slice
 
@@ -590,7 +607,7 @@ not rewrite or discard those partner fields.
 | 3 — self-planning depth + optional contribution | **IMPLEMENTATION COMPLETE 2026-09-10** | field-review plan depth, coach review, contribution badge, then continue to Phase 4 |
 | 4 — individual-user platform polish | **IMPLEMENTATION COMPLETE 2026-09-11; FIELD REVIEW PENDING** | execute `PHASE_4_MANUAL_TEST.md`, then final acceptance and Appendix AA proof |
 
-## Status and next task — 2026-09-11
+## Status and next task — 2026-09-17
 
 Current status: Phase 0 is complete, Phase 1 implementation is complete, and
 the Phase 2 implementation slice plus Phase 3 self-planning/contribution slice
@@ -601,7 +618,8 @@ combined surface; mobility and cardio-plus-mobility sessions use the new iPhone
 runner, while instruction-only and strength-containing mixes remain blocked.
 Partner workouts and partner history remain preserved.
 
-Immediate next task: complete the Phase 3 and Phase 4 human field checklists.
+Immediate next task: push the reviewed implementation, then complete the Phase
+2 hardware/private-iCloud close-outs and the Phase 3/4 human field checklists.
 Phase 4's implementation slice now includes bounded request review/apply,
 readiness capture, WidgetKit, App Shortcuts, Handoff, and the shared snapshot
 contract. Phase 2 hardware and private-iCloud close-outs remain required field

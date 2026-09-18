@@ -4,12 +4,13 @@ Updated: 2026-09-17
 
 ## Repository reconciliation — 2026-09-17
 
-The working tree is clean and `main` is two commits ahead of `origin/main`:
-the scheduled-workout/Plan-removal implementation and the scientific cardio
-intensity implementation are already present in the repository. This pass
-keeps those shipped slices intact, closes the remaining persistence boundary
-for scheduling, and records the exact release state below. No simulator is
-part of this pass.
+The previous release baseline (`51e8210`) is present on `main` and synchronized
+with `origin/main`: the scheduled-workout/Plan-removal implementation and the
+scientific cardio-intensity implementation are already in the repository. This
+resolution pass keeps those slices intact, fixes the deterministic personalized
+history-index signature, aligns the three manual test documents with the
+retired weekly-planning UI, and expands smoke coverage for Personalized
+Workout scheduling. No simulator is part of this pass.
 
 The scheduling API now rejects dates before the user's current local day and
 owns rescheduling as an atomic lifecycle operation. Rescheduling clears a
@@ -123,12 +124,20 @@ only after code and focused verification are complete, then push.
   and HealthKit ingestion use background SwiftData contexts. CloudKit import,
   coach, Home projection, HealthKit, and Watch payload signposts are present.
 - Added headless scheduled-workout payload/presenter/lifecycle/schema coverage
-  and updated smoke/screenshot contracts to assert Plan is absent and scheduling
-  is available. No simulator was run.
+  and updated smoke/screenshot contracts to assert Plan is absent, both
+  Personalized and Custom Workout scheduling is available, and a scheduled
+  Personalized payload can be reopened with its exercise intact. No simulator
+  was run.
+- Replaced JSON-encoder-dependent history signatures with an ordered scalar
+  representation so identical SwiftData history cannot spuriously rebuild the
+  Personalized exercise index. The full package test gate is required before
+  this resolution is considered release-ready.
 
-## Roadmap position — Phase 4 implementation complete; Phase 2 hardware close-out pending
+## Roadmap position — implementation aligned; Phase 2 hardware close-out pending
 
-Phase 3 implementation is complete for the active single-user roadmap slice.
+Phase 3 implementation is complete for the active single-user workout slice;
+the former weekly-plan depth/review UI is intentionally superseded by the
+single-workout redesign.
 The remaining Phase 2 work is field validation on real iPhone/Watch hardware
 and same-user private iCloud convergence; those checks are documented in
 `PHASE_2_MANUAL_TEST.md` and are intentionally not replaced by simulator runs.
@@ -139,25 +148,26 @@ platform checklist is in `PHASE_4_MANUAL_TEST.md`.
 
 - **Phase 0 — foundations:** persistence, CloudKit schema and sync contracts,
   Watch payload boundary, and guardrails are complete.
-- **Phase 1 — athlete implementation:** manual weekly planning, mixed-session
+- **Phase 1 — athlete implementation:** manual workout authoring, mixed-session
   boundaries, Watch projection, and the combined cardio/mobility runner are
-  implemented.
+  implemented. The earlier weekly-plan authoring surface is retained only as
+  compatibility/core history, not as a current tab.
 - **Phase 2 code slice:** unified plan authoring/execution support, stale
   exercise-substitute protection, indexed/faceted exercise search, and normal
   descending planner rep ladders are implemented and covered by tests.
-- **Phase 3:** unified-plan depth controls now expose mesocycles, periodization,
-  progression intent, repeat-session, and repeat-week operations; the coach
-  review surface exposes rationale, citations, critique, insights, progress,
-  autoregulation, and explicit substitution acceptance; the optional $9.99
-  contribution is the only StoreKit product and a successful purchase displays
-  the Home Supporter badge without gating any feature.
-- **Phase 4 implementation:** `BoundedPlanningRequestParser` now translates a bounded,
-  deterministic natural-language vocabulary into the existing `PlanningRequest`
-  contract. It supports goal, experience, days, duration, equipment,
-  conditioning, constraints, progression, periodization, and mesocycle terms;
-  it rejects retired trainer/client/Pro requests and never emits prescriptions.
-  The former Plan tab and weekly coach authoring flow are now retired from the
-  user-facing app; legacy planning models remain for migration compatibility.
+- **Phase 3:** the core coach-depth contracts remain available for compatibility,
+  while the former weekly-plan depth/review UI is retired. Current user-facing
+  depth is Personalized/Custom Workout authoring, exercise exclusion/search,
+  substitution, volume/history, autoregulation cues, and explicit Supporter
+  contribution. The optional $9.99 contribution is the only StoreKit product;
+  a successful purchase displays the Home Supporter badge without gating any
+  feature.
+- **Phase 4 implementation:** `BoundedPlanningRequestParser` remains a bounded,
+  deterministic, tested core compatibility capability, but its former Plan-tab
+  review UI is intentionally retired with weekly planning. The current
+  user-facing Phase 4 surfaces are readiness, transparency/control, WidgetKit,
+  App Shortcuts, Handoff, offline behavior, larger-surface delivery, and
+  accessibility/performance polish.
   The optional readiness check-in is user-facing on Home. App Shortcuts,
   Handoff, and a WidgetKit extension use a
   privacy-preserving shared today snapshot. Focused tests cover the parser,
@@ -179,8 +189,8 @@ platform checklist is in `PHASE_4_MANUAL_TEST.md`.
   and Apply.
 - **iPad delivery smoke:** the iOS target now delivers to iPhone and iPad. The
   focused iPad smoke reuses the existing iPhone smoke method and checks only
-  launch, Plan, bounded planning, Settings, and Transparency & Control; it does
-  not duplicate the iPhone workout flow.
+  launch, absence of Plan, Settings, and Transparency & Control; it does not
+  duplicate the iPhone workout flow or test retired bounded-planning UI.
 
 ### Remaining Phase 2 close-out
 
@@ -191,15 +201,16 @@ These are the two final real-device validations and should be run together:
 2. Same-user private iCloud convergence across supported devices.
 
 Phase 2 is therefore implementation-green but not formally closed until those
-hardware and private-sync checks pass. The current release branch still needs
-to be pushed; CI status will be reported after that push. No simulator is
-required for this release pass.
+hardware and private-sync checks pass. The previous release baseline is pushed;
+the current history-index fix and documentation/smoke alignment must pass the
+headless gate before release. No simulator is required for this pass.
 
 ### Remaining product work after this Phase 3 slice
 
-- **Phase 4:** field-test the bounded request, readiness, widget, Shortcut,
-  Handoff, larger-surface, accessibility, offline, and performance behavior;
-  then complete the final acceptance matrix and Appendix AA compatibility proof.
+- **Phase 4:** field-test readiness, widget, Shortcut, Handoff, larger-surface,
+  accessibility, offline, and performance behavior; the bounded request parser
+  is core-only after the weekly-planning UI retirement. Then complete the final
+  acceptance matrix and Appendix AA compatibility proof.
 - Across the remaining roadmap: add depth to cardio, mobility, instructions,
   larger-surface planning/templates/export, and the final v2.6 acceptance
   matrix plus Appendix AA compatibility proof.
@@ -272,8 +283,8 @@ with lower confidence.
 Regression coverage now includes age 50 / average 136 / repeated peak 161,
 weighted high-zone credit, interval-like detection, isolated-peak rejection,
 sampled `TrainingEvent` values, and conservative missing-HR fallback. The full
-headless package suite passes with 1,772 tests; no simulator is required for
-this logic.
+headless package suite now contains 1,802 tests; the current audit resolution
+reran all 1,802 with zero failures. No simulator is required for this logic.
 
 ## Historical investigation — complete exercise variants and indexed search — core fix shipped 2026-09-10
 
@@ -611,19 +622,20 @@ not rewrite or discard those partner fields.
 
 Current status: Phase 0 is complete, Phase 1 implementation is complete, and
 the Phase 2 implementation slice plus Phase 3 self-planning/contribution slice
-are green locally and ready for the authorized release commit. Strength-only sessions
+are implemented. The history-index signature fix is awaiting the full headless
+gate. Strength-only sessions
 still use the existing iPhone/Watch runner; pure cardio remains projectable to
 the existing Watch cardio runner and can also run through the authored-plan
 combined surface; mobility and cardio-plus-mobility sessions use the new iPhone
 runner, while instruction-only and strength-containing mixes remain blocked.
 Partner workouts and partner history remain preserved.
 
-Immediate next task: push the reviewed implementation, then complete the Phase
-2 hardware/private-iCloud close-outs and the Phase 3/4 human field checklists.
-Phase 4's implementation slice now includes bounded request review/apply,
-readiness capture, WidgetKit, App Shortcuts, Handoff, and the shared snapshot
-contract. Phase 2 hardware and private-iCloud close-outs remain required field
-validation and are not replaced by simulator runs.
+Immediate next task: complete the headless gate for the history-index fix, then
+complete the Phase 2 hardware/private-iCloud close-outs and the Phase 3/4 human
+field checklists. Phase 4's current implementation includes readiness capture,
+WidgetKit, App Shortcuts, Handoff, and the shared snapshot contract; bounded
+planning remains core-only. Phase 2 hardware and private-iCloud close-outs
+remain required field validation and are not replaced by simulator runs.
 
 Overall plan position: Phase 3 and Phase 4 implementation are complete and
 field-testable, Phase 2 is implementation-green and field-test ready but not
@@ -643,9 +655,10 @@ work is field acceptance plus the final compatibility proof.
   support screens, App Store metadata, website copy, and release documentation.
   The optional contribution is not a paywall and must not gate features.
 - Run focused tests during development and `make ci` before a phase/work-stream
-  commit. Run iPhone/watch smoke gates whenever their user flows change. For
-  this work slice, simulator and commit/push execution is intentionally deferred
-  for review.
+  commit. The installed pre-commit hook runs only
+  `swift test --package-path CadenceCore` and never boots a simulator. Run the
+  iPhone/watch smoke gates explicitly before release, TestFlight submission, or
+  field testing whenever their user flows change.
 - Hardware verification remains mandatory for HealthKit, BLE, WatchConnectivity,
   workout runtime, and private-iCloud self-device sync on supported Apple
   surfaces. There is no human-coach sharing or Mail packet handoff gate.

@@ -230,6 +230,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.compactExercise."))
         XCTAssertGreaterThan(previewExercises.count, 0,
                              "Read-only suggested plan preview has no exercises")
+        let preservedExerciseIdentifier = previewExercises.firstMatch.identifier
         let previewExerciseInfo = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exerciseInfo."))
         XCTAssertGreaterThan(previewExerciseInfo.count, 0,
@@ -240,9 +241,35 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Personalized suggestion leaked the Olympic-only Clean and Jerk movement")
         XCTAssertTrue(app.buttons["editor.start"].exists,
                        "Suggested plan editor lacks Start Workout")
+        XCTAssertTrue(app.buttons["editor.schedule"].waitForExistence(timeout: 5),
+                      "Personalized Workout Plan lost Schedule this Workout")
+        XCTAssertEqual(app.buttons["editor.start"].frame.height,
+                       app.buttons["editor.schedule"].frame.height,
+                       accuracy: 1,
+                       "Personalized Schedule this Workout is not the same size as Start Workout")
+        XCTAssertTrue(app.buttons["editor.schedule"].waitTap(timeout: 5),
+                      "Personalized Workout Plan scheduling did not open")
+        XCTAssertTrue(app.navigationBars["Schedule Workout"].waitForExistence(timeout: 5),
+                      "Personalized scheduling sheet did not open")
+        XCTAssertTrue(app.buttons["scheduleWorkout.save"].waitTap(timeout: 5),
+                      "Personalized scheduling sheet did not save")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Personalized scheduling did not return Home")
+        XCTAssertTrue(app.descendants(matching: .any)["home.plannedWorkouts"].waitForExistence(timeout: 10),
+                      "Personalized scheduling did not render Planned Workouts")
+
+        let scheduledStart = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "home.planned.start.")).firstMatch
+        XCTAssertTrue(scheduledStart.waitTap(timeout: 10),
+                      "Personalized scheduled workout could not be started")
+        XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
+                      "Starting a personalized scheduled workout did not preserve the plan view")
+        XCTAssertTrue(app.descendants(matching: .any)[preservedExerciseIdentifier]
+                        .waitForExistence(timeout: 5),
+                      "Starting the scheduled workout lost its exact exercise payload")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
-                      "Personalized plan did not close back to Home")
+                      "Returning from the scheduled workout did not land on Home")
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
                       "Home Start Workout did not reopen after suggested workouts")

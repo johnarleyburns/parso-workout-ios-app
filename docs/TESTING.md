@@ -103,8 +103,10 @@ bash scripts/install-git-hooks.sh
 
 Installed hooks:
 
-- `pre-commit`: runs `make pre-commit`, which is the guards, the SwiftPM unit suite, the iPhone smoke test, and the Watch unit/UI smoke tests. This keeps both SwiftUI app entry points covered by the commit gate.
-- `pre-push`: runs no tests. Verification happens at the commit gate.
+- `pre-commit`: runs only `swift test --package-path CadenceCore`. It is
+  intentionally simulator-free so normal commits stay a fast, host-only gate.
+- `pre-push`: runs no tests. The release smoke gate is run explicitly before
+  release or TestFlight submission.
 
 The CloudKit guard is part of `make guardrails`. It always checks the checked-in
 model contract and, when `~/.cloudkit-management-token` exists, exports both
@@ -114,9 +116,10 @@ this is intentionally stricter than checking only whether a workout record can
 be created. CI runs the contract check without credentials and performs the
 same deterministic local validation.
 
-The pre-commit hook includes iPhone and Watch simulator smoke coverage, so it expects
-the pinned simulator from `Makefile`'s `SMOKE_DEST` to be available locally. For
-exceptional cases, Git's standard `--no-verify` flag bypasses hooks.
+The pre-commit hook does not launch iPhone or Watch simulators. Before a release,
+TestFlight submission, or field-testing build, run `make all-tests` to execute the
+explicit package, iPhone, and Watch release smoke gates. For exceptional cases,
+Git's standard `--no-verify` flag bypasses hooks.
 
 ## Standard Gate
 

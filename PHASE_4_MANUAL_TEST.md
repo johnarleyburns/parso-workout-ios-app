@@ -1,75 +1,52 @@
 # Phase 4 Manual Test
 
-This checklist covers the individual-user platform-polish slice. It is a real
-device review checklist; no simulator result substitutes for HealthKit,
-WatchConnectivity, Handoff, or iCloud behavior.
+Phase 4 is platform polish around the single-workout Home flow. The bounded
+natural-language parser remains a tested core compatibility capability, but
+its former Plan-tab review UI is intentionally retired with weekly planning.
 
-## 1. Bounded planning request
+## 1. Readiness and transparency
 
-1. Open **Plan** → **Describe a plan**.
-2. Enter: `4 days, 60 minutes, hypertrophy, intermediate, dumbbells and cable,
-   8 week block, double progression, deload, avoid barbell back squat`.
-3. Confirm the review lists the parsed goal, experience, days, duration,
-   equipment, horizon, progression, periodization, and avoidance constraint.
-4. Tap **Review in planner**. Confirm a normal editable plan opens and that the
-   request is metadata/context for authoring; it does not silently generate
-   exercises or prescriptions.
-5. Close and reopen the authored plan. Confirm its title, block shape, and
-   authoring context remain intact.
-6. Try a retired request containing `trainer`, `client`, `Pro`, `trial`, or
-   `share`. Confirm the UI explains that this is not supported and offers no
-   sharing or paywall path.
+1. On Home, open How are you feeling? and save a normal 1–5 check-in.
+2. Edit it and confirm today has one updated entry rather than a duplicate.
+3. Select Pain or illness concern. Confirm the copy is neutral and the coach
+   offers a lighter/safety cue without forcing a medical decision.
+4. Open Settings → Transparency & Control. Confirm HealthKit ingestion, Coach
+   refresh, Watch projection, iCloud mirroring, Supporter prompts, and retry/
+   recovery controls explain what is happening.
+5. Leave readiness empty on a new day and confirm workout creation/execution
+   still works.
 
-## 2. Readiness
+## 2. Widget, Shortcuts, and Handoff
 
-1. On **Today**, tap **How are you feeling?**.
-2. Save a normal 1–5 check-in and confirm the Home card summarizes it.
-3. Reopen it, change values, and save. Confirm it updates rather than creates
-   duplicate entries for today.
-4. Select **Pain or illness concern**. Confirm the safety copy is neutral and
-   the coach presents a lighter/safety cue without forcing a medical decision.
-5. Leave readiness empty on a fresh day. Confirm planning and execution still
-   work; readiness is optional.
+1. Open Home once, then add the Today's workout widget. Confirm it uses the
+   shared private snapshot and shows today's Planned Workouts and readiness when
+   present; it must not claim a weekly coach plan.
+2. Run Start Today's Workout from Shortcuts/Siri and confirm it opens the normal
+   Start Workout picker.
+3. Run Show Today's Plan and confirm it opens Planned Workouts, not a retired
+   Plan tab.
+4. Open a Workout Plan and move to the paired supported Apple surface. Confirm
+   Handoff returns safely to Home/Planned Workouts. Confirm `cladiron://plan`
+   deep links also land safely on Home.
+5. With no network, confirm local workout creation, readiness, execution, and
+   history remain usable.
 
-## 3. Widget, Shortcuts, and Handoff
+## 3. Larger surface and accessibility
 
-1. Build/install on a physical iPhone with the `group.guru.parso.ios-workout-app`
-   application group registered for both app IDs.
-2. Open Today once, then add the **Today's workout** widget. Confirm it shows
-   the current coach plan, today's session labels, and readiness when present.
-3. Run **Start Today's Workout** and **Show Today's Plan** from Shortcuts/Siri.
-   Confirm the first opens the workout picker and the second opens Plan.
-4. Open an authored plan, move to the paired supported Apple surface, and
-   confirm the Handoff activity returns to Plan. Confirm widget deep links open
-   Plan as well.
-5. With no network, confirm the widget, planner, readiness, execution, and
-   history remain usable from local data.
+1. The focused iPad smoke checks only launch, absence of the Plan tab, Settings,
+   and Transparency & Control. It intentionally does not duplicate the iPhone
+   workout flow or test retired bounded-planning UI.
+2. Review Home, Start Workout, Workout Plan, readiness, and Planned Workouts on
+   a physical iPad/regular-width surface. Confirm rows remain readable/tappable.
+3. Test the largest Dynamic Type size and confirm essential exercise, session,
+   readiness, and action labels remain usable.
+4. Navigate Home, Workout Plan, readiness, settings, and active workout with
+   VoiceOver. Confirm controls announce purpose, values, and safety context.
+5. Enable Reduce Motion and confirm sheets, scheduling, and workout entry remain
+   usable.
 
-## 4. Larger surface and accessibility
+## 4. Record results
 
-1. For the focused iPad smoke check, run `make ipad-smoke` with an available
-   iPad simulator. This intentionally checks only launch, Plan, bounded
-   planning, Settings, and Transparency & Control; it does not repeat the
-   iPhone workout smoke flow.
-2. Review Plan on a physical iPad/regular width. Confirm the list remains readable, rows
-   remain tappable, and no planning data is hidden behind compact-only layout.
-3. Test Dynamic Type at the largest accessibility size. Confirm no exercise,
-   session, readiness, or action label truncates the essential value.
-4. Navigate the Plan, Readiness, Home, and active-workout surfaces with
-   VoiceOver. Confirm controls announce purpose, current values, and safety
-   context; decorative icons are not announced as required actions.
-5. Enable Reduce Motion and confirm planning, sheet presentation, and workout
-   entry remain usable.
-
-## Result
-
-| Area | Pass / notes |
-|---|---|
-| Bounded planning review/apply | |
-| Readiness save/update/safety | |
-| Widget refresh/deep link | |
-| Shortcuts/Siri | |
-| Handoff | |
-| Offline behavior | |
-| iPad/regular width | |
-| Dynamic Type/VoiceOver/Reduce Motion | |
+Record build number, devices, OS versions, iCloud state, and failures with
+screenshots and timestamps. Phase 4 is complete after the platform, accessibility,
+offline, and performance review plus the final acceptance/Appendix AA proof.

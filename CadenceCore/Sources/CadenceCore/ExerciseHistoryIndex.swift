@@ -225,8 +225,26 @@ public enum ExerciseHistoryIndexStore {
                     }.sorted { $0.id < $1.id })
             }
             .sorted { $0.id < $1.id }
-        guard let data = try? JSONEncoder().encode(stamps) else { return "unavailable" }
-        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        // Hash a deliberately ordered scalar representation rather than the
+        // JSON encoder's keyed-container output. JSON key ordering is an
+        // implementation detail, and an identical SwiftData graph must never
+        // trigger a rebuild merely because encoder output ordering changed.
+        let canonical = stamps.map { session in
+            let header = [
+                session.id,
+                session.isEnded ? "1" : "0",
+                session.isDeleted ? "1" : "0",
+                session.isLogged ? "1" : "0"
+            ].joined(separator: "|")
+            let sets = session.sets.map { set in
+                [set.id, String(set.completedAtMilliseconds), String(set.reps),
+                 set.isWarmup ? "1" : "0", set.isOwner ? "1" : "0", set.exerciseKey]
+                    .joined(separator: "|")
+            }.joined(separator: ";")
+            return "\(header)#\(sets)"
+        }.joined(separator: "||")
+        return SHA256.hash(data: Data(canonical.utf8))
+            .map { String(format: "%02x", $0) }.joined()
     }
 
     private static func load(from url: URL?) throws -> ExerciseHistoryIndexSnapshot? {

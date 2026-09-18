@@ -160,6 +160,10 @@ extension HomeView {
         cachedWeeklyVolumeKg = WeeklyStats.volumeKg(
             sessions.filter { $0.deletedAt == nil },
             since: WeeklyStats.weekStart())
+        cachedMuscleHistory = HomeMuscleHistoryPresenter.make(
+            sessions: sessions,
+            since: WeeklyStats.weekStart(),
+            now: Date())
     }
     func openTodayWorkout(_ row: WorkoutsTodayPresenter.Row) {
         guard let id = UUID(uuidString: row.sourceKey) else { return }

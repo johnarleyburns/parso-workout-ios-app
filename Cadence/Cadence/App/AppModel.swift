@@ -25,6 +25,12 @@ import CadenceFixtures
 final class AppModel: NSObject, @unchecked Sendable {
     private static let liveWatchHREnabled = true
     private static let performanceLog = OSLog(subsystem: "guru.parso.cladiron", category: "AppPerformance")
+    /// WatchConnectivity's application-context write can synchronously cross
+    /// into the paired device. Keep that IPC off the main actor so a visible
+    /// "Syncing to Watch" toast never coincides with a frozen Home screen.
+    private static let watchContextQueue = DispatchQueue(
+        label: "guru.parso.cladiron.watch-context",
+        qos: .utility)
 
     enum HealthSyncStatus: Equatable, Sendable {
         case idle
@@ -214,6 +220,15 @@ final class AppModel: NSObject, @unchecked Sendable {
         let recentPartnerNames: [String]
     }
 
+    /// WCSession and its property-list dictionary are Foundation reference
+    /// values, but the serialized queue is the sole owner of this handoff.
+    /// Keeping the unchecked boundary here avoids pushing non-Sendable SDK
+    /// types back onto the main actor just to perform the IPC write.
+    private struct WatchContextWrite: @unchecked Sendable {
+        let session: WCSession
+        let context: [String: Any]
+    }
+
     #if DEBUG
     var cachedTodayPlanForTesting: WatchSync.TodayPlan? { cachedTodayPlan }
     #endif
@@ -383,11 +398,25 @@ final class AppModel: NSObject, @unchecked Sendable {
         // plan from an older app build visible on the Watch.
         context.removeValue(forKey: WatchSync.Key.todayPlanSessions)
         context.removeValue(forKey: WatchSync.Key.todayPlanUpdatedAt)
-        do {
-            try session.updateApplicationContext(context)
-            recordWatchSyncSuccess(date)
-        } catch {
-            recordWatchSyncFailure(error.localizedDescription)
+        enqueueWatchContextWrite(context, on: session, at: date)
+    }
+
+    private func enqueueWatchContextWrite(_ context: [String: Any],
+                                          on session: WCSession,
+                                          at date: Date) {
+        let write = WatchContextWrite(session: session, context: context)
+        Self.watchContextQueue.async {
+            do {
+                try write.session.updateApplicationContext(write.context)
+                Task { @MainActor [weak self] in
+                    self?.recordWatchSyncSuccess(date)
+                }
+            } catch {
+                let message = error.localizedDescription
+                Task { @MainActor [weak self] in
+                    self?.recordWatchSyncFailure(message)
+                }
+            }
         }
     }
 
@@ -398,12 +427,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         guard let session = wcSession, session.isWatchAppInstalled else { return }
         var context = session.applicationContext
         context.merge(WatchSync.TodayPlan.contextDict(plan)) { _, new in new }
-        do {
-            try session.updateApplicationContext(context)
-            recordWatchSyncSuccess(plan.updatedAt)
-        } catch {
-            recordWatchSyncFailure(error.localizedDescription)
-        }
+        enqueueWatchContextWrite(context, on: session, at: plan.updatedAt)
     }
 
     /// Removes the retired weekly Today-plan projection from the Watch's
@@ -416,12 +440,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         var context = session.applicationContext
         context.removeValue(forKey: WatchSync.Key.todayPlanSessions)
         context.removeValue(forKey: WatchSync.Key.todayPlanUpdatedAt)
-        do {
-            try session.updateApplicationContext(context)
-            recordWatchSyncSuccess(Date())
-        } catch {
-            recordWatchSyncFailure(error.localizedDescription)
-        }
+        enqueueWatchContextWrite(context, on: session, at: Date())
     }
 
     /// Tells the Apple Watch to start an `HKWorkoutSession` for the given

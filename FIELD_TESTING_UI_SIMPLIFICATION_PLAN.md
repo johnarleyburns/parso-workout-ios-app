@@ -274,10 +274,17 @@ Implementation:
   it inside Volume.
 - The muscle-map visualization appears first inside This Week as the compact
   visual summary, before the Strength, Cardio, and Volume detail rows. It is
-  visible by default but is not itself an expanded list: muscle-group values,
-  set percentages, citations, and Total Volume remain behind the independent
-  Volume `Show more…` control. It must not also open Strength or Cardio
-  content.
+  visible by default but is not itself an expanded text list: the map is split
+  into two portrait-friendly panels with front on the left and back on the
+  right, preserving the source image's aspect ratio. Each mapped muscle region
+  is colored from that muscle group's weekly status and remains directly
+  tappable without opening the other disclosures.
+- Tapping a colored muscle region opens a dismissible detail surface for that
+  muscle. It shows the current set status and every exercise contributing to
+  that muscle this week, including direct and indirect credit. Each history
+  row shows exercise name, set count, reps, and load; rows sort direct work
+  first, then alphabetically by exercise name. The full map legend, citations,
+  and Total Volume remain behind the independent Volume `Show more…` control.
 - Permit multiple sections to be open when the user explicitly opens them, but
   default all three closed to keep Today compact. Do not use one global
   animation or one combined accessibility value for all sections.
@@ -294,30 +301,37 @@ Acceptance:
 
 - Opening Strength does not reveal Cardio or Volume details.
 - Opening Cardio does not reveal Strength or Volume details.
-- Opening Volume reveals the muscle map and volume details only.
+- The anatomy map is visible first in the default This Week state. Opening
+  Volume reveals only the detailed muscle-volume rows, citations, and Total
+  Volume; it does not duplicate the already-visible map.
 - The default This Week card shows three short summary rows and no long
   all-sections dump; the map is shown first and the detail lists are hidden.
 - Accessibility exposes each disclosure independently with its own expanded or
   collapsed state.
 
-### 2.8b Anatomy asset options and cardio marker
+### 2.8b Anatomy asset and cardio marker
 
-Three Wikimedia Commons candidates were reviewed for the mockup and eventual
-bundle:
+Option A is the sole selected mockup and production direction. It uses
+[`Muscles front and back.svg`](https://commons.wikimedia.org/wiki/File:Muscles_front_and_back.svg),
+a front/back SVG under CC BY-SA 4.0. The Option B and Option C alternatives
+are not used in the comparison or product direction.
 
-- [`Muscles front and back.svg`](https://commons.wikimedia.org/wiki/File:Muscles_front_and_back.svg)
-  — front/back SVG, CC BY-SA 4.0, best for crisp scaling and overlay hit areas.
-- [`1105 Anterior and Posterior Views of Muscles.jpg`](https://commons.wikimedia.org/wiki/File:1105_Anterior_and_Posterior_Views_of_Muscles.jpg)
-  — OpenStax medical-class diagram, CC BY 4.0, highly legible but raster and
-  label-dense.
-- [`Skeletal muscles homo sapiens.JPG`](https://commons.wikimedia.org/wiki/File:Skeletal_muscles_homo_sapiens.JPG)
-  — public-domain schematic, simplest redistribution terms but less suitable
-  for precise modern touch-region mapping.
-
-Use the SVG as the recommended production base, with the OpenStax and
-public-domain variants retained as design fallbacks. Bundle the selected
+Render the original wide SVG as two portrait panels without stretching or
+distorting it: front on the left and back on the right. Bundle the selected
 revision locally, record author/source/license in the app attribution file,
-and do not make the app depend on a live Wikimedia request.
+and do not make the app depend on a live Wikimedia request. The mockup HTML
+must embed its preview source as data so it remains reviewable when opened
+from a local file or an embedded browser frame; it must not reference
+`file://` images or external script maps.
+
+The production map needs a stable region mapping from each tappable visual
+region to the app's canonical muscle group. The region state uses the same
+weekly direct/indirect set-credit calculation as the Volume section. A tap
+opens a dismissible muscle detail surface with the status summary plus this
+week's exercise rows: exercise name, direct/indirect classification, sets,
+reps, and load. Sort direct rows before indirect rows and sort by exercise
+name within each group. This is a drill-down surface, not a second full
+dashboard.
 
 The map should include a small heart callout connected to the anterior heart
 region. The callout reports weekly cardio minutes (and, when available, the
@@ -434,6 +448,9 @@ reintroduce work into the render path:
 - Compute recent cardio distinct types once in the Home activity snapshot.
 - Keep all disclosure content lazy where practical; collapsed Progress sections
   must not construct expensive Charts or history summaries until expanded.
+- Keep Watch application-context transmission off the main actor. The payload
+  may be prepared in the background, and the final WatchConnectivity IPC write
+  must not block Today while its explicit sync toast is visible.
 - Add signposts around Home projection and Progress data preparation, then
   compare first-frame and interaction latency before release.
 
@@ -467,8 +484,11 @@ reintroduce work into the render path:
 - Splash subtitle is `Your Fitness, Your Way`.
 - This Week Cardio Minutes shows numbers and never source-code interpolation.
 - This Week starts with independent Strength, Cardio, and Volume disclosures;
-  the muscle map appears first, opening one does not open the other two, and
-  Volume reveals the detailed muscle set list.
+  the Option A muscle map appears first as front-left/back-right portrait
+  panels, each colored region is tappable, and opening one muscle shows its
+  set status plus direct/indirect exercise history sorted as specified.
+  Opening one disclosure does not open the other two, and Volume reveals the
+  detailed muscle set list and citations.
 - Progress starts summary-first, exposes `Perform a Test…`, and can expand
   each retained detail section.
 - Today has no ellipsis/More button; Settings is a tab; Exercises, Saved
@@ -487,6 +507,10 @@ check for:
 - a CloudKit restore/sync in progress while Today is visible;
 - reduced-transparency and Dynamic Type settings;
 - switching Today/Progress/Settings during an active workout.
+- tapping a front and a back muscle region, confirming direct work precedes
+  indirect work and every row includes sets, reps, and load for that week.
+- changing a Watch-synced setting or requesting an explicit Watch sync, confirming
+  the sync toast appears while Today remains responsive.
 
 ## 5. Implementation order and completion gate
 

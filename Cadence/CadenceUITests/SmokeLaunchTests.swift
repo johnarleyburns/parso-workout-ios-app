@@ -150,7 +150,19 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleMap"].waitForExistence(timeout: 5),
                       "This Week did not show the compact muscle map")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume"),
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscle.front.chest"),
+                      "Front anatomy region was not tappable")
+        XCTAssertTrue(app.navigationBars["Weekly muscle detail"].waitForExistence(timeout: 5),
+                      "Front muscle tap did not open weekly detail")
+        XCTAssertTrue(app.buttons["Done"].waitTap(timeout: 5),
+                      "Weekly muscle detail could not be dismissed")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscle.back.lats"),
+                      "Back anatomy region was not tappable")
+        XCTAssertTrue(app.navigationBars["Weekly muscle detail"].waitForExistence(timeout: 5),
+                      "Back muscle tap did not open weekly detail")
+        XCTAssertTrue(app.buttons["Done"].waitTap(timeout: 5),
+                      "Back muscle detail could not be dismissed")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showMore"),
                       "This Week did not expose the independent Volume disclosure")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].waitForExistence(timeout: 5),
                       "Volume did not expand in place")
@@ -177,9 +189,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "The old per-muscle row identifiers are still present")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.volume.science"].exists,
                       "Weekly volume does not expose its multi-reference science link")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume"),
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showLess"),
                       "Volume disclosure did not collapse")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.cardio"),
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.cardio.showMore"),
                       "This Week did not expose the independent Cardio disclosure")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
                       "Expanded Cardio does not explain the moderate-equivalent cardio total")

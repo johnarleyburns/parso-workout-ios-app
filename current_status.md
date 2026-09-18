@@ -12,9 +12,18 @@ three-column recent-cardio picker with Elliptical/Stair Climber, Progress is
 summary-first, Settings is a glass-dock tab, and the transient automatic
 loading labels are removed from Today. The old Today More route is retired.
 
-The anatomy comparison mockups remain review artifacts in `~/Downloads`; the
-canonical HTML comparison embeds its three preview images as data URLs and no
-longer references `file://` resources.
+The anatomy mockup remains a review artifact in `~/Downloads`; all comparison
+filenames now show only selected Option A, with a self-contained portrait
+front-left/back-right map, status-colored tappable regions, and a muscle
+history detail surface. It no longer references `file://` resources.
+
+The selected Option A interaction is now implemented in This Week: the locally
+bundled source image is cropped into aspect-preserving front/left and back/right
+panels, each mapped region uses the current weekly status color, and tapping a
+region opens that muscle's direct/indirect exercise history with sets, reps, and
+loads sorted direct-first then alphabetically. Watch application-context writes
+now leave the main actor before the WatchConnectivity IPC call, so an explicit
+sync toast does not freeze Today while the paired Watch is being updated.
 
 Verification constraint for this pass: use headless Swift package tests and
 static/build checks only; do not run simulator flows while the owner reviews
@@ -28,8 +37,9 @@ Verification so far:
 - The final audit covers the plan's navigation, scheduling, anatomy-map,
   disclosure, cardio-picker, and loading-label requirements. No known plan gap
   remains in this pass.
-- The anatomy comparison HTML is self-contained: its three preview images are
-  embedded data URLs and it contains no `file://` or external Lucide request.
+- The Option A mockup variants are self-contained, UTF-8 encoded, and contain
+  no `file://` image references or external Lucide request. Their region detail
+  interaction sorts direct work before indirect work and then by exercise name.
 - `git diff --check` is clean.
 
 ## Repository reconciliation — 2026-09-17

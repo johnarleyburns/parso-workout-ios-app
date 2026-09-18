@@ -9,11 +9,13 @@ struct HomeWeekDashboardSection: View {
     @Binding var volumeExpanded: Bool
     let strengthEntries: [TodayActivityPresenter.Entry]
     let cardioEntries: [TodayActivityPresenter.Entry]
+    let muscleHistory: [HomeMuscleHistory]
     let totalVolumeKg: Double
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
     let onOpenCoachSettings: () -> Void
     @State private var volumeWarningMessage: String?
+    @State private var selectedMuscle: HomeMuscleHistory?
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
@@ -83,6 +85,16 @@ struct HomeWeekDashboardSection: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.orange)
                 .accessibilityIdentifier("home.week.volumeHeading")
+            HStack(spacing: 8) {
+                legendItem("Below", color: .blue)
+                legendItem("Building", color: .yellow)
+                legendItem("Productive", color: .green)
+                legendItem("Above", color: .red)
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Muscle volume legend: below, building, productive, and above maximum")
             ForEach(dashboard.volume) { row in
                 volumeRow(row)
             }
@@ -103,37 +115,38 @@ struct HomeWeekDashboardSection: View {
         .accessibilityIdentifier("home.thisWeek.expanded")
     }
 
-    private var muscleMapSummary: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Muscle map")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
-            ZStack(alignment: .topTrailing) {
-                Image("MusclesFrontBack")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 190)
-                    .accessibilityLabel("Front and back muscle map for this week's volume")
-                Button {
-                    withAnimation(.easeInOut(duration: 0.18)) { cardioExpanded = true }
-                } label: {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Image(systemName: "heart.fill").foregroundStyle(.pink)
-                        Text("Cardio · \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) min")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .buttonStyle(.plain)
-                .padding(8)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Cardio, \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) minutes this week")
-            }
+    private func legendItem(_ title: String, color: Color) -> some View {
+        HStack(spacing: 3) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text(title)
         }
-        .padding(10)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private var muscleMapSummary: some View {
+        HomeMuscleMapView(
+            dashboard: dashboard,
+            onSelect: { group in
+                let currentSets = dashboard.volume.first(where: { $0.group == group })?.sets ?? 0
+                if let history = muscleHistory.first(where: { $0.group == group }) {
+                    selectedMuscle = HomeMuscleHistory(
+                        group: history.group,
+                        displayName: history.displayName,
+                        creditedSets: currentSets,
+                        exercises: history.exercises)
+                } else {
+                    selectedMuscle = HomeMuscleHistory(
+                        group: group,
+                        displayName: group.displayName,
+                        creditedSets: currentSets,
+                        exercises: [])
+                }
+            },
+            onOpenCardio: {
+                withAnimation(.easeInOut(duration: 0.18)) { cardioExpanded = true }
+            })
+        .sheet(item: $selectedMuscle) { history in
+            HomeMuscleDetailSheet(history: history, unit: unit)
+        }
         .accessibilityIdentifier("home.week.muscleMap")
     }
 
@@ -157,7 +170,9 @@ struct HomeWeekDashboardSection: View {
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier(identifier)
+            .accessibilityIdentifier(expanded.wrappedValue
+                                     ? "\(identifier).showLess"
+                                     : "\(identifier).showMore")
             .accessibilityValue(expanded.wrappedValue ? "Expanded" : "Collapsed")
             if expanded.wrappedValue {
                 content()

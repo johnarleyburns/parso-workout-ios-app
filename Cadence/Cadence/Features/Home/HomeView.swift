@@ -79,6 +79,7 @@ struct HomeView: View {
     @State var cachedWeekStrengthEntries: [TodayActivityPresenter.Entry] = []
     @State var cachedWeekCardioEntries: [TodayActivityPresenter.Entry] = []
     @State var cachedWeeklyVolumeKg = 0.0
+    @State var cachedMuscleHistory: [HomeMuscleHistory] = []
     @State var cachedDashboard: HomeDashboardState?
     var dashboard: HomeDashboardState {
         if let cachedDashboard { return cachedDashboard }

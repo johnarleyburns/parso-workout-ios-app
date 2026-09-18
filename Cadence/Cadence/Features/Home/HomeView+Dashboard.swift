@@ -344,6 +344,7 @@ extension HomeView {
             volumeExpanded: $weeklyVolumeExpanded,
             strengthEntries: weekActivity.strength,
             cardioEntries: weekActivity.cardio,
+            muscleHistory: cachedMuscleHistory,
             totalVolumeKg: weeklyVolumeKg,
             unit: settings.unit,
             onOpenWorkout: openWeekWorkout,

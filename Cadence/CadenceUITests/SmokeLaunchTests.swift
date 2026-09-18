@@ -24,6 +24,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "iPhone app terminated or failed to reach the foreground during cold launch")
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
                       "Home did not load")
+        XCTAssertFalse(app.tabBars.buttons["Tests"].exists,
+                       "Tests is still exposed as a primary tab")
+        XCTAssertFalse(app.tabBars.buttons["Plan"].exists,
+                       "Retired Plan is still exposed as a primary tab")
 
         // The iPad delivery check intentionally covers only regular-width
         // Home/settings surfaces. The full end-to-end flow below remains
@@ -43,6 +47,27 @@ final class SmokeLaunchTests: CadenceUITestCase {
                           "iPad Transparency & Control did not open")
             return
         }
+
+        XCTAssertTrue(app.scrollToHittableAndTap("home.more"),
+                      "Home did not expose More")
+        XCTAssertTrue(app.navigationBars["More"].waitForExistence(timeout: 5),
+                      "More destination did not open")
+        for identifier in ["more.history", "more.plannedWorkouts", "more.tests",
+                           "more.exercises", "more.coachInsights"] {
+            XCTAssertTrue(app.scrollToHittableAndTap(identifier),
+                          "More did not expose \(identifier)")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+        }
+        XCTAssertTrue(app.scrollToHittableAndTap("more.settings"),
+                      "More did not expose more.settings")
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5),
+                      "More Settings route did not open")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["More"].waitForExistence(timeout: 5),
+                      "Returning from Settings did not land on More")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Returning from More did not land on Home")
 
         // HIIT info must expose the exact expanded runner sequence. This stays
         // inside the single iPhone smoke flow required by the test-pyramid

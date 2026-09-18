@@ -14,13 +14,6 @@ extension XCUIApplication {
         return app
     }
 
-    /// Legacy tab labels → the Home launchpad card that now reaches the same
-    /// destination (field-testing §01 removed the tab bar). The Trends and Cardio
-    /// screens were removed in feedback batch 3, so only Train/Settings remain.
-    private static let homeCard = [
-        "Today": "home.today", "Train": "home.train", "Settings": "home.more"
-    ]
-
     /// Swipes up until a button with `id` is present (lazy Form sections aren't
     /// in the accessibility tree until scrolled into view), then taps it.
     @discardableResult
@@ -111,20 +104,30 @@ extension XCUIApplication {
         return revealed()
     }
 
-    /// Navigates from anywhere back to the Home launchpad, then into a
-    /// destination represented by a Home card.
+    /// Navigates from anywhere back to Home, then into a current More or Home
+    /// destination. The old Train/Settings launchpad IDs are intentionally not
+    /// used: those surfaces were retired when the app moved to Today + More.
     func goToTab(_ label: String) {
         popToHome()
         switch label {
         case "Today":
             return  // activity (step count + weekly tiles) lives on Home now
+        case "More":
+            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
+        case "Settings":
+            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
+            XCTAssertTrue(scrollToHittableAndTap("more.settings"), "More Settings not found")
+        case "History":
+            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
+            XCTAssertTrue(scrollToHittableAndTap("more.history"), "More History not found")
+        case "Planned Workouts":
+            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
+            XCTAssertTrue(scrollToHittableAndTap("more.plannedWorkouts"), "More Planned Workouts not found")
+        case "Tests":
+            XCTAssertTrue(scrollToHittableAndTap("home.more"), "Home More not found")
+            XCTAssertTrue(scrollToHittableAndTap("more.tests"), "More Tests not found")
         default:
-            // The Home dashboard scrolls, so the "See all" link may be below the
-            // fold — scroll until it's hittable before tapping. (Trends/Cardio
-            // screens were removed in feedback batch 3.)
-            let map = ["Train": "home.train", "Settings": "home.more"]
-            guard let id = map[label] else { XCTFail("unknown destination \(label)"); return }
-            XCTAssertTrue(scrollToHittableAndTap(id), "home destination \(label) (\(id)) not found")
+            XCTFail("unknown destination \(label)")
         }
     }
 

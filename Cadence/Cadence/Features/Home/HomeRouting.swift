@@ -59,9 +59,11 @@ struct MoreView: View {
                 NavigationLink(value: HomeRoute.history) {
                     Label("Workout History", systemImage: "clock.arrow.circlepath")
                 }
+                .accessibilityIdentifier("more.history")
                 NavigationLink(value: HomeRoute.plannedWorkouts) {
                     Label("Planned Workouts", systemImage: "calendar")
                 }
+                .accessibilityIdentifier("more.plannedWorkouts")
                 NavigationLink { TestsView() } label: {
                     Label("Tests", systemImage: "checkmark.seal")
                 }
@@ -72,24 +74,30 @@ struct MoreView: View {
                 NavigationLink(value: HomeRoute.customExercises) {
                     Label("Exercises", systemImage: "figure.strengthtraining.traditional")
                 }
+                .accessibilityIdentifier("more.exercises")
                 NavigationLink(value: HomeRoute.coachPreferences) {
                     Label("Coach Preferences", systemImage: "slider.horizontal.3")
                 }
+                .accessibilityIdentifier("more.coachPreferences")
                 NavigationLink(value: HomeRoute.coach) {
                     Label("Coach Insights", systemImage: "lightbulb")
                 }
+                .accessibilityIdentifier("more.coachInsights")
             }
 
             Section("Learn") {
                 NavigationLink { CoachMethodologyView() } label: {
                     Label("Coach Methodology", systemImage: "book.pages")
                 }
+                .accessibilityIdentifier("more.coachMethodology")
                 NavigationLink { CoachResearchUpdatesView() } label: {
                     Label("Coach Research Updates", systemImage: "newspaper")
                 }
+                .accessibilityIdentifier("more.coachResearch")
                 NavigationLink { CoachAboutView() } label: {
                     Label("About the Coach", systemImage: "info.circle")
                 }
+                .accessibilityIdentifier("more.coachAbout")
             }
 
             Section("App") {

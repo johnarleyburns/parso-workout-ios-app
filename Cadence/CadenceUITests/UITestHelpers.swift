@@ -18,7 +18,7 @@ extension XCUIApplication {
     /// destination (field-testing §01 removed the tab bar). The Trends and Cardio
     /// screens were removed in feedback batch 3, so only Train/Settings remain.
     private static let homeCard = [
-        "Today": "home.today", "Train": "home.train", "Settings": "home.settings"
+        "Today": "home.today", "Train": "home.train", "Settings": "home.more"
     ]
 
     /// Swipes up until a button with `id` is present (lazy Form sections aren't
@@ -122,7 +122,7 @@ extension XCUIApplication {
             // The Home dashboard scrolls, so the "See all" link may be below the
             // fold — scroll until it's hittable before tapping. (Trends/Cardio
             // screens were removed in feedback batch 3.)
-            let map = ["Train": "home.train", "Settings": "home.settings"]
+            let map = ["Train": "home.train", "Settings": "home.more"]
             guard let id = map[label] else { XCTFail("unknown destination \(label)"); return }
             XCTAssertTrue(scrollToHittableAndTap(id), "home destination \(label) (\(id)) not found")
         }

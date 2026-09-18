@@ -4,7 +4,7 @@ import CadenceCore
 import CadenceFeatures
 
 struct RootTabView: View {
-    enum Tab: Hashable { case home, tests, progress }
+    enum Tab: Hashable { case home, progress }
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
     @Environment(ActiveWorkoutModel.self) private var active
@@ -48,13 +48,6 @@ struct RootTabView: View {
                             .accessibilityIdentifier("tab.home")
                     }
                     .tag(Tab.home)
-
-                TestsView()
-                    .tabItem {
-                        Label("Tests", systemImage: "checkmark.seal")
-                            .accessibilityIdentifier("tab.tests")
-                    }
-                    .tag(Tab.tests)
 
                 TrainingProgressView()
                     .tabItem {

@@ -31,8 +31,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
         if UIDevice.current.userInterfaceIdiom == .pad {
             XCTAssertFalse(app.tabBars.buttons["Plan"].exists,
                            "Retired Plan tab is still exposed on iPad")
-            XCTAssertTrue(app.scrollToHittableAndTap("home.settings"),
-                          "iPad Home did not expose Settings")
+            XCTAssertTrue(app.scrollToHittableAndTap("home.more"),
+                          "iPad Home did not expose More")
+            XCTAssertTrue(app.scrollToHittableAndTap("more.settings"),
+                          "iPad More did not expose Settings")
             // Settings is a lazy Form on iPad; use the helper that swipes before
             // resolving the row so the identifier can materialize off-screen.
             XCTAssertTrue(app.scrollToAndTapButton("settings.transparency", maxSwipes: 20),
@@ -46,6 +48,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // inside the single iPhone smoke flow required by the test-pyramid
         // guardrail, while proving the new outline is not merely a compact
         // rounds/work/rest summary.
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.cardioChoices"),
+                      "Start Workout did not expose cardio choices")
         XCTAssertTrue(app.scrollToHittableAndTap("startType.hiit"),
                       "Start Workout did not offer HIIT")
         XCTAssertTrue(app.navigationBars["HIIT"].waitForExistence(timeout: 10),
@@ -76,14 +80,18 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10),
                       "Coach card did not render on Home")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.moreActions"),
+                      "Home did not expose More actions")
         XCTAssertTrue(app.buttons["home.logWorkout"].waitForExistence(timeout: 5),
                       "Home did not show the previous-workout log action")
         // Field test 2026-08-18 #9/#11: the Suggested Workout blurb is gone and the
         // CTA is a full-width sibling below the card, not a child of it.
         XCTAssertFalse(app.staticTexts["Suggested Workout"].exists,
                        "Coach card still shows the removed Suggested Workout blurb")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.observations.show"),
+                      "Home did not expose Observations")
         XCTAssertTrue(app.staticTexts["Observations"].waitForExistence(timeout: 5),
-                      "Coach's Suggestions heading was not renamed to Observations")
+                      "Observations did not expand")
         XCTAssertFalse(app.staticTexts["Coach’s Suggestions"].exists)
         XCTAssertFalse(app.staticTexts["Coach's Suggestions"].exists)
         XCTAssertFalse(app.staticTexts["Coach's Workout"].exists)
@@ -168,9 +176,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertEqual(quickHeight, custom.frame.height, accuracy: 1,
                        "Quick Start and Custom Workout are different heights")
         XCTAssertTrue(coach.waitForExistence(timeout: 5),
-                      "Start Workout lost Suggest a Workout")
-        XCTAssertTrue(coach.label.contains("Suggest a Workout"),
-                      "Suggested-workout action still uses the old visible label")
+                      "Start Workout lost Personalized Workout")
+        XCTAssertTrue(coach.label.contains("Personalized Workout"),
+                      "Personalized-workout action is not using the current visible label")
         XCTAssertFalse(app.buttons["selectWorkout.coach"].exists)
         XCTAssertEqual(quickHeight, coach.frame.height, accuracy: 1,
                        "Suggest a Workout is a different height from Quick Start")
@@ -273,6 +281,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
                       "Home Start Workout did not reopen after suggested workouts")
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.cardioChoices"),
+                      "Start Workout did not reopen its cardio choices")
 
         // Field test 2026-08-20 issue 8: Rowing is a cardio box in the entry
         // taxonomy, placed after Cycle in the cardio grid. The 2-column grid

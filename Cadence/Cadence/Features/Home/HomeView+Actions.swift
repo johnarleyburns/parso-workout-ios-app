@@ -79,13 +79,35 @@ extension HomeView {
                 if active.liveWorkout.active != nil { showWorkoutConflict = true } else { selectWorkoutPresented = true }
             }
             .accessibilityIdentifier("home.startWorkout")
-            CadenceActionButton(title: "Log Previous Workout",
-                                systemImage: "square.and.pencil",
-                                emphasis: .secondary) {
+            Button {
                 Haptics.selection()
-                logPickerPresented = true
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    homeActionsExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    Text(homeActionsExpanded ? "Hide more actions" : "More actions")
+                    Spacer()
+                    Image(systemName: homeActionsExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.semibold))
+                }
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .accessibilityIdentifier("home.logWorkout")
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .accessibilityIdentifier("home.moreActions")
+
+            if homeActionsExpanded {
+                CadenceActionButton(title: "Log Previous Workout",
+                                    systemImage: "square.and.pencil",
+                                    emphasis: .secondary) {
+                    Haptics.selection()
+                    logPickerPresented = true
+                }
+                .accessibilityIdentifier("home.logWorkout")
+            }
         }
     }
     /// Workouts completed today; coach recommendations stay in the coach and

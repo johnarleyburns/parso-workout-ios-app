@@ -66,6 +66,9 @@ struct HomeView: View {
     @State var scheduledWorkoutBeingStarted: UUID?
     @State var confirmCancelPrevious = false
     @State var readinessPresented = false
+    @State var homeActionsExpanded = false
+    @State var observationsExpanded = false
+    @State var readinessExpanded = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
     // Historical Home projections are cached separately from the coach
     // snapshot. Recomputing SwiftData relationships from the render path made

@@ -73,6 +73,8 @@ struct SelectWorkoutView: View {
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
+    @State private var cardioChoicesExpanded = false
+    @State private var moreStrengthExpanded = false
 
     private let cardioTypes: [WorkoutType] = [.run, .walk, .cycle, .rowing, .swim, .hiit, .boxing]
     private let columns = [GridItem(.flexible(), spacing: 16),
@@ -123,22 +125,39 @@ struct SelectWorkoutView: View {
                 .accessibilityIdentifier("selectWorkout.custom")
 
                 Button(action: onSuggestedWorkout) {
-                    workoutChoiceLabel("Suggest a Workout", symbol: "wand.and.stars")
+                    workoutChoiceLabel("Personalized Workout", symbol: "wand.and.stars")
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("selectWorkout.suggestWorkout")
 
-                NavigationLink {
-                    PreviousWorkoutsView(onEditorStart: onEditorStart)
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) { moreStrengthExpanded.toggle() }
                 } label: {
-                    HStack(spacing: 4) {
-                        Text("Start from a previous workout…")
-                        Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                    HStack {
+                        Text(moreStrengthExpanded ? "Hide more strength options" : "More strength options")
+                        Spacer()
+                        Image(systemName: moreStrengthExpanded ? "chevron.up" : "chevron.down")
+                            .font(.caption.weight(.semibold))
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.tint)
                 }
-                .accessibilityIdentifier("selectWorkout.previousLink")
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("selectWorkout.moreStrength")
+
+                if moreStrengthExpanded {
+                    NavigationLink {
+                        PreviousWorkoutsView(onEditorStart: onEditorStart)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("Start from a previous workout…")
+                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.tint)
+                    }
+                    .accessibilityIdentifier("selectWorkout.previousLink")
+                }
             }
         }
         .padding(CGFloat(LayoutMetrics.cardPadding))
@@ -148,26 +167,45 @@ struct SelectWorkoutView: View {
 
     private var cardioCard: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
-            Text("Cardio").font(.headline)
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(cardioTypes) { type in
-                    Button { onSelect(type) } label: {
-                        WorkoutHero(type: type)
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Cardio").font(.headline)
+                    Text("Choose a cardio workout when you need one.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) { cardioChoicesExpanded.toggle() }
+                } label: {
+                    Image(systemName: cardioChoicesExpanded ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("selectWorkout.cardioChoices")
+                .accessibilityLabel(cardioChoicesExpanded ? "Hide cardio choices" : "Show cardio choices")
+            }
+            if cardioChoicesExpanded {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(cardioTypes) { type in
+                        Button { onSelect(type) } label: {
+                            WorkoutHero(type: type)
+                        }
+                        .buttonStyle(.plain)
+                        .tapHaptic()
+                        .accessibilityIdentifier("startType.\(type.rawValue)")
+                        .accessibilityLabel(type.displayName)
+                    }
+                    NavigationLink {
+                        OtherCardioEntryView(onStart: onOtherCardio)
+                    } label: {
+                        WorkoutHero(type: .other)
                     }
                     .buttonStyle(.plain)
                     .tapHaptic()
-                    .accessibilityIdentifier("startType.\(type.rawValue)")
-                    .accessibilityLabel(type.displayName)
+                    .accessibilityIdentifier("startType.other")
+                    .accessibilityLabel("Other Cardio")
                 }
-                NavigationLink {
-                    OtherCardioEntryView(onStart: onOtherCardio)
-                } label: {
-                    WorkoutHero(type: .other)
-                }
-                .buttonStyle(.plain)
-                .tapHaptic()
-                .accessibilityIdentifier("startType.other")
-                .accessibilityLabel("Other Cardio")
             }
         }
         .padding(CGFloat(LayoutMetrics.cardPadding))

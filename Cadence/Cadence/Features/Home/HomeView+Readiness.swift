@@ -3,6 +3,34 @@ import CadenceCore
 import CadenceFeatures
 
 extension HomeView {
+    func homeDetailDisclosure(title: String,
+                              subtitle: String,
+                              expanded: Binding<Bool>,
+                              identifier: String) -> some View {
+        Button {
+            Haptics.selection()
+            withAnimation(.easeInOut(duration: 0.18)) { expanded.wrappedValue.toggle() }
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.headline)
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: expanded.wrappedValue ? "chevron.up" : "chevron.down")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, LayoutMetrics.cardPadding)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .orange)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+        .accessibilityLabel("\(title), \(expanded.wrappedValue ? "expanded" : "collapsed")")
+    }
+
     var readinessCard: some View {
         Button {
             Haptics.selection()

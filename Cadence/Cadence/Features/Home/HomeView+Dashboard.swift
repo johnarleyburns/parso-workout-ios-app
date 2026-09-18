@@ -9,11 +9,19 @@ extension HomeView {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text(headerDateText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier("home.headerDate")
+                    HStack {
+                        Text(headerDateText)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("home.headerDate")
+                        Spacer(minLength: 8)
+                        if contributions.store.isSupporter {
+                            Label("Supporter", systemImage: "heart.fill")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.pink)
+                                .accessibilityIdentifier("home.supporterBadge")
+                        }
+                    }
 
                     if model.healthSyncStatus.isInProgress {
                         Label(model.healthSyncStatus.detailText,
@@ -48,11 +56,24 @@ extension HomeView {
                         totalVolumeKg: weeklyVolumeKg,
                         unit: settings.unit, onOpenWorkout: openWeekWorkout,
                         onOpenCoachSettings: { path.append(HomeRoute.coachPreferences) })
-                    HomeCoachSuggestionsSection(
-                        suggestions: dashboard.suggestions,
-                        illustration: coachIllustration,
-                        expanded: $suggestionsExpanded)
-                    readinessCard
+                    homeDetailDisclosure(
+                        title: "Observations",
+                        subtitle: dashboard.suggestions.isEmpty ? "No new suggestions" : "Coach guidance and rationale",
+                        expanded: $observationsExpanded,
+                        identifier: "home.observations.show")
+                    if observationsExpanded {
+                        HomeCoachSuggestionsSection(
+                            suggestions: dashboard.suggestions,
+                            illustration: coachIllustration,
+                            expanded: $suggestionsExpanded)
+                    }
+
+                    homeDetailDisclosure(
+                        title: todayReadiness == nil ? "Readiness" : "Today's readiness",
+                        subtitle: todayReadiness == nil ? "Optional check-in" : ReadinessCheckInPresenter.summary(for: todayReadiness!),
+                        expanded: $readinessExpanded,
+                        identifier: "home.readiness.show")
+                    if readinessExpanded { readinessCard }
                 }
                 .padding()
             }
@@ -60,19 +81,13 @@ extension HomeView {
             .navigationTitle("Today")
             .toolbar {
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if contributions.store.isSupporter {
-                        Label("Supporter", systemImage: "heart.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.pink)
-                            .accessibilityIdentifier("home.supporterBadge")
-                    }
-                    Button { Haptics.selection(); path.append(HomeRoute.settings) } label: {
-                        Image(systemName: "gearshape")
+                    Button { Haptics.selection(); path.append(HomeRoute.more) } label: {
+                        Image(systemName: "ellipsis.circle")
                             .imageScale(.large)
                             .frame(width: 44, height: 44, alignment: .center)
                             .contentShape(Rectangle())
                     }
-                    .accessibilityIdentifier("home.settings").accessibilityLabel("Settings")
+                    .accessibilityIdentifier("home.more").accessibilityLabel("More")
                 }
             }
             .navigationDestination(for: WorkoutSession.self) { SessionView(session: $0) }
@@ -89,6 +104,7 @@ extension HomeView {
             }
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {
+                case .more: MoreView()
                 case .settings: SettingsView()
                 case .history: HistoryView(path: $path)
                 case .plannedWorkouts: PlannedWorkoutsListView()
@@ -365,4 +381,5 @@ extension HomeView {
         }
         }
     }
+
 }

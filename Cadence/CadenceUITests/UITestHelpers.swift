@@ -321,8 +321,9 @@ extension XCUIApplication {
 
     /// Taps Back until the Home launchpad (its Start Workout button) is shown.
     func popToHome() {
-        // Home and Plan are sibling tabs in the current launchpad layout; a
-        // navigation-bar Back tap cannot leave the Plan tab.
+        // Home is the Today surface in the current launchpad layout. A
+        // navigation-bar Back tap cannot leave the Progress tab, so select
+        // Home first when a caller started from another primary tab.
         let homeTab = tabBars.buttons["Home"]
         if homeTab.exists && homeTab.isHittable { homeTab.tap() }
         let homeMarker = buttons["home.startWorkout"]

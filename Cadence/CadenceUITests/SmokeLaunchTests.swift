@@ -53,7 +53,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.navigationBars["More"].waitForExistence(timeout: 5),
                       "More destination did not open")
         for identifier in ["more.history", "more.plannedWorkouts", "more.tests",
-                           "more.exercises", "more.coachInsights"] {
+                           "more.exercises", "more.coachPreferences",
+                           "more.coachInsights", "more.coachMethodology",
+                           "more.coachResearch", "more.coachAbout"] {
             XCTAssertTrue(app.scrollToHittableAndTap(identifier),
                           "More did not expose \(identifier)")
             app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -75,6 +77,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // rounds/work/rest summary.
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.cardioChoices"),
                       "Start Workout did not expose cardio choices")
+        for identifier in ["startType.run", "startType.walk", "startType.cycle",
+                           "startType.rowing", "startType.swim", "startType.hiit",
+                           "startType.boxing", "startType.other"] {
+            XCTAssertTrue(app.scrollToElement(identifier),
+                          "Start Workout did not offer \(identifier)")
+        }
         XCTAssertTrue(app.scrollToHittableAndTap("startType.hiit"),
                       "Start Workout did not offer HIIT")
         XCTAssertTrue(app.navigationBars["HIIT"].waitForExistence(timeout: 10),
@@ -125,6 +133,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Home still exposes the removed Suggest a Workout CTA")
         XCTAssertFalse(app.buttons["home.coachRecommendation.preview"].exists,
                        "Coach card still exposes the removed Preview Workout action")
+
+        XCTAssertTrue(app.scrollToHittableAndTap("home.readiness.show"),
+                      "Home did not expose Readiness")
+        XCTAssertTrue(app.descendants(matching: .any)["home.readiness"]
+                        .waitForExistence(timeout: 5),
+                      "Readiness disclosure did not reveal its check-in card")
 
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.showMore"),
                       "This Week did not offer Show more")

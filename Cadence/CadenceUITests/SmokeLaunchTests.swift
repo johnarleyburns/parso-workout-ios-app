@@ -123,6 +123,14 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Home did not expose More actions")
         XCTAssertTrue(app.buttons["home.logWorkout"].waitForExistence(timeout: 5),
                       "Home did not show the previous-workout log action")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.logWorkout"),
+                      "More actions did not open Log Previous Workout")
+        XCTAssertTrue(app.navigationBars["Log Workout"].waitForExistence(timeout: 5),
+                      "Log Previous Workout did not open the existing log flow")
+        XCTAssertTrue(app.buttons["logType.cancel"].waitTap(timeout: 5),
+                      "Log Previous Workout did not offer Cancel")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 5),
+                      "Cancelling Log Previous Workout did not return Home")
         // Field test 2026-08-18 #9/#11: the Suggested Workout blurb is gone and the
         // CTA is a full-width sibling below the card, not a child of it.
         XCTAssertFalse(app.staticTexts["Suggested Workout"].exists,

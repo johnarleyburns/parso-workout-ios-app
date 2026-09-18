@@ -133,9 +133,8 @@ final class CoachFactsTests: XCTestCase {
         XCTAssertGreaterThan(facts.weeklyBalance.vigorousMinutes, 0)
     }
 
-    /// Field test 2026-08-19 #7: 30 vigorous + 60 easy minutes is 90 minutes on
-    /// the clock but 90 moderate-equivalent minutes after weighting. The raw split
-    /// is kept alongside so the UI can show its work.
+    /// Below-moderate minutes remain visible as actual exercise but receive no
+    /// guideline credit; vigorous minutes count double.
     func testRawAerobicMinutesArePreservedAlongsideTheWeightedTotal() throws {
         let ctx = try makeContext()
         let now = testNow
@@ -150,8 +149,8 @@ final class CoachFactsTests: XCTestCase {
         XCTAssertEqual(balance.easyMinutesLogged, 60, accuracy: 0.001)
         XCTAssertEqual(balance.loggedAerobicMinutes, 90, accuracy: 0.001,
                        "Wall-clock minutes are the sum of the raw buckets")
-        XCTAssertEqual(balance.moderateEquivalentMinutes, 90, accuracy: 0.001,
-                       "Vigorous counts double, easy counts half: 60 + 30")
+        XCTAssertEqual(balance.moderateEquivalentMinutes, 60, accuracy: 0.001,
+                       "Vigorous counts double; below-moderate minutes receive no credit")
     }
 
     func testSampledIntervalsUseWeightedDistributionInWeeklyBalance() throws {

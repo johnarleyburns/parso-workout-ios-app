@@ -86,12 +86,29 @@ struct HomeView: View {
                                      behindPlan: coachSnapshot.behindPlan, addOn: coachSnapshot.addOn,
                                      readiness: coachSnapshot.readiness, optimizedPlan: coachSnapshot.optimizedPlan,
                                      engineObservation: coachSnapshot.engineObservation)
+        let weekStart = WeeklyStats.weekStart(now: Date())
+        let rhr = passiveSamples
+            .map(\.restingHR)
+            .compactMap { $0 }
+            .filter { $0 > 25 && $0 < 160 }
+            .sorted()
+        let restingHR = rhr.isEmpty ? nil : rhr[rhr.count / 2]
+        let intensityProfile = CardioIntensityProfile.resolved(
+            restingHR: restingHR,
+            userEnteredMaximumHR: settings.cardioMaximumHROverride,
+            age: settings.userAge, updatedAt: Date())
+        let weeklyCardio = WeeklyCardioAggregator.summarize(cardio, since: weekStart,
+                                                             profile: intensityProfile)
+        let activityDose = WeeklyActivityDoseAggregator.summarize(
+            cardio: cardio, sessions: sessions, since: weekStart, profile: intensityProfile)
         return HomeDashboardPresenter.make(snapshot: snapshot,
                                            schedule: settings.coachSchedulePreferences,
                                            goal: settings.trainingGoal,
                                            experience: settings.experienceLevel,
                                            userAge: settings.userAge,
-                                           liveVolumeDelta: liveVolumeDelta)
+                                           liveVolumeDelta: liveVolumeDelta,
+                                           weeklyCardio: weeklyCardio,
+                                           activityDose: activityDose)
     }
     var coachFacts: TrainingFacts { coachSnapshot.facts }
     var coachInsights: [Insight] { coachSnapshot.insights }

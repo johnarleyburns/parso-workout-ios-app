@@ -121,14 +121,23 @@ struct SwimRecordView: View {
         // tear it down here (field-test batch 2026-08-20 issue 5).
         model.stopWatchWorkout()
         let end = Date()
-        let summary = CardioWorkoutSummary(id: UUID(), type: .swim, start: startDate, end: end,
-                                           hrSamples: [], route: [])
         Task {
+            let profile = await cardioIntensityProfile(model: model, settings: settings)
+            let duration = end.timeIntervalSince(startDate)
+            let intensity = CardioMinuteAccumulator.summarize(duration: duration, samples: [], profile: profile)
+            let summary = CardioWorkoutSummary(id: UUID(), type: .swim, start: startDate, end: end,
+                                               hrSamples: [], route: [], intensityProfile: profile,
+                                               intensitySummary: intensity,
+                                               metEstimate: METEstimator.cardio(type: .swim, duration: duration))
             let hkID = await model.health.saveCardioWorkout(summary)
             if let saved = try? WorkoutRepository.saveSwim(
                 start: startDate, end: end,
                 laps: laps, targetLaps: targetLaps,
-                healthKitWorkoutUUID: hkID, in: context) {
+                healthKitWorkoutUUID: hkID,
+                intensityProfile: summary.intensityProfile,
+                intensitySummary: summary.intensitySummary,
+                metEstimate: summary.metEstimate,
+                in: context) {
                 onSaved(saved)
                 finishedSummary = WorkoutSummaryData.from(cardio: saved)
             } else {

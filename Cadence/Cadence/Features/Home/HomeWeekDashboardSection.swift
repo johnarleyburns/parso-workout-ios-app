@@ -81,6 +81,11 @@ struct HomeWeekDashboardSection: View {
             Divider().padding(.top, 2)
             cardioMinutes
 
+            if let dose = dashboard.activityDose {
+                Divider().padding(.top, 2)
+                activityDose(dose)
+            }
+
             Divider().padding(.top, 2)
             Text("Volume")
                 .font(.subheadline.weight(.semibold))
@@ -118,6 +123,13 @@ struct HomeWeekDashboardSection: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.teal)
                 .accessibilityIdentifier("home.week.cardioHeading")
+            HStack {
+                Text("Actual exercise").font(.caption)
+                Spacer()
+                Text("(Int(dashboard.cardioDetail.loggedMinutes.rounded())) min")
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
             ForEach(dashboard.cardioDetail.lines, id: \.label) { line in
                 HStack {
                     Text(line.label).font(.caption)
@@ -139,12 +151,61 @@ struct HomeWeekDashboardSection: View {
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("home.week.cardio.total")
+            if dashboard.cardioDetail.unclassifiedMinutes > 0 {
+                Text("(Int(dashboard.cardioDetail.unclassifiedMinutes.rounded())) min could not be intensity-classified")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            if !dashboard.cardioDetail.zoneMinutes.isEmpty {
+                Text("Training zones")
+                    .font(.caption.weight(.semibold))
+                    .padding(.top, 2)
+                ForEach(dashboard.cardioDetail.zoneMinutes.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { zone in
+                    HStack {
+                        Text(zone.displayName).font(.caption)
+                        Spacer()
+                        Text("(Int((dashboard.cardioDetail.zoneMinutes[zone] ?? 0).rounded())) min")
+                            .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    }
+                }
+            }
             if let citation = CitationRegistry.citation(forId: dashboard.cardioDetail.citationID) {
                 CitationLink(citation: citation, context: dashboard.cardioDetail.explanation, compact: true)
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.week.cardioMinutes")
+    }
+
+    private func activityDose(_ dose: WeeklyActivitySummary) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Activity Dose")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.purple)
+            HStack {
+                Text("Actual activity")
+                Spacer()
+                Text("\(Int(dose.actualActivityMinutes.rounded())) min")
+                    .monospacedDigit().foregroundStyle(.secondary)
+            }
+            HStack {
+                Text("Standard MET-minutes")
+                Spacer()
+                Text("\(Int(dose.totalStandardMETMinutes.rounded()))")
+                    .monospacedDigit().foregroundStyle(.secondary)
+            }
+            HStack {
+                Text("Strength days")
+                Spacer()
+                Text("\(dose.strengthDays)").monospacedDigit().foregroundStyle(.secondary)
+            }
+            if let citation = CitationRegistry.citation(forId: "compendium2024AdultPhysicalActivities") {
+                CitationLink(citation: citation,
+                             context: "MET-minutes are a separate standardized activity-dose estimate; they are not a replacement for cardio guideline credit.",
+                             compact: true)
+            }
+        }
+        .font(.caption)
+        .accessibilityIdentifier("home.week.activityDose")
     }
 
     @ViewBuilder

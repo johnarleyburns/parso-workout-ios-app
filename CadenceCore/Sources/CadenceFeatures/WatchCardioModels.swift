@@ -55,16 +55,25 @@ public struct WatchCardioLivePresentation: Equatable, Sendable {
     public let distanceText: String?
     public let hrZone: Int?
     public let hrTint: HRZoneTint
+    public let relativeIntensity: RelativeIntensity?
+    public let guidelineIntensity: GuidelineIntensity?
+    public let hrrFraction: Double?
 
     public var showsHeartRate: Bool { bpmText != nil }
     public var showsDistance: Bool { distanceText != nil }
 
-    public init(elapsedText: String, bpmText: String?, distanceText: String?, hrZone: Int?) {
+    public init(elapsedText: String, bpmText: String?, distanceText: String?, hrZone: Int?,
+                relativeIntensity: RelativeIntensity? = nil,
+                guidelineIntensity: GuidelineIntensity? = nil,
+                hrrFraction: Double? = nil) {
         self.elapsedText = elapsedText
         self.bpmText = bpmText
         self.distanceText = distanceText
         self.hrZone = hrZone
         self.hrTint = HRZoneTint.tint(for: hrZone ?? 0)
+        self.relativeIntensity = relativeIntensity
+        self.guidelineIntensity = guidelineIntensity
+        self.hrrFraction = hrrFraction
     }
 }
 
@@ -75,19 +84,26 @@ public enum WatchCardioLivePresenter {
     public static func present(elapsed: TimeInterval, bpm: Double?, distanceMeters: Double?,
                                heartRateEnabled: Bool, gpsEnabled: Bool,
                                distanceUnit: DistanceUnitPreference,
-                               maxHR: Double = CardioMath.defaultMaxHR(age: nil))
+                               maxHR: Double = CardioMath.defaultMaxHR(age: nil),
+                               intensityProfile: CardioIntensityProfile? = nil)
         -> WatchCardioLivePresentation {
         let safeElapsed = max(0, Int(elapsed))
         let elapsedText = String(format: "%d:%02d:%02d", safeElapsed / 3600,
                                  (safeElapsed % 3600) / 60, safeElapsed % 60)
         let validBPM = heartRateEnabled && (bpm ?? 0) > 0 ? bpm : nil
         let zone = validBPM.map { CardioMath.hrZone(bpm: $0, maxHR: maxHR) }
+        let profile = intensityProfile ?? CardioIntensityProfile(
+            restingHR: nil, maximumHR: maxHR, maximumHRSource: .unavailable)
+        let classification = validBPM.map { CardioIntensityClassifier.classify(heartRate: $0, profile: profile) }
         let distance = gpsEnabled ? formatDistance(meters: max(0, distanceMeters ?? 0), unit: distanceUnit) : nil
         return WatchCardioLivePresentation(
             elapsedText: elapsedText,
             bpmText: validBPM.map { "\(Int($0.rounded()))" },
             distanceText: distance,
-            hrZone: zone
+            hrZone: zone,
+            relativeIntensity: classification?.relativeIntensity,
+            guidelineIntensity: classification?.guidelineIntensity,
+            hrrFraction: classification?.hrrFraction
         )
     }
 

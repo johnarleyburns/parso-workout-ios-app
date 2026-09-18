@@ -241,7 +241,7 @@ final class HomeDashboardPresenterTests: XCTestCase {
             loggedMinutes: 80, easyMinutes: 0, moderateMinutes: 2, vigorousMinutes: 78,
             moderateEquivalentMinutes: 158, targetMinutes: 150,
             citationID: CitationRegistry.ekelundActivityMortality2016.id)
-        XCTAssertEqual(detail.summary, "80 min logged counts as 158 moderate-equivalent min.")
+        XCTAssertEqual(detail.summary, "80 min exercised produces 158 moderate-equivalent guideline credit.")
         XCTAssertTrue(detail.explanation.contains("Vigorous work counts double"))
         XCTAssertEqual(detail.lines.map { $0.label }, ["Moderate", "Vigorous"])
         XCTAssertEqual(detail.lines.last?.credit, "156 min credited")

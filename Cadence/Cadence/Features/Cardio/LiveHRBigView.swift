@@ -1,4 +1,5 @@
 import SwiftUI
+import CadenceCore
 import CadenceFeatures
 
 /// The Apple-Watch-style zone palette for live HR (Z1 cyan → Z5 red, neutral =
@@ -33,6 +34,7 @@ struct LiveHRBigView: View {
     let zone: Int
     let avgHR: Double?
     let idPrefix: String
+    var intensityProfile: CardioIntensityProfile? = nil
     /// Accessibility fallback label when no BPM has arrived yet.
     var label: String = "Heart Rate"
 
@@ -64,6 +66,12 @@ struct LiveHRBigView: View {
                 }
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
+                if let bpm, let profile = intensityProfile {
+                    let classification = CardioIntensityClassifier.classify(heartRate: bpm, profile: profile)
+                    Text(" · \(classification.relativeIntensity.displayName)")
+                        .foregroundStyle(tint)
+                        .accessibilityIdentifier("\(idPrefix).intensity")
+                }
             }
         }
         .accessibilityElement(children: .contain)
@@ -78,6 +86,9 @@ struct LiveHRBigView: View {
     private var accessibilityText: String {
         guard let bpm else { return "\(label), no reading yet" }
         var text = "\(Int(bpm.rounded())) beats per minute, zone \(zone)"
+        if let profile = intensityProfile {
+            text += ", \(CardioIntensityClassifier.classify(heartRate: bpm, profile: profile).relativeIntensity.displayName.lowercased())"
+        }
         if let avgHR { text += ", average \(Int(avgHR.rounded()))" }
         return text
     }

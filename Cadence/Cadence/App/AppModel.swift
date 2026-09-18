@@ -730,7 +730,10 @@ extension AppModel {
         }
         let ctx = ModelContext(container)
         do {
-            _ = try WorkoutRepository.ingest(completion, in: ctx)
+            let profile = CardioIntensityProfile.resolved(
+                userEnteredMaximumHR: _settings?.cardioMaximumHROverride,
+                age: _settings?.userAge)
+            _ = try WorkoutRepository.ingest(completion, profile: profile, in: ctx)
             let ack: [String: Any] = ["action": "cardio_completion_ack", "id": completion.id.uuidString]
             if let session = wcSession {
                 session.transferUserInfo(ack)

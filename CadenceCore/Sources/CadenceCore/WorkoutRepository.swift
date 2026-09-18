@@ -1001,6 +1001,11 @@ public enum WorkoutRepository {
                                    avgHeartRate: w.avgHeartRate, maxHeartRate: w.maxHeartRate,
                                    source: w.source, healthKitWorkoutUUID: w.id,
                                    importedWorkoutKind: w.importedKind)
+            let met = METEstimator.cardio(type: w.type, duration: w.end.timeIntervalSince(w.start))
+            c.standardMETMinutes = met.metMinutes
+            c.standardMETValue = met.standardMET
+            c.metBasisRaw = met.basis.rawValue
+            c.metMethodRaw = met.method.rawValue
             context.insert(c)
             for p in w.hrSamples {
                 context.insert(HRSample(t: p.t, bpm: p.bpm, cardio: c))
@@ -1016,6 +1021,7 @@ public enum WorkoutRepository {
     /// import is reconciled by workout identity (or matching watch timing).
     @discardableResult
     public static func ingest(_ completion: WatchCardioCompletion,
+                              profile: CardioIntensityProfile? = nil,
                               in context: ModelContext) throws -> Bool {
         let all = try context.fetch(FetchDescriptor<CardioWorkout>())
         if all.contains(where: { $0.id == completion.id }) {
@@ -1025,7 +1031,13 @@ public enum WorkoutRepository {
             id: completion.id, type: completion.type, start: completion.start,
             end: completion.end, distanceMeters: completion.distanceMeters,
             hrSamples: completion.hrSamples,
-            customTitle: completion.title)
+            customTitle: completion.title,
+            intensityProfile: profile,
+            intensitySummary: profile.map { CardioMinuteAccumulator.summarize(
+                duration: completion.end.timeIntervalSince(completion.start),
+                samples: completion.hrSamples, profile: $0) },
+            metEstimate: METEstimator.cardio(type: completion.type,
+                                              duration: completion.end.timeIntervalSince(completion.start)))
         let saved = try saveRecordedCardio(summary, source: .watch,
                                     healthKitWorkoutUUID: nil, in: context)
         if completion.hrSamples.isEmpty {
@@ -1088,6 +1100,27 @@ public enum WorkoutRepository {
                               healthKitWorkoutUUID: healthKitWorkoutUUID,
                               isLogged: summary.isLogged, customTitle: summary.customTitle)
         c.intervalSummary = summary.intervalSummary
+        if let profile = summary.intensityProfile {
+            c.intensityProfile = profile
+            c.effectiveRestingHR = profile.restingHR
+            c.effectiveMaximumHR = profile.maximumHR
+            c.heartRateMaximumSourceRaw = profile.maximumHRSource.rawValue
+        }
+        if let intensity = summary.intensitySummary ?? summary.intensityProfile.map({ profile in
+            CardioMinuteAccumulator.summarize(duration: summary.end.timeIntervalSince(summary.start),
+                                               samples: summary.hrSamples,
+                                               profile: profile)
+        }) {
+            c.intensitySummary = intensity
+            c.cardioAlgorithmVersion = intensity.algorithmVersion
+            c.trainingZonePolicy = CardioIntensityPolicy.trainingZonePolicy
+        }
+        if let met = summary.metEstimate {
+            c.standardMETMinutes = met.metMinutes
+            c.standardMETValue = met.standardMET
+            c.metBasisRaw = met.basis.rawValue
+            c.metMethodRaw = met.method.rawValue
+        }
         context.insert(c)
         for p in summary.hrSamples { context.insert(HRSample(t: p.t, bpm: p.bpm, cardio: c)) }
         for f in summary.route {
@@ -1126,10 +1159,30 @@ public enum WorkoutRepository {
     @discardableResult
     public static func saveSwim(start: Date, end: Date, laps: Int, targetLaps: Int?,
                                 healthKitWorkoutUUID: UUID? = nil,
+                                intensityProfile: CardioIntensityProfile? = nil,
+                                intensitySummary: CardioMinuteSummary? = nil,
+                                metEstimate: METEstimate? = nil,
                                 in context: ModelContext) throws -> CardioWorkout {
         let c = CardioWorkout(type: .swim, start: start, end: end,
                                laps: laps, targetLaps: targetLaps, source: .iphone)
         c.healthKitWorkoutUUID = healthKitWorkoutUUID
+        if let profile = intensityProfile {
+            c.intensityProfile = profile
+            c.effectiveRestingHR = profile.restingHR
+            c.effectiveMaximumHR = profile.maximumHR
+            c.heartRateMaximumSourceRaw = profile.maximumHRSource.rawValue
+        }
+        if let intensitySummary {
+            c.intensitySummary = intensitySummary
+            c.cardioAlgorithmVersion = intensitySummary.algorithmVersion
+            c.trainingZonePolicy = CardioIntensityPolicy.trainingZonePolicy
+        }
+        if let metEstimate {
+            c.standardMETMinutes = metEstimate.metMinutes
+            c.standardMETValue = metEstimate.standardMET
+            c.metBasisRaw = metEstimate.basis.rawValue
+            c.metMethodRaw = metEstimate.method.rawValue
+        }
         context.insert(c)
         try context.save()
         return c
@@ -1193,6 +1246,15 @@ public enum WorkoutRepository {
                 targetDistance: c.targetDistance, notes: c.notes, isLogged: c.isLogged,
                 customTitle: c.customTitle, importedWorkoutKindRaw: c.importedWorkoutKindRaw,
                 intervalDetailData: c.intervalDetailData.isEmpty ? nil : c.intervalDetailData,
+                cardioAlgorithmVersionRaw: c.cardioAlgorithmVersionRaw,
+                effectiveRestingHR: c.effectiveRestingHR,
+                effectiveMaximumHR: c.effectiveMaximumHR,
+                heartRateMaximumSourceRaw: c.heartRateMaximumSourceRaw,
+                trainingZonePolicyRaw: c.trainingZonePolicyRaw,
+                intensitySummaryData: c.intensitySummaryData.isEmpty ? nil : c.intensitySummaryData,
+                intensityProfileData: c.intensityProfileData.isEmpty ? nil : c.intensityProfileData,
+                standardMETMinutes: c.standardMETMinutes, standardMETValue: c.standardMETValue,
+                metBasisRaw: c.metBasisRaw, metMethodRaw: c.metMethodRaw,
                 hrSamples: c.orderedHRSamples.map { ExportHRSample(t: $0.t, bpm: $0.bpm) },
                 routeSamples: c.orderedRouteSamples.map {
                     ExportRouteSample(t: $0.t, lat: $0.lat, lon: $0.lon, elevation: $0.elevation)
@@ -1458,6 +1520,17 @@ public enum WorkoutRepository {
                                        notes: ec.notes, isLogged: ec.isLogged ?? false,
                                        customTitle: ec.customTitle, importedWorkoutKind: kind)
             cardio.intervalDetailData = ec.intervalDetailData ?? ""
+            cardio.cardioAlgorithmVersionRaw = ec.cardioAlgorithmVersionRaw
+            cardio.effectiveRestingHR = ec.effectiveRestingHR
+            cardio.effectiveMaximumHR = ec.effectiveMaximumHR
+            cardio.heartRateMaximumSourceRaw = ec.heartRateMaximumSourceRaw
+            cardio.trainingZonePolicyRaw = ec.trainingZonePolicyRaw
+            cardio.intensitySummaryData = ec.intensitySummaryData ?? ""
+            cardio.intensityProfileData = ec.intensityProfileData ?? ""
+            cardio.standardMETMinutes = ec.standardMETMinutes
+            cardio.standardMETValue = ec.standardMETValue
+            cardio.metBasisRaw = ec.metBasisRaw
+            cardio.metMethodRaw = ec.metMethodRaw
             context.insert(cardio)
             for hr in ec.hrSamples ?? [] {
                 context.insert(HRSample(t: hr.t, bpm: hr.bpm, cardio: cardio))

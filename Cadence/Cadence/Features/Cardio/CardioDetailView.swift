@@ -33,6 +33,53 @@ struct CardioDetailView: View {
             }
 
             let hr = workout.orderedHRSamples
+            if let summary = workout.intensitySummary {
+                Section("Intensity") {
+                    detailRow("Actual exercise", "\(minutes(summary.actualDuration)) min")
+                    detailRow("Below moderate", "\(minutes(summary.belowModerateDuration)) min · 0 credited")
+                    detailRow("Moderate", "\(minutes(summary.moderateDuration)) min · \(minutes(summary.moderateDuration)) credited")
+                    detailRow("Vigorous", "\(minutes(summary.vigorousDuration)) min · \(minutes(summary.vigorousDuration * 2)) credited")
+                    if summary.unclassifiedDuration > 0 {
+                        detailRow("Unclassified", "\(minutes(summary.unclassifiedDuration)) min")
+                    }
+                    detailRow("Guideline credit", "\(minutes(summary.moderateEquivalentMinutes * 60)) min")
+                    detailRow("Method", summary.method.displayName)
+                    detailRow("Confidence", summary.confidence.displayName)
+                    if !summary.zoneDurations.isEmpty {
+                        Divider()
+                        Text("Training zones").font(.caption.weight(.semibold))
+                        ForEach(summary.zoneDurations.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { zone in
+                            detailRow(zone.displayName, "\(minutes(summary.zoneDurations[zone] ?? 0)) min")
+                        }
+                    }
+                    if let citation = CitationRegistry.citation(forId: "swainLeutholtz1997HRR") {
+                        CitationLink(citation: citation,
+                                     context: "Heart-rate reserve estimates relative effort. Guideline credit is separate from actual minutes and does not credit below-moderate work.",
+                                     compact: true)
+                    }
+                }
+                .accessibilityIdentifier("cardioDetail.intensity")
+            } else if workout.duration > 0 {
+                Section("Intensity") {
+                    Text("This workout predates intensity provenance. It remains in actual history, but its intensity credit is unclassified.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .accessibilityIdentifier("cardioDetail.intensityLegacy")
+            }
+
+            if let met = workout.standardMETMinutes {
+                Section("Activity Dose") {
+                    detailRow("Standard MET", workout.standardMETValue.map { String(format: "%.1f", $0) } ?? "—")
+                    detailRow("MET-minutes", "\(Int(met.rounded()))")
+                    Text("A separate standardized activity estimate; it is not guideline credit.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if let citation = CitationRegistry.citation(forId: "compendium2024AdultPhysicalActivities") {
+                        CitationLink(citation: citation, context: "Adult Compendium of Physical Activities", compact: true)
+                    }
+                }
+                .accessibilityIdentifier("cardioDetail.activityDose")
+            }
+
             if !hr.isEmpty {
                 Section("Heart Rate") {
                     Chart(hr) { sample in
@@ -180,6 +227,10 @@ struct CardioDetailView: View {
             Spacer()
             Text(value).font(.subheadline.weight(.semibold)).monospacedDigit()
         }
+    }
+
+    private func minutes(_ seconds: TimeInterval) -> String {
+        String(Int((seconds / 60).rounded()))
     }
 }
 

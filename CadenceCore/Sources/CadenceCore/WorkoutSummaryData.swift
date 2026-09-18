@@ -116,6 +116,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     public let hr: [(t: TimeInterval, bpm: Double)]   // cardio chart
     public let route: [(lat: Double, lon: Double)]    // cardio map
     public let interval: IntervalSummary?             // HIIT/boxing structure
+    public let cardioIntensity: CardioMinuteSummary?
+    public let standardMETMinutes: Double?
     /// Manually logged vs live-recorded — the view shows a "Logged" tag (batch 6).
     public let isLogged: Bool
     /// Strength only: actual warm-up / cool-down time consumed, in seconds (batch 6).
@@ -143,6 +145,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                 hr: [(t: TimeInterval, bpm: Double)] = [],
                 route: [(lat: Double, lon: Double)] = [],
                 interval: IntervalSummary? = nil,
+                cardioIntensity: CardioMinuteSummary? = nil,
+                standardMETMinutes: Double? = nil,
                 isLogged: Bool = false,
                 warmupSec: TimeInterval = 0,
                 cooldownSec: TimeInterval = 0) {
@@ -167,6 +171,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         self.hr = hr
         self.route = route
         self.interval = interval
+        self.cardioIntensity = cardioIntensity
+        self.standardMETMinutes = standardMETMinutes
         self.isLogged = isLogged
         self.warmupSec = warmupSec
         self.cooldownSec = cooldownSec
@@ -197,6 +203,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             && lhs.route.count == rhs.route.count
             && zip(lhs.route, rhs.route).allSatisfy { $0 == $1 }
             && lhs.interval == rhs.interval
+            && lhs.cardioIntensity == rhs.cardioIntensity
+            && lhs.standardMETMinutes == rhs.standardMETMinutes
             && lhs.isLogged == rhs.isLogged
             && lhs.warmupSec == rhs.warmupSec
             && lhs.cooldownSec == rhs.cooldownSec
@@ -334,6 +342,8 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             hr: cardio.orderedHRSamples.map { (t: $0.t, bpm: $0.bpm) },
             route: cardio.orderedRouteSamples.map { (lat: $0.lat, lon: $0.lon) },
             interval: cardio.intervalSummary,
+            cardioIntensity: cardio.intensitySummary,
+            standardMETMinutes: cardio.standardMETMinutes,
             isLogged: cardio.isLogged
         )
     }

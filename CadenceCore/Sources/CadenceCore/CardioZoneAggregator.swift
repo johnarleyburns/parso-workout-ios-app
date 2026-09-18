@@ -129,7 +129,10 @@ public enum CardioZoneAggregator {
         let easy = zones.filter { $0.key <= 2 }.values.reduce(0, +)
         let moderate = zones.filter { $0.key == 3 }.values.reduce(0, +)
         let vigorous = zones.filter { $0.key >= 4 }.values.reduce(0, +)
-        let weighted = easy * 0.5 + moderate + vigorous * 2
+        // Public-health guideline credit starts at moderate intensity. Easy / very
+        // light work remains visible as actual training time but is not granted
+        // fractional credit.
+        let weighted = moderate + vigorous * 2
         return IntensityProfile(easyMinutes: easy, moderateMinutes: moderate,
                                 vigorousMinutes: vigorous,
                                 moderateEquivalentMinutes: weighted,

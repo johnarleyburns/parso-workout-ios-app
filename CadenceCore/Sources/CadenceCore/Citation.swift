@@ -417,6 +417,51 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1016/s0735-1097(00)01054-8"
     )
 
+    public static let swainLeutholtz1997HRR = Citation(
+        id: "swainLeutholtz1997HRR",
+        authors: "Swain & Leutholtz",
+        year: 1997,
+        title: "Heart rate reserve is equivalent to %VO2 reserve, not to %VO2max",
+        source: "Medicine & Science in Sports & Exercise 29(3)",
+        url: "https://pubmed.ncbi.nlm.nih.gov/9139182/"
+    )
+
+    public static let acsmGarber2011AerobicGuidelines = Citation(
+        id: "acsmGarber2011AerobicGuidelines",
+        authors: "Garber et al.",
+        year: 2011,
+        title: "Quantity and Quality of Exercise for Developing and Maintaining Cardiorespiratory, Musculoskeletal, and Neuromotor Fitness in Apparently Healthy Adults",
+        source: "Medicine & Science in Sports & Exercise 43(7)",
+        url: "https://pubmed.ncbi.nlm.nih.gov/21694556/"
+    )
+
+    public static let piercy2018PhysicalActivityGuidelines = Citation(
+        id: "piercy2018PhysicalActivityGuidelines",
+        authors: "Piercy et al.",
+        year: 2018,
+        title: "The Physical Activity Guidelines for Americans",
+        source: "JAMA 320(19)",
+        url: "https://pubmed.ncbi.nlm.nih.gov/30418471/"
+    )
+
+    public static let compendium2024AdultPhysicalActivities = Citation(
+        id: "compendium2024AdultPhysicalActivities",
+        authors: "Tudor-Locke et al.",
+        year: 2024,
+        title: "2024 Adult Compendium of Physical Activities: A third update of the energy costs of human activities",
+        source: "Journal of Sport and Health Science",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10818145/"
+    )
+
+    public static let pag2018AerobicStrengthGuidelines = Citation(
+        id: "pag2018AerobicStrengthGuidelines",
+        authors: "Piercy et al.",
+        year: 2018,
+        title: "The Physical Activity Guidelines for Americans",
+        source: "JAMA 320(19)",
+        url: "https://pubmed.ncbi.nlm.nih.gov/30418471/"
+    )
+
     /// Intensity-distribution / polarized training — backs how weekly cardio time
     /// is spread across HR zones (mostly easy, some hard) for endurance adaptation.
     public static let seilerPolarized2010 = Citation(
@@ -658,7 +703,10 @@ public enum CitationRegistry {
         mooreLeisureActivity2012, aremDoseResponse2015, saintMauriceSteps2020,
         leeAccelerometer2019,
         halsonRecovery2014, drewFinchInjury2016, dupuyFatigue2018,
-        zourdosRIR2016, tanakaMaxHR2001, kaufmannThreshold2023, milanovicHIIT2015,
+        zourdosRIR2016, tanakaMaxHR2001, swainLeutholtz1997HRR,
+        acsmGarber2011AerobicGuidelines, piercy2018PhysicalActivityGuidelines,
+        compendium2024AdultPhysicalActivities, pag2018AerobicStrengthGuidelines,
+        kaufmannThreshold2023, milanovicHIIT2015,
         slothSIT2013, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
         lauersenInjuryPrevention2014, fieldFitnessReliability2022, tongPlank2014,
         murlasitsConcurrentSequence2018, currierResistancePrescription2023,
@@ -719,6 +767,11 @@ public enum CitationRegistry {
         "dupuyFatigue2018": "Evidence-based post-exercise recovery techniques — supplementary evidence for recovery-readiness insights.",
         "zourdosRIR2016": "Novel RPE scale measuring repetitions in reserve — backs the strength-intensity prescription pool.",
         "tanakaMaxHR2001": "Age-predicted maximal heart rate — backs threshold/tempo training when HR zones are estimated rather than tested.",
+        "swainLeutholtz1997HRR": "Heart-rate reserve tracks oxygen-reserve intensity more closely than raw maximum-heart-rate percentages.",
+        "acsmGarber2011AerobicGuidelines": "ACSM aerobic exercise guidance — backs the moderate/vigorous guideline accounting model.",
+        "piercy2018PhysicalActivityGuidelines": "U.S. Physical Activity Guidelines — backs 150 moderate or 75 vigorous minutes and their equivalence.",
+        "compendium2024AdultPhysicalActivities": "2024 Adult Compendium — backs standardized MET estimates for common activities and resistance training.",
+        "pag2018AerobicStrengthGuidelines": "Physical Activity Guidelines — backs treating aerobic and muscle-strengthening health targets separately.",
         "seilerPolarized2010": "Training intensity distribution in endurance athletes — backs how the coach reads weekly cardio time spread across HR zones (mostly easy, some hard).",
         "kaufmannThreshold2023": "HRV-derived thresholds for exercise intensity prescription — backs threshold/tempo training prescriptions.",
         "milanovicHIIT2015": "HIIT vs continuous endurance training for VO₂max — supplementary evidence for VO₂-interval prescriptions.",

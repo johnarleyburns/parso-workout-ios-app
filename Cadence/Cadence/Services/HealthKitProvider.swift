@@ -21,7 +21,7 @@ final class HealthKitProvider: HealthDataProviding {
                                                // on-device, does not change the Data Not Collected
                                                // privacy label. bodyMass also makes the CLAUDE.md
                                                // HealthKit line true.
-                                               .heartRateVariabilitySDNN, .restingHeartRate, .bodyMass]
+                                               .heartRateVariabilitySDNN, .restingHeartRate, .bodyMass, .vo2Max]
         for id in ids { if let t = HKObjectType.quantityType(forIdentifier: id) { types.insert(t) } }
         if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { types.insert(sleep) }
         return types
@@ -121,6 +121,20 @@ final class HealthKitProvider: HealthDataProviding {
                                    hrvSDNN: hrvByDay[day],
                                    restingHR: rhrByDay[day],
                                    sleepHours: sleepByDay[day])
+        }
+    }
+
+    func latestVO2Max() async -> Double? {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .vo2Max) else { return nil }
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: type, predicate: nil, limit: 1,
+                                      sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate,
+                                                                         ascending: false)]) { _, samples, _ in
+                let value = (samples?.first as? HKQuantitySample)?.quantity.doubleValue(
+                    for: HKUnit(from: "mL/kg*min"))
+                continuation.resume(returning: value)
+            }
+            store.execute(query)
         }
     }
 

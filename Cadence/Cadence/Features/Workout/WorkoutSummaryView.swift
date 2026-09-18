@@ -49,6 +49,9 @@ struct WorkoutSummaryView: View {
                         presentation: .active,
                         accessibilityPrefix: "summary")
                 }
+                if data.kind == .cardio, let intensity = data.cardioIntensity {
+                    cardioIntensitySection(intensity)
+                }
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
                 if let interval = data.interval { intervalSection(interval) }
@@ -154,6 +157,41 @@ struct WorkoutSummaryView: View {
                 }
             }
         }
+    }
+
+    private func cardioIntensitySection(_ summary: CardioMinuteSummary) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Intensity").font(.headline)
+            summaryRow("Actual exercise", "\(wholeMinutes(summary.actualDuration)) min")
+            summaryRow("Below moderate", "\(wholeMinutes(summary.belowModerateDuration)) min · 0 credited")
+            summaryRow("Moderate", "\(wholeMinutes(summary.moderateDuration)) min · \(wholeMinutes(summary.moderateDuration)) credited")
+            summaryRow("Vigorous", "\(wholeMinutes(summary.vigorousDuration)) min · \(wholeMinutes(summary.vigorousDuration * 2)) credited")
+            if summary.unclassifiedDuration > 0 {
+                summaryRow("Unclassified", "\(wholeMinutes(summary.unclassifiedDuration)) min")
+            }
+            summaryRow("Guideline credit", "\(wholeMinutes(summary.moderateEquivalentMinutes * 60)) min")
+            if let metMinutes = data.standardMETMinutes {
+                summaryRow("Standard MET-minutes", "\(Int(metMinutes.rounded()))")
+            }
+            Text("Heart-rate reserve classifies each sampled interval; guideline credit is separate from actual minutes.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityIdentifier("summary.cardio.intensity")
+    }
+
+    private func summaryRow(_ title: String, _ value: String) -> some View {
+        HStack {
+            Text(title).font(.subheadline).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).font(.subheadline.weight(.semibold)).monospacedDigit()
+        }
+    }
+
+    private func wholeMinutes(_ seconds: TimeInterval) -> String {
+        String(Int((seconds / 60).rounded()))
     }
 
     private func metric(_ title: String, _ value: String, id: String) -> some View {

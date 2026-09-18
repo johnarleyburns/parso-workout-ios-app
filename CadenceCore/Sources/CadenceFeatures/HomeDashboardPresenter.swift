@@ -70,10 +70,18 @@ public struct HomeDashboardState: Sendable, Equatable {
         public let moderateEquivalentMinutes: Double
         public let targetMinutes: Double
         public let citationID: String
+        public let belowModerateMinutes: Double
+        public let unclassifiedMinutes: Double
+        public let zoneMinutes: [TrainingZone: Double]
+        public let algorithmVersion: CardioAlgorithmVersion
 
         public init(loggedMinutes: Double, easyMinutes: Double, moderateMinutes: Double,
                     vigorousMinutes: Double, moderateEquivalentMinutes: Double,
-                    targetMinutes: Double, citationID: String) {
+                    targetMinutes: Double, citationID: String,
+                    belowModerateMinutes: Double? = nil,
+                    unclassifiedMinutes: Double = 0,
+                    zoneMinutes: [TrainingZone: Double] = [:],
+                    algorithmVersion: CardioAlgorithmVersion = .legacy) {
             self.loggedMinutes = loggedMinutes
             self.easyMinutes = easyMinutes
             self.moderateMinutes = moderateMinutes
@@ -81,6 +89,10 @@ public struct HomeDashboardState: Sendable, Equatable {
             self.moderateEquivalentMinutes = moderateEquivalentMinutes
             self.targetMinutes = targetMinutes
             self.citationID = citationID
+            self.belowModerateMinutes = belowModerateMinutes ?? easyMinutes
+            self.unclassifiedMinutes = unclassifiedMinutes
+            self.zoneMinutes = zoneMinutes
+            self.algorithmVersion = algorithmVersion
         }
 
         /// The one-line "why is this bigger than what I did" explanation.
@@ -90,21 +102,21 @@ public struct HomeDashboardState: Sendable, Equatable {
             guard vigorousMinutes > 0 || easyMinutes > 0 else {
                 return "\(logged) min logged this week."
             }
-            return "\(logged) min logged counts as \(equivalent) moderate-equivalent min."
+            return "\(logged) min exercised produces \(equivalent) moderate-equivalent guideline credit."
         }
 
         public var explanation: String {
             "Public-health guidance counts 150 moderate-equivalent minutes a week. "
-                + "Vigorous work counts double and easy work counts half, so the bar "
+                + "Vigorous work counts double; below-moderate activity gets no credit "
                 + "measures effort, not just time on the clock."
         }
 
         /// One row per intensity actually trained, for the expanded card.
         public var lines: [(label: String, minutes: String, credit: String)] {
             var rows: [(String, String, String)] = []
-            if easyMinutes > 0 {
-                rows.append(("Easy", "\(Self.format(easyMinutes)) min",
-                             "\(Self.format(easyMinutes * 0.5)) min credited"))
+            if belowModerateMinutes > 0 {
+                rows.append(("Below moderate", "\(Self.format(belowModerateMinutes)) min",
+                             "0 min credited"))
             }
             if moderateMinutes > 0 {
                 rows.append(("Moderate", "\(Self.format(moderateMinutes)) min",
@@ -128,6 +140,7 @@ public struct HomeDashboardState: Sendable, Equatable {
     /// trained this week, ordered alphabetically by displayed name.
     public let volume: [VolumeRow]
     public let cardioDetail: CardioDetail
+    public let activityDose: WeeklyActivitySummary?
     public let suggestions: [HomeSuggestion]
 }
 
@@ -176,15 +189,19 @@ public enum HomeDashboardPresenter {
 
     public static func make(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences,
                             goal: TrainingGoal, experience: ExperienceLevel,
-                            userAge: Int?, liveVolumeDelta: [MuscleGroup: Double] = [:]) -> HomeDashboardState {
+                            userAge: Int?, liveVolumeDelta: [MuscleGroup: Double] = [:],
+                            weeklyCardio: WeeklyCardioSummary? = nil,
+                            activityDose: WeeklyActivitySummary? = nil) -> HomeDashboardState {
         let balance = snapshot.decision.weeklyBalance
         let strengthTarget = Double(max(1, schedule.strengthDaysPerWeek))
         let strength = HomeDashboardState.Progress(completed: Double(balance.strengthDays), target: strengthTarget,
             displayText: "\(balance.strengthDays) of \(schedule.strengthDaysPerWeek) days",
             normalized: min(1, Double(balance.strengthDays) / strengthTarget))
-        let cardio = HomeDashboardState.Progress(completed: balance.moderateEquivalentMinutes, target: 150,
-            displayText: "\(Int(balance.moderateEquivalentMinutes.rounded())) of 150 min",
-            normalized: min(1, max(0, balance.moderateEquivalentMinutes / 150)))
+        let cardioCredit = weeklyCardio?.moderateEquivalentMinutes ?? balance.moderateEquivalentMinutes
+        let cardioTarget = weeklyCardio?.guidelineTarget ?? 150
+        let cardio = HomeDashboardState.Progress(completed: cardioCredit, target: cardioTarget,
+            displayText: "\(Int(cardioCredit.rounded())) of \(Int(cardioTarget)) min credit",
+            normalized: min(1, max(0, cardioCredit / cardioTarget)))
         // Home's visible volume must use the same explicit Monday-to-now
         // boundary as the Strength and Cardio rows. DB++'s observation is still
         // used by coaching/adherence, but merging it here allowed a stale or
@@ -204,18 +221,22 @@ public enum HomeDashboardPresenter {
             displayText: "\(format(averageSets)) sets",
             normalized: WeeklySetProgress.normalized(averageSets))
         let cardioDetail = HomeDashboardState.CardioDetail(
-            loggedMinutes: balance.loggedAerobicMinutes,
-            easyMinutes: balance.easyMinutesLogged,
-            moderateMinutes: balance.moderateMinutesLogged,
-            vigorousMinutes: balance.vigorousMinutesLogged,
-            moderateEquivalentMinutes: balance.moderateEquivalentMinutes,
-            targetMinutes: 150,
-            citationID: CitationRegistry.ekelundActivityMortality2016.id)
+            loggedMinutes: weeklyCardio?.actualMinutes ?? balance.loggedAerobicMinutes,
+            easyMinutes: weeklyCardio?.belowModerateMinutes ?? balance.easyMinutesLogged,
+            moderateMinutes: weeklyCardio?.moderateMinutes ?? balance.moderateMinutesLogged,
+            vigorousMinutes: weeklyCardio?.vigorousMinutes ?? balance.vigorousMinutesLogged,
+            moderateEquivalentMinutes: cardioCredit,
+            targetMinutes: cardioTarget,
+            citationID: CitationRegistry.piercy2018PhysicalActivityGuidelines.id,
+            belowModerateMinutes: weeklyCardio?.belowModerateMinutes,
+            unclassifiedMinutes: weeklyCardio?.unclassifiedMinutes ?? 0,
+            zoneMinutes: weeklyCardio?.zoneMinutes ?? [:],
+            algorithmVersion: weeklyCardio?.algorithmVersion ?? .legacy)
         return .init(profileContext: .init(goal: goal.displayName, experience: experience.displayName,
                                            ageText: userAge.map(String.init) ?? "Age not set"),
                      strength: strength, cardio: cardio, volumeCoverage: volumeCoverage,
                      volume: volume,
-                     cardioDetail: cardioDetail,
+                     cardioDetail: cardioDetail, activityDose: activityDose,
                      suggestions: suggestions(snapshot: snapshot, schedule: schedule))
     }
 

@@ -92,7 +92,8 @@ struct OutdoorCardioView: View {
                     .accessibilityIdentifier("outdoor.goal")
                 }
                 LiveHRBigView(bpm: recorder?.currentBPM, zone: recorder?.zone ?? 0,
-                              avgHR: recorder?.avgHR, idPrefix: "outdoor")
+                              avgHR: recorder?.avgHR, idPrefix: "outdoor",
+                              intensityProfile: liveIntensityProfile)
 
                 Spacer()
 
@@ -152,6 +153,14 @@ struct OutdoorCardioView: View {
         WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
     }
 
+    private var liveIntensityProfile: CardioIntensityProfile {
+        if let maximum = settings.cardioMaximumHROverride, maximum > 0 {
+            return CardioIntensityProfile(restingHR: nil, maximumHR: maximum,
+                                          maximumHRSource: .userEntered)
+        }
+        return .ageEstimated(age: settings.userAge)
+    }
+
     private func togglePause() {
         guard let r = recorder else { return }
         if clock.isPaused { clock.resume(); r.resume() } else { clock.pause(); r.pause() }
@@ -167,6 +176,13 @@ struct OutdoorCardioView: View {
         var summary = r.end()
         summary.customTitle = customTitle
         summary.targetDistanceMeters = goalMeters
+        let profile = await cardioIntensityProfile(model: model, settings: settings)
+        summary.intensityProfile = profile
+        summary.intensitySummary = CardioMinuteAccumulator.summarize(
+            duration: summary.end.timeIntervalSince(summary.start),
+            samples: summary.hrSamples, profile: profile)
+        summary.metEstimate = METEstimator.cardio(type: summary.type,
+                                                   duration: summary.end.timeIntervalSince(summary.start))
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                                healthKitWorkoutUUID: hkID, in: context)

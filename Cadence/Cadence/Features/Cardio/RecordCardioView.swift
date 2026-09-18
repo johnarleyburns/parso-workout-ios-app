@@ -111,7 +111,7 @@ struct RecordCardioView: View {
                 }
             }
             LiveHRBigView(bpm: recorder.currentBPM, zone: recorder.zone, avgHR: recorder.avgHR,
-                          idPrefix: "record")
+                          idPrefix: "record", intensityProfile: liveIntensityProfile)
 
             if recorder.strapConnected {
                 Label("Strap connected", systemImage: "checkmark.circle.fill")
@@ -129,6 +129,14 @@ struct RecordCardioView: View {
             )
         }
         .padding()
+    }
+
+    private var liveIntensityProfile: CardioIntensityProfile {
+        if let maximum = settings.cardioMaximumHROverride, maximum > 0 {
+            return CardioIntensityProfile(restingHR: nil, maximumHR: maximum,
+                                          maximumHRSource: .userEntered)
+        }
+        return .ageEstimated(age: settings.userAge)
     }
 
     private func metric(_ title: String, _ value: String, id: String) -> some View {
@@ -149,6 +157,13 @@ struct RecordCardioView: View {
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         var summary = recorder.end()
         summary.customTitle = customTitle
+        let profile = await cardioIntensityProfile(model: model, settings: settings)
+        summary.intensityProfile = profile
+        summary.intensitySummary = CardioMinuteAccumulator.summarize(
+            duration: summary.end.timeIntervalSince(summary.start),
+            samples: summary.hrSamples, profile: profile)
+        summary.metEstimate = METEstimator.cardio(type: summary.type,
+                                                   duration: summary.end.timeIntervalSince(summary.start))
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                                healthKitWorkoutUUID: hkID, in: context)
@@ -159,4 +174,27 @@ struct RecordCardioView: View {
             dismiss()
         }
     }
+}
+
+/// Builds one immutable profile snapshot for a workout. Recent resting HR is a
+/// small robust baseline (median of the latest seven valid days); the snapshot
+/// is stored with the workout so later HealthKit changes do not rewrite history.
+@MainActor
+func cardioIntensityProfile(model: AppModel, settings: AppSettings) async -> CardioIntensityProfile {
+    let passive = await model.health.passiveReadinessSamples(days: 30)
+    let vo2Max = await model.health.latestVO2Max()
+    let values = passive
+        .sorted { $0.date > $1.date }
+        .compactMap(\.restingHR)
+        .filter { $0.isFinite && $0 > 30 && $0 < 220 }
+        .prefix(7)
+        .sorted()
+    let resting: Double?
+    if values.isEmpty { resting = nil }
+    else if values.count % 2 == 1 { resting = values[values.count / 2] }
+    else { resting = (values[values.count / 2 - 1] + values[values.count / 2]) / 2 }
+    return CardioIntensityProfile.resolved(
+        restingHR: resting,
+        userEnteredMaximumHR: settings.cardioMaximumHROverride,
+        age: settings.userAge, vo2Max: vo2Max, updatedAt: Date())
 }

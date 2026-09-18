@@ -231,6 +231,17 @@ public struct ExportCardio: Codable, Equatable, Sendable {
     public var customTitle: String?
     public var importedWorkoutKindRaw: String?
     public var intervalDetailData: String?
+    public var cardioAlgorithmVersionRaw: String?
+    public var effectiveRestingHR: Double?
+    public var effectiveMaximumHR: Double?
+    public var heartRateMaximumSourceRaw: String?
+    public var trainingZonePolicyRaw: String?
+    public var intensitySummaryData: String?
+    public var intensityProfileData: String?
+    public var standardMETMinutes: Double?
+    public var standardMETValue: Double?
+    public var metBasisRaw: String?
+    public var metMethodRaw: String?
     public var hrSamples: [ExportHRSample]?
     public var routeSamples: [ExportRouteSample]?
     public init(id: UUID, type: String, start: Date, end: Date?, distanceMeters: Double?,
@@ -239,6 +250,12 @@ public struct ExportCardio: Codable, Equatable, Sendable {
                 targetDistance: Double? = nil, notes: String? = nil, isLogged: Bool? = nil,
                 customTitle: String? = nil, importedWorkoutKindRaw: String? = nil,
                 intervalDetailData: String? = nil,
+                cardioAlgorithmVersionRaw: String? = nil, effectiveRestingHR: Double? = nil,
+                effectiveMaximumHR: Double? = nil, heartRateMaximumSourceRaw: String? = nil,
+                trainingZonePolicyRaw: String? = nil, intensitySummaryData: String? = nil,
+                intensityProfileData: String? = nil, standardMETMinutes: Double? = nil,
+                standardMETValue: Double? = nil, metBasisRaw: String? = nil,
+                metMethodRaw: String? = nil,
                 hrSamples: [ExportHRSample]? = nil, routeSamples: [ExportRouteSample]? = nil) {
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
@@ -247,6 +264,17 @@ public struct ExportCardio: Codable, Equatable, Sendable {
         self.targetDistance = targetDistance; self.notes = notes; self.isLogged = isLogged
         self.customTitle = customTitle; self.importedWorkoutKindRaw = importedWorkoutKindRaw
         self.intervalDetailData = intervalDetailData
+        self.cardioAlgorithmVersionRaw = cardioAlgorithmVersionRaw
+        self.effectiveRestingHR = effectiveRestingHR
+        self.effectiveMaximumHR = effectiveMaximumHR
+        self.heartRateMaximumSourceRaw = heartRateMaximumSourceRaw
+        self.trainingZonePolicyRaw = trainingZonePolicyRaw
+        self.intensitySummaryData = intensitySummaryData
+        self.intensityProfileData = intensityProfileData
+        self.standardMETMinutes = standardMETMinutes
+        self.standardMETValue = standardMETValue
+        self.metBasisRaw = metBasisRaw
+        self.metMethodRaw = metMethodRaw
         self.hrSamples = hrSamples; self.routeSamples = routeSamples
     }
 }
@@ -335,6 +363,8 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
     public var testRecommendationSnoozes: [String: Date]?
     /// Optional user age for HR-zone estimation (issue 7).
     public var userAge: Int?
+    /// Optional user-entered maximum heart rate used by cardio provenance.
+    public var cardioMaximumHROverride: Double?
     public init(unit: String? = nil, distanceUnit: String? = nil,
                 prRule: String? = nil, oneRepMaxFormula: String? = nil,
                 stepGoal: Int? = nil, weeklyCardioMinutesGoal: Int? = nil, restSeconds: Int? = nil,
@@ -350,7 +380,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
                 coachProfile: CoachPreferenceProfile? = nil,
                 lastTestRecommendationAt: Date? = nil,
                 testRecommendationSnoozes: [String: Date]? = nil,
-                userAge: Int? = nil) {
+                userAge: Int? = nil, cardioMaximumHROverride: Double? = nil) {
         self.unit = unit; self.distanceUnit = distanceUnit; self.prRule = prRule; self.oneRepMaxFormula = oneRepMaxFormula
         self.stepGoal = stepGoal; self.weeklyCardioMinutesGoal = weeklyCardioMinutesGoal
         self.restSeconds = restSeconds; self.warmupMinutes = warmupMinutes; self.cooldownMinutes = cooldownMinutes
@@ -367,6 +397,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
         self.lastTestRecommendationAt = lastTestRecommendationAt
         self.testRecommendationSnoozes = testRecommendationSnoozes
         self.userAge = userAge
+        self.cardioMaximumHROverride = cardioMaximumHROverride
     }
 }
 

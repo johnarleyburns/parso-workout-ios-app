@@ -176,18 +176,27 @@ public struct CardioWorkoutSummary: Equatable, Sendable {
     public var isLogged: Bool
     /// Optional distance goal in meters (feedback batch 8); nil ⇒ no goal set.
     public var targetDistanceMeters: Double?
+    public var intensityProfile: CardioIntensityProfile?
+    public var intensitySummary: CardioMinuteSummary?
+    public var metEstimate: METEstimate?
     public init(id: UUID, type: CardioType, start: Date, end: Date,
                 distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
                 hrSamples: [HRSamplePoint] = [], route: [LocationFix] = [],
                 intervalSummary: IntervalSummary? = nil,
                 customTitle: String? = nil, isLogged: Bool = false,
-                targetDistanceMeters: Double? = nil) {
+                targetDistanceMeters: Double? = nil,
+                intensityProfile: CardioIntensityProfile? = nil,
+                intensitySummary: CardioMinuteSummary? = nil,
+                metEstimate: METEstimate? = nil) {
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.hrSamples = hrSamples; self.route = route
         self.intervalSummary = intervalSummary
         self.customTitle = customTitle; self.isLogged = isLogged
         self.targetDistanceMeters = targetDistanceMeters
+        self.intensityProfile = intensityProfile
+        self.intensitySummary = intensitySummary
+        self.metEstimate = metEstimate
     }
 }
 
@@ -213,11 +222,15 @@ public protocol HealthDataProviding: AnyObject {
     /// `days`, one per calendar day where data exists (revenue Phase 4). On-device
     /// reads only — never egresses, so the Data Not Collected label is unaffected.
     func passiveReadinessSamples(days: Int) async -> [PassiveReadinessSample]
+    /// Most recent Apple Health VO₂ max estimate, when available. This is
+    /// contextual fitness information in cardio V1; it never fabricates HR zones.
+    func latestVO2Max() async -> Double?
 }
 
 public extension HealthDataProviding {
     /// Default: no passive data (keeps fakes/mocks and older conformers compiling).
     func passiveReadinessSamples(days: Int) async -> [PassiveReadinessSample] { [] }
+    func latestVO2Max() async -> Double? { nil }
 }
 
 // MARK: - Heart-rate monitor (FR-2.3, FR-4.4)

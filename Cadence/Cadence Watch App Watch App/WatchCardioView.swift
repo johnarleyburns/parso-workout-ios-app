@@ -7,12 +7,16 @@ struct WatchCardioView: View {
     let kind: WorkoutConfigurationSpec.CardioKind
 
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+    @Environment(AppSettings.self) private var watchSettings
 
     var body: some View {
         let presentation = WatchCardioLivePresenter.present(
             elapsed: metrics.elapsed, bpm: metrics.hrBPM, distanceMeters: metrics.distanceMeters,
             heartRateEnabled: metrics.heartRateEnabled, gpsEnabled: metrics.gpsEnabled,
-            distanceUnit: metrics.distanceUnit
+            distanceUnit: metrics.distanceUnit,
+            intensityProfile: CardioIntensityProfile.resolved(
+                userEnteredMaximumHR: watchSettings.cardioMaximumHROverride,
+                age: watchSettings.userAge)
         )
         VStack(spacing: 4) {
             Text(presentation.elapsedText)
@@ -27,6 +31,14 @@ struct WatchCardioView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .accessibilityLabel("\(bpm) beats per minute")
                     .accessibilityIdentifier("watch.cardio.bpm")
+            }
+
+            if let intensity = presentation.relativeIntensity,
+               intensity != .unknown {
+                Text(intensity.displayName)
+                    .font(.caption.bold())
+                    .foregroundStyle(zoneColor(presentation.hrTint))
+                    .accessibilityIdentifier("watch.cardio.intensity")
             }
 
             if let distance = presentation.distanceText {

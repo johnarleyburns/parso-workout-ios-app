@@ -252,12 +252,17 @@ struct IntervalView: View {
         let hr = HRSampling.downsample(hrSamples)
         let bpms = hr.map(\.bpm).filter { $0 > 0 }
         let avgHR = bpms.isEmpty ? nil : bpms.reduce(0, +) / Double(bpms.count)
-        let summary = CardioWorkoutSummary(id: UUID(), type: saveType, start: start, end: end,
+        var summary = CardioWorkoutSummary(id: UUID(), type: saveType, start: start, end: end,
                                            distanceMeters: nil,
                                            activeEnergyKcal: CardioMath.estimateCalories(
                                                type: saveType, seconds: end.timeIntervalSince(start), avgHR: avgHR),
                                            hrSamples: hr, route: [],
                                            intervalSummary: interval)
+        let profile = await cardioIntensityProfile(model: model, settings: settings)
+        summary.intensityProfile = profile
+        summary.intensitySummary = CardioMinuteAccumulator.summarize(
+            duration: end.timeIntervalSince(start), samples: hr, profile: profile)
+        summary.metEstimate = METEstimator.cardio(type: saveType, duration: end.timeIntervalSince(start))
         let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                               healthKitWorkoutUUID: hkID, in: context)

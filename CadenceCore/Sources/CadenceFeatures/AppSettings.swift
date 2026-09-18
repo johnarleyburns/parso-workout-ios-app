@@ -29,6 +29,7 @@ public final class AppSettings {
                         "settings.autoEndOnIdle", "settings.workoutSounds",
                         "settings.trainingGoal", "settings.experienceLevel",
                         "settings.preferredWorkoutStyle",
+                        "settings.cardioMaximumHROverride",
                         "settings.useHRMonitoring",
                         "settings.coachPreferenceProfile",
                         "settings.coachSchedulePreferences",
@@ -71,6 +72,7 @@ public final class AppSettings {
         self.experienceLevel = Self.read(defaults, "settings.experienceLevel", ExperienceLevel.self) ?? .intermediate
         self.preferredWorkoutStyle = Self.read(defaults, "settings.preferredWorkoutStyle", SuggestedWorkoutStyle.self) ?? .fitness
         self.userAge = defaults.object(forKey: "settings.userAge") as? Int
+        self.cardioMaximumHROverride = defaults.object(forKey: "settings.cardioMaximumHROverride") as? Double
         self.useHRMonitoring = defaults.object(forKey: "settings.useHRMonitoring") as? Bool ?? false
         self.recoveryAwareCoachV2 = defaults.object(forKey: "settings.recoveryAwareCoachV2") as? Bool ?? true
         self.lastCoachComputeDay = defaults.string(forKey: "settings.lastCoachComputeDay") ?? ""
@@ -171,6 +173,11 @@ public final class AppSettings {
     /// Optional user age (issue 7) for HR-zone estimation (Tanaka HRmax). nil until
     /// collected in onboarding; the HR-zone estimator defaults to 40 (US median).
     public var userAge: Int? { didSet { defaults.set(userAge, forKey: "settings.userAge") } }
+    /// Optional tested/user-entered maximum HR. It outranks age prediction and is
+    /// stored as a setting so new workout provenance can name its source.
+    public var cardioMaximumHROverride: Double? {
+        didSet { defaults.set(cardioMaximumHROverride, forKey: "settings.cardioMaximumHROverride") }
+    }
     public var useHRMonitoring: Bool { didSet { defaults.set(useHRMonitoring, forKey: "settings.useHRMonitoring") } }
     /// Recovery-aware Coach v2: new eligibility-gated decision engine. Enable by default
     /// in debug builds; can be toggled in Settings for rollback testing.
@@ -306,7 +313,7 @@ public extension AppSettings {
             schedulePreferences: coachSchedulePreferences, coachProfile: coachPreferenceProfile,
             lastTestRecommendationAt: lastTestRecommendationAt,
             testRecommendationSnoozes: testRecommendationSnoozes.isEmpty ? nil : testRecommendationSnoozes,
-            userAge: userAge)
+            userAge: userAge, cardioMaximumHROverride: cardioMaximumHROverride)
     }
 
     /// Restores preferences from an imported export. Only non-nil fields are applied
@@ -344,5 +351,6 @@ public extension AppSettings {
         if let v = p.lastTestRecommendationAt { lastTestRecommendationAt = v }
         if let v = p.testRecommendationSnoozes { testRecommendationSnoozes = v }
         if let v = p.userAge { userAge = v }
+        if let v = p.cardioMaximumHROverride { cardioMaximumHROverride = v }
     }
 }

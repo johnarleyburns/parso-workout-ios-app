@@ -978,6 +978,18 @@ public final class CardioWorkout {
     /// show rounds + work/rest + warm-up/cool-down. Additive; "" for non-interval
     /// workouts (feedback batch 4 / roadmap P5).
     public var intervalDetailData: String = ""
+    /// Additive cardio-intensity provenance. Empty/nil means a legacy record.
+    public var cardioAlgorithmVersionRaw: String?
+    public var effectiveRestingHR: Double?
+    public var effectiveMaximumHR: Double?
+    public var heartRateMaximumSourceRaw: String?
+    public var trainingZonePolicyRaw: String?
+    public var intensitySummaryData: String = ""
+    public var intensityProfileData: String = ""
+    public var standardMETMinutes: Double?
+    public var standardMETValue: Double?
+    public var metBasisRaw: String?
+    public var metMethodRaw: String?
 
     @Relationship(deleteRule: .cascade, inverse: \HRSample.cardio)
     public var hrSamples: [HRSample]? = []
@@ -1069,6 +1081,48 @@ public final class CardioWorkout {
                 return
             }
             intervalDetailData = json
+        }
+    }
+
+    public var cardioAlgorithmVersion: CardioAlgorithmVersion? {
+        get { cardioAlgorithmVersionRaw.flatMap(CardioAlgorithmVersion.init(rawValue:)) }
+        set { cardioAlgorithmVersionRaw = newValue?.rawValue }
+    }
+
+    public var trainingZonePolicy: TrainingZonePolicy? {
+        get { trainingZonePolicyRaw.flatMap(TrainingZonePolicy.init(rawValue:)) }
+        set { trainingZonePolicyRaw = newValue?.rawValue }
+    }
+
+    public var intensitySummary: CardioMinuteSummary? {
+        get {
+            guard let data = intensitySummaryData.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(CardioMinuteSummary.self, from: data)
+        }
+        set {
+            guard let newValue,
+                  let data = try? JSONEncoder().encode(newValue),
+                  let json = String(data: data, encoding: .utf8) else {
+                intensitySummaryData = ""
+                return
+            }
+            intensitySummaryData = json
+        }
+    }
+
+    public var intensityProfile: CardioIntensityProfile? {
+        get {
+            guard let data = intensityProfileData.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(CardioIntensityProfile.self, from: data)
+        }
+        set {
+            guard let newValue,
+                  let data = try? JSONEncoder().encode(newValue),
+                  let json = String(data: data, encoding: .utf8) else {
+                intensityProfileData = ""
+                return
+            }
+            intensityProfileData = json
         }
     }
 

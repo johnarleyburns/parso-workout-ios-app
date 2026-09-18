@@ -107,5 +107,5 @@ Verification completed:
 - Generic iOS device build with `CODE_SIGNING_ALLOWED=NO`: succeeded.
 - `check-test-pyramid.sh`, `check-xcodebuild-platform.sh`, and `git diff --check`:
   passed.
-- No simulator was run. This audit is ready for the requested commit; pushing
+- No simulator was run. The implementation is committed as `48b648b`; pushing
   is outside this request.

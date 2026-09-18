@@ -44,7 +44,11 @@ struct WorkoutPlanEditor: View {
     @Environment(AppSettings.self) var settings
     @Environment(\.modelContext) var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Person.name) private var allPeople: [Person]
+    // Shared with the editor's file-split extensions. Swift access control is
+    // file-scoped only for `fileprivate`; `private` prevents the Xcode app
+    // target from compiling these extensions even though SwiftPM exercises
+    // their underlying core types.
+    @Query(sort: \Person.name) var allPeople: [Person]
     @Query(sort: \Exercise.name) private var allExercises: [Exercise]
     @State var exercisePickerIntent: ExercisePickerIntent?
 
@@ -56,9 +60,9 @@ struct WorkoutPlanEditor: View {
     @State private var plateRounding: Bool
     @State private var useHR: Bool
     @State var isEditing = false
-    @State private var originalPlan: EditablePlan
+    @State var originalPlan: EditablePlan
     @State var settingsPresented = false
-    @State private var historyIndex: WorkoutPlanPartnerHistory.Index?
+    @State var historyIndex: WorkoutPlanPartnerHistory.Index?
     @State private var didResolvePartnerPlans = false
     @State var exerciseIndex: [String: Exercise] = [:]
     @State private var exclusionExercise: Exercise?
@@ -68,7 +72,7 @@ struct WorkoutPlanEditor: View {
     @State var planVolumeWeekly: [MuscleGroup: Double] = [:]
     @State private var planVolumeExpanded = false
     @State var suggestExerciseRequest: SuggestedExerciseRequest?
-    @State private var schedulePresented = false
+    @State var schedulePresented = false
     @State var suggestExerciseFailed = false
     let allowsStart: Bool
     let allowsSchedule: Bool

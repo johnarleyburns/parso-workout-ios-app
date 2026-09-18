@@ -4,7 +4,7 @@ Updated: 2026-09-18
 
 ## Active task — field-testing UI simplification implementation
 
-The field-testing UI plan is implemented. Today now uses a
+The field-testing UI plan is implemented and audited. Today now uses a
 single My Workouts queue plus bottom My History, This Week has an embedded
 locally-bundled front/back anatomy map and independent Strength/Cardio/Volume
 disclosures, scheduling preserves local date and time, Start Workout has the
@@ -25,6 +25,20 @@ loads sorted direct-first then alphabetically. Watch application-context writes
 now leave the main actor before the WatchConnectivity IPC call, so an explicit
 sync toast does not freeze Today while the paired Watch is being updated.
 
+The audit follow-up also made Coach Insights and About the Coach reachable from
+Settings, corrected Transparency & Control copy that still referred to the
+retired weekly Plan tab, removed the unused CloudKit root-toast view, and moved
+Home's historical activity/muscle projection to a background SwiftData context.
+The follow-up audit also moved scheduled-workout payload decoding and recent
+cardio-choice derivation into that cached background projection, so the Home
+render path only receives lightweight rows and identifiers.
+CloudKit import completion/failure is now retained as a Settings-only status;
+Home still receives no automatic restore toast or transient loading row.
+The final audit also centralized weekly Cardio Minutes formatting in a tested
+presentation seam, added smoke assertions for source-code leakage and GPS text
+in the compact picker, and corrected repository guidance so commit hooks run
+SwiftPM tests only while simulator smoke remains an explicit release gate.
+
 Verification constraint for this pass: use headless Swift package tests and
 static/build checks only; do not run simulator flows while the owner reviews
 the anatomy mockups.
@@ -35,8 +49,9 @@ Verification so far:
 - Native iOS generic-device build is green with signing disabled; this compiled
   the iPhone, Watch, widget, and package targets without launching a simulator.
 - The final audit covers the plan's navigation, scheduling, anatomy-map,
-  disclosure, cardio-picker, and loading-label requirements. No known plan gap
-  remains in this pass.
+  disclosure, cardio-picker, loading-label, and Home render-path requirements.
+  Scheduled rows and recent cardio choices are now cached projections rather
+  than per-render payload work. No known plan gap remains in this pass.
 - The Option A mockup variants are self-contained, UTF-8 encoded, and contain
   no `file://` image references or external Lucide request. Their region detail
   interaction sorts direct work before indirect work and then by exercise name.
@@ -55,8 +70,9 @@ Workout scheduling. No simulator is part of this pass.
 The scheduling API now rejects dates before the user's current local day and
 owns rescheduling as an atomic lifecycle operation. Rescheduling clears a
 stale started-session link and returns the item to `scheduled`; focused tests
-cover past-date rejection and that transition. The UI continues to use a
-date-only app-internal schedule and does not request EventKit access.
+cover past-date rejection and that transition. The UI preserves the selected
+local date and time in the app-internal schedule and does not request EventKit
+access.
 
 ## Active task — remove weekly planning; add individual scheduled workouts
 
@@ -67,7 +83,8 @@ so existing private iCloud data is not destroyed.
 
 ### Product contract
 
-- Home, Tests, and Progress remain top-level tabs; Plan is removed.
+- Today, Progress, and Settings remain the top-level tabs; Tests is reachable
+  from Progress and Plan is removed.
 - Personalized Workout and Custom Workout remain the primary planning flows.
 - Workout Plan View gets a `Schedule this Workout` button immediately below
   `Start Workout`, using the same button size and style family.
@@ -78,9 +95,10 @@ so existing private iCloud data is not destroyed.
   create an Apple Calendar event in this task.
 - After a successful save, the date sheet and Workout Plan close and Home is
   shown.
-- Home gets `Planned Workouts` immediately below `Workouts Today`. Its compact
-  section shows today’s scheduled workouts; `Show More…` shows today and future
-  workouts, with overdue uncompleted items still recoverable in the full view.
+- Home gets one `My Workouts` queue combining completed workouts and today’s
+  scheduled workouts. Its `Show More…` action opens the planned-workouts list
+  for today and future dates, with overdue uncompleted items still recoverable
+  in the full view.
 - Starting a scheduled workout uses the normal live-workout path. Completed
   scheduled items leave Planned Workouts and appear in completed history.
 - No DB++ schema change is required: schedule dates and execution lifecycle are
@@ -112,8 +130,8 @@ than expose a dead route.
 
 ### Schedule UI and lifecycle
 
-Add a date-only schedule sheet with today/future validation, explicit Save and
-Cancel, persistence error handling, and a visible confirmation. Thread an
+Add a local date-and-time schedule sheet with today/future validation, explicit
+Save and Cancel, persistence error handling, and a visible confirmation. Thread an
 `onSchedule` callback through the suggested and custom Workout Plan routes; the
 root Home route performs the final navigation reset after persistence succeeds.
 Do not create a `WorkoutSession` merely by scheduling. On start, copy the exact
@@ -224,9 +242,10 @@ platform checklist is in `PHASE_4_MANUAL_TEST.md`.
   plain-language control for automatic/background work. Settings exposes a
   Transparency & Control drill-down for HealthKit, Coach refresh, Watch
   projection, iCloud mirroring, Supporter prompts, and available retry/undo/
-  recovery paths. Home visibly reports HealthKit ingestion and coach refresh
-  while they are running; no authored plan is changed without explicit review
-  and Apply.
+  recovery paths. Automatic HealthKit, coach, and iCloud progress no longer
+  inserts transient rows into Home; explicit Watch-sync results remain visible
+  as action feedback, and no reviewed workout is changed without explicit
+  review and Apply.
 - **iPad delivery smoke:** the iOS target now delivers to iPhone and iPad. The
   focused iPad smoke reuses the existing iPhone smoke method and checks only
   launch, absence of Plan, Settings, and Transparency & Control; it does not

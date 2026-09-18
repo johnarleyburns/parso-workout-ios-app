@@ -194,7 +194,7 @@ struct HomeWeekDashboardSection: View {
             HStack {
                 Text("Actual exercise").font(.caption)
                 Spacer()
-                Text("\(Int(dashboard.cardioDetail.loggedMinutes.rounded())) min")
+                Text(CardioMinutesDisplay.logged(dashboard.cardioDetail.loggedMinutes))
                     .font(.caption.monospacedDigit().weight(.semibold))
                     .foregroundStyle(.secondary)
             }
@@ -213,14 +213,16 @@ struct HomeWeekDashboardSection: View {
             HStack {
                 Text("Moderate-equivalent").font(.caption.weight(.semibold))
                 Spacer()
-                Text("\(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) of \(Int(dashboard.cardioDetail.targetMinutes)) min")
+                Text(CardioMinutesDisplay.moderateEquivalent(
+                    dashboard.cardioDetail.moderateEquivalentMinutes,
+                    target: dashboard.cardioDetail.targetMinutes))
                     .font(.caption.monospacedDigit().weight(.semibold))
                     .foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("home.week.cardio.total")
             if dashboard.cardioDetail.unclassifiedMinutes > 0 {
-                Text("\(Int(dashboard.cardioDetail.unclassifiedMinutes.rounded())) min could not be intensity-classified")
+                Text(CardioMinutesDisplay.unclassified(dashboard.cardioDetail.unclassifiedMinutes))
                     .font(.caption2).foregroundStyle(.secondary)
             }
             if !dashboard.cardioDetail.zoneMinutes.isEmpty {
@@ -231,7 +233,7 @@ struct HomeWeekDashboardSection: View {
                     HStack {
                         Text(zone.displayName).font(.caption)
                         Spacer()
-                        Text("\(Int((dashboard.cardioDetail.zoneMinutes[zone] ?? 0).rounded())) min")
+                        Text(CardioMinutesDisplay.zone(dashboard.cardioDetail.zoneMinutes[zone] ?? 0))
                             .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                     }
                 }

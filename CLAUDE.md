@@ -4,7 +4,7 @@ Project memory for Claude Code. Read `docs/REQUIREMENTS.md` for the full spec; t
 
 ## Swift 6 hard rule
 
-This repository is fully on Swift 6 language mode with complete strict-concurrency checking and is kept as warning-free as the selected toolchain permits. Do not introduce or permit any deviation, mixed Swift modes, warning suppression, or unexplained concurrency escape hatch. A commit runs the guards, logic tests, and the iPhone UI smoke test; a push runs no tests.
+This repository is fully on Swift 6 language mode with complete strict-concurrency checking and is kept as warning-free as the selected toolchain permits. Do not introduce or permit any deviation, mixed Swift modes, warning suppression, or unexplained concurrency escape hatch. A commit runs the SwiftPM package tests only; simulator smoke is a pre-release gate. A push runs no tests.
 
 ## Naming
 
@@ -52,9 +52,9 @@ Supporter badge; it unlocks nothing. There are no subscriptions, trials,
 entitlements, paywalls, or Pro targets.
 
 ## Information Architecture (3 tabs)
-- **Workout** (Home) — strength-first hero, secondary cardio, coach cards/insights, **Programs & Routines** entry (planning surface lives here).
-- **Tests** — no-lab fitness assessment battery, "Your Fitness" baseline card, protocol instructions, cited sources.
-- **Progress** — training history, PR timeline, per-exercise trends, assessment trends, consistency heatmap.
+- **Today** (Home) — strength-first workout flow, secondary cardio, coach observations, scheduling, and compact weekly review.
+- **Progress** — history, PR timeline, per-exercise trends, assessment trends, consistency heatmap, and the Tests entry point.
+- **Settings** — exercise library, saved workouts, coach controls, transparency, sync, and app settings.
 
 ## Current release (v1) — iPhone + embedded Watch app
 The watch app **shipped 2026-07-17** (W1–W4: strength with partners, HIIT/Boxing, cardio suite, live wrist HR, Health save + phone sync); the W5 backlog (Resume, complication, routes) is deferred — see `plans/watch-app/2026-07-17/`. v1 ships:
@@ -84,8 +84,8 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 - App: open `Cadence.xcodeproj`; schemes are **Cadence** (iOS) and **Cadence Watch App**. The `.xcodeproj` is committed (created in Xcode, not generated).
 - CLI build: `bash scripts/xcodebuild-safe.sh -scheme Cadence -destination 'platform=iOS Simulator,name=iPhone 16' build`; use destination-based builds only — never pass a global `-sdk` override because the scheme embeds the Watch target.
 - Real-device runs are required to test HealthKit — the simulator has no real Health data.
-- Git hooks (installed via `scripts/install-git-hooks.sh`): **pre-commit** runs the guards, SwiftPM unit tests, and the iPhone UI smoke test (the full regression suite — watch smoke + watch unit regressions — is NOT part of the commit gate; run `make all-tests` for it); **pre-push** runs no tests.
-- **Set command timeouts for Git hooks:** allow at least **5 minutes (300 seconds)** for `git commit`, because pre-commit runs the simulator smoke test; `git push` needs little time because pre-push runs no tests.
+- Git hooks (installed via `scripts/install-git-hooks.sh`): **pre-commit** runs only `swift test --package-path CadenceCore` and never boots a simulator; **pre-push** runs no tests. Run the simulator smoke suite explicitly with `make all-tests` before a release or field-testing build.
+- **Set command timeouts for Git hooks:** allow at least **5 minutes (300 seconds)** for `git commit`, because the package suite can be lengthy; `git push` needs little time because pre-push runs no tests.
 
 ## Conventions
 - Small, focused commits; one feature per branch; push to main when verified.

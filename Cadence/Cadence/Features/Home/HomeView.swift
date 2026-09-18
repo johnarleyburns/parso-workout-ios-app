@@ -80,6 +80,8 @@ struct HomeView: View {
     @State var cachedWeekCardioEntries: [TodayActivityPresenter.Entry] = []
     @State var cachedWeeklyVolumeKg = 0.0
     @State var cachedMuscleHistory: [HomeMuscleHistory] = []
+    @State var cachedScheduledItems: [PlannedWorkoutsPresenter.Item] = []
+    @State var cachedRecentCardioTypes: [WorkoutType] = []
     @State var cachedDashboard: HomeDashboardState?
     var dashboard: HomeDashboardState {
         if let cachedDashboard { return cachedDashboard }
@@ -304,4 +306,13 @@ struct HomeActivityTaskIdentity: Equatable {
     let historyRefreshToken: UUID
     let sessionCount: Int
     let cardioCount: Int
+    let scheduledWorkouts: [ScheduledWorkoutTaskSignature]
+}
+
+struct ScheduledWorkoutTaskSignature: Equatable {
+    let id: UUID
+    let scheduledDate: Date
+    let updatedAt: Date
+    let statusRaw: String
+    let payloadVersion: Int
 }

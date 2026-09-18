@@ -56,6 +56,22 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
+    enum CloudKitImportStatus: Equatable, Sendable {
+        case idle
+        case updating
+        case completed(Date)
+        case failed(Date)
+
+        var detailText: String {
+            switch self {
+            case .idle: return "No recent import"
+            case .updating: return "Updating private history…"
+            case .completed: return "Private history up to date"
+            case .failed: return "Update paused — open Diagnostics"
+            }
+        }
+    }
+
     let health: HealthDataProviding
     let hrm: HeartRateMonitor
     let location: LocationTracker
@@ -100,9 +116,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     private let watchSessionDelegate: WatchSessionDelegateProxy
     private(set) var cloudKitAccountAvailability: CloudKitAccountAvailability = .checking
     private(set) var isRestoringCloudKitHistory = false
-    private(set) var cloudKitRestoreNotice: String?
+    private(set) var cloudKitImportStatus: CloudKitImportStatus = .idle
     private var cloudKitEventObserver: NSObjectProtocol?
-    private var cloudKitRestoreNoticeTask: Task<Void, Never>?
     /// CloudKit can deliver several import events while a new device is being
     /// hydrated. Keep Home in its lightweight placeholder state until the
     /// import burst has been quiet for a moment, then let it rebuild once.
@@ -111,7 +126,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var healthSyncStatus: HealthSyncStatus = .idle
     /// Published while Home recomputes its ephemeral coach projection so the
-    /// operation is visible both on Home and in Settings → Transparency & Control.
+    /// operation is visible in Settings → Transparency & Control without
+    /// inserting transient content into the Home layout.
     var coachRefreshInProgress = false
 
     var lastHealthSync: Date? {
@@ -281,10 +297,9 @@ final class AppModel: NSObject, @unchecked Sendable {
         let signpostID = OSSignpostID(log: Self.performanceLog)
         os_signpost(.event, log: Self.performanceLog, name: "cloudKitImportEvent", signpostID: signpostID,
                     "inProgress=%{public}d succeeded=%{public}d", isInProgress, succeeded)
-        cloudKitRestoreNoticeTask?.cancel()
         cloudKitImportQuietTask?.cancel()
         if isInProgress {
-            cloudKitRestoreNotice = nil
+            cloudKitImportStatus = .updating
             isRestoringCloudKitHistory = true
             return
         }
@@ -296,15 +311,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled, let self else { return }
             self.isRestoringCloudKitHistory = false
-            self.cloudKitRestoreNotice = succeeded
-                ? "iCloud history updated"
-                : "iCloud history update paused"
-            let notice = self.cloudKitRestoreNotice
-            self.cloudKitRestoreNoticeTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(3))
-                guard !Task.isCancelled, self?.cloudKitRestoreNotice == notice else { return }
-                self?.cloudKitRestoreNotice = nil
-            }
+            self.cloudKitImportStatus = succeeded ? .completed(Date()) : .failed(Date())
         }
     }
 

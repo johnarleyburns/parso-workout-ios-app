@@ -75,11 +75,18 @@ extension HomeView {
             .task(id: HomeActivityTaskIdentity(
                 historyRefreshToken: historyRefreshToken,
                 sessionCount: sessions.count,
-                cardioCount: cardio.count)) {
+                cardioCount: cardio.count,
+                scheduledWorkouts: scheduledWorkouts.map {
+                    ScheduledWorkoutTaskSignature(id: $0.id,
+                                                  scheduledDate: $0.scheduledDate,
+                                                  updatedAt: $0.updatedAt,
+                                                  statusRaw: $0.statusRaw,
+                                                  payloadVersion: $0.payloadVersion)
+                })) {
                 // Let the first interactive frame render before walking the
                 // historical SwiftData relationships for these compact rows.
                 await Task.yield()
-                refreshHomeActivitySnapshot()
+                await refreshHomeActivitySnapshot()
             }
             // Passive HealthKit samples arrive asynchronously after the initial
             // pipeline run; rebuild the snapshot whenever they change.

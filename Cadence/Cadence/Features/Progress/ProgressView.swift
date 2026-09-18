@@ -3,10 +3,12 @@ import SwiftData
 import Charts
 import CadenceCore
 import CadenceFeatures
+import os
 
 enum ProgressRoute: Hashable { case history }
 
 struct TrainingProgressView: View {
+    private static let performanceLog = OSLog(subsystem: "guru.parso.cladiron", category: "ProgressPerformance")
     @Environment(\.modelContext) private var context
     @Environment(ActiveWorkoutModel.self) private var active
     @Environment(AppSettings.self) private var settings
@@ -22,12 +24,18 @@ struct TrainingProgressView: View {
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
     private var facts: TrainingFacts {
-        TrainingFacts.make(sessions: activeSessions, assessments: allAssessments,
-                           goal: settings.trainingGoal, experience: settings.experienceLevel,
-                           formula: settings.formula)
+        let signpostID = OSSignpostID(log: Self.performanceLog)
+        os_signpost(.begin, log: Self.performanceLog, name: "progressFactsPreparation", signpostID: signpostID)
+        defer { os_signpost(.end, log: Self.performanceLog, name: "progressFactsPreparation", signpostID: signpostID) }
+        return TrainingFacts.make(sessions: activeSessions, assessments: allAssessments,
+                                  goal: settings.trainingGoal, experience: settings.experienceLevel,
+                                  formula: settings.formula)
     }
     private var strengthSeries: [E1RMSeries] {
-        ProgressPresenter.strengthSeries(sessions: activeSessions, formula: settings.formula)
+        let signpostID = OSSignpostID(log: Self.performanceLog)
+        os_signpost(.begin, log: Self.performanceLog, name: "progressStrengthPreparation", signpostID: signpostID)
+        defer { os_signpost(.end, log: Self.performanceLog, name: "progressStrengthPreparation", signpostID: signpostID) }
+        return ProgressPresenter.strengthSeries(sessions: activeSessions, formula: settings.formula)
     }
 
     var body: some View {
@@ -43,6 +51,7 @@ struct TrainingProgressView: View {
                             NavigationLink { TestsView() } label: {
                                 Label("Perform a Test…", systemImage: "checkmark.seal")
                             }
+                            .accessibilityIdentifier("progress.performTest")
                             testResultsCard
                         }
                     }

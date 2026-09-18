@@ -1,6 +1,11 @@
 # Field-testing UI simplification and Today workflow plan
 
-Status: implemented in the current working tree; audit and review commit pending
+Status: implemented and audited in the current working tree; the audit fixes
+below keep Settings destinations accurate and move Home history projections off
+the main actor, including scheduled-row decoding and recent-cardio derivation.
+The audit also centralizes Cardio Minutes formatting, covers it with headless
+tests and smoke assertions, and keeps commit hooks host-only. No simulator
+execution is part of this review.
 
 This plan addresses the latest field-testing report. The current working tree
 implements the app-side changes below. Simulator execution remains deferred
@@ -36,8 +41,8 @@ source rather than becoming an execution-queue or UI-navigation dependency.
 
 ### 2.1 Remove the transient text below Today
 
-Current code has three possible sources of launch-time copy near the Today
-navigation title:
+The original field report identified three possible sources of launch-time copy
+near the Today navigation title:
 
 - `HomeView+Dashboard.swift` renders `home.healthSync.status` while HealthKit
   import is in progress.
@@ -45,6 +50,12 @@ navigation title:
   recomputed.
 - `RootTabView.swift` places a CloudKit restore toast in a root overlay with a
   fixed top offset intended to sit below the navigation bar.
+
+Audit result: the two automatic status rows and the automatic CloudKit restore
+toast are no longer rendered on Today. Only explicit Watch-sync action
+feedback remains in the root overlay; automatic progress and failures remain
+available in Settings diagnostics and Transparency & Control, including a
+retained iCloud import result (up to date or paused) after the import quiets.
 
 All three can appear and disappear independently, causing the reported visual
 jump. The dashboard should render none of these status labels. The background
@@ -77,9 +88,9 @@ Acceptance:
 
 `HomeView+Actions.swift` currently exposes only `Log Previous Workout` inside
 the expanded `More actions` area. `WorkoutPlanEditor` already has a scheduling
-sheet, but `ScheduleWorkoutSheet` is date-only and
-`ScheduledWorkoutDate.normalize` intentionally converts every date to local
-start-of-day. That means “later today” cannot be represented.
+sheet. The sheet now preserves a local date and time, while legacy midnight
+records remain valid date-only schedules. That means “later today” is
+representable without adding a second time field.
 
 Implementation:
 

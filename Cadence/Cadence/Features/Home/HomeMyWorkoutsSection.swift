@@ -7,11 +7,11 @@ import CadenceFeatures
 struct HomeMyWorkoutsSection: View {
     let completed: [WorkoutsTodayPresenter.Row]
     let scheduled: [ScheduledWorkout]
+    let plannedItems: [PlannedWorkoutsPresenter.Item]
     let onOpenCompleted: (WorkoutsTodayPresenter.Row) -> Void
     let onStartScheduled: (ScheduledWorkout) -> Void
     let onShowMorePlanned: () -> Void
 
-    private var plannedItems: [PlannedWorkoutsPresenter.Item] { scheduled.map(HomePlannedWorkoutsSection.item) }
     private var todayItems: [PlannedWorkoutsPresenter.Item] { PlannedWorkoutsPresenter.today(plannedItems) }
 
     var body: some View {

@@ -255,23 +255,3 @@ private struct WatchSyncToastView: View {
             .accessibilityIdentifier("watchSync.toast")
     }
 }
-
-private struct CloudKitRestoreToastView: View {
-    let text: String
-    let isRestoring: Bool
-
-    var body: some View {
-        Label(text, systemImage: isRestoring ? "arrow.down.icloud" : "checkmark.icloud")
-            .font(.caption.weight(.semibold))
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.regularMaterial, in: Capsule())
-            .overlay {
-                Capsule().stroke(Color.blue.opacity(0.4), lineWidth: 1)
-            }
-            .padding(.horizontal, 16)
-            .accessibilityIdentifier("cloudKitRestore.toast")
-    }
-}

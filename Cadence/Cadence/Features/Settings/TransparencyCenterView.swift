@@ -20,8 +20,10 @@ struct TransparencyCenterView: View {
                           value: model.watchSyncState.settingsText(lastSyncAt: model.lastWatchSyncAt))
                 statusRow("iCloud", systemImage: "icloud",
                           value: model.isRestoringCloudKitHistory
-                            ? "Updating private history…"
-                            : model.cloudKitAccountAvailability.displayName)
+                            ? AppModel.CloudKitImportStatus.updating.detailText
+                            : (model.cloudKitImportStatus == .idle
+                                ? model.cloudKitAccountAvailability.displayName
+                                : model.cloudKitImportStatus.detailText))
                 statusRow("Coach", systemImage: "wand.and.stars",
                           value: model.coachRefreshInProgress
                             ? "Updating coaching guidance…"
@@ -38,8 +40,8 @@ struct TransparencyCenterView: View {
 
                 explanationRow(
                     title: "Coach refresh",
-                    detail: "Home recomputes an ephemeral coach projection after relevant history, readiness, or preference changes. It does not save or replace an authored plan.",
-                    control: "Pull down on Home to rerun the refresh. Review and edit the authored plan in Plan. Coach proposals require an explicit Review and Apply action; closing or declining leaves the saved plan unchanged.")
+                    detail: "Home recomputes an ephemeral coach projection after relevant history, readiness, or preference changes. It does not save or replace a user-reviewed workout.",
+                    control: "Pull down on Home to rerun the refresh. Coach guidance never changes a workout automatically. Review and edit a Personalized or Custom Workout explicitly before starting or scheduling it.")
 
                 explanationRow(
                     title: "Watch projection",
@@ -81,7 +83,7 @@ struct TransparencyCenterView: View {
             } header: {
                 Text("Drill down")
             } footer: {
-                Text("Cladiron does not make hidden plan changes. Where a platform operation cannot be stopped in flight, this screen identifies the platform owner and gives the available retry, diagnostic, export, or recovery path.")
+                Text("Cladiron does not make hidden workout changes. Where a platform operation cannot be stopped in flight, this screen identifies the platform owner and gives the available retry, diagnostic, export, or recovery path.")
             }
         }
         .navigationTitle("Transparency & Control")

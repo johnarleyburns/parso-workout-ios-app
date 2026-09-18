@@ -6,12 +6,12 @@ import CadenceCore
 /// with a complete list of today's actual workouts.
 public enum TodayActivityPresenter {
 
-    public enum EntryKind: Equatable {
+    public enum EntryKind: Equatable, Sendable {
         case strength
         case cardio
     }
 
-    public struct Entry: Equatable, Identifiable {
+    public struct Entry: Equatable, Identifiable, Sendable {
         public let id: UUID
         public let kind: EntryKind
         public let title: String

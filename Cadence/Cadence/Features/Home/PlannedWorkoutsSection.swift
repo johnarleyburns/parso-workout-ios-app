@@ -3,6 +3,15 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
+struct PlannedWorkoutRowInput: Sendable {
+    let id: UUID
+    let date: Date
+    let title: String
+    let payloadData: Data
+    let payloadVersion: Int
+    let status: ScheduledWorkoutStatus
+}
+
 struct HomePlannedWorkoutsSection: View {
     let records: [ScheduledWorkout]
     let onOpenAll: () -> Void
@@ -68,22 +77,35 @@ struct HomePlannedWorkoutsSection: View {
         .padding(.vertical, 6)
     }
 
-    static func item(_ record: ScheduledWorkout) -> PlannedWorkoutsPresenter.Item {
+    nonisolated static func rowInput(_ record: ScheduledWorkout) -> PlannedWorkoutRowInput {
+        PlannedWorkoutRowInput(id: record.id,
+                               date: record.scheduledDate,
+                               title: record.title,
+                               payloadData: record.payloadData,
+                               payloadVersion: record.payloadVersion,
+                               status: record.status)
+    }
+
+    nonisolated static func item(_ input: PlannedWorkoutRowInput) -> PlannedWorkoutsPresenter.Item {
         let detail: String
-        let time = ScheduledWorkoutDate.hasExplicitTime(record.scheduledDate)
-            ? record.scheduledDate.formatted(date: .omitted, time: .shortened)
+        let time = ScheduledWorkoutDate.hasExplicitTime(input.date)
+            ? input.date.formatted(date: .omitted, time: .shortened)
             : nil
-        if let plan = try? ScheduledWorkoutStore.decode(record.payloadData,
-                                                        version: record.payloadVersion) {
+        if let plan = try? ScheduledWorkoutStore.decode(input.payloadData,
+                                                        version: input.payloadVersion) {
             let sets = plan.exercises.reduce(0) { $0 + $1.sets.count }
             let body = "\(plan.exercises.count) exercise\(plan.exercises.count == 1 ? "" : "s") · \(sets) sets"
             detail = [time, body].compactMap { $0 }.joined(separator: " · ")
         } else {
             detail = [time, "Workout plan"].compactMap { $0 }.joined(separator: " · ")
         }
-        return PlannedWorkoutsPresenter.Item(id: record.id, date: record.scheduledDate,
-                                             title: record.title, detail: detail,
-                                             status: record.status)
+        return PlannedWorkoutsPresenter.Item(id: input.id, date: input.date,
+                                             title: input.title, detail: detail,
+                                             status: input.status)
+    }
+
+    nonisolated static func item(_ record: ScheduledWorkout) -> PlannedWorkoutsPresenter.Item {
+        item(rowInput(record))
     }
 }
 
@@ -93,10 +115,21 @@ struct PlannedWorkoutsListView: View {
                   SortDescriptor(\ScheduledWorkout.title)])
     private var records: [ScheduledWorkout]
     @State private var rescheduleRecord: ScheduledWorkout?
+    @State private var projectedItems: [PlannedWorkoutsPresenter.Item] = []
+
+    private var projectionSignature: [ScheduledWorkoutTaskSignature] {
+        records.map {
+            ScheduledWorkoutTaskSignature(id: $0.id,
+                                          scheduledDate: $0.scheduledDate,
+                                          updatedAt: $0.updatedAt,
+                                          statusRaw: $0.statusRaw,
+                                          payloadVersion: $0.payloadVersion)
+        }
+    }
 
     var body: some View {
         List {
-            let items = records.map(HomePlannedWorkoutsSection.item)
+            let items = projectedItems
             let today = PlannedWorkoutsPresenter.today(items)
             let todayIDs = Set(today.map(\.id))
             let future = PlannedWorkoutsPresenter.todayAndFuture(items).filter { !todayIDs.contains($0.id) }
@@ -112,6 +145,14 @@ struct PlannedWorkoutsListView: View {
         .listStyle(.insetGrouped)
         .navigationTitle("Planned Workouts")
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: projectionSignature) {
+            let inputs = records.map(HomePlannedWorkoutsSection.rowInput)
+            let projected = await Task.detached(priority: .utility) {
+                inputs.map(HomePlannedWorkoutsSection.item)
+            }.value
+            guard !Task.isCancelled else { return }
+            projectedItems = projected
+        }
         .sheet(item: $rescheduleRecord) { record in
             ScheduleWorkoutSheet(title: record.title) { date in
                 _ = try ScheduledWorkoutStore.reschedule(recordID: record.id,

@@ -331,6 +331,7 @@ extension HomeView {
         HomeMyWorkoutsSection(
             completed: workoutsTodayRows,
             scheduled: scheduledWorkouts,
+            plannedItems: cachedScheduledItems,
             onOpenCompleted: openTodayWorkout,
             onStartScheduled: startScheduledWorkout,
             onShowMorePlanned: { path.append(HomeRoute.plannedWorkouts) })

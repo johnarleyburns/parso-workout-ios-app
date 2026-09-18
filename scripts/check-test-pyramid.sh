@@ -9,7 +9,7 @@
 #      briefly 20 on 2026-08-18 and was reset to 1 the same day — coverage grows
 #      by extending the single end-to-end flow (plan -> add exercise -> log a set
 #      with partners -> complete), never by adding test functions, because each
-#      one costs a full app launch in the pre-commit hook. Manual App Store
+#      one costs a full app launch in the release smoke gate. Manual App Store
 #      screenshot generation is allowed, but it must stay out of the default
 #      Cadence test plan. New behavioral coverage still belongs in
 #      CadenceFeaturesTests (headless `swift test`).

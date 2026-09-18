@@ -58,7 +58,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Settings tab did not open")
         for identifier in ["settings.savedWorkouts", "settings.customExercises",
                            "settings.excludedExercises", "settings.coach.insights",
-                           "settings.coach.methodology", "settings.coachUpdates",
+                           "settings.coach.about", "settings.coach.methodology", "settings.coachUpdates",
                            "settings.about", "settings.support"] {
             XCTAssertTrue(app.scrollToAndTapButton(identifier, maxSwipes: 20),
                           "Settings did not expose \(identifier)")
@@ -69,12 +69,35 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from More did not land on Home")
 
+        // Progress is summary-first and keeps Tests behind its own disclosure;
+        // this is the smoke contract for the retired More → Tests route.
+        XCTAssertTrue(app.buttons["tab.progress"].waitTap(timeout: 10),
+                      "Progress tab did not open")
+        XCTAssertTrue(app.descendants(matching: .any)["progress"].waitForExistence(timeout: 10),
+                      "Progress surface did not render")
+        XCTAssertTrue(app.buttons["progress.fullHistory"].exists,
+                      "Progress did not expose full History")
+        XCTAssertTrue(app.scrollToHittableAndTap("progress.testsDisclosure"),
+                      "Progress did not expose its Tests disclosure")
+        XCTAssertTrue(app.buttons["progress.performTest"].waitForExistence(timeout: 5),
+                      "Progress Tests disclosure did not expose Perform a Test…")
+        XCTAssertTrue(app.scrollToHittableAndTap("progress.testsDisclosure"),
+                      "Progress Tests disclosure did not collapse")
+        XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
+                      "Returning from Progress did not land on Today")
+        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Today did not reload after Progress")
+
         // HIIT info must expose the exact expanded runner sequence. This stays
         // inside the single iPhone smoke flow required by the test-pyramid
         // guardrail, while proving the new outline is not merely a compact
         // rounds/work/rest summary.
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.cardioChoices"),
                       "Start Workout did not expose cardio choices")
+        let gpsTileLabels = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS[c] 'GPS'"))
+        XCTAssertEqual(gpsTileLabels.count, 0,
+                       "The compact cardio picker must leave GPS to pre-workout settings")
         for identifier in ["startType.run", "startType.walk", "startType.cycle",
                            "startType.rowing", "startType.swim", "startType.hiit",
                            "startType.boxing", "startType.other"] {
@@ -195,6 +218,11 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "This Week did not expose the independent Cardio disclosure")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
                       "Expanded Cardio does not explain the moderate-equivalent cardio total")
+        let cardioMinutes = app.descendants(matching: .any)["home.week.cardioMinutes"]
+        let leakedSourceTokens = cardioMinutes.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS[c] 'dashboard.cardioDetail' OR label CONTAINS[c] 'Int('"))
+        XCTAssertEqual(leakedSourceTokens.count, 0,
+                       "Cardio Minutes must render values, never source-code interpolation")
 
         // Field test 2026-08-18 #7: the This Week gear deep-links to Coach & Plan
         // and backs out to Home, not to Settings.

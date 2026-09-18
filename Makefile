@@ -125,10 +125,9 @@ all-tests: test smoke ipad-smoke watch-smoke
 # CI-equivalent host gate without simulators.
 ci: build test guardrails
 
-# Commit gate: guards + SwiftPM unit tests + both app-target smoke tests. The
-# Watch launch path is a required regression gate because it shares the Swift 6
-# app-entry actor boundary that can terminate before the first view renders.
-pre-commit: guardrails test smoke ipad-smoke watch-smoke
+# The installed commit hook is intentionally host-only. Simulator smoke is a
+# release/field-testing gate and is run explicitly through `make all-tests`.
+pre-commit: test
 
 # Push gate: no tests. The commit gate already ran guards, unit tests, and both
 # app-target smoke suites; pushes stay fast.

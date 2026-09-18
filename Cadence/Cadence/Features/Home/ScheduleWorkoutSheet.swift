@@ -51,6 +51,21 @@ struct ScheduleWorkoutSheet: View {
             }
             .navigationTitle("Schedule Workout")
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: date) { oldDate, newDate in
+                let calendar = Calendar.current
+                guard !calendar.isDate(oldDate, inSameDayAs: newDate) else { return }
+                let today = calendar.startOfDay(for: Date())
+                let selectedDay = calendar.startOfDay(for: newDate)
+                if selectedDay > today {
+                    // A future-day choice should not inherit an accidental
+                    // late-night time from the current day. The user can still
+                    // edit the time immediately in the same DatePicker.
+                    date = calendar.date(bySettingHour: 9, minute: 0, second: 0,
+                                         of: selectedDay) ?? newDate
+                } else {
+                    date = Self.defaultDate()
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

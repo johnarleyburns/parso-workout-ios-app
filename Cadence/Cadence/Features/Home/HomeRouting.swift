@@ -49,6 +49,32 @@ enum HomeRoute: Hashable {
     case runAssessment(AssessmentKind)
 }
 
+/// History destinations carry stable identifiers only. SwiftData models are
+/// resolved at the destination boundary, never stored in NavigationPath.
+enum HistorySummaryRoute: Hashable {
+    case strength(UUID)
+    case strengthFocused(UUID, UUID?)
+    case cardio(UUID)
+}
+
+struct MissingWorkoutRouteView: View {
+    var body: some View {
+        ContentUnavailableView(
+            "Workout unavailable",
+            systemImage: "exclamationmark.triangle",
+            description: Text("This workout is no longer available in local history. Return and try another workout."))
+    }
+}
+
+/// Debug/UI-test-only route diagnostics. It intentionally contains no workout
+/// contents or health data; it records only the route boundary and failure.
+struct HomeRouteDiagnostics: Equatable, Sendable {
+    let route: String
+    let source: String
+    let requestID: UUID
+    let failureReason: String?
+}
+
 /// A route must fail visibly and recoverably. In particular, an older or
 /// partially migrated scheduled payload must never leave SwiftUI on a blank
 /// destination (the field-tested yellow warning page).

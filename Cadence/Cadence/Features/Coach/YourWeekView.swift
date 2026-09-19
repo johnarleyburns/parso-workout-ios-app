@@ -287,17 +287,17 @@ struct YourWeekView: View {
         for planned in day.sessions {
             guard let workoutId = planned.sourceWorkoutId else { continue }
             if let s = sessions.first(where: { $0.id == workoutId && !$0.orderedSets.isEmpty }) {
-                routes.append((planned.label, .strength(s)))
+                routes.append((planned.label, .strength(s.id)))
             } else if let c = cardio.first(where: { $0.id == workoutId }) {
-                routes.append((planned.label, .cardio(c)))
+                routes.append((planned.label, .cardio(c.id)))
             }
         }
         if routes.isEmpty {
             let cal = Calendar.current
             if let s = sessions.first(where: { cal.isDate($0.date, inSameDayAs: day.date) && !$0.orderedSets.isEmpty }) {
-                routes.append(("Strength", .strength(s)))
+                routes.append(("Strength", .strength(s.id)))
             } else if let c = cardio.first(where: { cal.isDate($0.start, inSameDayAs: day.date) }) {
-                routes.append((c.typeValue.displayName, .cardio(c)))
+                routes.append((c.typeValue.displayName, .cardio(c.id)))
             }
         }
         return routes

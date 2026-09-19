@@ -12,49 +12,13 @@ extension HomeView {
     }
 
     private var dashboardNavigation: some View {
-        AnyView(NavigationStack(path: $path) {
-            dashboardScrollContent
-        }
-            .navigationDestination(for: WorkoutSession.self) { SessionView(session: $0) }
-            .navigationDestination(for: CardioWorkout.self) { CardioDetailView(workout: $0) }
-            .navigationDestination(for: HistorySummaryRoute.self) { route in
-                switch route {
-                case .strength(let s):
-                    WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
-                case .strengthFocused(let s, let id):
-                    SessionView(session: s, initiallyExpandedExerciseID: id)
-                case .cardio(let c):
-                    CardioDetailView(workout: c)
-                }
-            }
-            .navigationDestination(for: HomeRoute.self) { route in
-                switch route {
-                case .settings: SettingsView()
-                case .history: HistoryView(path: $path)
-                case .plannedWorkouts: PlannedWorkoutsListView()
-                case .savedWorkouts:
-                    TemplatesView(onStart: { plan in
-                        path = NavigationPath()
-                        handleEditorStart(plan)
-                    })
-                case .coach:
-                    // Observations and editable coaching guidance are available to
-                    // every user; any plan mutation still requires explicit apply.
-                    CoachInsightsView(insights: coachInsights,
-                                      onFixCustomExercises: { path.append(HomeRoute.customExercises) },
-                                      onInsightAction: { handleInsightAction($0) })
-                case .coachPreferences: CoachSchedulePreferencesView()
-                case .workoutEditor(let plan):
-                    WorkoutPlanEditor(plan: plan, onStart: { plan in
-                        handleEditorStart(plan)
-                        path = NavigationPath()
-                    })
-                case .customExercises:
-                    CustomExerciseListView()
-                case .runAssessment(let kind):
-                    AssessmentDetailView(kind: kind)
-                }
-            }
+        AnyView(
+            homeNavigationDestinations(
+                usesExternalNavigation
+                    ? AnyView(dashboardScrollContent)
+                    : AnyView(NavigationStack(path: pathBinding) {
+                        dashboardScrollContent
+                    }))
             .task {
                 // HealthKit queries are asynchronous, but the old launch chain
                 // started the heaviest reads immediately. Keep each query

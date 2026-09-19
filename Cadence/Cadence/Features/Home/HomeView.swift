@@ -19,8 +19,10 @@ struct HomeView: View {
 
     let surface: Surface
 
-    init(surface: Surface = .today) {
+    init(surface: Surface = .today, navigationPath: Binding<NavigationPath>? = nil) {
         self.surface = surface
+        self.externalPath = navigationPath
+        self.usesExternalNavigation = navigationPath != nil
     }
 
     private static let performanceLog = OSLog(subsystem: "guru.parso.cladiron", category: "HomePerformance")
@@ -42,7 +44,20 @@ struct HomeView: View {
 
     @State var logPickerPresented = false
     @State var selectWorkoutPresented = false
-    @State var path = NavigationPath()
+    @State private var ownedPath = NavigationPath()
+    private let externalPath: Binding<NavigationPath>?
+    let usesExternalNavigation: Bool
+
+    /// Today owns its path; This Week supplies a path from its dedicated root
+    /// NavigationStack. Both cases carry only value routes.
+    var pathBinding: Binding<NavigationPath> {
+        externalPath ?? $ownedPath
+    }
+
+    var path: NavigationPath {
+        get { pathBinding.wrappedValue }
+        nonmutating set { pathBinding.wrappedValue = newValue }
+    }
     @State var cardioType: CardioType?
     /// Explicit indoor/outdoor choice for distance-capable cardio. nil keeps
     /// the standalone recorder's legacy default for non-distance flows.
@@ -85,6 +100,9 @@ struct HomeView: View {
     @State var showWorkoutConflict = false
     @State var scheduledWorkoutBeingStarted: UUID?
     @State var routeFailure: HomeRouteFailure?
+    #if DEBUG
+    @State var routeDiagnostics: HomeRouteDiagnostics?
+    #endif
     @State var confirmCancelPrevious = false
     @State var readinessPresented = false
     @State var homeActionsExpanded = false

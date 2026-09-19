@@ -3,6 +3,22 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
+struct CadenceDockMetrics: Equatable {
+    let outerHorizontalPadding: CGFloat = 12
+    let outerVerticalPadding: CGFloat = 4
+    let barHorizontalPadding: CGFloat = 6
+    let barVerticalPadding: CGFloat = 9
+    let cornerRadius: CGFloat = 26
+    let tabHitTarget: CGFloat = 44
+
+    /// Nominal clearance for documentation and layout tests. The actual
+    /// safeAreaInset reserves the measured dock height, which can grow for
+    /// Dynamic Type without clipping the root content.
+    var nominalHeight: CGFloat {
+        tabHitTarget + (barVerticalPadding * 2) + (outerVerticalPadding * 2)
+    }
+}
+
 struct RootTabView: View {
     enum Tab: Hashable { case home, thisWeek, progress, settings }
     @Environment(AppSettings.self) private var settings
@@ -13,6 +29,7 @@ struct RootTabView: View {
     @State private var selection: Tab = .home
     @State private var showSplash = true
     @State private var watchSyncToast: WatchSyncToast?
+    private let dockMetrics = CadenceDockMetrics()
     /// UI-test seam backing the `-uiTestWatchStop` counter: `AppModel` writes
     /// each `stopWatchWorkout()` call to this UserDefaults key, and the hidden
     /// element below surfaces the running total to the iPhone smoke test.
@@ -172,15 +189,14 @@ struct RootTabView: View {
             dockButton(.progress, title: "Progress", identifier: "tab.progress", symbol: "chart.line.uptrend.xyaxis")
             dockButton(.settings, title: "Settings", identifier: "tab.settings", symbol: "gearshape.fill")
         }
-        // Match Tonearm's compact dock geometry: 12pt outer inset, 6pt
-        // horizontal and 9pt vertical tab padding, with a 26pt glass radius.
-        .padding(.horizontal, 6)
-        .padding(.vertical, 9)
-        .cadenceGlass(in: RoundedRectangle(cornerRadius: 26, style: .continuous),
+        // Match Tonearm's compact dock geometry through one shared metrics
+        // value so the visual rhythm and root clearance cannot drift apart.
+        .padding(.horizontal, dockMetrics.barHorizontalPadding)
+        .padding(.vertical, dockMetrics.barVerticalPadding)
+        .cadenceGlass(in: RoundedRectangle(cornerRadius: dockMetrics.cornerRadius, style: .continuous),
                       fallback: .ultraThinMaterial)
-        .padding(.horizontal, 12)
-        .padding(.top, 4)
-        .padding(.bottom, 4)
+        .padding(.horizontal, dockMetrics.outerHorizontalPadding)
+        .padding(.vertical, dockMetrics.outerVerticalPadding)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tabBar.glass")
     }
@@ -195,7 +211,7 @@ struct RootTabView: View {
                 Text(title).font(.caption2.weight(.semibold))
             }
             .foregroundStyle(selection == tab ? Color.accentColor : Color.secondary)
-            .frame(maxWidth: .infinity, minHeight: 44)
+            .frame(maxWidth: .infinity, minHeight: dockMetrics.tabHitTarget)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -37,6 +37,13 @@ extension HomeView {
         guard let plan = try? ScheduledWorkoutStore.decode(record.payloadData,
                                                            version: record.payloadVersion) else {
             routeFailure = .scheduledWorkout(record.id)
+            #if DEBUG
+            routeDiagnostics = HomeRouteDiagnostics(
+                route: "HomeRoute.workoutEditor",
+                source: "scheduled-workout",
+                requestID: UUID(),
+                failureReason: "Scheduled workout payload could not be decoded")
+            #endif
             return
         }
         scheduledWorkoutBeingStarted = record.id
@@ -262,10 +269,12 @@ extension HomeView {
         switch row.modality {
         case .strength:
             if let s = sessions.first(where: { $0.id == id }) {
-                path.append(HistorySummaryRoute.strength(s))
+                path.append(HistorySummaryRoute.strength(s.id))
             }
         case .cardio:
-            if let c = cardio.first(where: { $0.id == id }) { path.append(c) }
+            if let c = cardio.first(where: { $0.id == id }) {
+                path.append(HistorySummaryRoute.cardio(c.id))
+            }
         }
     }
     var weekStripSection: some View {
@@ -309,10 +318,12 @@ extension HomeView {
         switch entry.kind {
         case .strength:
             if let s = sessions.first(where: { $0.id == entry.sourceId }) {
-                path.append(HistorySummaryRoute.strength(s))
+                path.append(HistorySummaryRoute.strength(s.id))
             }
         case .cardio:
-            if let c = cardio.first(where: { $0.id == entry.sourceId }) { path.append(c) }
+            if let c = cardio.first(where: { $0.id == entry.sourceId }) {
+                path.append(HistorySummaryRoute.cardio(c.id))
+            }
         }
     }
     func resumeCard(_ session: WorkoutSession) -> some View {

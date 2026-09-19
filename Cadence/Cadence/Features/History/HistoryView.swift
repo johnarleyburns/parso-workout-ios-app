@@ -3,15 +3,6 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-/// A history row's read-only summary destination (field-testing Round 4 A5).
-/// Wraps the `@Model` row (already `Hashable`) so the big `WorkoutSummaryData`
-/// value type needn't be `Hashable`.
-enum HistorySummaryRoute: Hashable {
-    case strength(WorkoutSession)
-    case strengthFocused(WorkoutSession, UUID)
-    case cardio(CardioWorkout)
-}
-
 struct HistoryView: View {
     @Binding var path: NavigationPath
 
@@ -87,7 +78,7 @@ struct HistoryView: View {
 
     private func strengthRow(_ session: WorkoutSession) -> some View {
         HStack(spacing: 12) {
-            Button { Haptics.selection(); path.append(HistorySummaryRoute.strength(session)) } label: {
+            Button { Haptics.selection(); path.append(HistorySummaryRoute.strength(session.id)) } label: {
                 HStack {
                     Image(systemName: session.symbol).foregroundStyle(.tint).frame(width: 26)
                     VStack(alignment: .leading, spacing: 2) {
@@ -144,7 +135,7 @@ struct HistoryView: View {
 
     private func cardioRow(_ c: CardioWorkout) -> some View {
         HStack(spacing: 12) {
-            Button { Haptics.selection(); path.append(HistorySummaryRoute.cardio(c)) } label: {
+            Button { Haptics.selection(); path.append(HistorySummaryRoute.cardio(c.id)) } label: {
                 HStack {
                     Image(systemName: c.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
                     VStack(alignment: .leading, spacing: 2) {
@@ -199,7 +190,11 @@ struct HistoryView: View {
     private func reuse(_ past: WorkoutSession) {
         guard active.liveWorkout.active == nil else { return }
         if let s = try? WorkoutRepository.reuseSession(from: past, in: context) {
-            if active.startStrength(s) { path.append(s) } else { s.deletedAt = Date() }
+            if active.startStrength(s) {
+                path.append(HistorySummaryRoute.strengthFocused(s.id, nil))
+            } else {
+                s.deletedAt = Date()
+            }
         }
     }
 

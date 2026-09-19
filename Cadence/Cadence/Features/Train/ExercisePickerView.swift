@@ -23,6 +23,13 @@ struct ExercisePickerView: View {
         }
     }
 
+    /// NavigationPath stores only this stable value. The SwiftData exercise is
+    /// resolved at the destination boundary so a catalog refresh or CloudKit
+    /// merge cannot leave a live model embedded in the path.
+    enum ExerciseDetailRoute: Hashable {
+        case exercise(UUID)
+    }
+
     enum PickerTab: String, CaseIterable { case browse, recents, popular }
 
     enum BrowseMode: String, CaseIterable { case byMuscleGroup, byEquipment }
@@ -266,10 +273,20 @@ struct ExercisePickerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .scrollDismissesKeyboard(.immediately)
             .searchable(text: $query, prompt: "Search name, muscle, or equipment")
-            .navigationDestination(for: Exercise.self) { exercise in
-                ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
-                    onPick(picked)
-                    dismiss()
+            .navigationDestination(for: ExerciseDetailRoute.self) { route in
+                switch route {
+                case .exercise(let id):
+                    if let exercise = exercises.first(where: { $0.id == id }) {
+                        ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
+                            onPick(picked)
+                            dismiss()
+                        }
+                    } else {
+                        ContentUnavailableView(
+                            "Exercise unavailable",
+                            systemImage: "exclamationmark.triangle",
+                            description: Text("This exercise is no longer available in the local catalog. Return and try again."))
+                    }
                 }
             }
             .toolbar {

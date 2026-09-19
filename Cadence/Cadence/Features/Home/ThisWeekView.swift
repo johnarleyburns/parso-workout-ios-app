@@ -4,7 +4,11 @@ import SwiftUI
 /// projections and background refresh boundary as Today, while keeping the
 /// dense map/history content out of the daily launch flow.
 struct ThisWeekView: View {
+    @State private var path = NavigationPath()
+
     var body: some View {
-        HomeView(surface: .thisWeek)
+        NavigationStack(path: $path) {
+            HomeView(surface: .thisWeek, navigationPath: $path)
+        }
     }
 }

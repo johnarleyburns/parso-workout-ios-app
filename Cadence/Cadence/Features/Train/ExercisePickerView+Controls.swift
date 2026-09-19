@@ -109,7 +109,7 @@ extension ExercisePickerView {
     // MARK: Rows
 
     func exerciseRow(_ ex: Exercise) -> some View {
-        NavigationLink(value: ex) {
+        NavigationLink(value: ExercisePickerView.ExerciseDetailRoute.exercise(ex.id)) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {

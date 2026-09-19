@@ -18,6 +18,31 @@ The previously open CloudKit schema gap is resolved: the additive
 `ExerciseSuggestionExclusion` record type is now deployed to Production.
 `make guardrails` passes its live Development/Production comparison.
 
+The subsequent re-audit found and fixed the remaining architecture gaps:
+This Week now owns a dedicated local navigation path, history destinations
+carry stable IDs instead of live SwiftData models, missing history records
+resolve to a recoverable unavailable state, and the glass dock uses shared
+metrics for both compact geometry and root safe-area clearance. Home route
+diagnostics remain DEBUG-only and contain no workout or health data. The Home
+dashboard route builder was split so every source file remains within the
+400-line guardrail.
+
+Re-audit verification is green: 1,819 package tests, generic iOS build,
+`make guardrails`, and `git diff --check`. No simulator or device was run;
+the audit fixes are currently uncommitted for review.
+
+The latest route audit also removed the remaining live SwiftData model from a
+navigation path: Exercise Picker now routes by exercise UUID and resolves the
+catalog record at the destination, with a recoverable unavailable state.
+
+Background research: `Workout for You` currently generates a strength-only
+`WorkoutPlan`. Cardio suggestion can reuse the existing `CardioWorkout`,
+`CardioType`, indoor/outdoor, interval, HR, Watch, and `TimerCardioSetup`
+surfaces, but needs a new value-only cardio suggestion contract, a modality
+choice before generation, cardio-specific scoring from duration/intensity/type
+history, and a cardio preview/start handoff. No cardio-suggestion code has
+been implemented in this audit pass.
+
 ## Active task — field-testing UI simplification implementation
 
 The field-testing UI plan and its follow-up plan are implemented and audited.

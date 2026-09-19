@@ -13,6 +13,7 @@ struct TrainingProgressView: View {
     @Environment(ActiveWorkoutModel.self) private var active
     @Environment(AppSettings.self) private var settings
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+    @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .forward) private var allAssessments: [Assessment]
 
     @State private var path = NavigationPath()
@@ -78,13 +79,27 @@ struct TrainingProgressView: View {
             .navigationDestination(for: ProgressRoute.self) { _ in HistoryView(path: $path) }
             .navigationDestination(for: HistorySummaryRoute.self) { route in
                 switch route {
-                case .strength(let s): WorkoutSummaryView(data: .from(session: s), onEdit: { path.append(s) })
-                case .strengthFocused(let s, let id): SessionView(session: s, initiallyExpandedExerciseID: id)
-                case .cardio(let c):   CardioDetailView(workout: c)
+                case .strength(let id):
+                    if let session = sessions.first(where: { $0.id == id }) {
+                        WorkoutSummaryView(data: .from(session: session),
+                                           onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) })
+                    } else {
+                        MissingWorkoutRouteView()
+                    }
+                case .strengthFocused(let id, let exerciseID):
+                    if let session = sessions.first(where: { $0.id == id }) {
+                        SessionView(session: session, initiallyExpandedExerciseID: exerciseID)
+                    } else {
+                        MissingWorkoutRouteView()
+                    }
+                case .cardio(let id):
+                    if let workout = cardio.first(where: { $0.id == id }) {
+                        CardioDetailView(workout: workout)
+                    } else {
+                        MissingWorkoutRouteView()
+                    }
                 }
             }
-            .navigationDestination(for: WorkoutSession.self) { SessionView(session: $0) }
-            .navigationDestination(for: CardioWorkout.self) { CardioDetailView(workout: $0) }
         }
         .accessibilityIdentifier("progress")
     }

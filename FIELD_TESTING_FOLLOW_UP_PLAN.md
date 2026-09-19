@@ -1,7 +1,15 @@
 # Field-testing follow-up plan — navigation, This Week, glass dock, and workout picker
 
-Status: implemented and audited 2026-09-18. This document remains the
-acceptance record for the committed implementation.
+Status: implemented and re-audited 2026-09-18. This document remains the
+acceptance record for the implementation.
+
+The re-audit corrected the remaining navigation-boundary defects: This Week
+now owns its dedicated `NavigationStack` path, history and exercise-detail
+destinations carry stable IDs rather than SwiftData models, missing records
+resolve to recoverable destinations, and shared dock metrics keep the
+safe-area contract and compact glass geometry together. The Home dashboard
+route builder was also split below the 400-line guardrail. Headless
+verification is green; no simulator or device was run.
 
 This plan covers the next implementation pass. It is intentionally app-only:
 no DB++ schema change is needed, and the existing SwiftData/CloudKit model and

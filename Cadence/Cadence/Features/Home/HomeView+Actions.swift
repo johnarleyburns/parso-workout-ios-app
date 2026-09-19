@@ -47,7 +47,7 @@ extension HomeView {
             return
         }
         scheduledWorkoutBeingStarted = record.id
-        path.append(HomeRoute.workoutEditor(plan))
+        workoutEditorPlan = plan
     }
 
     func retryRouteFailure(_ failure: HomeRouteFailure) {
@@ -124,9 +124,8 @@ extension HomeView {
                                     systemImage: "calendar.badge.plus",
                                     emphasis: .secondary) {
                     Haptics.selection()
-                    path.append(HomeRoute.workoutEditor(
-                        .empty(warmup: settings.warmupMinutes,
-                               cooldown: settings.cooldownMinutes)))
+                    workoutEditorPlan = .empty(warmup: settings.warmupMinutes,
+                                                cooldown: settings.cooldownMinutes)
                 }
                 .accessibilityIdentifier("home.scheduleWorkout")
 
@@ -190,6 +189,8 @@ extension HomeView {
                     }
                 }
                 let week = TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio, now: now)
+                let weeklyVolume = HomeWeeklyVolumeProjection.make(
+                    sessions: sessions, since: WeeklyStats.weekStart(now: now), now: now)
                 return HomeActivityProjection(
                     today: WorkoutsTodayPresenter.historicalRows(
                         sessions: sessions, cardio: cardio, now: now),
@@ -202,6 +203,10 @@ extension HomeView {
                         sessions: sessions,
                         since: WeeklyStats.weekStart(now: now),
                         now: now),
+                    weeklyVolumeByPerformer: weeklyVolume.volumes,
+                    weeklyVolumeKgByPerformer: weeklyVolume.tonnage,
+                    weeklyVolumePerformers: weeklyVolume.performers,
+                    muscleHistoryByPerformer: weeklyVolume.histories,
                     scheduledItems: scheduled.map(HomePlannedWorkoutsSection.rowInput)
                         .map(HomePlannedWorkoutsSection.item),
                     recentCardioTypes: recentCardioTypes)
@@ -212,6 +217,10 @@ extension HomeView {
             cachedWeekCardioEntries = projection.weekCardio
             cachedWeeklyVolumeKg = projection.weeklyVolumeKg
             cachedMuscleHistory = projection.muscleHistory
+            cachedWeeklyVolumeByPerformer = projection.weeklyVolumeByPerformer
+            cachedWeeklyVolumeKgByPerformer = projection.weeklyVolumeKgByPerformer
+            cachedWeeklyVolumePerformers = projection.weeklyVolumePerformers
+            cachedMuscleHistoryByPerformer = projection.muscleHistoryByPerformer
             cachedScheduledItems = projection.scheduledItems
             cachedRecentCardioTypes = projection.recentCardioTypes
         } else {
@@ -227,6 +236,12 @@ extension HomeView {
                 sessions: sessions,
                 since: WeeklyStats.weekStart(now: now),
                 now: now)
+            let weeklyVolume = HomeWeeklyVolumeProjection.make(
+                sessions: sessions, since: WeeklyStats.weekStart(now: now), now: now)
+            cachedWeeklyVolumeByPerformer = weeklyVolume.volumes
+            cachedWeeklyVolumeKgByPerformer = weeklyVolume.tonnage
+            cachedWeeklyVolumePerformers = weeklyVolume.performers
+            cachedMuscleHistoryByPerformer = weeklyVolume.histories
             cachedScheduledItems = scheduledWorkouts.map(HomePlannedWorkoutsSection.item)
             cachedRecentCardioTypes = recentCardioTypesFromCurrentCardio
         }
@@ -261,6 +276,10 @@ extension HomeView {
         let weekCardio: [TodayActivityPresenter.Entry]
         let weeklyVolumeKg: Double
         let muscleHistory: [HomeMuscleHistory]
+        let weeklyVolumeByPerformer: [String: [MuscleGroup: Double]]
+        let weeklyVolumeKgByPerformer: [String: Double]
+        let weeklyVolumePerformers: [VolumeSummaryPerformer]
+        let muscleHistoryByPerformer: [String: [HomeMuscleHistory]]
         let scheduledItems: [PlannedWorkoutsPresenter.Item]
         let recentCardioTypes: [WorkoutType]
     }

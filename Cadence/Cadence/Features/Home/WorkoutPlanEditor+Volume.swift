@@ -45,11 +45,32 @@ extension WorkoutPlanEditor {
                                             targetWeightKg: set.targetWeight)
                 })
         }
-        let planned = LiveWorkoutVolumeCalculator.plannedTotals(
-            prescriptions, creditsByName: planVolumeCreditsByName())
-        planVolumeState = LiveWorkoutVolumeState(current: [:],
-                                                 weekly: planVolumeWeekly,
-                                                 planned: planned)
+        let credits = planVolumeCreditsByName()
+        var performers: [VolumeSummaryPerformer] = [.owner]
+        for id in plan.partnerIDs {
+            let name = allPeople.first(where: { $0.id == id })?.name ?? "Partner"
+            performers.append(VolumeSummaryPerformer(id: id.uuidString,
+                                                     name: name,
+                                                     personID: id))
+        }
+        let prescriptionsByPerformer = Dictionary(uniqueKeysWithValues:
+            plan.performerPrescriptions().map { prescription in
+                (prescription.performerID ?? VolumeSummaryPerformer.ownerKey,
+                 prescription.exercises)
+            })
+        var states: [String: LiveWorkoutVolumeState] = [:]
+        for performer in performers {
+            let planned = LiveWorkoutVolumeCalculator.plannedTotals(
+                prescriptionsByPerformer[performer.id] ?? prescriptions,
+                creditsByName: credits)
+            states[performer.id] = LiveWorkoutVolumeState(
+                current: [:],
+                weekly: performer.isOwner ? planVolumeWeekly : [:],
+                planned: planned)
+        }
+        planVolumePerformers = performers
+        planVolumePerformerStates = states
+        planVolumeState = states[VolumeSummaryPerformer.ownerKey] ?? LiveWorkoutVolumeState()
     }
 
     /// Only the current training week is fetched. The previous implementation

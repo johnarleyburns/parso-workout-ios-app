@@ -93,6 +93,15 @@ struct HomeView: View {
     @State var suggestedCardioCalculating = false
     @State var suggestedCardioFailure: String?
     @State var suggestedCardio: CardioSuggestion?
+    /// A generated strength plan is presented directly after the chooser sheet
+    /// dismisses. Keeping it as a sheet item avoids racing a value navigation
+    /// push against the nested Start Workout navigation stack.
+    @State var suggestedWorkoutPlan: EditablePlan?
+    /// All other Home entry points use the same direct sheet presentation. A
+    /// value navigation push can lose its destination when the originating
+    /// sheet is still dismissing, which surfaced as the generic warning page
+    /// for both planning and scheduled workouts.
+    @State var workoutEditorPlan: EditablePlan?
     /// Holds a request until the start sheet that launched it has finished
     /// dismissing, then opens the generated Personalized plan directly.
     @State var pendingSuggestedWorkoutRequest: SuggestedWorkoutRequest?
@@ -100,6 +109,7 @@ struct HomeView: View {
     @State var weeklyStrengthExpanded = false
     @State var weeklyCardioExpanded = false
     @State var weeklyVolumeExpanded = false
+    @State var weeklyMuscleMapPanel: MuscleMapPanel = .front
     @State var coachIllustration = HomeCoachIllustration.random()
     @State var showWorkoutConflict = false
     @State var scheduledWorkoutBeingStarted: UUID?
@@ -121,6 +131,10 @@ struct HomeView: View {
     @State var cachedWeekCardioEntries: [TodayActivityPresenter.Entry] = []
     @State var cachedWeeklyVolumeKg = 0.0
     @State var cachedMuscleHistory: [HomeMuscleHistory] = []
+    @State var cachedMuscleHistoryByPerformer: [String: [HomeMuscleHistory]] = [:]
+    @State var cachedWeeklyVolumeByPerformer: [String: [MuscleGroup: Double]] = [:]
+    @State var cachedWeeklyVolumeKgByPerformer: [String: Double] = [:]
+    @State var cachedWeeklyVolumePerformers: [VolumeSummaryPerformer] = []
     @State var cachedScheduledItems: [PlannedWorkoutsPresenter.Item] = []
     @State var cachedRecentCardioTypes: [WorkoutType] = []
     @State var cachedDashboard: HomeDashboardState?

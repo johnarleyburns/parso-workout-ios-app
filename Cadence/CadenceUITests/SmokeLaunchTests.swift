@@ -186,16 +186,26 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "This Week tab did not open")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleMap"].waitForExistence(timeout: 5),
                       "This Week did not show the compact muscle map")
+        XCTAssertTrue(app.buttons["home.week.muscleMap.front"].exists,
+                      "This Week did not expose the Front muscle-map radio option")
+        XCTAssertTrue(app.buttons["home.week.muscleMap.back"].exists,
+                      "This Week did not expose the Back muscle-map radio option")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscle.front.shoulders"].exists,
-                      "This Week did not expose a front callout")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscle.back.lats"].exists,
-                      "This Week did not expose a back callout")
+                      "This Week did not expose a front callout by default")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.muscle.back.lats"].exists,
+                       "This Week rendered the hidden back map alongside the selected front map")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscle.front.chest"),
                       "Front anatomy region was not tappable")
         XCTAssertTrue(app.navigationBars["Weekly muscle detail"].waitForExistence(timeout: 5),
                       "Front muscle tap did not open weekly detail")
         XCTAssertTrue(app.buttons["Done"].waitTap(timeout: 5),
                       "Weekly muscle detail could not be dismissed")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscleMap.back"),
+                      "This Week could not switch to the Back muscle-map radio option")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscle.back.lats"].waitForExistence(timeout: 5),
+                      "This Week did not replace the front map with the selected back map")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.muscle.front.chest"].exists,
+                       "This Week kept the front callouts visible after switching to Back")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscle.back.lats"),
                       "Back anatomy region was not tappable")
         XCTAssertTrue(app.navigationBars["Weekly muscle detail"].waitForExistence(timeout: 5),
@@ -335,6 +345,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // indexing and the solver run off-main and can be slow on CI hosts.
         XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 45),
                       "Personalized generation did not open the plan editor")
+        XCTAssertFalse(app.staticTexts["Workout unavailable"].exists,
+                       "Personalized generation landed on the generic missing-workout warning page")
         XCTAssertFalse(app.navigationBars["View Suggested Workout"].exists,
                        "The retired suggested-workout chooser is still reachable")
         let editableExercises = app.descendants(matching: .any)
@@ -522,6 +534,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "The coach did not fill the partner's plan for the owner's exercise")
         XCTAssertTrue(app.descendants(matching: .any)["editor.exercisePerformer.\(exerciseName).Me"].exists,
                       "The owner's own line disappeared once a partner was added")
+        XCTAssertTrue(app.descendants(matching: .any)["plan.volume.performers"].exists,
+                      "Workout Plan volume did not expose the partner picker")
+        XCTAssertTrue(app.buttons["plan.volume.performer.owner"].exists,
+                      "Workout Plan volume did not expose the owner choice")
 
         // One-off scheduling is the only planning surface now. It must sit
         // directly under Start Workout, use the same control height, persist
@@ -627,6 +643,15 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "post-workout summary did not render")
         XCTAssertTrue(app.descendants(matching: .any)["summary.volumeSummary"].waitForExistence(timeout: 10),
                       "post-workout summary did not render the workout volume section")
+        XCTAssertTrue(app.descendants(matching: .any)["summary.volume.performers"].waitForExistence(timeout: 5),
+                      "Post-workout volume did not expose the partner picker")
+        XCTAssertTrue(app.buttons["summary.volume.performer.owner"].exists,
+                      "Post-workout volume did not expose the owner choice")
+        let summarySamVolume = app.buttons["summary.volume.performer.summary.Sam"]
+        XCTAssertTrue(summarySamVolume.exists,
+                      "Post-workout volume did not expose Sam's choice")
+        XCTAssertTrue(summarySamVolume.waitTap(timeout: 5),
+                      "Post-workout volume could not switch to Sam")
 
         // Field test 2026-08-18 #1: the summary expands an exercise read-only, one
         // row per performer. Unguarded — the flow above logged the sets, so an
@@ -665,6 +690,13 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // History surface. History summaries use the explicit Back action.
         XCTAssertTrue(app.buttons["tab.thisWeek"].waitTap(timeout: 10),
                       "Could not open This Week for My History")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showMore"),
+                      "This Week did not expose its Volume disclosure after partner work")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.volume.performers"]
+                        .waitForExistence(timeout: 5),
+                      "This Week volume did not expose the partner picker")
+        XCTAssertTrue(app.buttons["home.week.volume.performer.owner"].exists,
+                      "This Week volume did not expose the owner choice")
         XCTAssertTrue(app.descendants(matching: .any)["home.myHistory"].waitForExistence(timeout: 10),
                       "This Week did not render My History")
         XCTAssertTrue(app.scrollToHittableAndTap("home.history.showMore"),

@@ -8,7 +8,10 @@ extension SessionView {
     var scrollContent: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
             if isActiveSession {
-                LiveWorkoutVolumeSummary(state: liveVolumeState, expanded: $liveVolumeExpanded)
+                LiveWorkoutVolumeSummary(state: liveVolumeState,
+                                         expanded: $liveVolumeExpanded,
+                                         performers: liveVolumePerformers,
+                                         performerStates: liveVolumePerformerStates)
             }
             if isManualLog { loggedDateBanner }
             if active.strengthSession?.id != session.id && !isManualLog {

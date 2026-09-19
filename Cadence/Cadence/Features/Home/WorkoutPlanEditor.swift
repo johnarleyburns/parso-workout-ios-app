@@ -70,6 +70,8 @@ struct WorkoutPlanEditor: View {
     @State private var regenerationFailed = false
     @State var planVolumeState = LiveWorkoutVolumeState()
     @State var planVolumeWeekly: [MuscleGroup: Double] = [:]
+    @State var planVolumePerformers: [VolumeSummaryPerformer] = []
+    @State var planVolumePerformerStates: [String: LiveWorkoutVolumeState] = [:]
     @State private var planVolumeExpanded = false
     @State var suggestExerciseRequest: SuggestedExerciseRequest?
     @State var schedulePresented = false
@@ -109,7 +111,9 @@ struct WorkoutPlanEditor: View {
                 LiveWorkoutVolumeSummary(state: planVolumeState,
                                          expanded: $planVolumeExpanded,
                                          presentation: .planned,
-                                         accessibilityPrefix: "plan")
+                                         accessibilityPrefix: "plan",
+                                         performers: planVolumePerformers,
+                                         performerStates: planVolumePerformerStates)
 
                 WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
                                           isEditing: isEditing,

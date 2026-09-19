@@ -113,6 +113,9 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     /// Fractional muscle-group volume credited by the owner's working sets.
     /// The summary view uses this for the same volume card shown during a workout.
     public let volume: [MuscleGroup: Double]
+    /// The same volume, partitioned by performer name. `Me` is the owner key;
+    /// partner names are stable for the lifetime of a historical summary.
+    public let volumeByPerformer: [String: [MuscleGroup: Double]]
     public let hr: [(t: TimeInterval, bpm: Double)]   // cardio chart
     public let route: [(lat: Double, lon: Double)]    // cardio map
     public let interval: IntervalSummary?             // HIIT/boxing structure
@@ -142,6 +145,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                 exercises: [ExerciseLine] = [],
                 partners: [PartnerSummary] = [],
                 volume: [MuscleGroup: Double] = [:],
+                volumeByPerformer: [String: [MuscleGroup: Double]] = [:],
                 hr: [(t: TimeInterval, bpm: Double)] = [],
                 route: [(lat: Double, lon: Double)] = [],
                 interval: IntervalSummary? = nil,
@@ -168,6 +172,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         self.exercises = exercises
         self.partners = partners
         self.volume = volume
+        self.volumeByPerformer = volumeByPerformer
         self.hr = hr
         self.route = route
         self.interval = interval
@@ -198,6 +203,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             && lhs.exercises == rhs.exercises
             && lhs.partners == rhs.partners
             && lhs.volume == rhs.volume
+            && lhs.volumeByPerformer == rhs.volumeByPerformer
             && lhs.hr.count == rhs.hr.count
             && zip(lhs.hr, rhs.hr).allSatisfy { $0 == $1 }
             && lhs.route.count == rhs.route.count
@@ -234,6 +240,13 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                 result[group, default: 0] += credit
             }
         }
+        let volumeByPerformer = session.orderedSets.reduce(into: [String: [MuscleGroup: Double]]()) { result, set in
+            guard !set.isWarmup, set.reps > 0, let exercise = set.exercise else { return }
+            let performer = set.isOwnerSet ? "Me" : (set.performedBy?.name ?? "Partner")
+            for (group, credit) in exercise.volumeCredits where credit > 0 {
+                result[performer, default: [:]][group, default: 0] += credit
+            }
+        }
         // Partner lines: grouped by partner name, in first-appearance order
         // (feedback batch 3 — partnered history shows what the partner did too).
         var partnerOrder: [String] = []
@@ -262,6 +275,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             exercises: exercises,
             partners: partners,
             volume: volume,
+            volumeByPerformer: volumeByPerformer,
             hr: sortedHR.map { (t: $0.t, bpm: $0.bpm) },
             isLogged: session.isLogged,
             warmupSec: session.warmupSeconds,

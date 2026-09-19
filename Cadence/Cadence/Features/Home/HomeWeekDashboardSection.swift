@@ -7,15 +7,39 @@ struct HomeWeekDashboardSection: View {
     @Binding var strengthExpanded: Bool
     @Binding var cardioExpanded: Bool
     @Binding var volumeExpanded: Bool
+    @Binding var muscleMapPanel: MuscleMapPanel
     let strengthEntries: [TodayActivityPresenter.Entry]
     let cardioEntries: [TodayActivityPresenter.Entry]
     let muscleHistory: [HomeMuscleHistory]
+    let muscleHistoryByPerformer: [String: [HomeMuscleHistory]]
+    let weeklyVolumeByPerformer: [String: [MuscleGroup: Double]]
+    let weeklyVolumeKgByPerformer: [String: Double]
+    let weeklyVolumePerformers: [VolumeSummaryPerformer]
     let totalVolumeKg: Double
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
     let onOpenCoachSettings: () -> Void
-    @State private var volumeWarningMessage: String?
-    @State private var selectedMuscle: HomeMuscleHistory?
+    @State fileprivate var volumeWarningMessage: String?
+    /// Keep selection as a small value instead of copying the full weekly history
+    /// graph into SwiftUI state. The old `HomeMuscleHistory?` selection made every
+    /// tap compare all exercise/set rows before the sheet could present.
+    @State private var selectedMuscleGroup: MuscleGroup?
+    @State private var selectedVolumePerformerKey: String?
+
+    private var selectedVolume: [MuscleGroup: Double] {
+        guard let selectedVolumePerformerKey,
+              let value = weeklyVolumeByPerformer[selectedVolumePerformerKey] else {
+            return Dictionary(uniqueKeysWithValues: dashboard.volume.map { ($0.group, $0.sets) })
+        }
+        return value
+    }
+
+    private var displayedVolumeRows: [HomeDashboardState.VolumeRow] {
+        guard !weeklyVolumeByPerformer.isEmpty else { return dashboard.volume }
+        let tracked = Set(dashboard.volume.filter(\.isTracked).map(\.group))
+        return HomeDashboardPresenter.volumeRows(setsByGroup: selectedVolume,
+                                                 tracked: tracked)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
@@ -54,6 +78,16 @@ struct HomeWeekDashboardSection: View {
             } message: {
                 Text(volumeWarningMessage ?? "")
             }
+        .onAppear {
+            if selectedVolumePerformerKey == nil {
+                selectedVolumePerformerKey = weeklyVolumePerformers.first?.id
+            }
+        }
+        .onChange(of: weeklyVolumePerformers) { _, next in
+            if let selectedVolumePerformerKey,
+               next.contains(where: { $0.id == selectedVolumePerformerKey }) { return }
+            selectedVolumePerformerKey = next.first?.id
+        }
     }
 
     private var header: some View {
@@ -95,7 +129,38 @@ struct HomeWeekDashboardSection: View {
             .foregroundStyle(.secondary)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Muscle volume legend: below, building, productive, and above maximum")
-            ForEach(dashboard.volume) { row in
+            if weeklyVolumePerformers.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(weeklyVolumePerformers) { performer in
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    selectedVolumePerformerKey = performer.id
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: selectedVolumePerformerKey == performer.id
+                                          ? "largecircle.fill.circle" : "circle")
+                                    Text(performer.name)
+                                }
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10)
+                                .frame(minHeight: 36)
+                                .background(selectedVolumePerformerKey == performer.id
+                                            ? Color.accentColor.opacity(0.14)
+                                            : Color.secondary.opacity(0.08),
+                                            in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(selectedVolumePerformerKey == performer.id
+                                             ? Color.accentColor : .secondary)
+                            .accessibilityIdentifier("home.week.volume.performer.\(performer.id)")
+                        }
+                    }
+                }
+                .accessibilityIdentifier("home.week.volume.performers")
+            }
+            ForEach(displayedVolumeRows) { row in
                 volumeRow(row)
             }
             CoachSourcesLink(
@@ -104,7 +169,11 @@ struct HomeWeekDashboardSection: View {
             HStack {
                 Text("Total Volume").font(.subheadline.weight(.semibold))
                 Spacer()
-                Text(WorkoutMath.tonnageLabel(volumeKg: totalVolumeKg, unit: unit))
+                Text(WorkoutMath.tonnageLabel(
+                    volumeKg: selectedVolumePerformerKey.flatMap {
+                        weeklyVolumeKgByPerformer[$0]
+                    } ?? totalVolumeKg,
+                    unit: unit))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
             }
@@ -125,26 +194,27 @@ struct HomeWeekDashboardSection: View {
     private var muscleMapSummary: some View {
         HomeMuscleMapView(
             dashboard: dashboard,
+            volumeRows: displayedVolumeRows,
+            selectedPanel: $muscleMapPanel,
             onSelect: { group in
-                let currentSets = dashboard.volume.first(where: { $0.group == group })?.sets ?? 0
-                if let history = muscleHistory.first(where: { $0.group == group }) {
-                    selectedMuscle = HomeMuscleHistory(
-                        group: history.group,
-                        displayName: history.displayName,
-                        creditedSets: currentSets,
-                        exercises: history.exercises)
-                } else {
-                    selectedMuscle = HomeMuscleHistory(
-                        group: group,
-                        displayName: group.displayName,
-                        creditedSets: currentSets,
-                        exercises: [])
-                }
+                // Only publish the selected identity. The detail payload is
+                // resolved when the sheet is built, keeping the tap path cheap.
+                selectedMuscleGroup = group
             },
             onOpenCardio: {
                 withAnimation(.easeInOut(duration: 0.18)) { cardioExpanded = true }
             })
-        .sheet(item: $selectedMuscle) { history in
+        .sheet(item: $selectedMuscleGroup) { group in
+            let currentSets = selectedVolume[group] ?? 0
+            let selectedHistory = selectedVolumePerformerKey.flatMap {
+                muscleHistoryByPerformer[$0]
+            } ?? muscleHistory
+            let cached = selectedHistory.first(where: { $0.group == group })
+            let history = HomeMuscleHistory(
+                group: group,
+                displayName: cached?.displayName ?? group.displayName,
+                creditedSets: currentSets,
+                exercises: cached?.exercises ?? [])
             HomeMuscleDetailSheet(history: history, unit: unit)
         }
         .accessibilityIdentifier("home.week.muscleMap")
@@ -299,68 +369,4 @@ struct HomeWeekDashboardSection: View {
         }
     }
 
-    /// One muscle group's weekly sets. This is the resolution that answers "did I
-    /// actually train my adductors this week?" — the coarse eight-bucket row it
-    /// replaced could not (DB++ adoption, decision D5).
-    private func volumeRow(_ row: HomeDashboardState.VolumeRow) -> some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 4) {
-                if !row.isTracked {
-                    Image(systemName: "circle.dashed")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                Text(row.displayName)
-                    .font(.caption)
-                    .foregroundStyle(row.isTracked ? tint(for: row.zone) : .secondary)
-            }
-            .frame(width: 116, alignment: .leading)
-            ProgressView(value: row.normalized).tint(tint(for: row.zone))
-            HStack(spacing: 4) {
-                Text("\(formattedSets(row.sets)) sets")
-                    .font(.caption.weight(.semibold).monospacedDigit())
-                if let warning = volumeWarning(for: row) {
-                    Button {
-                        volumeWarningMessage = warning
-                    } label: {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.red)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Volume warning for \(row.displayName)")
-                }
-            }
-            .frame(width: 88, alignment: .trailing)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(row.displayName)
-        .accessibilityValue("\(formattedSets(row.sets)) sets")
-        .accessibilityHint(row.isTracked ? "" : "Not a tracked muscle group")
-        .accessibilityIdentifier("home.volume.\(row.group.rawValue)")
-    }
-
-    private func formattedSets(_ sets: Double) -> String {
-        sets.formatted(.number.precision(.fractionLength(sets.rounded() == sets ? 0 : 1)))
-    }
-
-    private func volumeWarning(for row: HomeDashboardState.VolumeRow) -> String? {
-        switch row.zone {
-        case .belowMinimum:
-            let remaining = max(0, WeeklySetProgress.minimum - row.sets)
-            return "\(row.displayName) is \(formattedSets(remaining)) sets below the current minimum. You can add work if that fits your recovery and plan."
-        case .aboveMaximum:
-            return "\(row.displayName) is above the 12-set maximum for this week. Consider reducing volume or allowing more recovery before adding more work."
-        case .building, .productive:
-            return nil
-        }
-    }
-
-    private func tint(for zone: WeeklySetZone) -> Color {
-        switch zone.tintRole {
-        case .red: return .red
-        case .yellow: return .yellow
-        case .green: return .green
-        }
-    }
 }

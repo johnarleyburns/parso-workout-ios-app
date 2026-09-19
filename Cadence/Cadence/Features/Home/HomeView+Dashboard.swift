@@ -194,6 +194,30 @@ extension HomeView {
                     }
                 }
             }
+            .sheet(item: $suggestedWorkoutPlan) { plan in
+                NavigationStack {
+                    WorkoutPlanEditor(plan: plan) { startedPlan in
+                        suggestedWorkoutPlan = nil
+                        Task { @MainActor in
+                            await Task.yield()
+                            handleEditorStart(startedPlan)
+                        }
+                    }
+                }
+                .accessibilityIdentifier("suggestedWorkout.plan")
+            }
+            .sheet(item: $workoutEditorPlan) { plan in
+                NavigationStack {
+                    WorkoutPlanEditor(plan: plan) { startedPlan in
+                        workoutEditorPlan = nil
+                        Task { @MainActor in
+                            await Task.yield()
+                            handleEditorStart(startedPlan)
+                        }
+                    }
+                }
+                .accessibilityIdentifier("workoutEditor.plan")
+            }
             .alert("Couldn't open this workout", isPresented: Binding(
                 get: { routeFailure != nil },
                 set: { if !$0 { routeFailure = nil } })) {
@@ -320,68 +344,6 @@ extension HomeView {
                 .transition(.identity)
                 .zIndex(1)
         }
-    }
-
-    @ViewBuilder
-    private var dashboardTopContent: some View {
-        HStack {
-            Text(headerDateText)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("home.headerDate")
-            Spacer(minLength: 8)
-            if contributions.store.isSupporter {
-                Label("Supporter", systemImage: "heart.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.pink)
-                    .accessibilityIdentifier("home.supporterBadge")
-            }
-        }
-        if let s = resumeSession { resumeCard(s) }
-        homeActionRow
-        HomeMyWorkoutsSection(
-            completed: workoutsTodayRows,
-            scheduled: scheduledWorkouts,
-            plannedItems: cachedScheduledItems,
-            onOpenCompleted: openTodayWorkout,
-            onStartScheduled: startScheduledWorkout,
-            onShowMorePlanned: { path.append(HomeRoute.plannedWorkouts) })
-    }
-
-    private var dashboardWeekContent: some View {
-        HomeWeekDashboardSection(
-            dashboard: dashboard,
-            strengthExpanded: $weeklyStrengthExpanded,
-            cardioExpanded: $weeklyCardioExpanded,
-            volumeExpanded: $weeklyVolumeExpanded,
-            strengthEntries: weekActivity.strength,
-            cardioEntries: weekActivity.cardio,
-            muscleHistory: cachedMuscleHistory,
-            totalVolumeKg: weeklyVolumeKg,
-            unit: settings.unit,
-            onOpenWorkout: openWeekWorkout,
-            onOpenCoachSettings: { path.append(HomeRoute.coachPreferences) })
-    }
-
-    @ViewBuilder
-    private var dashboardBottomContent: some View {
-        homeDetailDisclosure(
-            title: "Observations",
-            subtitle: dashboard.suggestions.isEmpty ? "No new suggestions" : "Coach guidance and rationale",
-            expanded: $observationsExpanded,
-            identifier: "home.observations.show")
-        if observationsExpanded {
-            HomeCoachSuggestionsSection(
-                suggestions: dashboard.suggestions,
-                illustration: coachIllustration,
-                expanded: $suggestionsExpanded)
-        }
-        homeDetailDisclosure(
-            title: homeReadinessTitle,
-            subtitle: homeReadinessSubtitle,
-            expanded: $readinessExpanded,
-            identifier: "home.readiness.show")
-        if readinessExpanded { readinessCard }
     }
 
 }

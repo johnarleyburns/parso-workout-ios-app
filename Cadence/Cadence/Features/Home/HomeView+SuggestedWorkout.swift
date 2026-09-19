@@ -272,7 +272,11 @@ extension HomeView {
                     for: option, unit: request.unit,
                     warmupMinutes: request.warmupMinutes,
                     cooldownMinutes: request.cooldownMinutes)
-                path.append(HomeRoute.workoutEditor(plan))
+                // Present the plan directly after the chooser has disappeared.
+                // A NavigationPath push here can resolve against the nested
+                // Start Workout stack during dismissal and land on the generic
+                // missing-workout warning page instead of the plan editor.
+                suggestedWorkoutPlan = plan
             }
         }
     }

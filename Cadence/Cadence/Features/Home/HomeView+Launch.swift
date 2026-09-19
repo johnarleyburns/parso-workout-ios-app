@@ -14,7 +14,7 @@ extension HomeView {
             return
         }
         scheduledWorkoutBeingStarted = request.recordID
-        path.append(HomeRoute.workoutEditor(request.plan))
+        workoutEditorPlan = request.plan
     }
 
     func start(_ type: WorkoutType) {
@@ -248,7 +248,7 @@ extension HomeView {
     func launchDecision(_ session: CoachSession) {
         switch CoachRouter.destination(for: session) {
         case .planEditor(let plan):
-            path.append(HomeRoute.workoutEditor(plan))
+            workoutEditorPlan = plan
         case .emptyEditor(let title):
             // Defensive: a strength session with no exercises should never dead-end
             // back to Home (issue 3). Open an empty editor titled from the session.
@@ -257,7 +257,7 @@ extension HomeView {
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes,
                 exercises: [])
-            path.append(HomeRoute.workoutEditor(fallback))
+            workoutEditorPlan = fallback
         case .outdoorCardio(let type):
             startOutdoorWithGoal(type)             // → CardioGoalSheet → HR gate → recorder
         case .swim:
@@ -304,7 +304,7 @@ extension HomeView {
             facts: facts,
             desiredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise
         ) else { return }
-        path.append(HomeRoute.workoutEditor(plan))
+        workoutEditorPlan = plan
     }
 
     /// Swap one component of a two-a-day plan: strength → the strength start

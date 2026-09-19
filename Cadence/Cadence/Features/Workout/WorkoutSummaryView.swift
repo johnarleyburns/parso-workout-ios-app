@@ -42,12 +42,15 @@ struct WorkoutSummaryView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 metricsGrid
-                if data.kind == .strength, !data.volume.isEmpty {
+                if data.kind == .strength,
+                   !data.volume.isEmpty || !data.volumeByPerformer.isEmpty {
                     LiveWorkoutVolumeSummary(
                         state: LiveWorkoutVolumeState(current: data.volume),
                         expanded: $summaryVolumeExpanded,
                         presentation: .active,
-                        accessibilityPrefix: "summary")
+                        accessibilityPrefix: "summary",
+                        performers: summaryVolumePerformers,
+                        performerStates: summaryVolumeStates)
                 }
                 if data.kind == .cardio, let intensity = data.cardioIntensity {
                     cardioIntensitySection(intensity)
@@ -101,6 +104,28 @@ struct WorkoutSummaryView: View {
                 .accessibilityIdentifier("summary.saveHealth")
             }
         }
+    }
+
+    private var summaryVolumePerformers: [VolumeSummaryPerformer] {
+        let values = data.volumeByPerformer.isEmpty ? ["Me": data.volume] : data.volumeByPerformer
+        let names = values.keys.sorted { left, right in
+            if left == "Me" { return true }
+            if right == "Me" { return false }
+            return left.localizedCaseInsensitiveCompare(right) == .orderedAscending
+        }
+        return names.map { name in
+            name == "Me"
+                ? .owner
+                : VolumeSummaryPerformer(id: "summary.\(name)", name: name)
+        }
+    }
+
+    private var summaryVolumeStates: [String: LiveWorkoutVolumeState] {
+        let values = data.volumeByPerformer.isEmpty ? ["Me": data.volume] : data.volumeByPerformer
+        return Dictionary(uniqueKeysWithValues: values.map { name, volume in
+            let key = name == "Me" ? VolumeSummaryPerformer.ownerKey : "summary.\(name)"
+            return (key, LiveWorkoutVolumeState(current: volume))
+        })
     }
 
     // MARK: Header

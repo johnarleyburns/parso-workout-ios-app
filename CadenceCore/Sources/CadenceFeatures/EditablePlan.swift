@@ -5,7 +5,7 @@ import CadenceCore
 /// Moved out of `Features/Home/WorkoutPlanEditor.swift` (test-pyramid Phase 3);
 /// the four `from(...)` mappers are pure and were ideal unit-test material. The
 /// SwiftUI editor view stays in the app.
-public struct EditablePlan: Hashable {
+public struct EditablePlan: Hashable, Identifiable {
     public let id = UUID()
     public var title: String = "Workout"
     public var warmupMinutes: Int

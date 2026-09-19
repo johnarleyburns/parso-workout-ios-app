@@ -66,6 +66,8 @@ struct SessionView: View {
     /// every redraw (field test 2026-08-19 #4).
     @State var plannedExerciseIndex: [String: Exercise] = [:]
     @State var liveVolumeState = LiveWorkoutVolumeState()
+    @State var liveVolumePerformers: [VolumeSummaryPerformer] = []
+    @State var liveVolumePerformerStates: [String: LiveWorkoutVolumeState] = [:]
     @State var liveVolumeExpanded = false
     /// Exercise the scroll view should bring to the top on the next redraw.
     @State var scrollTarget: UUID?

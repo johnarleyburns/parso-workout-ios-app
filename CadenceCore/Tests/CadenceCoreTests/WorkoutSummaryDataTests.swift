@@ -125,6 +125,9 @@ final class WorkoutSummaryDataTests: XCTestCase {
         XCTAssertEqual(partner.exercises.map(\.name), ["Bench Press"])
         XCTAssertEqual(partner.exercises.first?.reps, [10, 8])
         XCTAssertEqual(partner.exercises.first?.topSetWeightKg ?? 0, 65, accuracy: 0.001)
+        XCTAssertEqual(Set(s.volumeByPerformer.keys), Set(["Me", "Sam"]))
+        XCTAssertFalse(s.volumeByPerformer["Me", default: [:]].isEmpty)
+        XCTAssertFalse(s.volumeByPerformer["Sam", default: [:]].isEmpty)
     }
 
     // feedback batch 3 — a bodyweight set is flagged so the view shows "BW".

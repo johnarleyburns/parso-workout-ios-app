@@ -61,7 +61,7 @@ extension HomeView {
                         selectWorkoutPresented = false
                         startQuickStartStrength()
                     },
-                    onSuggestedWorkout: { requestSuggestedWorkout() },
+                    onSuggestedWorkout: { requestSuggestedWorkout($0) },
                     onEditorStart: { plan in selectWorkoutPresented = false; handleEditorStart(plan) },
                     onSelect: { type in selectWorkoutPresented = false; start(type) },
                     onOtherCardio: { description, gps in
@@ -144,7 +144,7 @@ extension HomeView {
                 WorkoutTypePicker(onSelect: { cardioPickerPresented = false; start($0) },
                                   onEditorStart: { _ in },
                                   onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
-                                  onSuggestedWorkout: { requestSuggestedWorkout() },
+                                  onSuggestedWorkout: { requestSuggestedWorkout($0) },
                                   types: [.run, .walk, .cycle, .rowing, .swim, .elliptical, .stairClimber, .hiit, .boxing, .other],
                                   title: "Start Cardio")
             }
@@ -153,22 +153,46 @@ extension HomeView {
                 NavigationStack {
                     WeightsStartView(
                         onEditorStart: { plan in weightsStartPresented = false; handleEditorStart(plan) },
-                        onSuggestedWorkout: { requestSuggestedWorkout() })
+                        onSuggestedWorkout: { requestSuggestedWorkout($0) })
                 }
             }
             .overlay {
-                if suggestedWorkoutCalculating {
-                    ProgressView("Building your Personalized workout…")
+                if suggestedWorkoutCalculating || suggestedCardioCalculating {
+                    ProgressView(suggestedCardioCalculating
+                                 ? "Building your cardio workout…"
+                                 : "Building your strength workout…")
                         .padding(20)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
                         .accessibilityIdentifier("suggestedWorkout.calculating")
                 }
             }
             .alert("Couldn’t calculate your Personalized workout", isPresented: suggestedWorkoutFailurePresented) {
-                Button("Try Again") { suggestedWorkoutFailure = nil; requestSuggestedWorkout() }
+                Button("Try Again") { suggestedWorkoutFailure = nil; requestSuggestedWorkout(.strength) }
                 Button("Cancel", role: .cancel) { suggestedWorkoutFailure = nil }
             } message: {
                 Text(suggestedWorkoutFailure ?? "")
+            }
+            .alert("Couldn’t calculate your cardio workout", isPresented: Binding(
+                get: { suggestedCardioFailure != nil },
+                set: { if !$0 { suggestedCardioFailure = nil } })) {
+                Button("Try Again") {
+                    suggestedCardioFailure = nil
+                    requestSuggestedWorkout(.cardio)
+                }
+                Button("Cancel", role: .cancel) { suggestedCardioFailure = nil }
+            } message: {
+                Text(suggestedCardioFailure ?? "")
+            }
+            .sheet(item: $suggestedCardio) { suggestion in
+                NavigationStack {
+                    SuggestedCardioPreviewView(suggestion: suggestion) { selected in
+                        suggestedCardio = nil
+                        Task { @MainActor in
+                            await Task.yield()
+                            launchSuggestedCardio(selected)
+                        }
+                    }
+                }
             }
             .alert("Couldn't open this workout", isPresented: Binding(
                 get: { routeFailure != nil },

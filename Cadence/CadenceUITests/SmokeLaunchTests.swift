@@ -295,6 +295,27 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertEqual(quickHeight, coach.frame.height, accuracy: 1,
                        "Suggest a Workout is a different height from Quick Start")
 
+        // Workout for You is an explicit modality choice. The cardio branch
+        // must produce a reviewable suggestion even on a cold-start account,
+        // rather than silently falling through to the strength planner.
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.suggestWorkout"),
+                      "Workout for You did not open its modality choice")
+        XCTAssertTrue(app.buttons["workoutForYou.strength"].waitForExistence(timeout: 5),
+                      "Workout for You lost the Strength choice")
+        XCTAssertTrue(app.buttons["workoutForYou.cardio"].waitForExistence(timeout: 5),
+                      "Workout for You lost the Cardio choice")
+        XCTAssertTrue(app.buttons["workoutForYou.cardio"].waitTap(timeout: 5),
+                      "Workout for You Cardio choice was not tappable")
+        XCTAssertTrue(app.descendants(matching: .any)["suggestedCardio.preview"]
+                        .waitForExistence(timeout: 45),
+                      "Workout for You Cardio did not produce a reviewable suggestion")
+        XCTAssertTrue(app.buttons["suggestedCardio.start"].exists,
+                      "Cardio suggestion did not expose Start")
+        XCTAssertTrue(app.buttons["suggestedCardio.cancel"].waitTap(timeout: 5),
+                      "Cardio suggestion could not be cancelled")
+        XCTAssertTrue(app.buttons["selectWorkout.suggestWorkout"].waitForExistence(timeout: 5),
+                      "Cancelling Cardio suggestion did not return to Start Workout")
+
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
                       "Start Workout did not expose more strength options")
         XCTAssertTrue(app.buttons["selectWorkout.custom"].label.contains("Custom Workout"),

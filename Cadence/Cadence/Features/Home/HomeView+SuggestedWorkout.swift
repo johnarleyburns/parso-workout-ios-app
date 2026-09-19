@@ -4,9 +4,18 @@ import CadenceCore
 import CadenceFeatures
 
 extension HomeView {
+    func requestSuggestedWorkout(_ modality: SuggestedWorkoutModality) {
+        switch modality {
+        case .strength:
+            requestSuggestedStrength()
+        case .cardio:
+            requestSuggestedCardio()
+        }
+    }
+
     /// Captures SwiftData values on the main actor, then lets the sheet run the
     /// pure, Sendable generator without carrying managed objects across actors.
-    func requestSuggestedWorkout() {
+    private func requestSuggestedStrength() {
         Haptics.selection()
         do {
             let activeSessionID = active.strengthSession?.id
@@ -139,6 +148,53 @@ extension HomeView {
         }
     }
 
+    /// Captures only value data from recorded cardio. The generator never sees
+    /// SwiftData objects, HR samples, routes, or the main-actor dashboard.
+    private func requestSuggestedCardio() {
+        Haptics.selection()
+        let history = cardio.compactMap { workout -> CardioSuggestionHistory? in
+            guard workout.deletedAt == nil, workout.end != nil, workout.duration > 0 else {
+                return nil
+            }
+            let summary = workout.intensitySummary
+            let actualDuration = summary?.actualDuration ?? workout.duration
+            let intensity: RelativeIntensity
+            if let summary, summary.actualDuration > 0 {
+                let vigorousFraction = summary.vigorousDuration / summary.actualDuration
+                let moderateFraction = summary.moderateDuration / summary.actualDuration
+                if vigorousFraction >= 0.5 {
+                    intensity = .vigorous
+                } else if moderateFraction >= 0.5 {
+                    intensity = .moderate
+                } else {
+                    intensity = .light
+                }
+            } else {
+                intensity = .unknown
+            }
+            let moderateEquivalent = summary?.moderateEquivalentMinutes
+                ?? workout.duration / 60
+                    * ((workout.typeValue == .hiit || workout.typeValue == .boxing) ? 2 : 1)
+            return CardioSuggestionHistory(
+                type: workout.typeValue,
+                durationMinutes: actualDuration / 60,
+                moderateEquivalentMinutes: moderateEquivalent,
+                intensity: intensity,
+                isInterval: workout.intervalSummary != nil
+                    || workout.typeValue == .hiit
+                    || workout.typeValue == .boxing,
+                isIndoor: workout.typeValue.usesGPS ? workout.orderedRouteSamples.isEmpty : true,
+                start: workout.start)
+        }
+        let input = CardioSuggestionInput(
+            history: history,
+            weeklyModerateEquivalentMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,
+            weeklyTargetMinutes: dashboard.cardioDetail.targetMinutes,
+            experience: settings.experienceLevel,
+            asOf: Date())
+        presentSuggestedCardio(input)
+    }
+
     private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {
         if selectWorkoutPresented || weightsStartPresented || cardioPickerPresented {
             pendingSuggestedWorkoutRequest = request
@@ -150,16 +206,48 @@ extension HomeView {
         }
     }
 
+    private func presentSuggestedCardio(_ input: CardioSuggestionInput) {
+        if selectWorkoutPresented || weightsStartPresented || cardioPickerPresented {
+            pendingSuggestedCardioInput = input
+            selectWorkoutPresented = false
+            weightsStartPresented = false
+            cardioPickerPresented = false
+        } else {
+            generateAndOpenSuggestedCardio(input)
+        }
+    }
+
     /// Called from the originating sheet's `onDismiss`. This is the only place
     /// where a queued suggestion becomes presentable, so the old sheet and its
     /// NavigationStack are gone before the chooser is constructed.
     func presentPendingSuggestedWorkout() {
-        guard !selectWorkoutPresented,
-              !weightsStartPresented,
-              !cardioPickerPresented,
-              let request = pendingSuggestedWorkoutRequest else { return }
-        pendingSuggestedWorkoutRequest = nil
-        generateAndOpenPersonalizedWorkout(request)
+        guard !selectWorkoutPresented, !weightsStartPresented, !cardioPickerPresented else { return }
+        if let request = pendingSuggestedWorkoutRequest {
+            pendingSuggestedWorkoutRequest = nil
+            generateAndOpenPersonalizedWorkout(request)
+        } else if let input = pendingSuggestedCardioInput {
+            pendingSuggestedCardioInput = nil
+            generateAndOpenSuggestedCardio(input)
+        }
+    }
+
+    private func generateAndOpenSuggestedCardio(_ input: CardioSuggestionInput) {
+        guard !suggestedCardioCalculating else { return }
+        suggestedCardioCalculating = true
+        Task {
+            let suggestion = await Task.detached(priority: .userInitiated) {
+                CardioSuggestionGenerator.generate(input: input)
+            }.value
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                suggestedCardioCalculating = false
+                guard let suggestion else {
+                    suggestedCardioFailure = "No supported cardio history is available yet. Try again after recording a cardio workout."
+                    return
+                }
+                suggestedCardio = suggestion
+            }
+        }
     }
 
     private func generateAndOpenPersonalizedWorkout(_ request: SuggestedWorkoutRequest) {

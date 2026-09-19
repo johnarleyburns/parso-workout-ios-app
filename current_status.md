@@ -746,6 +746,26 @@ field-testable, Phase 2 is implementation-green and field-test ready but not
 formally closed until the two real-device validations pass, and the remaining
 work is field acceptance plus the final compatibility proof.
 
+## Cardio suggestions — 2026-09-19
+
+The first pushed audit slice is `64dc138` (`Harden navigation routes and audit
+field plan`). The follow-up cardio-suggestion slice is implemented locally and
+ready for its own commit: `Workout for You` now presents explicit Strength and
+Cardio choices; cardio generation uses a value-only snapshot of persisted
+cardio history plus the existing weekly moderate-equivalent dashboard; and the
+pure `CardioSuggestionGenerator` produces bounded, conservative, cited
+continuous sessions or gated intervals. Empty history falls back to an indoor
+Run starter, while the most recent supported cardio type is reused when
+history exists. The preview is explicit and routes continuous sessions through
+the existing timer setup or established intervals through the existing HR gate
+and interval runner. No DB++ or CloudKit schema change is required.
+
+The cardio plan and audit are in `CARDIO_SUGGESTION_PLAN.md`. Core tests,
+generic iOS build, `git diff --check`, and all non-simulator guardrails pass;
+the new single iPhone smoke test also covers modality choice, cold-start cardio
+generation, and preview cancellation. Remaining validation is the real-device
+field test, not another simulator run.
+
 ## Execution rules
 
 - Implement in phase and dependency order unless the spec explicitly identifies

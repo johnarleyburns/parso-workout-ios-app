@@ -7,7 +7,7 @@ struct WorkoutTypePicker: View {
     let onSelect: (WorkoutType) -> Void
     let onEditorStart: (EditablePlan) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
-    var onSuggestedWorkout: (() -> Void)? = nil
+    var onSuggestedWorkout: ((SuggestedWorkoutModality) -> Void)? = nil
     var types: [WorkoutType] = WorkoutType.allCases
     var title: String = "Start Workout"
     @Environment(\.dismiss) private var dismiss
@@ -24,9 +24,9 @@ struct WorkoutTypePicker: View {
                         case .weights:
                             NavigationLink {
                                 WeightsStartView(onEditorStart: onEditorStart,
-                                                 onSuggestedWorkout: {
-                                                    dismiss()
-                                                    onSuggestedWorkout?()
+                                                 onSuggestedWorkout: { modality in
+                                                     dismiss()
+                                                     onSuggestedWorkout?(modality)
                                                  })
                             } label: { WorkoutHero(type: type) }
                                 .buttonStyle(.plain)
@@ -67,7 +67,7 @@ struct WorkoutTypePicker: View {
 /// cardio keeps the existing downstream setup and recorder routes.
 struct SelectWorkoutView: View {
     let onQuickStart: () -> Void
-    let onSuggestedWorkout: () -> Void
+    let onSuggestedWorkout: (SuggestedWorkoutModality) -> Void
     let onEditorStart: (EditablePlan) -> Void
     let onSelect: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
@@ -123,7 +123,9 @@ struct SelectWorkoutView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("selectWorkout.quickStart")
 
-                Button(action: onSuggestedWorkout) {
+                NavigationLink {
+                    WorkoutForYouModalityView(onSelect: onSuggestedWorkout)
+                } label: {
                     workoutChoiceLabel("Workout for You", symbol: "wand.and.stars")
                 }
                 .buttonStyle(.plain)

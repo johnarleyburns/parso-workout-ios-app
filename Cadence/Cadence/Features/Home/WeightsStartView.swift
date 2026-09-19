@@ -5,7 +5,7 @@ import CadenceFeatures
 
 struct WeightsStartView: View {
     let onEditorStart: (EditablePlan) -> Void
-    let onSuggestedWorkout: () -> Void
+    let onSuggestedWorkout: (SuggestedWorkoutModality) -> Void
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(AppSettings.self) private var settings
@@ -17,7 +17,9 @@ struct WeightsStartView: View {
     var body: some View {
         List {
             Section {
-                Button(action: onSuggestedWorkout) {
+                NavigationLink {
+                    WorkoutForYouModalityView(onSelect: onSuggestedWorkout)
+                } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "wand.and.stars").font(.headline)
                         Text("Suggest a Workout")

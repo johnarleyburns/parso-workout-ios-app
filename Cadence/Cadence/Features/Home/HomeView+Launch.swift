@@ -58,6 +58,39 @@ extension HomeView {
         begin(gps ? .outdoor(.other) : .timer(.other))
     }
 
+    /// Starts a generated cardio recommendation through the same reviewed
+    /// setup/recorder surfaces used by manual cardio starts. A continuous
+    /// suggestion opens the timer setup with its recommended duration; an
+    /// established interval suggestion uses the existing interval runner.
+    func launchSuggestedCardio(_ suggestion: CardioSuggestion) {
+        if suggestion.isInterval,
+           let rounds = suggestion.intervalRounds,
+           let work = suggestion.intervalWorkSeconds,
+           let rest = suggestion.intervalRestSeconds {
+            let plan = IntervalPlan.custom(
+                name: "\(suggestion.type.displayName) for You",
+                warmup: TimeInterval(suggestion.warmupMinutes * 60),
+                rounds: rounds,
+                work: TimeInterval(work),
+                rest: TimeInterval(rest),
+                cooldown: TimeInterval(suggestion.cooldownMinutes * 60))
+            begin(.interval(IntervalLaunch(plan: plan,
+                                            saveType: suggestion.type,
+                                            captureHR: settings.useHRMonitoring)))
+            return
+        }
+
+        if suggestion.type == .swim {
+            guard acquireCardio(.swim(id: UUID())) else { return }
+            swimPresented = true
+            return
+        }
+
+        guard acquireCardio(.timerCardio(id: UUID(), type: suggestion.type)) else { return }
+        timerCardioSetup = TimerCardioSetup(type: suggestion.type,
+                                            suggestedMinutes: suggestion.durationMinutes)
+    }
+
     /// Presents the optional distance-goal chooser before a run/walk/cycle (batch 8).
     /// A fresh start clears any prior goal; the chooser sets it (or leaves it nil).
     func startOutdoorWithGoal(_ type: CardioType) {

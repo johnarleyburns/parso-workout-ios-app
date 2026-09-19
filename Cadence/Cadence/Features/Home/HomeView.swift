@@ -90,9 +90,13 @@ struct HomeView: View {
     @State var suggestionsExpanded = false
     @State var suggestedWorkoutCalculating = false
     @State var suggestedWorkoutFailure: String?
+    @State var suggestedCardioCalculating = false
+    @State var suggestedCardioFailure: String?
+    @State var suggestedCardio: CardioSuggestion?
     /// Holds a request until the start sheet that launched it has finished
     /// dismissing, then opens the generated Personalized plan directly.
     @State var pendingSuggestedWorkoutRequest: SuggestedWorkoutRequest?
+    @State var pendingSuggestedCardioInput: CardioSuggestionInput?
     @State var weeklyStrengthExpanded = false
     @State var weeklyCardioExpanded = false
     @State var weeklyVolumeExpanded = false

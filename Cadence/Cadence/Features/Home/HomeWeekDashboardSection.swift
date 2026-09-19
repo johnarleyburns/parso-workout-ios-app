@@ -19,7 +19,7 @@ struct HomeWeekDashboardSection: View {
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
     let onOpenCoachSettings: () -> Void
-    @State fileprivate var volumeWarningMessage: String?
+    @State var volumeWarningMessage: String?
     /// Keep selection as a small value instead of copying the full weekly history
     /// graph into SwiftUI state. The old `HomeMuscleHistory?` selection made every
     /// tap compare all exercise/set rows before the sheet could present.
@@ -84,8 +84,11 @@ struct HomeWeekDashboardSection: View {
             }
         }
         .onChange(of: weeklyVolumePerformers) { _, next in
-            if let selectedVolumePerformerKey,
-               next.contains(where: { $0.id == selectedVolumePerformerKey }) { return }
+            let currentKey = selectedVolumePerformerKey
+            let selectionStillExists = currentKey.map { key in
+                next.contains { performer in performer.id == key }
+            } ?? false
+            guard !selectionStillExists else { return }
             selectedVolumePerformerKey = next.first?.id
         }
     }

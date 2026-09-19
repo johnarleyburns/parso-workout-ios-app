@@ -4,7 +4,7 @@ import CadenceFeatures
 
 extension HomeView {
     @ViewBuilder
-    private var dashboardTopContent: some View {
+    var dashboardTopContent: some View {
         HStack {
             Text(headerDateText)
                 .font(.subheadline)
@@ -29,7 +29,7 @@ extension HomeView {
             onShowMorePlanned: { path.append(HomeRoute.plannedWorkouts) })
     }
 
-    private var dashboardWeekContent: some View {
+    var dashboardWeekContent: some View {
         HomeWeekDashboardSection(
             dashboard: dashboard,
             strengthExpanded: $weeklyStrengthExpanded,
@@ -50,7 +50,7 @@ extension HomeView {
     }
 
     @ViewBuilder
-    private var dashboardBottomContent: some View {
+    var dashboardBottomContent: some View {
         homeDetailDisclosure(
             title: "Observations",
             subtitle: dashboard.suggestions.isEmpty ? "No new suggestions" : "Coach guidance and rationale",

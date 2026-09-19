@@ -5,7 +5,7 @@ import CadenceFeatures
 extension HomeWeekDashboardSection {
     /// One muscle group's weekly sets. This is the resolution that answers
     /// "did I actually train my adductors this week?".
-    fileprivate func volumeRow(_ row: HomeDashboardState.VolumeRow) -> some View {
+    func volumeRow(_ row: HomeDashboardState.VolumeRow) -> some View {
         HStack(spacing: 10) {
             HStack(spacing: 4) {
                 if !row.isTracked {
@@ -41,11 +41,11 @@ extension HomeWeekDashboardSection {
         .accessibilityIdentifier("home.volume.\(row.group.rawValue)")
     }
 
-    fileprivate func formattedSets(_ sets: Double) -> String {
+    func formattedSets(_ sets: Double) -> String {
         sets.formatted(.number.precision(.fractionLength(sets.rounded() == sets ? 0 : 1)))
     }
 
-    fileprivate func volumeWarning(for row: HomeDashboardState.VolumeRow) -> String? {
+    func volumeWarning(for row: HomeDashboardState.VolumeRow) -> String? {
         switch row.zone {
         case .belowMinimum:
             let remaining = max(0, WeeklySetProgress.minimum - row.sets)
@@ -57,7 +57,7 @@ extension HomeWeekDashboardSection {
         }
     }
 
-    fileprivate func tint(for zone: WeeklySetZone) -> Color {
+    func tint(for zone: WeeklySetZone) -> Color {
         switch zone.tintRole {
         case .red: return .red
         case .yellow: return .yellow

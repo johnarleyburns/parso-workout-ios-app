@@ -8,6 +8,7 @@ import CadenceFeatures
 /// laps, then End to save. Deliberately minimal, per "just time and number of
 /// target laps, nothing complex."
 struct SwimRecordView: View {
+    var onSchedule: ((Date) async throws -> Void)? = nil
     /// Notifies the presenter (Home) the instant a workout is persisted, so its
     /// history-derived surfaces refresh without waiting for app re-entry.
     var onSaved: (CardioWorkout) -> Void = { _ in }
@@ -23,6 +24,7 @@ struct SwimRecordView: View {
     @State private var targetLaps = 20
     @State private var laps = 0
     @State private var finishedSummary: WorkoutSummaryData?
+    @State private var schedulePresented = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -48,6 +50,11 @@ struct SwimRecordView: View {
         .interactiveDismissDisabled(started)
         .keepAwake(started && finishedSummary == nil)
         .onReceive(tick) { now = $0 }
+        .sheet(isPresented: $schedulePresented) {
+            if let onSchedule {
+                ScheduleWorkoutSheet(title: "Swim", onSave: onSchedule)
+            }
+        }
     }
 
     private var setupScreen: some View {
@@ -72,6 +79,17 @@ struct SwimRecordView: View {
             }
             .cadenceGlassButton(prominent: true, tint: .blue)
             .accessibilityIdentifier("swim.start")
+            if onSchedule != nil {
+                Button {
+                    schedulePresented = true
+                } label: {
+                    Label("Schedule Swim", systemImage: "calendar.badge.plus")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, minHeight: 50)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("swim.schedule")
+            }
             Spacer()
         }
         .padding()

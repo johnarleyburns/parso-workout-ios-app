@@ -41,6 +41,7 @@ extension HomeView {
                 path = NavigationPath()
                 selectWorkoutPresented = false
                 weightsStartPresented = false
+                scheduleCardioType = nil
                 scheduledWorkoutBeingStarted = nil
             }
             .onReceive(NotificationCenter.default.publisher(for: .scheduledWorkoutStartRequested)) { note in
@@ -49,6 +50,17 @@ extension HomeView {
                 selectWorkoutPresented = false
                 weightsStartPresented = false
                 consumeScheduledWorkoutStart(request)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .scheduledCardioStartRequested)) { note in
+                guard let request = note.object as? ScheduledCardioStartRequest else { return }
+                guard active.liveWorkout.active == nil else {
+                    showWorkoutConflict = true
+                    return
+                }
+                path = NavigationPath()
+                selectWorkoutPresented = false
+                weightsStartPresented = false
+                start(WorkoutType(rawValue: request.type.rawValue) ?? .other)
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceStartTodaysWorkout)) { _ in
                 guard active.liveWorkout.active == nil else { return }

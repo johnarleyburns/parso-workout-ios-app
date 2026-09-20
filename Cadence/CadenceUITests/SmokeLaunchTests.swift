@@ -22,7 +22,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertEqual(app.state, .runningForeground,
                        "iPhone app terminated or failed to reach the foreground during cold launch")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 25),
                       "Home did not load")
         XCTAssertTrue(app.buttons["tab.today"].exists,
                       "Today is not exposed as the primary activity tab")
@@ -68,7 +68,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         }
         XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
                       "Returning to Today did not land on Today")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from More did not land on Home")
 
         // Progress is summary-first and keeps Tests behind its own disclosure;
@@ -87,7 +87,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Progress Tests disclosure did not collapse")
         XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
                       "Returning from Progress did not land on Today")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Today did not reload after Progress")
 
         // HIIT info must expose the exact expanded runner sequence. This stays
@@ -131,33 +131,33 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Tabata info sheet did not close")
         XCTAssertTrue(app.buttons["interval.cancel"].waitTap(timeout: 5),
                       "HIIT setup did not close")
-        XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitTap(timeout: 5),
-                      "Start Workout did not close after HIIT info")
+        // Start Workout is now inline on Today; closing the nested HIIT setup
+        // returns directly to the same surface, with no picker sheet to cancel.
 
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10),
                       "Coach card did not render on Home")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.moreActions"),
-                      "Home did not expose More actions")
-        XCTAssertTrue(app.buttons["home.scheduleWorkout"].waitForExistence(timeout: 5),
-                      "More actions did not expose Schedule Workout")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.scheduleWorkout"),
-                      "More actions Schedule Workout did not open the Workout Plan")
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
+                      "Start Workout did not expose more strength actions")
+        XCTAssertTrue(app.buttons["selectWorkout.schedule"].waitForExistence(timeout: 5),
+                      "Start Workout did not expose Schedule Workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.schedule"),
+                      "Start Workout Schedule Workout did not open the Workout Plan")
         XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
                       "More actions Schedule Workout did not open Workout Plan")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from More actions Schedule Workout did not land on Home")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.moreActions"),
-                      "Home did not reopen More actions")
-        XCTAssertTrue(app.buttons["home.logWorkout"].waitForExistence(timeout: 5),
-                      "Home did not show the previous-workout log action")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.logWorkout"),
-                      "More actions did not open Log Previous Workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
+                      "Start Workout did not reopen more strength actions")
+        XCTAssertTrue(app.buttons["selectWorkout.log"].waitForExistence(timeout: 5),
+                      "Start Workout did not show the log action")
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.log"),
+                      "Start Workout did not open Log Workout")
         XCTAssertTrue(app.navigationBars["Log Workout"].waitForExistence(timeout: 5),
                       "Log Previous Workout did not open the existing log flow")
         XCTAssertTrue(app.buttons["logType.cancel"].waitTap(timeout: 5),
                       "Log Previous Workout did not offer Cancel")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 5),
                       "Cancelling Log Previous Workout did not return Home")
         // Field test 2026-08-18 #9/#11: the Suggested Workout blurb is gone and the
         // CTA is a full-width sibling below the card, not a child of it.
@@ -286,8 +286,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertLessThanOrEqual(science.count, 3,
                                  "Coach surfaces render a separate science row per citation again")
 
-        XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
-                      "Home Start Workout did not open")
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Home inline Start Workout did not render")
 
         // Field test 2026-08-18 #3: the full-width strength actions are one height.
         let quick = app.buttons["selectWorkout.quickStart"]
@@ -418,7 +418,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Personalized scheduling sheet did not open")
         XCTAssertTrue(app.buttons["scheduleWorkout.save"].waitTap(timeout: 5),
                       "Personalized scheduling sheet did not save")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Personalized scheduling did not return Home")
         XCTAssertTrue(app.descendants(matching: .any)["home.myWorkouts"].waitForExistence(timeout: 10),
                       "Personalized scheduling did not render My Workouts")
@@ -433,11 +433,11 @@ final class SmokeLaunchTests: CadenceUITestCase {
                         .waitForExistence(timeout: 5),
                       "Starting the scheduled workout lost its exact exercise payload")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from the scheduled workout did not land on Home")
 
-        XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
-                      "Home Start Workout did not reopen after suggested workouts")
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Home inline Start Workout did not reopen after suggested workouts")
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.cardioChoices"),
                       "Start Workout did not reopen its cardio choices")
 
@@ -464,10 +464,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // Reopen at the top for the strength-flow steps that follow. Swiping
         // `scrollViews.firstMatch` is ambiguous while Home remains behind this
         // sheet and can move the covered dashboard instead of the picker.
-        XCTAssertTrue(app.buttons["selectWorkout.cancel"].waitTap(timeout: 5),
-                      "Start Workout lacks its Cancel action")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitTap(timeout: 10),
-                      "Home Start Workout did not reopen after taxonomy checks")
+        // The picker is inline, so taxonomy inspection does not require a
+        // sheet dismissal before returning to the strength controls.
 
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
                       "Start Workout did not offer the strength Show more disclosure")
@@ -555,7 +553,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Schedule Workout sheet did not open")
         XCTAssertTrue(app.buttons["scheduleWorkout.save"].waitTap(timeout: 5),
                       "Schedule Workout sheet did not save")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Saving a scheduled workout did not return Home")
         XCTAssertTrue(app.descendants(matching: .any)["home.myWorkouts"].waitForExistence(timeout: 10),
                       "Home did not render My Workouts")
@@ -566,7 +564,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.navigationBars["Planned Workouts"].waitForExistence(timeout: 10),
                       "My Workouts Show more did not open the Planned Workouts list")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from Planned Workouts did not land on Home")
 
         XCTAssertFalse(app.buttons["tab.plan"].exists,
@@ -675,7 +673,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Expanded summary exercise is missing the partner's per-performer row")
 
         XCTAssertTrue(app.buttons["summary.done"].waitTap(timeout: 10), "summary Done did not tap")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home did not return after summary")
 
         // Field test 2026-08-18 #6: the finished workout is a tappable My
@@ -719,7 +717,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.buttons["tab.thisWeek"].waitTap(timeout: 10),
                       "Could not return to This Week after full History")
-        XCTAssertFalse(app.buttons["home.startWorkout"].exists,
+        XCTAssertFalse(app.descendants(matching: .any)["home.startWorkout"].exists,
                        "This Week unexpectedly exposed the Today launchpad")
 
         // Field test 2026-08-20 issue 5: ending a cardio workout must stop the
@@ -731,8 +729,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // asserted here while the screen is in front of us).
         XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
                       "Could not return to Today for the cardio flow")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.startWorkout"),
-                      "Home Start Workout did not reopen for the cardio flow")
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Home inline Start Workout did not reopen for the cardio flow")
         XCTAssertTrue(app.scrollToHittableAndTap("startType.run"),
                       "Start Workout did not offer the Run cardio tile")
         XCTAssertTrue(app.scrollToHittableAndTap("goal.none"),
@@ -757,7 +755,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Cardio workout did not reach its summary")
         XCTAssertTrue(app.buttons["summary.done"].waitTap(timeout: 10),
                       "Cardio summary Done did not dismiss")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home did not return after the cardio summary")
         XCTAssertGreaterThan(app.watchStopCount(), stopsBeforeEnd,
                              "Ending the cardio workout did not stop the watch workout session")
@@ -770,7 +768,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         app.launch()
         XCTAssertEqual(app.state, .runningForeground,
                        "App did not relaunch after the workout was persisted")
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 15),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 15),
                       "Home did not load after relaunch")
         XCTAssertTrue(app.descendants(matching: .any)
                         .matching(NSPredicate(format: "identifier BEGINSWITH 'home.today.row.'"))

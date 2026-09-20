@@ -35,9 +35,9 @@ public struct MuscleMapCallout: Equatable, Hashable, Sendable, Identifiable {
     }
 }
 
-/// The map uses the original combined front/back SVG. The UI clips its exact
-/// left or right geometric half, so the illustration remains undistorted while
-/// every visible region has a corresponding label column on either side.
+/// The map uses exact left/right viewBox halves derived from the original
+/// combined front/back SVG. Each anchor is normalized within its selected half,
+/// and its side determines which outside label column owns the connector.
 public enum MuscleMapLayout {
     public static let sourceWidth = 406.99026
     public static let sourceHeight = 354.43411
@@ -47,33 +47,33 @@ public enum MuscleMapLayout {
 
     public static let callouts: [MuscleMapCallout] = [
         // Front-visible groups.
-        .init(group: .neck, panel: .front, anchorX: 0.50, anchorY: 0.18, side: .left),
-        .init(group: .shoulders, panel: .front, anchorX: 0.25, anchorY: 0.26, side: .left),
-        .init(group: .chest, panel: .front, anchorX: 0.50, anchorY: 0.32, side: .right),
-        .init(group: .biceps, panel: .front, anchorX: 0.20, anchorY: 0.40, side: .left),
-        .init(group: .forearms, panel: .front, anchorX: 0.18, anchorY: 0.51, side: .right),
-        .init(group: .abdominals, panel: .front, anchorX: 0.50, anchorY: 0.47, side: .right),
-        .init(group: .hipFlexors, panel: .front, anchorX: 0.38, anchorY: 0.57, side: .left),
-        .init(group: .abductors, panel: .front, anchorX: 0.22, anchorY: 0.62, side: .left),
-        .init(group: .adductors, panel: .front, anchorX: 0.70, anchorY: 0.62, side: .right),
-        .init(group: .quadriceps, panel: .front, anchorX: 0.42, anchorY: 0.68, side: .left),
-        .init(group: .tibialis, panel: .front, anchorX: 0.36, anchorY: 0.84, side: .left),
-        .init(group: .calves, panel: .front, anchorX: 0.68, anchorY: 0.85, side: .right),
+        .init(group: .neck, panel: .front, anchorX: 0.46, anchorY: 0.17, side: .left),
+        .init(group: .shoulders, panel: .front, anchorX: 0.32, anchorY: 0.23, side: .left),
+        .init(group: .biceps, panel: .front, anchorX: 0.29, anchorY: 0.34, side: .left),
+        .init(group: .hipFlexors, panel: .front, anchorX: 0.42, anchorY: 0.50, side: .left),
+        .init(group: .abductors, panel: .front, anchorX: 0.34, anchorY: 0.58, side: .left),
+        .init(group: .quadriceps, panel: .front, anchorX: 0.41, anchorY: 0.65, side: .left),
+        .init(group: .tibialis, panel: .front, anchorX: 0.43, anchorY: 0.80, side: .left),
+        .init(group: .chest, panel: .front, anchorX: 0.58, anchorY: 0.29, side: .right),
+        .init(group: .abdominals, panel: .front, anchorX: 0.58, anchorY: 0.39, side: .right),
+        .init(group: .forearms, panel: .front, anchorX: 0.72, anchorY: 0.46, side: .right),
+        .init(group: .adductors, panel: .front, anchorX: 0.58, anchorY: 0.57, side: .right),
+        .init(group: .calves, panel: .front, anchorX: 0.60, anchorY: 0.80, side: .right),
 
         // Back-visible groups.
-        .init(group: .neck, panel: .back, anchorX: 0.50, anchorY: 0.18, side: .left),
-        .init(group: .traps, panel: .back, anchorX: 0.50, anchorY: 0.25, side: .right),
-        .init(group: .shoulders, panel: .back, anchorX: 0.25, anchorY: 0.29, side: .left),
-        .init(group: .rotatorCuff, panel: .back, anchorX: 0.75, anchorY: 0.33, side: .right),
-        .init(group: .triceps, panel: .back, anchorX: 0.20, anchorY: 0.41, side: .left),
-        .init(group: .forearms, panel: .back, anchorX: 0.82, anchorY: 0.51, side: .right),
-        .init(group: .middleBack, panel: .back, anchorX: 0.50, anchorY: 0.36, side: .right),
-        .init(group: .lats, panel: .back, anchorX: 0.50, anchorY: 0.43, side: .left),
-        .init(group: .lowerBack, panel: .back, anchorX: 0.50, anchorY: 0.54, side: .right),
-        .init(group: .abductors, panel: .back, anchorX: 0.27, anchorY: 0.60, side: .left),
-        .init(group: .glutes, panel: .back, anchorX: 0.50, anchorY: 0.58, side: .right),
-        .init(group: .hamstrings, panel: .back, anchorX: 0.34, anchorY: 0.71, side: .left),
-        .init(group: .calves, panel: .back, anchorX: 0.68, anchorY: 0.87, side: .right)
+        .init(group: .neck, panel: .back, anchorX: 0.46, anchorY: 0.17, side: .left),
+        .init(group: .shoulders, panel: .back, anchorX: 0.34, anchorY: 0.24, side: .left),
+        .init(group: .triceps, panel: .back, anchorX: 0.30, anchorY: 0.35, side: .left),
+        .init(group: .lats, panel: .back, anchorX: 0.40, anchorY: 0.37, side: .left),
+        .init(group: .abductors, panel: .back, anchorX: 0.35, anchorY: 0.52, side: .left),
+        .init(group: .hamstrings, panel: .back, anchorX: 0.42, anchorY: 0.65, side: .left),
+        .init(group: .traps, panel: .back, anchorX: 0.56, anchorY: 0.24, side: .right),
+        .init(group: .rotatorCuff, panel: .back, anchorX: 0.66, anchorY: 0.29, side: .right),
+        .init(group: .middleBack, panel: .back, anchorX: 0.56, anchorY: 0.34, side: .right),
+        .init(group: .forearms, panel: .back, anchorX: 0.70, anchorY: 0.45, side: .right),
+        .init(group: .lowerBack, panel: .back, anchorX: 0.56, anchorY: 0.46, side: .right),
+        .init(group: .glutes, panel: .back, anchorX: 0.56, anchorY: 0.51, side: .right),
+        .init(group: .calves, panel: .back, anchorX: 0.60, anchorY: 0.81, side: .right)
     ]
 
     public static func callouts(for panel: MuscleMapPanel) -> [MuscleMapCallout] {

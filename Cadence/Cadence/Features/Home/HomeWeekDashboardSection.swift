@@ -118,10 +118,6 @@ struct HomeWeekDashboardSection: View {
 
     private var volumeDetail: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Volume")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
-                .accessibilityIdentifier("home.week.volumeHeading")
             HStack(spacing: 8) {
                 legendItem("Below", color: .blue)
                 legendItem("Building", color: .yellow)
@@ -132,6 +128,7 @@ struct HomeWeekDashboardSection: View {
             .foregroundStyle(.secondary)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Muscle volume legend: below, building, productive, and above maximum")
+            .accessibilityIdentifier("home.week.volumeHeading")
             if weeklyVolumePerformers.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -353,23 +350,19 @@ struct HomeWeekDashboardSection: View {
 
     @ViewBuilder
     private func workoutGroup(title: String, entries: [TodayActivityPresenter.Entry]) -> some View {
-        Text(title)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(title == "Strength" ? .green : .teal)
-            .accessibilityIdentifier("home.week.group.\(title.lowercased())")
-
-        if entries.isEmpty {
-            Text("No \(title.lowercased()) workouts this week.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        } else {
-            VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
+            if entries.isEmpty {
+                Text("No \(title.lowercased()) workouts this week.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                     if index > 0 { Divider().padding(.leading, 40) }
                     HomeWeekWorkoutRow(entry: entry) { onOpenWorkout(entry) }
                 }
             }
         }
+        .accessibilityIdentifier("home.week.group.\(title.lowercased())")
     }
 
 }

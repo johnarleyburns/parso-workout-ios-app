@@ -41,6 +41,26 @@ final class ScheduledWorkoutTests: XCTestCase {
         XCTAssertEqual(decoded.exercises.first?.performerPlans.first?.sets.first?.targetWeight, 20.5)
     }
 
+    func testCardioScheduleRoundTripPreservesTypeAndTime() throws {
+        let container = try CadenceStore.makeModelContainer(inMemory: true)
+        let context = ModelContext(container)
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        let date = now.addingTimeInterval(86_400)
+
+        let record = try ScheduledWorkoutStore.schedule(cardioType: .run,
+                                                         for: date,
+                                                         now: now,
+                                                         in: context)
+
+        XCTAssertEqual(record.title, "Run")
+        XCTAssertEqual(try ScheduledWorkoutStore.decodeCardioType(
+            record.payloadData, version: record.payloadVersion), .run)
+        XCTAssertThrowsError(try ScheduledWorkoutStore.decode(
+            record.payloadData, version: record.payloadVersion)) { error in
+            XCTAssertEqual(error as? ScheduledWorkoutStoreError, .notACardioPayload)
+        }
+    }
+
     func testSchedulingPreservesTimeAndDuplicateSameDayRecordsRemainDeterministic() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let context = ModelContext(container)
@@ -48,15 +68,17 @@ final class ScheduledWorkoutTests: XCTestCase {
         calendar.timeZone = TimeZone(identifier: "America/Chicago")!
         let noon = calendar.date(from: DateComponents(year: 2026, month: 9, day: 20,
                                                        hour: 12, minute: 30))!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 9, day: 20,
+                                                      hour: 9))!
         let plan = EditablePlan(title: "Custom Workout", warmupMinutes: 0,
                                 cooldownMinutes: 0, exercises: [])
 
         let first = try ScheduledWorkoutStore.schedule(plan: plan, for: noon,
-                                                        calendar: calendar, in: context)
+                                                        calendar: calendar, now: now, in: context)
         let second = try ScheduledWorkoutStore.schedule(
             plan: EditablePlan(title: "Evening Workout", warmupMinutes: 0,
                                cooldownMinutes: 0, exercises: []),
-            for: noon.addingTimeInterval(3600), calendar: calendar, in: context)
+            for: noon.addingTimeInterval(3600), calendar: calendar, now: now, in: context)
 
         XCTAssertEqual(first.scheduledDate, ScheduledWorkoutDate.normalize(noon, calendar: calendar))
         XCTAssertEqual(first.scheduledDayKey, "2026-09-20")

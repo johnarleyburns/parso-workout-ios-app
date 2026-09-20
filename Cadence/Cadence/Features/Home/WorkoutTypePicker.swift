@@ -69,9 +69,13 @@ struct SelectWorkoutView: View {
     let onQuickStart: () -> Void
     let onSuggestedWorkout: (SuggestedWorkoutModality) -> Void
     let onEditorStart: (EditablePlan) -> Void
+    let onScheduleStrength: () -> Void
+    let onLogWorkout: () -> Void
+    let onScheduleCardio: (WorkoutType) -> Void
     let onSelect: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     var recentCardioTypes: [WorkoutType] = []
+    var inline = false
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
     @State private var cardioChoicesExpanded = false
@@ -92,22 +96,36 @@ struct SelectWorkoutView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                    strengthCard
-                    cardioCard
-                }
-                .padding(CGFloat(LayoutMetrics.pagePadding))
+        if inline {
+            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
+                Text("Start Workout")
+                    .font(.headline)
+                    .accessibilityIdentifier("home.startWorkout.title")
+                optionsContent
             }
-            .navigationTitle("Start Workout")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .accessibilityIdentifier("selectWorkout.cancel")
+            .accessibilityIdentifier("home.startWorkout")
+        } else {
+            NavigationStack {
+                ScrollView {
+                    optionsContent
+                        .padding(CGFloat(LayoutMetrics.pagePadding))
+                }
+                .navigationTitle("Start Workout")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
+                            .accessibilityIdentifier("selectWorkout.cancel")
+                    }
                 }
             }
+        }
+    }
+
+    private var optionsContent: some View {
+        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
+            strengthCard
+            cardioCard
         }
     }
 
@@ -147,6 +165,18 @@ struct SelectWorkoutView: View {
                 .accessibilityIdentifier("selectWorkout.moreStrength")
 
                 if moreStrengthExpanded {
+                    Button(action: onScheduleStrength) {
+                        workoutChoiceLabel("Schedule Workout", symbol: "calendar.badge.plus")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("selectWorkout.schedule")
+
+                    Button(action: onLogWorkout) {
+                        workoutChoiceLabel("Log Workout", symbol: "square.and.pencil")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("selectWorkout.log")
+
                     NavigationLink {
                         WorkoutPlanEditor(
                             plan: .empty(warmup: settings.warmupMinutes,
@@ -190,13 +220,7 @@ struct SelectWorkoutView: View {
             }
             LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(initialCardioTypes) { type in
-                        Button { onSelect(type) } label: {
-                            WorkoutHero(type: type, compact: true)
-                        }
-                        .buttonStyle(.plain)
-                        .tapHaptic()
-                        .accessibilityIdentifier("startType.\(type.rawValue)")
-                        .accessibilityLabel(type.displayName)
+                        cardioChoice(type)
                     }
             }
             Button {
@@ -219,23 +243,47 @@ struct SelectWorkoutView: View {
             if cardioChoicesExpanded {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(additionalCardioTypes) { type in
-                            Button { onSelect(type) } label: { WorkoutHero(type: type, compact: true) }
-                                .buttonStyle(.plain).tapHaptic()
-                                .accessibilityIdentifier("startType.\(type.rawValue)")
-                                .accessibilityLabel(type.displayName)
+                            cardioChoice(type)
                         }
-                        NavigationLink { OtherCardioEntryView(onStart: onOtherCardio) } label: {
-                            WorkoutHero(type: .other, compact: true)
+                        VStack(spacing: 4) {
+                            NavigationLink { OtherCardioEntryView(onStart: onOtherCardio) } label: {
+                                WorkoutHero(type: .other, compact: true)
+                            }
+                            .buttonStyle(.plain).tapHaptic()
+                            .accessibilityIdentifier("startType.other")
+                            .accessibilityLabel("Other Cardio")
+                            Button("Schedule Other") { onScheduleCardio(.other) }
+                                .font(.caption.weight(.semibold))
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.tint)
+                                .accessibilityIdentifier("scheduleType.other")
                         }
-                        .buttonStyle(.plain).tapHaptic()
-                        .accessibilityIdentifier("startType.other")
-                        .accessibilityLabel("Other Cardio")
                     }
             }
         }
         .padding(CGFloat(LayoutMetrics.cardPadding))
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .blue)
+    }
+
+    private func cardioChoice(_ type: WorkoutType) -> some View {
+        VStack(spacing: 4) {
+            Button { onSelect(type) } label: {
+                WorkoutHero(type: type, compact: true)
+            }
+            .buttonStyle(.plain)
+            .tapHaptic()
+            .accessibilityIdentifier("startType.\(type.rawValue)")
+            .accessibilityLabel(type.displayName)
+
+            Button("Schedule \(type.displayName)") {
+                onScheduleCardio(type)
+            }
+            .font(.caption.weight(.semibold))
+            .buttonStyle(.plain)
+            .foregroundStyle(.tint)
+            .accessibilityIdentifier("scheduleType.\(type.rawValue)")
+        }
     }
 
     /// Geometry comes from `cadenceActionLabel()` so these match Home's

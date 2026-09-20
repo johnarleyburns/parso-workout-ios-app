@@ -57,7 +57,7 @@ final class AppStoreScreenshotsUITests: CadenceUITestCase {
 
         let plannedApp = launchSeededApp(["coachCyclePreference"])
         XCTAssertFalse(plannedApp.buttons["tab.plan"].exists, "retired Plan tab is visible")
-        XCTAssertTrue(plannedApp.buttons["home.startWorkout"].waitForExistence(timeout: 10),
+        XCTAssertTrue(plannedApp.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home screen")
         try capture("07-home-planning-retired", app: plannedApp)
 
@@ -80,7 +80,7 @@ final class AppStoreScreenshotsUITests: CadenceUITestCase {
 
     private func launchSeededApp(_ seeds: [String]) -> XCUIApplication {
         let app = XCUIApplication.launched(seeds: seeds, extraArgs: ["-todaySteps", "9200"])
-        XCTAssertTrue(app.buttons["home.startWorkout"].waitForExistence(timeout: 25),
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 25),
                       "Home should load for seeds: \(seeds.joined(separator: ", "))")
         return app
     }

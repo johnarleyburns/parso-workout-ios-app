@@ -5,6 +5,7 @@ import CadenceFeatures
 struct IntervalSetupView: View {
     let type: WorkoutType
     let onSelect: (IntervalPlan) -> Void
+    let onSchedule: ((Date) async throws -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
@@ -23,10 +24,14 @@ struct IntervalSetupView: View {
     @State private var intervalColorBlind: Bool
     @State private var spokenCues: Bool
     @State private var useHR: Bool
+    @State private var schedulePresented = false
 
-    init(type: WorkoutType, onSelect: @escaping (IntervalPlan) -> Void) {
+    init(type: WorkoutType,
+         onSchedule: ((Date) async throws -> Void)? = nil,
+         onSelect: @escaping (IntervalPlan) -> Void) {
         self.type = type
         self.onSelect = onSelect
+        self.onSchedule = onSchedule
         if type == .boxing {
             _rounds = State(initialValue: 8)
             _workSec = State(initialValue: 180)
@@ -137,6 +142,20 @@ struct IntervalSetupView: View {
                 .cadenceGlassButton(prominent: true, tint: .green)
                 .padding()
                 .accessibilityIdentifier("interval.start")
+
+                if onSchedule != nil {
+                    Button {
+                        schedulePresented = true
+                    } label: {
+                        Label("Schedule \(type.displayName)", systemImage: "calendar.badge.plus")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 50)
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                    .accessibilityIdentifier("interval.schedule")
+                }
             }
             .navigationTitle(type.displayName)
             .navigationBarTitleDisplayMode(.inline)
@@ -151,6 +170,11 @@ struct IntervalSetupView: View {
             .onAppear {
                 loadSettings()
                 if selectedID.isEmpty, !presets.isEmpty { selectedID = presets[0].id }
+            }
+            .sheet(isPresented: $schedulePresented) {
+                if let onSchedule {
+                    ScheduleWorkoutSheet(title: type.displayName, onSave: onSchedule)
+                }
             }
         }
     }

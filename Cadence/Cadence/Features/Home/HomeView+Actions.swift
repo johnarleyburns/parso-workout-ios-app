@@ -34,6 +34,15 @@ extension HomeView {
     }
 
     func startScheduledWorkout(_ record: ScheduledWorkout) {
+        if let cardio = try? ScheduledWorkoutStore.decodeCardioType(record.payloadData,
+                                                                    version: record.payloadVersion) {
+            guard active.liveWorkout.active == nil else {
+                showWorkoutConflict = true
+                return
+            }
+            start(WorkoutType(rawValue: cardio.rawValue) ?? .other)
+            return
+        }
         guard let plan = try? ScheduledWorkoutStore.decode(record.payloadData,
                                                            version: record.payloadVersion) else {
             routeFailure = .scheduledWorkout(record.id)
@@ -48,6 +57,15 @@ extension HomeView {
         }
         scheduledWorkoutBeingStarted = record.id
         workoutEditorPlan = plan
+    }
+
+    func scheduleCardioWorkout(_ type: WorkoutType, for date: Date) throws {
+        guard let cardioType = type.cardioType else { return }
+        _ = try ScheduledWorkoutStore.schedule(cardioType: cardioType,
+                                               title: type.displayName,
+                                               for: date,
+                                               in: context)
+        NotificationCenter.default.post(name: .scheduledWorkoutCreated, object: nil)
     }
 
     func retryRouteFailure(_ failure: HomeRouteFailure) {
@@ -90,53 +108,6 @@ extension HomeView {
             if inserted > 0 { markWorkoutHistoryChanged() }
         } catch {
             model.healthSyncStatus = .failed(error.localizedDescription)
-        }
-    }
-    var homeActionRow: some View {
-        VStack(spacing: CGFloat(LayoutMetrics.actionButtonSpacing)) {
-            CadenceActionButton(title: "Start Workout", systemImage: "play.fill") {
-                Haptics.selection()
-                if active.liveWorkout.active != nil { showWorkoutConflict = true } else { selectWorkoutPresented = true }
-            }
-            .accessibilityIdentifier("home.startWorkout")
-            Button {
-                Haptics.selection()
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    homeActionsExpanded.toggle()
-                }
-            } label: {
-                HStack {
-                    Text(homeActionsExpanded ? "Hide more actions" : "More actions")
-                    Spacer()
-                    Image(systemName: homeActionsExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption.weight(.semibold))
-                }
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.tint)
-            .accessibilityIdentifier("home.moreActions")
-
-            if homeActionsExpanded {
-                CadenceActionButton(title: "Schedule Workout",
-                                    systemImage: "calendar.badge.plus",
-                                    emphasis: .secondary) {
-                    Haptics.selection()
-                    workoutEditorPlan = .empty(warmup: settings.warmupMinutes,
-                                                cooldown: settings.cooldownMinutes)
-                }
-                .accessibilityIdentifier("home.scheduleWorkout")
-
-                CadenceActionButton(title: "Log Previous Workout",
-                                    systemImage: "square.and.pencil",
-                                    emphasis: .secondary) {
-                    Haptics.selection()
-                    logPickerPresented = true
-                }
-                .accessibilityIdentifier("home.logWorkout")
-            }
         }
     }
     /// Workouts completed today; coach recommendations stay in the coach and

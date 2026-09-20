@@ -91,8 +91,11 @@ struct HomePlannedWorkoutsSection: View {
         let time = ScheduledWorkoutDate.hasExplicitTime(input.date)
             ? input.date.formatted(date: .omitted, time: .shortened)
             : nil
-        if let plan = try? ScheduledWorkoutStore.decode(input.payloadData,
-                                                        version: input.payloadVersion) {
+        if let cardio = try? ScheduledWorkoutStore.decodeCardioType(input.payloadData,
+                                                                    version: input.payloadVersion) {
+            detail = [time, cardio.displayName].compactMap { $0 }.joined(separator: " · ")
+        } else if let plan = try? ScheduledWorkoutStore.decode(input.payloadData,
+                                                               version: input.payloadVersion) {
             let sets = plan.exercises.reduce(0) { $0 + $1.sets.count }
             let body = "\(plan.exercises.count) exercise\(plan.exercises.count == 1 ? "" : "s") · \(sets) sets"
             detail = [time, body].compactMap { $0 }.joined(separator: " · ")
@@ -213,12 +216,19 @@ struct PlannedWorkoutsListView: View {
     }
 
     private func start(_ record: ScheduledWorkout) {
+        failedStartRecordID = nil
+        if let cardio = try? ScheduledWorkoutStore.decodeCardioType(record.payloadData,
+                                                                    version: record.payloadVersion) {
+            NotificationCenter.default.post(
+                name: .scheduledCardioStartRequested,
+                object: ScheduledCardioStartRequest(recordID: record.id, type: cardio))
+            return
+        }
         guard let plan = try? ScheduledWorkoutStore.decode(record.payloadData,
                                                            version: record.payloadVersion) else {
             failedStartRecordID = record.id
             return
         }
-        failedStartRecordID = nil
         NotificationCenter.default.post(
             name: .scheduledWorkoutStartRequested,
             object: ScheduledWorkoutStartRequest(recordID: record.id, plan: plan))
@@ -230,6 +240,12 @@ struct ScheduledWorkoutStartRequest {
     let plan: EditablePlan
 }
 
+struct ScheduledCardioStartRequest {
+    let recordID: UUID
+    let type: CardioType
+}
+
 extension Notification.Name {
     static let scheduledWorkoutStartRequested = Notification.Name("scheduledWorkout.startRequested")
+    static let scheduledCardioStartRequested = Notification.Name("scheduledCardio.startRequested")
 }

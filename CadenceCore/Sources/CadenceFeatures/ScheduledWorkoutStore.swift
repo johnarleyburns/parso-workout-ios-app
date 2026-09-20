@@ -69,10 +69,14 @@ public struct ScheduledWorkoutPayload: Codable, Equatable, Sendable {
     /// workout keeps its selected style when it is started or rescheduled.
     /// Optional for payloads written before this field existed.
     public var suggestedWorkoutStyleRaw: String?
+    /// Set for a scheduled cardio start. Strength schedules continue to use
+    /// `exercises`; keeping this additive preserves existing payloads.
+    public var cardioTypeRaw: String?
 
     public init(title: String, warmupMinutes: Int, cooldownMinutes: Int,
                 exercises: [Exercise], partnerIDs: [UUID], source: Source,
-                suggestedWorkoutStyleRaw: String? = nil) {
+                suggestedWorkoutStyleRaw: String? = nil,
+                cardioTypeRaw: String? = nil) {
         self.title = title
         self.warmupMinutes = warmupMinutes
         self.cooldownMinutes = cooldownMinutes
@@ -80,6 +84,7 @@ public struct ScheduledWorkoutPayload: Codable, Equatable, Sendable {
         self.partnerIDs = partnerIDs
         self.source = source
         self.suggestedWorkoutStyleRaw = suggestedWorkoutStyleRaw
+        self.cardioTypeRaw = cardioTypeRaw
     }
 
     public init(plan: EditablePlan) {
@@ -123,6 +128,16 @@ public struct ScheduledWorkoutPayload: Codable, Equatable, Sendable {
             suggestedWorkoutStyleRaw: plan.suggestedWorkoutStyle?.rawValue)
     }
 
+    public init(cardioType: CardioType, title: String? = nil) {
+        self.init(title: title ?? cardioType.displayName,
+                  warmupMinutes: 0,
+                  cooldownMinutes: 0,
+                  exercises: [],
+                  partnerIDs: [],
+                  source: .custom,
+                  cardioTypeRaw: cardioType.rawValue)
+    }
+
     public func editablePlan() -> EditablePlan {
         EditablePlan(
             title: title,
@@ -146,6 +161,11 @@ public struct ScheduledWorkoutPayload: Codable, Equatable, Sendable {
                 ?? (source == .personalized ? .fitness : nil))
     }
 
+    public func cardioType() -> CardioType? {
+        guard let cardioTypeRaw else { return nil }
+        return CardioType(rawValue: cardioTypeRaw)
+    }
+
     private static func editableSet(_ set: Set) -> EditableSet {
         EditableSet(
             targetReps: set.targetReps,
@@ -162,11 +182,53 @@ public enum ScheduledWorkoutStore {
         try JSONEncoder().encode(ScheduledWorkoutPayload(plan: plan))
     }
 
+    public static func encode(cardioType: CardioType, title: String? = nil) throws -> Data {
+        try JSONEncoder().encode(ScheduledWorkoutPayload(cardioType: cardioType, title: title))
+    }
+
     public static func decode(_ data: Data, version: Int) throws -> EditablePlan {
         guard version == currentPayloadVersion else {
             throw ScheduledWorkoutStoreError.unsupportedPayloadVersion(version)
         }
-        return try JSONDecoder().decode(ScheduledWorkoutPayload.self, from: data).editablePlan()
+        let payload = try JSONDecoder().decode(ScheduledWorkoutPayload.self, from: data)
+        guard payload.cardioType() == nil else {
+            throw ScheduledWorkoutStoreError.notACardioPayload
+        }
+        return payload.editablePlan()
+    }
+
+    public static func decodeCardioType(_ data: Data, version: Int) throws -> CardioType {
+        guard version == currentPayloadVersion else {
+            throw ScheduledWorkoutStoreError.unsupportedPayloadVersion(version)
+        }
+        guard let type = try JSONDecoder().decode(ScheduledWorkoutPayload.self, from: data).cardioType() else {
+            throw ScheduledWorkoutStoreError.notACardioPayload
+        }
+        return type
+    }
+
+    @discardableResult
+    public static func schedule(cardioType: CardioType, title: String? = nil, for date: Date,
+                                calendar: Calendar = .current,
+                                originDevice: String = "iphone",
+                                now: Date = Date(),
+                                in context: ModelContext) throws -> ScheduledWorkout {
+        let normalized = ScheduledWorkoutDate.normalize(date, calendar: calendar)
+        guard normalized >= ScheduledWorkoutDate.normalize(now, calendar: calendar) else {
+            throw ScheduledWorkoutStoreError.dateMustBeTodayOrFuture
+        }
+        let displayTitle = title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let record = ScheduledWorkout(
+            scheduledDate: normalized,
+            scheduledDayKey: ScheduledWorkoutDate.dayKey(normalized, calendar: calendar),
+            timeZoneIdentifier: calendar.timeZone.identifier,
+            title: displayTitle.flatMap { $0.isEmpty ? nil : $0 } ?? cardioType.displayName,
+            payloadData: try encode(cardioType: cardioType, title: displayTitle),
+            payloadVersion: currentPayloadVersion,
+            originDevice: originDevice)
+        context.insert(record)
+        try context.save()
+        return record
     }
 
     @discardableResult
@@ -278,6 +340,7 @@ public enum ScheduledWorkoutStore {
 public enum ScheduledWorkoutStoreError: Error, Equatable, Sendable {
     case unsupportedPayloadVersion(Int)
     case dateMustBeTodayOrFuture
+    case notACardioPayload
 }
 
 extension ScheduledWorkoutStoreError: LocalizedError {
@@ -287,6 +350,8 @@ extension ScheduledWorkoutStoreError: LocalizedError {
             return "This workout was saved by an unsupported version (payload \(version))."
         case .dateMustBeTodayOrFuture:
             return "Choose today or a future date for a planned workout."
+        case .notACardioPayload:
+            return "This scheduled item is not a cardio workout."
         }
     }
 }

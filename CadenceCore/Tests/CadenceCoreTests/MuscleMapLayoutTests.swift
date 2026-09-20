@@ -13,6 +13,12 @@ final class MuscleMapLayoutTests: XCTestCase {
         for callout in MuscleMapLayout.callouts {
             XCTAssertTrue((0...1).contains(callout.anchorX), callout.id)
             XCTAssertTrue((0...1).contains(callout.anchorY), callout.id)
+            switch callout.side {
+            case .left:
+                XCTAssertLessThan(callout.anchorX, 0.5, callout.id)
+            case .right:
+                XCTAssertGreaterThan(callout.anchorX, 0.5, callout.id)
+            }
         }
     }
 

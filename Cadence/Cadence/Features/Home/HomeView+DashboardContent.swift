@@ -19,7 +19,22 @@ extension HomeView {
             }
         }
         if let s = resumeSession { resumeCard(s) }
-        homeActionRow
+        SelectWorkoutView(
+            onQuickStart: { startQuickStartStrength() },
+            onSuggestedWorkout: { requestSuggestedWorkout($0) },
+            onEditorStart: { handleEditorStart($0) },
+            onScheduleStrength: {
+                workoutEditorPlan = .empty(warmup: settings.warmupMinutes,
+                                            cooldown: settings.cooldownMinutes)
+            },
+            onLogWorkout: { logPickerPresented = true },
+            onScheduleCardio: { scheduleCardioType = $0 },
+            onSelect: { start($0) },
+            onOtherCardio: { description, gps in
+                startOtherCardio(description: description, gps: gps)
+            },
+            recentCardioTypes: recentCardioTypes,
+            inline: true)
         HomeMyWorkoutsSection(
             completed: workoutsTodayRows,
             scheduled: scheduledWorkouts,

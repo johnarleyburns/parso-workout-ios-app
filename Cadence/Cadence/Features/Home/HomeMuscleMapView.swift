@@ -115,15 +115,20 @@ private struct MuscleMapSideView: View {
     private var rightCallouts: [MuscleMapCallout] {
         callouts.filter { $0.side == .right }
     }
-    private var columnHeight: CGFloat {
-        let rows = max(leftCallouts.count, rightCallouts.count)
+    private func columnHeight(for callouts: [MuscleMapCallout]) -> CGFloat {
+        let rows = callouts.count
         return CGFloat(rows) * rowHeight + CGFloat(max(0, rows - 1)) * rowSpacing
+    }
+    private var columnHeight: CGFloat {
+        max(columnHeight(for: leftCallouts), columnHeight(for: rightCallouts))
     }
     private var contentHeight: CGFloat {
         max(imageHeight, columnHeight)
     }
     private var canvasWidth: CGFloat { labelWidth * 2 + imageWidth + 8 }
-    private var columnTop: CGFloat { (contentHeight - columnHeight) / 2 }
+    private func columnTop(for callouts: [MuscleMapCallout]) -> CGFloat {
+        (contentHeight - columnHeight(for: callouts)) / 2
+    }
 
     var body: some View {
         VStack(spacing: 3) {
@@ -176,7 +181,7 @@ private struct MuscleMapSideView: View {
                 .accessibilityIdentifier("home.week.muscle.\(callout.panel.rawValue).\(callout.group.rawValue)")
             }
         }
-        .frame(width: labelWidth, height: columnHeight, alignment: .center)
+        .frame(width: labelWidth, height: columnHeight(for: callouts), alignment: .center)
     }
 
     private var image: some View {
@@ -184,10 +189,10 @@ private struct MuscleMapSideView: View {
             Color.black.opacity(0.04)
             Image("MusclesFrontBack")
                 .resizable()
-                // This is the original combined SVG: front is its exact left
-                // half and back is its exact right half. The explicit source
-                // ratio prevents SwiftUI from distorting the SVG before the
-                // half is clipped.
+                // Xcode's SVG asset importer can mis-render an SVG whose
+                // viewBox starts at a non-zero x coordinate. Keep the original
+                // combined source asset and fit it to its native full ratio,
+                // then crop exactly one half in this fixed-size viewport.
                 .aspectRatio(CGFloat(MuscleMapLayout.sourceRatio), contentMode: .fit)
                 .frame(width: imageWidth * 2, height: imageHeight)
                 .offset(x: panel == .front ? 0 : -imageWidth)
@@ -220,13 +225,13 @@ private struct MuscleMapSideView: View {
             let imageOriginY = (contentHeight - imageHeight) / 2
             for (index, callout) in leftCallouts.enumerated() {
                 drawConnector(context: &context, callout: callout,
-                              rowY: columnTop + CGFloat(index) * (rowHeight + rowSpacing) + rowHeight / 2,
+                              rowY: columnTop(for: leftCallouts) + CGFloat(index) * (rowHeight + rowSpacing) + rowHeight / 2,
                               imageOriginX: imageOriginX, imageOriginY: imageOriginY,
                               startX: labelWidth)
             }
             for (index, callout) in rightCallouts.enumerated() {
                 drawConnector(context: &context, callout: callout,
-                              rowY: columnTop + CGFloat(index) * (rowHeight + rowSpacing) + rowHeight / 2,
+                              rowY: columnTop(for: rightCallouts) + CGFloat(index) * (rowHeight + rowSpacing) + rowHeight / 2,
                               imageOriginX: imageOriginX, imageOriginY: imageOriginY,
                               startX: labelWidth + 4 + imageWidth + 4)
             }

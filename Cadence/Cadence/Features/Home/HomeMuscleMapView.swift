@@ -14,10 +14,20 @@ struct HomeMuscleMapView: View {
             Text("Muscle map")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.orange)
-            HStack(spacing: 16) {
-                panelOption(.front)
-                panelOption(.back)
+            HStack(spacing: 0) {
+                panelSegment(.front)
+                Rectangle()
+                    .fill(Color.secondary.opacity(0.28))
+                    .frame(width: 1, height: 18)
+                    .accessibilityHidden(true)
+                panelSegment(.back)
             }
+            .padding(3)
+            .background(.thinMaterial, in: Capsule())
+            .overlay {
+                Capsule().stroke(Color.secondary.opacity(0.20), lineWidth: 1)
+            }
+            .frame(maxWidth: .infinity)
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Muscle map view")
             MuscleMapSideView(
@@ -44,23 +54,23 @@ struct HomeMuscleMapView: View {
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
-    private func panelOption(_ panel: MuscleMapPanel) -> some View {
+    private func panelSegment(_ panel: MuscleMapPanel) -> some View {
         let selected = selectedPanel == panel
         return Button {
             guard selectedPanel != panel else { return }
             Haptics.selection()
             selectedPanel = panel
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                    .font(.subheadline)
-                Text(panel == .front ? "Front" : "Back")
-                    .font(.caption.weight(.semibold))
-            }
-            .foregroundStyle(selected ? Color.accentColor : .secondary)
-            .contentShape(Rectangle())
+            Text(panel == .front ? "Front" : "Back")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(selected ? Color.accentColor : .secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(selected ? Color.accentColor.opacity(0.16) : .clear,
+                            in: Capsule())
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("home.week.muscleMap.\(panel.rawValue)")
         .accessibilityLabel(panel == .front ? "Front" : "Back")
@@ -93,20 +103,20 @@ private struct MuscleMapSideView: View {
     // The selected half is shown at a useful portrait size, with a label column
     // on each side. This is intentionally still compact enough for the narrowest
     // supported iPhone while leaving every callout tappable.
-    private let labelWidth: CGFloat = 82
-    private let imageWidth: CGFloat = 132
-    private let rowHeight: CGFloat = 44
+    private let labelWidth: CGFloat = 84
+    private let imageWidth: CGFloat = 128
+    private let rowHeight: CGFloat = 36
     private let rowSpacing: CGFloat = 3
 
     private var imageHeight: CGFloat { imageWidth / CGFloat(MuscleMapLayout.halfRatio) }
     private var leftCallouts: [MuscleMapCallout] {
-        callouts.enumerated().compactMap { index, callout in index.isMultiple(of: 2) ? callout : nil }
+        callouts.filter { $0.side == .left }
     }
     private var rightCallouts: [MuscleMapCallout] {
-        callouts.enumerated().compactMap { index, callout in index.isMultiple(of: 2) ? nil : callout }
+        callouts.filter { $0.side == .right }
     }
     private var columnHeight: CGFloat {
-        let rows = (callouts.count + 1) / 2
+        let rows = max(leftCallouts.count, rightCallouts.count)
         return CGFloat(rows) * rowHeight + CGFloat(max(0, rows - 1)) * rowSpacing
     }
     private var contentHeight: CGFloat {
@@ -120,7 +130,7 @@ private struct MuscleMapSideView: View {
             Text(title)
                 .font(.caption2.weight(.bold))
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: panel == .front ? .trailing : .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
             ZStack {
                 HStack(spacing: 4) {
                     calloutColumn(leftCallouts, alignment: .trailing)
@@ -174,8 +184,11 @@ private struct MuscleMapSideView: View {
             Color.black.opacity(0.04)
             Image("MusclesFrontBack")
                 .resizable()
-                // The asset contains front on the left and back on the right.
-                // Cropping one exact half preserves the source aspect ratio.
+                // This is the original combined SVG: front is its exact left
+                // half and back is its exact right half. The explicit source
+                // ratio prevents SwiftUI from distorting the SVG before the
+                // half is clipped.
+                .aspectRatio(CGFloat(MuscleMapLayout.sourceRatio), contentMode: .fit)
                 .frame(width: imageWidth * 2, height: imageHeight)
                 .offset(x: panel == .front ? 0 : -imageWidth)
                 .accessibilityHidden(true)

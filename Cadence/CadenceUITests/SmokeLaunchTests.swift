@@ -187,9 +187,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleMap"].waitForExistence(timeout: 5),
                       "This Week did not show the compact muscle map")
         XCTAssertTrue(app.buttons["home.week.muscleMap.front"].exists,
-                      "This Week did not expose the Front muscle-map radio option")
+                      "This Week did not expose the Front segment")
         XCTAssertTrue(app.buttons["home.week.muscleMap.back"].exists,
-                      "This Week did not expose the Back muscle-map radio option")
+                      "This Week did not expose the Back segment")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscle.front.shoulders"].exists,
                       "This Week did not expose a front callout by default")
         XCTAssertFalse(app.descendants(matching: .any)["home.week.muscle.back.lats"].exists,
@@ -201,7 +201,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["Done"].waitTap(timeout: 5),
                       "Weekly muscle detail could not be dismissed")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscleMap.back"),
-                      "This Week could not switch to the Back muscle-map radio option")
+                      "This Week could not switch to the Back segment")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscle.back.lats"].waitForExistence(timeout: 5),
                       "This Week did not replace the front map with the selected back map")
         XCTAssertFalse(app.descendants(matching: .any)["home.week.muscle.front.chest"].exists,

@@ -4,6 +4,7 @@ import XCTest
 final class MuscleMapLayoutTests: XCTestCase {
     func testSourceIsSplitIntoTwoAspectPreservingHalves() {
         XCTAssertEqual(MuscleMapLayout.sourceRatio, 2 * MuscleMapLayout.halfRatio, accuracy: 0.0001)
+        XCTAssertEqual(MuscleMapLayout.halfWidth, MuscleMapLayout.sourceWidth / 2, accuracy: 0.0001)
         XCTAssertGreaterThan(MuscleMapLayout.halfRatio, 0)
         XCTAssertLessThan(MuscleMapLayout.halfRatio, 1)
     }
@@ -16,8 +17,16 @@ final class MuscleMapLayoutTests: XCTestCase {
     }
 
     func testCalloutsAreDeterministicAndHaveBothSides() {
-        XCTAssertFalse(MuscleMapLayout.callouts(for: .front).isEmpty)
-        XCTAssertFalse(MuscleMapLayout.callouts(for: .back).isEmpty)
+        let front = MuscleMapLayout.callouts(for: .front)
+        let back = MuscleMapLayout.callouts(for: .back)
+        XCTAssertEqual(front.count, 12)
+        XCTAssertEqual(back.count, 13)
+        XCTAssertFalse(front.isEmpty)
+        XCTAssertFalse(back.isEmpty)
+        XCTAssertTrue(front.contains { $0.side == .left })
+        XCTAssertTrue(front.contains { $0.side == .right })
+        XCTAssertTrue(back.contains { $0.side == .left })
+        XCTAssertTrue(back.contains { $0.side == .right })
         let ids = MuscleMapLayout.callouts.map(\.id)
         XCTAssertEqual(ids.count, Set(ids).count)
         XCTAssertEqual(MuscleMapLayout.callouts,

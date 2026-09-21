@@ -66,16 +66,22 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public var dailyStepTarget: Int
     public var desiredSetsPerExercise: Int
     /// The muscle groups the coach programs toward and Home always shows a row
-    /// for. Defaults to `MuscleGroup.defaultTracked` — the 13 groups the catalog
-    /// can actually satisfy a weekly target for (decision D4). Anyone who wants to
-    /// program adductors, the neck or the rotator cuff can add them here.
+    /// for. Defaults to `MuscleGroup.defaultTracked`. Anyone who wants to program
+    /// additional specialised groups can add them here.
     public var trackedMuscleGroups: Set<MuscleGroup>
+
+    // Store a migration marker so an older explicit set is upgraded once without
+    // repeatedly changing a current user's intentional custom selection.
+    private static let trackedMuscleGroupsVersion = 2
+    private static let groupsAddedInTrackedMuscleGroupsVersion2: Set<MuscleGroup> = [
+        .abductors, .adductors, .lowerBack
+    ]
 
     private enum CodingKeys: String, CodingKey {
         case strengthDaysPerWeek, cardioDaysPerWeek, restPreference
         case allowsTwoADays, sameDayCardioTiming, dailyStepTarget
         case excludedCoverageParts, desiredSetsPerExercise
-        case trackedMuscleGroups
+        case trackedMuscleGroups, trackedMuscleGroupsVersion
     }
 
     public static let `default` = CoachSchedulePreferences(
@@ -119,6 +125,9 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         // tracked set below — an old store must not silently start coaching a group
         // the user had switched off.
         let excludedCoverageParts = try c.decodeIfPresent(Set<String>.self, forKey: .excludedCoverageParts) ?? []
+        let storedTrackedMuscleGroupsVersion = try c.decodeIfPresent(
+            Int.self, forKey: .trackedMuscleGroupsVersion
+        ) ?? 1
         desiredSetsPerExercise = Self.clampDesiredSets(
             try c.decodeIfPresent(Int.self, forKey: .desiredSetsPerExercise) ?? 3
         )
@@ -126,15 +135,21 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         // to an excluded body part drops out of the tracked set.
         if let stored = try c.decodeIfPresent(Set<MuscleGroup>.self, forKey: .trackedMuscleGroups),
            !stored.isEmpty {
-            trackedMuscleGroups = stored
+            var migrated = stored
+            if storedTrackedMuscleGroupsVersion < Self.trackedMuscleGroupsVersion {
+                migrated.formUnion(Self.groupsAddedInTrackedMuscleGroupsVersion2)
+            }
+            trackedMuscleGroups = Self.applyingLegacyCoverageExclusions(
+                to: migrated,
+                excludedCoverageParts: excludedCoverageParts
+            )
         } else if excludedCoverageParts.isEmpty {
             trackedMuscleGroups = MuscleGroup.defaultTracked
         } else {
-            let excluded = Set(excludedCoverageParts.map { $0.lowercased() })
-            trackedMuscleGroups = MuscleGroup.defaultTracked.filter { group in
-                guard let part = Self.retiredBodyPart(forGroup: group) else { return true }
-                return !excluded.contains(part)
-            }
+            trackedMuscleGroups = Self.applyingLegacyCoverageExclusions(
+                to: MuscleGroup.defaultTracked,
+                excludedCoverageParts: excludedCoverageParts
+            )
         }
     }
 
@@ -151,6 +166,19 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         try c.encode(dailyStepTarget, forKey: .dailyStepTarget)
         try c.encode(desiredSetsPerExercise, forKey: .desiredSetsPerExercise)
         try c.encode(trackedMuscleGroups, forKey: .trackedMuscleGroups)
+        try c.encode(Self.trackedMuscleGroupsVersion, forKey: .trackedMuscleGroupsVersion)
+    }
+
+    private static func applyingLegacyCoverageExclusions(
+        to groups: Set<MuscleGroup>,
+        excludedCoverageParts: Set<String>
+    ) -> Set<MuscleGroup> {
+        guard !excludedCoverageParts.isEmpty else { return groups }
+        let excluded = Set(excludedCoverageParts.map { $0.lowercased() })
+        return groups.filter { group in
+            guard let part = Self.retiredBodyPart(forGroup: group) else { return true }
+            return !excluded.contains(part)
+        }
     }
 
     /// The retired `BodyPart` a group used to roll up into, as its raw string.

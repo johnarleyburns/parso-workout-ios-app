@@ -148,7 +148,7 @@ final class TrainingFactsVolumeTests: XCTestCase {
 /// The preference that decides which groups the coach programs toward.
 final class TrackedMuscleGroupPreferenceTests: XCTestCase {
 
-    func testDefaultIsTheThirteenTrackedGroups() {
+    func testDefaultMatchesDBPlusPlusTrackedGroups() {
         XCTAssertEqual(CoachSchedulePreferences.default.trackedMuscleGroups,
                        MuscleGroup.defaultTracked)
     }

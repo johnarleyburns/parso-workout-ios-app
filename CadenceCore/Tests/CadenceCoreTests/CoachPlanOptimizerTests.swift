@@ -749,7 +749,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             allowsTwoADays: twoADays)
     }
 
-    /// A weekly tally that covers every tracked group. DB++ tracks 13 groups, not
+    /// A weekly tally that covers every tracked group. DB++ tracks 16 groups, not
     /// the 8 retired body parts, so a test meaning "everything is satisfied except
     /// X" must say so explicitly — otherwise the eleven unnamed groups read as
     /// zero-volume deficits and out-rank the one the test is about.

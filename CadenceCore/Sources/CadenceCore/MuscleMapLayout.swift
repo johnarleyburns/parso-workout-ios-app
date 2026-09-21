@@ -1,8 +1,9 @@
 import Foundation
 
-/// The stable, source-image coordinate map used by the weekly anatomy view.
-/// Coordinates are normalized inside one half of the bundled front/back SVG;
-/// the UI is therefore free to resize the image without losing its callouts.
+/// The stable coordinate map used by the weekly anatomy view.
+/// Coordinates are normalized inside the separately rendered front/back image
+/// assets. Keeping the coordinate space panel-local means the UI never has to
+/// crop or offset the original combined SVG at runtime.
 public enum MuscleMapPanel: String, CaseIterable, Codable, Sendable {
     case front
     case back
@@ -35,15 +36,13 @@ public struct MuscleMapCallout: Equatable, Hashable, Sendable, Identifiable {
     }
 }
 
-/// The map uses exact left/right viewBox halves derived from the original
-/// combined front/back SVG. Each anchor is normalized within its selected half,
+/// The map uses the fixed pixel dimensions of the bundled, transparent
+/// front/back PNG assets. Each anchor is normalized within its selected panel,
 /// and its side determines which outside label column owns the connector.
 public enum MuscleMapLayout {
-    public static let sourceWidth = 406.99026
-    public static let sourceHeight = 354.43411
-    public static let halfWidth = sourceWidth / 2
-    public static let sourceRatio = sourceWidth / sourceHeight
-    public static let halfRatio = halfWidth / sourceHeight
+    public static let panelPixelWidth = 1024.0
+    public static let panelPixelHeight = 1782.0
+    public static let panelRatio = panelPixelWidth / panelPixelHeight
 
     public static let callouts: [MuscleMapCallout] = [
         // Front-visible groups.

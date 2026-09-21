@@ -10,6 +10,11 @@ struct HomeMuscleMapView: View {
     let onOpenCardio: () -> Void
 
     var body: some View {
+        // The map must mirror the rows currently rendered by Volume exactly.
+        // Using `isTracked` here dropped real rows that were present because a
+        // user had performed work for a previously untracked group.
+        let displayedGroups = Set((volumeRows ?? dashboard.volume).map(\.group))
+
         VStack(alignment: .leading, spacing: 8) {
             Text("Muscle map")
                 .font(.subheadline.weight(.semibold))
@@ -33,7 +38,8 @@ struct HomeMuscleMapView: View {
             MuscleMapSideView(
                 panel: selectedPanel,
                 title: selectedPanel == .front ? "FRONT" : "BACK",
-                callouts: MuscleMapLayout.callouts(for: selectedPanel),
+                callouts: MuscleMapLayout.callouts(for: selectedPanel)
+                    .filter { displayedGroups.contains($0.group) },
                 setsLabel: setsLabel(for:),
                 statusColor: statusColor(for:),
                 onSelect: onSelect)
@@ -100,15 +106,16 @@ private struct MuscleMapSideView: View {
     let statusColor: (MuscleGroup) -> Color
     let onSelect: (MuscleGroup) -> Void
 
-    // The selected half is shown at a useful portrait size, with a label column
-    // on each side. This is intentionally still compact enough for the narrowest
-    // supported iPhone while leaving every callout tappable.
+    // The selected panel is shown at a useful portrait size, with a label column
+    // on each side. The artwork is a pre-rendered panel-local asset: do not
+    // reintroduce a combined SVG crop here because Xcode's SVG importer does
+    // not preserve this source's complex Inkscape coordinate system faithfully.
     private let labelWidth: CGFloat = 84
     private let imageWidth: CGFloat = 128
     private let rowHeight: CGFloat = 36
     private let rowSpacing: CGFloat = 3
 
-    private var imageHeight: CGFloat { imageWidth / CGFloat(MuscleMapLayout.halfRatio) }
+    private var imageHeight: CGFloat { imageWidth / CGFloat(MuscleMapLayout.panelRatio) }
     private var leftCallouts: [MuscleMapCallout] {
         callouts.filter { $0.side == .left }
     }
@@ -186,33 +193,16 @@ private struct MuscleMapSideView: View {
 
     private var image: some View {
         ZStack(alignment: .topLeading) {
-            Color.black.opacity(0.04)
-            Image("MusclesFrontBack")
+            // Preserve the source artwork's alpha channel. The map is placed on
+            // the dashboard card, so an opaque backing would turn the empty
+            // space around the anatomy white on dark themes.
+            Color.clear
+            Image(panel == .front ? "MuscleMapFront" : "MuscleMapBack")
                 .resizable()
-                // Xcode's SVG asset importer can mis-render an SVG whose
-                // viewBox starts at a non-zero x coordinate. Keep the original
-                // combined source asset and fit it to its native full ratio,
-                // then crop exactly one half in this fixed-size viewport.
-                .aspectRatio(CGFloat(MuscleMapLayout.sourceRatio), contentMode: .fit)
-                .frame(width: imageWidth * 2, height: imageHeight)
-                .offset(x: panel == .front ? 0 : -imageWidth)
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: imageWidth, height: imageHeight)
                 .accessibilityHidden(true)
-            ForEach(callouts) { callout in
-                Button {
-                    onSelect(callout.group)
-                } label: {
-                    Circle()
-                        .fill(statusColor(callout.group).opacity(0.88))
-                        .overlay { Circle().stroke(.white, lineWidth: 1.5) }
-                        .frame(width: 22, height: 22)
-                }
-                .buttonStyle(.plain)
-                .position(x: CGFloat(callout.anchorX) * imageWidth,
-                          y: CGFloat(callout.anchorY) * imageHeight)
-                .accessibilityLabel("\(callout.group.displayName), \(setsLabel(callout.group)) this week")
-                .accessibilityHint("Shows direct and indirect exercise history")
-                .accessibilityIdentifier("home.week.muscle.region.\(callout.panel.rawValue).\(callout.group.rawValue)")
-            }
         }
         .frame(width: imageWidth, height: imageHeight)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -254,8 +244,5 @@ private struct MuscleMapSideView: View {
         context.stroke(path,
                        with: .color(statusColor(callout.group).opacity(0.75)),
                        style: StrokeStyle(lineWidth: 1, lineCap: .round))
-        context.fill(Path(ellipseIn: CGRect(x: anchorX - 2, y: anchorY - 2,
-                                             width: 4, height: 4)),
-                      with: .color(statusColor(callout.group)))
     }
 }

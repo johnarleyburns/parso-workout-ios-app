@@ -8,11 +8,6 @@ extension HomeWeekDashboardSection {
     func volumeRow(_ row: HomeDashboardState.VolumeRow) -> some View {
         HStack(spacing: 10) {
             HStack(spacing: 4) {
-                if !row.isTracked {
-                    Image(systemName: "circle.dashed")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
                 Text(row.displayName)
                     .font(.caption)
                     .foregroundStyle(row.isTracked ? tint(for: row.zone) : .secondary)

@@ -141,7 +141,7 @@ final class HomeDashboardPresenterTests: XCTestCase {
         let tracked = Double(MuscleGroup.defaultTracked.count)
         XCTAssertEqual(state.volume.count, MuscleGroup.defaultTracked.count)
         XCTAssertEqual(state.volumeCoverage.completed, 8.0 / tracked, accuracy: 0.001)
-        XCTAssertEqual(state.volumeCoverage.displayText, "0.6 sets")
+        XCTAssertEqual(state.volumeCoverage.displayText, "0.5 sets")
         XCTAssertEqual(state.volumeCoverage.normalized, 8.0 / tracked / 12.0, accuracy: 0.001)
     }
 
@@ -213,9 +213,9 @@ final class HomeDashboardPresenterTests: XCTestCase {
     func testVolumeRowsAreOrderedAlphabeticallyAndTitleCased() throws {
         let rows = try dashboard(chestSets: 4, now: Date()).volume
         XCTAssertEqual(rows.map(\.displayName),
-                       ["Abs", "Biceps", "Calves", "Chest", "Forearms", "Glutes",
-                        "Hamstrings", "Lats", "Mid Back", "Quads", "Shoulders",
-                        "Traps", "Triceps"])
+                       ["Abductors", "Abs", "Adductors", "Biceps", "Calves", "Chest",
+                        "Forearms", "Glutes", "Hamstrings", "Lats", "Lower Back",
+                        "Mid Back", "Quads", "Shoulders", "Traps", "Triceps"])
         XCTAssertTrue(rows.allSatisfy { $0.displayName.first?.isUppercase == true })
         XCTAssertTrue(rows.allSatisfy { !$0.displayName.contains("_") })
     }

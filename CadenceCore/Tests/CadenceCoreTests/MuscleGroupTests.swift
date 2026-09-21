@@ -109,12 +109,13 @@ final class MuscleGroupTests: XCTestCase {
         XCTAssertEqual(priorities, Array(0..<MuscleGroup.allCases.count))
     }
 
-    func testDefaultTrackedIsTheThirteen() {
+    func testDefaultTrackedMatchesDBPlusPlusPlanningGroups() {
         XCTAssertEqual(MuscleGroup.defaultTracked, [
-            .abdominals, .biceps, .calves, .chest, .forearms, .glutes, .hamstrings,
-            .lats, .middleBack, .quadriceps, .shoulders, .traps, .triceps
+            .abdominals, .abductors, .adductors, .biceps, .calves, .chest, .forearms,
+            .glutes, .hamstrings, .lats, .lowerBack, .middleBack, .quadriceps,
+            .shoulders, .traps, .triceps
         ])
-        XCTAssertEqual(MuscleGroup.defaultTracked.count, 13)
+        XCTAssertEqual(MuscleGroup.defaultTracked.count, 16)
     }
 
     /// The test that would have caught `tibialis`: a group the coach targets must

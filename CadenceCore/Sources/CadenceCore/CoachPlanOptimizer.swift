@@ -995,8 +995,8 @@ public enum CoachPlanOptimizer {
     }
 
     /// The tracked groups that are still under MEV for the week. The candidate
-    /// universe is the user's `trackedMuscleGroups` (13 by default), never all 20:
-    /// the untracked seven have no catalog depth behind them and would show as
+    /// universe is the user's `trackedMuscleGroups` (16 by default), never all 20:
+    /// the remaining specialised groups have no default planning target and would show as
     /// permanent, uncloseable deficits (decision D4).
     private static func weeklyCoverageGroups(in facts: TrainingFacts,
                                              tracked: Set<MuscleGroup>) -> Set<MuscleGroup> {

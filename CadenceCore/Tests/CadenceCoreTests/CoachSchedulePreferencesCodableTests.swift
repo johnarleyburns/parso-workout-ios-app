@@ -185,6 +185,43 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         XCTAssertEqual(decoded.strengthDaysPerWeek, 3)
     }
 
+    func testLegacyExplicitTrackedGroupsReceiveNewDBPPVolumeGroupsOnce() throws {
+        // This is the pre-v2 set used by existing installs. The migration adds
+        // groups now present in DB++'s planning ontology, then persists v2 so a
+        // deliberately customized set remains stable on future reads.
+        let legacyJSON = """
+        {
+          "strengthDaysPerWeek": 3,
+          "cardioDaysPerWeek": 2,
+          "restPreference": {"rolling": {"everyNDays": 3}},
+          "allowsTwoADays": false,
+          "sameDayCardioTiming": "afterStrength",
+          "dailyStepTarget": 8000,
+          "desiredSetsPerExercise": 3,
+          "trackedMuscleGroups": [
+            "abdominals", "biceps", "calves", "chest", "forearms", "glutes",
+            "hamstrings", "lats", "middle_back", "quadriceps", "shoulders",
+            "traps", "triceps"
+          ]
+        }
+        """
+        let decoded = try JSONDecoder().decode(
+            CoachSchedulePreferences.self,
+            from: Data(legacyJSON.utf8)
+        )
+
+        XCTAssertTrue(decoded.trackedMuscleGroups.contains(.abductors))
+        XCTAssertTrue(decoded.trackedMuscleGroups.contains(.adductors))
+        XCTAssertTrue(decoded.trackedMuscleGroups.contains(.lowerBack))
+
+        let reencoded = try JSONEncoder().encode(decoded)
+        let roundTrip = try JSONDecoder().decode(
+            CoachSchedulePreferences.self,
+            from: reencoded
+        )
+        XCTAssertEqual(roundTrip.trackedMuscleGroups, decoded.trackedMuscleGroups)
+    }
+
     // MARK: - CoachPreferenceProfile: defensive decoder
 
     func testCoachPreferenceProfileDecodesWithMissingFields() throws {

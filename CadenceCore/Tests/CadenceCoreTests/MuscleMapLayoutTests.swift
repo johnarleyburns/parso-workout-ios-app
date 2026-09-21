@@ -3,10 +3,13 @@ import XCTest
 
 final class MuscleMapLayoutTests: XCTestCase {
     func testSourceIsSplitIntoTwoAspectPreservingHalves() {
-        XCTAssertEqual(MuscleMapLayout.sourceRatio, 2 * MuscleMapLayout.halfRatio, accuracy: 0.0001)
-        XCTAssertEqual(MuscleMapLayout.halfWidth, MuscleMapLayout.sourceWidth / 2, accuracy: 0.0001)
-        XCTAssertGreaterThan(MuscleMapLayout.halfRatio, 0)
-        XCTAssertLessThan(MuscleMapLayout.halfRatio, 1)
+        XCTAssertEqual(MuscleMapLayout.panelRatio,
+                       MuscleMapLayout.panelPixelWidth / MuscleMapLayout.panelPixelHeight,
+                       accuracy: 0.0001)
+        XCTAssertGreaterThan(MuscleMapLayout.panelRatio, 0)
+        XCTAssertLessThan(MuscleMapLayout.panelRatio, 1)
+        XCTAssertEqual(MuscleMapLayout.panelPixelWidth, 1024, accuracy: 0.0001)
+        XCTAssertEqual(MuscleMapLayout.panelPixelHeight, 1782, accuracy: 0.0001)
     }
 
     func testEveryAnchorStaysInsideItsAssignedHalf() {

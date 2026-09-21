@@ -21,7 +21,8 @@ final class ExerciseDiscoveryTests: XCTestCase {
     }
 
     // The index reaches every group the coach programs toward, compound-first.
-    // The untracked seven (neck, tibialis, rotator cuff, …) are deliberately not
+    // The remaining untracked specialised groups (neck, tibialis, rotator cuff,
+    // hip flexors) are deliberately not
     // guaranteed coverage — decision D4 is that the catalog cannot fill them.
     func testByMuscleGroupIndexCoversTrackedGroups() {
         for part in MuscleGroup.canonicalOrder.filter(\.isTrackedByDefault) {

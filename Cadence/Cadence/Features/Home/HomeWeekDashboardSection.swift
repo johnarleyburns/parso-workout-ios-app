@@ -4,9 +4,7 @@ import CadenceFeatures
 
 struct HomeWeekDashboardSection: View {
     let dashboard: HomeDashboardState
-    @Binding var strengthExpanded: Bool
-    @Binding var cardioExpanded: Bool
-    @Binding var volumeExpanded: Bool
+    @Binding var detailSelection: WeeklyDetailSelection
     @Binding var muscleMapPanel: MuscleMapPanel
     let strengthEntries: [TodayActivityPresenter.Entry]
     let cardioEntries: [TodayActivityPresenter.Entry]
@@ -48,13 +46,13 @@ struct HomeWeekDashboardSection: View {
             disclosureRow(title: "Strength", value: dashboard.strength.displayText,
                           progress: dashboard.strength.normalized,
                           tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow,
-                          expanded: $strengthExpanded, identifier: "home.week.strength") {
+                          mode: .strength, identifier: "home.week.strength") {
                 workoutGroup(title: "Strength", entries: strengthEntries)
             }
             disclosureRow(title: "Cardio", value: dashboard.cardio.displayText,
                           progress: dashboard.cardio.normalized,
                           tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
-                          expanded: $cardioExpanded, identifier: "home.week.cardio") {
+                          mode: .cardio, identifier: "home.week.cardio") {
                 VStack(alignment: .leading, spacing: 10) {
                     workoutGroup(title: "Cardio", entries: cardioEntries)
                     cardioMinutes
@@ -64,7 +62,7 @@ struct HomeWeekDashboardSection: View {
             disclosureRow(title: "Volume", value: dashboard.volumeCoverage.displayText,
                           progress: dashboard.volumeCoverage.normalized,
                           tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
-                          expanded: $volumeExpanded, identifier: "home.week.volume") {
+                          mode: .volume, identifier: "home.week.volume") {
                 volumeDetail
             }
         }
@@ -202,7 +200,7 @@ struct HomeWeekDashboardSection: View {
                 selectedMuscleGroup = group
             },
             onOpenCardio: {
-                withAnimation(.easeInOut(duration: 0.18)) { cardioExpanded = true }
+                withAnimation(.easeInOut(duration: 0.18)) { detailSelection.select(.cardio) }
             })
         .sheet(item: $selectedMuscleGroup) { group in
             let currentSets = selectedVolume[group] ?? 0
@@ -222,29 +220,30 @@ struct HomeWeekDashboardSection: View {
 
     private func disclosureRow<Content: View>(title: String, value: String,
                                               progress: Double, tint: Color,
-                                              expanded: Binding<Bool>, identifier: String,
+                                              mode: WeeklyDetailMode, identifier: String,
                                               @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let isExpanded = detailSelection.selected == mode
+        return VStack(alignment: .leading, spacing: 8) {
             Button {
-                withAnimation(.easeInOut(duration: 0.18)) { expanded.wrappedValue.toggle() }
+                withAnimation(.easeInOut(duration: 0.18)) { detailSelection.toggle(mode) }
             } label: {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Text(title).font(.headline).foregroundStyle(tint)
                         Spacer()
                         Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                        Image(systemName: expanded.wrappedValue ? "chevron.up" : "chevron.down")
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     }
                     ProgressView(value: progress).tint(tint)
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier(expanded.wrappedValue
+            .accessibilityIdentifier(isExpanded
                                      ? "\(identifier).showLess"
                                      : "\(identifier).showMore")
-            .accessibilityValue(expanded.wrappedValue ? "Expanded" : "Collapsed")
-            if expanded.wrappedValue {
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+            if isExpanded {
                 content()
                     .padding(.top, 2)
                     .transition(.opacity.combined(with: .move(edge: .top)))

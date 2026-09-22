@@ -9,11 +9,12 @@ struct SettingsView: View {
 
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false
+    @State private var workoutPreferencesPresented = false
 
     var body: some View {
         @Bindable var settings = settingsObject
         Form {
-            Section("Units & Records") {
+            Section("Workout Preferences") {
                 Picker("Weight unit", selection: $settings.unit) {
                     ForEach(MeasurementUnitPreference.allCases) { Text($0.displayName).tag($0) }
                 }
@@ -30,6 +31,12 @@ struct SettingsView: View {
                     ForEach(OneRepMaxFormula.allCases) { Text($0.displayName).tag($0) }
                 }
                 .accessibilityIdentifier("settings.formula")
+                Button { workoutPreferencesPresented = true } label: {
+                    Label("Workout flow & defaults", systemImage: "slider.horizontal.3")
+                }
+                .accessibilityIdentifier("settings.workoutPreferences")
+                Toggle("Workout sounds", isOn: $settings.workoutSounds)
+                    .accessibilityIdentifier("settings.workoutSounds")
             }
 
             Section {
@@ -113,7 +120,7 @@ struct SettingsView: View {
                 .disabled(model.watchSyncState.isInProgress)
                 .accessibilityIdentifier("settings.watchSync.force")
             } header: {
-                Text("Apple Watch")
+                Text("Watch Sync")
             } footer: {
                 Text("Sends units, interval defaults, workout sounds, and recent partners to the Watch app.")
             }
@@ -172,12 +179,12 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings.coach.about")
             } header: {
-                Text("Coach")
+                Text("Coach, Science & Rationale")
             } footer: {
                 Text("The coaching engine updates quarterly with new research. Everything else in Cladiron is free forever.")
             }
 
-            Section("Exercises") {
+            Section("Exercises & Exclusions") {
                 NavigationLink {
                     TemplatesView(onStart: { _ in })
                 } label: {
@@ -200,7 +207,7 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.excludedExercises")
             }
 
-            Section("Data") {
+            Section("Data & Backup") {
                 NavigationLink {
                     ImportView()
                 } label: { Label("Import Workout Log", systemImage: "square.and.arrow.down") }
@@ -222,14 +229,6 @@ struct SettingsView: View {
                 Text("See what Cladiron is doing automatically, why it happened, and how to edit, stop, retry, undo, or restore it when supported.")
             }
 
-            Section {
-                Toggle("Workout sounds", isOn: $settings.workoutSounds)
-                    .accessibilityIdentifier("settings.workoutSounds")
-            } header: {
-                Text("Sounds")
-            } footer: {
-                Text("Plays a bell at each transition — workout start, warm-up, work, cool-down and end — so you can start and stop without watching your phone. Boxing keeps its own round bell.")
-            }
 
             Section {
                 HStack {
@@ -248,7 +247,7 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings.sync.diagnostics")
             } header: {
-                Text("iCloud Sync")
+                Text("CloudKit Sync")
             } footer: {
                 Text("Your workout data uses Apple’s private iCloud database. Sync is automatic and incremental; Apple schedules imports and exports. Detailed storage and recovery information is in iCloud Details & Diagnostics.")
             }
@@ -260,9 +259,7 @@ struct SettingsView: View {
                     Label("About", systemImage: "info.circle")
                 }
                 .accessibilityIdentifier("settings.about")
-            }
 
-            Section {
                 NavigationLink {
                     ContributionSupportView(store: contributions.store)
                 } label: {
@@ -271,6 +268,8 @@ struct SettingsView: View {
                         .foregroundStyle(contributions.store.isSupporter ? Color.pink : Color.accentColor)
                 }
                 .accessibilityIdentifier("settings.support")
+            } header: {
+                Text("Support & About")
             } footer: {
                 Text("Cladiron is open source and ad-free. A one-time tip is an optional way to support development — never required.")
             }
@@ -278,6 +277,17 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .sheet(isPresented: $primingPresented) {
             HealthPrimingView { status in healthStatus = status }
+        }
+        .sheet(isPresented: $workoutPreferencesPresented) {
+            WorkoutSettingsSheet(warmupMinutes: $settings.warmupMinutes,
+                                 cooldownMinutes: $settings.cooldownMinutes,
+                                 restSeconds: $settings.restSeconds,
+                                 autoStartRest: $settings.autoStartRest,
+                                 preWorkoutCountdown: $settings.preWorkoutCountdown,
+                                 autoEndOnIdle: $settings.autoEndOnIdle,
+                                 idleTimeoutMinutes: $settings.idleTimeoutMinutes,
+                                 plateRounding: $settings.plateRounding,
+                                 useHR: $settings.useHRMonitoring)
         }
     }
 

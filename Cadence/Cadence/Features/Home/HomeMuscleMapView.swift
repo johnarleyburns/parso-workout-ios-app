@@ -246,3 +246,54 @@ private struct MuscleMapSideView: View {
                        style: StrokeStyle(lineWidth: 1, lineCap: .round))
     }
 }
+#if DEBUG
+#Preview("Muscle-map asset calibration") {
+    MuscleMapCalibrationPreview()
+}
+
+private struct MuscleMapCalibrationPreview: View {
+    @State private var panel: MuscleMapPanel = .front
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                Picker("Panel", selection: $panel) {
+                    Text("Front").tag(MuscleMapPanel.front)
+                    Text("Back").tag(MuscleMapPanel.back)
+                }
+                .pickerStyle(.segmented)
+                HStack(alignment: .top, spacing: 10) {
+                    referencePanel(title: "Combined source", imageName: "MusclesFrontBack", panel: nil)
+                    referencePanel(title: "Split PNG + anchors",
+                                   imageName: panel == .front ? "MuscleMapFront" : "MuscleMapBack",
+                                   panel: panel)
+                }
+            }
+            .padding()
+        }
+    }
+
+    private func referencePanel(title: String, imageName: String,
+                                panel: MuscleMapPanel?) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).font(.caption.weight(.semibold))
+            GeometryReader { proxy in
+                ZStack {
+                    Image(imageName).resizable().scaledToFit()
+                    if let panel {
+                        ForEach(Array(MuscleMapLayout.callouts(for: panel).enumerated()), id: \.element.id) { index, item in
+                            Circle().fill(.red).frame(width: 18, height: 18)
+                                .overlay(Text("\(index + 1)").font(.system(size: 8, weight: .bold)).foregroundStyle(.white))
+                                .position(x: proxy.size.width * item.anchorX,
+                                          y: proxy.size.height * item.anchorY)
+                        }
+                    }
+                }
+                .overlay(Rectangle().stroke(.orange, lineWidth: 1))
+            }
+            .aspectRatio(panel == nil ? 1.148 : 0.575, contentMode: .fit)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+#endif

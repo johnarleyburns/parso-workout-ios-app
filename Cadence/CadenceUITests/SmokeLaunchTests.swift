@@ -77,6 +77,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Progress tab did not open")
         XCTAssertTrue(app.descendants(matching: .any)["progress"].waitForExistence(timeout: 10),
                       "Progress surface did not render")
+        XCTAssertTrue(app.descendants(matching: .any)["progress.focus.consistency"].exists,
+                      "Progress did not default to its selected Consistency question")
+        XCTAssertFalse(app.descendants(matching: .any)["progress.focus.muscleVolume"].exists,
+                       "Progress displayed more than one question summary at once")
         XCTAssertTrue(app.buttons["progress.fullHistory"].exists,
                       "Progress did not expose full History")
         XCTAssertTrue(app.scrollToHittableAndTap("progress.testsDisclosure"),
@@ -242,14 +246,24 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showLess"),
                       "Volume disclosure did not collapse")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.cardio.showMore"),
-                      "This Week did not expose the independent Cardio disclosure")
+                      "This Week did not expose the Cardio disclosure")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
                       "Expanded Cardio does not explain the moderate-equivalent cardio total")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
+                       "Opening Cardio left Volume expanded at the same time")
         let cardioMinutes = app.descendants(matching: .any)["home.week.cardioMinutes"]
         let leakedSourceTokens = cardioMinutes.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS[c] 'dashboard.cardioDetail' OR label CONTAINS[c] 'Int('"))
         XCTAssertEqual(leakedSourceTokens.count, 0,
                        "Cardio Minutes must render values, never source-code interpolation")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showMore"),
+                      "This Week could not switch its focused detail back to Volume")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].waitForExistence(timeout: 5),
+                      "Switching to Volume did not reveal its details")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
+                       "Switching to Volume left Cardio expanded at the same time")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showLess"),
+                      "Volume disclosure did not collapse after the exclusive-mode check")
 
         // Field test 2026-08-18 #7: the This Week gear deep-links to Coach & Plan
         // and backs out to This Week, not to a warning page or Settings.

@@ -47,9 +47,7 @@ extension HomeView {
     var dashboardWeekContent: some View {
         HomeWeekDashboardSection(
             dashboard: dashboard,
-            strengthExpanded: $weeklyStrengthExpanded,
-            cardioExpanded: $weeklyCardioExpanded,
-            volumeExpanded: $weeklyVolumeExpanded,
+            detailSelection: $weeklyDetailSelection,
             muscleMapPanel: $weeklyMuscleMapPanel,
             strengthEntries: weekActivity.strength,
             cardioEntries: weekActivity.cardio,

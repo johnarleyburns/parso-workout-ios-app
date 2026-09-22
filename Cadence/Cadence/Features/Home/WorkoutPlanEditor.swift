@@ -108,13 +108,6 @@ struct WorkoutPlanEditor: View {
                     if allowsSchedule { scheduleButton }
                 }
 
-                LiveWorkoutVolumeSummary(state: planVolumeState,
-                                         expanded: $planVolumeExpanded,
-                                         presentation: .planned,
-                                         accessibilityPrefix: "plan",
-                                         performers: planVolumePerformers,
-                                         performerStates: planVolumePerformerStates)
-
                 WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
                                           isEditing: isEditing,
                                           allPeople: allPeople,
@@ -143,6 +136,13 @@ struct WorkoutPlanEditor: View {
                     settingsButton
                 }
                 suggestExerciseButton
+                LiveWorkoutVolumeSummary(state: planVolumeState,
+                                         expanded: $planVolumeExpanded,
+                                         presentation: .planned,
+                                         accessibilityPrefix: "plan",
+                                         performers: planVolumePerformers,
+                                         performerStates: planVolumePerformerStates)
+
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
         }

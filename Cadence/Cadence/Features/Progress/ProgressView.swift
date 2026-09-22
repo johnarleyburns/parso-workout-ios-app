@@ -18,11 +18,7 @@ struct TrainingProgressView: View {
 
     @State private var path = NavigationPath()
     @State private var questionSelection = ProgressQuestionSelection()
-    @State private var strengthExpanded = false
-    @State private var trendsExpanded = false
-    @State private var intensityExpanded = false
-    @State private var effortExpanded = false
-    @State private var testsExpanded = false
+    @State private var disclosureSelection = ProgressDetailSelection()
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
     private var cardioTrendTotals: [ProgressCardioWeekTotal] {
@@ -57,9 +53,9 @@ struct TrainingProgressView: View {
                         cardioTotals: cardioTrendTotals,
                         exerciseProgression: { strengthCard })
                     scienceBanner
-                    progressDisclosure("Strength over time", expanded: $strengthExpanded,
+                    progressDisclosure("Strength over time", section: .strength,
                                        identifier: "progress.strengthDisclosure") { strengthCard }
-                    progressDisclosure("Tests", expanded: $testsExpanded,
+                    progressDisclosure("Tests", section: .tests,
                                        identifier: "progress.testsDisclosure") {
                         VStack(alignment: .leading, spacing: 10) {
                             NavigationLink { TestsView() } label: {
@@ -69,16 +65,16 @@ struct TrainingProgressView: View {
                             testResultsCard
                         }
                     }
-                    progressDisclosure("Trends", expanded: $trendsExpanded,
+                    progressDisclosure("Trends", section: .trends,
                                        identifier: "progress.trendsDisclosure") {
                         VStack(spacing: 14) {
                             PRTimelineView(sessions: activeSessions)
                             ConsistencyHeatmapView(sessions: activeSessions)
                         }
                     }
-                    progressDisclosure("Intensity", expanded: $intensityExpanded,
+                    progressDisclosure("Intensity", section: .intensity,
                                        identifier: "progress.intensityDisclosure") { intensityCard }
-                    progressDisclosure("Effort and frequency", expanded: $effortExpanded,
+                    progressDisclosure("Effort and frequency", section: .effort,
                                        identifier: "progress.effortDisclosure") {
                         HStack(alignment: .top, spacing: 12) { effortCard; frequencyCard }
                     }
@@ -117,25 +113,26 @@ struct TrainingProgressView: View {
         .accessibilityIdentifier("progress")
     }
     private func progressDisclosure<Content: View>(_ title: String,
-                                                   expanded: Binding<Bool>,
+                                                   section: ProgressDetailSection,
                                                    identifier: String,
                                                    @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let isExpanded = disclosureSelection.selected == section
+        return VStack(alignment: .leading, spacing: 10) {
             Button {
-                withAnimation(.easeInOut(duration: 0.18)) { expanded.wrappedValue.toggle() }
+                withAnimation(.easeInOut(duration: 0.18)) { disclosureSelection.toggle(section) }
             } label: {
                 HStack {
                     Text(title).font(.headline)
                     Spacer()
-                    Image(systemName: expanded.wrappedValue ? "chevron.up" : "chevron.down")
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier(identifier)
-            .accessibilityValue(expanded.wrappedValue ? "Expanded" : "Collapsed")
-            if expanded.wrappedValue { content().transition(.opacity) }
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+            if isExpanded { content().transition(.opacity) }
         }
     }
 

@@ -24,6 +24,14 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "iPhone app terminated or failed to reach the foreground during cold launch")
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 25),
                       "Home did not load")
+        XCTAssertTrue(app.buttons["selectWorkout.suggestWorkout"].exists,
+                      "Today did not show Workout for You as its primary start action")
+        XCTAssertTrue(app.buttons["selectWorkout.quickStart"].exists,
+                      "Today did not show Quick Start as its secondary action")
+        XCTAssertFalse(app.buttons["selectWorkout.custom"].exists,
+                       "Today exposed Custom Workout before More ways to start was opened")
+        XCTAssertFalse(app.buttons["startType.run"].exists,
+                       "Today exposed the cardio catalog before More ways to start was opened")
         XCTAssertTrue(app.buttons["tab.today"].exists,
                       "Today is not exposed as the primary activity tab")
         XCTAssertTrue(app.buttons["tab.thisWeek"].exists,
@@ -89,6 +97,16 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Progress Tests disclosure did not expose Perform a Test…")
         XCTAssertTrue(app.scrollToHittableAndTap("progress.testsDisclosure"),
                       "Progress Tests disclosure did not collapse")
+        XCTAssertTrue(app.scrollToHittableAndTap("progress.trendsDisclosure"),
+                      "Progress did not expose Trends")
+        XCTAssertEqual(app.buttons["progress.trendsDisclosure"].value as? String, "Expanded")
+        XCTAssertEqual(app.buttons["progress.testsDisclosure"].value as? String, "Collapsed",
+                       "Opening Trends left the Tests detail expanded too")
+        XCTAssertTrue(app.scrollToHittableAndTap("progress.strengthDisclosure"),
+                      "Progress did not expose Strength over time")
+        XCTAssertEqual(app.buttons["progress.strengthDisclosure"].value as? String, "Expanded")
+        XCTAssertEqual(app.buttons["progress.trendsDisclosure"].value as? String, "Collapsed",
+                       "Opening Strength left Trends expanded too")
         XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
                       "Returning from Progress did not land on Today")
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
@@ -98,8 +116,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // inside the single iPhone smoke flow required by the test-pyramid
         // guardrail, while proving the new outline is not merely a compact
         // rounds/work/rest summary.
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.cardioChoices"),
-                      "Start Workout did not expose cardio choices")
+        expandMoreWaysIfNeeded(app)
+        expandAllCardioIfNeeded(app)
         let gpsTileLabels = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS[c] 'GPS'"))
         XCTAssertEqual(gpsTileLabels.count, 0,
@@ -140,8 +158,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10),
                       "Coach card did not render on Home")
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
-                      "Start Workout did not expose more strength actions")
+        expandMoreWaysIfNeeded(app)
         XCTAssertTrue(app.buttons["selectWorkout.schedule"].waitForExistence(timeout: 5),
                       "Start Workout did not expose Schedule Workout")
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.schedule"),
@@ -151,8 +168,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from More actions Schedule Workout did not land on Home")
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
-                      "Start Workout did not reopen more strength actions")
+        expandMoreWaysIfNeeded(app)
         XCTAssertTrue(app.buttons["selectWorkout.log"].waitForExistence(timeout: 5),
                       "Start Workout did not show the log action")
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.log"),
@@ -302,6 +318,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home inline Start Workout did not render")
+        expandMoreWaysIfNeeded(app)
 
         // Field test 2026-08-18 #3: the full-width strength actions are one height.
         let quick = app.buttons["selectWorkout.quickStart"]
@@ -340,8 +357,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.buttons["selectWorkout.suggestWorkout"].waitForExistence(timeout: 5),
                       "Cancelling Cardio suggestion did not return to Start Workout")
 
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
-                      "Start Workout did not expose more strength options")
+        expandMoreWaysIfNeeded(app)
         XCTAssertTrue(app.buttons["selectWorkout.custom"].label.contains("Custom Workout"),
                       "Start Workout custom action still uses the old label")
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.previousLink"),
@@ -452,8 +468,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home inline Start Workout did not reopen after suggested workouts")
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.cardioChoices"),
-                      "Start Workout did not reopen its cardio choices")
+        expandMoreWaysIfNeeded(app)
+        expandAllCardioIfNeeded(app)
 
         // Field test 2026-08-20 issue 8: Rowing remains in the expanded cardio
         // taxonomy, which now uses three columns.
@@ -465,7 +481,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(run.exists, "Start Workout lost Run")
         XCTAssertEqual(run.frame.width, run.frame.height, accuracy: 2,
                        "Compact cardio tiles are not square")
-        XCTAssertEqual(app.buttons["selectWorkout.cardioChoices"].frame.height,
+        XCTAssertEqual(app.buttons["selectWorkout.showAllCardio"].frame.height,
                        quickHeight, accuracy: 1,
                        "Cardio Show more does not match the Quick Start control height")
         let rowing = app.buttons["startType.rowing"]
@@ -481,8 +497,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // The picker is inline, so taxonomy inspection does not require a
         // sheet dismissal before returning to the strength controls.
 
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.moreStrength"),
-                      "Start Workout did not offer the strength Show more disclosure")
+        expandMoreWaysIfNeeded(app)
         XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
                       "Start Workout did not offer Custom Workout beneath Quick Start")
         XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10),
@@ -745,6 +760,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Could not return to Today for the cardio flow")
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home inline Start Workout did not reopen for the cardio flow")
+        expandMoreWaysIfNeeded(app)
         XCTAssertTrue(app.scrollToHittableAndTap("startType.run"),
                       "Start Workout did not offer the Run cardio tile")
         XCTAssertTrue(app.scrollToHittableAndTap("goal.none"),
@@ -789,4 +805,21 @@ final class SmokeLaunchTests: CadenceUITestCase {
                         .firstMatch.waitForExistence(timeout: 15),
                       "Completed workout disappeared from Workouts Today after relaunch")
     }
+    private func expandMoreWaysIfNeeded(_ app: XCUIApplication) {
+        let disclosure = app.buttons["selectWorkout.moreWays"]
+        XCTAssertTrue(disclosure.waitForExistence(timeout: 5), "Today is missing More ways to start")
+        if (disclosure.value as? String) != "Expanded" {
+            XCTAssertTrue(disclosure.waitTap(timeout: 5), "More ways to start did not expand")
+        }
+    }
+
+    private func expandAllCardioIfNeeded(_ app: XCUIApplication) {
+        let disclosure = app.buttons["selectWorkout.showAllCardio"]
+        XCTAssertTrue(app.scrollToElement("selectWorkout.showAllCardio"),
+                      "More ways to start did not expose Show all cardio")
+        if (disclosure.value as? String) != "Expanded" {
+            XCTAssertTrue(disclosure.waitTap(timeout: 5), "Show all cardio did not expand")
+        }
+    }
+
 }

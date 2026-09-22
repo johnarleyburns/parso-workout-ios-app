@@ -25,6 +25,12 @@ struct TrainingProgressView: View {
     @State private var testsExpanded = false
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
+    private var cardioTrendTotals: [ProgressCardioWeekTotal] {
+        let intervals = cardio.map {
+            CardioWorkoutDurationSample(start: $0.start, end: $0.end, isDeleted: $0.deletedAt != nil)
+        }
+        return ProgressCardioTrendPresenter.weeklyTotals(for: intervals)
+    }
     private var facts: TrainingFacts {
         let signpostID = OSSignpostID(log: Self.performanceLog)
         os_signpost(.begin, log: Self.performanceLog, name: "progressFactsPreparation", signpostID: signpostID)
@@ -44,8 +50,12 @@ struct TrainingProgressView: View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    questionPicker
-                    focusedQuestion
+                    ProgressQuestionSummaryView(
+                        selection: $questionSelection,
+                        facts: facts,
+                        sessions: activeSessions,
+                        cardioTotals: cardioTrendTotals,
+                        exerciseProgression: { strengthCard })
                     scienceBanner
                     progressDisclosure("Strength over time", expanded: $strengthExpanded,
                                        identifier: "progress.strengthDisclosure") { strengthCard }
@@ -72,7 +82,7 @@ struct TrainingProgressView: View {
                                        identifier: "progress.effortDisclosure") {
                         HStack(alignment: .top, spacing: 12) { effortCard; frequencyCard }
                     }
-                    historyLink
+                    ProgressHistoryLink { Haptics.selection(); path.append(ProgressRoute.history) }
                 }
                 .padding()
             }
@@ -105,113 +115,6 @@ struct TrainingProgressView: View {
             }
         }
         .accessibilityIdentifier("progress")
-    }
-    private var questionPicker: some View {
-        Picker("Progress question", selection: Binding(
-            get: { questionSelection.selected },
-            set: { questionSelection.select($0) })) {
-            Text("Consistency").tag(ProgressQuestion.consistency)
-            Text("Exercise").tag(ProgressQuestion.exerciseProgression)
-            Text("Muscle volume").tag(ProgressQuestion.muscleVolume)
-            Text("Cardio").tag(ProgressQuestion.cardioChange)
-        }
-        .pickerStyle(.segmented)
-        .accessibilityIdentifier("progress.question")
-    }
-
-    @ViewBuilder
-    private var focusedQuestion: some View {
-        switch questionSelection.selected {
-        case .consistency:
-            consistencyCard
-        case .exerciseProgression:
-            strengthCard
-        case .muscleVolume:
-            muscleVolumeCard
-        case .cardioChange:
-            cardioChangeCard
-        }
-    }
-
-    private var consistencyCard: some View {
-        card(title: "Consistency", subtitle: "Your recent training rhythm", tint: .blue) {
-            ConsistencyHeatmapView(sessions: activeSessions)
-        }
-        .accessibilityIdentifier("progress.focus.consistency")
-    }
-
-    // MARK: - Card helper
-    private var muscleVolumeCard: some View {
-        let groups = facts.weeklySetsByGroup
-            .filter { $0.value > 0 }
-            .sorted { $0.value > $1.value }
-            .prefix(5)
-        return VStack(alignment: .leading, spacing: 8) {
-            card(title: "Muscle-volume balance", subtitle: "Top trained muscle groups this week", tint: .green) {
-                if groups.isEmpty {
-                    emptyNote("Log strength sets and weekly muscle balance will appear here.")
-                } else {
-                    ForEach(Array(groups.enumerated()), id: \.offset) { _, item in
-                        HStack(spacing: 8) {
-                            Text(item.key.displayName).font(.caption)
-                            Spacer()
-                            Text("\(WeeklySetProgress.formattedSets(item.value)) sets")
-                                .font(.caption.weight(.semibold)).monospacedDigit()
-                        }
-                        ProgressView(value: min(item.value / 12, 1)).tint(.green)
-                    }
-                }
-            }
-            CoachSourcesLink(citationIds: CitationRegistry.strengthVolumePool.citationIds,
-                             identifier: "progress.focus.volume.sources")
-        }
-        .accessibilityIdentifier("progress.focus.muscleVolume")
-    }
-
-    private var cardioChangeCard: some View {
-        let weeks = cardioWeekTotals()
-        return VStack(alignment: .leading, spacing: 8) {
-            card(title: "Cardio change", subtitle: "Logged minutes by week · last 4 weeks",
-                 citation: CitationRegistry.piercy2018PhysicalActivityGuidelines, tint: .teal) {
-                if weeks.allSatisfy({ $0.minutes == 0 }) {
-                    emptyNote("Complete or log a cardio workout to see your weekly trend.")
-                } else {
-                    Chart {
-                        ForEach(Array(weeks.enumerated()), id: \.offset) { _, item in
-                            BarMark(x: .value("Week", item.start),
-                                    y: .value("Minutes", item.minutes))
-                        }
-                    }
-                    .frame(height: 140)
-                    HStack {
-                        Text("This week: \(Int((weeks.last?.minutes ?? 0).rounded())) min")
-                        Spacer()
-                        Text("Previous: \(Int((weeks.dropLast().last?.minutes ?? 0).rounded())) min")
-                    }
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .accessibilityIdentifier("progress.focus.cardioChange")
-    }
-
-    private func cardioWeekTotals() -> [(start: Date, minutes: Double)] {
-        let calendar = Calendar.current
-        let currentWeek = WeeklyStats.weekStart(now: Date())
-        var values: [(start: Date, minutes: Double)] = []
-        for offset in (0..<4).reversed() {
-            guard let start = calendar.date(byAdding: .weekOfYear, value: -offset, to: currentWeek),
-                  let end = calendar.date(byAdding: .weekOfYear, value: 1, to: start) else { continue }
-            let minutes = cardio
-                .filter { $0.deletedAt == nil && $0.start >= start && $0.start < end }
-                .reduce(0.0) { total, workout in
-                    guard let finish = workout.end else { return total }
-                    return total + max(0, finish.timeIntervalSince(workout.start)) / 60
-                }
-            values.append((start: start, minutes: minutes))
-        }
-        return values
     }
     private func progressDisclosure<Content: View>(_ title: String,
                                                    expanded: Binding<Bool>,
@@ -487,18 +390,4 @@ struct TrainingProgressView: View {
             .background(bg, in: Capsule())
     }
 
-    // MARK: - §7 Full history link
-
-    private var historyLink: some View {
-        Button { Haptics.selection(); path.append(ProgressRoute.history) } label: {
-            HStack {
-                Text("View full history")
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption)
-            }
-            .foregroundStyle(.tint).padding(.vertical, 6).contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("progress.fullHistory")
-    }
 }

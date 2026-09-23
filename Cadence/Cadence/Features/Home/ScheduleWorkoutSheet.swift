@@ -33,7 +33,7 @@ struct ScheduleWorkoutSheet: View {
                         .font(.headline)
                         .accessibilityIdentifier("scheduleWorkout.title")
                     DatePicker("Date", selection: $date,
-                               in: Calendar.current.startOfDay(for: Date())...,
+                               in: Date()...,
                                displayedComponents: [.date, .hourAndMinute])
                         .accessibilityIdentifier("scheduleWorkout.date")
                 } header: {
@@ -89,6 +89,10 @@ struct ScheduleWorkoutSheet: View {
     }
 
     private func save() {
+        guard date > Date() else {
+            errorMessage = "Choose a time later than now. Scheduled workouts must be in the future."
+            return
+        }
         isSaving = true
         errorMessage = nil
         Task { @MainActor in

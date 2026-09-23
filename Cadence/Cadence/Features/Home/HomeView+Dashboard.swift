@@ -179,17 +179,14 @@ extension HomeView {
                 }
             }
             .overlay {
-                if suggestedWorkoutCalculating || suggestedCardioCalculating {
-                    ProgressView(suggestedCardioCalculating
-                                 ? "Building your cardio workout…"
-                                 : "Building your strength workout…")
-                        .padding(20)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-                        .accessibilityIdentifier("suggestedWorkout.calculating")
-                }
+                suggestionGenerationStatus
             }
             .alert("Couldn’t calculate your Personalized workout", isPresented: suggestedWorkoutFailurePresented) {
                 Button("Try Again") { suggestedWorkoutFailure = nil; requestSuggestedWorkout(.strength) }
+                Button("Choose Manually") {
+                    suggestedWorkoutFailure = nil
+                    chooseManualWorkout(.strength)
+                }
                 Button("Cancel", role: .cancel) { suggestedWorkoutFailure = nil }
             } message: {
                 Text(suggestedWorkoutFailure ?? "")
@@ -200,6 +197,10 @@ extension HomeView {
                 Button("Try Again") {
                     suggestedCardioFailure = nil
                     requestSuggestedWorkout(.cardio)
+                }
+                Button("Choose Manually") {
+                    suggestedCardioFailure = nil
+                    chooseManualWorkout(.cardio)
                 }
                 Button("Cancel", role: .cancel) { suggestedCardioFailure = nil }
             } message: {
@@ -218,7 +219,11 @@ extension HomeView {
             }
             .sheet(item: $suggestedWorkoutPlan) { plan in
                 NavigationStack {
-                    WorkoutPlanEditor(plan: plan) { startedPlan in
+                    // Workout for You is an editable draft by definition: the
+                    // user asked the coach to prepare a workout, so the first
+                    // screen must expose edit controls before Start or
+                    // Schedule can be chosen.
+                    WorkoutPlanEditor(plan: plan, startInEditMode: true) { startedPlan in
                         suggestedWorkoutPlan = nil
                         Task { @MainActor in
                             await Task.yield()

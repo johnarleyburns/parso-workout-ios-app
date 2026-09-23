@@ -93,6 +93,11 @@ struct HomeView: View {
     @State var suggestedWorkoutFailure: String?
     @State var suggestedCardioCalculating = false
     @State var suggestedCardioFailure: String?
+    /// Generation is explicit, cancellable user work. Keep the handles on Home
+    /// so a dismiss/cancel action can stop the detached calculation and prevent
+    /// a late result from presenting a plan after the user has moved on.
+    @State var suggestedWorkoutTask: Task<Void, Never>?
+    @State var suggestedCardioTask: Task<Void, Never>?
     @State var suggestedCardio: CardioSuggestion?
     /// A generated strength plan is presented directly after the chooser sheet
     /// dismisses. Keeping it as a sheet item avoids racing a value navigation

@@ -41,8 +41,9 @@ final class MuscleMapLayoutTests: XCTestCase {
         XCTAssertEqual(MuscleMapLayout.callouts,
                        MuscleMapLayout.callouts(for: .front) + MuscleMapLayout.callouts(for: .back))
     }
-}
+
     func testCalloutsCoverEveryTrackedMuscleGroup() {
         let visible = Set(MuscleMapLayout.callouts.map(\.group))
         XCTAssertEqual(visible, Set(MuscleGroup.allCases))
     }
+}

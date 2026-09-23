@@ -247,9 +247,6 @@ public enum PlanAwareInsightEngine {
 
         // Partially resolved — note what was added AND what's still short
         if !deficits.isEmpty && !resolvedGroups.isEmpty {
-            let added = resolvedGroups.sorted { groupIdx($0) < groupIdx($1) }
-                .map { "\($0.displayName) +\(Format.sets(resolvedSets[$0] ?? 0))" }
-                .joined(separator: ", ")
             let ordered = deficits.sorted { a, b in
                 if a.value != b.value { return a.value > b.value }
                 return groupIdx(a.key) < groupIdx(b.key)
@@ -267,7 +264,7 @@ public enum PlanAwareInsightEngine {
                 id: "planning.partialResolved",
                 kind: .volume,
                 title: "Some volume still needs attention",
-                message: "Added to tonight: \(added). Still short: \(short) sets to go.",
+                message: "Sets per muscle group in deficit: \(short).",
                 detail: "\(reason) \(ranges). Coach added what fits safely; the remaining gap needs another eligible slot or a schedule adjustment.",
                 citation: CitationRegistry.volumeDoseResponse,
                 severity: .attention,
@@ -292,8 +289,8 @@ public enum PlanAwareInsightEngine {
         return [Insight(
             id: "planning.unresolvedVolume",
             kind: .volume,
-            title: "Some planned volume still needs attention",
-            message: "Still short after safe planning: \(summary) sets to go.",
+            title: "Some volume still needs attention",
+            message: "Sets per muscle group in deficit: \(summary).",
             detail: "\(reason) \(ranges). Keep the planned work as the priority, then adjust the schedule or add another eligible strength slot if recovery allows.",
             citation: CitationRegistry.volumeDoseResponse,
             severity: .attention,

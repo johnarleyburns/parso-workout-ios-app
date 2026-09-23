@@ -16,7 +16,6 @@ struct HomeWeekDashboardSection: View {
     let totalVolumeKg: Double
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
-    let onOpenCoachSettings: () -> Void
     @State var volumeWarningMessage: String?
     /// Keep selection as a small value instead of copying the full weekly history
     /// graph into SwiftUI state. The old `HomeMuscleHistory?` selection made every
@@ -42,33 +41,38 @@ struct HomeWeekDashboardSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
             header
-            muscleMapSummary
-            disclosureRow(title: "Strength", value: dashboard.strength.displayText,
-                          progress: dashboard.strength.normalized,
-                          tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow,
-                          mode: .strength, identifier: "home.week.strength") {
-                workoutGroup(title: "Strength", entries: strengthEntries)
-            }
-            disclosureRow(title: "Cardio", value: dashboard.cardio.displayText,
-                          progress: dashboard.cardio.normalized,
-                          tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
-                          mode: .cardio, identifier: "home.week.cardio") {
-                VStack(alignment: .leading, spacing: 10) {
-                    workoutGroup(title: "Cardio", entries: cardioEntries)
-                    cardioMinutes
-                    if let dose = dashboard.activityDose { activityDose(dose) }
+            sectionCard {
+                disclosureRow(title: "Sets per Muscle Group", value: dashboard.volumeCoverage.displayText,
+                              progress: dashboard.volumeCoverage.normalized,
+                              tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
+                              mode: .volume, identifier: "home.week.sets") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        muscleMapSummary
+                        volumeDetail
+                    }
                 }
             }
-            disclosureRow(title: "Volume", value: dashboard.volumeCoverage.displayText,
-                          progress: dashboard.volumeCoverage.normalized,
-                          tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
-                          mode: .volume, identifier: "home.week.volume") {
-                volumeDetail
+            sectionCard {
+                disclosureRow(title: "Strength", value: dashboard.strength.displayText,
+                              progress: dashboard.strength.normalized,
+                              tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow,
+                              mode: .strength, identifier: "home.week.strength") {
+                    workoutGroup(title: "Strength", entries: strengthEntries)
+                }
+            }
+            sectionCard {
+                disclosureRow(title: "Cardio", value: dashboard.cardio.displayText,
+                              progress: dashboard.cardio.normalized,
+                              tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
+                              mode: .cardio, identifier: "home.week.cardio") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        workoutGroup(title: "Cardio", entries: cardioEntries)
+                        cardioMinutes
+                        if let dose = dashboard.activityDose { activityDose(dose) }
+                    }
+                }
             }
         }
-        .padding(CGFloat(LayoutMetrics.cardPadding))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
         .alert("Volume warning", isPresented: Binding(
             get: { volumeWarningMessage != nil },
             set: { if !$0 { volumeWarningMessage = nil } })) {
@@ -92,26 +96,16 @@ struct HomeWeekDashboardSection: View {
     }
 
     private var header: some View {
-        HStack(spacing: 0) {
-            Text("This Week").font(.headline)
-            Spacer()
-            Button {
-                Haptics.selection()
-                onOpenCoachSettings()
-            } label: {
-                Image(systemName: "gearshape")
-                    .imageScale(.medium)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            .padding(.trailing, -8)
-            .padding(.vertical, -8)
-            .accessibilityIdentifier("home.week.coachSettings")
-            .accessibilityLabel("Coach and plan settings")
-            .accessibilityHint("Opens Coach & Plan preferences")
-        }
+        Text("This Week").font(.title2.weight(.bold))
+            .accessibilityIdentifier("home.week.title")
+    }
+
+    private func sectionCard<Content: View>(
+        @ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(CGFloat(LayoutMetrics.cardPadding))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
     }
 
     private var volumeDetail: some View {
@@ -126,7 +120,7 @@ struct HomeWeekDashboardSection: View {
             .foregroundStyle(.secondary)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Muscle volume legend: below, building, productive, and above maximum")
-            .accessibilityIdentifier("home.week.volumeHeading")
+            .accessibilityIdentifier("home.week.sets.heading")
             if weeklyVolumePerformers.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -152,18 +146,18 @@ struct HomeWeekDashboardSection: View {
                             .buttonStyle(.plain)
                             .foregroundStyle(selectedVolumePerformerKey == performer.id
                                              ? Color.accentColor : .secondary)
-                            .accessibilityIdentifier("home.week.volume.performer.\(performer.id)")
+                            .accessibilityIdentifier("home.week.sets.performer.\(performer.id)")
                         }
                     }
                 }
-                .accessibilityIdentifier("home.week.volume.performers")
+                .accessibilityIdentifier("home.week.sets.performers")
             }
             ForEach(displayedVolumeRows) { row in
                 volumeRow(row)
             }
             CoachSourcesLink(
                 citationIds: CitationRegistry.strengthVolumePool.citationIds,
-                identifier: "home.week.volume.science")
+                identifier: "home.week.sets.science")
             HStack {
                 Text("Total Volume").font(.subheadline.weight(.semibold))
                 Spacer()
@@ -176,7 +170,7 @@ struct HomeWeekDashboardSection: View {
                     .foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("home.volume.total")
+            .accessibilityIdentifier("home.week.sets.total")
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.thisWeek.expanded")
@@ -215,7 +209,7 @@ struct HomeWeekDashboardSection: View {
                 exercises: cached?.exercises ?? [])
             HomeMuscleDetailSheet(history: history, unit: unit)
         }
-        .accessibilityIdentifier("home.week.muscleMap")
+        .accessibilityIdentifier("home.week.sets.muscleMap")
     }
 
     private func disclosureRow<Content: View>(title: String, value: String,

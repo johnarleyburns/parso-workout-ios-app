@@ -57,10 +57,6 @@ extension HomeView {
             }
             .sheet(isPresented: $selectWorkoutPresented, onDismiss: presentPendingSuggestedWorkout) {
                 SelectWorkoutView(
-                    onQuickStart: {
-                        selectWorkoutPresented = false
-                        startQuickStartStrength()
-                    },
                     onSuggestedWorkout: { requestSuggestedWorkout($0) },
                     onEditorStart: { plan in selectWorkoutPresented = false; handleEditorStart(plan) },
                     onScheduleStrength: {
@@ -72,11 +68,18 @@ extension HomeView {
                         selectWorkoutPresented = false
                         logPickerPresented = true
                     },
+                    onStartCardio: { type in
+                        selectWorkoutPresented = false
+                        start(type)
+                    },
                     onScheduleCardio: { type in
                         selectWorkoutPresented = false
                         scheduleCardioType = type
                     },
-                    onSelect: { type in selectWorkoutPresented = false; start(type) },
+                    onOpenScheduleCardio: {
+                        selectWorkoutPresented = false
+                        cardioSchedulePickerPresented = true
+                    },
                     onOtherCardio: { description, gps in
                         selectWorkoutPresented = false
                         startOtherCardio(description: description, gps: gps)
@@ -100,6 +103,16 @@ extension HomeView {
             .sheet(item: $scheduleCardioType) { type in
                 ScheduleWorkoutSheet(title: type.displayName) { date in
                     try scheduleCardioWorkout(type, for: date)
+                }
+            }
+            .sheet(isPresented: $cardioSchedulePickerPresented) {
+                NavigationStack {
+                    CardioPickerView(
+                        mode: .schedule,
+                        recentCardioTypes: recentCardioTypes,
+                        onSelect: { _ in },
+                        onSchedule: { type in scheduleCardioType = type },
+                        onOtherCardio: { _, _ in })
                 }
             }
             .sheet(isPresented: $showAlternatives) {
@@ -163,12 +176,17 @@ extension HomeView {
             }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
             .sheet(isPresented: $cardioPickerPresented, onDismiss: presentPendingSuggestedWorkout) {
-                WorkoutTypePicker(onSelect: { cardioPickerPresented = false; start($0) },
-                                  onEditorStart: { _ in },
-                                  onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
-                                  onSuggestedWorkout: { requestSuggestedWorkout($0) },
-                                  types: [.run, .walk, .cycle, .rowing, .swim, .elliptical, .stairClimber, .hiit, .boxing, .other],
-                                  title: "Start Cardio")
+                NavigationStack {
+                    CardioPickerView(
+                        mode: .start,
+                        recentCardioTypes: recentCardioTypes,
+                        onSelect: { type in cardioPickerPresented = false; start(type) },
+                        onSchedule: { type in cardioPickerPresented = false; scheduleCardioType = type },
+                        onOtherCardio: { desc, gps in
+                            cardioPickerPresented = false
+                            startOtherCardio(description: desc, gps: gps)
+                        })
+                }
             }
             // Volume tile (batch 8) → strength start (Quick Start / Warm-Up / Reuse / presets).
             .sheet(isPresented: $weightsStartPresented, onDismiss: presentPendingSuggestedWorkout) {
@@ -330,55 +348,6 @@ extension HomeView {
     private var thisWeekContent: some View {
         VStack(alignment: .leading, spacing: 20) {
             dashboardWeekContent
-            HomeMyHistorySection(
-                entries: homeWeekHistoryEntries,
-                onOpen: openWeekWorkout,
-                onShowMore: { path.append(HomeRoute.history) })
-        }
-    }
-
-    @ViewBuilder
-    private var dashboardTransientOverlays: some View {
-        // HR gate — appears before the get-ready countdown so the user can
-        // connect HR, see live data, then press Start Workout.
-        if let kind = hrGateKind {
-            PreWorkoutHRView(
-                workoutType: kind.cardioType,
-                onContinue: { source in
-                    hrGateKind = nil
-                    captureHR = source != .none
-                    proceedFromHRGate(kind, useHR: source != .none)
-                },
-                onCancel: { hrGateKind = nil })
-                .transition(.identity)
-                .zIndex(2)
-        }
-        if let p = pending {
-            PreWorkoutCountdownView(
-                seconds: settings.preWorkoutCountdown,
-                onStart: {
-                    let k = p.kind
-                    var t = Transaction(); t.disablesAnimations = true
-                    withTransaction(t) { launch(k); pending = nil }
-                },
-                onCancel: { pending = nil })
-                .transition(.identity)
-                .zIndex(1)
-        }
-        if warmupActive {
-            GuidedPhaseOverlay(
-                title: "Warm Up",
-                minutes: pendingPlan?.warmupMinutes ?? settings.warmupMinutes,
-                tint: .orange,
-                idPrefix: "warmup",
-                soundsEnabled: settings.workoutSounds,
-                onFinish: { secs in finishWarmup(elapsedSeconds: secs, startCue: .countdown) },
-                onSkip: { secs in
-                    WorkoutCues.cancelPendingSounds()
-                    finishWarmup(elapsedSeconds: secs, startCue: .single)
-                })
-                .transition(.identity)
-                .zIndex(1)
         }
     }
 

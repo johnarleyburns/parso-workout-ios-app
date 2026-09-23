@@ -2,7 +2,7 @@ import XCTest
 import UIKit
 
 /// The one normal iPhone XCUITest. It covers the minimum end-to-end surface that
-/// needs a real simulator: launch, Home expansion, scheduled-workout entry, Quick Start, ending,
+/// needs a real simulator: launch, Home start routing, scheduled-workout entry, ending,
 /// and the post-workout summary. Everything else belongs in headless `swift test`.
 final class SmokeLaunchTests: CadenceUITestCase {
     /// The exercise the logging flow adds. A catalog staple, so the picker's
@@ -24,14 +24,14 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "iPhone app terminated or failed to reach the foreground during cold launch")
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 25),
                       "Home did not load")
-        XCTAssertTrue(app.buttons["selectWorkout.suggestWorkout"].exists,
-                      "Today did not show Workout for You as its primary start action")
-        XCTAssertTrue(app.buttons["selectWorkout.quickStart"].exists,
-                      "Today did not show Quick Start as its secondary action")
-        XCTAssertFalse(app.buttons["selectWorkout.custom"].exists,
-                       "Today exposed Custom Workout before More ways to start was opened")
-        XCTAssertFalse(app.buttons["startType.run"].exists,
-                       "Today exposed the cardio catalog before More ways to start was opened")
+        XCTAssertTrue(app.buttons["selectWorkout.startWorkout"].exists,
+                      "Today did not show its single Start Workout entry")
+        XCTAssertFalse(app.buttons["selectWorkout.quickStart"].exists,
+                       "Today still exposes Quick Start")
+        XCTAssertFalse(app.buttons["selectWorkout.moreWays"].exists,
+                       "Today still exposes More ways to start")
+        XCTAssertFalse(app.buttons["selectWorkout.suggestWorkout"].exists,
+                       "Today still exposes the retired Workout for You entry")
         XCTAssertTrue(app.buttons["tab.today"].exists,
                       "Today is not exposed as the primary activity tab")
         XCTAssertTrue(app.buttons["tab.thisWeek"].exists,
@@ -116,19 +116,21 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // inside the single iPhone smoke flow required by the test-pyramid
         // guardrail, while proving the new outline is not merely a compact
         // rounds/work/rest summary.
-        expandMoreWaysIfNeeded(app)
+        openStartWorkout(app)
         expandAllCardioIfNeeded(app)
         let gpsTileLabels = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS[c] 'GPS'"))
         XCTAssertEqual(gpsTileLabels.count, 0,
                        "The compact cardio picker must leave GPS to pre-workout settings")
-        for identifier in ["startType.run", "startType.walk", "startType.cycle",
-                           "startType.rowing", "startType.swim", "startType.hiit",
-                           "startType.boxing", "startType.other"] {
+        for identifier in ["cardioPicker.start.run", "cardioPicker.start.walk", "cardioPicker.start.cycle",
+                           "cardioPicker.start.rowing", "cardioPicker.start.swim", "cardioPicker.start.hiit",
+                           "cardioPicker.start.boxing", "cardioPicker.start.other"] {
             XCTAssertTrue(app.scrollToElement(identifier),
                           "Start Workout did not offer \(identifier)")
         }
-        XCTAssertTrue(app.scrollToHittableAndTap("startType.hiit"),
+        XCTAssertFalse(app.buttons["cardioPicker.schedule"].exists,
+                       "Normal Cardio Picker exposes a schedule action; scheduling must be a separate intent")
+        XCTAssertTrue(app.scrollToHittableAndTap("cardioPicker.start.hiit"),
                       "Start Workout did not offer HIIT")
         XCTAssertTrue(app.navigationBars["HIIT"].waitForExistence(timeout: 10),
                       "HIIT setup did not open")
@@ -158,21 +160,25 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["coach.card"].waitForExistence(timeout: 10),
                       "Coach card did not render on Home")
-        expandMoreWaysIfNeeded(app)
-        XCTAssertTrue(app.buttons["selectWorkout.schedule"].waitForExistence(timeout: 5),
-                      "Start Workout did not expose Schedule Workout")
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.schedule"),
-                      "Start Workout Schedule Workout did not open the Workout Plan")
+        openStartWorkout(app)
+        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.pick.strength"),
+                      "Start Workout did not expose Pick Your Own Strength")
+        XCTAssertTrue(app.navigationBars["Pick Workout"].waitForExistence(timeout: 5),
+                      "Pick Your Own Strength did not open Pick Workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("pickWorkout.schedule"),
+                      "Pick Workout did not expose Schedule Workout")
         XCTAssertTrue(app.navigationBars["Workout Plan"].waitForExistence(timeout: 10),
-                      "More actions Schedule Workout did not open Workout Plan")
+                      "Schedule Workout did not open the Workout Plan")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from More actions Schedule Workout did not land on Home")
-        expandMoreWaysIfNeeded(app)
-        XCTAssertTrue(app.buttons["selectWorkout.log"].waitForExistence(timeout: 5),
-                      "Start Workout did not show the log action")
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.log"),
-                      "Start Workout did not open Log Workout")
+        openStartWorkout(app)
+        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.pick.strength"),
+                      "Start Workout did not expose Pick Your Own Strength")
+        XCTAssertTrue(app.navigationBars["Pick Workout"].waitForExistence(timeout: 5),
+                      "Pick Your Own Strength did not open Pick Workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("pickWorkout.log"),
+                      "Pick Workout did not expose Log Workout")
         XCTAssertTrue(app.navigationBars["Log Workout"].waitForExistence(timeout: 5),
                       "Log Previous Workout did not open the existing log flow")
         XCTAssertTrue(app.buttons["logType.cancel"].waitTap(timeout: 5),
@@ -204,11 +210,11 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.buttons["tab.thisWeek"].waitTap(timeout: 10),
                       "This Week tab did not open")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleMap"].waitForExistence(timeout: 5),
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.muscleMap"].waitForExistence(timeout: 5),
                       "This Week did not show the compact muscle map")
-        XCTAssertTrue(app.buttons["home.week.muscleMap.front"].exists,
+        XCTAssertTrue(app.buttons["home.week.sets.muscleMap.front"].exists,
                       "This Week did not expose the Front segment")
-        XCTAssertTrue(app.buttons["home.week.muscleMap.back"].exists,
+        XCTAssertTrue(app.buttons["home.week.sets.muscleMap.back"].exists,
                       "This Week did not expose the Back segment")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscle.front.shoulders"].exists,
                       "This Week did not expose a front callout by default")
@@ -220,7 +226,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Front muscle tap did not open weekly detail")
         XCTAssertTrue(app.buttons["Done"].waitTap(timeout: 5),
                       "Weekly muscle detail could not be dismissed")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscleMap.back"),
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.muscleMap.back"),
                       "This Week could not switch to the Back segment")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscle.back.lats"].waitForExistence(timeout: 5),
                       "This Week did not replace the front map with the selected back map")
@@ -232,66 +238,53 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Back muscle tap did not open weekly detail")
         XCTAssertTrue(app.buttons["Done"].waitTap(timeout: 5),
                       "Back muscle detail could not be dismissed")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showMore"),
-                      "This Week did not expose the independent Volume disclosure")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].waitForExistence(timeout: 5),
-                      "Volume did not expand in place")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.volume.quadriceps"),
-                      "Expanded This Week did not expose the Quads volume row")
-        let quadsVolume = app.descendants(matching: .any)["home.volume.quadriceps"]
-        XCTAssertTrue((quadsVolume.value as? String)?.contains("0 sets") == true,
-                      "A zero-set muscle group does not expose its set count")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
-                      "Expanded This Week did not label the muscle-group rows as Volume")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showMore"),
+                      "This Week did not expose the independent Sets per Muscle Group disclosure")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.heading"].waitForExistence(timeout: 5),
+                      "Sets per Muscle Group did not expand in place")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.row.quadriceps"].exists,
+                      "Expanded This Week did not expose the Quads sets row")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.row.chest"].exists,
+                      "Sets per Muscle Group does not list Chest")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.row.lats"].exists,
+                      "Sets per Muscle Group does not list Lats")
         XCTAssertFalse(app.descendants(matching: .any)["home.week.group.strength"].exists,
-                       "Opening Volume also exposed strength history")
+                       "Opening Sets also exposed strength history")
         XCTAssertFalse(app.descendants(matching: .any)["home.week.group.cardio"].exists,
-                       "Opening Volume also exposed cardio history")
-        // DB++ adoption: Volume carries the per-muscle-group breakdown, and the
-        // redundant Muscles row and section are gone.
-        XCTAssertTrue(app.descendants(matching: .any)["home.volume.chest"].exists,
-                      "Volume does not list every tracked muscle group")
-        XCTAssertTrue(app.descendants(matching: .any)["home.volume.lats"].exists,
-                      "Volume does not list muscle groups the old body parts hid")
+                       "Opening Sets also exposed cardio history")
+        // The Sets list is the sole muscle-volume breakdown; the old duplicate
+        // Volume/Muscles identifiers and This Week history card are retired.
         XCTAssertFalse(app.descendants(matching: .any)["home.week.muscles"].exists,
                        "The redundant Muscles breakdown is still on Home")
         XCTAssertFalse(app.descendants(matching: .any)["home.muscle.chest"].exists,
                        "The old per-muscle row identifiers are still present")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.volume.science"].exists,
+        XCTAssertFalse(app.staticTexts["Volume"].exists,
+                       "This Week still exposes the retired duplicate Volume heading")
+        XCTAssertFalse(app.descendants(matching: .any)["home.myHistory"].exists,
+                       "This Week still exposes the retired My History section")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.science"].exists,
                       "Weekly volume does not expose its multi-reference science link")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showLess"),
-                      "Volume disclosure did not collapse")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showLess"),
+                      "Sets per Muscle Group disclosure did not collapse")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.cardio.showMore"),
                       "This Week did not expose the Cardio disclosure")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
                       "Expanded Cardio does not explain the moderate-equivalent cardio total")
-        XCTAssertFalse(app.descendants(matching: .any)["home.week.volumeHeading"].exists,
-                       "Opening Cardio left Volume expanded at the same time")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.heading"].exists,
+                       "Opening Cardio left Sets expanded at the same time")
         let cardioMinutes = app.descendants(matching: .any)["home.week.cardioMinutes"]
         let leakedSourceTokens = cardioMinutes.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS[c] 'dashboard.cardioDetail' OR label CONTAINS[c] 'Int('"))
         XCTAssertEqual(leakedSourceTokens.count, 0,
                        "Cardio Minutes must render values, never source-code interpolation")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showMore"),
-                      "This Week could not switch its focused detail back to Volume")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.volumeHeading"].waitForExistence(timeout: 5),
-                      "Switching to Volume did not reveal its details")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showMore"),
+                      "This Week could not switch its focused detail back to Sets")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.heading"].waitForExistence(timeout: 5),
+                      "Switching to Sets did not reveal its details")
         XCTAssertFalse(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
-                       "Switching to Volume left Cardio expanded at the same time")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showLess"),
-                      "Volume disclosure did not collapse after the exclusive-mode check")
-
-        // Field test 2026-08-18 #7: the This Week gear deep-links to Coach & Plan
-        // and backs out to This Week, not to a warning page or Settings.
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.coachSettings"),
-                      "This Week did not offer a Coach & Plan shortcut")
-        XCTAssertTrue(app.navigationBars["Coach & Plan"].waitForExistence(timeout: 10),
-                      "This Week gear did not open Coach & Plan")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.buttons["tab.thisWeek"].waitForExistence(timeout: 10),
-                      "Back from Coach & Plan did not return to This Week")
-        XCTAssertFalse(app.navigationBars["Settings"].exists,
-                       "Back from Coach & Plan landed on Settings")
+                       "Switching to Sets left Cardio expanded at the same time")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showLess"),
+                      "Sets disclosure did not collapse after the exclusive-mode check")
         XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
                       "Could not return to Today after reviewing This Week")
         if app.buttons["home.observations.showMore"].exists {
@@ -318,57 +311,64 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home inline Start Workout did not render")
-        expandMoreWaysIfNeeded(app)
+        openStartWorkout(app)
+        XCTAssertTrue(app.staticTexts["Workouts Created for You"].exists,
+                      "Start Workout lost its created-for-you section")
+        XCTAssertTrue(app.staticTexts["Pick Your Own Workout"].exists,
+                      "Start Workout lost its pick-your-own section")
+        XCTAssertTrue(app.buttons["startWorkout.created.strength"].exists,
+                      "Start Workout lost created Strength")
+        XCTAssertTrue(app.buttons["startWorkout.created.cardio"].exists,
+                      "Start Workout lost created Cardio")
+        XCTAssertTrue(app.buttons["startWorkout.pick.strength"].exists,
+                      "Start Workout lost pick Strength")
+        XCTAssertTrue(app.buttons["startWorkout.pick.cardio"].exists,
+                      "Start Workout lost pick Cardio")
 
-        // Field test 2026-08-18 #3: the full-width strength actions are one height.
-        let quick = app.buttons["selectWorkout.quickStart"]
-        let custom = app.buttons["selectWorkout.custom"]
-        let coach = app.buttons["selectWorkout.suggestWorkout"]
-        XCTAssertTrue(quick.waitForExistence(timeout: 5), "Start Workout lost Quick Start")
-        let quickHeight = quick.frame.height
-        XCTAssertEqual(quickHeight, custom.frame.height, accuracy: 1,
-                       "Quick Start and Custom Workout are different heights")
-        XCTAssertTrue(coach.waitForExistence(timeout: 5),
-                      "Start Workout lost Personalized Workout")
-        XCTAssertTrue(coach.label.contains("Workout for You"),
-                      "Personalized-workout action is not using the current visible label")
-        XCTAssertFalse(app.buttons["selectWorkout.coach"].exists)
-        XCTAssertEqual(quickHeight, coach.frame.height, accuracy: 1,
-                       "Suggest a Workout is a different height from Quick Start")
-
-        // Workout for You is an explicit modality choice. The cardio branch
-        // must produce a reviewable suggestion even on a cold-start account,
-        // rather than silently falling through to the strength planner.
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.suggestWorkout"),
-                      "Workout for You did not open its modality choice")
-        XCTAssertTrue(app.buttons["workoutForYou.strength"].waitForExistence(timeout: 5),
-                      "Workout for You lost the Strength choice")
-        XCTAssertTrue(app.buttons["workoutForYou.cardio"].waitForExistence(timeout: 5),
-                      "Workout for You lost the Cardio choice")
-        XCTAssertTrue(app.buttons["workoutForYou.cardio"].waitTap(timeout: 5),
-                      "Workout for You Cardio choice was not tappable")
+        // The created-for-you Cardio branch remains a reviewable suggestion.
+        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.created.cardio"),
+                      "Start Workout Cardio recommendation was not tappable")
         XCTAssertTrue(app.descendants(matching: .any)["suggestedCardio.preview"]
                         .waitForExistence(timeout: 45),
-                      "Workout for You Cardio did not produce a reviewable suggestion")
+                      "Start Workout Cardio did not produce a reviewable suggestion")
         XCTAssertTrue(app.buttons["suggestedCardio.start"].exists,
                       "Cardio suggestion did not expose Start")
         XCTAssertTrue(app.buttons["suggestedCardio.cancel"].waitTap(timeout: 5),
                       "Cardio suggestion could not be cancelled")
-        XCTAssertTrue(app.buttons["selectWorkout.suggestWorkout"].waitForExistence(timeout: 5),
-                      "Cancelling Cardio suggestion did not return to Start Workout")
+        XCTAssertTrue(app.buttons["selectWorkout.startWorkout"].waitForExistence(timeout: 5),
+                      "Cancelling Cardio suggestion did not return to Today")
 
-        expandMoreWaysIfNeeded(app)
-        XCTAssertTrue(app.buttons["selectWorkout.custom"].label.contains("Custom Workout"),
-                      "Start Workout custom action still uses the old label")
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.previousLink"),
-                      "Start Workout did not expose previous workouts")
+        openStartWorkout(app)
+        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.pick.strength"),
+                      "Start Workout did not expose pick Strength")
+        XCTAssertTrue(app.navigationBars["Pick Workout"].waitForExistence(timeout: 5),
+                      "Pick Strength did not open Pick Workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("pickWorkout.previous"),
+                      "Pick Workout did not expose previous workouts")
         XCTAssertTrue(app.navigationBars["Previous Workouts"].waitForExistence(timeout: 5),
                       "Previous Workouts route did not open")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.buttons["selectWorkout.suggestWorkout"].waitForExistence(timeout: 5),
-                      "Returning from Previous Workouts did not restore Start Workout")
+        XCTAssertTrue(app.navigationBars["Pick Workout"].waitForExistence(timeout: 5),
+                      "Returning from Previous Workouts did not restore Pick Workout")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["Start Workout"].waitForExistence(timeout: 5),
+                      "Returning from Pick Workout did not restore Start Workout")
+        XCTAssertTrue(app.buttons["startWorkout.pick.scheduleCardio"].exists,
+                      "Start Workout did not expose the separate Schedule Cardio action")
+        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.pick.scheduleCardio"),
+                      "Schedule Cardio action was not tappable")
+        XCTAssertTrue(app.navigationBars["Schedule Cardio"].waitForExistence(timeout: 5),
+                      "Schedule Cardio did not open the shared scheduling picker")
+        XCTAssertTrue(app.scrollToHittableAndTap("cardioPicker.schedule.run"),
+                      "Schedule Cardio picker did not expose Run")
+        XCTAssertTrue(app.navigationBars["Schedule Run"].waitForExistence(timeout: 5),
+                      "Selecting a cardio type did not open its date/time scheduler")
+        XCTAssertTrue(app.buttons["scheduleWorkout.save"].waitTap(timeout: 5),
+                      "Schedule Cardio did not save its date/time")
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Saving Schedule Cardio did not return Home")
 
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.suggestWorkout"),
+        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.created.strength"),
                       "Start Workout did not generate a personalized workout")
         // Personalized generation is now a single direct transition to the
         // editable plan. Keep the cold-path allowance here because catalog
@@ -468,46 +468,42 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home inline Start Workout did not reopen after suggested workouts")
-        expandMoreWaysIfNeeded(app)
+        openStartWorkout(app)
         expandAllCardioIfNeeded(app)
 
         // Field test 2026-08-20 issue 8: Rowing remains in the expanded cardio
         // taxonomy, which now uses three columns.
-        XCTAssertTrue(app.scrollToElement("startType.rowing"),
+        XCTAssertTrue(app.scrollToElement("cardioPicker.start.rowing"),
                       "Start Workout did not offer Rowing")
-        let cycle = app.buttons["startType.cycle"]
+        let cycle = app.buttons["cardioPicker.start.cycle"]
         XCTAssertTrue(cycle.exists, "Start Workout lost Cycle")
-        let run = app.buttons["startType.run"]
+        let run = app.buttons["cardioPicker.start.run"]
         XCTAssertTrue(run.exists, "Start Workout lost Run")
         XCTAssertEqual(run.frame.width, run.frame.height, accuracy: 2,
                        "Compact cardio tiles are not square")
-        XCTAssertEqual(app.buttons["selectWorkout.showAllCardio"].frame.height,
-                       quickHeight, accuracy: 1,
-                       "Cardio Show more does not match the Quick Start control height")
-        let rowing = app.buttons["startType.rowing"]
+        XCTAssertGreaterThan(app.buttons["cardioPicker.showMore"].frame.height, 40,
+                             "Cardio Show more does not have a usable hit area")
+        let rowing = app.buttons["cardioPicker.start.rowing"]
         XCTAssertGreaterThan(rowing.frame.minX, cycle.frame.minX,
                              "Rowing is not after Cycle in the cardio grid")
-        let swim = app.buttons["startType.swim"]
+        let swim = app.buttons["cardioPicker.start.swim"]
         XCTAssertTrue(swim.exists, "Start Workout lost Swim")
         XCTAssertLessThan(rowing.frame.minY, swim.frame.minY,
                           "Rowing is not before Swim in the cardio grid")
-        // Reopen at the top for the strength-flow steps that follow. Swiping
-        // `scrollViews.firstMatch` is ambiguous while Home remains behind this
-        // sheet and can move the covered dashboard instead of the picker.
-        // The picker is inline, so taxonomy inspection does not require a
-        // sheet dismissal before returning to the strength controls.
-
-        expandMoreWaysIfNeeded(app)
-        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.custom"),
-                      "Start Workout did not offer Custom Workout beneath Quick Start")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        openStartWorkout(app)
+        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.pick.strength"),
+                      "Start Workout did not offer pick Strength")
+        XCTAssertTrue(app.navigationBars["Pick Workout"].waitForExistence(timeout: 5),
+                      "Pick Strength did not open Pick Workout")
+        XCTAssertTrue(app.scrollToHittableAndTap("pickWorkout.custom"),
+                      "Pick Workout did not offer Custom Workout")
         XCTAssertTrue(app.buttons["editor.start"].waitForExistence(timeout: 10),
                       "Custom workout did not open the Workout Plan editor")
         XCTAssertFalse(app.buttons["editor.generate"].exists,
                        "Custom Workout still exposes the non-functional Generate with Coach action")
         XCTAssertTrue(app.buttons["editor.start"].label.contains("Start Workout"),
                       "Workout Plan start action is not labeled Start Workout")
-        XCTAssertEqual(app.buttons["editor.start"].frame.height, quickHeight, accuracy: 1,
-                       "Workout Plan Start Workout is a different height from Start Workout's actions")
         XCTAssertTrue(app.buttons["editor.addExercise"].waitForExistence(timeout: 5),
                       "Custom Workout did not open in edit mode")
         XCTAssertTrue(app.buttons["editor.suggestExercise"].waitForExistence(timeout: 5),
@@ -712,26 +708,25 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(todayRow.waitForExistence(timeout: 10),
                       "Completed workout did not appear in My Workouts")
 
-        // Field test 2026-08-27 Phase 9: Home's collapsed My History section
-        // first reveals the week-to-date list, then opens the canonical full
-        // History surface. History summaries use the explicit Back action.
+        // This Week no longer duplicates History. The canonical History surface
+        // remains reachable from Progress, while Sets keeps the partner filter.
         XCTAssertTrue(app.buttons["tab.thisWeek"].waitTap(timeout: 10),
-                      "Could not open This Week for My History")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.volume.showMore"),
-                      "This Week did not expose its Volume disclosure after partner work")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.volume.performers"]
+                      "Could not open This Week for the partner volume check")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showMore"),
+                      "This Week did not expose its Sets disclosure after partner work")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.performers"]
                         .waitForExistence(timeout: 5),
-                      "This Week volume did not expose the partner picker")
-        XCTAssertTrue(app.buttons["home.week.volume.performer.owner"].exists,
-                      "This Week volume did not expose the owner choice")
-        XCTAssertTrue(app.descendants(matching: .any)["home.myHistory"].waitForExistence(timeout: 10),
-                      "This Week did not render My History")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.history.showMore"),
-                      "My History did not offer Show more…")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.history.fullHistory"),
-                      "Expanded My History did not offer View full history")
+                      "This Week Sets did not expose the partner picker")
+        XCTAssertTrue(app.buttons["home.week.sets.performer.owner"].exists,
+                      "This Week Sets did not expose the owner choice")
+        XCTAssertFalse(app.descendants(matching: .any)["home.myHistory"].exists,
+                       "This Week still rendered the retired My History section")
+        XCTAssertTrue(app.buttons["tab.progress"].waitTap(timeout: 10),
+                      "Could not open Progress for full History")
+        XCTAssertTrue(app.scrollToHittableAndTap("progress.fullHistory"),
+                      "Progress did not offer View full history")
         XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 10),
-                      "My History full-history action did not open History")
+                      "Progress full-history action did not open History")
         XCTAssertTrue(app.buttons["session.row"].waitForExistence(timeout: 10),
                       "Full History did not show the completed workout")
         app.buttons["session.row"].tap()
@@ -744,10 +739,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 10),
                       "Summary Back did not return to full History")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.buttons["tab.thisWeek"].waitTap(timeout: 10),
-                      "Could not return to This Week after full History")
-        XCTAssertFalse(app.descendants(matching: .any)["home.startWorkout"].exists,
-                       "This Week unexpectedly exposed the Today launchpad")
+        XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
+                      "Could not return to Today after full History")
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Returning from full History did not land on Today")
 
         // Field test 2026-08-20 issue 5: ending a cardio workout must stop the
         // watch's workout session — the leak behind the "live activity that never
@@ -760,8 +755,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Could not return to Today for the cardio flow")
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Home inline Start Workout did not reopen for the cardio flow")
-        expandMoreWaysIfNeeded(app)
-        XCTAssertTrue(app.scrollToHittableAndTap("startType.run"),
+        openStartWorkout(app)
+        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.pick.cardio"),
+                      "Start Workout did not offer Pick Your Own Cardio")
+        XCTAssertTrue(app.navigationBars["Cardio"].waitForExistence(timeout: 5),
+                      "Pick Your Own Cardio did not open the Cardio picker")
+        XCTAssertTrue(app.scrollToHittableAndTap("cardioPicker.start.run"),
                       "Start Workout did not offer the Run cardio tile")
         XCTAssertTrue(app.scrollToHittableAndTap("goal.none"),
                       "Cardio goal sheet did not offer start-without-goal")
@@ -805,20 +804,26 @@ final class SmokeLaunchTests: CadenceUITestCase {
                         .firstMatch.waitForExistence(timeout: 15),
                       "Completed workout disappeared from Workouts Today after relaunch")
     }
-    private func expandMoreWaysIfNeeded(_ app: XCUIApplication) {
-        let disclosure = app.buttons["selectWorkout.moreWays"]
-        XCTAssertTrue(disclosure.waitForExistence(timeout: 5), "Today is missing More ways to start")
-        if (disclosure.value as? String) != "Expanded" {
-            XCTAssertTrue(disclosure.waitTap(timeout: 5), "More ways to start did not expand")
-        }
+    private func openStartWorkout(_ app: XCUIApplication) {
+        if app.navigationBars["Start Workout"].exists { return }
+        XCTAssertTrue(app.scrollToHittableAndTap("selectWorkout.startWorkout"),
+                      "Today is missing Start Workout")
+        XCTAssertTrue(app.navigationBars["Start Workout"].waitForExistence(timeout: 5),
+                      "Start Workout did not open")
     }
 
     private func expandAllCardioIfNeeded(_ app: XCUIApplication) {
-        let disclosure = app.buttons["selectWorkout.showAllCardio"]
-        XCTAssertTrue(app.scrollToElement("selectWorkout.showAllCardio"),
-                      "More ways to start did not expose Show all cardio")
+        if app.buttons["startWorkout.pick.cardio"].exists {
+            XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.pick.cardio"),
+                          "Start Workout did not expose Pick Your Own Cardio")
+            XCTAssertTrue(app.navigationBars["Cardio"].waitForExistence(timeout: 5),
+                          "Pick Your Own Cardio did not open the Cardio Picker")
+        }
+        let disclosure = app.buttons["cardioPicker.showMore"]
+        XCTAssertTrue(app.scrollToElement("cardioPicker.showMore"),
+                      "Cardio Picker did not expose Show more")
         if (disclosure.value as? String) != "Expanded" {
-            XCTAssertTrue(disclosure.waitTap(timeout: 5), "Show all cardio did not expand")
+            XCTAssertTrue(disclosure.waitTap(timeout: 5), "Show more cardio did not expand")
         }
     }
 

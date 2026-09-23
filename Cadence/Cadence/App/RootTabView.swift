@@ -42,6 +42,7 @@ struct RootTabView: View {
         @Bindable var active = active
         return ZStack {
             selectedTabContent
+                .cadenceTabBarClearance()
                 .safeAreaInset(edge: .bottom, spacing: 0) { glassDock }
             .fullScreenCover(isPresented: Binding(
                 get: { !settings.hasCompletedOnboarding },

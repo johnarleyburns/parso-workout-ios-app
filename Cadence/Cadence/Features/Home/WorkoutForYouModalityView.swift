@@ -10,7 +10,7 @@ struct WorkoutForYouModalityView: View {
         VStack(alignment: .leading, spacing: 18) {
             Text("What would you like to do?")
                 .font(.headline)
-            Text("Workout for You uses your history and weekly needs to prepare one session for you to review before starting.")
+            Text("Start Workout uses your history and weekly needs to prepare one session for you to review before starting.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -48,7 +48,7 @@ struct WorkoutForYouModalityView: View {
             Spacer()
         }
         .padding(CGFloat(LayoutMetrics.pagePadding))
-        .navigationTitle("Workout for You")
+        .navigationTitle("Start Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

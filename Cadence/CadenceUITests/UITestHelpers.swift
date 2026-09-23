@@ -128,14 +128,20 @@ extension XCUIApplication {
         }
     }
 
-    /// Starts a blank strength session the way the app now does it: Home → Start
-    /// Workout → Quick Start. Quick Start goes directly into the active session
-    /// (or its warm-up), without opening the plan/settings editor.
+    /// Starts a blank strength session through the current Home → Start Workout
+    /// → Pick Workout → Custom Workout route. This keeps screenshot coverage on
+    /// the same public path a user sees; Quick Start is retired.
     @discardableResult
     func startQuickStartStrength() -> Bool {
         popToHome()
         guard descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10) else { return false }
-        guard scrollToHittableAndTap("selectWorkout.quickStart") else { return false }
+        guard scrollToHittableAndTap("selectWorkout.startWorkout") else { return false }
+        guard navigationBars["Start Workout"].waitForExistence(timeout: 10) else { return false }
+        guard scrollToHittableAndTap("startWorkout.pick.strength") else { return false }
+        guard navigationBars["Pick Workout"].waitForExistence(timeout: 10) else { return false }
+        guard scrollToHittableAndTap("pickWorkout.custom") else { return false }
+        guard buttons["editor.start"].waitForExistence(timeout: 25) else { return false }
+        guard buttons["editor.start"].waitTap(timeout: 10) else { return false }
         return buttons["session.addExercise"].waitForExistence(timeout: 25)
     }
 

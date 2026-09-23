@@ -33,7 +33,7 @@ extension HomeWeekDashboardSection {
         .accessibilityLabel(row.displayName)
         .accessibilityValue("\(formattedSets(row.sets)) sets")
         .accessibilityHint(row.isTracked ? "" : "Not a tracked muscle group")
-        .accessibilityIdentifier("home.volume.\(row.group.rawValue)")
+        .accessibilityIdentifier("home.week.sets.row.\(row.group.rawValue)")
     }
 
     func formattedSets(_ sets: Double) -> String {

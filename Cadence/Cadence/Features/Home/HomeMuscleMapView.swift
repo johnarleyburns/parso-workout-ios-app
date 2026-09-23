@@ -16,9 +16,6 @@ struct HomeMuscleMapView: View {
         let displayedGroups = Set((volumeRows ?? dashboard.volume).map(\.group))
 
         VStack(alignment: .leading, spacing: 8) {
-            Text("Muscle map")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.orange)
             HStack(spacing: 0) {
                 panelSegment(.front)
                 Rectangle()
@@ -34,7 +31,7 @@ struct HomeMuscleMapView: View {
             }
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("Muscle map view")
+            .accessibilityLabel("Sets per muscle group view")
             MuscleMapSideView(
                 panel: selectedPanel,
                 title: selectedPanel == .front ? "FRONT" : "BACK",
@@ -44,14 +41,14 @@ struct HomeMuscleMapView: View {
                 statusColor: statusColor(for:),
                 onSelect: onSelect)
             Button(action: onOpenCardio) {
-                Label("Cardio · \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) min",
+                Label("Cardio · \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded()))/\(Int(dashboard.cardioDetail.targetMinutes.rounded())) min credit",
                       systemImage: "heart.fill")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.pink)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Cardio, \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) minutes this week")
+            .accessibilityLabel("Cardio, \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) of \(Int(dashboard.cardioDetail.targetMinutes.rounded())) minutes credit this week")
             Text("Tap a highlighted muscle for this week's direct and indirect work")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -78,7 +75,7 @@ struct HomeMuscleMapView: View {
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
         .accessibilityAddTraits(selected ? .isSelected : [])
-        .accessibilityIdentifier("home.week.muscleMap.\(panel.rawValue)")
+        .accessibilityIdentifier("home.week.sets.muscleMap.\(panel.rawValue)")
         .accessibilityLabel(panel == .front ? "Front" : "Back")
     }
 
@@ -155,7 +152,7 @@ private struct MuscleMapSideView: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(title.lowercased()) muscle map")
+        .accessibilityLabel("\(title.lowercased()) sets per muscle group")
     }
 
     private func calloutColumn(_ callouts: [MuscleMapCallout], alignment: HorizontalAlignment) -> some View {

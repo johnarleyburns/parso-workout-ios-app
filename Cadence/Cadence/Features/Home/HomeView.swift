@@ -83,6 +83,7 @@ struct HomeView: View {
     @State var weightsStartPresented = false
     @State var cardioGoalFor: CardioType?
     @State var scheduleCardioType: WorkoutType?
+    @State var cardioSchedulePickerPresented = false
     @State var warnAddOn: (session: CoachSession, status: CoachAddOnStatus)?
     @State var outdoorGoalMeters: Double?
     @State var showAlternatives = false

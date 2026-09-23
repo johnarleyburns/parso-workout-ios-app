@@ -20,17 +20,34 @@ extension HomeView {
         }
         if let s = resumeSession { resumeCard(s) }
         SelectWorkoutView(
-            onQuickStart: { startQuickStartStrength() },
             onSuggestedWorkout: { requestSuggestedWorkout($0) },
-            onEditorStart: { handleEditorStart($0) },
+            onEditorStart: {
+                path = NavigationPath()
+                handleEditorStart($0)
+            },
             onScheduleStrength: {
+                path = NavigationPath()
                 workoutEditorPlan = .empty(warmup: settings.warmupMinutes,
                                             cooldown: settings.cooldownMinutes)
             },
-            onLogWorkout: { logPickerPresented = true },
-            onScheduleCardio: { scheduleCardioType = $0 },
-            onSelect: { start($0) },
+            onLogWorkout: {
+                path = NavigationPath()
+                logPickerPresented = true
+            },
+            onStartCardio: {
+                path = NavigationPath()
+                start($0)
+            },
+            onScheduleCardio: {
+                path = NavigationPath()
+                scheduleCardioType = $0
+            },
+            onOpenScheduleCardio: {
+                path = NavigationPath()
+                cardioSchedulePickerPresented = true
+            },
             onOtherCardio: { description, gps in
+                path = NavigationPath()
                 startOtherCardio(description: description, gps: gps)
             },
             recentCardioTypes: recentCardioTypes,
@@ -58,8 +75,7 @@ extension HomeView {
             weeklyVolumePerformers: cachedWeeklyVolumePerformers,
             totalVolumeKg: weeklyVolumeKg,
             unit: settings.unit,
-            onOpenWorkout: openWeekWorkout,
-            onOpenCoachSettings: { path.append(HomeRoute.coachPreferences) })
+            onOpenWorkout: openWeekWorkout)
     }
 
     @ViewBuilder

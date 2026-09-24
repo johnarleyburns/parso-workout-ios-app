@@ -3,57 +3,65 @@ import SwiftData
 import Charts
 import CadenceCore
 import CadenceFeatures
-import os
 
-enum ProgressRoute: Hashable { case history }
+private struct ProgressSessionSignature: Equatable {
+    let id: UUID
+    let date: Date
+    let updatedAt: Date
+    let deletedAt: Date?
+}
+
+private struct ProgressPreparedSnapshot: Sendable {
+    let strength: StrengthProgressChartData
+    let prEvents: [PREvent]
+}
 
 struct TrainingProgressView: View {
-    private static let performanceLog = OSLog(subsystem: "guru.parso.cladiron", category: "ProgressPerformance")
-    @Environment(\.modelContext) private var context
-    @Environment(ActiveWorkoutModel.self) private var active
     @Environment(AppSettings.self) private var settings
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .forward) private var allAssessments: [Assessment]
 
     @State private var path = NavigationPath()
-    @State private var questionSelection = ProgressQuestionSelection()
+    @State private var questionSelection = ProgressQuestionSelection.persisted()
+    @State private var preparedStrengthData: StrengthProgressChartData?
+    @State private var preparedPREvents: [PREvent] = []
+    @State private var preparedFacts: TrainingFacts?
+    @State private var selectedStrengthNames: Set<String> = []
+    @State private var didInitializeStrengthSelection = false
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
-    private var facts: TrainingFacts {
-        let signpostID = OSSignpostID(log: Self.performanceLog)
-        os_signpost(.begin, log: Self.performanceLog, name: "progressFactsPreparation", signpostID: signpostID)
-        defer { os_signpost(.end, log: Self.performanceLog, name: "progressFactsPreparation", signpostID: signpostID) }
-        return TrainingFacts.make(sessions: activeSessions, assessments: allAssessments,
-                                  goal: settings.trainingGoal, experience: settings.experienceLevel,
-                                  formula: settings.formula)
-    }
-    private var strengthSeries: [E1RMSeries] {
-        let signpostID = OSSignpostID(log: Self.performanceLog)
-        os_signpost(.begin, log: Self.performanceLog, name: "progressStrengthPreparation", signpostID: signpostID)
-        defer { os_signpost(.end, log: Self.performanceLog, name: "progressStrengthPreparation", signpostID: signpostID) }
-        return ProgressPresenter.strengthSeries(sessions: activeSessions, formula: settings.formula)
+    private var facts: TrainingFacts? { preparedFacts }
+
+    private var progressSignature: [ProgressSessionSignature] {
+        sessions.map { ProgressSessionSignature(id: $0.id, date: $0.date,
+                                                 updatedAt: $0.updatedAt,
+                                                 deletedAt: $0.deletedAt) }
     }
 
     var body: some View {
         NavigationStack(path: $path) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    ProgressQuestionSummaryView(
-                        selection: $questionSelection,
-                        sessions: activeSessions,
-                        detailContent: { question in
-                            progressQuestionContent(for: question)
-                        })
-                    scienceBanner
-                    ProgressHistoryLink { Haptics.selection(); path.append(ProgressRoute.history) }
+            Group {
+                if questionSelection.selected == .workoutHistory {
+                    HistoryView(path: $path)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 14) {
+                            ProgressQuestionSummaryView(
+                                selection: $questionSelection,
+                                sessions: activeSessions,
+                                detailContent: { question in
+                                    progressQuestionContent(for: question)
+                                })
+                            scienceBanner
+                        }
+                        .padding()
+                    }
                 }
-                .padding()
             }
             .background { CadenceGlassBackdrop(tint: .blue) }
             .navigationTitle("Progress")
             .navigationDestination(for: AssessmentKind.self) { AssessmentDetailView(kind: $0) }
-            .navigationDestination(for: ProgressRoute.self) { _ in HistoryView(path: $path) }
             .navigationDestination(for: HistorySummaryRoute.self) { route in
                 switch route {
                 case .strength(let id):
@@ -78,12 +86,71 @@ struct TrainingProgressView: View {
                 }
             }
         }
+        .task(id: progressSignature) {
+            await prepareProgressData()
+        }
+        .onChange(of: questionSelection) { _, selection in
+            selection.persist()
+        }
         .accessibilityIdentifier("progress")
+    }
+
+    private func prepareProgressData() async {
+        let inputs = activeSessions.map { session in
+            StrengthProgressSessionInput(
+                date: session.date,
+                deleted: session.deletedAt != nil,
+                sets: session.orderedSets.compactMap { set in
+                    guard let name = set.exercise?.name, !name.isEmpty else { return nil }
+                    return StrengthProgressSetInput(exerciseName: name,
+                                                    completedAt: set.completedAt,
+                                                    weightKg: set.effectiveLoadKg,
+                                                    reps: set.reps,
+                                                    isWarmup: set.isWarmup,
+                                                    isOwnerSet: set.isOwnerSet)
+                })
+        }
+        let prSamples = inputs.flatMap { session in
+            session.sets.filter { $0.isOwnerSet }.map {
+                ExerciseSetSample(exerciseName: $0.exerciseName,
+                                  sample: SetSample(weight: $0.weightKg,
+                                                    reps: $0.reps,
+                                                    date: $0.completedAt,
+                                                    isWarmup: $0.isWarmup))
+            }
+        }
+        let formula = settings.formula
+        let rule = settings.prRule
+        let prepared = await Task.detached(priority: .userInitiated) {
+            ProgressPreparedSnapshot(
+                strength: StrengthProgress.chartData(from: inputs, formula: formula),
+                prEvents: PRTimeline.events(sets: prSamples, rule: rule, formula: formula))
+        }.value
+        guard !Task.isCancelled else { return }
+        preparedStrengthData = prepared.strength
+        preparedPREvents = prepared.prEvents
+        if !didInitializeStrengthSelection {
+            let defaults = Set(prepared.strength.exerciseNames.filter {
+                ["Bench Press", "Deadlift", "Back Squat"].contains($0)
+            })
+            selectedStrengthNames = defaults.union(
+                prepared.strength.powerlifter.map { [$0.exercise] } ?? [])
+            didInitializeStrengthSelection = true
+        }
+        // The slower insight facts are prepared once per history snapshot. The
+        // chart and PR tabs never depend on this work, so they remain responsive
+        // even while the secondary reports are being refreshed.
+        await Task.yield()
+        preparedFacts = TrainingFacts.make(sessions: activeSessions,
+                                           assessments: allAssessments,
+                                           goal: settings.trainingGoal,
+                                           experience: settings.experienceLevel,
+                                           formula: formula)
     }
     @ViewBuilder
     private func progressQuestionContent(for question: ProgressQuestion) -> some View {
         switch question {
-        case .exerciseProgression, .strengthOverTime:
+        case .strengthOverTime:
             strengthCard
         case .tests:
             VStack(alignment: .leading, spacing: 10) {
@@ -97,12 +164,14 @@ struct TrainingProgressView: View {
                 testResultsCard
             }
         case .personalRecords:
-            PRTimelineView(sessions: activeSessions)
+            PRTimelineView(events: preparedPREvents)
         case .intensity:
             intensityCard
         case .effort:
             effortCard
         case .consistency:
+            EmptyView()
+        case .workoutHistory:
             EmptyView()
         }
     }
@@ -156,75 +225,25 @@ struct TrainingProgressView: View {
     @ViewBuilder private var strengthCard: some View {
         card(title: "Strength over time", subtitle: "estimated 1RM \u{00b7} last 12 weeks",
              citation: CitationRegistry.oneRMEstimation, tint: .blue) {
-            if strengthSeries.allSatisfy({ $0.points.count < 2 }) {
-                emptyNote("Log a few weeks of working sets and your estimated-1RM trend appears here. e1RM is projected from the weight and reps of your heaviest sets.")
+            if let preparedStrengthData {
+                ProgressStrengthChartView(data: preparedStrengthData,
+                                          unit: settings.unit,
+                                          selectedNames: $selectedStrengthNames)
             } else {
-                Chart {
-                    ForEach(strengthSeries) { s in
-                        ForEach(s.points) { p in
-                            LineMark(x: .value("Week", p.weekStart),
-                                     y: .value("e1RM", WorkoutMath.display(p.e1rm, in: settings.unit)))
-                            .foregroundStyle(by: .value("Lift", s.exercise))
-                            .interpolationMethod(.catmullRom)
-                        }
-                    }
-                }
-                .chartYScale(domain: .automatic(includesZero: false))
-                .frame(height: 150)
-                .accessibilityElement()
-                .accessibilityLabel("Estimated 1RM trend, last 12 weeks")
-                .accessibilityValue(strengthTrendSummary)
-
-                VStack(spacing: 5) {
-                    ForEach(strengthSeries) { s in
-                        HStack(spacing: 8) {
-                            Text(s.exercise).font(.subheadline).lineLimit(1).minimumScaleFactor(0.7)
-                            Spacer()
-                            Text(Format.weight(s.current, unit: settings.unit, decimals: 0))
-                                .font(.subheadline.weight(.semibold)).monospacedDigit()
-                            trendTag(s.trend, delta: s.delta)
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("\(s.exercise): \(Format.weight(s.current, unit: settings.unit, decimals: 0)), \(trendLabel(s.trend, delta: s.delta))")
-                    }
-                }
-                .padding(.top, 8)
+                ProgressView()
+                    .frame(maxWidth: .infinity, minHeight: 110)
+                    .accessibilityLabel("Preparing strength chart")
             }
-        }
-    }
-
-    /// One-line VoiceOver summary of the (visually hidden) e1RM chart.
-    private var strengthTrendSummary: String {
-        ProgressPresenter.strengthTrendSummary(series: strengthSeries, unit: settings.unit)
-    }
-
-    private func trendLabel(_ t: TrendDirection, delta: Double) -> String {
-        ProgressPresenter.trendLabel(t, delta: delta, unit: settings.unit)
-    }
-
-    @ViewBuilder private func trendTag(_ t: TrendDirection, delta: Double) -> some View {
-        switch t {
-        case .rising:
-            Label("+" + Format.weight(abs(delta), unit: settings.unit, decimals: 0), systemImage: "arrow.up.right")
-                .font(.caption).foregroundStyle(.green)
-        case .declining:
-            Label("\u{2212}" + Format.weight(abs(delta), unit: settings.unit, decimals: 0), systemImage: "arrow.down.right")
-                .font(.caption).foregroundStyle(.orange)
-        case .flat:
-            Label("flat", systemImage: "minus").font(.caption).foregroundStyle(.secondary)
         }
     }
 
     // MARK: - §4 Load intensity
 
     @ViewBuilder private var intensityCard: some View {
-        let i = facts.intensity
         card(title: "Load intensity",
              subtitle: "vs. your goal \u{2014} \(settings.trainingGoal.displayName.lowercased())",
              citation: CitationRegistry.schoenfeld2021, tint: .blue) {
-            if i.sampleCount == 0 {
-                emptyNote("Log the weight on your sets and we'll show how your work splits across heavy, moderate, and light loads \u{2014} and whether that matches your goal's rep range.")
-            } else {
+            if let i = facts?.intensity, i.sampleCount > 0 {
                 GeometryReader { geo in
                     let w = geo.size.width
                     HStack(spacing: 0) {
@@ -244,6 +263,8 @@ struct TrainingProgressView: View {
                 .font(.caption2).padding(.top, 5)
                 Text(intensityRead(i, goal: settings.trainingGoal))
                     .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
+            } else {
+                emptyNote("Log the weight on your sets and we'll show how your work splits across heavy, moderate, and light loads \u{2014} and whether that matches your goal's rep range.")
             }
         }
     }
@@ -258,7 +279,7 @@ struct TrainingProgressView: View {
 
     @ViewBuilder private var effortCard: some View {
         card(title: "Effort", citation: CitationRegistry.rpeAutoregulation, compact: true, tint: .orange, equalHeight: true) {
-            if let rir = facts.avgRIR {
+            if let rir = facts?.avgRIR {
                 Text(String(format: "%.1f", rir)).font(.title2.weight(.semibold))
                 + Text(" RIR").font(.caption).foregroundStyle(.secondary)
                 Text(effortRead(rir, goal: settings.trainingGoal))
@@ -278,29 +299,34 @@ struct TrainingProgressView: View {
 
     @ViewBuilder private var testResultsCard: some View {
         card(title: "Test results", citation: nil, tint: .blue) {
-            if facts.assessments.isEmpty {
-                emptyNote("Run a test from the Tests tab \u{2014} strength, push-ups, plank, or a VO\u{2082}max field test \u{2014} and your results trend here, noise-guarded.")
+            if let facts {
+                if facts.assessments.isEmpty {
+                    emptyNote("Run a test from the Tests tab \u{2014} strength, push-ups, plank, or a VO\u{2082}max field test \u{2014} and your results trend here, noise-guarded.")
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(facts.assessments.enumerated()), id: \.element.id) { idx, s in
+                            if idx > 0 { Divider() }
+                            Button { Haptics.selection(); path.append(s.kind) } label: { testRow(s) }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("progress.trend.\(s.id)")
+                        }
+                    }
+                    ForEach(facts.assessmentsDueForRetest) { s in
+                        HStack(spacing: 7) {
+                            Image(systemName: "calendar.badge.clock").foregroundStyle(.orange)
+                            Text("\(AssessmentDisplay.seriesTitle(s)) is due to re-test (\(s.daysSinceLatest() / 7) weeks).")
+                                .font(.caption).foregroundStyle(.orange)
+                        }
+                        .padding(9).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                        .padding(.top, 8)
+                    }
+                    Divider().padding(.top, 12).padding(.bottom, 8)
+                    CitationLink(citation: CitationRegistry.oneRMEstimation, context: "Test methods & validity", compact: true)
+                }
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(facts.assessments.enumerated()), id: \.element.id) { idx, s in
-                        if idx > 0 { Divider() }
-                        Button { Haptics.selection(); path.append(s.kind) } label: { testRow(s) }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("progress.trend.\(s.id)")
-                    }
-                }
-                ForEach(facts.assessmentsDueForRetest) { s in
-                    HStack(spacing: 7) {
-                        Image(systemName: "calendar.badge.clock").foregroundStyle(.orange)
-                        Text("\(AssessmentDisplay.seriesTitle(s)) is due to re-test (\(s.daysSinceLatest() / 7) weeks).")
-                            .font(.caption).foregroundStyle(.orange)
-                    }
-                    .padding(9).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-                    .padding(.top, 8)
-                }
-                Divider().padding(.top, 12).padding(.bottom, 8)
-                CitationLink(citation: CitationRegistry.oneRMEstimation, context: "Test methods & validity", compact: true)
+                ProgressView("Preparing test results")
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

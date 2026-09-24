@@ -2,8 +2,8 @@ import XCTest
 @testable import CadenceFeatures
 
 final class ProgressQuestionSelectionTests: XCTestCase {
-    func testConsistencyIsTheSummaryFirstDefault() {
-        XCTAssertEqual(ProgressQuestionSelection().selected, .consistency)
+    func testStrengthOverTimeIsTheDefault() {
+        XCTAssertEqual(ProgressQuestionSelection().selected, .strengthOverTime)
     }
 
     func testSelectingAnotherQuestionReplacesTheCurrentSummary() {
@@ -18,8 +18,21 @@ final class ProgressQuestionSelectionTests: XCTestCase {
 
     func testAlphabeticalIncludesEveryProgressSurface() {
         XCTAssertEqual(ProgressQuestion.alphabetical.map(\.displayName), [
-            "Consistency", "Effort", "Exercise", "Intensity", "Personal Records",
-            "Strength over time", "Tests"
+            "Consistency", "Effort", "Intensity", "Personal Records",
+            "Strength over time", "Tests", "Workout History"
         ])
+    }
+
+    func testSelectionPersistsAndDefaultsToStrengthOverTime() {
+        let suite = "ProgressQuestionSelectionTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        XCTAssertEqual(ProgressQuestionSelection.persisted(defaults: defaults).selected,
+                       .strengthOverTime)
+        let selection = ProgressQuestionSelection(selected: .personalRecords)
+        selection.persist(defaults: defaults)
+        XCTAssertEqual(ProgressQuestionSelection.persisted(defaults: defaults).selected,
+                       .personalRecords)
     }
 }

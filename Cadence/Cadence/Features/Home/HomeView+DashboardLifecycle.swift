@@ -73,7 +73,7 @@ extension HomeView {
                 selectWorkoutPresented = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceShowTodaysPlan)) { _ in
-                path.append(HomeRoute.plannedWorkouts)
+                plannedWorkoutsPresented = true
             }
             .onChange(of: active.finishedSummary != nil) { _, shown in
                 if shown {

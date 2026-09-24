@@ -116,7 +116,7 @@ extension XCUIApplication {
             XCTAssertTrue(buttons["tab.settings"].waitTap(timeout: 10), "Settings tab not found")
         case "History":
             XCTAssertTrue(buttons["tab.progress"].waitTap(timeout: 10), "Progress tab not found")
-            XCTAssertTrue(scrollToHittableAndTap("progress.fullHistory"), "Progress History not found")
+            XCTAssertTrue(scrollToHittableAndTap("progress.question.workoutHistory"), "Progress History not found")
         case "Planned Workouts":
             XCTAssertTrue(buttons["tab.today"].waitTap(timeout: 10), "Today tab not found")
             XCTAssertTrue(scrollToHittableAndTap("home.myWorkouts.showMore"), "Planned workouts link not found")

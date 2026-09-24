@@ -9,12 +9,8 @@ import CadenceFeatures
 /// recent records — each shareable as a branded PNG through `ShareCardRenderer`.
 struct PRTimelineView: View {
     @Environment(AppSettings.self) private var settings
-    let sessions: [WorkoutSession]
+    let events: [PREvent]
     @State private var selectedExerciseName: String?
-
-    private var events: [PREvent] {
-        WorkoutRepository.prEvents(from: sessions, rule: settings.prRule, formula: settings.formula)
-    }
     private var rows: [PRTimelinePresenter.Row] {
         PRTimelinePresenter.rows(events: events, unit: settings.unit)
     }

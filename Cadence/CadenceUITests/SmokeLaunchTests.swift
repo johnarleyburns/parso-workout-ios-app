@@ -86,16 +86,16 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Progress tab did not open")
         XCTAssertTrue(app.descendants(matching: .any)["progress"].waitForExistence(timeout: 10),
                       "Progress surface did not render")
-        XCTAssertTrue(app.descendants(matching: .any)["progress.consistencyHeatmap"].exists,
-                      "Progress did not default to its selected Consistency question")
+        XCTAssertTrue(app.buttons["progress.question.strengthOverTime"].exists,
+                      "Progress did not default to Strength over time")
         XCTAssertFalse(app.buttons["progress.question.cardioChange"].exists,
                        "Progress still exposes the retired Cardio question")
         XCTAssertFalse(app.buttons["progress.question.frequency"].exists,
                        "Progress still exposes the retired Frequency question")
         XCTAssertFalse(app.buttons["progress.question.muscleVolume"].exists,
                        "Progress still exposes the retired Muscle volume question")
-        XCTAssertTrue(app.buttons["progress.fullHistory"].exists,
-                      "Progress did not expose full History")
+        XCTAssertTrue(app.buttons["progress.question.workoutHistory"].exists,
+                      "Progress did not expose Workout History")
         XCTAssertTrue(app.scrollToHittableAndTap("progress.question.tests"),
                       "Progress did not expose Tests in the question bar")
         XCTAssertTrue(app.buttons["progress.performTest"].waitForExistence(timeout: 5),
@@ -708,9 +708,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertFalse(app.descendants(matching: .any)["home.myHistory"].exists,
                        "This Week still rendered the retired My History section")
         XCTAssertTrue(app.buttons["tab.progress"].waitTap(timeout: 10),
-                      "Could not open Progress for full History")
-        XCTAssertTrue(app.scrollToHittableAndTap("progress.fullHistory"),
-                      "Progress did not offer View full history")
+                      "Could not open Progress for Workout History")
+        XCTAssertTrue(app.scrollToHittableAndTap("progress.question.workoutHistory"),
+                      "Progress did not offer Workout History")
         XCTAssertTrue(app.navigationBars["History"].waitForExistence(timeout: 10),
                       "Progress full-history action did not open History")
         XCTAssertTrue(app.buttons["session.row"].waitForExistence(timeout: 10),

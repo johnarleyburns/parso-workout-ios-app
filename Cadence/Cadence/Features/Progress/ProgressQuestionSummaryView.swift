@@ -57,10 +57,10 @@ struct ProgressQuestionSummaryView<DetailContent: View>: View {
             // in another summary card produced the duplicated section seen in
             // field testing.
             ConsistencyHeatmapView(sessions: sessions)
-        case .exerciseProgression:
-            detailContent(.exerciseProgression)
         case .strengthOverTime, .tests, .personalRecords, .intensity, .effort:
             detailContent(selection.selected)
+        case .workoutHistory:
+            EmptyView()
         }
     }
 

@@ -29,6 +29,61 @@ public struct E1RMSeries: Sendable, Equatable, Identifiable {
     }
 }
 
+/// Sendable projection used to prepare Progress charts away from the UI actor.
+/// SwiftData models stay on the model actor; only these small value rows cross
+/// into the chart-preparation task.
+public struct StrengthProgressSetInput: Sendable, Equatable {
+    public let exerciseName: String
+    public let completedAt: Date
+    public let weightKg: Double
+    public let reps: Int
+    public let isWarmup: Bool
+    public let isOwnerSet: Bool
+
+    public init(exerciseName: String, completedAt: Date, weightKg: Double, reps: Int,
+                isWarmup: Bool, isOwnerSet: Bool) {
+        self.exerciseName = exerciseName
+        self.completedAt = completedAt
+        self.weightKg = weightKg
+        self.reps = reps
+        self.isWarmup = isWarmup
+        self.isOwnerSet = isOwnerSet
+    }
+}
+
+public struct StrengthProgressSessionInput: Sendable, Equatable {
+    public let date: Date
+    public let deleted: Bool
+    public let sets: [StrengthProgressSetInput]
+
+    public init(date: Date, deleted: Bool, sets: [StrengthProgressSetInput]) {
+        self.date = date
+        self.deleted = deleted
+        self.sets = sets
+    }
+}
+
+public struct StrengthProgressChartData: Sendable, Equatable {
+    public static let powerlifterName = "Powerlifter"
+    public let series: [E1RMSeries]
+    public let powerlifter: E1RMSeries?
+
+    public init(series: [E1RMSeries], powerlifter: E1RMSeries?) {
+        self.series = series
+        self.powerlifter = powerlifter
+    }
+
+    public var allSeries: [E1RMSeries] {
+        ([powerlifter].compactMap { $0 } + series)
+    }
+
+    public var exerciseNames: [String] {
+        series.map(\.exercise).sorted {
+            $0.localizedStandardCompare($1) == .orderedAscending
+        }
+    }
+}
+
 public enum StrengthProgress {
     /// Best estimated 1RM per ISO week for the `topN` lifts with the most working
     /// sets over `weeks`. Pass the `@Query` sessions straight in.
@@ -38,15 +93,40 @@ public enum StrengthProgress {
                               topN: Int = 3,
                               formula: OneRepMaxFormula = .epley,
                               calendar: Calendar = .current) -> [E1RMSeries] {
+        let inputs = sessions.map { session in
+            StrengthProgressSessionInput(
+                date: session.date,
+                deleted: session.deletedAt != nil,
+                sets: session.orderedSets.compactMap { set in
+                    guard let name = set.exercise?.name, !name.isEmpty else { return nil }
+                    return StrengthProgressSetInput(exerciseName: name,
+                                                    completedAt: set.completedAt,
+                                                    weightKg: set.effectiveLoadKg,
+                                                    reps: set.reps,
+                                                    isWarmup: set.isWarmup,
+                                                    isOwnerSet: set.isOwnerSet)
+                })
+        }
+        return seriesFromInputs(inputs, now: now, weeks: weeks, topN: topN,
+                                formula: formula, calendar: calendar)
+    }
+
+    /// Pure chart preparation for use from a background task.
+    private static func seriesFromInputs(_ sessions: [StrengthProgressSessionInput],
+                                         now: Date = Date(),
+                                         weeks: Int = 12,
+                                         topN: Int = 3,
+                                         formula: OneRepMaxFormula = .epley,
+                                         calendar: Calendar = .current) -> [E1RMSeries] {
         let windowStart = calendar.date(byAdding: .day, value: -7 * weeks, to: now) ?? now
         var byLift: [String: [Date: Double]] = [:]
         var setCount: [String: Int] = [:]
-        for s in sessions where s.deletedAt == nil && s.date >= windowStart && s.date <= now {
-            let week = calendar.dateInterval(of: .weekOfYear, for: s.date)?.start
-                ?? calendar.startOfDay(for: s.date)
-            for set in s.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.effectiveLoadKg > 0 {
-                guard let name = set.exercise?.name, !name.isEmpty else { continue }
-                let e = WorkoutMath.estimated1RM(weight: set.effectiveLoadKg, reps: set.reps, formula: formula)
+        for session in sessions where !session.deleted && session.date >= windowStart && session.date <= now {
+            let week = calendar.dateInterval(of: .weekOfYear, for: session.date)?.start
+                ?? calendar.startOfDay(for: session.date)
+            for set in session.sets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.weightKg > 0 {
+                let name = set.exerciseName
+                let e = WorkoutMath.estimated1RM(weight: set.weightKg, reps: set.reps, formula: formula)
                 byLift[name, default: [:]][week] = max(byLift[name, default: [:]][week] ?? 0, e)
                 setCount[name, default: 0] += 1
             }
@@ -58,5 +138,47 @@ public enum StrengthProgress {
             return E1RMSeries(exercise: name, points: pts)
         }
         .sorted { $0.current > $1.current }
+    }
+
+    /// All available lifts plus the combined powerlifting total. The total is
+    /// the week-by-week sum of the best Bench Press, Deadlift, and Back Squat
+    /// estimates, using common barbell aliases when older history used them.
+    public static func chartData(from sessions: [StrengthProgressSessionInput],
+                                 now: Date = Date(),
+                                 weeks: Int = 12,
+                                 formula: OneRepMaxFormula = .epley,
+                                 calendar: Calendar = .current) -> StrengthProgressChartData {
+        let all = seriesFromInputs(sessions, now: now, weeks: weeks, topN: .max,
+                                   formula: formula, calendar: calendar)
+        let aliases: [(String, Set<String>)] = [
+            ("Bench Press", ["benchpress", "barbellbenchpress"]),
+            ("Deadlift", ["deadlift", "barbelldeadlift"]),
+            ("Back Squat", ["backsquat", "barbellsquat"])
+        ]
+        var pointsByLift: [String: [Date: Double]] = [:]
+        for (label, names) in aliases {
+            var points: [Date: Double] = [:]
+            for item in all where names.contains(normalized(item.exercise)) {
+                for point in item.points {
+                    points[point.weekStart] = max(points[point.weekStart] ?? 0, point.e1rm)
+                }
+            }
+            pointsByLift[label] = points
+        }
+        let weeksWithData = Set(pointsByLift.values.flatMap(\.keys)).sorted()
+        let totalPoints = weeksWithData.compactMap { week -> E1RMPoint? in
+            let total = aliases.reduce(0.0) { sum, entry in
+                sum + (pointsByLift[entry.0]?[week] ?? 0)
+            }
+            return total > 0 ? E1RMPoint(weekStart: week, e1rm: total) : nil
+        }
+        let powerlifter = totalPoints.isEmpty
+            ? nil
+            : E1RMSeries(exercise: StrengthProgressChartData.powerlifterName, points: totalPoints)
+        return StrengthProgressChartData(series: all, powerlifter: powerlifter)
+    }
+
+    private static func normalized(_ value: String) -> String {
+        value.lowercased().filter { $0.isLetter || $0.isNumber }
     }
 }

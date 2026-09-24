@@ -205,6 +205,27 @@ final class StrengthProgressTests: XCTestCase {
         XCTAssertEqual(series[0].exercise, "Test Squat")
     }
 
+    func testChartDataIncludesPowerlifterTotalAndAllAvailableLifts() {
+        let now = Date()
+        let input = StrengthProgressSessionInput(
+            date: now.addingTimeInterval(-86_400),
+            deleted: false,
+            sets: [
+                StrengthProgressSetInput(exerciseName: "Bench Press", completedAt: now,
+                                         weightKg: 100, reps: 1, isWarmup: false, isOwnerSet: true),
+                StrengthProgressSetInput(exerciseName: "Deadlift", completedAt: now,
+                                         weightKg: 150, reps: 1, isWarmup: false, isOwnerSet: true),
+                StrengthProgressSetInput(exerciseName: "Back Squat", completedAt: now,
+                                         weightKg: 120, reps: 1, isWarmup: false, isOwnerSet: true)
+            ])
+
+        let data = StrengthProgress.chartData(from: [input], now: now)
+
+        XCTAssertEqual(Set(data.exerciseNames), ["Back Squat", "Bench Press", "Deadlift"])
+        XCTAssertEqual(data.powerlifter?.exercise, "Powerlifter")
+        XCTAssertEqual(data.powerlifter?.current ?? 0, 370, accuracy: 0.001)
+    }
+
     // MARK: E1RMPoint
 
     func testE1RMPointIdentifiableByWeekStart() {

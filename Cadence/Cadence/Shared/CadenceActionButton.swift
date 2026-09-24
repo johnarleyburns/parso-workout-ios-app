@@ -65,9 +65,10 @@ extension View {
     /// from here. Height is a *minimum*, so Dynamic Type can still grow it.
     func cadenceActionLabel(alignment: Alignment = .leading) -> some View {
         font(.headline)
-            .frame(maxWidth: .infinity,
+        .frame(maxWidth: .infinity,
                    minHeight: CGFloat(LayoutMetrics.actionButtonHeight),
                    alignment: alignment)
+        .contentShape(Rectangle())
     }
 }
 

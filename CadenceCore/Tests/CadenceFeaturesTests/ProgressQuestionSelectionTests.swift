@@ -15,4 +15,11 @@ final class ProgressQuestionSelectionTests: XCTestCase {
         selection.select(.cardioChange)
         XCTAssertEqual(selection.selected, .cardioChange)
     }
+
+    func testAlphabeticalIncludesEveryProgressSurface() {
+        XCTAssertEqual(ProgressQuestion.alphabetical.map(\.displayName), [
+            "Cardio", "Consistency", "Effort", "Exercise", "Frequency",
+            "Intensity", "Muscle volume", "Strength over time", "Tests", "Trends"
+        ])
+    }
 }

@@ -68,12 +68,14 @@ struct HomeMuscleMapView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(selected ? Color.accentColor : .secondary)
                 .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
                 .padding(.vertical, 6)
                 .background(selected ? Color.accentColor.opacity(0.16) : .clear,
                             in: Capsule())
         }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
+            .contentShape(Capsule())
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("home.week.sets.muscleMap.\(panel.rawValue)")
         .accessibilityLabel(panel == .front ? "Front" : "Back")

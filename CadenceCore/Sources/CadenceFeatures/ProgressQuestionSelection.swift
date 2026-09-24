@@ -6,8 +6,33 @@ public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
     case exerciseProgression
     case muscleVolume
     case cardioChange
+    case strengthOverTime
+    case tests
+    case trends
+    case intensity
+    case effort
+    case frequency
 
     public var id: String { rawValue }
+
+    public var displayName: String {
+        switch self {
+        case .cardioChange: return "Cardio"
+        case .consistency: return "Consistency"
+        case .effort: return "Effort"
+        case .exerciseProgression: return "Exercise"
+        case .frequency: return "Frequency"
+        case .intensity: return "Intensity"
+        case .muscleVolume: return "Muscle volume"
+        case .strengthOverTime: return "Strength over time"
+        case .tests: return "Tests"
+        case .trends: return "Trends"
+        }
+    }
+
+    public static var alphabetical: [ProgressQuestion] {
+        allCases.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+    }
 }
 
 public struct ProgressQuestionSelection: Equatable, Sendable {

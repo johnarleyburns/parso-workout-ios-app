@@ -12,7 +12,6 @@ struct StartWorkoutView: View {
     let onLogWorkout: () -> Void
     let onStartCardio: (WorkoutType) -> Void
     let onScheduleCardio: (WorkoutType) -> Void
-    let onOpenScheduleCardio: () -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     let recentCardioTypes: [WorkoutType]
     @Environment(\.dismiss) private var dismiss
@@ -54,22 +53,6 @@ struct StartWorkoutView: View {
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("startWorkout.pick.cardio")
 
-                        Button {
-                            onOpenScheduleCardio()
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "calendar.badge.plus").font(.headline)
-                                Text("Schedule Cardio").font(.headline)
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
-                            }
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal, 18)
-                            .cadenceActionLabel()
-                            .background(.thinMaterial, in: CadenceActionShape.rounded)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("startWorkout.pick.scheduleCardio")
                     }
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))

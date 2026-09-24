@@ -76,10 +76,6 @@ extension HomeView {
                         selectWorkoutPresented = false
                         scheduleCardioType = type
                     },
-                    onOpenScheduleCardio: {
-                        selectWorkoutPresented = false
-                        cardioSchedulePickerPresented = true
-                    },
                     onOtherCardio: { description, gps in
                         selectWorkoutPresented = false
                         startOtherCardio(description: description, gps: gps)
@@ -103,16 +99,6 @@ extension HomeView {
             .sheet(item: $scheduleCardioType) { type in
                 ScheduleWorkoutSheet(title: type.displayName) { date in
                     try scheduleCardioWorkout(type, for: date)
-                }
-            }
-            .sheet(isPresented: $cardioSchedulePickerPresented) {
-                NavigationStack {
-                    CardioPickerView(
-                        mode: .schedule,
-                        recentCardioTypes: recentCardioTypes,
-                        onSelect: { _ in },
-                        onSchedule: { type in scheduleCardioType = type },
-                        onOtherCardio: { _, _ in })
                 }
             }
             .sheet(isPresented: $showAlternatives) {
@@ -226,13 +212,22 @@ extension HomeView {
             }
             .sheet(item: $suggestedCardio) { suggestion in
                 NavigationStack {
-                    SuggestedCardioPreviewView(suggestion: suggestion) { selected in
-                        suggestedCardio = nil
-                        Task { @MainActor in
-                            await Task.yield()
-                            launchSuggestedCardio(selected)
-                        }
-                    }
+                    SuggestedCardioPreviewView(
+                        suggestion: suggestion,
+                        onStart: { selected in
+                            suggestedCardio = nil
+                            Task { @MainActor in
+                                await Task.yield()
+                                launchSuggestedCardio(selected)
+                            }
+                        },
+                        onSchedule: { selected in
+                            suggestedCardio = nil
+                            Task { @MainActor in
+                                await Task.yield()
+                                scheduleCardioType = WorkoutType(rawValue: selected.type.rawValue)
+                            }
+                        })
                 }
             }
             .sheet(item: $suggestedWorkoutPlan) { plan in

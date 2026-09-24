@@ -133,11 +133,12 @@ struct LiveWorkoutVolumeSummary: View {
                                 }
                                 .font(.caption.weight(.semibold))
                                 .padding(.horizontal, 10)
-                                .frame(minHeight: 36)
+                                .frame(minHeight: 44)
                                 .background(selectedPerformerKey == performer.id
                                             ? Color.accentColor.opacity(0.14)
                                             : Color.secondary.opacity(0.08),
                                             in: Capsule())
+                                .contentShape(Capsule())
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(selectedPerformerKey == performer.id

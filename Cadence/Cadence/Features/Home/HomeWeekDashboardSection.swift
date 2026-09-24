@@ -40,7 +40,6 @@ struct HomeWeekDashboardSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
-            header
             sectionCard {
                 disclosureRow(title: "Sets per Muscle Group", value: dashboard.volumeCoverage.displayText,
                               progress: dashboard.volumeCoverage.normalized,
@@ -95,11 +94,6 @@ struct HomeWeekDashboardSection: View {
         }
     }
 
-    private var header: some View {
-        Text("This Week").font(.title2.weight(.bold))
-            .accessibilityIdentifier("home.week.title")
-    }
-
     private func sectionCard<Content: View>(
         @ViewBuilder content: () -> Content) -> some View {
         content()
@@ -137,11 +131,12 @@ struct HomeWeekDashboardSection: View {
                                 }
                                 .font(.caption.weight(.semibold))
                                 .padding(.horizontal, 10)
-                                .frame(minHeight: 36)
+                                .frame(minHeight: 44)
                                 .background(selectedVolumePerformerKey == performer.id
                                             ? Color.accentColor.opacity(0.14)
                                             : Color.secondary.opacity(0.08),
                                             in: Capsule())
+                                .contentShape(Capsule())
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(selectedVolumePerformerKey == performer.id
@@ -151,9 +146,6 @@ struct HomeWeekDashboardSection: View {
                     }
                 }
                 .accessibilityIdentifier("home.week.sets.performers")
-            }
-            ForEach(displayedVolumeRows) { row in
-                volumeRow(row)
             }
             CoachSourcesLink(
                 citationIds: CitationRegistry.strengthVolumePool.citationIds,
@@ -231,6 +223,8 @@ struct HomeWeekDashboardSection: View {
                     }
                     ProgressView(value: progress).tint(tint)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier(isExpanded

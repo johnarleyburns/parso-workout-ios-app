@@ -8,6 +8,7 @@ import CadenceFeatures
 @Observable
 @MainActor
 final class WatchWorkoutManager: NSObject {
+    private static let initialHealthAuthorizationKey = "watch.initialHealthAuthorizationResolved"
 
     private(set) var currentBPM: Double?
     var isActive: Bool = false
@@ -21,6 +22,7 @@ final class WatchWorkoutManager: NSObject {
 
     private(set) var hrAuthorized: Bool = false
     private(set) var workoutShareAuthorized: Bool = false
+    private(set) var healthAuthorizationPromptResolved: Bool
     private(set) var bleState: BLEConnectionState? = nil
     private(set) var bleBattery: Int? = nil
 
@@ -56,8 +58,9 @@ final class WatchWorkoutManager: NSObject {
     let store = HKHealthStore()
     var session: HKWorkoutSession?
     var builder: HKLiveWorkoutBuilder?
-    private var hrPollTimer: Timer?
-    private var relayTimer: Timer?
+    // Internal so the dedicated polling extension can own timer lifecycle.
+    var hrPollTimer: Timer?
+    var relayTimer: Timer?
     private var ble: WatchHeartRateBLE?
     var sessionStart: Date?
     var phoneRequestID: String?
@@ -85,11 +88,23 @@ final class WatchWorkoutManager: NSObject {
 
     init(uiTestMode: Bool = false) {
         self.uiTestMode = uiTestMode
+        self.healthAuthorizationPromptResolved = UserDefaults.standard.bool(forKey: Self.initialHealthAuthorizationKey)
         super.init()
         pendingCardioCompletions = Self.loadPendingCardioCompletions()
     }
 
     var wcSession: WCSession? { WCSession.isSupported() ? WCSession.default : nil }
+
+    /// The first Watch launch is an explicit health-permission boundary.  It
+    /// must not be hidden several list sections below the workout launcher.
+    var needsInitialHealthAuthorization: Bool {
+        !uiTestMode && !healthAuthorizationPromptResolved
+    }
+
+    func continueWithoutHealthAuthorization() {
+        healthAuthorizationPromptResolved = true
+        UserDefaults.standard.set(true, forKey: Self.initialHealthAuthorizationKey)
+    }
 
     func activateWCSession() {
         guard let session = wcSession else { return }
@@ -129,6 +144,10 @@ final class WatchWorkoutManager: NSObject {
             workoutShareAuthorized = (wStatus == .sharingAuthorized)
             let hStatus = store.authorizationStatus(for: hrType)
             hrAuthorized = (hStatus != .notDetermined)
+            if workoutShareAuthorized || hrAuthorized {
+                healthAuthorizationPromptResolved = true
+                UserDefaults.standard.set(true, forKey: Self.initialHealthAuthorizationKey)
+            }
             return workoutShareAuthorized
         } catch {
             return false
@@ -300,47 +319,6 @@ final class WatchWorkoutManager: NSObject {
         guard let session = wcSession, session.isReachable else { return }
         guard let requestID = phoneRequestID else { return }
         session.sendMessage(["bpm": bpm, "active": true, "requestID": requestID], replyHandler: nil, errorHandler: nil)
-    }
-
-    /// Apple Fitness auto-detection can briefly interrupt WatchConnectivity
-    /// reachability while Cladiron still has a live HealthKit sample stream.
-    /// Retry the latest value so the phone recovers without a second workout
-    /// start.
-    func startHeartRateRelayPolling() {
-        relayTimer?.invalidate()
-        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self, self.isActive || self.isMonitoring,
-                      let bpm = self.currentBPM else { return }
-                self.relayBPM(bpm)
-            }
-        }
-        relayTimer = timer
-        RunLoop.main.add(timer, forMode: .common)
-    }
-
-    /// HealthKit's builder delegate may batch callbacks for tens of seconds.
-    /// Polling the live builder's latest statistics restores the one-second UI
-    /// and phone relay cadence used by the original, responsive implementation.
-    func startHeartRatePolling() {
-        hrPollTimer?.invalidate()
-        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.pollHeartRate() }
-        }
-        hrPollTimer = timer
-        RunLoop.main.add(timer, forMode: .common)
-    }
-
-    #if DEBUG
-    var isHeartRatePollingForTesting: Bool { hrPollTimer?.isValid == true }
-    #endif
-
-    private func pollHeartRate() {
-        guard isActive || isMonitoring, let builder else { return }
-        let hrType = HKQuantityType(.heartRate)
-        guard let bpm = builder.statistics(for: hrType)?.mostRecentQuantity()?
-            .doubleValue(for: HKUnit(from: "count/min")) else { return }
-        applyPolledHeartRate(bpm)
     }
 
     /// A poll refreshes the display/relay but deliberately does not add another

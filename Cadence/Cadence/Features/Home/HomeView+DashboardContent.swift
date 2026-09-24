@@ -42,10 +42,6 @@ extension HomeView {
                 path = NavigationPath()
                 scheduleCardioType = $0
             },
-            onOpenScheduleCardio: {
-                path = NavigationPath()
-                cardioSchedulePickerPresented = true
-            },
             onOtherCardio: { description, gps in
                 path = NavigationPath()
                 startOtherCardio(description: description, gps: gps)

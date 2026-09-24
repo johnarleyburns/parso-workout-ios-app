@@ -35,6 +35,13 @@ struct CadenceWatchApp: App {
                         .task { watchManager.activateWCSession() }
                         .task { watchManager.recoverActiveWorkoutIfNeeded() }
                         .task { watchManager.watchAppSettings = watchAppSettings }
+                        .task {
+                            // Let the authorization-first surface render before
+                            // catalog seeding touches SwiftData. The production
+                            // seed runs in a detached context below.
+                            await Task.yield()
+                            bootstrap.prepareCatalogIfNeeded()
+                        }
                 }
                 .modelContainer(container)
             } else {
@@ -66,6 +73,7 @@ final class WatchStoreBootstrap: ObservableObject {
     @Published private(set) var state: State = .ready
     @Published private(set) var container: ModelContainer?
     private var retryInProgress = false
+    private var catalogPreparationStarted = false
     private static let logger = Logger(subsystem: "com.cladiron.app", category: "WatchStoreBootstrap")
 
     var isRecovery: Bool {
@@ -85,7 +93,7 @@ final class WatchStoreBootstrap: ObservableObject {
         do {
             let fresh = try CadenceStore.makeModelContainer(inMemory: inMemory, cloudKitEnabled: false)
             container = fresh
-            seed(fresh, arguments: arguments)
+            if inMemory { seed(fresh, arguments: arguments) }
         } catch {
             let quarantine: URL?
             do {
@@ -98,7 +106,7 @@ final class WatchStoreBootstrap: ObservableObject {
                 let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false)
                 container = fresh
                 state = .recovered(quarantine ?? FileManager.default.temporaryDirectory)
-                seed(fresh, arguments: arguments)
+                if inMemory { seed(fresh, arguments: arguments) }
             } catch let retryError {
                 do {
                     container = try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false)
@@ -119,11 +127,27 @@ final class WatchStoreBootstrap: ObservableObject {
         do {
             let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false)
             container = fresh
-            seed(fresh, arguments: ProcessInfo.processInfo.arguments)
+            catalogPreparationStarted = false
             state = .ready
         } catch {
             Self.logger.error("Store retry failed: \(error.localizedDescription, privacy: .public)")
             state = .degraded(error)
+        }
+    }
+
+    /// Seeds the Watch exercise catalog after the first frame. The old
+    /// initializer performed this full SwiftData write synchronously, which
+    /// made the Watch app appear frozen on cold launch.
+    func prepareCatalogIfNeeded() {
+        guard !catalogPreparationStarted,
+              let container,
+              !ProcessInfo.processInfo.arguments.contains("-uiTest") else {
+            return
+        }
+        catalogPreparationStarted = true
+        Task.detached(priority: .utility) {
+            let context = ModelContext(container)
+            _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(context)
         }
     }
 

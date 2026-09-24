@@ -18,7 +18,6 @@ struct TrainingProgressView: View {
 
     @State private var path = NavigationPath()
     @State private var questionSelection = ProgressQuestionSelection()
-    @State private var disclosureSelection = ProgressDetailSelection()
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
     private var cardioTrendTotals: [ProgressCardioWeekTotal] {
@@ -51,33 +50,10 @@ struct TrainingProgressView: View {
                         facts: facts,
                         sessions: activeSessions,
                         cardioTotals: cardioTrendTotals,
-                        exerciseProgression: { strengthCard })
+                        detailContent: { question in
+                            progressQuestionContent(for: question)
+                        })
                     scienceBanner
-                    progressDisclosure("Strength over time", section: .strength,
-                                       identifier: "progress.strengthDisclosure") { strengthCard }
-                    progressDisclosure("Tests", section: .tests,
-                                       identifier: "progress.testsDisclosure") {
-                        VStack(alignment: .leading, spacing: 10) {
-                            NavigationLink { TestsView() } label: {
-                                Label("Perform a Test…", systemImage: "checkmark.seal")
-                            }
-                            .accessibilityIdentifier("progress.performTest")
-                            testResultsCard
-                        }
-                    }
-                    progressDisclosure("Trends", section: .trends,
-                                       identifier: "progress.trendsDisclosure") {
-                        VStack(spacing: 14) {
-                            PRTimelineView(sessions: activeSessions)
-                            ConsistencyHeatmapView(sessions: activeSessions)
-                        }
-                    }
-                    progressDisclosure("Intensity", section: .intensity,
-                                       identifier: "progress.intensityDisclosure") { intensityCard }
-                    progressDisclosure("Effort and frequency", section: .effort,
-                                       identifier: "progress.effortDisclosure") {
-                        HStack(alignment: .top, spacing: 12) { effortCard; frequencyCard }
-                    }
                     ProgressHistoryLink { Haptics.selection(); path.append(ProgressRoute.history) }
                 }
                 .padding()
@@ -112,27 +88,35 @@ struct TrainingProgressView: View {
         }
         .accessibilityIdentifier("progress")
     }
-    private func progressDisclosure<Content: View>(_ title: String,
-                                                   section: ProgressDetailSection,
-                                                   identifier: String,
-                                                   @ViewBuilder content: () -> Content) -> some View {
-        let isExpanded = disclosureSelection.selected == section
-        return VStack(alignment: .leading, spacing: 10) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.18)) { disclosureSelection.toggle(section) }
-            } label: {
-                HStack {
-                    Text(title).font(.headline)
-                    Spacer()
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+    @ViewBuilder
+    private func progressQuestionContent(for question: ProgressQuestion) -> some View {
+        switch question {
+        case .exerciseProgression, .strengthOverTime:
+            strengthCard
+        case .tests:
+            VStack(alignment: .leading, spacing: 10) {
+                NavigationLink { TestsView() } label: {
+                    Label("Perform a Test…", systemImage: "checkmark.seal")
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("progress.performTest")
+                testResultsCard
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier(identifier)
-            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-            if isExpanded { content().transition(.opacity) }
+        case .trends:
+            VStack(spacing: 14) {
+                PRTimelineView(sessions: activeSessions)
+                ConsistencyHeatmapView(sessions: activeSessions)
+            }
+        case .intensity:
+            intensityCard
+        case .effort:
+            effortCard
+        case .frequency:
+            frequencyCard
+        case .consistency, .muscleVolume, .cardioChange:
+            EmptyView()
         }
     }
 

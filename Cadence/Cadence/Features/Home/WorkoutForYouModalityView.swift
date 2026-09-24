@@ -62,6 +62,7 @@ struct WorkoutForYouModalityView: View {
 struct SuggestedCardioPreviewView: View {
     let suggestion: CardioSuggestion
     let onStart: (CardioSuggestion) -> Void
+    let onSchedule: (CardioSuggestion) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -105,6 +106,17 @@ struct SuggestedCardioPreviewView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
                 .accessibilityIdentifier("suggestedCardio.start")
+
+                Button {
+                    onSchedule(suggestion)
+                    dismiss()
+                } label: {
+                    Label("Schedule (suggestion.type.displayName)", systemImage: "calendar.badge.plus")
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .buttonStyle(.bordered)
+                .tint(.blue)
+                .accessibilityIdentifier("suggestedCardio.schedule")
 
                 Button("Cancel") { dismiss() }
                     .frame(maxWidth: .infinity)

@@ -4,12 +4,12 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-struct ProgressQuestionSummaryView<ExerciseProgression: View>: View {
+struct ProgressQuestionSummaryView<DetailContent: View>: View {
     @Binding var selection: ProgressQuestionSelection
     let facts: TrainingFacts
     let sessions: [WorkoutSession]
     let cardioTotals: [ProgressCardioWeekTotal]
-    @ViewBuilder let exerciseProgression: () -> ExerciseProgression
+    @ViewBuilder let detailContent: (ProgressQuestion) -> DetailContent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -19,15 +19,37 @@ struct ProgressQuestionSummaryView<ExerciseProgression: View>: View {
     }
 
     private var questionPicker: some View {
-        Picker("Progress question", selection: Binding(
-            get: { selection.selected },
-            set: { selection.select($0) })) {
-            Text("Consistency").tag(ProgressQuestion.consistency)
-            Text("Exercise").tag(ProgressQuestion.exerciseProgression)
-            Text("Muscle volume").tag(ProgressQuestion.muscleVolume)
-            Text("Cardio").tag(ProgressQuestion.cardioChange)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(ProgressQuestion.alphabetical) { question in
+                    let isSelected = selection.selected == question
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            selection.select(question)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text(question.displayName)
+                            if isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .imageScale(.small)
+                            }
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 44)
+                        .background(isSelected ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.08),
+                                    in: Capsule())
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("progress.question.\(question.rawValue)")
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+                }
+            }
+            .padding(.vertical, 2)
         }
-        .pickerStyle(.segmented)
         .accessibilityIdentifier("progress.question")
     }
 
@@ -37,11 +59,13 @@ struct ProgressQuestionSummaryView<ExerciseProgression: View>: View {
         case .consistency:
             consistencyCard
         case .exerciseProgression:
-            exerciseProgression()
+            detailContent(.exerciseProgression)
         case .muscleVolume:
             muscleVolumeCard
         case .cardioChange:
             cardioChangeCard
+        case .strengthOverTime, .tests, .trends, .intensity, .effort, .frequency:
+            detailContent(selection.selected)
         }
     }
 

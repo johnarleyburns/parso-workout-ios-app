@@ -107,16 +107,15 @@ public enum TodayActivityPresenter {
                 } else {
                     value = duration.isEmpty ? duration : duration
                 }
-                let badge: String
-                if let hr = c.avgHeartRate, hr > 0 {
-                    badge = "\(Int(hr)) bpm · "
-                } else {
-                    badge = c.type.isEmpty ? "" : "\(c.type) · "
-                }
+                let cardioTitle = c.displayTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                let heartRateDetail: String? = {
+                    guard let hr = c.avgHeartRate, hr > 0 else { return nil }
+                    return "\(Int(hr)) bpm"
+                }()
                 return (c, Entry(
                     id: c.id, kind: .cardio,
-                    title: badge + "Cardio",
-                    detail: nil,
+                    title: cardioTitle.isEmpty ? "Cardio" : cardioTitle,
+                    detail: heartRateDetail,
                     value: value,
                     occurredAt: c.start,
                     sourceId: c.id

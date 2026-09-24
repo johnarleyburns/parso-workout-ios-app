@@ -12,7 +12,6 @@ struct SelectWorkoutView: View {
     let onLogWorkout: () -> Void
     let onStartCardio: (WorkoutType) -> Void
     let onScheduleCardio: (WorkoutType) -> Void
-    let onOpenScheduleCardio: () -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     var recentCardioTypes: [WorkoutType] = []
     var inline = false
@@ -28,7 +27,6 @@ struct SelectWorkoutView: View {
                     onLogWorkout: onLogWorkout,
                     onStartCardio: onStartCardio,
                     onScheduleCardio: onScheduleCardio,
-                    onOpenScheduleCardio: onOpenScheduleCardio,
                     onOtherCardio: onOtherCardio,
                     recentCardioTypes: recentCardioTypes)
             } label: {
@@ -58,7 +56,6 @@ struct SelectWorkoutView: View {
                     onLogWorkout: onLogWorkout,
                     onStartCardio: onStartCardio,
                     onScheduleCardio: onScheduleCardio,
-                    onOpenScheduleCardio: onOpenScheduleCardio,
                     onOtherCardio: onOtherCardio,
                     recentCardioTypes: recentCardioTypes)
                     .toolbar {

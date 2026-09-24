@@ -122,7 +122,7 @@ extension XCUIApplication {
             XCTAssertTrue(scrollToHittableAndTap("home.myWorkouts.showMore"), "Planned workouts link not found")
         case "Tests":
             XCTAssertTrue(buttons["tab.progress"].waitTap(timeout: 10), "Progress tab not found")
-            XCTAssertTrue(scrollToHittableAndTap("progress.testsDisclosure"), "Progress Tests not found")
+            XCTAssertTrue(scrollToHittableAndTap("progress.question.tests"), "Progress Tests not found")
         default:
             XCTFail("unknown destination \(label)")
         }

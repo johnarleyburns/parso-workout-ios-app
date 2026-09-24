@@ -166,6 +166,6 @@ final class TodayActivityPresenterTests: XCTestCase {
 
         XCTAssertEqual(result.strength.map(\.title), ["This Week Strength"])
         XCTAssertEqual(result.cardio.count, 1)
-        XCTAssertEqual(result.cardio.first?.title, "run · Cardio")
+        XCTAssertEqual(result.cardio.first?.title, "Run")
     }
 }

@@ -4,6 +4,18 @@ import CadenceCore
 import CadenceFeatures
 
 extension HomeView {
+    /// A cheap, Sendable projection of a cardio record.  The old path decoded
+    /// intensity/interval JSON and walked route samples while the Home view's
+    /// main actor was trying to present the suggestion.  Keep the render path
+    /// to scalar reads and do all history interpretation off-main.
+    private struct CardioSuggestionSnapshot: Sendable {
+        let type: CardioType
+        let duration: TimeInterval
+        let start: Date
+        let intensitySummaryData: String
+        let intervalDetailData: String
+    }
+
     func requestSuggestedWorkout(_ modality: SuggestedWorkoutModality) {
         switch modality {
         case .strength:
@@ -152,12 +164,54 @@ extension HomeView {
     /// SwiftData objects, HR samples, routes, or the main-actor dashboard.
     private func requestSuggestedCardio() {
         Haptics.selection()
-        let history = cardio.compactMap { workout -> CardioSuggestionHistory? in
+        let snapshots = cardio.compactMap { workout -> CardioSuggestionSnapshot? in
             guard workout.deletedAt == nil, workout.end != nil, workout.duration > 0 else {
                 return nil
             }
-            let summary = workout.intensitySummary
-            let actualDuration = summary?.actualDuration ?? workout.duration
+            return CardioSuggestionSnapshot(type: workout.typeValue,
+                                             duration: workout.duration,
+                                             start: workout.start,
+                                             intensitySummaryData: workout.intensitySummaryData,
+                                             intervalDetailData: workout.intervalDetailData)
+        }
+        let weeklyMinutes = dashboard.cardioDetail.moderateEquivalentMinutes
+        let targetMinutes = dashboard.cardioDetail.targetMinutes
+        let experience = settings.experienceLevel
+        cancelSuggestedCardioGeneration()
+        suggestedCardioCalculating = true
+        let task = Task {
+            let input = await Task.detached(priority: .userInitiated) {
+                Self.cardioSuggestionInput(from: snapshots,
+                                            weeklyMinutes: weeklyMinutes,
+                                            targetMinutes: targetMinutes,
+                                            experience: experience,
+                                            asOf: Date())
+            }.value
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard suggestedCardioTask != nil else { return }
+                suggestedCardioCalculating = false
+                suggestedCardioTask = nil
+                // The originating Start Workout sheet may still be dismissing.
+                // Queue the value-only input and let its onDismiss present it.
+                presentSuggestedCardio(input)
+            }
+        }
+        suggestedCardioTask = task
+    }
+
+    nonisolated private static func cardioSuggestionInput(
+        from snapshots: [CardioSuggestionSnapshot],
+        weeklyMinutes: Double,
+        targetMinutes: Double,
+        experience: ExperienceLevel,
+        asOf: Date
+    ) -> CardioSuggestionInput {
+        let decoder = JSONDecoder()
+        let history = snapshots.map { snapshot -> CardioSuggestionHistory in
+            let summary = snapshot.intensitySummaryData.data(using: .utf8)
+                .flatMap { try? decoder.decode(CardioMinuteSummary.self, from: $0) }
+            let actualDuration = summary?.actualDuration ?? snapshot.duration
             let intensity: RelativeIntensity
             if let summary, summary.actualDuration > 0 {
                 let vigorousFraction = summary.vigorousDuration / summary.actualDuration
@@ -173,26 +227,25 @@ extension HomeView {
                 intensity = .unknown
             }
             let moderateEquivalent = summary?.moderateEquivalentMinutes
-                ?? workout.duration / 60
-                    * ((workout.typeValue == .hiit || workout.typeValue == .boxing) ? 2 : 1)
+                ?? snapshot.duration / 60
+                    * ((snapshot.type == .hiit || snapshot.type == .boxing) ? 2 : 1)
+            let hasIntervalSummary = !snapshot.intervalDetailData.isEmpty
             return CardioSuggestionHistory(
-                type: workout.typeValue,
+                type: snapshot.type,
                 durationMinutes: actualDuration / 60,
                 moderateEquivalentMinutes: moderateEquivalent,
                 intensity: intensity,
-                isInterval: workout.intervalSummary != nil
-                    || workout.typeValue == .hiit
-                    || workout.typeValue == .boxing,
-                isIndoor: workout.typeValue.usesGPS ? workout.orderedRouteSamples.isEmpty : true,
-                start: workout.start)
+                isInterval: hasIntervalSummary
+                    || snapshot.type == .hiit
+                    || snapshot.type == .boxing,
+                isIndoor: snapshot.type.usesGPS ? nil : true,
+                start: snapshot.start)
         }
-        let input = CardioSuggestionInput(
-            history: history,
-            weeklyModerateEquivalentMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,
-            weeklyTargetMinutes: dashboard.cardioDetail.targetMinutes,
-            experience: settings.experienceLevel,
-            asOf: Date())
-        presentSuggestedCardio(input)
+        return CardioSuggestionInput(history: history,
+                                     weeklyModerateEquivalentMinutes: weeklyMinutes,
+                                     weeklyTargetMinutes: targetMinutes,
+                                     experience: experience,
+                                     asOf: asOf)
     }
 
     private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {

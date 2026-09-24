@@ -29,7 +29,9 @@ struct WatchRootView: View {
 
     var body: some View {
         Group {
-            if let activeIntervalSession {
+            if watchManager.needsInitialHealthAuthorization && !watchManager.isActive && !watchManager.isMonitoring {
+                WatchHealthAuthorizationView()
+            } else if let activeIntervalSession {
                 WatchIntervalView(plan: activeIntervalSession.plan, kind: activeIntervalSession.kind) {
                     self.activeIntervalSession = nil
                 }

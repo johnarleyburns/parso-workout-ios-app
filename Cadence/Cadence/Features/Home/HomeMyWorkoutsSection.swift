@@ -64,6 +64,8 @@ struct HomeMyWorkoutsSection: View {
                 .font(.caption2.weight(.bold)).foregroundStyle(.teal)
             Button { onStartScheduled(record) } label: {
                 Image(systemName: "play.fill").font(.caption)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.borderedProminent)
             .accessibilityLabel("Start planned workout")
@@ -112,6 +114,7 @@ struct HomeMyHistorySection: View {
                         Image(systemName: expanded ? "chevron.right" : "chevron.down")
                     }
                     .font(.subheadline.weight(.semibold)).foregroundStyle(.tint)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(expanded ? "home.history.fullHistory" : "home.history.showMore")

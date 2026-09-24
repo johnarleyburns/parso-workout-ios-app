@@ -79,8 +79,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from More did not land on Home")
 
-        // Progress is summary-first and keeps Tests behind its own disclosure;
-        // this is the smoke contract for the retired More → Tests route.
+        // Progress exposes every dense report through one alphabetized,
+        // horizontal question bar; this is the smoke contract for the retired
+        // disclosure stack.
         XCTAssertTrue(app.buttons["tab.progress"].waitTap(timeout: 10),
                       "Progress tab did not open")
         XCTAssertTrue(app.descendants(matching: .any)["progress"].waitForExistence(timeout: 10),
@@ -91,22 +92,14 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Progress displayed more than one question summary at once")
         XCTAssertTrue(app.buttons["progress.fullHistory"].exists,
                       "Progress did not expose full History")
-        XCTAssertTrue(app.scrollToHittableAndTap("progress.testsDisclosure"),
-                      "Progress did not expose its Tests disclosure")
+        XCTAssertTrue(app.scrollToHittableAndTap("progress.question.tests"),
+                      "Progress did not expose Tests in the question bar")
         XCTAssertTrue(app.buttons["progress.performTest"].waitForExistence(timeout: 5),
-                      "Progress Tests disclosure did not expose Perform a Test…")
-        XCTAssertTrue(app.scrollToHittableAndTap("progress.testsDisclosure"),
-                      "Progress Tests disclosure did not collapse")
-        XCTAssertTrue(app.scrollToHittableAndTap("progress.trendsDisclosure"),
-                      "Progress did not expose Trends")
-        XCTAssertEqual(app.buttons["progress.trendsDisclosure"].value as? String, "Expanded")
-        XCTAssertEqual(app.buttons["progress.testsDisclosure"].value as? String, "Collapsed",
-                       "Opening Trends left the Tests detail expanded too")
-        XCTAssertTrue(app.scrollToHittableAndTap("progress.strengthDisclosure"),
-                      "Progress did not expose Strength over time")
-        XCTAssertEqual(app.buttons["progress.strengthDisclosure"].value as? String, "Expanded")
-        XCTAssertEqual(app.buttons["progress.trendsDisclosure"].value as? String, "Collapsed",
-                       "Opening Strength left Trends expanded too")
+                      "Progress Tests question did not expose Perform a Test…")
+        XCTAssertTrue(app.scrollToHittableAndTap("progress.question.trends"),
+                      "Progress did not expose Trends in the question bar")
+        XCTAssertTrue(app.descendants(matching: .any)["progress.question.strengthOverTime"].exists,
+                      "Progress question bar did not expose Strength over time")
         XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
                       "Returning from Progress did not land on Today")
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
@@ -242,12 +235,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "This Week did not expose the independent Sets per Muscle Group disclosure")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.heading"].waitForExistence(timeout: 5),
                       "Sets per Muscle Group did not expand in place")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.row.quadriceps"].exists,
-                      "Expanded This Week did not expose the Quads sets row")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.row.chest"].exists,
-                      "Sets per Muscle Group does not list Chest")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.row.lats"].exists,
-                      "Sets per Muscle Group does not list Lats")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.row.quadriceps"].exists,
+                       "Expanded Sets per Muscle Group still renders the retired duplicate list")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.row.chest"].exists,
+                       "Expanded Sets per Muscle Group still renders a duplicate Chest row")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.row.lats"].exists,
+                       "Expanded Sets per Muscle Group still renders a duplicate Lats row")
         XCTAssertFalse(app.descendants(matching: .any)["home.week.group.strength"].exists,
                        "Opening Sets also exposed strength history")
         XCTAssertFalse(app.descendants(matching: .any)["home.week.group.cardio"].exists,
@@ -333,6 +326,20 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Start Workout Cardio did not produce a reviewable suggestion")
         XCTAssertTrue(app.buttons["suggestedCardio.start"].exists,
                       "Cardio suggestion did not expose Start")
+        XCTAssertTrue(app.buttons["suggestedCardio.schedule"].waitTap(timeout: 5),
+                      "Cardio suggestion did not expose Schedule")
+        XCTAssertTrue(app.navigationBars["Schedule Run"].waitForExistence(timeout: 5),
+                      "Cardio suggestion Schedule did not open the date/time scheduler")
+        XCTAssertTrue(app.buttons["scheduleWorkout.save"].waitTap(timeout: 5),
+                      "Suggested cardio Schedule did not save its date/time")
+        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
+                      "Saving suggested cardio did not return to Today")
+        openStartWorkout(app)
+        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.created.cardio"),
+                      "Start Workout Cardio recommendation was not reusable after scheduling")
+        XCTAssertTrue(app.descendants(matching: .any)["suggestedCardio.preview"]
+                        .waitForExistence(timeout: 45),
+                      "Cardio suggestion did not reopen after scheduling")
         XCTAssertTrue(app.buttons["suggestedCardio.cancel"].waitTap(timeout: 5),
                       "Cardio suggestion could not be cancelled")
         XCTAssertTrue(app.buttons["selectWorkout.startWorkout"].waitForExistence(timeout: 5),
@@ -353,20 +360,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.navigationBars["Start Workout"].waitForExistence(timeout: 5),
                       "Returning from Pick Workout did not restore Start Workout")
-        XCTAssertTrue(app.buttons["startWorkout.pick.scheduleCardio"].exists,
-                      "Start Workout did not expose the separate Schedule Cardio action")
-        XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.pick.scheduleCardio"),
-                      "Schedule Cardio action was not tappable")
-        XCTAssertTrue(app.navigationBars["Schedule Cardio"].waitForExistence(timeout: 5),
-                      "Schedule Cardio did not open the shared scheduling picker")
-        XCTAssertTrue(app.scrollToHittableAndTap("cardioPicker.schedule.run"),
-                      "Schedule Cardio picker did not expose Run")
-        XCTAssertTrue(app.navigationBars["Schedule Run"].waitForExistence(timeout: 5),
-                      "Selecting a cardio type did not open its date/time scheduler")
-        XCTAssertTrue(app.buttons["scheduleWorkout.save"].waitTap(timeout: 5),
-                      "Schedule Cardio did not save its date/time")
-        XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
-                      "Saving Schedule Cardio did not return Home")
+        XCTAssertFalse(app.buttons["startWorkout.pick.scheduleCardio"].exists,
+                       "Pick Your Own Workout still exposes the retired duplicate Schedule Cardio action")
 
         XCTAssertTrue(app.scrollToHittableAndTap("startWorkout.created.strength"),
                       "Start Workout did not generate a personalized workout")

@@ -29,6 +29,13 @@ final class ExportFreezeFixTests: XCTestCase {
         XCTAssertEqual(try DataCompression.gunzip(gz), Data())
     }
 
+    func testImportRejectsOversizedPayloadBeforeDecoding() throws {
+        let oversized = Data(repeating: 0x20, count: DataExport.maxImportBytes + 1)
+        XCTAssertThrowsError(try DataExport.decodeAny(oversized)) { error in
+            XCTAssertEqual(error as? DataExport.ImportError, .inputTooLarge)
+        }
+    }
+
     func testCRC32KnownVector() {
         // CRC32 of "123456789" is the standard 0xCBF43926.
         XCTAssertEqual(DataCompression.crc32(Data("123456789".utf8)), 0xCBF43926)

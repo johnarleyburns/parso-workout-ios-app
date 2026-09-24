@@ -1,4 +1,4 @@
-.PHONY: build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform smoke ipad-smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
+.PHONY: build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform check-release-safety smoke ipad-smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
 
 build:
 	swift build --package-path CadenceCore
@@ -23,6 +23,10 @@ guardrails:
 	bash scripts/check-cloudkit-schema.sh
 	bash scripts/check-watch-appicon.sh
 	bash scripts/check-xcodebuild-platform.sh
+	bash scripts/check-release-safety.sh
+
+check-release-safety:
+	bash scripts/check-release-safety.sh
 
 check-watch-appicon:
 	bash scripts/check-watch-appicon.sh

@@ -239,6 +239,10 @@ final class CloudKitRecoveryService {
         }
         let container = modelContainer
         return try await Task.detached(priority: .userInitiated) {
+            let values = try fileURL.resourceValues(forKeys: [.fileSizeKey])
+            if let fileSize = values.fileSize, fileSize > DataExport.maxImportBytes {
+                throw DataExport.ImportError.inputTooLarge
+            }
             let data = try Data(contentsOf: fileURL)
             let export = try DataExport.decodeAny(data)
             let context = ModelContext(container)

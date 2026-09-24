@@ -74,7 +74,7 @@ struct SettingsView: View {
             } header: {
                 Text("Health & Sensors")
             } footer: {
-                Text("Your health data stays on your device. Detailed sets stay local; only workout summaries are written to Apple Health.")
+                Text("HealthKit permissions are controlled by Apple. Cladiron's detailed sets remain in the app's local/private-iCloud store; only workout summaries are written to Apple Health when enabled.")
             }
 
             Section {

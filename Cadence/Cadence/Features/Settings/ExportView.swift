@@ -278,7 +278,11 @@ struct ExportView: View {
             let accessed = url.startAccessingSecurityScopedResource()
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
             do {
-                let data = try Data(contentsOf: url)
+                let values = try url.resourceValues(forKeys: [.fileSizeKey])
+                if let fileSize = values.fileSize, fileSize > DataExport.maxImportBytes {
+                    throw DataExport.ImportError.inputTooLarge
+                }
+                let data = try Data(contentsOf: url, options: .mappedIfSafe)
                 let export = try DataExport.decodeAny(data)
                 let ctx = ModelContext(container)
                 let added = try WorkoutRepository.merge(export, in: ctx)

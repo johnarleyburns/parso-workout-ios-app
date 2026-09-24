@@ -8,8 +8,9 @@ import Compression
 /// their exported data.
 public enum DataCompression {
 
-    /// Guard against zip-bomb-style inputs: never inflate past 4 GB.
-    public static let maxInflatedBytes: Int64 = 4 * 1024 * 1024 * 1024
+    /// Guard against zip-bomb-style inputs: never inflate an imported backup
+    /// past the app's supported restore budget.
+    public static let maxInflatedBytes: Int64 = 256 * 1024 * 1024
 
     public enum CompressionError: Error, Equatable {
         case deflateFailed

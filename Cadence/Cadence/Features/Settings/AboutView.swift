@@ -187,7 +187,7 @@ struct AboutView: View {
                 Link("View Online", destination: privacyURL)
                     .font(.subheadline).accessibilityIdentifier("about.privacyLink")
             }
-            Text("We don't collect, transmit, or sell your data. Cladiron runs on your devices; your training log can sync through your private iCloud but is never stored on or visible to a Cladiron server. Apple Health, Bluetooth heart-rate, and location data stay within your Apple devices and services, and are used only with your permission.")
+            Text("Cladiron does not send your data to a Cladiron server, advertisers, or analytics providers. Your training log is processed on your devices and may be mirrored through Apple's private iCloud service when that feature is available. Apple Health, Bluetooth heart-rate, and location data are used only with your permission.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Location is used only while you're recording an outdoor run, walk, or ride. It keeps mapping your route in the background — shown by the blue status-bar indicator — and stops the moment you end the workout. Cladiron never tracks your location at any other time.")

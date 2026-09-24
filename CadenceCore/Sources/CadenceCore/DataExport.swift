@@ -506,6 +506,18 @@ public extension CoachPreferenceProfile {
 
 public enum DataExport {
 
+    /// Maximum encoded backup accepted by the import boundary. The same limit
+    /// is applied to plain JSON, gzip, and the legacy CloudKit asset path.
+    public static let maxImportBytes = 256 * 1024 * 1024
+
+    public enum ImportError: Error, Equatable, LocalizedError {
+        case inputTooLarge
+
+        public var errorDescription: String? {
+            "That backup is too large to import safely. Choose a Cladiron export smaller than 256 MB."
+        }
+    }
+
     private static func jsonEncoder() -> JSONEncoder {
         let e = JSONEncoder()
         e.dateEncodingStrategy = .iso8601
@@ -544,6 +556,7 @@ public enum DataExport {
     /// - `1F 8B` → gzip: inflate, then decode JSON.
     /// - otherwise → plain JSON (all v1–v4 exports), decode directly.
     public static func decodeAny(_ data: Data) throws -> CadenceExport {
+        guard data.count <= maxImportBytes else { throw ImportError.inputTooLarge }
         if data.count >= 2, data[data.startIndex] == 0x1f, data[data.startIndex + 1] == 0x8b {
             return try decodeJSON(DataCompression.gunzip(data))
         }

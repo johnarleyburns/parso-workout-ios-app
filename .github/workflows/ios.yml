@@ -59,6 +59,7 @@ jobs:
         run: |
           bash scripts/check-watch-appicon.sh
           bash scripts/check-xcodebuild-platform.sh
+          bash scripts/check-release-safety.sh
 
   # XCUITest smoke suites are intentionally NOT run in CI: simulator-based UI
   # tests are unreliable on shared GitHub Actions runners (cold-launch timing,

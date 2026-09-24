@@ -4,6 +4,10 @@ Use this checklist for the first public App Store v1 submission.
 
 ## Code Readiness
 
+- Resolve the CloudKit health-data policy gate documented in
+  `docs/app-store/security-accessibility-release-audit.md` before public
+  submission.
+
 - Confirm app display name is `Cladiron`.
 - Confirm the archive embeds the `Cadence Watch App` and both binaries pass
   App Store validation.

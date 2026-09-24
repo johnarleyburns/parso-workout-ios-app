@@ -225,6 +225,17 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertEqual(rows.first { $0.group == .chest }?.scientificName, "Pectoralis Major")
     }
 
+    func testDetailedVolumeRowsSortBySetsThenAlphabetically() {
+        let rows = HomeDashboardPresenter.volumeRows(setsByGroup: [
+            .chest: 4, .biceps: 8, .calves: 8, .lats: 2
+        ])
+
+        let sorted = HomeDashboardPresenter.sortedVolumeRows(rows)
+
+        XCTAssertEqual(sorted.prefix(4).map(\.displayName), ["Biceps", "Calves", "Chest", "Lats"])
+        XCTAssertEqual(sorted.prefix(4).map(\.sets), [8, 8, 4, 2])
+    }
+
     /// Averaged over tracked rows only, so incidental work in an untracked group
     /// cannot move the headline number.
     func testVolumeCoverageAveragesTrackedRowsOnly() throws {

@@ -112,7 +112,7 @@ struct HomeView: View {
     /// dismissing, then opens the generated Personalized plan directly.
     @State var pendingSuggestedWorkoutRequest: SuggestedWorkoutRequest?
     @State var pendingSuggestedCardioInput: CardioSuggestionInput?
-    @State var weeklyDetailSelection = WeeklyDetailSelection()
+    @State var weeklyDetailSelection = WeeklyDetailSelection.persisted()
     @State var weeklyMuscleMapPanel: MuscleMapPanel = .front
     @State var coachIllustration = HomeCoachIllustration.random()
     @State var showWorkoutConflict = false

@@ -1,9 +1,10 @@
 import Foundation
 
-/// The This Week dashboard keeps at most one detailed report expanded. The
-/// selected section is UI state only; it never changes or filters workout data.
+/// The This Week dashboard keeps disclosure state for each report independently.
+/// This is UI state only; it never changes or filters workout data.
 public enum WeeklyDetailMode: String, CaseIterable, Sendable, Identifiable {
-    case volume
+    case muscleMap
+    case muscleGroupVolume
     case strength
     case cardio
 
@@ -11,19 +12,38 @@ public enum WeeklyDetailMode: String, CaseIterable, Sendable, Identifiable {
 }
 
 public struct WeeklyDetailSelection: Equatable, Sendable {
-    public private(set) var selected: WeeklyDetailMode?
+    public static let persistenceKey = "home.thisWeek.weeklyDetailSelection.v2"
+    public private(set) var expanded: Set<WeeklyDetailMode>
 
-    public init(selected: WeeklyDetailMode? = nil) {
-        self.selected = selected
+    public init(expanded: Set<WeeklyDetailMode> = [.muscleMap]) {
+        self.expanded = expanded
     }
 
-    /// Selecting a collapsed section expands it and collapses the prior one;
-    /// selecting the open section collapses all details.
+    public static func persisted(defaults: UserDefaults = .standard) -> Self {
+        guard let rawValues = defaults.stringArray(forKey: persistenceKey) else {
+            return Self()
+        }
+        let values = Set(rawValues.compactMap(WeeklyDetailMode.init(rawValue:)))
+        return Self(expanded: values)
+    }
+
+    public func persist(defaults: UserDefaults = .standard) {
+        defaults.set(expanded.map(\.rawValue).sorted(), forKey: Self.persistenceKey)
+    }
+
     public mutating func toggle(_ mode: WeeklyDetailMode) {
-        selected = selected == mode ? nil : mode
+        if expanded.contains(mode) {
+            expanded.remove(mode)
+        } else {
+            expanded.insert(mode)
+        }
     }
 
     public mutating func select(_ mode: WeeklyDetailMode) {
-        selected = mode
+        expanded.insert(mode)
+    }
+
+    public func isExpanded(_ mode: WeeklyDetailMode) -> Bool {
+        expanded.contains(mode)
     }
 }

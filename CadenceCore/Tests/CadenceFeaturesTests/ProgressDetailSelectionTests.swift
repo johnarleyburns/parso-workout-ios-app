@@ -8,8 +8,8 @@ final class ProgressDetailSelectionTests: XCTestCase {
         selection.toggle(.tests)
         XCTAssertEqual(selection.selected, .tests)
 
-        selection.toggle(.trends)
-        XCTAssertEqual(selection.selected, .trends)
+        selection.toggle(.personalRecords)
+        XCTAssertEqual(selection.selected, .personalRecords)
     }
 
     func testTogglingTheOpenDisclosureCollapsesAllDetails() {

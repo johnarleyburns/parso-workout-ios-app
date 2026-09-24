@@ -5,7 +5,7 @@ import Foundation
 public enum ProgressDetailSection: String, CaseIterable, Sendable, Identifiable {
     case strength
     case tests
-    case trends
+    case personalRecords
     case intensity
     case effort
 

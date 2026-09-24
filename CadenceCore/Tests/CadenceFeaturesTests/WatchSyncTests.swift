@@ -113,6 +113,30 @@ final class WatchSyncTests: XCTestCase {
         XCTAssertEqual(restored, exercise)
     }
 
+    func testIncomingContextParsesPlanAndCustomExercisesForBackgroundApply() {
+        let date = Date(timeIntervalSince1970: 9)
+        let exercise = WatchSync.CustomExercise(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000009")!,
+            name: "Custom Row", primaryMuscles: ["lats"], updatedAt: date)
+        let plan = WatchSync.TodayPlan(
+            sessions: [.init(id: "run", kind: .cardio, label: "Run",
+                              cardioType: "run", durationMinutes: 20, zone: 2)],
+            updatedAt: date)
+        var context = WatchSync.Preferences.contextDict(
+            WatchSync.Preferences(unit: .pounds), updatedAt: date)
+        context.merge(WatchSync.TodayPlan.contextDict(plan)) { _, new in new }
+        context[WatchSync.Key.customExercises] = [exercise.propertyList]
+
+        let snapshot = WatchSync.IncomingContext.from(
+            context: context,
+            applyingTo: WatchSync.Preferences())
+
+        XCTAssertEqual(snapshot.preferences.unit, .pounds)
+        XCTAssertEqual(snapshot.todayPlan, plan)
+        XCTAssertEqual(snapshot.customExercises, [exercise])
+        XCTAssertEqual(snapshot.updatedAt, date)
+    }
+
     func testMissingKeysPreserveDefaults() {
         var prefs = WatchSync.Preferences(unit: .pounds, restSeconds: 90, warmupMinutes: 2, cooldownMinutes: 4, workoutSounds: false)
         prefs = prefs.applying(context: [:])

@@ -9,17 +9,17 @@ final class ProgressQuestionSelectionTests: XCTestCase {
     func testSelectingAnotherQuestionReplacesTheCurrentSummary() {
         var selection = ProgressQuestionSelection()
 
-        selection.select(.muscleVolume)
-        XCTAssertEqual(selection.selected, .muscleVolume)
+        selection.select(.personalRecords)
+        XCTAssertEqual(selection.selected, .personalRecords)
 
-        selection.select(.cardioChange)
-        XCTAssertEqual(selection.selected, .cardioChange)
+        selection.select(.intensity)
+        XCTAssertEqual(selection.selected, .intensity)
     }
 
     func testAlphabeticalIncludesEveryProgressSurface() {
         XCTAssertEqual(ProgressQuestion.alphabetical.map(\.displayName), [
-            "Cardio", "Consistency", "Effort", "Exercise", "Frequency",
-            "Intensity", "Muscle volume", "Strength over time", "Tests", "Trends"
+            "Consistency", "Effort", "Exercise", "Intensity", "Personal Records",
+            "Strength over time", "Tests"
         ])
     }
 }

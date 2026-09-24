@@ -10,12 +10,32 @@ import CadenceFeatures
 struct PRTimelineView: View {
     @Environment(AppSettings.self) private var settings
     let sessions: [WorkoutSession]
+    @State private var selectedExerciseName: String?
 
     private var events: [PREvent] {
         WorkoutRepository.prEvents(from: sessions, rule: settings.prRule, formula: settings.formula)
     }
     private var rows: [PRTimelinePresenter.Row] {
         PRTimelinePresenter.rows(events: events, unit: settings.unit)
+    }
+    private var exerciseNames: [String] {
+        Set(events.map(\.exerciseName)).sorted {
+            $0.localizedStandardCompare($1) == .orderedAscending
+        }
+    }
+    private var selectedName: String? {
+        guard !exerciseNames.isEmpty else { return nil }
+        if let selectedExerciseName, exerciseNames.contains(selectedExerciseName) {
+            return selectedExerciseName
+        }
+        return exerciseNames.first
+    }
+    private var selectedEvents: [PREvent] {
+        guard let selectedName else { return [] }
+        return events.filter { $0.exerciseName == selectedName }
+    }
+    private var selectedRows: [PRTimelinePresenter.Row] {
+        rows.filter { $0.exerciseName == selectedName }
     }
 
     var body: some View {
@@ -30,12 +50,13 @@ struct PRTimelineView: View {
                     .font(.footnote).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
+                exercisePicker
                 chart
                 Divider().padding(.vertical, 10)
                 VStack(spacing: 0) {
-                    ForEach(Array(rows.prefix(8).enumerated()), id: \.element.id) { idx, row in
+                    ForEach(Array(selectedRows.prefix(8).enumerated()), id: \.element.id) { idx, row in
                         if idx > 0 { Divider() }
-                        prRow(row, event: events.first { $0.id == row.id })
+                        prRow(row, event: selectedEvents.first { $0.id == row.id })
                     }
                 }
             }
@@ -49,24 +70,34 @@ struct PRTimelineView: View {
         .accessibilityIdentifier("progress.prTimeline")
     }
 
+    private var exercisePicker: some View {
+        Picker("Exercise personal record", selection: Binding(
+            get: { selectedName ?? "" },
+            set: { selectedExerciseName = $0 })) {
+            ForEach(exerciseNames, id: \.self) { name in
+                Text(name).tag(name)
+            }
+        }
+        .pickerStyle(.menu)
+        .accessibilityIdentifier("progress.personalRecords.exercisePicker")
+        .accessibilityLabel("Choose exercise personal record")
+    }
+
     @ViewBuilder private var chart: some View {
-        let series = events.map { (name: $0.exerciseName, date: $0.date,
+        let series = selectedEvents.map { (name: $0.exerciseName, date: $0.date,
                                    value: WorkoutMath.display($0.value, in: settings.unit)) }
         Chart {
             ForEach(Array(series.enumerated()), id: \.offset) { _, p in
                 LineMark(x: .value("Date", p.date), y: .value("PR", p.value))
-                    .foregroundStyle(by: .value("Lift", p.name))
                     .interpolationMethod(.stepEnd)
                 PointMark(x: .value("Date", p.date), y: .value("PR", p.value))
-                    .foregroundStyle(by: .value("Lift", p.name))
             }
         }
         .chartYScale(domain: .automatic(includesZero: false))
         .chartPlotStyle { $0.frame(height: 160) }
-        .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
         .accessibilityElement()
-        .accessibilityLabel("Personal-record progression")
-        .accessibilityValue("\(rows.count) records across \(Set(events.map(\.exerciseName)).count) lifts")
+        .accessibilityLabel("\(selectedName ?? "Exercise") personal-record progression")
+        .accessibilityValue("\(selectedEvents.count) records")
     }
 
     @ViewBuilder private func prRow(_ row: PRTimelinePresenter.Row, event: PREvent?) -> some View {

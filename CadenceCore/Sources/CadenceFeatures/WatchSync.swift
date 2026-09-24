@@ -409,6 +409,39 @@ public enum WatchSync {
         }
     }
 
+    /// Parsed WatchConnectivity payload. Property-list decoding can include a
+    /// full plan and a custom-exercise catalog, so callers should build this on
+    /// a utility task and only apply the resulting value on the UI actor.
+    public struct IncomingContext: Equatable, Sendable {
+        public let preferences: Preferences
+        public let todayPlan: TodayPlan?
+        public let customExercises: [CustomExercise]?
+        public let updatedAt: Date
+
+        public init(preferences: Preferences, todayPlan: TodayPlan?,
+                    customExercises: [CustomExercise]?, updatedAt: Date) {
+            self.preferences = preferences
+            self.todayPlan = todayPlan
+            self.customExercises = customExercises
+            self.updatedAt = updatedAt
+        }
+
+        public static func from(context: [String: Any],
+                                applyingTo base: Preferences) -> IncomingContext {
+            let customExercises: [CustomExercise]?
+            if let rows = context[Key.customExercises] as? [[String: Any]] {
+                customExercises = rows.compactMap(CustomExercise.init(propertyList:))
+            } else {
+                customExercises = nil
+            }
+            return IncomingContext(
+                preferences: base.applying(context: context),
+                todayPlan: TodayPlan.from(context: context),
+                customExercises: customExercises,
+                updatedAt: (context[Key.contextUpdatedAt] as? Date) ?? Date())
+        }
+    }
+
     public static func requestSettingsSyncMessage() -> [String: Any] {
         [Key.command: Key.requestSettingsSync]
     }

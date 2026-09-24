@@ -86,20 +86,24 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Progress tab did not open")
         XCTAssertTrue(app.descendants(matching: .any)["progress"].waitForExistence(timeout: 10),
                       "Progress surface did not render")
-        XCTAssertTrue(app.descendants(matching: .any)["progress.focus.consistency"].exists,
+        XCTAssertTrue(app.descendants(matching: .any)["progress.consistencyHeatmap"].exists,
                       "Progress did not default to its selected Consistency question")
-        XCTAssertFalse(app.descendants(matching: .any)["progress.focus.muscleVolume"].exists,
-                       "Progress displayed more than one question summary at once")
+        XCTAssertFalse(app.buttons["progress.question.cardioChange"].exists,
+                       "Progress still exposes the retired Cardio question")
+        XCTAssertFalse(app.buttons["progress.question.frequency"].exists,
+                       "Progress still exposes the retired Frequency question")
+        XCTAssertFalse(app.buttons["progress.question.muscleVolume"].exists,
+                       "Progress still exposes the retired Muscle volume question")
         XCTAssertTrue(app.buttons["progress.fullHistory"].exists,
                       "Progress did not expose full History")
         XCTAssertTrue(app.scrollToHittableAndTap("progress.question.tests"),
                       "Progress did not expose Tests in the question bar")
         XCTAssertTrue(app.buttons["progress.performTest"].waitForExistence(timeout: 5),
                       "Progress Tests question did not expose Perform a Test…")
-        XCTAssertTrue(app.scrollToHittableAndTap("progress.question.trends"),
-                      "Progress did not expose Trends in the question bar")
-        XCTAssertTrue(app.descendants(matching: .any)["progress.question.strengthOverTime"].exists,
-                      "Progress question bar did not expose Strength over time")
+        XCTAssertTrue(app.scrollToHittableAndTap("progress.question.personalRecords"),
+                      "Progress did not expose Personal Records in the question bar")
+        XCTAssertTrue(app.buttons["progress.personalRecords.exercisePicker"].waitForExistence(timeout: 5),
+                      "Personal Records did not expose its exercise selector")
         XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
                       "Returning from Progress did not land on Today")
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
@@ -231,22 +235,16 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Back muscle tap did not open weekly detail")
         XCTAssertTrue(app.buttons["Done"].waitTap(timeout: 5),
                       "Back muscle detail could not be dismissed")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showMore"),
-                      "This Week did not expose the independent Sets per Muscle Group disclosure")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.heading"].waitForExistence(timeout: 5),
-                      "Sets per Muscle Group did not expand in place")
-        XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.row.quadriceps"].exists,
-                       "Expanded Sets per Muscle Group still renders the retired duplicate list")
-        XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.row.chest"].exists,
-                       "Expanded Sets per Muscle Group still renders a duplicate Chest row")
-        XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.row.lats"].exists,
-                       "Expanded Sets per Muscle Group still renders a duplicate Lats row")
-        XCTAssertFalse(app.descendants(matching: .any)["home.week.group.strength"].exists,
-                       "Opening Sets also exposed strength history")
-        XCTAssertFalse(app.descendants(matching: .any)["home.week.group.cardio"].exists,
-                       "Opening Sets also exposed cardio history")
-        // The Sets list is the sole muscle-volume breakdown; the old duplicate
-        // Volume/Muscles identifiers and This Week history card are retired.
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showLess"),
+                      "The muscle map should be expanded by default")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscleGroupVolume.showMore"),
+                      "This Week did not expose the restored Muscle Group Volume disclosure")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleGroupVolume.row.quadriceps"].waitForExistence(timeout: 5),
+                      "Muscle Group Volume did not render weekly set rows")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleGroupVolume.total"].exists,
+                      "Total Volume did not move into Muscle Group Volume")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.total"].exists,
+                       "Total Volume is still exposed from the muscle-map section")
         XCTAssertFalse(app.descendants(matching: .any)["home.week.muscles"].exists,
                        "The redundant Muscles breakdown is still on Home")
         XCTAssertFalse(app.descendants(matching: .any)["home.muscle.chest"].exists,
@@ -255,29 +253,21 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "This Week still exposes the retired duplicate Volume heading")
         XCTAssertFalse(app.descendants(matching: .any)["home.myHistory"].exists,
                        "This Week still exposes the retired My History section")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.science"].exists,
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleGroupVolume.science"].exists,
                       "Weekly volume does not expose its multi-reference science link")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showLess"),
-                      "Sets per Muscle Group disclosure did not collapse")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.cardio.showMore"),
                       "This Week did not expose the Cardio disclosure")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
                       "Expanded Cardio does not explain the moderate-equivalent cardio total")
-        XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.heading"].exists,
-                       "Opening Cardio left Sets expanded at the same time")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.muscleMap"].exists,
+                       "Independent This Week disclosure state removed the map")
         let cardioMinutes = app.descendants(matching: .any)["home.week.cardioMinutes"]
         let leakedSourceTokens = cardioMinutes.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS[c] 'dashboard.cardioDetail' OR label CONTAINS[c] 'Int('"))
         XCTAssertEqual(leakedSourceTokens.count, 0,
                        "Cardio Minutes must render values, never source-code interpolation")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showMore"),
-                      "This Week could not switch its focused detail back to Sets")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.heading"].waitForExistence(timeout: 5),
-                      "Switching to Sets did not reveal its details")
-        XCTAssertFalse(app.descendants(matching: .any)["home.week.cardioMinutes"].exists,
-                       "Switching to Sets left Cardio expanded at the same time")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showLess"),
-                      "Sets disclosure did not collapse after the exclusive-mode check")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscleGroupVolume.showLess"),
+                      "Muscle Group Volume disclosure did not collapse")
         XCTAssertTrue(app.buttons["tab.today"].waitTap(timeout: 10),
                       "Could not return to Today after reviewing This Week")
         if app.buttons["home.observations.showMore"].exists {
@@ -704,15 +694,16 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Completed workout did not appear in My Workouts")
 
         // This Week no longer duplicates History. The canonical History surface
-        // remains reachable from Progress, while Sets keeps the partner filter.
+        // remains reachable from Progress, while Muscle Group Volume keeps the
+        // partner filter.
         XCTAssertTrue(app.buttons["tab.thisWeek"].waitTap(timeout: 10),
                       "Could not open This Week for the partner volume check")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.showMore"),
-                      "This Week did not expose its Sets disclosure after partner work")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.sets.performers"]
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscleGroupVolume.showMore"),
+                      "This Week did not expose its Muscle Group Volume disclosure after partner work")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleGroupVolume.performers"]
                         .waitForExistence(timeout: 5),
                       "This Week Sets did not expose the partner picker")
-        XCTAssertTrue(app.buttons["home.week.sets.performer.owner"].exists,
+        XCTAssertTrue(app.buttons["home.week.muscleGroupVolume.performer.owner"].exists,
                       "This Week Sets did not expose the owner choice")
         XCTAssertFalse(app.descendants(matching: .any)["home.myHistory"].exists,
                        "This Week still rendered the retired My History section")

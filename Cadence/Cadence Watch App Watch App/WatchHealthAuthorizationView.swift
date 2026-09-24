@@ -6,6 +6,7 @@ struct WatchHealthAuthorizationView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
     @State private var requesting = false
     @State private var failed = false
+    @State private var authorizationReturned = false
 
     var body: some View {
         VStack(spacing: 10) {
@@ -18,22 +19,56 @@ struct WatchHealthAuthorizationView: View {
                 .font(.caption2)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
-            Button {
-                requesting = true
-                failed = false
-                Task {
-                    let granted = await watchManager.requestWorkoutAuthorization()
-                    await MainActor.run {
-                        requesting = false
-                        failed = !granted && !watchManager.hrAuthorized
+            if authorizationReturned {
+                Text(watchManager.hrAuthorized || watchManager.workoutShareAuthorized
+                     ? "Access is ready. Continue when you are ready to open Cladiron."
+                     : "Access was not granted. You can retry or continue without heart rate.")
+                    .font(.caption2)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(watchManager.hrAuthorized || watchManager.workoutShareAuthorized
+                                     ? .green : .orange)
+                if !watchManager.hrAuthorized && !watchManager.workoutShareAuthorized {
+                    Button {
+                        requesting = true
+                        authorizationReturned = false
+                        failed = false
+                        Task {
+                            let granted = await watchManager.requestWorkoutAuthorization()
+                            await MainActor.run {
+                                requesting = false
+                                authorizationReturned = true
+                                failed = !granted && !watchManager.hrAuthorized
+                            }
+                        }
+                    } label: {
+                        Label(requesting ? "Requesting…" : "Try Again", systemImage: "arrow.clockwise")
                     }
+                    .disabled(requesting)
+                    .accessibilityIdentifier("watch.healthAuthorization.retry")
                 }
-            } label: {
-                Label(requesting ? "Requesting…" : "Allow Heart Rate Access",
-                      systemImage: "heart.fill")
+                Button("Continue") {
+                    watchManager.finishInitialHealthAuthorization()
+                }
+                .accessibilityIdentifier("watch.healthAuthorization.done")
+            } else {
+                Button {
+                    requesting = true
+                    failed = false
+                    Task {
+                        let granted = await watchManager.requestWorkoutAuthorization()
+                        await MainActor.run {
+                            requesting = false
+                            authorizationReturned = true
+                            failed = !granted && !watchManager.hrAuthorized
+                        }
+                    }
+                } label: {
+                    Label(requesting ? "Requesting…" : "Allow Heart Rate Access",
+                          systemImage: "heart.fill")
+                }
+                .disabled(requesting)
+                .accessibilityIdentifier("watch.healthAuthorization.allow")
             }
-            .disabled(requesting)
-            .accessibilityIdentifier("watch.healthAuthorization.allow")
 
             Button("Continue without heart rate") {
                 watchManager.continueWithoutHealthAuthorization()
@@ -41,7 +76,7 @@ struct WatchHealthAuthorizationView: View {
             .font(.caption2)
             .accessibilityIdentifier("watch.healthAuthorization.continue")
 
-            if failed {
+            if failed && !authorizationReturned {
                 Text("Access was not granted. You can try again or continue without heart rate.")
                     .font(.caption2)
                     .foregroundStyle(.orange)

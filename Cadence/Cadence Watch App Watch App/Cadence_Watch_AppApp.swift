@@ -29,17 +29,19 @@ struct CadenceWatchApp: App {
                                 .multilineTextAlignment(.center).padding(.horizontal, 8).padding(.top, 4)
                         }
                         WatchRootView()
-                    }
+                        }
                         .environment(watchManager)
                         .environment(watchAppSettings)
-                        .task { watchManager.activateWCSession() }
-                        .task { watchManager.recoverActiveWorkoutIfNeeded() }
-                        .task { watchManager.watchAppSettings = watchAppSettings }
-                        .task {
-                            // Let the authorization-first surface render before
-                            // catalog seeding touches SwiftData. The production
-                            // seed runs in a detached context below.
+                        .task(id: watchManager.needsInitialHealthAuthorization) {
+                            // The first frame is intentionally an explicit
+                            // permission boundary. WatchConnectivity activation,
+                            // recovery, settings application, and catalog work
+                            // all wait until the user finishes that boundary.
+                            guard !watchManager.needsInitialHealthAuthorization else { return }
                             await Task.yield()
+                            watchManager.watchAppSettings = watchAppSettings
+                            watchManager.activateWCSession()
+                            watchManager.recoverActiveWorkoutIfNeeded()
                             bootstrap.prepareCatalogIfNeeded()
                         }
                 }

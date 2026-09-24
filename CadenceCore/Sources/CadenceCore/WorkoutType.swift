@@ -28,7 +28,7 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .rowing: return "Rowing"
         case .swim: return "Swim"
         case .elliptical: return "Elliptical"
-        case .stairClimber: return "Stair Climber"
+        case .stairClimber: return "Stairs"
         case .hiit: return "HIIT"
         case .boxing: return "Boxing"
         case .other: return "Other"

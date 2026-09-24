@@ -14,6 +14,13 @@ final class WorkoutTypeTests: XCTestCase {
         XCTAssertEqual(WorkoutType.rowing.symbol, "figure.rower")
     }
 
+    func testStairsDisplayNamePreservesStoredRawValue() {
+        XCTAssertEqual(WorkoutType.stairClimber.rawValue, "stairClimber")
+        XCTAssertEqual(WorkoutType.stairClimber.displayName, "Stairs")
+        XCTAssertEqual(CardioType.stairClimber.displayName, "Stairs")
+        XCTAssertEqual(CardioType(rawValue: "stairClimber"), .stairClimber)
+    }
+
     func testRowingUsesGPS() {
         // Decision D1 (Option A): Rowing is a GPS box like Cycle.
         XCTAssertTrue(WorkoutType.rowing.usesGPS)

@@ -20,12 +20,6 @@ struct TrainingProgressView: View {
     @State private var questionSelection = ProgressQuestionSelection()
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
-    private var cardioTrendTotals: [ProgressCardioWeekTotal] {
-        let intervals = cardio.map {
-            CardioWorkoutDurationSample(start: $0.start, end: $0.end, isDeleted: $0.deletedAt != nil)
-        }
-        return ProgressCardioTrendPresenter.weeklyTotals(for: intervals)
-    }
     private var facts: TrainingFacts {
         let signpostID = OSSignpostID(log: Self.performanceLog)
         os_signpost(.begin, log: Self.performanceLog, name: "progressFactsPreparation", signpostID: signpostID)
@@ -47,9 +41,7 @@ struct TrainingProgressView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     ProgressQuestionSummaryView(
                         selection: $questionSelection,
-                        facts: facts,
                         sessions: activeSessions,
-                        cardioTotals: cardioTrendTotals,
                         detailContent: { question in
                             progressQuestionContent(for: question)
                         })
@@ -104,18 +96,13 @@ struct TrainingProgressView: View {
                 .accessibilityIdentifier("progress.performTest")
                 testResultsCard
             }
-        case .trends:
-            VStack(spacing: 14) {
-                PRTimelineView(sessions: activeSessions)
-                ConsistencyHeatmapView(sessions: activeSessions)
-            }
+        case .personalRecords:
+            PRTimelineView(sessions: activeSessions)
         case .intensity:
             intensityCard
         case .effort:
             effortCard
-        case .frequency:
-            frequencyCard
-        case .consistency, .muscleVolume, .cardioChange:
+        case .consistency:
             EmptyView()
         }
     }
@@ -281,26 +268,6 @@ struct TrainingProgressView: View {
             }
         }
         .accessibilityIdentifier("progress.effortCard")
-    }
-
-    @ViewBuilder private var frequencyCard: some View {
-        let hits = MuscleGroup.canonicalOrder.filter { (facts.frequencyByGroup[$0] ?? 0) >= 2 }
-        let lows = MuscleGroup.canonicalOrder.filter { (facts.frequencyByGroup[$0] ?? 0) == 1 }
-        card(title: "Frequency", citation: CitationRegistry.frequencyMeta, compact: true, tint: .orange, equalHeight: true) {
-            if facts.frequencyByGroup.isEmpty {
-                emptyNote("Train each muscle \u{2265}2\u{00d7}/week to get more from the same weekly sets.")
-            } else {
-                if !hits.isEmpty {
-                    Text(hits.map(\.displayName).joined(separator: " \u{00b7} ") + " 2\u{00d7}/wk")
-                        .font(.caption).foregroundStyle(.green)
-                }
-                if !lows.isEmpty {
-                    Text(lows.map(\.displayName).joined(separator: " \u{00b7} ") + " 1\u{00d7}/wk")
-                        .font(.caption).foregroundStyle(.orange).padding(.top, 2)
-                }
-            }
-        }
-        .accessibilityIdentifier("progress.frequencyCard")
     }
 
     private func effortRead(_ rir: Double, goal: TrainingGoal) -> String {

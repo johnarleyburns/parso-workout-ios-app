@@ -1172,7 +1172,7 @@ public enum CardioType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .walk: return "Walk"
         case .rowing: return "Rowing"
         case .elliptical: return "Elliptical"
-        case .stairClimber: return "Stair Climber"
+        case .stairClimber: return "Stairs"
         case .other: return "Other"
         }
     }

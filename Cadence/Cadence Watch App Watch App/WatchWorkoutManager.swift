@@ -102,6 +102,13 @@ final class WatchWorkoutManager: NSObject {
     }
 
     func continueWithoutHealthAuthorization() {
+        finishInitialHealthAuthorization()
+    }
+
+    /// Keep the first-launch permission surface visible until the user
+    /// explicitly chooses to continue after the system sheet returns.
+    func finishInitialHealthAuthorization() {
+        guard !healthAuthorizationPromptResolved else { return }
         healthAuthorizationPromptResolved = true
         UserDefaults.standard.set(true, forKey: Self.initialHealthAuthorizationKey)
     }
@@ -144,10 +151,6 @@ final class WatchWorkoutManager: NSObject {
             workoutShareAuthorized = (wStatus == .sharingAuthorized)
             let hStatus = store.authorizationStatus(for: hrType)
             hrAuthorized = (hStatus != .notDetermined)
-            if workoutShareAuthorized || hrAuthorized {
-                healthAuthorizationPromptResolved = true
-                UserDefaults.standard.set(true, forKey: Self.initialHealthAuthorizationKey)
-            }
             return workoutShareAuthorized
         } catch {
             return false

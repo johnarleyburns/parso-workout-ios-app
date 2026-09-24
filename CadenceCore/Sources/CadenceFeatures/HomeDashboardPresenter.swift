@@ -292,6 +292,19 @@ public enum HomeDashboardPresenter {
         return volumeRows(setsByGroup: byGroup, tracked: tracked)
     }
 
+    /// This Week's detailed volume list: largest weekly set count first, with
+    /// a stable alphabetical tie-break so it does not jump between renders.
+    public static func sortedVolumeRows(_ rows: [HomeDashboardState.VolumeRow])
+    -> [HomeDashboardState.VolumeRow] {
+        rows.sorted {
+            if $0.sets != $1.sets { return $0.sets > $1.sets }
+            let nameOrder = $0.displayName.localizedStandardCompare($1.displayName)
+            return nameOrder == .orderedSame
+                ? $0.group.rawValue < $1.group.rawValue
+                : nameOrder == .orderedAscending
+        }
+    }
+
     private static func suggestions(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences) -> [HomeSuggestion] {
         var candidates: [HomeSuggestion] = snapshot.decision.warnings.map {
             .init(id: $0.id, category: .safety, title: "Recovery note", message: $0.message,

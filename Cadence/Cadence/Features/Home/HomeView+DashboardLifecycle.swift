@@ -14,6 +14,12 @@ extension HomeView {
                 }
                 if contributionPromptAllowed { contributions.evaluate() }
             }
+            .onChange(of: weeklyDetailSelection) { _, next in
+                // This is page UI state, not workout data. Persist only the
+                // user's disclosure tap so returning to This Week restores the
+                // exact set of sections they left open.
+                next.persist()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .workoutHistoryChanged)) { _ in
                 // A past workout's date was edited (SessionView). The coach signature
                 // keys on counts + token, not per-session dates, so bump the token to

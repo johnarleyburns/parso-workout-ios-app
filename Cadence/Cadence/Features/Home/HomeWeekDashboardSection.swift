@@ -44,11 +44,16 @@ struct HomeWeekDashboardSection: View {
                 disclosureRow(title: "Sets per Muscle Group", value: dashboard.volumeCoverage.displayText,
                               progress: dashboard.volumeCoverage.normalized,
                               tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
-                              mode: .volume, identifier: "home.week.sets") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        muscleMapSummary
-                        volumeDetail
-                    }
+                              mode: .muscleMap, identifier: "home.week.sets") {
+                    muscleMapSummary
+                }
+            }
+            sectionCard {
+                disclosureRow(title: "Muscle Group Volume", value: dashboard.volumeCoverage.displayText,
+                              progress: dashboard.volumeCoverage.normalized,
+                              tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
+                              mode: .muscleGroupVolume, identifier: "home.week.muscleGroupVolume") {
+                    volumeDetail
                 }
             }
             sectionCard {
@@ -114,7 +119,7 @@ struct HomeWeekDashboardSection: View {
             .foregroundStyle(.secondary)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Muscle volume legend: below, building, productive, and above maximum")
-            .accessibilityIdentifier("home.week.sets.heading")
+            .accessibilityIdentifier("home.week.muscleGroupVolume.heading")
             if weeklyVolumePerformers.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -141,15 +146,18 @@ struct HomeWeekDashboardSection: View {
                             .buttonStyle(.plain)
                             .foregroundStyle(selectedVolumePerformerKey == performer.id
                                              ? Color.accentColor : .secondary)
-                            .accessibilityIdentifier("home.week.sets.performer.\(performer.id)")
+                            .accessibilityIdentifier("home.week.muscleGroupVolume.performer.\(performer.id)")
                         }
                     }
                 }
-                .accessibilityIdentifier("home.week.sets.performers")
+                .accessibilityIdentifier("home.week.muscleGroupVolume.performers")
+            }
+            ForEach(HomeDashboardPresenter.sortedVolumeRows(displayedVolumeRows)) { row in
+                volumeRow(row)
             }
             CoachSourcesLink(
                 citationIds: CitationRegistry.strengthVolumePool.citationIds,
-                identifier: "home.week.sets.science")
+                identifier: "home.week.muscleGroupVolume.science")
             HStack {
                 Text("Total Volume").font(.subheadline.weight(.semibold))
                 Spacer()
@@ -162,10 +170,10 @@ struct HomeWeekDashboardSection: View {
                     .foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("home.week.sets.total")
+            .accessibilityIdentifier("home.week.muscleGroupVolume.total")
         }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home.thisWeek.expanded")
+        .accessibilityIdentifier("home.week.muscleGroupVolume.expanded")
     }
 
     private func legendItem(_ title: String, color: Color) -> some View {
@@ -208,7 +216,7 @@ struct HomeWeekDashboardSection: View {
                                               progress: Double, tint: Color,
                                               mode: WeeklyDetailMode, identifier: String,
                                               @ViewBuilder content: () -> Content) -> some View {
-        let isExpanded = detailSelection.selected == mode
+        let isExpanded = detailSelection.isExpanded(mode)
         return VStack(alignment: .leading, spacing: 8) {
             Button {
                 withAnimation(.easeInOut(duration: 0.18)) { detailSelection.toggle(mode) }

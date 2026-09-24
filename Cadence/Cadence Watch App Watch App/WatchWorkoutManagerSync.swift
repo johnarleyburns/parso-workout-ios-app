@@ -160,26 +160,38 @@ extension WatchWorkoutManager: WCSessionDelegate {
             cooldownMinutes: s.cooldownMinutes,
             workoutSounds: s.workoutSounds
         )
-        let incoming = current.applying(context: applicationContext)
-        s.unit = incoming.unit
-        s.distanceUnit = incoming.distanceUnit
-        s.intervalColorBlind = incoming.intervalColorBlind
-        s.restSeconds = incoming.restSeconds
-        s.warmupMinutes = incoming.warmupMinutes
-        s.cooldownMinutes = incoming.cooldownMinutes
-        s.workoutSounds = incoming.workoutSounds
-        recentPartnerNames = incoming.recentPartnerNames
-        todayPlan = WatchSync.TodayPlan.from(context: applicationContext)
-        let syncedAt = (applicationContext[WatchSync.Key.contextUpdatedAt] as? Date) ?? Date()
-        if let rows = applicationContext[WatchSync.Key.customExercises] as? [[String: Any]] {
-            customExerciseRows = rows
-            customExercisesUpdatedAt = syncedAt
+        let payload = UncheckedWatchPayload(value: applicationContext)
+        Task { [weak self] in
+            let snapshot = await Task.detached(priority: .utility) {
+                WatchSync.IncomingContext.from(
+                    context: payload.value,
+                    applyingTo: current)
+            }.value
+            self?.applyIncomingContext(snapshot)
+        }
+    }
+
+    private func applyIncomingContext(_ incoming: WatchSync.IncomingContext) {
+        guard let s = watchAppSettings else { return }
+        let preferences = incoming.preferences
+        s.unit = preferences.unit
+        s.distanceUnit = preferences.distanceUnit
+        s.intervalColorBlind = preferences.intervalColorBlind
+        s.restSeconds = preferences.restSeconds
+        s.warmupMinutes = preferences.warmupMinutes
+        s.cooldownMinutes = preferences.cooldownMinutes
+        s.workoutSounds = preferences.workoutSounds
+        recentPartnerNames = preferences.recentPartnerNames
+        todayPlan = incoming.todayPlan
+        if let customExercises = incoming.customExercises {
+            customExerciseRows = customExercises.map(\.propertyList)
+            customExercisesUpdatedAt = incoming.updatedAt
         }
 
-        lastPhoneSyncAt = syncedAt
+        lastPhoneSyncAt = incoming.updatedAt
         lastPhoneSyncError = nil
-        UserDefaults.standard.set(syncedAt, forKey: "watch.lastPhoneSyncAt")
-        phoneSyncState = .synced(syncedAt)
+        UserDefaults.standard.set(incoming.updatedAt, forKey: "watch.lastPhoneSyncAt")
+        phoneSyncState = .synced(incoming.updatedAt)
     }
 
     func applyCustomExercises(_ raw: Any?, in context: ModelContext) {

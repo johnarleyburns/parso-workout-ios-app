@@ -145,3 +145,39 @@ public enum CadencePlatformSnapshotStore {
         UserDefaults(suiteName: appGroupIdentifier) ?? .standard
     }
 }
+
+/// Small shared state for the watch Smart Stack surface. The watch app writes
+/// the active workout/rest projection and the watch widget reads it without
+/// needing access to SwiftData or HealthKit.
+public struct CadenceWatchWidgetState: Codable, Equatable, Sendable {
+    public let workoutTitle: String
+    public let restEndsAt: Date?
+
+    public init(workoutTitle: String, restEndsAt: Date? = nil) {
+        self.workoutTitle = workoutTitle
+        self.restEndsAt = restEndsAt
+    }
+}
+
+public enum CadenceWatchWidgetStore {
+    public static let stateKey = "cadence.watchWidgetState.v1"
+
+    public static func save(_ state: CadenceWatchWidgetState,
+                            defaults: UserDefaults? = nil) {
+        guard let data = try? JSONEncoder().encode(state) else { return }
+        (defaults ?? sharedDefaults()).set(data, forKey: stateKey)
+    }
+
+    public static func load(defaults: UserDefaults? = nil) -> CadenceWatchWidgetState? {
+        guard let data = (defaults ?? sharedDefaults()).data(forKey: stateKey) else { return nil }
+        return try? JSONDecoder().decode(CadenceWatchWidgetState.self, from: data)
+    }
+
+    public static func clear(defaults: UserDefaults? = nil) {
+        (defaults ?? sharedDefaults()).removeObject(forKey: stateKey)
+    }
+
+    private static func sharedDefaults() -> UserDefaults {
+        UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? .standard
+    }
+}

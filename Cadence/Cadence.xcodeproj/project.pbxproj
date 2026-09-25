@@ -13,6 +13,9 @@
 		CAFEFEA70000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = CAFEFEA70000000000000000 /* CadenceFeatures */; };
 		WA0000020000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = WA0000060000000000000001 /* CadenceFeatures */; };
 		WA0000040000000000000001 /* Cadence Watch App Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 8D78A5262FD286E200AE7C2F /* Cadence Watch App Watch App.app */; };
+		WW0000010000000000000001 /* CadenceWatchWidgets.appex in Embed Watch App Extensions */ = {isa = PBXBuildFile; fileRef = WW0000020000000000000001 /* CadenceWatchWidgets.appex */; };
+		WW0000030000000000000001 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = WW0000040000000000000001 /* WidgetKit.framework */; };
+		WW0000050000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = WW0000060000000000000001 /* CadenceFeatures */; };
 		PW0000010000000000000001 /* CadenceWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = PW0000020000000000000001 /* CadenceWidgets.appex */; };
 		PW0000030000000000000001 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = PW0000040000000000000001 /* WidgetKit.framework */; };
 		PW0000050000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = PW0000060000000000000001 /* CadenceFeatures */; };
@@ -54,6 +57,13 @@
 			remoteGlobalIDString = PW0000100000000000000001;
 			remoteInfo = CadenceWidgets;
 		};
+		WW0000070000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8D78A4ED2FD282B500AE7C2F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = WW0000100000000000000001;
+			remoteInfo = CadenceWatchWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -66,6 +76,17 @@
 				WA0000040000000000000001 /* Cadence Watch App Watch App.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WW0000080000000000000001 /* Embed Watch App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				WW0000010000000000000001 /* CadenceWatchWidgets.appex in Embed Watch App Extensions */,
+			);
+			name = "Embed Watch App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		PW0000080000000000000001 /* Embed App Extensions */ = {
@@ -88,6 +109,8 @@
 		8D78A5262FD286E200AE7C2F /* Cadence Watch App Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Cadence Watch App Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D78A5352FD286E300AE7C2F /* Cadence Watch App Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Cadence Watch App Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D78A53F2FD286E300AE7C2F /* Cadence Watch App Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Cadence Watch App Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		WW0000020000000000000001 /* CadenceWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "com.apple.product-type.app-extension"; includeInIndex = 0; path = CadenceWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		WW0000040000000000000001 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		PW0000020000000000000001 /* CadenceWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "com.apple.product-type.app-extension"; includeInIndex = 0; path = CadenceWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		PW0000040000000000000001 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -113,6 +136,14 @@
 				Info.plist,
 			);
 			target = PW0000100000000000000001 /* CadenceWidgets */;
+		};
+		WW0000090000000000000001 /* Exceptions for "CadenceWatchWidgets" folder in "CadenceWatchWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				CadenceWatchWidgets.entitlements,
+				Info.plist,
+			);
+			target = WW0000100000000000000001 /* CadenceWatchWidgets */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -159,6 +190,14 @@
 				PW0000090000000000000001 /* Exceptions for "CadenceWidgets" folder in "CadenceWidgets" target */,
 			);
 			path = ../CadenceWidgets;
+			sourceTree = "<group>";
+		};
+		WW0000110000000000000001 /* CadenceWatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				WW0000090000000000000001 /* Exceptions for "CadenceWatchWidgets" folder in "CadenceWatchWidgets" target */,
+			);
+			path = ../CadenceWatchWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -220,6 +259,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		WW0000120000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				WW0000030000000000000001 /* WidgetKit.framework in Frameworks */,
+				WW0000050000000000000001 /* CadenceFeatures in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -232,6 +280,7 @@
 				8D78A5272FD286E200AE7C2F /* Cadence Watch App Watch App */,
 				8D78A5382FD286E300AE7C2F /* Cadence Watch App Watch AppTests */,
 				8D78A5422FD286E300AE7C2F /* Cadence Watch App Watch AppUITests */,
+				WW0000110000000000000001 /* CadenceWatchWidgets */,
 				PW0000110000000000000001 /* CadenceWidgets */,
 				8D78A55D2FD28A7C00AE7C2F /* Frameworks */,
 				8D78A4F62FD282B500AE7C2F /* Products */,
@@ -247,6 +296,7 @@
 				8D78A5262FD286E200AE7C2F /* Cadence Watch App Watch App.app */,
 				8D78A5352FD286E300AE7C2F /* Cadence Watch App Watch AppTests.xctest */,
 				8D78A53F2FD286E300AE7C2F /* Cadence Watch App Watch AppUITests.xctest */,
+				WW0000020000000000000001 /* CadenceWatchWidgets.appex */,
 				PW0000020000000000000001 /* CadenceWidgets.appex */,
 			);
 			name = Products;
@@ -345,10 +395,12 @@
 				8D78A5222FD286E200AE7C2F /* Sources */,
 				8D78A5232FD286E200AE7C2F /* Frameworks */,
 				8D78A5242FD286E200AE7C2F /* Resources */,
+				WW0000080000000000000001 /* Embed Watch App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				WW0000130000000000000001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				8D78A5272FD286E200AE7C2F /* Cadence Watch App Watch App */,
@@ -431,6 +483,29 @@
 			productReference = PW0000020000000000000001 /* CadenceWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		WW0000100000000000000001 /* CadenceWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = WW0000140000000000000001 /* Build configuration list for PBXNativeTarget "CadenceWatchWidgets" */;
+			buildPhases = (
+				WW0000150000000000000001 /* Sources */,
+				WW0000120000000000000001 /* Frameworks */,
+				WW0000160000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				WW0000110000000000000001 /* CadenceWatchWidgets */,
+			);
+			name = CadenceWatchWidgets;
+			packageProductDependencies = (
+				WW0000060000000000000001 /* CadenceFeatures */,
+			);
+			productName = CadenceWatchWidgets;
+			productReference = WW0000020000000000000001 /* CadenceWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -463,9 +538,12 @@
 						CreatedOnToolsVersion = 16.1;
 						TestTargetID = 8D78A5252FD286E200AE7C2F;
 					};
-					PW0000100000000000000001 = {
-						CreatedOnToolsVersion = 16.1;
-					};
+				PW0000100000000000000001 = {
+					CreatedOnToolsVersion = 16.1;
+				};
+				WW0000100000000000000001 = {
+					CreatedOnToolsVersion = 16.1;
+				};
 				};
 			};
 			buildConfigurationList = 8D78A4F02FD282B500AE7C2F /* Build configuration list for PBXProject "Cadence" */;
@@ -491,6 +569,7 @@
 				8D78A5252FD286E200AE7C2F /* Cadence Watch App Watch App */,
 				8D78A5342FD286E300AE7C2F /* Cadence Watch App Watch AppTests */,
 				8D78A53E2FD286E300AE7C2F /* Cadence Watch App Watch AppUITests */,
+				WW0000100000000000000001 /* CadenceWatchWidgets */,
 				PW0000100000000000000001 /* CadenceWidgets */,
 			);
 		};
@@ -540,6 +619,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		PW0000160000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		WW0000160000000000000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -598,6 +684,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		WW0000150000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -630,6 +723,11 @@
 			isa = PBXTargetDependency;
 			target = PW0000100000000000000001 /* CadenceWidgets */;
 			targetProxy = PW0000070000000000000001 /* PBXContainerItemProxy */;
+		};
+		WW0000130000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = WW0000100000000000000001 /* CadenceWatchWidgets */;
+			targetProxy = WW0000070000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1087,6 +1185,54 @@
 			};
 			name = Release;
 		};
+		WW0000170000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ../CadenceWatchWidgets/CadenceWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3264Y8YUGV;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ../CadenceWatchWidgets/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "guru.parso.ios-workout-app.watchkitapp.widgets";
+				PRODUCT_NAME = CadenceWatchWidgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		WW0000180000000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ../CadenceWatchWidgets/CadenceWatchWidgets.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3264Y8YUGV;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ../CadenceWatchWidgets/Info.plist;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "guru.parso.ios-workout-app.watchkitapp.widgets";
+				PRODUCT_NAME = CadenceWatchWidgets;
+				PROVISIONING_PROFILE_SPECIFIER = "Parso Workout Watch App Store";
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1162,6 +1308,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		WW0000140000000000000001 /* Build configuration list for PBXNativeTarget "CadenceWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				WW0000170000000000000001 /* Debug */,
+				WW0000180000000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -1197,6 +1352,11 @@
 			productName = CadenceFeatures;
 		};
 		PW0000060000000000000001 /* CadenceFeatures */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadenceFeatures;
+		};
+		WW0000060000000000000001 /* CadenceFeatures */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
 			productName = CadenceFeatures;

@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 import CadenceCore
 import CadenceFeatures
 
@@ -32,6 +33,8 @@ struct WatchRestView: View {
                 Button("+30s") {
                     WatchHaptics.tap()
                     model.addRestTime(30)
+                    publishWidgetState()
+                    reloadWidget()
                 }
                 .buttonStyle(.bordered)
                 Button("Next Set") {
@@ -45,10 +48,13 @@ struct WatchRestView: View {
             Spacer()
         }
         .onAppear {
+            publishWidgetState()
+            reloadWidget()
             timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
                 Task { @MainActor in
                     let wasRunning = model.restTimer.isRunning
                     model.restTimer.tick()
+                    publishWidgetState()
                     if wasRunning, !model.restTimer.isRunning, model.restTimer.remaining == 0 {
                         cues.restComplete(soundsEnabled: watchSettings.workoutSounds)
                         WatchHaptics.success()
@@ -58,8 +64,21 @@ struct WatchRestView: View {
         }
         .onDisappear {
             timer?.invalidate()
+            CadenceWatchWidgetStore.save(CadenceWatchWidgetState(
+                workoutTitle: model.session?.title ?? "Workout"))
+            reloadWidget()
             cues.stop()
         }
+    }
+
+    private func publishWidgetState() {
+        CadenceWatchWidgetStore.save(CadenceWatchWidgetState(
+            workoutTitle: model.session?.title ?? "Workout",
+            restEndsAt: model.restTimer.endsAt))
+    }
+
+    private func reloadWidget() {
+        WidgetCenter.shared.reloadTimelines(ofKind: "CadenceWatchSmartStackWidget")
     }
 
     private func formatTime(_ interval: TimeInterval) -> String {

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import WidgetKit
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
@@ -68,6 +69,8 @@ struct WatchStrengthView: View {
                     createSession: true
                 )
                 flowModel = m
+                CadenceWatchWidgetStore.save(CadenceWatchWidgetState(workoutTitle: title))
+                WidgetCenter.shared.reloadTimelines(ofKind: "CadenceWatchSmartStackWidget")
                 if watchManager.isActive {
                     if watchManager.isPaused { watchManager.togglePause() }
                 } else {
@@ -78,6 +81,7 @@ struct WatchStrengthView: View {
         .onDisappear {
             if shouldStopWorkoutOnDisappear, watchManager.isActive {
                 watchManager.stopWorkout(save: false)
+                CadenceWatchWidgetStore.clear()
             }
         }
         .onChange(of: flowModel?.stage) { _, newStage in

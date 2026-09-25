@@ -56,21 +56,47 @@ struct HomeMuscleMapView: View {
         let panel = selectedPanel == .front ? MuscleMapPanel.front : .back
         let callouts = MuscleMapLayout.callouts(for: panel)
         return GeometryReader { proxy in
+            let imageSize = anatomyImageSize(in: proxy.size)
+            let imageOrigin = CGPoint(x: (proxy.size.width - imageSize.width) / 2,
+                                      y: (proxy.size.height - imageSize.height) / 2)
             ZStack {
                 Image(panel == .front ? "MuscleMapFront" : "MuscleMapBack")
                     .resizable().scaledToFit()
+                    .frame(width: imageSize.width, height: imageSize.height)
                     .accessibilityLabel("\(panel == .front ? "Front" : "Back") muscle heat map")
                 ForEach(callouts) { callout in
+                    muscleRegion(for: callout, imageSize: imageSize)
+                        .position(x: imageOrigin.x + imageSize.width / 2,
+                                  y: imageOrigin.y + imageSize.height / 2)
                     heatButton(for: callout)
-                        .position(x: CGFloat(callout.anchorX) * proxy.size.width,
-                                  y: CGFloat(callout.anchorY) * proxy.size.height)
+                        .position(x: imageOrigin.x + CGFloat(callout.anchorX) * imageSize.width,
+                                  y: imageOrigin.y + CGFloat(callout.anchorY) * imageSize.height)
                 }
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .frame(height: 250)
         .padding(.horizontal, 24)
         .accessibilityElement(children: .contain)
+    }
+
+    private func anatomyImageSize(in container: CGSize) -> CGSize {
+        let ratio = MuscleMapLayout.panelRatio
+        let height = min(container.height, container.width / ratio)
+        return CGSize(width: height * ratio, height: height)
+    }
+
+    private func muscleRegion(for callout: MuscleMapCallout, imageSize: CGSize) -> some View {
+        let row = rows.first { $0.group == callout.group }
+        let level = MuscleHeatPresenter.level(sets: row?.sets ?? 0, target: 12)
+        return Image("MuscleMask-\(callout.panel.rawValue)-\(callout.group.rawValue)")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: imageSize.width, height: imageSize.height)
+            .foregroundStyle(CadenceTheme.accent.opacity(opacity(for: level)))
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     private func heatButton(for callout: MuscleMapCallout) -> some View {
@@ -78,12 +104,10 @@ struct HomeMuscleMapView: View {
         let sets = row?.sets ?? 0
         let level = MuscleHeatPresenter.level(sets: sets, target: 12)
         return Button { onSelect(callout.group) } label: {
-            Circle()
-                .fill(CadenceTheme.accent.opacity(opacity(for: level)))
-                .frame(width: 28, height: 28)
+            Circle().fill(.clear).frame(width: 44, height: 44)
                 .overlay {
                     if level == .none {
-                        Circle().stroke(CadenceTheme.attention,
+                        Circle().inset(by: 8).stroke(CadenceTheme.attention,
                                         style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
                     }
                 }
@@ -144,7 +168,7 @@ struct HomeMuscleMapView: View {
 
     private func opacity(for level: HeatLevel) -> Double {
         switch level {
-        case .none: return 0.05
+        case .none: return 0.12
         case .low: return 0.25
         case .mid: return 0.45
         case .high: return 0.7

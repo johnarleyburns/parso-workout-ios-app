@@ -19,6 +19,21 @@ final class PlatformSnapshotTests: XCTestCase {
         XCTAssertEqual(CadencePlatformSnapshotStore.load(defaults: defaults), snapshot)
     }
 
+    func testWatchWidgetStateRoundTripsAndClears() {
+        let suite = "cadence.platform.watch-widget.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let state = CadenceWatchWidgetState(
+            workoutTitle: "Upper strength",
+            restEndsAt: Date(timeIntervalSince1970: 456))
+        CadenceWatchWidgetStore.save(state, defaults: defaults)
+
+        XCTAssertEqual(CadenceWatchWidgetStore.load(defaults: defaults), state)
+        CadenceWatchWidgetStore.clear(defaults: defaults)
+        XCTAssertNil(CadenceWatchWidgetStore.load(defaults: defaults))
+    }
+
     func testReadinessPresenterKeepsSafetyCopySeparate() {
         let concern = ReadinessEntry(muscleSoreness: 1, fatigueEnergy: 2,
                                      sleepQuality: 2, stressMood: 1,

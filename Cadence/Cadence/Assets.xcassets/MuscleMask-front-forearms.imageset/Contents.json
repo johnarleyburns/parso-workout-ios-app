@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "MuscleMask-front-forearms.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

@@ -20,14 +20,11 @@ and accessibility labels. The presentation seams have headless coverage.
 
 Verification: `swift test --package-path CadenceCore` passed with 1,912 tests;
 generic iOS build passed; `make guardrails` passed; `git diff --check` passed.
-The in-app browser reported that no browser is available, and simulator/device
-execution remains disabled by the repository rules unless explicitly requested.
-The anatomy artwork is a single raster asset without per-muscle masks, so the
-existing artwork is preserved with tappable intensity markers and dashed zero
-states rather than redrawing or fabricating region boundaries. The existing
-project has a native Watch workout app but no separate Watch Widget extension;
-the iPhone widget/Live Activity/Control Center surfaces were completed without
-altering the target graph.
+Visual/device verification is intentionally deferred to the user. The anatomy
+artwork now has generated per-muscle alpha masks derived from its supplied
+red-fill regions and existing callout anchors, while the original silhouette
+remains unchanged. The project now includes and embeds a watchOS 10 Smart Stack
+widget target alongside the native Watch workout app.
 
 ## Latest gap-fix audit — 2026-09-25
 
@@ -94,6 +91,25 @@ The remaining plan exceptions are unchanged: the anatomy asset is one raster
 without safe per-muscle masks, the project has no Watch Widget extension target
 for the Smart Stack requirement, and simulator/device AX5 and screenshot
 verification is unavailable in this repository environment.
+
+## Latest targeted gap fix — 2026-09-25
+
+The targeted audit for the unavailable anatomy mask and missing widget target is
+complete. The This Week anatomy map now overlays 25 deterministic, transparent
+front/back muscle masks generated from the supplied artwork; each region is
+tinted by its five-level heat value, and zero regions retain the dashed
+attention target and VoiceOver control. The map also positions overlays and
+targets inside the artwork's true aspect-fit rectangle instead of the full
+container bounds.
+
+The watch gap is closed with a native `CadenceWatchWidgets` watchOS 10 target,
+embedded in the Watch app and restricted to `.accessoryRectangular`. It reads
+the shared day snapshot for today's title and receives the Watch rest timer
+projection for a live countdown during rests. The shared projection has a
+round-trip/clear unit test, and the generator is retained at
+`scripts/generate-muscle-masks.py` so the derived assets are reproducible.
+
+The user will perform visual and device verification separately, as requested.
 
 ## Latest change — 2026-09-24: main-thread stalls and the Watch HR boundary
 

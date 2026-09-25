@@ -59,11 +59,20 @@ struct CadenceTodayWidgetView: View {
                     Text(snapshot.planTitle)
                         .font(.headline)
                         .lineLimit(2)
+                    if family == .systemSmall, let minutes = snapshot.estimatedMinutes {
+                        Text("About \(minutes) min")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
                     if family == .systemMedium {
                         HStack(spacing: 10) {
-                            widgetRing("Sets", symbol: "circle")
-                            widgetRing("Cardio", symbol: "heart")
-                            widgetRing("Sessions", symbol: "figure.strengthtraining.traditional")
+                            widgetRing("Sets", value: snapshot.setsCompleted,
+                                       target: snapshot.setsTarget, symbol: "circle")
+                            widgetRing("Cardio", value: snapshot.cardioMinutes,
+                                       target: snapshot.cardioTarget, symbol: "heart")
+                            widgetRing("Sessions", value: snapshot.sessionsCompleted,
+                                       target: snapshot.sessionsTarget,
+                                       symbol: "figure.strengthtraining.traditional")
                         }
                     }
                 if snapshot.sessionTitles.isEmpty {
@@ -104,12 +113,30 @@ struct CadenceTodayWidgetView: View {
         .accessibilityLabel(accessibilityLabel)
     }
 
-    private func widgetRing(_ title: String, symbol: String) -> some View {
+    private func widgetRing(_ title: String, value: Double?, target: Double?, symbol: String) -> some View {
         VStack(spacing: 2) {
-            Image(systemName: symbol).font(.title3).foregroundStyle(.green)
-            Text(title).font(.caption2)
+            ZStack {
+                Circle().stroke(.green.opacity(0.2), lineWidth: 4)
+                Circle().trim(from: 0, to: progress(value: value, target: target))
+                    .stroke(.green, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Image(systemName: symbol).font(.caption2).foregroundStyle(.green)
+            }
+            .frame(width: 30, height: 30)
+            Text("\(title) \(display(value))/\(display(target))")
+                .font(.caption2.monospacedDigit())
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func progress(value: Double?, target: Double?) -> Double {
+        guard let value, let target, target > 0 else { return 0 }
+        return min(1, max(0, value / target))
+    }
+
+    private func display(_ value: Double?) -> String {
+        guard let value else { return "—" }
+        return value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
     }
 
     private var accessibilityLabel: String {
@@ -127,7 +154,56 @@ struct WidgetStartWorkoutIntent: AppIntent {
     static var openAppWhenRun: Bool { true }
 
     func perform() async throws -> some IntentResult {
-        .result()
+        CadencePlatformRequestStore.requestStartWorkout()
+        return .result()
+    }
+}
+
+struct CadenceThisWeekWidget: Widget {
+    let kind = "CadenceThisWeekWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CadenceTodayWidgetProvider()) { entry in
+            CadenceThisWeekWidgetView(entry: entry)
+        }
+        .configurationDisplayName("This Week")
+        .description("See weekly muscle coverage at a glance.")
+        .supportedFamilies([.systemMedium])
+    }
+}
+
+struct CadenceThisWeekWidgetView: View {
+    let entry: CadenceTodayWidgetEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("This Week", systemImage: "calendar")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.green)
+            if let snapshot = entry.snapshot, !snapshot.weeklyMuscles.isEmpty {
+                ForEach(snapshot.weeklyMuscles.prefix(5)) { muscle in
+                    HStack(spacing: 6) {
+                        Text(muscle.id).font(.caption2).lineLimit(1)
+                        ProgressView(value: muscle.target > 0 ? min(1, muscle.sets / muscle.target) : 0)
+                            .tint(muscle.sets >= muscle.target && muscle.target > 0 ? .green : .orange)
+                        Text("\(display(muscle.sets))/\(display(muscle.target))")
+                            .font(.caption2.monospacedDigit())
+                    }
+                }
+            } else {
+                Text("Open Cladiron to load this week's coverage")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding()
+        .containerBackground(.green.gradient, for: .widget)
+        .widgetURL(URL(string: "cladiron://this-week"))
+    }
+
+    private func display(_ value: Double) -> String {
+        value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
     }
 }
 
@@ -214,6 +290,7 @@ struct CadenceStartControl: ControlWidget {
 struct CadenceWidgets: WidgetBundle {
     var body: some Widget {
         CadenceTodayWidget()
+        CadenceThisWeekWidget()
         CadenceWorkoutLiveActivity()
         if #available(iOS 18.0, *) {
             CadenceStartControl()

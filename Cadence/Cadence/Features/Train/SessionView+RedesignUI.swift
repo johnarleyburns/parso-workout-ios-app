@@ -86,7 +86,9 @@ extension SessionView {
             prRule: settings.prRule,
             prescriptionText: exercise.map { prescription(for: $0.name) } ?? nil,
             isExpanded: expandedExerciseID == ctx.exerciseID,
-            isCurrent: inlineExerciseID == ctx.exerciseID,
+            isCurrent: inlineExerciseID == ctx.exerciseID ||
+                (inlineExerciseID == nil &&
+                 cache.state.contexts.first(where: { !$0.pendingSets.isEmpty || !$0.pendingReps.isEmpty })?.exerciseID == ctx.exerciseID),
             compactSummary: compactSummary(for: ctx),
             onToggleExpansion: {
                 if reduceMotion {
@@ -112,6 +114,10 @@ extension SessionView {
                 expandedExerciseID = ctx.exerciseID
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 openInlineEditor(for: ex, repsOverride: pending.targetReps, performerID: pending.performerID)
+            },
+            onLogPending: { pending in
+                guard let ex = exerciseForID(ctx.exerciseID) else { return }
+                logPendingSet(pending, for: ex)
             },
             onRepeat: {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }

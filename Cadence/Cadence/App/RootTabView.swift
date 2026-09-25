@@ -101,12 +101,17 @@ struct RootTabView: View {
                 WorkoutLiveActivityCoordinator.shared.update(
                     elapsedSeconds: Int(active.clock.elapsed()),
                     status: active.isPaused ? "Paused" : "Active",
-                    isPaused: active.isPaused)
+                    isPaused: active.isPaused,
+                    restEndsAt: active.restEndsAt,
+                    nextExercise: active.nextExercise)
             }
         }
         .onChange(of: active.isActive) { _, isActive in
             if isActive, let session = active.strengthSession {
-                WorkoutLiveActivityCoordinator.shared.start(title: session.title.isEmpty ? "Workout" : session.title)
+                WorkoutLiveActivityCoordinator.shared.start(
+                    title: session.title.isEmpty ? "Workout" : session.title,
+                    restEndsAt: active.restEndsAt,
+                    nextExercise: active.nextExercise)
             } else {
                 WorkoutLiveActivityCoordinator.shared.end()
             }

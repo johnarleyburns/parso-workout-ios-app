@@ -59,6 +59,22 @@ extension HomeView {
         workoutEditorPlan = plan
     }
 
+    func logPlatformSet(_ request: CadencePlatformRequestStore.LogSetRequest) {
+        guard let session = active.strengthSession else { return }
+        let exercise = session.exercisesInOrder.first {
+            $0.name.caseInsensitiveCompare(request.exerciseName) == .orderedSame
+        } ?? (try? WorkoutRepository.findOrCreateExercise(named: request.exerciseName, in: context))
+        guard let exercise else { return }
+        _ = try? WorkoutRepository.addSet(to: session, exercise: exercise,
+                                          weightKg: max(0, request.weightKg), reps: request.reps,
+                                          rpe: nil, isWarmup: false, usesBodyweight: false,
+                                          note: nil, completedAt: session.isLogged ? session.date : Date(),
+                                          performedBy: nil, in: context)
+        try? context.save()
+        active.present()
+        markWorkoutHistoryChanged()
+    }
+
     func scheduleCardioWorkout(_ type: WorkoutType, for date: Date) throws {
         guard let cardioType = type.cardioType else { return }
         _ = try ScheduledWorkoutStore.schedule(cardioType: cardioType,

@@ -13,6 +13,12 @@ extension HomeView {
                     historyRefreshToken = UUID()
                 }
                 if contributionPromptAllowed { contributions.evaluate() }
+                if CadencePlatformRequestStore.consumeStartWorkout() {
+                    NotificationCenter.default.post(name: .cadenceStartTodaysWorkout, object: nil)
+                }
+                if let request = CadencePlatformRequestStore.consumeLogSet() {
+                    NotificationCenter.default.post(name: .cadenceLogSetRequested, object: request)
+                }
             }
             .onChange(of: weeklyDetailSelection) { _, next in
                 // This is page UI state, not workout data. Persist only the
@@ -35,7 +41,9 @@ extension HomeView {
                 for (group, delta) in change.delta {
                     liveVolumeDelta[group, default: 0] += delta
                 }
-                cachedDashboard = makeDashboard()
+        let dashboard = makeDashboard()
+        cachedDashboard = dashboard
+        savePlatformSnapshot(for: dashboard)
             }
             .onReceive(NotificationCenter.default.publisher(for: .readinessCheckInChanged)) { _ in
                 markWorkoutHistoryChanged()
@@ -69,11 +77,17 @@ extension HomeView {
                 start(WorkoutType(rawValue: request.type.rawValue) ?? .other)
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceStartTodaysWorkout)) { _ in
+                _ = CadencePlatformRequestStore.consumeStartWorkout()
                 guard active.liveWorkout.active == nil else { return }
                 selectWorkoutPresented = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceShowTodaysPlan)) { _ in
                 plannedWorkoutsPresented = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .cadenceLogSetRequested)) { note in
+                guard let request = note.object as? CadencePlatformRequestStore.LogSetRequest else { return }
+                _ = CadencePlatformRequestStore.consumeLogSet()
+                logPlatformSet(request)
             }
             .onChange(of: active.finishedSummary != nil) { _, shown in
                 if shown {

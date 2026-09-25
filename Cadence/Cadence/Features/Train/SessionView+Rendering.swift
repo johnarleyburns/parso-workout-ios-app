@@ -19,7 +19,9 @@ extension SessionView {
                 editableMetadataRow
             }
             if rest.isRunning {
-                RestTimerBar(model: rest) { Haptics.restComplete() }
+                RestTimerBar(model: rest,
+                             onComplete: { Haptics.restComplete() },
+                             onChange: { active.restEndsAt = $0 })
             }
             if let plan { planBanner(plan) }
             partnerBar
@@ -262,10 +264,9 @@ extension SessionView {
         .onDisappear { if isManualLog { cleanupEmptyLog() } }
         .onReceive(idleTimer) { _ in
             handleIdleTick()
-            if isActiveSession {
-                sampleHR()
-                active.writeHeartbeat()
-            }
+            guard isActiveSession else { return }
+            sampleHR()
+            active.writeHeartbeat()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { recordActivity() }

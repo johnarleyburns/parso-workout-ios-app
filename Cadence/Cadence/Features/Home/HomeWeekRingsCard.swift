@@ -5,8 +5,15 @@ import CadenceFeatures
 struct HomeWeekRingsCard: View {
     let dashboard: HomeDashboardState
 
-    private var setValue: Double { dashboard.volume.reduce(0) { $0 + $1.sets } }
-    private var setTarget: Double { dashboard.volume.filter(\.isTracked).reduce(0) { $0 + ($1.isTracked ? 12 : 0) } }
+    private var rings: [WeekRing] {
+        WeekRingsPresenter.rings(
+            workingSets: dashboard.volume.reduce(0) { $0 + $1.sets },
+            setTarget: dashboard.volume.filter(\.isTracked).reduce(0) { total, _ in total + 12 },
+            cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,
+            cardioTarget: dashboard.cardioDetail.targetMinutes,
+            sessions: dashboard.strength.completed,
+            sessionTarget: dashboard.strength.target)
+    }
 
     var body: some View {
         Button {
@@ -21,12 +28,9 @@ struct HomeWeekRingsCard: View {
                         .foregroundStyle(.secondary)
                 }
                 HStack(spacing: 6) {
-                    ring(value: setValue, target: setTarget, label: "Sets", tint: CadenceTheme.accent)
-                    ring(value: dashboard.cardioDetail.moderateEquivalentMinutes,
-                         target: dashboard.cardioDetail.targetMinutes,
-                         label: "Cardio min", tint: CadenceTheme.link)
-                    ring(value: dashboard.strength.completed, target: dashboard.strength.target,
-                         label: "Sessions", tint: CadenceTheme.attention)
+                    ring(rings[0], tint: CadenceTheme.accent)
+                    ring(rings[1], tint: CadenceTheme.link)
+                    ring(rings[2], tint: CadenceTheme.attention)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -38,8 +42,19 @@ struct HomeWeekRingsCard: View {
         .accessibilityLabel("This week. Open weekly muscle coverage")
     }
 
-    private func ring(value: Double, target: Double, label: String, tint: Color) -> some View {
-        CadenceProgressRing(value: value, total: target, tint: tint, label: label)
+    private func ring(_ value: WeekRing, tint: Color) -> some View {
+        CadenceProgressRing(value: value.value, total: value.target, tint: tint,
+                            label: value.kind.accessibilityName)
             .frame(maxWidth: .infinity)
+    }
+}
+
+private extension WeekRing.Kind {
+    var accessibilityName: String {
+        switch self {
+        case .sets: return "Sets"
+        case .cardioMinutes: return "Cardio minutes"
+        case .sessions: return "Sessions"
+        }
     }
 }

@@ -600,7 +600,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.addSessionPartner("Sam"), "Could not add a training partner to the session")
         XCTAssertTrue(app.pickExercise(exerciseName),
                       "Could not add \(exerciseName) to the live session")
-        XCTAssertTrue(app.saveSetInEditor(), "Owner's set did not save")
+        XCTAssertTrue(app.buttons["session.set.log.\(exerciseName).1"].waitTap(timeout: 10),
+                      "Current set did not expose the one-tap Log action")
         // Field test 2026-08-19 #6: saving returns to the workout with that
         // exercise still expanded, so the next set is one tap away.
         XCTAssertTrue(app.buttons["set.add.\(exerciseName)"].waitForExistence(timeout: 10),

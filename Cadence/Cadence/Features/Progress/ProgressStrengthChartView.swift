@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import Accessibility
 import CadenceCore
 import CadenceFeatures
 
@@ -10,6 +11,7 @@ struct ProgressStrengthChartView: View {
     let data: StrengthProgressChartData
     let unit: MeasurementUnitPreference
     @Binding var selectedNames: Set<String>
+    let onAddLift: (String) -> Void
     @State private var selectedDate: Date?
 
     private var selectedSeries: [E1RMSeries] {
@@ -59,6 +61,8 @@ struct ProgressStrengthChartView: View {
             .chartXSelection(value: $selectedDate)
             .chartYScale(domain: .automatic(includesZero: false))
             .frame(height: 175)
+            .accessibilityChartDescriptor(ProgressChartAccessibility(data: selectedSeries,
+                                                                      unit: unit))
             .accessibilityElement()
             .accessibilityLabel("Estimated 1RM trend, last 12 weeks")
             .accessibilityValue(accessibilitySummary)
@@ -83,7 +87,8 @@ struct ProgressStrengthChartView: View {
                              : Format.weight(series.current, unit: unit, decimals: 0))
                             .font(.subheadline.weight(.semibold))
                             .monospacedDigit()
-                        trendTag(series.trend, delta: series.delta)
+                        trendTag(series.trend, delta: series.delta,
+                                 isPR: data.prExercises.contains(series.exercise))
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(series.exercise): \(Format.weight(series.current, unit: unit, decimals: 0)), \(trendLabel(series.trend, delta: series.delta))")
@@ -98,7 +103,7 @@ struct ProgressStrengthChartView: View {
                     Text("\(name) · no sessions yet")
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("Add") {}
+                    Button("Add") { onAddLift(name) }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .tint(CadenceTheme.link)
@@ -179,12 +184,14 @@ struct ProgressStrengthChartView: View {
     }
 
     @ViewBuilder
-    private func trendTag(_ trend: TrendDirection, delta: Double) -> some View {
+    private func trendTag(_ trend: TrendDirection, delta: Double, isPR: Bool) -> some View {
         switch trend {
         case .rising:
             HStack(spacing: 6) {
-                Label("PR", systemImage: "trophy.fill")
-                    .foregroundStyle(CadenceTheme.achievement)
+                if isPR {
+                    Label("PR", systemImage: "trophy.fill")
+                        .foregroundStyle(CadenceTheme.achievement)
+                }
                 Label("+" + Format.weight(abs(delta), unit: unit, decimals: 0), systemImage: "arrow.up.right")
                     .foregroundStyle(.secondary)
             }
@@ -198,5 +205,36 @@ struct ProgressStrengthChartView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+private struct ProgressChartAccessibility: AXChartDescriptorRepresentable {
+    let data: [E1RMSeries]
+    let unit: MeasurementUnitPreference
+
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let categories = data.flatMap { $0.points.map { $0.weekStart.formatted(date: .abbreviated, time: .omitted) } }
+        let values = data.flatMap { $0.points.map { WorkoutMath.display($0.e1rm, in: unit) } }
+        let lower = max(0, (values.min() ?? 0) * 0.9)
+        let upper = max(lower + 1, (values.max() ?? 1) * 1.1)
+        let xAxis = AXCategoricalDataAxisDescriptor(title: "Week", categoryOrder: categories)
+        let yAxis = AXNumericDataAxisDescriptor(title: "Estimated 1RM",
+                                                 range: lower...upper,
+                                                 gridlinePositions: [],
+                                                 valueDescriptionProvider: { value in
+                                                     Format.weight(value, unit: unit)
+                                                 })
+        let series = data.map { item in
+            AXDataSeriesDescriptor(name: item.exercise, isContinuous: true,
+                                   dataPoints: item.points.map { point in
+                                       AXDataPoint(x: point.weekStart.formatted(date: .abbreviated,
+                                                                                  time: .omitted),
+                                                   y: WorkoutMath.display(point.e1rm, in: unit))
+                                   })
+        }
+        return AXChartDescriptor(title: "Estimated 1RM trend",
+                                 summary: ProgressPresenter.strengthTrendSummary(series: data,
+                                                                                   unit: unit),
+                                 xAxis: xAxis, yAxis: yAxis, series: series)
     }
 }

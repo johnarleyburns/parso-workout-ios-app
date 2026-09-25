@@ -30,20 +30,25 @@ final class WorkoutLiveActivityCoordinator {
     static let shared = WorkoutLiveActivityCoordinator()
     private var activity: Activity<WorkoutLiveActivityAttributes>?
 
-    func start(title: String) {
+    func start(title: String, restEndsAt: Date? = nil, nextExercise: String? = nil) {
         endAllStale()
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let attributes = WorkoutLiveActivityAttributes(workoutTitle: title)
-        let state = WorkoutLiveActivityAttributes.ContentState(status: "Active", elapsedSeconds: 0)
+        let state = WorkoutLiveActivityAttributes.ContentState(status: "Active", elapsedSeconds: 0,
+                                                               restEndsAt: restEndsAt,
+                                                               nextExercise: nextExercise)
         activity = try? Activity.request(attributes: attributes,
                                          content: ActivityContent(state: state, staleDate: nil))
     }
 
-    func update(elapsedSeconds: Int, status: String, isPaused: Bool) {
+    func update(elapsedSeconds: Int, status: String, isPaused: Bool,
+                restEndsAt: Date? = nil, nextExercise: String? = nil) {
         guard let activity else { return }
         let state = WorkoutLiveActivityAttributes.ContentState(status: status,
                                                                elapsedSeconds: elapsedSeconds,
-                                                               isPaused: isPaused)
+                                                               isPaused: isPaused,
+                                                               restEndsAt: restEndsAt,
+                                                               nextExercise: nextExercise)
         Task { @MainActor [activity] in
             await activity.update(ActivityContent(state: state, staleDate: nil))
         }

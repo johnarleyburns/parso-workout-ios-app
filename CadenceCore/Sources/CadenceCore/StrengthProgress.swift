@@ -66,10 +66,12 @@ public struct StrengthProgressSessionInput: Sendable, Equatable {
 public struct StrengthProgressChartData: Sendable, Equatable {
     public let series: [E1RMSeries]
     public let emptyLifts: [String]
+    public let prExercises: Set<String>
 
-    public init(series: [E1RMSeries], emptyLifts: [String] = []) {
+    public init(series: [E1RMSeries], emptyLifts: [String] = [], prExercises: Set<String> = []) {
         self.series = series
         self.emptyLifts = emptyLifts
+        self.prExercises = prExercises
     }
 
     public var allSeries: [E1RMSeries] { series }
@@ -148,6 +150,7 @@ public enum StrengthProgress {
                                  now: Date = Date(),
                                  weeks: Int = 12,
                                  formula: OneRepMaxFormula = .epley,
+                                 prRule: PRRule = .estimated1RM,
                                  calendar: Calendar = .current) -> StrengthProgressChartData {
         let all = seriesFromInputs(sessions, now: now, weeks: weeks, topN: .max,
                                    formula: formula, calendar: calendar)
@@ -187,8 +190,22 @@ public enum StrengthProgress {
         let nonEmptyFixed = fixedSeries.filter { !$0.points.isEmpty }
         let allSeries = nonEmptyFixed + customSeries + (combined.points.isEmpty ? [] : [combined])
         let emptyLifts = fixedSeries.filter { $0.points.isEmpty }.map(\.exercise)
+        let windowStart = calendar.date(byAdding: .day, value: -7 * weeks, to: now) ?? now
+        let samples = sessions.filter { !$0.deleted }.flatMap { session in
+            session.sets.filter { $0.isOwnerSet && !$0.isWarmup &&
+                $0.completedAt >= windowStart && $0.completedAt <= now }
+                .map { ExerciseSetSample(exerciseName: $0.exerciseName,
+                                         sample: SetSample(weight: $0.weightKg,
+                                                           reps: $0.reps,
+                                                           date: $0.completedAt,
+                                                           isWarmup: $0.isWarmup)) }
+        }
+        let prExercises = Set(PRTimeline.events(sets: samples, rule: prRule, formula: formula)
+            .filter { $0.date >= windowStart && $0.date <= now }
+            .map(\.exerciseName))
         return StrengthProgressChartData(series: allSeries,
-                                         emptyLifts: emptyLifts)
+                                         emptyLifts: emptyLifts,
+                                         prExercises: prExercises)
     }
 
     private static func normalized(_ value: String) -> String {

@@ -95,7 +95,7 @@ struct HomeMuscleMapView: View {
     }
 
     private var muscleList: some View {
-        VStack(spacing: 2) {
+        List {
             ForEach(rows) { row in
                 Button { onSelect(row.group) } label: {
                     VStack(alignment: .leading, spacing: 4) {
@@ -110,8 +110,14 @@ struct HomeMuscleMapView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(row.displayName), \(row.rangeText)")
+                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                .listRowBackground(Color.clear)
             }
         }
+        .listStyle(.plain)
+        .scrollDisabled(true)
+        .frame(height: CGFloat(max(1, rows.count) * 58))
+        .accessibilityIdentifier("home.week.muscleMap.list")
     }
 
     private var legend: some View {

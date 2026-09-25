@@ -6,6 +6,7 @@ import CadenceFeatures
 struct RestTimerBar: View {
     @Bindable var model: RestTimerModel
     let onComplete: () -> Void
+    let onChange: (Date?) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showSkipConfirmation = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -19,7 +20,7 @@ struct RestTimerBar: View {
                 .monospacedDigit()
                 .accessibilityIdentifier("rest.remaining")
             Spacer(minLength: 8)
-            Button("+30s") { model.add(30) }
+            Button("+30s") { model.add(30); onChange(model.endsAt) }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .lineLimit(1).fixedSize()
@@ -43,7 +44,7 @@ struct RestTimerBar: View {
         .accessibilityIdentifier("rest.bar")
         .accessibilityLabel("Rest timer, \(model.remaining) seconds remaining")
         .confirmationDialog("Skip rest?", isPresented: $showSkipConfirmation, titleVisibility: .visible) {
-            Button("Skip", role: .destructive) { model.skip() }
+            Button("Skip", role: .destructive) { model.skip(); onChange(nil) }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Rest will end immediately.")
@@ -51,6 +52,7 @@ struct RestTimerBar: View {
         .onReceive(timer) { _ in
             let wasRunning = model.isRunning
             model.tick()
+            onChange(model.endsAt)
             if wasRunning && !model.isRunning { onComplete() }
         }
     }

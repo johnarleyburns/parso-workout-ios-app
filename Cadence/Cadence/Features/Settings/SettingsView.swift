@@ -10,7 +10,6 @@ struct SettingsView: View {
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false
     @State private var workoutPreferencesPresented = false
-    @State private var workoutPreferencesExpanded = true
     @State private var healthExpanded = false
     @State private var watchExpanded = false
     @State private var coachExpanded = false
@@ -22,9 +21,8 @@ struct SettingsView: View {
 
     var body: some View {
         @Bindable var settings = settingsObject
-        Form {
-            settingsDisclosure("Workout Preferences", expanded: $workoutPreferencesExpanded,
-                              identifier: "settings.section.workout") {
+        List {
+            Section("Workout Preferences") {
                 Picker("Weight unit", selection: $settings.unit) {
                     ForEach(MeasurementUnitPreference.allCases) { Text($0.displayName).tag($0) }
                 }
@@ -287,6 +285,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $primingPresented) {

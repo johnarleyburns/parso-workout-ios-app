@@ -29,6 +29,33 @@ project has a native Watch workout app but no separate Watch Widget extension;
 the iPhone widget/Live Activity/Control Center surfaces were completed without
 altering the target graph.
 
+## Latest gap-fix audit — 2026-09-25
+
+The follow-up audit found and fixed three implementation gaps in the first
+redesign pass:
+
+- The active workout now populates Live Activity `nextExercise` after every
+  logged set, so the rest state has both the countdown and the next movement.
+- The Today/This Week widget now renders estimated minutes and muscle values
+  instead of exposing literal placeholder expressions.
+- Progress “Add” now creates a correctly named `Exercise plan` instead of a
+  literal `(name) plan` title.
+
+The current audit is clean for the implemented iPhone redesign surfaces. The
+remaining plan-level constraints are unchanged and intentionally reported:
+the bundled anatomy artwork is one raster image without safe per-region masks;
+the project has no Watch Widget extension target for the requested Smart Stack
+surface; onboarding still contains the existing preference/disclaimer flow in
+addition to its privacy story; the new strings are only partially migrated to
+`Localizable.xcstrings`; and AX5/screenshot verification could not be run
+because simulator execution is disabled by repository guidance and the
+in-app browser is unavailable. These require either new artwork/target
+artifacts or an explicit device/simulator review pass.
+
+Verification for this gap-fix pass: `swift test --package-path CadenceCore`
+passed with 1,912 tests, the generic iOS build passed, `make guardrails`
+passed, and `git diff --check` is clean.
+
 ## Latest change — 2026-09-24: main-thread stalls and the Watch HR boundary
 
 Branch `perf-main-thread-and-watch-hr`, delivered as a patch (not pushed).

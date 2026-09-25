@@ -13,6 +13,7 @@ public final class RestTimerModel {
     public private(set) var remaining: Int = 0
     public private(set) var total: Int = 0
     public private(set) var isRunning = false
+    public private(set) var endsAt: Date?
 
     public init() {}
 
@@ -20,24 +21,32 @@ public final class RestTimerModel {
         total = seconds
         remaining = seconds
         isRunning = seconds > 0
+        endsAt = isRunning ? Date().addingTimeInterval(TimeInterval(seconds)) : nil
     }
 
     public func tick() {
         guard isRunning else { return }
         remaining = max(0, remaining - 1)
-        if remaining == 0 { isRunning = false }
+        if remaining == 0 {
+            isRunning = false
+            endsAt = nil
+        }
     }
 
     public func add(_ seconds: Int) {
         guard isRunning || remaining > 0 else { return }
         remaining += seconds
         total = max(total, remaining)
-        if remaining > 0 { isRunning = true }
+        if remaining > 0 {
+            isRunning = true
+            endsAt = Date().addingTimeInterval(TimeInterval(remaining))
+        }
     }
 
     public func skip() {
         remaining = 0
         isRunning = false
+        endsAt = nil
     }
 
     public var progress: Double {

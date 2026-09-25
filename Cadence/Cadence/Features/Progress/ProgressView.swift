@@ -17,6 +17,8 @@ private struct ProgressPreparedSnapshot: Sendable {
 }
 
 struct TrainingProgressView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(ActiveWorkoutModel.self) private var active
     @Environment(AppSettings.self) private var settings
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
@@ -28,6 +30,7 @@ struct TrainingProgressView: View {
     @State private var preparedPREvents: [PREvent] = []
     @State private var preparedFacts: TrainingFacts?
     @State private var selectedStrengthNames = ProgressStrengthSelection.persisted().selectedNames
+    @State private var addLiftPlan: EditablePlan?
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
     private var facts: TrainingFacts? { preparedFacts }
@@ -54,11 +57,6 @@ struct TrainingProgressView: View {
                                 })
                         }
                         .padding()
-                        // RootTabView reserves the glass dock's measured safe
-                        // area. This explicit content tail keeps the last
-                        // Progress card scrollable above that dock even when
-                        // the nested NavigationStack does not propagate the
-                        // inset into its ScrollView content.
                         .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
                     }
                 }
@@ -100,6 +98,13 @@ struct TrainingProgressView: View {
         .onChange(of: selectedStrengthNames) { _, names in
             ProgressStrengthSelection(selectedNames: names).persist()
         }
+        .sheet(item: $addLiftPlan) { plan in
+            NavigationStack {
+                WorkoutPlanEditor(plan: plan) { startedPlan in
+                    startAddedPlan(startedPlan)
+                }
+            }
+        }
         .accessibilityIdentifier("progress")
     }
 
@@ -131,7 +136,7 @@ struct TrainingProgressView: View {
         let rule = settings.prRule
         let prepared = await Task.detached(priority: .userInitiated) {
             ProgressPreparedSnapshot(
-                strength: StrengthProgress.chartData(from: inputs, formula: formula),
+                strength: StrengthProgress.chartData(from: inputs, formula: formula, prRule: rule),
                 prEvents: PRTimeline.events(sets: prSamples, rule: rule, formula: formula))
         }.value
         guard !Task.isCancelled else { return }
@@ -213,7 +218,8 @@ struct TrainingProgressView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ProgressStrengthChartView(data: preparedStrengthData,
                                               unit: settings.unit,
-                                              selectedNames: $selectedStrengthNames)
+                                              selectedNames: $selectedStrengthNames,
+                                              onAddLift: addLift)
                     Text("Estimates use the \(settings.formula.displayName) formula selected in Settings.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -224,6 +230,39 @@ struct TrainingProgressView: View {
                     .frame(maxWidth: .infinity, minHeight: 110)
                     .accessibilityLabel("Preparing strength chart")
             }
+        }
+    }
+
+    private func addLift(_ name: String) {
+        addLiftPlan = EditablePlan(
+            title: "\(name) plan",
+            warmupMinutes: 0,
+            cooldownMinutes: 0,
+            exercises: [EditableExercise(name: name,
+                                         sets: [EditableSet(targetReps: 5, targetWeight: nil)],
+                                         notes: "")])
+    }
+
+    private func startAddedPlan(_ plan: EditablePlan) {
+        guard active.strengthSession == nil else {
+            addLiftPlan = nil
+            return
+        }
+        do {
+            let session = try WorkoutRepository.startSession(
+                from: plan.unifiedSession(),
+                athlete: AthleteExecutionSnapshot(),
+                exerciseNameByKey: Dictionary(plan.exercises.map {
+                    (ExerciseLibrary.template(matching: $0.name)?.sourceExerciseID
+                        ?? ExerciseLibrary.lookupKey($0.name), $0.name)
+                }, uniquingKeysWith: { first, _ in first }),
+                in: modelContext)
+            plan.apply(to: session)
+            try modelContext.save()
+            addLiftPlan = nil
+            _ = active.startStrength(session)
+        } catch {
+            addLiftPlan = nil
         }
     }
 

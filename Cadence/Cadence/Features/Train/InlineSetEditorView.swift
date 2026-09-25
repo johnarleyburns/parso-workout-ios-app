@@ -208,7 +208,11 @@ struct InlineSetEditorView: View {
                         .accessibilityIdentifier("setEditor.weight.increment.\(displayID(value))").accessibilityAddTraits(increment == value ? .isSelected : [])
                 }
                 Button { typedWeight = weightText; keypadPresented = true } label: {
-                    Text("Type…").frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48)
+                    Text("Type")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48)
+                        .accessibilityLabel("Type weight")
                 }.buttonStyle(.bordered).accessibilityIdentifier("setEditor.weight.type")
             }
             if isPR { Label("Would be a PR", systemImage: "trophy.fill").foregroundStyle(.orange).font(.subheadline.weight(.semibold)) }

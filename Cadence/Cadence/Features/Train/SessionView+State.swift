@@ -159,6 +159,21 @@ extension SessionView {
         pendingScrollExerciseID = exercise.id
         closeInlineEditor()
     }
+
+    /// The current planned row is intentionally loggable without opening the
+    /// editor. It still goes through the same repository/save path as the
+    /// editor, so PRs, volume credits, rest and haptics stay consistent.
+    func logPendingSet(_ pending: SessionRenderModel.PendingSetDisplay, for exercise: Exercise) {
+        let defaultWeight = performerDefaults(for: exercise)
+            .first { $0.performerID == pending.performerID }?.weightKg
+        let weightKg = pending.targetWeightKg ?? defaultWeight ?? session.prescribedLoadKg
+        addSet(to: exercise, weightKg: max(0, weightKg), reps: pending.targetReps,
+               rpe: nil, isWarmup: pending.kind == .warmup,
+               usesBodyweight: isBodyweight(exercise), note: nil,
+               performedBy: people(for: pending.performerID))
+        expandedExerciseID = exercise.id
+        pendingScrollExerciseID = exercise.id
+    }
     func deleteInlineSet() {
         guard let setID = inlineEditingSetID,
               let set = session.orderedSets.first(where: { $0.id == setID }) else { return }

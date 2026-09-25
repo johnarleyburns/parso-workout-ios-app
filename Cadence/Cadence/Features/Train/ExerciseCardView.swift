@@ -21,6 +21,7 @@ struct ExerciseCardView: View {
 
     let onTapSet: (SessionRenderModel.SetDisplay) -> Void
     let onTapPending: (SessionRenderModel.PendingSetDisplay) -> Void
+    let onLogPending: (SessionRenderModel.PendingSetDisplay) -> Void
     let onRepeat: () -> Void
     let onAddSet: () -> Void
     let onChangeExercise: () -> Void
@@ -58,7 +59,7 @@ struct ExerciseCardView: View {
         }
         .padding(CGFloat(LayoutMetrics.cardPadding))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: CadenceCardShape.rounded)
+        .cadenceCard(isCurrent ? .hero : .standard)
         .confirmationDialog("Delete this set?", isPresented: Binding(
             get: { setToDelete != nil },
             set: { if !$0 { setToDelete = nil } }
@@ -293,12 +294,12 @@ struct ExerciseCardView: View {
         return String(workingBefore.count + 1)
     }
 
-    // MARK: - Pending rows
-
-    @ViewBuilder
     private func pendingRow(pending: SessionRenderModel.PendingSetDisplay) -> some View {
-        Button { onTapPending(pending) } label: {
-            HStack(spacing: SetCol.gap) {
+        let firstPendingIndex = context.sets.filter { !$0.isWarmup }.count
+        let isCurrentPending = pending.setIndex == firstPendingIndex
+        return HStack(spacing: SetCol.gap) {
+            Button { onTapPending(pending) } label: {
+                HStack(spacing: SetCol.gap) {
                 if hasPartners {
                     performerChipView(pending.performerID.flatMap { id in
                         context.performerContexts.first { $0.performerID == id }.map {
@@ -315,15 +316,24 @@ struct ExerciseCardView: View {
                     .frame(maxWidth: .infinity)
                 Color.clear.frame(width: SetCol.reps)
                 Color.clear.frame(width: SetCol.rpe)
-                Image(systemName: "plus.circle").foregroundStyle(.tint).frame(width: SetCol.check)
+                    Image(systemName: "plus.circle").foregroundStyle(.tint).frame(width: SetCol.check)
+                }
+                .frame(minHeight: 44).contentShape(Rectangle())
             }
-            .frame(minHeight: 44).contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("set.pending.\(context.name).\(pending.setIndex + 1)")
-    }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("set.pending.\(context.name).\(pending.setIndex + 1)")
 
-    // MARK: - Action buttons
+            if isCurrentPending {
+                Button("Log") { onLogPending(pending) }
+                    .buttonStyle(.borderedProminent)
+                    .tint(CadenceTheme.accent)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("session.set.log.\(context.name).\(pending.setIndex + 1)")
+            }
+        }
+        .padding(.vertical, 2)
+        .opacity(isCurrentPending ? 1 : 0.68)
+    }
 
     private var actionButtons: some View {
         HStack(spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
@@ -345,8 +355,6 @@ struct ExerciseCardView: View {
         .padding(.top, CGFloat(LayoutMetrics.cardRowSpacing))
     }
 
-    // MARK: - Context menu
-
     @ViewBuilder
     private func setRowMenu(_ set: SessionRenderModel.SetDisplay) -> some View {
         Button { onTapSet(set) } label: {
@@ -360,8 +368,6 @@ struct ExerciseCardView: View {
                   systemImage: set.isWarmup ? "flame" : "flame.fill")
         }
     }
-
-    // MARK: - Shared helpers
 
     @ViewBuilder
     private func setIndexBadge(_ label: String, isWarmup: Bool) -> some View {

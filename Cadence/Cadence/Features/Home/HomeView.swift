@@ -177,6 +177,29 @@ struct HomeView: View {
                                            weeklyCardio: weeklyCardio,
                                            activityDose: activityDose)
     }
+
+    func savePlatformSnapshot(for dashboard: HomeDashboardState) {
+        let todayScheduled = scheduledWorkouts.first {
+            Calendar.current.isDateInToday($0.scheduledDate) && $0.isVisible
+        }
+        let target = dashboard.volume.filter(\.isTracked).reduce(0.0) { total, _ in total + 12 }
+        CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(
+            dayKey: Self.dayString(),
+            planTitle: todayScheduled?.title ?? "Posterior chain + core",
+            sessionTitles: todayScheduled.map { [$0.title] } ?? [],
+            readinessLabel: todayReadiness.map { ReadinessCheckInPresenter.summary(for: $0) },
+            estimatedMinutes: 45,
+            setsCompleted: dashboard.volume.reduce(0) { $0 + $1.sets },
+            setsTarget: target,
+            cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,
+            cardioTarget: dashboard.cardioDetail.targetMinutes,
+            sessionsCompleted: dashboard.strength.completed,
+            sessionsTarget: dashboard.strength.target,
+            weeklyMuscles: dashboard.volume.map {
+                CadenceWeeklyMuscleSnapshot(id: $0.displayName, sets: $0.sets, target: $0.isTracked ? 12 : 0)
+            },
+            updatedAt: Date()))
+    }
     var coachFacts: TrainingFacts { coachSnapshot.facts }
     var coachInsights: [Insight] { coachSnapshot.insights }
     var coachRecommendation: Recommendation { coachSnapshot.recommendation }

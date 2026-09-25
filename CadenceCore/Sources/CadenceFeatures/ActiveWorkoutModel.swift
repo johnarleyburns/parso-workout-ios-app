@@ -72,6 +72,9 @@ public final class ActiveWorkoutModel {
     public let liveWorkout = LiveWorkoutCoordinator()
     /// The active strength session, if any. nil when nothing is in progress.
     public var strengthSession: WorkoutSession?
+    /// Shared platform projection for the currently visible rest timer.
+    public var restEndsAt: Date?
+    public var nextExercise: String?
 
     /// The root-level workout cover's content. `.session` while training,
     /// `.summary` after an explicit end, nil when minimized/idle.
@@ -112,6 +115,8 @@ public final class ActiveWorkoutModel {
     public func startStrength(_ session: WorkoutSession) -> Bool {
         guard liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? "Workout" : session.title)) else { return false }
         strengthSession = session
+        restEndsAt = nil
+        nextExercise = nil
         clock = WorkoutClock(startedAt: session.date)
         pauseOrigin = nil
         presentedSurface = .session(session)
@@ -129,6 +134,8 @@ public final class ActiveWorkoutModel {
                 kind: .strength(sessionID: session.id),
                 name: session.title.isEmpty ? "Workout" : session.title)) else { return false }
         strengthSession = session
+        restEndsAt = nil
+        nextExercise = nil
         clock = WorkoutClock(startedAt: session.date)
         pauseOrigin = nil
         presentedSurface = .session(session)
@@ -177,6 +184,8 @@ public final class ActiveWorkoutModel {
         session.endedAt = clock.endedAt
         session.updatedAt = Date()
         strengthSession = nil
+        restEndsAt = nil
+        nextExercise = nil
         pauseOrigin = nil
         WorkoutHeartbeatStore.clear(defaults: defaults)
         if let lease = liveWorkout.lease { _ = liveWorkout.release(lease) }

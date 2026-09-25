@@ -1,4 +1,5 @@
 import SwiftUI
+import WatchKit
 import SwiftData
 import CadenceCore
 import CadenceFeatures
@@ -9,7 +10,10 @@ import os.log
 struct CadenceWatchApp: App {
     let bootstrap: WatchStoreBootstrap
 
-    @State private var watchManager = WatchWorkoutManager(uiTestMode: ProcessInfo.processInfo.arguments.contains("-uiTest"))
+    /// Receives the workout the iPhone opens with `startWatchApp`, and owns the
+    /// workout manager so that workout and the UI share one manager.
+    @WKApplicationDelegateAdaptor(CadenceWatchAppDelegate.self) private var appDelegate
+    private var watchManager: WatchWorkoutManager { appDelegate.watchManager }
     @State private var watchAppSettings: AppSettings = {
         let s = AppSettings()
         if s.unit == .kilograms {

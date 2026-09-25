@@ -626,7 +626,15 @@ Timer-based HR polling, empty delegate callbacks. Shipped in commits from `b2ccc
 - **CI fixes:** `ARCHS=arm64` removed (stripped arm64_32 from watch); watch provisioning
   profile added (`Parso Workout Watch App Store`); `ExportOptions.plist` maps watch bundle;
   `workout-processing` stripped from watch Info.plist in CI post-archive step (invalid
-  for watchOS < 27.0 in App Store validation).
+  for watchOS < 27.0 in App Store validation). Corrected 2026-09-24: that value is only
+  invalid under `UIBackgroundModes`; it belongs in `WKBackgroundModes`, and without it
+  watchOS suspends the Watch app at wrist-down, which stopped phone-started workouts
+  from relaying heart rate. `scripts/check-watch-background-modes.sh` now guards it.
+  Same change: the Watch sends each new HR reading on arrival (at most 1/s) plus a
+  5 s heartbeat (`WatchHRRelaySchedule`; phone stale after 15 s), with no timers
+  while the screen is off, and the phone opens Cladiron on the Watch itself with
+  `HKHealthStore.startWatchApp` (Watch: `CadenceWatchAppDelegate.handle(_:)`),
+  showing Opening → Connecting → Waiting for heart rate → Live on the HR gate.
 
 Fix: `DataCompression.maxInflatedBytes` `Int64` to avoid arm64_32 overflow.
 

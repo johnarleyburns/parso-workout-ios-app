@@ -55,6 +55,7 @@ struct PreWorkoutHRView: View {
     private var hrState: PreWorkoutHRState {
         let relay = model.watchHRRelay.state
         var busy = false
+        if case .launchingWatchApp = relay { busy = true }
         if case .connecting = relay { busy = true }
         if case .waitingForSample = relay { busy = true }
         return PreWorkoutHRState(watchBPM: watchBPM,
@@ -65,7 +66,7 @@ struct PreWorkoutHRView: View {
 
     private var watchStatus: String {
         if case .live = model.watchHRRelay.state, watchBPM == nil {
-            return "Heart rate is stale · retry on Watch"
+            return "No recent heart rate from Apple Watch · tap Check for Live HR"
         }
         return model.watchConnectionStatus
     }
@@ -98,7 +99,7 @@ struct PreWorkoutHRView: View {
                     }
                     if watchSelected {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Apple Watch connection may take up to a minute. Keep Cladiron open on your Watch.")
+                            Text("Cladiron opens on your Apple Watch by itself. Wait here while it connects; it can take up to a minute.")
                             Text("You can also start an exercise directly in Cladiron on your Apple Watch.")
                         }
                         .font(.caption)
@@ -126,7 +127,7 @@ struct PreWorkoutHRView: View {
                     }
                 } else {
                     HRSourceCard(icon: "applewatch.slash", title: "Apple Watch unavailable", tint: .secondary) {
-                        Text("Install or open Cladiron on Watch")
+                        Text("Install Cladiron on your Apple Watch")
                             .font(.caption).foregroundStyle(.secondary)
                             .multilineTextAlignment(.trailing)
                             .accessibilityIdentifier("prehr.watch.unavailable")

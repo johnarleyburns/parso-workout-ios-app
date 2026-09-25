@@ -13,6 +13,14 @@ final class HealthKitProvider: HealthDataProviding {
 
     var isHealthDataAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
+    /// Opens Cladiron on the paired Apple Watch with a workout, using the
+    /// app's one health store. watchOS launches or wakes the Watch app and
+    /// hands it the configuration (`CadenceWatchAppDelegate.handle(_:)`).
+    func startWatchApp(with configuration: HKWorkoutConfiguration,
+                       completion: @escaping @Sendable (Bool, (any Error)?) -> Void) {
+        store.startWatchApp(with: configuration, completion: completion)
+    }
+
     private var readTypes: Set<HKObjectType> {
         var types: Set<HKObjectType> = [HKObjectType.workoutType()]
         let ids: [HKQuantityTypeIdentifier] = [.stepCount, .distanceWalkingRunning,

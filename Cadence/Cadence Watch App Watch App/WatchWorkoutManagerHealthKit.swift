@@ -43,6 +43,7 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
            let stats = workoutBuilder.statistics(for: hrType),
            let quantity = stats.mostRecentQuantity() {
             sample.bpm = quantity.doubleValue(for: HKUnit(from: "count/min"))
+            sample.bpmSampleEnd = stats.mostRecentQuantityDateInterval()?.end
         }
 
         var distanceIDs: [HKQuantityTypeIdentifier] = [.distanceWalkingRunning, .distanceCycling, .distanceSwimming]

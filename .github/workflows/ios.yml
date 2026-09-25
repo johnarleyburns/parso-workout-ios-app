@@ -58,6 +58,7 @@ jobs:
       - name: Watch AppIcon and Xcode platform guardrails
         run: |
           bash scripts/check-watch-appicon.sh
+          bash scripts/check-watch-background-modes.sh
           bash scripts/check-xcodebuild-platform.sh
           bash scripts/check-release-safety.sh
 
@@ -196,24 +197,27 @@ jobs:
         if: success()
         run: |
           set -eo pipefail
-          # Keep the supported mode required by short workout audio clips.
+          # UIBackgroundModes keeps only audio (short workout audio clips).
           # workout-processing is not a valid UIBackgroundModes value for a
-          # watchOS app and is rejected by App Store Connect validation.
+          # watchOS app and is rejected by App Store Connect validation; it
+          # belongs in WKBackgroundModes, which this step leaves alone. Without
+          # it watchOS suspends the app when the screen turns off, and live
+          # heart rate stops reaching the phone.
           WATCH_PLIST="./build/Cadence.xcarchive/Products/Applications/Cadence.app/Watch/Cadence Watch App Watch App.app/Info.plist"
+          if [ ! -f "$WATCH_PLIST" ]; then
+            echo "Watch Info.plist not found at expected path, trying alternate..."
+            WATCH_PLIST=$(find ./build/Cadence.xcarchive -path "*/Watch/*.app/Info.plist" | head -1)
+          fi
           if [ -f "$WATCH_PLIST" ]; then
             /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$WATCH_PLIST" 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$WATCH_PLIST"
             /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" "$WATCH_PLIST"
-            echo "Preserved audio in watch Info.plist"
-          else
-            echo "Watch Info.plist not found at expected path, trying alternate..."
-            WATCH_PLIST=$(find ./build/Cadence.xcarchive -name "Info.plist" -path "*/Watch/*" | head -1)
-            if [ -f "$WATCH_PLIST" ]; then
-              /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$WATCH_PLIST" 2>/dev/null || true
-              /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$WATCH_PLIST"
-              /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string audio" "$WATCH_PLIST"
-              echo "Preserved audio in $WATCH_PLIST"
+            echo "Preserved audio in $WATCH_PLIST"
+            if ! /usr/libexec/PlistBuddy -c "Print :WKBackgroundModes" "$WATCH_PLIST" 2>/dev/null | grep -q "workout-processing"; then
+              echo "Watch Info.plist is missing WKBackgroundModes workout-processing"
+              exit 1
             fi
+            echo "Kept WKBackgroundModes workout-processing in $WATCH_PLIST"
           fi
 
       - name: Export IPA

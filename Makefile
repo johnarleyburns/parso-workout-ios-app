@@ -22,6 +22,7 @@ guardrails:
 	bash scripts/check-history-safety.sh
 	bash scripts/check-cloudkit-schema.sh
 	bash scripts/check-watch-appicon.sh
+	bash scripts/check-watch-background-modes.sh
 	bash scripts/check-xcodebuild-platform.sh
 	bash scripts/check-release-safety.sh
 

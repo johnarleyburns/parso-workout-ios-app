@@ -3,6 +3,7 @@ import SwiftUI
 import Observation
 import SwiftData
 import WatchConnectivity
+import HealthKit
 import CloudKit
 import CoreData
 import CadenceCore
@@ -95,6 +96,16 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// 1.2 s teardown window so the stop-then-retry-once fires only while the
     /// user is still on the HR screen (any new start/stop disarms it).
     private var watchRetryArmed = false
+    /// The start request still waiting for the Watch's first answer. Both the
+    /// immediate reply and the Watch's answer to the queued copy (the only
+    /// answer a Watch app the phone launched can give) may arrive; the first
+    /// decides retry or failure, and later ones only confirm.
+    private struct PendingWatchStart {
+        let requestID: UUID
+        let retryType: String
+        let allowsRetry: Bool
+    }
+    @ObservationIgnored private var pendingWatchStart: PendingWatchStart?
     /// A start tapped during WCSession activation is held until activation has
     /// completed. Sending before activation is silently dropped by some OS
     /// releases, which used to leave the HR gate waiting forever.
@@ -186,19 +197,21 @@ final class AppModel: NSObject, @unchecked Sendable {
     var watchConnectionStatus: String {
         if let watchError { return watchError }
         switch watchHRRelay.state {
+        case .launchingWatchApp:
+            return "Opening Cladiron on your Apple Watch…"
         case .connecting:
-            return "Sending the workout request to your Apple Watch…"
+            return "Connecting to your Apple Watch…"
         case .waitingForSample:
-            return "Apple Watch accepted · waiting for live heart rate…"
+            return "Apple Watch connected · waiting for the first heart-rate reading…"
         case .live:
             return "Live heart rate from Apple Watch"
         case .timedOut(let message), .failed(let message):
             return message
         case .unavailable(let reason):
-            if watchStartInProgress { return "Activating Apple Watch connection…" }
+            if watchStartInProgress { return "Preparing the Apple Watch connection…" }
             return reason
         case .actionRequired(let message):
-            if watchStartInProgress { return "Activating Apple Watch connection…" }
+            if watchStartInProgress { return "Preparing the Apple Watch connection…" }
             return message
         }
     }
@@ -479,40 +492,44 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchStartInProgress = true
         guard watchAvailable, let session = wcSession else {
             watchStartInProgress = false
-            watchError = "Apple Watch is unavailable — open Cladiron on your Watch and try again"
+            watchError = "Apple Watch is unavailable — install Cladiron on your Apple Watch and try again"
             return
         }
         watchError = nil
         watchTimeout?.invalidate()
 
-        guard session.isReachable else {
-            watchStartInProgress = false
-            watchError = "Open the companion Watch app and keep the screen on"
-            return
-        }
-
         let requestID = UUID()
-        watchHRRelay.begin(requestID: requestID)
+        pendingWatchStart = PendingWatchStart(requestID: requestID, retryType: retryType,
+                                              allowsRetry: allowsRetry)
         let command = WatchHRCommand(action: .start, requestID: requestID,
                                      workoutType: rawType, issuedAt: nextWatchHRCommandIssuedAt())
-        // Keep a durable copy in case the watch is reachable only briefly or
-        // the immediate message is lost while the companion launches. The
-        // watch's command handler makes this duplicate idempotent.
+        // Durable, ordered copy first. When Cladiron isn't running on the
+        // Watch, this is delivered as soon as the launch below brings it up,
+        // and names the workout the launch started. The Watch treats the
+        // immediate and queued copies as one command.
         session.transferUserInfo(command.payload)
-        session.sendMessage(
-            command.payload,
-            replyHandler: Self.watchReplyHandler(owner: self, requestID: requestID,
-                                                 retryType: retryType, allowsRetry: allowsRetry),
-            errorHandler: Self.watchErrorHandler(owner: self))
         watchActive = false
+        // Armed first so a launch that fails at once can cancel it.
         watchTimeout = Timer.scheduledTimer(
             withTimeInterval: 60,
             repeats: false,
             block: Self.watchTimeoutHandler(owner: self))
+        if session.isReachable {
+            watchHRRelay.begin(requestID: requestID)
+            session.sendMessage(
+                command.payload,
+                replyHandler: Self.watchReplyHandler(owner: self, requestID: requestID),
+                errorHandler: Self.watchErrorHandler(owner: self, requestID: requestID, rawType: rawType))
+        } else {
+            // Cladiron isn't running on the Watch. Open it rather than asking
+            // the user to: HealthKit launches or wakes the Watch app and hands
+            // it the workout, which it starts at once.
+            watchHRRelay.begin(requestID: requestID, launchingWatchApp: true)
+            launchWatchApp(rawType: rawType, requestID: requestID)
+        }
     }
 
-    nonisolated private static func watchReplyHandler(owner: AppModel, requestID: UUID,
-                                                      retryType: String, allowsRetry: Bool) -> ([String: Any]) -> Void {
+    nonisolated private static func watchReplyHandler(owner: AppModel, requestID: UUID) -> ([String: Any]) -> Void {
         { reply in
             let matchesRequest = (reply["requestID"] as? String).flatMap(UUID.init(uuidString:)) == requestID
             let accepted = reply["accepted"] as? Bool
@@ -521,11 +538,26 @@ final class AppModel: NSObject, @unchecked Sendable {
             let activeRequestID = (reply["activeRequestID"] as? String).flatMap(UUID.init(uuidString:))
             Task { @MainActor [weak owner] in
                 guard let owner, matchesRequest, let accepted else { return }
-                owner.handleWatchStartReply(accepted: accepted, rejection: rejection,
-                                            activeRequestID: activeRequestID,
-                                            retryType: retryType, allowsRetry: allowsRetry)
+                owner.applyWatchStartReply(requestID: requestID, accepted: accepted,
+                                           rejection: rejection, activeRequestID: activeRequestID)
             }
         }
+    }
+
+    /// Routes an answer to a start request. Only the first answer for the
+    /// pending request acts; a duplicate acceptance just confirms.
+    private func applyWatchStartReply(requestID: UUID, accepted: Bool,
+                                      rejection: WatchHRRejection?, activeRequestID: UUID?) {
+        guard requestID == watchHRRelay.activeRequestID else { return }
+        guard let pending = pendingWatchStart, pending.requestID == requestID else {
+            if accepted { watchHRRelay.acknowledged() }
+            return
+        }
+        pendingWatchStart = nil
+        if accepted { watchError = nil }
+        handleWatchStartReply(accepted: accepted, rejection: rejection,
+                              activeRequestID: activeRequestID,
+                              retryType: pending.retryType, allowsRetry: pending.allowsRetry)
     }
 
     /// Reacts to a `start_workout` reply. A stale `.alreadyActive` rejection is
@@ -544,7 +576,8 @@ final class AppModel: NSObject, @unchecked Sendable {
         guard WatchHRRelay.shouldRetryAfterStop(rejection: rejection),
               let activeRequestID, allowsRetry, !watchRetryArmed else {
             watchStartInProgress = false
-            watchHRRelay.fail("Apple Watch rejected heart-rate monitoring (\(rejection?.rawValue ?? "unavailable"))")
+            watchTimeout?.invalidate(); watchTimeout = nil
+            watchHRRelay.fail((rejection ?? .unavailable).userMessage)
             return
         }
         stopWatchWorkout(targetRequestID: activeRequestID)
@@ -557,16 +590,59 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
-    nonisolated private static func watchErrorHandler(owner: AppModel) -> (Error) -> Void {
+    /// The immediate start message failed: the Watch app stopped being
+    /// reachable (suspended, closed) between the check and the send. Open it
+    /// instead; the queued copy of the command follows the launch.
+    nonisolated private static func watchErrorHandler(owner: AppModel, requestID: UUID,
+                                                      rawType: String) -> @Sendable (Error) -> Void {
         { _ in
             Task { @MainActor [weak owner] in
-                guard let owner else { return }
-                owner.watchActive = false
-                owner.watchStartInProgress = false
-                owner.watchError = "Watch connection failed — make sure Cladiron is open on your Watch"
-                owner.watchTimeout?.invalidate()
+                owner?.watchStartMessageFailed(requestID: requestID, rawType: rawType)
             }
         }
+    }
+
+    private func watchStartMessageFailed(requestID: UUID, rawType: String) {
+        guard watchHRRelay.activeRequestID == requestID,
+              case .connecting = watchHRRelay.state else { return }
+        watchHRRelay.begin(requestID: requestID, launchingWatchApp: true)
+        launchWatchApp(rawType: rawType, requestID: requestID)
+    }
+
+    /// Opens Cladiron on the paired Watch with the workout
+    /// (`CadenceWatchAppDelegate.handle(_:)` on the Watch starts it).
+    private func launchWatchApp(rawType: String, requestID: UUID) {
+        guard let provider = health as? HealthKitProvider else {
+            watchAppLaunchFinished(requestID: requestID, launched: false, reason: nil)
+            return
+        }
+        provider.startWatchApp(
+            with: WatchWorkoutLaunch.configuration(forRawType: rawType),
+            completion: Self.watchLaunchHandler(owner: self, requestID: requestID))
+    }
+
+    /// HealthKit calls this off the main thread; hop to the main actor.
+    nonisolated private static func watchLaunchHandler(owner: AppModel,
+                                                       requestID: UUID) -> @Sendable (Bool, (any Error)?) -> Void {
+        { launched, error in
+            let reason = error?.localizedDescription
+            Task { @MainActor [weak owner] in
+                owner?.watchAppLaunchFinished(requestID: requestID, launched: launched, reason: reason)
+            }
+        }
+    }
+
+    private func watchAppLaunchFinished(requestID: UUID, launched: Bool, reason: String?) {
+        guard watchHRRelay.activeRequestID == requestID else { return }
+        if launched {
+            watchHRRelay.watchAppLaunched()
+            return
+        }
+        // Withdraw the queued start so it can't begin a workout the next time
+        // Cladiron opens on the Watch.
+        stopWatchWorkout(targetRequestID: requestID)
+        let detail = reason.map { " (\($0))" } ?? ""
+        watchHRRelay.fail("Couldn’t open Cladiron on your Apple Watch\(detail). Check that it’s on your wrist and unlocked, then tap Check for Live HR.")
     }
 
     nonisolated private static func watchTimeoutHandler(owner: AppModel) -> @Sendable (Timer) -> Void {
@@ -576,7 +652,7 @@ final class AppModel: NSObject, @unchecked Sendable {
                 owner.watchHRRelay.timeout()
                 owner.watchActive = false
                 owner.watchStartInProgress = false
-                owner.watchError = "No heart rate received — check that Cladiron is running on your Watch"
+                owner.watchError = "No heart rate arrived from your Apple Watch. Check that it’s on your wrist and unlocked, then tap Check for Live HR."
                 owner.watchTimeout?.invalidate()
             }
         }
@@ -680,14 +756,15 @@ extension AppModel {
         if let requestIDString = message["requestID"] as? String,
            let requestID = UUID(uuidString: requestIDString),
            let accepted = message["accepted"] as? Bool {
-            // A queued start is acknowledged by a follow-up message from the
-            // watch. It has the same request ID as the immediate reply and is
-            // therefore safe to apply after either delivery wins the race.
-            if accepted, requestID == watchHRRelay.activeRequestID {
-                watchTimeout?.invalidate(); watchTimeout = nil
-                watchError = nil
-                watchHRRelay.acknowledged()
-            }
+            // The Watch's answer to the queued copy of a start, sent as a
+            // message. For a Watch app the phone launched it is the only
+            // answer. The 60 s timeout keeps running until the first heart
+            // rate, so an accepted start that never streams still reports.
+            applyWatchStartReply(
+                requestID: requestID,
+                accepted: accepted,
+                rejection: (message["rejection"] as? String).flatMap(WatchHRRejection.init(rawValue:)),
+                activeRequestID: (message["activeRequestID"] as? String).flatMap(UUID.init(uuidString:)))
             replyHandler?(accepted ? ["ack": true] : ["ack": false])
             return
         }

@@ -24,17 +24,27 @@ extension WatchWorkoutManager {
     /// Reattaches to a HealthKit workout that survived a Watch app crash or
     /// process relaunch. HealthKit owns the workout session, so reopening the
     /// app must recover that session instead of starting a second one.
+    ///
+    /// Both the app delegate (background relaunch) and the root view can ask;
+    /// `recoveryInFlight` makes the second request a no-op until the first
+    /// answers.
     func recoverActiveWorkoutIfNeeded() {
-        guard !uiTestMode, !isActive, !isMonitoring else { return }
+        guard !uiTestMode, !isActive, !isMonitoring, !recoveryInFlight else { return }
         guard UserDefaults.standard.bool(forKey: PersistedWorkoutKey.active) else { return }
+        recoveryInFlight = true
         store.recoverActiveWorkoutSession { [weak self] recovered, _ in
             guard let recovered else {
                 Task { @MainActor [weak self] in
-                    self?.clearPersistedWorkoutMetadata()
+                    guard let self else { return }
+                    self.recoveryInFlight = false
+                    // A workout started meanwhile owns the saved metadata.
+                    guard !self.isActive, !self.isMonitoring else { return }
+                    self.clearPersistedWorkoutMetadata()
                 }
                 return
             }
             Task { @MainActor [weak self] in
+                self?.recoveryInFlight = false
                 self?.attachRecoveredWorkout(recovered)
             }
         }
@@ -63,7 +73,6 @@ extension WatchWorkoutManager {
             b.delegate = self; builder = b; s.delegate = self
             s.startActivity(with: Date())
             b.beginCollection(withStart: Date(), completion: { _, _ in })
-            startHeartRateRelayPolling()
             if hrSource == .bluetooth { startBLE() }
             if isSwimSession { enableWaterLock() }
         } catch {
@@ -77,6 +86,7 @@ extension WatchWorkoutManager {
     }
 
     private func attachRecoveredWorkout(_ recovered: HKWorkoutSession) {
+        guard !isActive, !isMonitoring else { return }
         guard recovered.state != .ended, recovered.state != .stopped else {
             clearPersistedWorkoutMetadata()
             return
@@ -105,6 +115,7 @@ extension WatchWorkoutManager {
         sessionStart = recovered.startDate ?? Date()
         if recovered.state == .running {
             startHeartRatePolling()
+            sendHeartRateToPhoneSoon()
         }
     }
 

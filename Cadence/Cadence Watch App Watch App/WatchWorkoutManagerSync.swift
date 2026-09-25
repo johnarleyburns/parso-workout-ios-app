@@ -28,9 +28,8 @@ extension WatchWorkoutManager: WCSessionDelegate {
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         let reachable = session.isReachable
         Task { @MainActor [weak self] in
-            guard let self, reachable, self.isActive || self.isMonitoring,
-                  let bpm = self.currentBPM else { return }
-            self.relayBPM(bpm)
+            guard let self, reachable, self.isActive || self.isMonitoring else { return }
+            self.sendHeartRateToPhoneSoon()
         }
     }
 
@@ -105,6 +104,12 @@ extension WatchWorkoutManager: WCSessionDelegate {
            let requestID = message["requestID"] as? String,
            let uuid = UUID(uuidString: requestID) {
             guard !isActive, !isMonitoring else {
+                // The phone opened this app with `startWatchApp`, which already
+                // started the workout; this command names it.
+                if adoptPhoneLaunchedWorkout(requestID: uuid, type: type) {
+                    if let command { lastAppliedWatchHRCommandAt = command.issuedAt }
+                    return reply(for: uuid, accepted: true)
+                }
                 return phoneRequestID == nil
                     ? reply(for: uuid, accepted: false, rejection: .watchWorkoutActive)
                     : reply(for: uuid, accepted: false, rejection: .alreadyActive,

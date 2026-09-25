@@ -9,7 +9,9 @@ import CadenceFeatures
 @MainActor
 final class WatchWorkoutManager: NSObject {
 
-    private(set) var currentBPM: Double?
+    // Updated by the dedicated heart-rate polling extension as well as the
+    // manager's HealthKit/Bluetooth paths.
+    var currentBPM: Double?
     var isActive: Bool = false
     var isMonitoring: Bool = false
     var workoutType: String?
@@ -70,8 +72,18 @@ final class WatchWorkoutManager: NSObject {
     var session: HKWorkoutSession?
     var builder: HKLiveWorkoutBuilder?
     // Internal so the dedicated polling extension can own timer lifecycle.
-    var hrPollTimer: Timer?
-    var relayTimer: Timer?
+    @ObservationIgnored var hrPollTimer: Timer?
+    /// The single pending heart-rate relay timer (a delayed reading or the
+    /// next heartbeat); see WatchWorkoutManager+HeartRatePolling.
+    @ObservationIgnored var relayTimer: Timer?
+    /// Bumped by every start and stop, so a stale authorization can't begin a session.
+    @ObservationIgnored var startGeneration = 0
+    @ObservationIgnored var relaySchedule = WatchHRRelaySchedule()
+    /// Whether the app is active (screen on, in front); gates the 1 s display refresh.
+    @ObservationIgnored var displayActive = true
+    /// Set while a phone-launched workout waits for the phone's command to name it.
+    @ObservationIgnored var phoneLaunchPendingSince: Date?
+    @ObservationIgnored var recoveryInFlight = false
     private var ble: WatchHeartRateBLE?
     var sessionStart: Date?
     var phoneRequestID: String?
@@ -117,6 +129,8 @@ final class WatchWorkoutManager: NSObject {
     func startWorkout(type rawType: String, cardioType: CardioType? = nil,
                       spec: WorkoutConfigurationSpec? = nil, phoneRequestID: UUID? = nil) -> Bool {
         guard !isActive, !isMonitoring else { return false }
+        // Only `startPhoneLaunchedWorkout` marks a start as awaiting the phone.
+        phoneLaunchPendingSince = nil
         let resolvedSpec = spec ?? WorkoutConfigurationSpec(for: rawType)
         self.phoneRequestID = phoneRequestID?.uuidString
         heartRateEnabled = resolvedSpec.heartRateEnabled
@@ -126,29 +140,40 @@ final class WatchWorkoutManager: NSObject {
         persistWorkoutMetadata(type: rawType, monitoring: false)
         let activity = Self.activityType(for: rawType)
         if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: resolvedSpec); return true }
+        startGeneration &+= 1
+        let generation = startGeneration
         Task {
-            guard await requestWorkoutAuthorization() else {
+            let authorized = await requestWorkoutAuthorization()
+            // A stop (or a newer start) while authorization was pending owns
+            // the state now; beginning here would leave an untracked session.
+            guard generation == startGeneration, isActive else { return }
+            guard authorized else {
                 isActive = false; self.phoneRequestID = nil
                 clearPersistedWorkoutMetadata()
                 return
             }
-            await MainActor.run { beginSession(activity: activity, spec: resolvedSpec) }
+            beginSession(activity: activity, spec: resolvedSpec)
         }
         return true
     }
     func startMonitoringSession() {
         guard !isActive, !isMonitoring else { return }
         phoneRequestID = nil
+        phoneLaunchPendingSince = nil
         isMonitoring = true; workoutType = "monitoring"
         persistWorkoutMetadata(type: "monitoring", monitoring: true)
         if uiTestMode { sessionStart = Date(); beginSession(activity: .other); return }
+        startGeneration &+= 1
+        let generation = startGeneration
         Task {
-            guard await requestWorkoutAuthorization() else {
+            let authorized = await requestWorkoutAuthorization()
+            guard generation == startGeneration, isMonitoring else { return }
+            guard authorized else {
                 isMonitoring = false
                 clearPersistedWorkoutMetadata()
                 return
             }
-            await MainActor.run { beginSession(activity: .other) }
+            beginSession(activity: .other)
         }
     }
 
@@ -171,7 +196,9 @@ final class WatchWorkoutManager: NSObject {
         }
         let b = builder; let s = session
         hrPollTimer?.invalidate(); hrPollTimer = nil
-        relayTimer?.invalidate(); relayTimer = nil
+        stopHeartRateRelay()
+        phoneLaunchPendingSince = nil
+        startGeneration &+= 1
         builder = nil; session = nil
         ble?.disconnect(); ble = nil; currentBPM = nil
         isActive = false; isMonitoring = false; workoutType = nil; bleState = nil
@@ -235,7 +262,7 @@ final class WatchWorkoutManager: NSObject {
                     if self.maxHeartRate == nil || value > (self.maxHeartRate ?? 0) {
                         self.maxHeartRate = value
                     }
-                    self.relayBPM(value)
+                    self.relayReading(value, endingAt: nil)
                 case .scanning:
                     self.bleState = .scanning
                 case .batteryUpdated(let pct):
@@ -274,18 +301,12 @@ final class WatchWorkoutManager: NSObject {
         return elapsedTracker.elapsed(since: sessionStart)
     }
 
-    func relayBPM(_ bpm: Double) {
-        guard let session = wcSession, session.isReachable else { return }
-        guard let requestID = phoneRequestID else { return }
-        session.sendMessage(["bpm": bpm, "active": true, "requestID": requestID], replyHandler: nil, errorHandler: nil)
-    }
-
     /// A poll refreshes the display/relay but deliberately does not add another
     /// aggregate sample; the builder delegate owns avg/max accounting.
-    func applyPolledHeartRate(_ bpm: Double) {
+    func applyPolledHeartRate(_ bpm: Double, sampleEnd: Date? = nil) {
         guard isActive || isMonitoring, hrSource == .appleWatch, bpm > 0 else { return }
         currentBPM = bpm
-        relayBPM(bpm)
+        relayReading(bpm, endingAt: sampleEnd)
     }
 
     /// The values one `HKLiveWorkoutBuilder` callback carries, extracted on
@@ -294,6 +315,8 @@ final class WatchWorkoutManager: NSObject {
     struct CollectedSample: Sendable {
         var bpm: Double?
         var distanceMeters: Double?
+        /// End of `bpm`'s HealthKit sample; identifies a reading the relay already sent.
+        var bpmSampleEnd: Date?
     }
 
     /// Applies one builder callback's values on the main actor.
@@ -305,7 +328,7 @@ final class WatchWorkoutManager: NSObject {
             hrCount += 1
             recordedHRSamples.append(HRSamplePoint(t: effectiveElapsed, bpm: bpm))
             if maxHeartRate == nil || bpm > (maxHeartRate ?? 0) { maxHeartRate = bpm }
-            if hrSource == .appleWatch { relayBPM(bpm) }
+            if hrSource == .appleWatch { relayReading(bpm, endingAt: sample.bpmSampleEnd) }
         }
         if let meters = sample.distanceMeters {
             distanceMeters = meters
@@ -323,7 +346,9 @@ final class WatchWorkoutManager: NSObject {
     func handleSessionStateChange(_ state: HKWorkoutSessionState) {
         if state == .running {
             startHeartRatePolling()
-            startHeartRateRelayPolling()
+            // Arms the heartbeat, which also reads the builder, so the phone
+            // gets the first value even before a builder callback arrives.
+            sendHeartRateToPhoneSoon()
         } else if (state == .ended || state == .stopped), isActive || isMonitoring {
             stopWorkout(save: false)
         }

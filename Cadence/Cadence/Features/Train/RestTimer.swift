@@ -12,25 +12,18 @@ struct RestTimerBar: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "timer")
-            Text("Rest")
-                .fontWeight(.semibold)
-            Text(Format.clock(model.remaining))
-                .monospacedDigit()
-                .accessibilityIdentifier("rest.remaining")
-            Spacer(minLength: 8)
-            Button("+30s") { model.add(30); onChange(model.endsAt) }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .lineLimit(1).fixedSize()
-                .accessibilityIdentifier("rest.add30")
-            Button("Skip") { showSkipConfirmation = true }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .lineLimit(1).fixedSize()
-                .frame(minWidth: 56)
-                .accessibilityIdentifier("rest.skip")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                timerLabel
+                Spacer(minLength: 8)
+                timerButtons
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                timerLabel
+                HStack(spacing: 8) {
+                    timerButtons
+                }
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -54,6 +47,32 @@ struct RestTimerBar: View {
             model.tick()
             onChange(model.endsAt)
             if wasRunning && !model.isRunning { onComplete() }
+        }
+    }
+
+    private var timerLabel: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "timer")
+            Text("Rest").fontWeight(.semibold)
+            Text(Format.clock(model.remaining))
+                .monospacedDigit()
+                .accessibilityIdentifier("rest.remaining")
+        }
+    }
+
+    private var timerButtons: some View {
+        HStack(spacing: 8) {
+            Button("+30s") { model.add(30); onChange(model.endsAt) }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .lineLimit(1).fixedSize()
+                .accessibilityIdentifier("rest.add30")
+            Button("Skip") { showSkipConfirmation = true }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .lineLimit(1).fixedSize()
+                .frame(minWidth: 56)
+                .accessibilityIdentifier("rest.skip")
         }
     }
 }

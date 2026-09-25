@@ -32,7 +32,7 @@ final class OnboardingModelTests: XCTestCase {
     func testFooterTitleByStep() {
         let m = OnboardingModel()
         XCTAssertEqual(m.footerTitle, "Continue")
-        m.step = 6
+        m.step = 8
         XCTAssertEqual(m.footerTitle, "I understand")
         m.step = m.lastStep
         XCTAssertEqual(m.footerTitle, "Start training with the Coach")

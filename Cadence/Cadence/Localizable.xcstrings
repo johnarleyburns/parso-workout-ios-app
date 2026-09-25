@@ -7,7 +7,21 @@
     "This week" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This week" } } } },
     "Fill the gaps" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Fill the gaps" } } } },
     "New personal record" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "New personal record" } } } },
-    "Private by design" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Private by design" } } } }
+    "Private by design" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Private by design" } } } },
+    "Free and open source" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Free and open source" } } } },
+    "Coaching you can check" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Coaching you can check" } } } },
+    "No account required" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No account required" } } } },
+    "No tracking outside workouts you start" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No tracking outside workouts you start" } } } },
+    "Private iCloud sync when available" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Private iCloud sync when available" } } } },
+    "Every suggestion explains what it is solving and links to the science behind the rule." : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Every suggestion explains what it is solving and links to the science behind the rule." } } } },
+    "Read the science behind coaching" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Read the science behind coaching" } } } },
+    "No account, no tracking, and no advertising. Your training log stays on your devices and your private iCloud database." : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No account, no tracking, and no advertising. Your training log stays on your devices and your private iCloud database." } } } },
+    "No account" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No account" } } } },
+    "No tracking" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No tracking" } } } },
+    "No advertising" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "No advertising" } } } },
+    "Health data stays on your device" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Health data stays on your device" } } } },
+    "Connect Apple Health" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Connect Apple Health" } } } },
+    "Not now" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Not now" } } } }
   },
   "version" : "1.0"
 }

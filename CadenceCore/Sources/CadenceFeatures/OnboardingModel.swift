@@ -35,7 +35,7 @@ public final class OnboardingModel {
                 age: Int = 40,
                 ageProvided: Bool = false,
                 step: Int = 0,
-                lastStep: Int = 7) {
+                lastStep: Int = 9) {
         self.goal = goal
         self.experience = experience
         self.preferredWorkoutStyle = preferredWorkoutStyle == .personalized ? .fitness : preferredWorkoutStyle
@@ -55,11 +55,11 @@ public final class OnboardingModel {
     /// primary tap advances.
     public var primaryAction: PrimaryAction { isLastStep ? .complete : .advance }
 
-    /// Footer button title per step (index 6 is the medical disclaimer).
+    /// Footer button title per step (index 8 is the medical disclaimer).
     public var footerTitle: String {
         switch step {
         case lastStep: return "Start training with the Coach"
-        case 6: return "I understand"
+        case 8: return "I understand"
         default: return "Continue"
         }
     }

@@ -56,6 +56,26 @@ Verification for this gap-fix pass: `swift test --package-path CadenceCore`
 passed with 1,912 tests, the generic iOS build passed, `make guardrails`
 passed, and `git diff --check` is clean.
 
+## Latest full-plan audit — 2026-09-25
+
+This follow-up closed the actionable Phase 6/7 gaps found after the previous
+audit. Onboarding now presents the three short story pages from the plan
+(`Free and open source`, `Private by design`, and `Coaching you can check`),
+then presents the existing `HealthPrimingView` before preference capture.
+The story strings are in the string catalog, and the new hero/session surfaces
+use `ViewThatFits` fallbacks for compact Dynamic Type layouts.
+
+The only remaining plan exceptions are the ones the plan itself requires us
+to report rather than fabricate: the anatomy artwork is a single raster image
+without safe per-muscle masks, and this Xcode project has no Watch Widget
+extension target from which to ship a watchOS Smart Stack widget. A real
+AX5/screenshot pass still needs a simulator or device; repository guidance
+keeps that execution disabled and the in-app browser is unavailable.
+
+Verification for this audit: `swift test --package-path CadenceCore` passed all
+1,912 tests, the generic iOS build passed, `make guardrails` passed, and
+`git diff --check` is clean.
+
 ## Latest change — 2026-09-24: main-thread stalls and the Watch HR boundary
 
 Branch `perf-main-thread-and-watch-hr`, delivered as a patch (not pushed).

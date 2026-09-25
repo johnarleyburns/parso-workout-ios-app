@@ -7,11 +7,11 @@ import CadenceFeatures
 /// already personalized. Skippable; never gates on a permission.
 struct OnboardingView: View {
     @Environment(AppSettings.self) private var settings
-    @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
     @State private var flow = OnboardingModel()
-    @State private var healthRequested = false
+    @State private var showHealthPriming = false
+    @State private var hasPresentedHealthPriming = false
 
     var body: some View {
         @Bindable var flow = flow
@@ -19,13 +19,15 @@ struct OnboardingView: View {
             header
             TabView(selection: $flow.step) {
                 welcomePage.tag(0)
-                goalPage.tag(1)
-                workoutTypePage.tag(2)
-                experiencePage.tag(3)
-                schedulePage.tag(4)
-                unitsPage.tag(5)
-                disclaimerPage.tag(6)
-                programPage.tag(7)
+                privacyPage.tag(1)
+                coachingPage.tag(2)
+                goalPage.tag(3)
+                workoutTypePage.tag(4)
+                experiencePage.tag(5)
+                schedulePage.tag(6)
+                unitsPage.tag(7)
+                disclaimerPage.tag(8)
+                programPage.tag(9)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut, value: flow.step)
@@ -37,6 +39,14 @@ struct OnboardingView: View {
             flow.experience = settings.experienceLevel
             flow.preferredWorkoutStyle = settings.preferredWorkoutStyle
             flow.unit = settings.unit
+        }
+        .onChange(of: flow.step) { oldStep, newStep in
+            guard oldStep < 3, newStep >= 3, !hasPresentedHealthPriming else { return }
+            hasPresentedHealthPriming = true
+            showHealthPriming = true
+        }
+        .sheet(isPresented: $showHealthPriming) {
+            HealthPrimingView { _ in }
         }
     }
 
@@ -74,7 +84,7 @@ struct OnboardingView: View {
                 Text(flow.footerTitle)
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 15)
                     .foregroundStyle(.white)
-                    .background(flow.step == 6 || flow.isLastStep ? AnyShapeStyle(.green) : AnyShapeStyle(.tint),
+                    .background(flow.step == 8 || flow.isLastStep ? AnyShapeStyle(.green) : AnyShapeStyle(.tint),
                                 in: RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
@@ -224,27 +234,6 @@ struct OnboardingView: View {
             }
             .padding(.top, 8)
 
-            Button {
-                Task { _ = await model.health.requestAuthorization(); healthRequested = true }
-            } label: {
-                HStack(spacing: 14) {
-                    Image(systemName: "heart.fill").font(.title2).foregroundStyle(.pink).frame(width: 30)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Connect Apple Health").font(.headline)
-                        Text("Pull in steps & past workouts. Optional.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: healthRequested ? "checkmark.circle.fill" : "chevron.right")
-                        .font(healthRequested ? .body : .caption)
-                        .foregroundStyle(healthRequested ? AnyShapeStyle(.green) : AnyShapeStyle(.tertiary))
-                }
-                .padding().frame(maxWidth: .infinity, alignment: .leading)
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 8)
-            .accessibilityIdentifier("onboarding.health")
         }
     }
 

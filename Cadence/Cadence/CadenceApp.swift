@@ -14,6 +14,10 @@ struct CadenceApp: App {
     @Environment(\.scenePhase) private var scenePhase
     private let uiTestMode: Bool
     let container: ModelContainer
+    /// Store preparation is per process, not per foreground. It used to rerun
+    /// the whole catalog reconciliation and a full-history index check every
+    /// time the app became active.
+    @State private var persistentStorePrepared = false
 
     init() {
         let args = ProcessInfo.processInfo.arguments
@@ -81,7 +85,8 @@ struct CadenceApp: App {
                 .task { model.configureWatchSync(settings: settings, container: container, active: active) }
                 .task { contributions.beginSession() }
                 .task(id: scenePhase) {
-                    guard scenePhase == .active else { return }
+                    guard scenePhase == .active, !persistentStorePrepared else { return }
+                    persistentStorePrepared = true
                     await preparePersistentStore()
                 }
         }
@@ -97,6 +102,7 @@ struct CadenceApp: App {
         // main actor.
         await Task.yield()
         let container = container
+        let catalogRevision = StarterLibraryReconciliation.revision()
         let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Prepare exercise catalog")
         defer {
             if backgroundTask != .invalid {
@@ -104,8 +110,14 @@ struct CadenceApp: App {
             }
         }
         let defaultDeviceID = await Task.detached(priority: .utility) {
+            // Decode the bundled DB++ catalog here, off the main actor, so the
+            // first Home volume, search, or template lookup does not pay it
+            // while the UI waits.
+            CatalogWarmup.warm()
             let ctx = ModelContext(container)
-            _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
+            // Full reconciliation only when the build or stored exercise rows
+            // changed since the last successful run.
+            _ = try? StarterLibraryReconciliation.reconcileIfStale(ctx, revision: catalogRevision)
             // Build the app-only Personalized projection from the complete
             // canonical history during store preparation. This includes old
             // workouts on existing installs before the user opens Suggestions;

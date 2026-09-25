@@ -47,6 +47,31 @@ struct LiveWorkoutVolumeSet: Sendable {
 
 enum LiveWorkoutVolumeCalculator {
     static func sets(from workout: WorkoutSession) -> [LiveWorkoutVolumeSet] {
+        var credits = CreditCache()
+        return sets(from: workout, credits: &credits)
+    }
+
+    /// Credits depend only on the exercise, so one refresh resolves each
+    /// exercise once instead of once per logged set.
+    struct CreditCache {
+        private var byExerciseID: [UUID: [MuscleGroup: Double]] = [:]
+        private var byTemplateName: [String: [MuscleGroup: Double]] = [:]
+
+        mutating func credits(for exercise: Exercise?) -> [MuscleGroup: Double] {
+            if let exercise {
+                if let cached = byExerciseID[exercise.id] { return cached }
+                let value = exercise.volumeCredits
+                byExerciseID[exercise.id] = value
+                return value
+            }
+            if let cached = byTemplateName[""] { return cached }
+            let value = ExerciseLibrary.template(matching: "")?.volumeCredits ?? [:]
+            byTemplateName[""] = value
+            return value
+        }
+    }
+
+    static func sets(from workout: WorkoutSession, credits: inout CreditCache) -> [LiveWorkoutVolumeSet] {
         workout.orderedSets.map { set in
             LiveWorkoutVolumeSet(date: set.completedAt,
                                  isWarmup: set.isWarmup,
@@ -54,9 +79,7 @@ enum LiveWorkoutVolumeCalculator {
                                  performerKey: set.isOwnerSet
                                     ? VolumeSummaryPerformer.ownerKey
                                     : set.performedBy?.id.uuidString ?? "unknown-partner",
-                                 credits: set.exercise?.volumeCredits
-                                    ?? ExerciseLibrary.template(matching: set.exercise?.name ?? "")?.volumeCredits
-                                    ?? [:])
+                                 credits: credits.credits(for: set.exercise))
         }
     }
 
@@ -244,11 +267,17 @@ struct LiveWorkoutVolumeSummary: View {
 extension SessionView {
     func refreshLiveVolume() {
         guard active.strengthSession?.id == session.id else { return }
-        let currentSets = liveVolumeSets(from: session)
+        var credits = LiveWorkoutVolumeCalculator.CreditCache()
+        let currentSets = LiveWorkoutVolumeCalculator.sets(from: session, credits: &credits)
         let weekStart = LiveWorkoutVolumeCalculator.weekStart()
-        let weeklySets = allWorkoutSessions
-            .filter { $0.deletedAt == nil && $0.countsAsStrengthHistory }
-            .flatMap { liveVolumeSets(from: $0) }
+        // Only this week's sessions can contribute to weekly totals, which are
+        // filtered per set below. A day of slack keeps a session started late
+        // the previous evening. This used to walk every set of every workout
+        // ever logged, on the main actor, twice per saved set.
+        let windowStart = Calendar.current.date(byAdding: .day, value: -1, to: weekStart) ?? weekStart
+        let weeklySets = ((try? WorkoutRepository.sessions(since: windowStart, in: context)) ?? [])
+            .filter { $0.countsAsStrengthHistory }
+            .flatMap { LiveWorkoutVolumeCalculator.sets(from: $0, credits: &credits) }
         let creditsByName = plannedCreditsByName()
         let volumePerformers = volumeSummaryPerformers(currentSets: currentSets,
                                                        weeklySets: weeklySets)
@@ -296,10 +325,6 @@ extension SessionView {
             result.append(VolumeSummaryPerformer(id: key, name: "Partner"))
         }
         return result
-    }
-
-    private func liveVolumeSets(from workout: WorkoutSession) -> [LiveWorkoutVolumeSet] {
-        LiveWorkoutVolumeCalculator.sets(from: workout)
     }
 
     func plannedCreditsByName() -> [String: [MuscleGroup: Double]] {

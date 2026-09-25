@@ -9,7 +9,7 @@ struct PreviousWorkoutsView: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
     private var previous: [WorkoutSession] {
-        Array(sessions.filter { !$0.orderedSets.isEmpty && $0.deletedAt == nil }.prefix(20))
+        Array(sessions.lazy.filter { $0.deletedAt == nil && $0.hasSets }.prefix(20))
     }
 
     var body: some View {

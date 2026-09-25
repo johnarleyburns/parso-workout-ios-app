@@ -681,6 +681,12 @@ public final class WorkoutSession {
         (sets ?? []).sorted { $0.order < $1.order }
     }
 
+    /// Whether any set is logged. Use this instead of `orderedSets.isEmpty` when
+    /// filtering history: it does not sort, or read, every set of every session.
+    public var hasSets: Bool {
+        !(sets ?? []).isEmpty
+    }
+
     /// Wall-clock duration from start to finalize (field-testing §02). Falls
     /// back to the span between first and last logged set when `endedAt` is
     /// absent (legacy sessions), else zero.

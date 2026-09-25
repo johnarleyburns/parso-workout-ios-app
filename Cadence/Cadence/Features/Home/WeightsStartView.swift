@@ -11,7 +11,7 @@ struct WeightsStartView: View {
     @Environment(AppSettings.self) private var settings
 
     private var previous: [WorkoutSession] {
-        Array(sessions.filter { !$0.orderedSets.isEmpty }.prefix(20))
+        Array(sessions.lazy.filter { $0.hasSets }.prefix(20))
     }
 
     var body: some View {

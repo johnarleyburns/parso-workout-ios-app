@@ -32,6 +32,13 @@ struct CadenceWatchApp: App {
                         }
                         .environment(watchManager)
                         .environment(watchAppSettings)
+                        .task {
+                            // HealthKit decides whether the Heart Rate Access
+                            // boundary shows (it has never been asked for the
+                            // types Cladiron needs), and whether the launcher's
+                            // "Health access needed" row is still true.
+                            await watchManager.refreshHealthAuthorizationState()
+                        }
                         .task(id: watchManager.needsInitialHealthAuthorization) {
                             // The first frame is intentionally an explicit
                             // permission boundary. WatchConnectivity activation,
@@ -40,8 +47,11 @@ struct CadenceWatchApp: App {
                             guard !watchManager.needsInitialHealthAuthorization else { return }
                             await Task.yield()
                             watchManager.watchAppSettings = watchAppSettings
-                            watchManager.activateWCSession()
-                            watchManager.recoverActiveWorkoutIfNeeded()
+                            if !watchManager.launchSyncStarted {
+                                watchManager.launchSyncStarted = true
+                                watchManager.activateWCSession()
+                                watchManager.recoverActiveWorkoutIfNeeded()
+                            }
                             bootstrap.prepareCatalogIfNeeded()
                         }
                 }
@@ -140,6 +150,10 @@ final class WatchStoreBootstrap: ObservableObject {
     /// Seeds the Watch exercise catalog after the first frame. The old
     /// initializer performed this full SwiftData write synchronously, which
     /// made the Watch app appear frozen on cold launch.
+    ///
+    /// The full reconciliation (DB++ decode plus a ~900-row catalog comparison)
+    /// runs only when the app build or the stored exercise rows changed since
+    /// the last successful run; otherwise launch does two cheap queries.
     func prepareCatalogIfNeeded() {
         guard !catalogPreparationStarted,
               let container,
@@ -147,9 +161,10 @@ final class WatchStoreBootstrap: ObservableObject {
             return
         }
         catalogPreparationStarted = true
+        let revision = StarterLibraryReconciliation.revision()
         Task.detached(priority: .utility) {
             let context = ModelContext(container)
-            _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(context)
+            _ = try? StarterLibraryReconciliation.reconcileIfStale(context, revision: revision)
         }
     }
 

@@ -1,6 +1,45 @@
 # Current Status
 
-Updated: 2026-09-18
+Updated: 2026-09-24
+
+## Latest change — 2026-09-24: main-thread stalls and the Watch HR boundary
+
+Branch `perf-main-thread-and-watch-hr`, delivered as a patch (not pushed).
+
+- Watch Heart Rate Access boundary: it hung off a one-way UserDefaults flag,
+  so after one tap on any build it never came back, even when HealthKit had
+  never been asked. It now follows `HKHealthStore.statusForAuthorizationRequest`
+  (`WatchHealthAuthorizationGate` in CadenceFeatures): shown first on every
+  launch until the system sheet is answered, "Continue without heart rate"
+  skips it for that launch only. The launcher's "Health access needed" row is
+  refreshed from HealthKit at launch instead of staying stale.
+- Watch cold launch: custom exercises replayed by WatchConnectivity on every
+  activation were upserted on the main actor with one full-catalog fetch per
+  exercise and an unconditional save. They are now fingerprinted (unchanged
+  list = no work) and written once, serially, on a background context
+  (`WatchCustomExerciseStore`). The root view queries only unfinished sessions
+  instead of the whole log. WC activation and recovery run once per process.
+- Catalog reconciliation (`seedStarterLibraryIfNeeded`) ran on every Watch
+  launch and every iPhone foreground. `StarterLibraryReconciliation` runs it
+  only when the build or the stored exercise rows (count + newest `updatedAt`)
+  changed. iPhone store preparation runs once per process and decodes DB++ off
+  the main actor first (`CatalogWarmup`), so the first UI lookup doesn't pay it.
+- Workout screen: removed the whole-history `@Query` (it refetched every
+  workout on each set save and re-rendered the screen). Weekly live volume now
+  reads this week's sessions only, with credits memoized per exercise; rep
+  patterns read the 21 newest sessions; recent partners the 60 newest.
+  `VolumeCredit` set credits are read once.
+- Previous-workout lists and the quick-start ranking no longer sort every set
+  of every session (`WorkoutSession.hasSets`, cached ranking).
+
+Verification: new tests in `StarterLibraryReconciliationTests`,
+`BoundedSessionFetchTests`, `WatchCustomExerciseStoreTests`, and
+`WatchHealthAuthorizationGateTests`. Only the SwiftData-free parts (gate,
+fingerprint) were compiled and run (Linux Swift 6.1, language mode 6, no
+warnings); `swift test`, the Xcode build, and a device run on iPhone + Watch
+are still required. `check-test-pyramid`, `check-no-network`,
+`check-engine-boundary`, `check-history-safety`, and
+`check-xcodebuild-platform` pass; the macOS-only checks were not run.
 
 ## Latest audit — 2026-09-18
 

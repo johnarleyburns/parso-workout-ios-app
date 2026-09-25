@@ -15,12 +15,11 @@ struct MuscleGroupQuickStartView: View {
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
-    private var ranked: [(session: WorkoutSession, covered: [MuscleGroup])] {
-        WorkoutRepository.workoutsByMissingCoverage(sessions, missing: missing)
-    }
-    private var suggestions: [ExerciseTemplate] {
-        ExerciseLibrary.suggestions(forMissing: missing)
-    }
+    /// Computed once per history change, not on every body pass. Ranking walks
+    /// every set of every past session, and the list used to evaluate it twice
+    /// per render (the `isEmpty` check and the `ForEach`).
+    @State private var ranked: [(session: WorkoutSession, covered: [MuscleGroup])] = []
+    @State private var suggestions: [ExerciseTemplate] = []
 
     var body: some View {
         NavigationStack {
@@ -76,6 +75,10 @@ struct MuscleGroupQuickStartView: View {
             }
             .navigationTitle("Fill the Gaps")
             .navigationBarTitleDisplayMode(.inline)
+            .task(id: sessions.count) {
+                ranked = WorkoutRepository.workoutsByMissingCoverage(sessions, missing: missing)
+                suggestions = ExerciseLibrary.suggestions(forMissing: missing)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }.accessibilityIdentifier("groupQuick.cancel")

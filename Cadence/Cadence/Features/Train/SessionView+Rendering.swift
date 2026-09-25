@@ -111,7 +111,7 @@ extension SessionView {
         }
         .keepAwake(!isManualLog)
         .task(id: refreshSignature) {
-            let recent = (try? WorkoutRepository.allSessions(context)) ?? []
+            let recent = (try? WorkoutRepository.recentSessions(context, limit: 21)) ?? [] // 20-session rep window + this one
             generalRepLadders = SessionRenderModel.generalRepLadders(recentSessions: recent,
                                                                      excluding: session)
             plannedExerciseIndex = indexedPlannedExercises()

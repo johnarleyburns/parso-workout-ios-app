@@ -76,7 +76,10 @@ struct SessionView: View {
     @State var pendingScrollExerciseID: UUID?
     @State var suggestExerciseRequest: SuggestedExerciseRequest?
     @State var suggestExerciseFailed = false
-    @Query(sort: \WorkoutSession.date, order: .reverse) var allWorkoutSessions: [WorkoutSession]
+    // No whole-history @Query here. It refetched every workout ever logged on
+    // each set save and re-rendered this screen; the paths that need history
+    // (live weekly volume, recent rep patterns, recent partners) fetch bounded
+    // windows on demand instead.
     var refreshSignature: SessionRenderModel.Signature {
         SessionRenderModel.signature(session: session, prRule: settings.prRule, formula: settings.formula)
     }
@@ -114,12 +117,15 @@ struct SessionView: View {
                                    attributedIDs: attributedPartnerIDs)
     }
 
+    /// Partners from recent workouts, newest first. The sheet shows three, so
+    /// a bounded window of recent sessions is enough; this used to fetch and
+    /// sort the whole training log on every read.
     var recentPartners: [Person] {
-        let sessions = (try? WorkoutRepository.allSessions(context)) ?? []
+        let sessions = (try? WorkoutRepository.recentSessions(context, limit: 60)) ?? []
         var seen = Set<String>()
         var result: [Person] = []
         let scoped = Set(session.activePartnerIDs)
-        for s in sessions.sorted(by: { $0.date > $1.date }) where s.id != session.id {
+        for s in sessions where s.id != session.id {
             for pid in s.activePartnerIDs {
                 guard !seen.contains(pid), !scoped.contains(pid),
                       let p = allPeople.first(where: { $0.id.uuidString == pid }),
@@ -141,7 +147,7 @@ struct PreviousWorkoutPicker: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) var sessions: [WorkoutSession]
 
     var candidates: [WorkoutSession] {
-        sessions.filter { $0.id != excluding.id && !$0.orderedSets.isEmpty }
+        sessions.filter { $0.id != excluding.id && $0.hasSets }
     }
 
     var body: some View {

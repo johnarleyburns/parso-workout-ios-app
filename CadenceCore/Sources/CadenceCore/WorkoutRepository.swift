@@ -434,6 +434,32 @@ public enum WorkoutRepository {
         ))
     }
 
+    /// The `limit` most recent non-deleted sessions, newest first. For callers
+    /// that only look at recent history (the workout screen's 20-session rep
+    /// pattern window, recent partners); `allSessions` materializes the whole
+    /// training log on every call.
+    public static func recentSessions(_ context: ModelContext, limit: Int) throws -> [WorkoutSession] {
+        // A zero fetch limit means "no limit" to the store, not "none".
+        guard limit > 0 else { return [] }
+        var descriptor = FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.deletedAt == nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = limit
+        return try context.fetch(descriptor)
+    }
+
+    /// Non-deleted sessions dated on or after `start`, newest first. Weekly
+    /// accounting filters sets by their own timestamps, so callers pass a start
+    /// with slack (a session begun late on the previous day can still carry
+    /// sets inside the window).
+    public static func sessions(since start: Date, in context: ModelContext) throws -> [WorkoutSession] {
+        try context.fetch(FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.deletedAt == nil && $0.date >= start },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        ))
+    }
+
     /// Appends a set to a session, assigning the next order index. Stamps
     /// `updatedAt` for sync (FR-9.2). `performedBy` attributes the set to a
     /// training partner (nil ⇒ the owner; field-testing §04).

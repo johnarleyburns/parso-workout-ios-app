@@ -8,7 +8,15 @@ struct WatchRootView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchAppSettings
     @Environment(\.modelContext) private var context
-    @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+    /// Only unfinished Watch sessions: the launcher needs one resumable row,
+    /// not the whole training log fetched on the main actor at launch and
+    /// again on every store change.
+    // Keep the store predicate intentionally small so SwiftData's macro can
+    // type-check it quickly on watchOS. `isResumable` applies the remaining
+    // deleted/logged checks in memory below.
+    @Query(filter: #Predicate<WorkoutSession> { $0.endedAt == nil },
+           sort: \WorkoutSession.date, order: .reverse)
+    private var resumableSessions: [WorkoutSession]
 
     @State private var cardioLocation: WorkoutConfigurationSpec.Location = .outdoor
     @State private var cardioLapLength: Double = 25
@@ -45,13 +53,9 @@ struct WatchRootView: View {
             }
         }
         .onChange(of: watchManager.customExercisesUpdatedAt) { _, _ in
-            // Reconcile the local catalog after the launcher has had a frame to
-            // render. Incoming property-list parsing is already off-main; this
-            // remaining SwiftData write is deliberately deferred as well.
-            Task { @MainActor in
-                await Task.yield()
-                watchManager.applyCustomExercises(watchManager.customExerciseRows, in: context)
-            }
+            // Stored on a background context, and skipped entirely when the
+            // phone replays an unchanged list (it does on every activation).
+            watchManager.applyCustomExercisesInBackground(container: context.container)
         }
         .accessibilityIdentifier("watch.root")
     }
@@ -182,7 +186,7 @@ struct WatchRootView: View {
     }
 
     private var resumableStrengthSession: WorkoutSession? {
-        sessions.filter(\.isResumable).first
+        resumableSessions.first(where: \.isResumable)
     }
 
     /// Deletes an abandoned watch-only session in place and tells the phone to

@@ -137,9 +137,11 @@ extension TrainingEngineBridge {
         }
     }
 
-    static var setCredits: (direct: Double, indirect: Double, stabilizer: Double) {
+    /// Read once. `VolumeCredit` consults this for every credited muscle of
+    /// every set, and `shared` never changes after its first load, so there is
+    /// no reason to walk DB++ metadata on each call.
+    static let setCredits: (direct: Double, indirect: Double, stabilizer: Double) =
         shared?.database.setCredits ?? (direct: 1.0, indirect: 0.5, stabilizer: 0.0)
-    }
 
     static func metadataString(_ key: String) -> String? {
         guard case let .string(value)? = shared?.database.metadata[key] else { return nil }

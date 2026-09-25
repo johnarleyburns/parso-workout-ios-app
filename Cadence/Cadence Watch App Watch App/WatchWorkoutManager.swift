@@ -8,7 +8,6 @@ import CadenceFeatures
 @Observable
 @MainActor
 final class WatchWorkoutManager: NSObject {
-    private static let initialHealthAuthorizationKey = "watch.initialHealthAuthorizationResolved"
 
     private(set) var currentBPM: Double?
     var isActive: Bool = false
@@ -20,9 +19,17 @@ final class WatchWorkoutManager: NSObject {
         set { hrSourceRaw = newValue.rawValue }
     }
 
-    private(set) var hrAuthorized: Bool = false
-    private(set) var workoutShareAuthorized: Bool = false
-    private(set) var healthAuthorizationPromptResolved: Bool
+    // Written only by WatchWorkoutManager+HealthAuthorization.
+    var hrAuthorized: Bool = false
+    var workoutShareAuthorized: Bool = false
+    /// Whether the first-screen Heart Rate Access boundary is showing. Driven by
+    /// HealthKit's request status; see `WatchHealthAuthorizationGate`.
+    var healthAuthorizationGateActive: Bool
+    var healthPromptDismissedThisLaunch = false
+    var healthAuthorizationFlowStarted = false
+    /// WatchConnectivity activation and workout recovery run once per process,
+    /// even if the boundary reappears after HealthKit answers.
+    @ObservationIgnored var launchSyncStarted = false
     private(set) var bleState: BLEConnectionState? = nil
     private(set) var bleBattery: Int? = nil
 
@@ -39,8 +46,12 @@ final class WatchWorkoutManager: NSObject {
     var lastPhoneSyncError: String?
     var todayPlan: WatchSync.TodayPlan?
     var recentPartnerNames: [String] = []
-    var customExerciseRows: [[String: Any]] = []
+    var pendingCustomExercises: [WatchSync.CustomExercise] = []
     var customExercisesUpdatedAt = Date.distantPast
+    /// Background custom-exercise writes run one at a time, so two quick
+    /// replays of a new list can't both insert the same exercise.
+    @ObservationIgnored var customExerciseApplyTask: Task<Void, Never>?
+    @ObservationIgnored var customExerciseApplyingFingerprint: String?
     var pendingCardioCompletions: [WatchCardioCompletion] = []
     struct SavedWorkoutSummary {
         let duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double
@@ -88,73 +99,18 @@ final class WatchWorkoutManager: NSObject {
 
     init(uiTestMode: Bool = false) {
         self.uiTestMode = uiTestMode
-        self.healthAuthorizationPromptResolved = UserDefaults.standard.bool(forKey: Self.initialHealthAuthorizationKey)
+        self.healthAuthorizationGateActive = WatchHealthAuthorizationGate.initialGateActive()
         super.init()
         pendingCardioCompletions = Self.loadPendingCardioCompletions()
     }
 
     var wcSession: WCSession? { WCSession.isSupported() ? WCSession.default : nil }
 
-    /// The first Watch launch is an explicit health-permission boundary.  It
-    /// must not be hidden several list sections below the workout launcher.
-    var needsInitialHealthAuthorization: Bool {
-        !uiTestMode && !healthAuthorizationPromptResolved
-    }
-
-    func continueWithoutHealthAuthorization() {
-        finishInitialHealthAuthorization()
-    }
-
-    /// Keep the first-launch permission surface visible until the user
-    /// explicitly chooses to continue after the system sheet returns.
-    func finishInitialHealthAuthorization() {
-        guard !healthAuthorizationPromptResolved else { return }
-        healthAuthorizationPromptResolved = true
-        UserDefaults.standard.set(true, forKey: Self.initialHealthAuthorizationKey)
-    }
-
     func activateWCSession() {
         guard let session = wcSession else { return }
         session.delegate = self
         session.activate()
         flushPendingCardioCompletions()
-    }
-
-    @discardableResult
-    func requestWorkoutAuthorization() async -> Bool {
-        guard !uiTestMode else {
-            workoutShareAuthorized = true
-            hrAuthorized = true
-            return true
-        }
-        let hrType = HKObjectType.quantityType(forIdentifier: .heartRate)!
-        var shareTypes: Set<HKSampleType> = [
-            HKObjectType.workoutType(),
-            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
-            HKObjectType.quantityType(forIdentifier: .distanceCycling)!,
-            HKObjectType.quantityType(forIdentifier: .distanceSwimming)!,
-        ]
-        if #available(watchOS 11.0, *) {
-            if let rowing = HKObjectType.quantityType(forIdentifier: .distanceRowing) {
-                shareTypes.insert(rowing)
-            }
-        }
-        let readTypes: Set<HKObjectType> = [
-            hrType,
-            HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
-            HKObjectType.quantityType(forIdentifier: .distanceCycling)!,
-            HKObjectType.quantityType(forIdentifier: .distanceSwimming)!,
-        ]
-        do {
-            try await store.requestAuthorization(toShare: shareTypes, read: readTypes)
-            let wStatus = store.authorizationStatus(for: HKObjectType.workoutType())
-            workoutShareAuthorized = (wStatus == .sharingAuthorized)
-            let hStatus = store.authorizationStatus(for: hrType)
-            hrAuthorized = (hStatus != .notDetermined)
-            return workoutShareAuthorized
-        } catch {
-            return false
-        }
     }
 
     @discardableResult

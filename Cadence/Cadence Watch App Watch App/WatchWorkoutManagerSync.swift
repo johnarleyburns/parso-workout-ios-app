@@ -184,7 +184,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         recentPartnerNames = preferences.recentPartnerNames
         todayPlan = incoming.todayPlan
         if let customExercises = incoming.customExercises {
-            customExerciseRows = customExercises.map(\.propertyList)
+            pendingCustomExercises = customExercises
             customExercisesUpdatedAt = incoming.updatedAt
         }
 
@@ -194,29 +194,40 @@ extension WatchWorkoutManager: WCSessionDelegate {
         phoneSyncState = .synced(incoming.updatedAt)
     }
 
-    func applyCustomExercises(_ raw: Any?, in context: ModelContext) {
-        guard let rows = raw as? [[String: Any]] else { return }
-        for row in rows {
-            guard let incoming = WatchSync.CustomExercise(propertyList: row) else { continue }
-            let existing = (try? WorkoutRepository.allExercises(context))?.first {
-                $0.id == incoming.id || $0.name.compare(incoming.name, options: .caseInsensitive) == .orderedSame
-            }
-            let exercise = existing ?? Exercise(id: incoming.id, name: incoming.name, isCustom: true)
-            if existing == nil { context.insert(exercise) }
-            exercise.name = incoming.name
-            exercise.isCustom = true
-            exercise.category = incoming.category
-            exercise.equipment = incoming.equipment
-            exercise.mechanics = incoming.mechanics
-            exercise.force = incoming.force
-            exercise.primaryMuscles = incoming.primaryMuscles
-            exercise.secondaryMuscles = incoming.secondaryMuscles
-            exercise.searchKeywords = incoming.searchKeywords
-            exercise.isLateral = incoming.isLateral
-            exercise.updatedAt = incoming.updatedAt
+    /// Stores the phone's custom exercises off the main actor.
+    ///
+    /// This used to run on the main actor at every launch (WatchConnectivity
+    /// replays the last context on activation), fetching the whole catalog once
+    /// per custom exercise and saving unconditionally, which kept the Watch
+    /// unresponsive for seconds. Now an unchanged list is skipped by
+    /// fingerprint, and a changed one is written once on a background context.
+    func applyCustomExercisesInBackground(container: ModelContainer) {
+        let incoming = pendingCustomExercises
+        let fingerprint = WatchSync.CustomExercise.fingerprint(incoming)
+        guard fingerprint != UserDefaults.standard.string(forKey: Self.appliedCustomExercisesKey),
+              fingerprint != customExerciseApplyingFingerprint else { return }
+        customExerciseApplyingFingerprint = fingerprint
+        let previous = customExerciseApplyTask
+        customExerciseApplyTask = Task.detached(priority: .utility) { [weak self] in
+            await previous?.value
+            let context = ModelContext(container)
+            let applied = (try? WatchCustomExerciseStore.apply(incoming, in: context)) != nil
+            await self?.finishCustomExerciseApply(fingerprint: fingerprint, applied: applied)
         }
-        try? context.save()
     }
+
+    /// Records a stored list so the next identical replay is skipped. A failed
+    /// write records nothing, so the next replay retries it.
+    private func finishCustomExerciseApply(fingerprint: String, applied: Bool) {
+        if applied {
+            UserDefaults.standard.set(fingerprint, forKey: Self.appliedCustomExercisesKey)
+        }
+        if customExerciseApplyingFingerprint == fingerprint {
+            customExerciseApplyingFingerprint = nil
+        }
+    }
+
+    static let appliedCustomExercisesKey = "watch.customExercises.appliedFingerprint"
 
     private func recordPhoneSyncFailure(_ message: String) {
         lastPhoneSyncError = message

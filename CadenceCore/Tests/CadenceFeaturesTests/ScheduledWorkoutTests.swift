@@ -151,7 +151,9 @@ final class ScheduledWorkoutTests: XCTestCase {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let plan = EditablePlan(title: "Lifecycle", warmupMinutes: 0,
                                 cooldownMinutes: 0, exercises: [])
-        let scheduled = try ScheduledWorkoutStore.schedule(plan: plan, for: Date(), in: context)
+        let now = Date()
+        let scheduled = try ScheduledWorkoutStore.schedule(plan: plan, for: now,
+                                                            now: now, in: context)
         let sessionID = UUID()
 
         XCTAssertTrue(try ScheduledWorkoutStore.markStarted(recordID: scheduled.id,
@@ -166,7 +168,8 @@ final class ScheduledWorkoutTests: XCTestCase {
         XCTAssertTrue(try ScheduledWorkoutStore.markCompleted(recordID: scheduled.id, in: context))
         XCTAssertFalse(try ScheduledWorkoutStore.markAbandoned(recordID: scheduled.id, in: context))
 
-        let deleted = try ScheduledWorkoutStore.schedule(plan: plan, for: Date(), in: context)
+        let deleted = try ScheduledWorkoutStore.schedule(plan: plan, for: now,
+                                                          now: now, in: context)
         XCTAssertTrue(try ScheduledWorkoutStore.cancel(recordID: deleted.id, in: context))
         XCTAssertNotNil(deleted.deletedAt)
         XCTAssertFalse(try ScheduledWorkoutStore.active(in: context).contains { $0.id == deleted.id })

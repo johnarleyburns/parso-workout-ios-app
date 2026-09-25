@@ -10,11 +10,21 @@ struct SettingsView: View {
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false
     @State private var workoutPreferencesPresented = false
+    @State private var workoutPreferencesExpanded = true
+    @State private var healthExpanded = false
+    @State private var watchExpanded = false
+    @State private var coachExpanded = false
+    @State private var exercisesExpanded = false
+    @State private var dataExpanded = false
+    @State private var transparencyExpanded = false
+    @State private var cloudKitExpanded = false
+    @State private var supportExpanded = false
 
     var body: some View {
         @Bindable var settings = settingsObject
         Form {
-            Section("Workout Preferences") {
+            settingsDisclosure("Workout Preferences", expanded: $workoutPreferencesExpanded,
+                              identifier: "settings.section.workout") {
                 Picker("Weight unit", selection: $settings.unit) {
                     ForEach(MeasurementUnitPreference.allCases) { Text($0.displayName).tag($0) }
                 }
@@ -39,7 +49,8 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.workoutSounds")
             }
 
-            Section {
+            settingsDisclosure("Health & Sensors", expanded: $healthExpanded,
+                              identifier: "settings.section.health") {
                 Button {
                     primingPresented = true
                 } label: {
@@ -71,13 +82,13 @@ struct SettingsView: View {
                     Label("Heart-Rate Monitor", systemImage: "antenna.radiowaves.left.and.right")
                 }
                 .accessibilityIdentifier("settings.hrm")
-            } header: {
-                Text("Health & Sensors")
-            } footer: {
                 Text("HealthKit permissions are controlled by Apple. Cladiron's detailed sets remain in the app's local/private-iCloud store; only workout summaries are written to Apple Health when enabled.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
-            Section {
+            settingsDisclosure("Watch Sync", expanded: $watchExpanded,
+                              identifier: "settings.section.watch") {
                 HStack {
                     Label("Status", systemImage: "applewatch")
                     Spacer()
@@ -119,13 +130,13 @@ struct SettingsView: View {
                 }
                 .disabled(model.watchSyncState.isInProgress)
                 .accessibilityIdentifier("settings.watchSync.force")
-            } header: {
-                Text("Watch Sync")
-            } footer: {
                 Text("Sends units, interval defaults, workout sounds, and recent partners to the Watch app.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
-            Section {
+            settingsDisclosure("Coach, Science & Rationale", expanded: $coachExpanded,
+                              identifier: "settings.section.coach") {
                 NavigationLink {
                     CardioIntensitySettingsView()
                 } label: {
@@ -178,13 +189,13 @@ struct SettingsView: View {
                     Label("About the Coach", systemImage: "person.fill.questionmark")
                 }
                 .accessibilityIdentifier("settings.coach.about")
-            } header: {
-                Text("Coach, Science & Rationale")
-            } footer: {
                 Text("The coaching engine updates quarterly with new research. Everything else in Cladiron is free forever.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
-            Section("Exercises & Exclusions") {
+            settingsDisclosure("Exercises & Exclusions", expanded: $exercisesExpanded,
+                              identifier: "settings.section.exercises") {
                 NavigationLink {
                     TemplatesView(onStart: { _ in })
                 } label: {
@@ -207,7 +218,8 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.excludedExercises")
             }
 
-            Section("Data & Backup") {
+            settingsDisclosure("Data & Backup", expanded: $dataExpanded,
+                              identifier: "settings.section.data") {
                 NavigationLink {
                     ImportView()
                 } label: { Label("Import Workout Log", systemImage: "square.and.arrow.down") }
@@ -218,19 +230,21 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.export")
             }
 
-            Section {
+            settingsDisclosure("Transparency & Control", expanded: $transparencyExpanded,
+                              identifier: "settings.section.transparency") {
                 NavigationLink {
                     TransparencyCenterView()
                 } label: {
                     Label("Transparency & Control", systemImage: "eye")
                 }
                 .accessibilityIdentifier("settings.transparency")
-            } footer: {
                 Text("See what Cladiron is doing automatically, why it happened, and how to edit, stop, retry, undo, or restore it when supported.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
-
-            Section {
+            settingsDisclosure("CloudKit Sync", expanded: $cloudKitExpanded,
+                              identifier: "settings.section.cloudKit") {
                 HStack {
                     Label("iCloud Sync", systemImage: "arrow.triangle.2.circlepath.icloud")
                     Spacer()
@@ -246,13 +260,13 @@ struct SettingsView: View {
                     Label("iCloud Details & Diagnostics", systemImage: "stethoscope")
                 }
                 .accessibilityIdentifier("settings.sync.diagnostics")
-            } header: {
-                Text("CloudKit Sync")
-            } footer: {
                 Text("Your workout data uses Apple’s private iCloud database. Sync is automatic and incremental; Apple schedules imports and exports. Detailed storage and recovery information is in iCloud Details & Diagnostics.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
-            Section {
+            settingsDisclosure("Support & About", expanded: $supportExpanded,
+                              identifier: "settings.section.support") {
                 NavigationLink {
                     AboutView()
                 } label: {
@@ -268,10 +282,9 @@ struct SettingsView: View {
                         .foregroundStyle(contributions.store.isSupporter ? Color.pink : Color.accentColor)
                 }
                 .accessibilityIdentifier("settings.support")
-            } header: {
-                Text("Support & About")
-            } footer: {
                 Text("Cladiron is open source and ad-free. A one-time tip is an optional way to support development — never required.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Settings")
@@ -288,6 +301,23 @@ struct SettingsView: View {
                                  idleTimeoutMinutes: $settings.idleTimeoutMinutes,
                                  plateRounding: $settings.plateRounding,
                                  useHR: $settings.useHRMonitoring)
+        }
+    }
+
+    @ViewBuilder
+    private func settingsDisclosure<Content: View>(
+        _ title: String,
+        expanded: Binding<Bool>,
+        identifier: String,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        Section {
+            DisclosureGroup(isExpanded: expanded) {
+                content()
+            } label: {
+                Text(title).font(.headline)
+            }
+            .accessibilityIdentifier(identifier)
         }
     }
 

@@ -82,9 +82,10 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 ## Commands
 - Core package: `cd CadenceCore && swift build` / `swift test`
 - App: open `Cadence.xcodeproj`; schemes are **Cadence** (iOS) and **Cadence Watch App**. The `.xcodeproj` is committed (created in Xcode, not generated).
-- CLI build: `bash scripts/xcodebuild-safe.sh -scheme Cadence -destination 'platform=iOS Simulator,name=iPhone 16' build`; use destination-based builds only — never pass a global `-sdk` override because the scheme embeds the Watch target.
+- CLI build: `bash scripts/xcodebuild-safe.sh -project Cadence/Cadence.xcodeproj -scheme Cadence -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build`; use destination-based builds only — never pass a global `-sdk` override because the scheme embeds the Watch target.
 - Real-device runs are required to test HealthKit — the simulator has no real Health data.
-- Git hooks (installed via `scripts/install-git-hooks.sh`): **pre-commit** runs only `swift test --package-path CadenceCore` and never boots a simulator; **pre-push** runs no tests. Run the simulator smoke suite explicitly with `make all-tests` before a release or field-testing build.
+- **Do not boot or run any simulator, UI smoke suite, or simulator-based Xcode test unless the user explicitly requests it in the current task.** This includes `make smoke`, `make ipad-smoke`, `make watch-smoke`, and `make all-tests`. Prefer the headless package tests, destination-based generic builds, and non-simulator guardrails by default.
+- Git hooks (installed via `scripts/install-git-hooks.sh`): **pre-commit** runs only `swift test --package-path CadenceCore` and never boots a simulator; **pre-push** runs no tests.
 - **Set command timeouts for Git hooks:** allow at least **5 minutes (300 seconds)** for `git commit`, because the package suite can be lengthy; `git push` needs little time because pre-push runs no tests.
 
 ## Conventions
@@ -173,11 +174,13 @@ This is how large bodies of work (e.g. the field-testing redesign) are run. Mirr
 - Logic lives in `CadenceCore` (pure, `swift test`-verifiable); UI is thin on top.
 - Schema changes are **additive only** (optional/defaulted, no destructive
   migration) to keep the local store + older JSON exports working.
-- **Verify, then commit/push/PR.** `swift test` is the reliable gate (Mac
-  toolchain). The `xcodebuild` UI suite is the integration gate but can be flaky
-  on a degraded simulator — if launches balloon (~45s, `no debugger version`),
-  restart CoreSimulator (`killall -9 com.apple.CoreSimulator.CoreSimulatorService`)
-  and re-run; report honestly which tests are real vs environment-flaky.
+- **Verify, then commit/push/PR.** `swift test` is the reliable default gate
+  (Mac toolchain), supplemented by generic destination-based builds and
+  non-simulator guardrails. The `xcodebuild` UI suite is run only when the user
+  explicitly requests simulator validation; if it is requested and launches
+  balloon (~45s, `no debugger version`), restart CoreSimulator
+  (`killall -9 com.apple.CoreSimulator.CoreSimulatorService`) and re-run;
+  report honestly which tests are real vs environment-flaky.
 - Reference spec IDs (FR-x, field-testing §n) and end commits with the
   Co-Authored-By trailer.
 

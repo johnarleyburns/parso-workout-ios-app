@@ -64,23 +64,16 @@ public struct StrengthProgressSessionInput: Sendable, Equatable {
 }
 
 public struct StrengthProgressChartData: Sendable, Equatable {
-    public static let powerlifterName = "Powerlifter"
     public let series: [E1RMSeries]
-    public let powerlifter: E1RMSeries?
 
-    public init(series: [E1RMSeries], powerlifter: E1RMSeries?) {
+    public init(series: [E1RMSeries]) {
         self.series = series
-        self.powerlifter = powerlifter
     }
 
-    public var allSeries: [E1RMSeries] {
-        ([powerlifter].compactMap { $0 } + series)
-    }
+    public var allSeries: [E1RMSeries] { series }
 
     public var exerciseNames: [String] {
-        series.map(\.exercise).sorted {
-            $0.localizedStandardCompare($1) == .orderedAscending
-        }
+        series.map(\.exercise)
     }
 }
 
@@ -140,9 +133,9 @@ public enum StrengthProgress {
         .sorted { $0.current > $1.current }
     }
 
-    /// All available lifts plus the combined powerlifting total. The total is
-    /// the week-by-week sum of the best Bench Press, Deadlift, and Back Squat
-    /// estimates, using common barbell aliases when older history used them.
+    /// The four fixed series shown by Progress: Bench Press, Squat, Deadlift,
+    /// and their week-by-week Combined total. Older history may use barbell or
+    /// Back Squat aliases; those normalize into the fixed labels here.
     public static func chartData(from sessions: [StrengthProgressSessionInput],
                                  now: Date = Date(),
                                  weeks: Int = 12,
@@ -152,8 +145,8 @@ public enum StrengthProgress {
                                    formula: formula, calendar: calendar)
         let aliases: [(String, Set<String>)] = [
             ("Bench Press", ["benchpress", "barbellbenchpress"]),
-            ("Deadlift", ["deadlift", "barbelldeadlift"]),
-            ("Back Squat", ["backsquat", "barbellsquat"])
+            ("Squat", ["squat", "backsquat", "barbellsquat"]),
+            ("Deadlift", ["deadlift", "barbelldeadlift"])
         ]
         var pointsByLift: [String: [Date: Double]] = [:]
         for (label, names) in aliases {
@@ -165,6 +158,12 @@ public enum StrengthProgress {
             }
             pointsByLift[label] = points
         }
+        let fixedSeries = aliases.map { label, _ in
+            E1RMSeries(exercise: label,
+                       points: pointsByLift[label, default: [:]]
+                           .sorted { $0.key < $1.key }
+                           .map { E1RMPoint(weekStart: $0.key, e1rm: $0.value) })
+        }
         let weeksWithData = Set(pointsByLift.values.flatMap(\.keys)).sorted()
         let totalPoints = weeksWithData.compactMap { week -> E1RMPoint? in
             let total = aliases.reduce(0.0) { sum, entry in
@@ -172,10 +171,9 @@ public enum StrengthProgress {
             }
             return total > 0 ? E1RMPoint(weekStart: week, e1rm: total) : nil
         }
-        let powerlifter = totalPoints.isEmpty
-            ? nil
-            : E1RMSeries(exercise: StrengthProgressChartData.powerlifterName, points: totalPoints)
-        return StrengthProgressChartData(series: all, powerlifter: powerlifter)
+        return StrengthProgressChartData(series: fixedSeries + [
+            E1RMSeries(exercise: "Combined", points: totalPoints)
+        ])
     }
 
     private static func normalized(_ value: String) -> String {

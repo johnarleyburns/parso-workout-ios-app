@@ -106,7 +106,9 @@ struct CitationLink: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityID)
-        .accessibilityLabel("Source: \(citation.shortText)")
+        .accessibilityLabel(compact
+                            ? "The Science >, source: \(citation.shortText)"
+                            : "Source: \(citation.shortText)")
     }
 
     private var label: some View {
@@ -122,7 +124,7 @@ struct CitationLink: View {
 
     private var compactLabel: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text("The science")
+            Text("The Science")
                 .font(.caption2).foregroundStyle(.tint)
             Image(systemName: "chevron.forward")
                 .font(.caption2).foregroundStyle(.tint)

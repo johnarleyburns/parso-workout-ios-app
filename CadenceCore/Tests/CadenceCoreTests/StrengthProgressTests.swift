@@ -205,7 +205,7 @@ final class StrengthProgressTests: XCTestCase {
         XCTAssertEqual(series[0].exercise, "Test Squat")
     }
 
-    func testChartDataIncludesPowerlifterTotalAndAllAvailableLifts() {
+    func testChartDataIncludesFixedLiftsAndCombinedTotal() {
         let now = Date()
         let input = StrengthProgressSessionInput(
             date: now.addingTimeInterval(-86_400),
@@ -221,9 +221,34 @@ final class StrengthProgressTests: XCTestCase {
 
         let data = StrengthProgress.chartData(from: [input], now: now)
 
-        XCTAssertEqual(Set(data.exerciseNames), ["Back Squat", "Bench Press", "Deadlift"])
-        XCTAssertEqual(data.powerlifter?.exercise, "Powerlifter")
-        XCTAssertEqual(data.powerlifter?.current ?? 0, 370, accuracy: 0.001)
+        XCTAssertEqual(data.exerciseNames, ["Bench Press", "Squat", "Deadlift", "Combined"])
+        XCTAssertFalse(data.exerciseNames.contains("Powerlifter"))
+        XCTAssertEqual(data.allSeries.last?.exercise, "Combined")
+        XCTAssertEqual(data.allSeries.last?.current ?? 0, 370, accuracy: 0.001)
+    }
+
+    func testChartDataCombinedIsTheSumOfCanonicalLiftValues() {
+        let now = Date()
+        let input = StrengthProgressSessionInput(
+            date: now.addingTimeInterval(-86_400),
+            deleted: false,
+            sets: [
+                StrengthProgressSetInput(exerciseName: "Barbell Bench Press", completedAt: now,
+                                         weightKg: 100, reps: 1, isWarmup: false, isOwnerSet: true),
+                StrengthProgressSetInput(exerciseName: "Squat", completedAt: now,
+                                         weightKg: 140, reps: 1, isWarmup: false, isOwnerSet: true),
+                StrengthProgressSetInput(exerciseName: "Deadlift", completedAt: now,
+                                         weightKg: 180, reps: 1, isWarmup: false, isOwnerSet: true)
+            ])
+
+        let data = StrengthProgress.chartData(from: [input], now: now)
+        let values = Dictionary(uniqueKeysWithValues: data.allSeries.map { ($0.exercise, $0.current) })
+        let expectedCombined = (values["Bench Press"] ?? 0)
+            + (values["Squat"] ?? 0)
+            + (values["Deadlift"] ?? 0)
+        let combined = values["Combined"] ?? 0
+
+        XCTAssertEqual(combined, expectedCombined, accuracy: 0.001)
     }
 
     // MARK: E1RMPoint

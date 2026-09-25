@@ -47,7 +47,9 @@ struct ProgressStrengthChartView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                         Spacer()
-                        Text(Format.weight(series.current, unit: unit, decimals: 0))
+                        Text(series.points.isEmpty
+                             ? "—"
+                             : Format.weight(series.current, unit: unit, decimals: 0))
                             .font(.subheadline.weight(.semibold))
                             .monospacedDigit()
                         trendTag(series.trend, delta: series.delta)
@@ -62,8 +64,6 @@ struct ProgressStrengthChartView: View {
 
     private var liftPicker: some View {
         Menu {
-            toggleButton(StrengthProgressChartData.powerlifterName)
-            if !data.exerciseNames.isEmpty { Divider() }
             ForEach(data.exerciseNames, id: \.self) { name in
                 toggleButton(name)
             }
@@ -79,7 +79,7 @@ struct ProgressStrengthChartView: View {
             .contentShape(Rectangle())
         }
         .accessibilityLabel("Choose lifts to chart")
-        .accessibilityHint("Select Powerlifter, Bench Press, Deadlift, Back Squat, or another exercise")
+        .accessibilityHint("Select Bench Press, Squat, Deadlift, or Combined")
         .accessibilityIdentifier("progress.strength.liftPicker")
     }
 

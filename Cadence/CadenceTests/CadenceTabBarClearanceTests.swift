@@ -7,5 +7,6 @@ final class CadenceTabBarClearanceTests: XCTestCase {
 
         XCTAssertGreaterThan(metrics.nominalHeight, metrics.tabHitTarget)
         XCTAssertGreaterThan(CadenceTabBarClearance.extraBottom, 0)
+        XCTAssertGreaterThan(CadenceTabBarClearance.scrollContentBottom, 0)
     }
 }

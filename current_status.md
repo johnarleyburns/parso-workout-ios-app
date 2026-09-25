@@ -768,6 +768,30 @@ field test, not another simulator run.
 
 ## Execution rules
 
+## Field-testing input — 2026-09-24
+
+The next implementation slice addresses six field findings: add reliable
+scroll-end clearance for This Week and Progress; replace Progress Strength over
+Time's Powerlifter series with Bench Press, Squat, Deadlift, and their Combined
+total; remove the unconditional Progress science banner in favor of contextual
+The Science links; make Settings disclosure-based so its detail is opt-in; and
+make Today → My Workouts completed-workout navigation resolve reliably instead
+of landing on the generic warning surface. Preserve the existing root dock and
+value-only navigation boundaries while adding focused coverage for the core
+strength projection and route/clearance contracts.
+
+Implementation is complete locally. This Week and Progress now add explicit
+scroll-end clearance above the root dock; Progress exposes the four fixed
+strength series and only contextual citation links; Settings uses collapsed
+DisclosureGroups for optional detail; and completed workout destinations resolve
+their SwiftData records in the destination view. Core tests (1847), the generic
+iOS app build, `git diff --check`, and all non-simulator guardrails pass. The
+updated iPhone smoke contract now taps a completed My Workouts row and verifies
+that its summary opens and returns to Today. Per the repository workflow,
+simulator execution was not completed because it requires an explicit user
+request; the attempted smoke build was canceled promptly when that constraint
+was clarified.
+
 - Implement in phase and dependency order unless the spec explicitly identifies
   an independent work stream.
 - Begin each work stream with a gap test against the shipped code; do not recreate

@@ -57,6 +57,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
                           "iPad Home did not expose Settings tab")
             // Settings is a lazy Form on iPad; use the helper that swipes before
             // resolving the row so the identifier can materialize off-screen.
+            XCTAssertTrue(app.scrollToAndTapButton("settings.section.transparency", maxSwipes: 20),
+                          "iPad Settings did not expose Transparency & Control section")
             XCTAssertTrue(app.scrollToAndTapButton("settings.transparency", maxSwipes: 20),
                           "iPad Settings did not expose Transparency & Control")
             XCTAssertTrue(app.navigationBars["Transparency & Control"].waitForExistence(timeout: 10),
@@ -66,6 +68,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
 
         XCTAssertTrue(app.buttons["tab.settings"].waitTap(timeout: 10),
                       "Settings tab did not open")
+        for section in ["settings.section.coach", "settings.section.exercises",
+                        "settings.section.data", "settings.section.transparency",
+                        "settings.section.support"] {
+            XCTAssertTrue(app.scrollToAndTapButton(section, maxSwipes: 20),
+                          "Settings did not expose (section)")
+        }
         for identifier in ["settings.savedWorkouts", "settings.customExercises",
                            "settings.excludedExercises", "settings.coach.insights",
                            "settings.coach.about", "settings.coach.methodology", "settings.coachUpdates",
@@ -288,7 +296,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // Field test 2026-08-18 #10: at most one science row per coach output.
         // The bug rendered one row per *citation*, typically 6+.
         let science = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH 'The science'"))
+            .matching(NSPredicate(format: "label BEGINSWITH[c] 'The science'"))
         XCTAssertLessThanOrEqual(science.count, 3,
                                  "Coach surfaces render a separate science row per citation again")
 
@@ -692,6 +700,11 @@ final class SmokeLaunchTests: CadenceUITestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH 'home.today.row.'")).firstMatch
         XCTAssertTrue(todayRow.waitForExistence(timeout: 10),
                       "Completed workout did not appear in My Workouts")
+        todayRow.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["summary.title"].waitForExistence(timeout: 10),
+                      "Tapping a completed My Workouts row opened the warning surface instead of its summary")
+        XCTAssertTrue(app.buttons["summary.back"].waitTap(timeout: 5),
+                      "Completed My Workouts summary did not return to Today")
 
         // This Week no longer duplicates History. The canonical History surface
         // remains reachable from Progress, while Muscle Group Volume keeps the

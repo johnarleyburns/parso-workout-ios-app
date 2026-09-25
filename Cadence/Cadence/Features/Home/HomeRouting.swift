@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 
@@ -63,6 +64,45 @@ struct MissingWorkoutRouteView: View {
             "Workout unavailable",
             systemImage: "exclamationmark.triangle",
             description: Text("This workout is no longer available in local history. Return and try another workout."))
+    }
+}
+
+/// Resolves history routes in the destination's own SwiftData query. Home's
+/// compact My Workouts rows are prepared asynchronously, and resolving a tap
+/// against that parent snapshot could briefly produce the generic unavailable
+/// surface even though the tapped record was present in the store.
+struct HomeHistoryDestinationView: View {
+    let route: HistorySummaryRoute
+    @Binding var path: NavigationPath
+
+    @Query(sort: \WorkoutSession.date, order: .reverse)
+    private var sessions: [WorkoutSession]
+    @Query(sort: \CardioWorkout.start, order: .reverse)
+    private var cardio: [CardioWorkout]
+
+    var body: some View {
+        switch route {
+        case .strength(let id):
+            if let session = sessions.first(where: { $0.id == id }) {
+                WorkoutSummaryView(
+                    data: .from(session: session),
+                    onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) })
+            } else {
+                MissingWorkoutRouteView()
+            }
+        case .strengthFocused(let id, let exerciseID):
+            if let session = sessions.first(where: { $0.id == id }) {
+                SessionView(session: session, initiallyExpandedExerciseID: exerciseID)
+            } else {
+                MissingWorkoutRouteView()
+            }
+        case .cardio(let id):
+            if let workout = cardio.first(where: { $0.id == id }) {
+                CardioDetailView(workout: workout)
+            } else {
+                MissingWorkoutRouteView()
+            }
+        }
     }
 }
 

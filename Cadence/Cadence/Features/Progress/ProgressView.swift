@@ -53,9 +53,14 @@ struct TrainingProgressView: View {
                                 detailContent: { question in
                                     progressQuestionContent(for: question)
                                 })
-                            scienceBanner
                         }
                         .padding()
+                        // RootTabView reserves the glass dock's measured safe
+                        // area. This explicit content tail keeps the last
+                        // Progress card scrollable above that dock even when
+                        // the nested NavigationStack does not propagate the
+                        // inset into its ScrollView content.
+                        .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
                     }
                 }
             }
@@ -130,11 +135,7 @@ struct TrainingProgressView: View {
         preparedStrengthData = prepared.strength
         preparedPREvents = prepared.prEvents
         if !didInitializeStrengthSelection {
-            let defaults = Set(prepared.strength.exerciseNames.filter {
-                ["Bench Press", "Deadlift", "Back Squat"].contains($0)
-            })
-            selectedStrengthNames = defaults.union(
-                prepared.strength.powerlifter.map { [$0.exercise] } ?? [])
+            selectedStrengthNames = Set(prepared.strength.exerciseNames)
             didInitializeStrengthSelection = true
         }
         // The slower insight facts are prepared once per history snapshot. The
@@ -206,21 +207,7 @@ struct TrainingProgressView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    // MARK: - §1 Science banner
-
-    private var scienceBanner: some View {
-        HStack(alignment: .top, spacing: 9) {
-            Image(systemName: "flask").foregroundStyle(.tint)
-            Text("Every reading is tied to a study. Changes within measurement noise are shown as \u{201C}no change,\u{201D} not progress.")
-                .font(.caption).foregroundStyle(.tint)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: RoundedRectangle(cornerRadius: 13, style: .continuous), tint: .blue)
-        .accessibilityIdentifier("progress.scienceBanner")
-    }
-
-    // MARK: - §2 Strength over time
+    // MARK: - Strength over time
 
     @ViewBuilder private var strengthCard: some View {
         card(title: "Strength over time", subtitle: "estimated 1RM \u{00b7} last 12 weeks",

@@ -8,28 +8,7 @@ extension HomeView {
     func homeNavigationDestinations<Content: View>(_ content: Content) -> some View {
         content
             .navigationDestination(for: HistorySummaryRoute.self) { route in
-                switch route {
-                case .strength(let id):
-                    if let session = sessions.first(where: { $0.id == id }) {
-                        WorkoutSummaryView(
-                            data: .from(session: session),
-                            onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) })
-                    } else {
-                        MissingWorkoutRouteView()
-                    }
-                case .strengthFocused(let id, let exerciseID):
-                    if let session = sessions.first(where: { $0.id == id }) {
-                        SessionView(session: session, initiallyExpandedExerciseID: exerciseID)
-                    } else {
-                        MissingWorkoutRouteView()
-                    }
-                case .cardio(let id):
-                    if let workout = cardio.first(where: { $0.id == id }) {
-                        CardioDetailView(workout: workout)
-                    } else {
-                        MissingWorkoutRouteView()
-                    }
-                }
+                HomeHistoryDestinationView(route: route, path: pathBinding)
             }
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {

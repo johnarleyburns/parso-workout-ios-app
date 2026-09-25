@@ -108,7 +108,7 @@ extension ExercisePickerView {
 
     // MARK: Rows
 
-    func exerciseRow(_ ex: Exercise) -> some View {
+    func exerciseRow(_ ex: ExerciseCatalogEntry) -> some View {
         NavigationLink(value: ExercisePickerView.ExerciseDetailRoute.exercise(ex.id)) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -136,11 +136,16 @@ extension ExercisePickerView {
         .accessibilityIdentifier("picker.row.\(ex.name)")
     }
 
-    func muscleSubtitle(_ ex: Exercise) -> String? {
-        let ids = ex.primaryMuscles.isEmpty ? ex.muscleGroups : ex.primaryMuscles
-        let groups = MuscleGroup.canonicalize(ids)
-        guard !groups.isEmpty else { return nil }
-        return groups.prefix(3).map(\.displayName).joined(separator: ", ")
+    func muscleSubtitle(_ ex: ExerciseCatalogEntry) -> String? {
+        guard !ex.summaryMuscleGroups.isEmpty else { return nil }
+        return ex.summaryMuscleGroups.map(\.displayName).joined(separator: ", ")
+    }
+
+    /// Rows are catalog values; the stored exercise is read only when picked.
+    func pick(_ entry: ExerciseCatalogEntry) {
+        guard let exercise = ExerciseCatalogSnapshot.exercise(id: entry.id, in: context) else { return }
+        onPick(exercise)
+        dismiss()
     }
 
     func create() {
@@ -221,12 +226,6 @@ extension ExercisePickerView {
                     selectedCreationMuscles = []
                 }
             }
-        }
-    }
-
-    func loadRecents() {
-        if let r = try? WorkoutRepository.recentlyUsedExercises(context) {
-            recents = r
         }
     }
 }

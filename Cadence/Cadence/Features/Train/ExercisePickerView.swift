@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 struct ExercisePickerView: View {
     enum PickAction: Equatable {
@@ -37,20 +38,22 @@ struct ExercisePickerView: View {
     @Environment(\.modelContext) var context
     @Environment(\.dismiss) var dismiss
     @Environment(AppModel.self) var appModel
-    @Query(sort: \Exercise.name) var exercises: [Exercise]
+    /// One row, used only to notice catalog changes. The picker used to query
+    /// and index all ~900 exercises on the main thread as it opened, and
+    /// re-walk them on every redraw (once a second during a live workout).
+    @Query(ExerciseCatalogSnapshot.changeSignalDescriptor) var newestExercise: [Exercise]
     @State var query = ""
+    /// The catalog and its indexes, built on a background context.
+    @State var search = ExercisePickerSearch.empty
     /// The snapshot of everything a query implies — results, exact-match flag and
     /// the "good match" suggestion — recomputed only when the debounced query
     /// changes, never on a redraw (field test 2026-08-19 #4).
-    @State var search = ExercisePickerSearch()
     @State var outcome = ExercisePickerSearch.Outcome.empty
-    @State var facetIndex = ExerciseFacetIndex<Exercise>([])
     @State var selectedTab: PickerTab = .browse
     @State var selectedGroup: MuscleGroup?
     @State var selectedEquipment: Equipment?
     @State var browseMode: BrowseMode = .byMuscleGroup
     @State var browseAll = false
-    @State var recents: [Exercise] = []
     @State var showCreationSheet = false
     @State var selectedCreationCategory: ExerciseCategory = .other
     @State var selectedCreationMuscles: Set<String> = []
@@ -67,29 +70,28 @@ struct ExercisePickerView: View {
 
     var trimmedQuery: String { outcome.query }
 
-    var exerciseCatalogRevision: Date {
-        exercises.map(\.updatedAt).max() ?? .distantPast
-    }
+    var catalog: ExerciseCatalogSnapshot { search.catalog }
+    var facetIndex: ExerciseFacetIndex<ExerciseCatalogEntry> { catalog.facets }
 
     var searchedPrimaryGroup: MuscleGroup? {
         ExerciseSearch.primaryMuscleGroup(matching: trimmedQuery)
     }
 
-    var popular: [Exercise] { search.popular }
+    var popular: [ExerciseCatalogEntry] { search.popular }
 
-    var filtered: [Exercise] {
+    var filtered: [ExerciseCatalogEntry] {
         if !trimmedQuery.isEmpty { return outcome.results }
         switch selectedTab {
-        case .recents: return recents
-        case .popular: return browseAll ? exercises : popular
+        case .recents: return catalog.recent
+        case .popular: return browseAll ? catalog.entries : popular
         case .browse:
             switch browseMode {
             case .byMuscleGroup:
                 if let group = selectedGroup { return facetIndex.exercises(for: group, equipment: selectedEquipment) }
-                return exercises
+                return catalog.entries
             case .byEquipment:
                 if let eq = selectedEquipment { return facetIndex.exercises(forEquipment: eq, group: selectedGroup) }
-                return exercises
+                return catalog.entries
             }
         }
     }
@@ -117,13 +119,7 @@ struct ExercisePickerView: View {
         }
     }
 
-    func rebuildIndexIfNeeded() {
-        guard search.rebuildIfNeeded(exercises) else { return }
-        facetIndex = ExerciseFacetIndex(exercises)
-        if !query.isEmpty { outcome = search.outcome(for: query) }
-    }
-
-    func primaryFocusLabel(_ ex: Exercise) -> String? {
+    func primaryFocusLabel(_ ex: ExerciseCatalogEntry) -> String? {
         let group = searchedPrimaryGroup ?? ex.primaryMuscleGroups.first
         guard let group else { return nil }
         let percent = ExerciseSearch.primaryFocusPercent(primaryMuscles: ex.primaryMuscleGroups,
@@ -132,17 +128,9 @@ struct ExercisePickerView: View {
         return group.displayName + " primary focus " + String(percent) + "%"
     }
 
-    var grouped: [(ExerciseCategory, [Exercise])] {
-        let dict = Dictionary(grouping: filtered) { $0.categoryValue ?? .other }
-        return ExerciseCategory.allCases.compactMap { cat in
-            guard let items = dict[cat], !items.isEmpty else { return nil }
-            return (cat, items.sorted { $0.name < $1.name })
-        }
-    }
-
     var exactMatchExists: Bool { outcome.exactMatch }
 
-    var bestLibraryMatch: Exercise? { outcome.bestMatch }
+    var bestLibraryMatch: ExerciseCatalogEntry? { outcome.bestMatch }
 
     var showsGrouped: Bool {
         selectedTab == .browse && trimmedQuery.isEmpty && selectedGroup == nil && selectedEquipment == nil
@@ -188,7 +176,7 @@ struct ExercisePickerView: View {
     @ViewBuilder
     var body: some View {
         if action == .swap, let source {
-            ExerciseSwapView(source: source, exercises: exercises, onPick: onPick)
+            ExerciseSwapView(source: source, onPick: onPick)
         } else {
             standardBody
         }
@@ -207,6 +195,16 @@ struct ExercisePickerView: View {
                 .padding(.vertical, 8)
 
                 List {
+                    if !catalog.isLoaded {
+                        Section {
+                            HStack(spacing: 8) {
+                                ProgressView()
+                                Text("Loading exercises…").foregroundStyle(.secondary)
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityIdentifier("picker.loading")
+                        }
+                    }
                     if showsFilterChips {
                         browseModePicker
                         filterChips
@@ -236,24 +234,23 @@ struct ExercisePickerView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Button("Use this exercise") {
-                                    onPick(match)
-                                    dismiss()
-                                }
+                                Button("Use this exercise") { pick(match) }
                                 .buttonStyle(.bordered).controlSize(.small)
                             }
                         }
                     }
 
-                    if selectedTab == .recents, trimmedQuery.isEmpty, recents.isEmpty {
+                    if selectedTab == .recents, trimmedQuery.isEmpty, catalog.isLoaded, catalog.recent.isEmpty {
                         Section {
                             ContentUnavailableView("No recent exercises",
                                                    systemImage: "clock.arrow.circlepath",
                                                    description: Text("Log a workout to see exercises here."))
                         }
                     } else if showsGrouped {
-                        ForEach(grouped, id: \.0) { cat, items in
-                            Section(cat.displayName) { ForEach(items) { exerciseRow($0) } }
+                        // Precomputed with the catalog; it used to be regrouped
+                        // and re-sorted on every redraw.
+                        ForEach(catalog.categorySections) { section in
+                            Section(section.category.displayName) { ForEach(section.entries) { exerciseRow($0) } }
                         }
                     } else {
                         Section(sectionTitle) { ForEach(filtered) { exerciseRow($0) } }
@@ -276,7 +273,7 @@ struct ExercisePickerView: View {
             .navigationDestination(for: ExerciseDetailRoute.self) { route in
                 switch route {
                 case .exercise(let id):
-                    if let exercise = exercises.first(where: { $0.id == id }) {
+                    if let exercise = ExerciseCatalogSnapshot.exercise(id: id, in: context) {
                         ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
                             onPick(picked)
                             dismiss()
@@ -296,16 +293,16 @@ struct ExercisePickerView: View {
             }
         }
         .accessibilityIdentifier("picker.search")
-        .onAppear {
-            rebuildIndexIfNeeded()
-            loadRecents()
+        .task(id: newestExercise.first?.updatedAt) {
+            search = await ExercisePickerSearch.load(from: context.container)
+            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                outcome = search.outcome(for: query)
+            }
         }
-        .onChange(of: exerciseCatalogRevision) { _, _ in rebuildIndexIfNeeded() }
         .onChange(of: selectedGroup) { _, _ in selectedEquipment = nil }
         .onChange(of: selectedTab) { _, newTab in
             if newTab == .browse { selectedEquipment = nil; selectedGroup = nil }
             if newTab != .browse { selectedGroup = nil; selectedEquipment = nil }
-            if newTab == .recents { loadRecents() }
         }
         .onChange(of: browseMode) { _, _ in selectedEquipment = nil; selectedGroup = nil }
         .task(id: query) {
@@ -314,8 +311,9 @@ struct ExercisePickerView: View {
                 return
             }
             try? await Task.sleep(nanoseconds: 120_000_000)
-            guard !Task.isCancelled else { return }
-            rebuildIndexIfNeeded()
+            // Before the catalog loads there is nothing to rank; the load
+            // computes the outcome for the current query when it finishes.
+            guard !Task.isCancelled, catalog.isLoaded else { return }
             outcome = search.outcome(for: query)
         }
         .sheet(isPresented: $showCreationSheet) { creationSheet }

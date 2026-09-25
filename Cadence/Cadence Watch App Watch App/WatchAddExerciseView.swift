@@ -1,21 +1,23 @@
 import SwiftUI
 import SwiftData
-import ImageIO
 import CadenceCore
 import CadenceFeatures
 
 struct WatchAddExerciseView: View {
     let model: WatchStrengthFlowModel
     @Environment(\.modelContext) private var context
-    @Query(sort: \Exercise.name) private var exercises: [Exercise]
-    @State private var recent: [Exercise] = []
+    /// One row, used only to notice catalog changes. The screen used to query
+    /// all ~900 exercises on the main thread on open and on every save, then
+    /// walk them per render for category lists.
+    @Query(ExerciseCatalogSnapshot.changeSignalDescriptor) private var newestExercise: [Exercise]
+    /// Built on a background context; see `ExerciseCatalogSnapshot`.
+    @State private var catalog = ExerciseCatalogSnapshot.empty
     @State private var selectedGroup: MuscleGroup?
     @State private var showingRecent = false
     @State private var selectedExercise: Exercise?
     @State private var showingDetail = false
     @State private var query = ""
-    @State private var searchIndex = ExerciseSearchIndex<Exercise>([])
-    @State private var searchResults: [Exercise] = []
+    @State private var searchResults: [ExerciseCatalogEntry] = []
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
     @State private var showingCustomExercise = false
@@ -25,7 +27,6 @@ struct WatchAddExerciseView: View {
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
-        _exercises = Query(sort: \Exercise.name)
     }
 
     var body: some View {
@@ -39,7 +40,12 @@ struct WatchAddExerciseView: View {
             }
         }
         .navigationTitle(showingCustomExercise ? "Custom Exercise" : selectedExercise?.name ?? selectedGroup?.displayName ?? "Add Exercise")
-        .task { loadRecent() }
+        .task(id: newestExercise.first?.updatedAt) {
+            catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 12)
+            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                scheduleSearch(immediate: true)
+            }
+        }
         .onChange(of: query) { _, _ in
             scheduleSearch()
         }
@@ -77,7 +83,7 @@ struct WatchAddExerciseView: View {
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("watchAddExercise.noMatches")
                     case .matches:
-                        ForEach(searchResults, id: \.persistentModelID) { exercise in
+                        ForEach(searchResults) { exercise in
                             exerciseButton(exercise)
                         }
                     case .empty:
@@ -98,10 +104,12 @@ struct WatchAddExerciseView: View {
                     .buttonStyle(.plain)
                 }
                 Section(selectedGroup.displayName) {
-                    ForEach(WatchExerciseSelection.fullList(for: selectedGroup, exercises: exercises), id: \.self) { name in
-                        if let exercise = exercise(named: name) {
+                    if catalog.isLoaded {
+                        ForEach(catalog.entries(in: selectedGroup)) { exercise in
                             exerciseButton(exercise)
                         }
+                    } else {
+                        loadingRow
                     }
                 }
             } else if showingRecent {
@@ -113,7 +121,7 @@ struct WatchAddExerciseView: View {
                     .buttonStyle(.plain)
                 }
                 Section("My Last Exercises") {
-                    ForEach(recent, id: \.persistentModelID) { exercise in
+                    ForEach(catalog.recent) { exercise in
                         exerciseButton(exercise)
                     }
                 }
@@ -124,7 +132,7 @@ struct WatchAddExerciseView: View {
                             .accessibilityIdentifier("watchAddExercise.search")
                         customExerciseButton
                     }
-                    if !recent.isEmpty {
+                    if !catalog.recent.isEmpty {
                         Button {
                             WatchHaptics.tap()
                             showingRecent = true
@@ -160,6 +168,18 @@ struct WatchAddExerciseView: View {
         if let selectedGroup { return "group.\(selectedGroup.rawValue)" }
         if showingRecent { return "recent" }
         return "categories"
+    }
+
+    private var loadingRow: some View {
+        HStack {
+            ProgressView()
+                .controlSize(.mini)
+            Text("Loading exercises")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("watchAddExercise.loading")
     }
 
     private var watchCategoryOrder: [MuscleGroup] {
@@ -253,7 +273,7 @@ struct WatchAddExerciseView: View {
         if showingDetail {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
-                    detailContent(exercise)
+                    WatchExerciseDetailContent(exercise: exercise)
                     quickActions(exercise)
                 }
                 .padding()
@@ -267,30 +287,6 @@ struct WatchAddExerciseView: View {
                     .padding(.horizontal)
             }
         }
-    }
-
-    @ViewBuilder
-    private func detailContent(_ exercise: Exercise) -> some View {
-                let imageURLs = ExerciseLibrary.imageURLs(forImageName: exercise.imageName)
-                if !imageURLs.isEmpty {
-                    ForEach(imageURLs, id: \.self) { url in
-                        exerciseImage(url)
-                    }
-                }
-
-                if !exercise.instructions.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(exercise.instructions.prefix(4).enumerated()), id: \.offset) { index, step in
-                            Text("\(index + 1). \(step)")
-                                .font(.caption2)
-                        }
-                    }
-                } else {
-                    Text(exercise.displayFacetTags.prefix(3).joined(separator: " "))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
     }
 
     private func quickActions(_ exercise: Exercise) -> some View {
@@ -329,46 +325,17 @@ struct WatchAddExerciseView: View {
         }
     }
 
-    private func exerciseButton(_ exercise: Exercise) -> some View {
+    /// Rows are plain values; the stored exercise is read only when tapped.
+    private func exerciseButton(_ exercise: ExerciseCatalogEntry) -> some View {
         Button {
             WatchHaptics.tap()
-            selectedExercise = exercise
+            selectedExercise = ExerciseCatalogSnapshot.exercise(id: exercise.id, in: context)
         } label: {
             Text(exercise.name)
                 .lineLimit(2)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("watchAddExercise.row.\(exercise.name)")
-    }
-
-    @ViewBuilder
-    private func exerciseImage(_ url: URL) -> some View {
-        if let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-           let image = CGImageSourceCreateImageAtIndex(source, 0, nil) {
-            Image(decorative: image, scale: 1, orientation: .up)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-        } else {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(.secondary.opacity(0.18))
-                .frame(height: 96)
-                .overlay {
-                    Image(systemName: "photo")
-                        .foregroundStyle(.secondary)
-                }
-        }
-    }
-
-    private func exercise(named name: String) -> Exercise? {
-        exercises.first {
-            $0.name.compare(name, options: .caseInsensitive) == .orderedSame
-        }
-    }
-
-    private func loadRecent() {
-        recent = (try? WorkoutRepository.recentlyUsedExercises(context, limit: 12)) ?? []
     }
 
     private func scheduleSearch(immediate: Bool = false) {
@@ -382,16 +349,19 @@ struct WatchAddExerciseView: View {
 
         isSearching = true
         searchResults = []
+        // Stays "Searching" until the catalog has loaded; the load reruns this.
+        guard catalog.isLoaded else { return }
+        let snapshot = catalog
         searchTask = Task { @MainActor in
             if !immediate {
                 try? await Task.sleep(for: .milliseconds(120))
             }
             guard !Task.isCancelled else { return }
-            if searchIndex.count != exercises.count {
-                searchIndex = ExerciseSearchIndex(exercises)
-            }
-            let matches = Array(searchIndex.rank(trimmed).prefix(8))
-            guard query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
+            let matches = await Task.detached(priority: .userInitiated) {
+                snapshot.search(trimmed, limit: 8)
+            }.value
+            guard !Task.isCancelled,
+                  query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
             searchResults = matches
             isSearching = false
         }

@@ -83,7 +83,8 @@ public final class WatchStrengthFlowModel {
     /// path never refetches the full exercise table (~900 seeded rows — the
     /// dominant per-tap cost on the watch CPU). `findOrCreateExercise` is only
     /// hit on a cache miss (custom exercises, first-seen names).
-    private var exerciseCache: [String: Exercise]?
+    /// Exercises resolved by exact name during this workout.
+    private var exerciseCache: [String: Exercise] = [:]
 
     /// Prior sets are memoized per exercise + lifter. Partner histories must not
     /// reuse the owner's cache entry or all lifters appear lumped together.
@@ -108,7 +109,7 @@ public final class WatchStrengthFlowModel {
                       initialPartnerNames: [String] = [],
                       createSession: Bool = false) {
         priorSetsByExerciseAndPerformer.removeAll()
-        exerciseCache = nil
+        exerciseCache = [:]
         self.planPayload = planPayload
         let payloadStrength = planPayload?.strength
         let effectiveNames = plannedExerciseNames.isEmpty
@@ -170,17 +171,19 @@ public final class WatchStrengthFlowModel {
     private func exercise(named name: String) -> Exercise? {
         let key = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return nil }
-        if exerciseCache == nil {
-            exerciseCache = Dictionary(
-                ((try? WorkoutRepository.allExercises(context)) ?? []).map { ($0.name, $0) },
-                uniquingKeysWith: { first, _ in first }
-            )
+        if let cached = exerciseCache[key] { return cached }
+        // One exact-name row. The first lookup of every workout used to load
+        // the whole ~900-exercise catalog on the Watch's main thread.
+        var exact = FetchDescriptor<Exercise>(predicate: #Predicate { $0.name == key })
+        exact.fetchLimit = 1
+        if let match = try? context.fetch(exact).first {
+            exerciseCache[key] = match
+            return match
         }
-        if let cached = exerciseCache?[key] { return cached }
         guard let resolved = try? WorkoutRepository.findOrCreateExercise(named: key, in: context) else {
             return nil
         }
-        exerciseCache?[resolved.name] = resolved
+        exerciseCache[resolved.name] = resolved
         return resolved
     }
 
@@ -229,7 +232,7 @@ public final class WatchStrengthFlowModel {
             primaryMuscles: WatchCustomExerciseDefinition.primaryMuscles(for: muscleGroups),
             in: context
         ) else { return nil }
-        exerciseCache?[exercise.name] = exercise
+        exerciseCache[exercise.name] = exercise
         addResolvedExercise(exercise)
         return exercise
     }

@@ -112,7 +112,7 @@ public enum ExerciseSearch {
 /// no keyword decoding, no regex on the hot path. Build it once from the loaded
 /// catalog and reuse across keystrokes (fixes the "extremely slow/jerky" search).
 public struct ExerciseSearchIndex<T: ExerciseSearchable> {
-    private struct Indexed {
+    fileprivate struct Indexed {
         let item: T
         let name: String
         let keywords: [String]
@@ -180,5 +180,10 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
         }.map(\.0.item)
     }
 }
+
+/// An index over value snapshots can be built off the main actor and handed
+/// back to the UI; an index over `@Model` rows stays where it was built.
+extension ExerciseSearchIndex: Sendable where T: Sendable {}
+extension ExerciseSearchIndex.Indexed: Sendable where T: Sendable {}
 
 extension Exercise: ExerciseSearchable {}

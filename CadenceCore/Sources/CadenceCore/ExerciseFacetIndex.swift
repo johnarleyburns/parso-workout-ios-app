@@ -79,4 +79,7 @@ public struct ExerciseFacetIndex<T: EquipmentClassifiable> {
     }
 }
 
+/// Built off the main actor over value snapshots (see `ExerciseCatalogSnapshot`).
+extension ExerciseFacetIndex: Sendable where T: Sendable {}
+
 extension Exercise: EquipmentClassifiable {}

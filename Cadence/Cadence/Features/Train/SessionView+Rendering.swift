@@ -7,6 +7,7 @@ extension SessionView {
     @ViewBuilder
     var scrollContent: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
+            sessionTitleHeader
             if isActiveSession {
                 LiveWorkoutVolumeSummary(state: liveVolumeState,
                                          expanded: $liveVolumeExpanded,
@@ -90,7 +91,7 @@ extension SessionView {
                     scrollTarget = nil
                 }
         }
-        .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {
             if active.strengthSession?.id == session.id {
@@ -102,7 +103,12 @@ extension SessionView {
         }
         .toolbar { toolbarContent }
         .overlay(alignment: .top) {
-            if healthSaved {
+            if let prMoment {
+                prMomentCard(prMoment)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .zIndex(2)
+            } else if healthSaved {
                 Text("Saved to Apple Health")
                     .font(.caption).padding(8)
                     .cadenceGlass(in: Capsule(), fallback: .thinMaterial)
@@ -197,12 +203,26 @@ extension SessionView {
         .sheet(isPresented: $showWeightInfo) { weightInfoSheet }
         .sheet(isPresented: $showDumbbellInfo) { dumbbellInfoSheet }
         .sheet(isPresented: $showKettlebellInfo) { kettlebellInfoSheet }
+        .sheet(isPresented: $workoutSettingsPresented, onDismiss: {
+            settings.lastStrengthSettings = workoutSettings
+        }) {
+            WorkoutSettingsSheet(
+                warmupMinutes: $workoutSettings.warmupMinutes,
+                cooldownMinutes: $workoutSettings.cooldownMinutes,
+                restSeconds: $workoutSettings.restSeconds,
+                autoStartRest: $workoutSettings.autoStartRest,
+                preWorkoutCountdown: $workoutSettings.preWorkoutCountdown,
+                autoEndOnIdle: $workoutSettings.autoEndOnIdle,
+                idleTimeoutMinutes: $workoutSettings.idleTimeoutMinutes,
+                plateRounding: $workoutSettings.plateRounding,
+                useHR: $workoutSettings.useHRMonitoring)
+        }
         .alert("Couldn't suggest an exercise", isPresented: $suggestExerciseFailed) {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Exercise data could not be read. Try again after the catalog finishes loading.")
         }
-        .fullScreenCover(item: $setEditorRoute) { _ in
+        .sheet(item: $setEditorRoute) { _ in
             if let cfg = inlineEditorConfig(), let ex = inlineExercise {
                 InlineSetEditorView(config: cfg,
                                     wouldBePR: { [cache] kg, reps in cache.state.wouldBePR(weightKg: kg, reps: reps, isWarmup: false, rule: settings.prRule, formula: settings.formula, for: ex.id) },
@@ -248,8 +268,7 @@ extension SessionView {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            recordActivity()
+            if phase == .active { recordActivity() }
         }
         .alert("Still training?", isPresented: $idlePromptShown) {
             Button("Keep going") { recordActivity() }
@@ -313,85 +332,6 @@ extension SessionView {
             }
             Button("Cancel", role: .cancel) { exerciseToRemove = nil }
         }
-    }
-
-    @ViewBuilder
-    func exerciseCardView(for ctx: SessionRenderModel.ExerciseContext) -> some View {
-        let isActive = inlineExerciseID == ctx.exerciseID
-        let exercise = exerciseForID(ctx.exerciseID)
-
-        ExerciseCardView(
-            context: ctx,
-            prSetIDs: cache.state.prSetIDs,
-            roster: rosterEntries,
-            hasPartners: hasPartners,
-            unit: settings.unit,
-            prRule: settings.prRule,
-            prescriptionText: exercise.map { prescription(for: $0.name) } ?? nil,
-            isExpanded: expandedExerciseID == ctx.exerciseID,
-            isCurrent: inlineExerciseID == ctx.exerciseID,
-            compactSummary: compactSummary(for: ctx),
-            onToggleExpansion: {
-                if reduceMotion {
-                    expandedExerciseID = expandedExerciseID == ctx.exerciseID ? nil : ctx.exerciseID
-                } else { withAnimation(.easeInOut(duration: 0.18)) {
-                    expandedExerciseID = expandedExerciseID == ctx.exerciseID ? nil : ctx.exerciseID
-                } }
-            },
-            isInlineActive: isActive,
-            inlineEditingSetID: inlineEditingSetID,
-            inlineConfig: isActive ? inlineEditorConfig() : nil,
-            wouldBePR: { [cache] kg, reps in
-                cache.state.wouldBePR(weightKg: kg, reps: reps, isWarmup: false,
-                                      rule: settings.prRule, formula: settings.formula,
-                                      for: ctx.exerciseID)
-            },
-            onTapSet: { set in
-                expandedExerciseID = ctx.exerciseID
-                guard let ex = exerciseForID(ctx.exerciseID) else { return }
-                openInlineEditor(for: ex, editingSetID: set.setID)
-            },
-            onTapPending: { pending in
-                expandedExerciseID = ctx.exerciseID
-                guard let ex = exerciseForID(ctx.exerciseID) else { return }
-                openInlineEditor(for: ex, repsOverride: pending.targetReps, performerID: pending.performerID)
-            },
-            onRepeat: {
-                guard let ex = exerciseForID(ctx.exerciseID) else { return }
-                let sets = session.orderedSets.filter { $0.exercise?.id == ex.id }
-                if let last = sets.last(where: {
-                    if let next = nextPerson(for: ex) { return setPerformedBy($0, person: next) }
-                    return $0.isOwnerSet
-                }) ?? sets.last {
-                    addSet(to: ex, weightKg: last.weight, reps: last.reps, rpe: last.rpe,
-                           isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight,
-                           note: nil, performedBy: nextPerson(for: ex))
-                }
-            },
-            onAddSet: {
-                guard let ex = exerciseForID(ctx.exerciseID) else { return }
-                openInlineEditor(for: ex)
-            },
-            onChangeExercise: {
-                if let ex = exerciseForID(ctx.exerciseID) { swapTarget = .logged(exerciseID: ex.id) }
-            },
-            onRemoveExercise: {
-                if let ex = exerciseForID(ctx.exerciseID) { exerciseToRemove = ex }
-            },
-            exercise: exerciseForID(ctx.exerciseID),
-            onSaveSet: { draft in
-                guard let ex = exerciseForID(ctx.exerciseID) else { return }
-                recordInlineSet(for: ex, draft: draft)
-            },
-            onDeleteEditingSet: { deleteInlineSet() },
-            onDeleteSet: { set in
-                guard let entry = session.orderedSets.first(where: { $0.id == set.setID }) else { return }
-                try? WorkoutRepository.deleteSet(entry, in: context)
-                recordActivity()
-            },
-            onCancelInline: { closeInlineEditor() },
-            onActivity: { recordActivity() }
-        )
     }
 
     func compactSummary(for ctx: SessionRenderModel.ExerciseContext) -> String {

@@ -281,20 +281,22 @@ extension SessionView {
 
     private func weightSourceText(for basis: PerformerSetPlanner.WeightBasis,
                                   performerID: UUID?, exerciseName: String) -> String? {
-        let performer = performerID.flatMap(people(for:))?.name ?? "your"
+        let performer = performerID.flatMap(people(for:))?.name
         switch basis {
         case .explicitPlan:
-            return performerID == nil ? "From your workout plan" : "From \(performer)'s workout plan"
+            return performerID == nil ? "From your workout plan" : "From \(performer ?? "your")'s workout plan"
         case .ownerPlan:
             return "From the workout plan"
         case .currentSession:
             return "Same load as your previous set today"
         case .exactHistory:
-            return "Matched \(performer)'s previous \(exerciseName) set · exact historical load"
+            let subject = performer ?? "your"
+            return "Matched \(subject)'s previous \(exerciseName) set · exact historical load"
         case .estimatedHistory:
-            return "Estimated from \(performer)'s previous \(exerciseName) sets · rounded to a loadable increment"
+            return WeightSuggestionCopy.source(performerName: performer, exercise: exerciseName)
         case .priorHistory:
-            return "From \(performer)'s previous \(exerciseName) history · exact historical load"
+            let subject = performer ?? "your"
+            return "From \(subject)'s previous \(exerciseName) history · exact historical load"
         case .none:
             return nil
         }

@@ -31,7 +31,7 @@ struct ExerciseProgressView: View {
                             LineMark(
                                 x: .value("Date", point.date),
                                 y: .value(settings.prRule.displayName, displayValue(point.value)))
-                                .interpolationMethod(.catmullRom)
+                                .interpolationMethod(.linear)
                             PointMark(
                                 x: .value("Date", point.date),
                                 y: .value(settings.prRule.displayName, displayValue(point.value)))

@@ -3,22 +3,6 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-struct CadenceDockMetrics: Equatable {
-    let outerHorizontalPadding: CGFloat = 12
-    let outerVerticalPadding: CGFloat = 4
-    let barHorizontalPadding: CGFloat = 6
-    let barVerticalPadding: CGFloat = 9
-    let cornerRadius: CGFloat = 26
-    let tabHitTarget: CGFloat = 44
-
-    /// Nominal clearance for documentation and layout tests. The actual
-    /// safeAreaInset reserves the measured dock height, which can grow for
-    /// Dynamic Type without clipping the root content.
-    var nominalHeight: CGFloat {
-        tabHitTarget + (barVerticalPadding * 2) + (outerVerticalPadding * 2)
-    }
-}
-
 struct RootTabView: View {
     enum Tab: Hashable { case home, thisWeek, progress, settings }
     @Environment(AppSettings.self) private var settings
@@ -29,7 +13,6 @@ struct RootTabView: View {
     @State private var selection: Tab = .home
     @State private var showSplash = true
     @State private var watchSyncToast: WatchSyncToast?
-    private let dockMetrics = CadenceDockMetrics()
     /// UI-test seam backing the `-uiTestWatchStop` counter: `AppModel` writes
     /// each `stopWatchWorkout()` call to this UserDefaults key, and the hidden
     /// element below surfaces the running total to the iPhone smoke test.
@@ -41,9 +24,7 @@ struct RootTabView: View {
     var body: some View {
         @Bindable var active = active
         return ZStack {
-            selectedTabContent
-                .cadenceTabBarClearance()
-                .safeAreaInset(edge: .bottom, spacing: 0) { glassDock }
+            nativeTabs
             .fullScreenCover(isPresented: Binding(
                 get: { !settings.hasCompletedOnboarding },
                 set: { presented in if !presented { settings.hasCompletedOnboarding = true } }
@@ -158,6 +139,9 @@ struct RootTabView: View {
         .onChange(of: model.watchSyncState) { _, state in
             showWatchSyncToast(for: state)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .cadenceShowThisWeek)) { _ in
+            selection = .thisWeek
+        }
         .onOpenURL { url in
             guard url.scheme == "cladiron" else { return }
             if url.host == "this-week" || url.path == "/this-week" {
@@ -174,51 +158,29 @@ struct RootTabView: View {
     }
 
     @ViewBuilder
-    private var selectedTabContent: some View {
-        switch selection {
-        case .home: HomeView()
-        case .thisWeek: ThisWeekView()
-        case .progress: TrainingProgressView()
-        case .settings: NavigationStack { SettingsView() }
-        }
-    }
-
-    private var glassDock: some View {
-        HStack(spacing: 0) {
-            dockButton(.home, title: "Today", identifier: "tab.today", symbol: "house.fill")
-            dockButton(.thisWeek, title: "This Week", identifier: "tab.thisWeek", symbol: "calendar")
-            dockButton(.progress, title: "Progress", identifier: "tab.progress", symbol: "chart.line.uptrend.xyaxis")
-            dockButton(.settings, title: "Settings", identifier: "tab.settings", symbol: "gearshape.fill")
-        }
-        // Match Tonearm's compact dock geometry through one shared metrics
-        // value so the visual rhythm and root clearance cannot drift apart.
-        .padding(.horizontal, dockMetrics.barHorizontalPadding)
-        .padding(.vertical, dockMetrics.barVerticalPadding)
-        .cadenceGlass(in: RoundedRectangle(cornerRadius: dockMetrics.cornerRadius, style: .continuous),
-                      fallback: .ultraThinMaterial)
-        .padding(.horizontal, dockMetrics.outerHorizontalPadding)
-        .padding(.vertical, dockMetrics.outerVerticalPadding)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("tabBar.glass")
-    }
-
-    private func dockButton(_ tab: Tab, title: String, identifier: String, symbol: String) -> some View {
-        Button {
-            Haptics.selection()
-            selection = tab
-        } label: {
-            VStack(spacing: 3) {
-                Image(systemName: symbol).font(.headline)
-                Text(title).font(.caption2.weight(.semibold))
+    private var nativeTabs: some View {
+        if #available(iOS 18.0, *) {
+            TabView(selection: $selection) {
+                SwiftUI.Tab("Today", systemImage: "house", value: .home) { HomeView() }
+                SwiftUI.Tab("This Week", systemImage: "calendar", value: .thisWeek) { ThisWeekView() }
+                SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
+                    TrainingProgressView()
+                }
+                SwiftUI.Tab("Settings", systemImage: "gearshape", value: .settings) {
+                    NavigationStack { SettingsView() }
+                }
             }
-            .foregroundStyle(selection == tab ? Color.accentColor : Color.secondary)
-            .frame(maxWidth: .infinity, minHeight: dockMetrics.tabHitTarget)
-            .contentShape(Rectangle())
+            .modifier(MinimizeTabBarOnScrollDown())
+        } else {
+            TabView(selection: $selection) {
+                HomeView().tabItem { Label("Today", systemImage: "house") }.tag(Tab.home)
+                ThisWeekView().tabItem { Label("This Week", systemImage: "calendar") }.tag(Tab.thisWeek)
+                TrainingProgressView().tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.progress)
+                NavigationStack { SettingsView() }
+                    .tabItem { Label("Settings", systemImage: "gearshape") }
+                    .tag(Tab.settings)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(identifier)
-        .accessibilityLabel(title)
-        .accessibilityAddTraits(selection == tab ? .isSelected : [])
     }
 
     /// Re-adopts an in-progress session after a crash, force-quit, jetsam, or
@@ -251,6 +213,16 @@ struct RootTabView: View {
             withAnimation(.easeInOut(duration: 0.18)) {
                 watchSyncToast = nil
             }
+        }
+    }
+}
+
+private struct MinimizeTabBarOnScrollDown: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            content
         }
     }
 }

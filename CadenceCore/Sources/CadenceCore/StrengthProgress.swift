@@ -65,15 +65,22 @@ public struct StrengthProgressSessionInput: Sendable, Equatable {
 
 public struct StrengthProgressChartData: Sendable, Equatable {
     public let series: [E1RMSeries]
+    public let emptyLifts: [String]
 
-    public init(series: [E1RMSeries]) {
+    public init(series: [E1RMSeries], emptyLifts: [String] = []) {
         self.series = series
+        self.emptyLifts = emptyLifts
     }
 
     public var allSeries: [E1RMSeries] { series }
 
     public var exerciseNames: [String] {
-        series.map(\.exercise)
+        var names = series.map(\.exercise)
+        // Combined remains a stable picker choice even when this window has
+        // only custom lifts; it is not added to `series` unless it has points,
+        // so an empty legend entry can never be rendered.
+        if !names.contains("Combined") { names.append("Combined") }
+        return names
     }
 }
 
@@ -176,9 +183,12 @@ public enum StrengthProgress {
             }
             return total > 0 ? E1RMPoint(weekStart: week, e1rm: total) : nil
         }
-        return StrengthProgressChartData(series: fixedSeries + customSeries + [
-            E1RMSeries(exercise: "Combined", points: totalPoints)
-        ])
+        let combined = E1RMSeries(exercise: "Combined", points: totalPoints)
+        let nonEmptyFixed = fixedSeries.filter { !$0.points.isEmpty }
+        let allSeries = nonEmptyFixed + customSeries + (combined.points.isEmpty ? [] : [combined])
+        let emptyLifts = fixedSeries.filter { $0.points.isEmpty }.map(\.exercise)
+        return StrengthProgressChartData(series: allSeries,
+                                         emptyLifts: emptyLifts)
     }
 
     private static func normalized(_ value: String) -> String {

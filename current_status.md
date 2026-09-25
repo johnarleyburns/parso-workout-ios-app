@@ -1,6 +1,33 @@
 # Current Status
 
-Updated: 2026-09-24
+Updated: 2026-09-25
+
+## Active task — Cladiron visual redesign (2026-09-25)
+
+Implementing the complete `CLADIRON_DESIGN_PLAN.md` presentation pass in one
+working series, using `/Users/arley/Downloads/cladiron-mockups.html` as the
+visual contract. The in-app browser is unavailable in this environment, so
+visual verification is based on the mockup source, the pin acceptance table,
+static checks, and the native iOS build; simulator execution remains disabled
+by the repository rules unless explicitly requested.
+
+Implemented and audited: shared visual tokens and native system tab shell;
+Today hero, week rings, and action hierarchy; This Week heat-map/list surface;
+live logging header/menu, medium/large set sheet, citations, PR moment/share,
+and Live Activity rest layouts; Progress segmented charts/points/empty states;
+widgets, iOS 18 Control Center control, onboarding copy, localization strings,
+and accessibility labels. The presentation seams have headless coverage.
+
+Verification: `swift test --package-path CadenceCore` passed with 1,912 tests;
+generic iOS build passed; `make guardrails` passed; `git diff --check` passed.
+The in-app browser reported that no browser is available, and simulator/device
+execution remains disabled by the repository rules unless explicitly requested.
+The anatomy artwork is a single raster asset without per-muscle masks, so the
+existing artwork is preserved with tappable intensity markers and dashed zero
+states rather than redrawing or fabricating region boundaries. The existing
+project has a native Watch workout app but no separate Watch Widget extension;
+the iPhone widget/Live Activity/Control Center surfaces were completed without
+altering the target graph.
 
 ## Latest change — 2026-09-24: main-thread stalls and the Watch HR boundary
 

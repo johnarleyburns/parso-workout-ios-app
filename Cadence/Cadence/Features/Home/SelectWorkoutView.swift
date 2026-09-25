@@ -36,16 +36,11 @@ struct SelectWorkoutView: View {
                     Spacer()
                     Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
                 }
-                .foregroundStyle(.white)
                 .padding(.horizontal, 18)
-                .cadenceActionLabel()
-                .background(
-                    LinearGradient(colors: [.green, .teal],
-                                   startPoint: .topLeading,
-                                   endPoint: .bottomTrailing),
-                    in: CadenceActionShape.rounded)
+                .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderedProminent)
+            .tint(CadenceTheme.accent)
             .accessibilityIdentifier("selectWorkout.startWorkout")
         } else {
             NavigationStack {

@@ -65,6 +65,7 @@ struct TrainingProgressView: View {
             }
             .background { CadenceGlassBackdrop(tint: .blue) }
             .navigationTitle("Progress")
+            .navigationBarTitleDisplayMode(.large)
             .navigationDestination(for: AssessmentKind.self) { AssessmentDetailView(kind: $0) }
             .navigationDestination(for: HistorySummaryRoute.self) { route in
                 switch route {
@@ -193,11 +194,9 @@ struct TrainingProgressView: View {
                 CitationLink(citation: citation, compact: true)
             }
         }
-        .padding(compact ? 13 : 16)
-        // `equalHeight` fills the row so side-by-side cards match the taller one
-        // (issue 12 — Frequency was shorter than Effort).
+        // `equalHeight` fills the row so side-by-side cards match the taller one.
         .frame(maxWidth: .infinity, maxHeight: equalHeight ? .infinity : nil, alignment: .leading)
-        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: tint)
+        .cadenceCard()
     }
 
     private func emptyNote(_ text: String) -> some View {
@@ -211,9 +210,15 @@ struct TrainingProgressView: View {
         card(title: "Strength over time", subtitle: "estimated 1RM \u{00b7} last 12 weeks",
              citation: CitationRegistry.oneRMEstimation, tint: .blue) {
             if let preparedStrengthData {
-                ProgressStrengthChartView(data: preparedStrengthData,
-                                          unit: settings.unit,
-                                          selectedNames: $selectedStrengthNames)
+                VStack(alignment: .leading, spacing: 8) {
+                    ProgressStrengthChartView(data: preparedStrengthData,
+                                              unit: settings.unit,
+                                              selectedNames: $selectedStrengthNames)
+                    Text("Estimates use the \(settings.formula.displayName) formula selected in Settings.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 110)

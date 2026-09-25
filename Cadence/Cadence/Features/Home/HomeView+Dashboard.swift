@@ -340,15 +340,10 @@ extension HomeView {
                 }
             }
             .padding()
-            // Keep the final This Week disclosure/card reachable above the
-            // root glass dock. The root safe-area inset is not consistently
-            // reflected in nested ScrollView content on field-test devices.
-            .padding(.bottom, surface == .thisWeek
-                     ? CadenceTabBarClearance.scrollContentBottom
-                     : 0)
         }
         .background { CadenceGlassBackdrop(tint: .green) }
         .navigationTitle(surface.title)
+        .navigationBarTitleDisplayMode(.large)
     }
 
     private var thisWeekContent: some View {

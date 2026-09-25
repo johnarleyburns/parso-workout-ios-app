@@ -71,7 +71,6 @@ struct InlineSetEditorView: View {
             .background(Color(uiColor: .systemGroupedBackground))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: onCancel).accessibilityIdentifier("setEditor.cancel") }
                 if onDelete != nil { ToolbarItem(placement: .topBarTrailing) { Button("Delete", role: .destructive) { deletePresented = true }.accessibilityIdentifier("setEditor.delete") } }
             }
             .alert("Delete \(config.exerciseName), \(config.setNumberText)?", isPresented: $deletePresented) {
@@ -80,7 +79,9 @@ struct InlineSetEditorView: View {
             } message: { Text("This set will be removed from the workout.") }
             .sheet(isPresented: $keypadPresented) { keypad }
         }
-        .accessibilityIdentifier("setEditor.fullScreen")
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .accessibilityIdentifier("setEditor.sheet")
         // Performer selection changes attribution/history only. The current
         // reps and load are the user's in-progress set, so switching the partner
         // at the end of entry must never overwrite work already typed.
@@ -191,7 +192,7 @@ struct InlineSetEditorView: View {
                     .accessibilityIdentifier("setEditor.weightSource")
             }
             Button { typedWeight = weightText; keypadPresented = true } label: {
-                HStack(alignment: .lastTextBaseline, spacing: 6) { Text(weightText).scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit(); Text(config.unit.abbreviation).font(.title3.weight(.semibold)); Text("Type…").font(.caption).foregroundStyle(.tint) }
+                HStack(alignment: .lastTextBaseline, spacing: 6) { Text(weightText).scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit(); Text(config.unit.abbreviation).font(.title3.weight(.semibold)); Text("Type").font(.caption).foregroundStyle(.tint).lineLimit(1).minimumScaleFactor(0.8) }
                     .frame(maxWidth: .infinity)
             }.buttonStyle(.plain).accessibilityIdentifier("setEditor.weightValue").accessibilityValue("\(weightText) \(config.unit.abbreviation)")
             HStack(spacing: 10) {
@@ -211,6 +212,10 @@ struct InlineSetEditorView: View {
                 }.buttonStyle(.bordered).accessibilityIdentifier("setEditor.weight.type")
             }
             if isPR { Label("Would be a PR", systemImage: "trophy.fill").foregroundStyle(.orange).font(.subheadline.weight(.semibold)) }
+            if selectedDefault?.weightSourceText != nil || config.weightSourceText != nil {
+                CitationLink(citation: CitationRegistry.oneRMEstimation,
+                             context: "How suggested loads are estimated", compact: true)
+            }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }
 
@@ -246,12 +251,17 @@ struct InlineSetEditorView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 10) {
-            Button("Cancel", action: onCancel).buttonStyle(.bordered).controlSize(.large).frame(minHeight: 56).accessibilityIdentifier("setEditor.cancel")
-            Button(action: { guard let result = draft.submit() else { return }; Haptics.setLogged(); onSave(SetDraft(weightString: weightText, unit: config.unit, reps: result.reps, rpe: result.rpe.map { Int($0) }, bodyweight: config.bodyweight, performerID: performerID)) }) {
-                Text(config.isEditing ? "Save changes" : "Save set").frame(maxWidth: .infinity)
-            }.buttonStyle(.borderedProminent).tint(.green).controlSize(.large).frame(maxWidth: .infinity, minHeight: 56).disabled(draft.hasSubmitted).overlay { if draft.hasSubmitted { ProgressView() } }.accessibilityIdentifier("setEditor.save")
-        }.padding(.horizontal, 20).padding(.vertical, 10).background(.bar)
+        Button(action: { guard let result = draft.submit() else { return }; Haptics.setLogged(); onSave(SetDraft(weightString: weightText, unit: config.unit, reps: result.reps, rpe: result.rpe.map { Int($0) }, bodyweight: config.bodyweight, performerID: performerID)) }) {
+            Text("Log Set").frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(CadenceTheme.accent)
+        .controlSize(.large)
+        .frame(maxWidth: .infinity, minHeight: 56)
+        .disabled(draft.hasSubmitted)
+        .overlay { if draft.hasSubmitted { ProgressView() } }
+        .accessibilityIdentifier(config.isEditing ? "setEditor.save" : "session.set.log")
+        .padding(.horizontal, 20).padding(.vertical, 10).background(.bar)
     }
 
     private func adjustmentButton(_ title: String, action: @escaping () -> Void) -> some View { Button(title, action: action).font(.title3.weight(.bold)).buttonStyle(.borderedProminent).tint(.green).frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle()).padding(.vertical, 9) }

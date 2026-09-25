@@ -6,11 +6,16 @@ struct WorkoutLiveActivityAttributes: ActivityAttributes {
         var status: String
         var elapsedSeconds: Int
         var isPaused: Bool
+        var restEndsAt: Date?
+        var nextExercise: String?
 
-        init(status: String, elapsedSeconds: Int, isPaused: Bool = false) {
+        init(status: String, elapsedSeconds: Int, isPaused: Bool = false,
+             restEndsAt: Date? = nil, nextExercise: String? = nil) {
             self.status = status
             self.elapsedSeconds = elapsedSeconds
             self.isPaused = isPaused
+            self.restEndsAt = restEndsAt
+            self.nextExercise = nextExercise
         }
     }
 

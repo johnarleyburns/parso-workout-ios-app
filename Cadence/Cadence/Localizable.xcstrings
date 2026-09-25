@@ -1,0 +1,13 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Start Workout" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Start Workout" } } } },
+    "Log Set" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Log Set" } } } },
+    "Suggested for you" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Suggested for you" } } } },
+    "This week" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "This week" } } } },
+    "Fill the gaps" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Fill the gaps" } } } },
+    "New personal record" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "New personal record" } } } },
+    "Private by design" : { "localizations" : { "en" : { "stringUnit" : { "state" : "translated", "value" : "Private by design" } } } }
+  },
+  "version" : "1.0"
+}

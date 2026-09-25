@@ -32,6 +32,8 @@ struct SessionView: View {
     @State var showWeightInfo = false
     @State var showDumbbellInfo = false
     @State var showKettlebellInfo = false
+    @State var workoutSettingsPresented = false
+    @State var workoutSettings = WorkoutSettings.default
     @AppStorage("dumbbellInfoShown") var dumbbellInfoShown = false
     @AppStorage("kettlebellInfoShown") var kettlebellInfoShown = false
     @State var showDeleteConfirm = false
@@ -53,6 +55,8 @@ struct SessionView: View {
     @State var swapTarget: ExerciseSwap.SwapTarget?
     @State var coolingDown = false
     @State var coolDownConfirm = false
+    @State var prMoment: PRMoment?
+    @State var prEvent: PREvent?
     let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     @State var hrSamples: [HRSamplePoint] = []
     @State var cache = SessionHistoryCache()

@@ -7,6 +7,7 @@ import Foundation
 public enum MuscleMapPanel: String, CaseIterable, Codable, Sendable {
     case front
     case back
+    case list
 }
 
 public enum MuscleMapCalloutSide: String, Codable, Hashable, Sendable {

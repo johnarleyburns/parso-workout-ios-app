@@ -288,6 +288,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $primingPresented) {
             HealthPrimingView { status in healthStatus = status }
         }

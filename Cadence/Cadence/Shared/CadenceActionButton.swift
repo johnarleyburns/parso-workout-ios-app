@@ -28,41 +28,27 @@ struct CadenceActionButton: View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
         }
-        .buttonStyle(CadenceActionButtonStyle(
-            emphasis: emphasis,
-            tint: tint ?? (emphasis == .primary ? .green : .accentColor)))
+        .tint(tint ?? (emphasis == .primary ? CadenceTheme.accent : .accentColor))
+        .controlSize(.large)
+        .modifier(CadenceSystemButtonStyle(emphasis: emphasis))
     }
 }
 
-private struct CadenceActionButtonStyle: ButtonStyle {
+private struct CadenceSystemButtonStyle: ViewModifier {
     let emphasis: CadenceActionButton.Emphasis
-    let tint: Color
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .cadenceActionLabel(alignment: .center)
-            .foregroundStyle(emphasis == .primary ? AnyShapeStyle(.white) : AnyShapeStyle(tint))
-            .background(fill, in: CadenceActionShape.rounded)
-            .overlay {
-                if emphasis == .secondary {
-                    CadenceActionShape.rounded.stroke(tint.opacity(0.35), lineWidth: 1)
-                }
-            }
-            .contentShape(CadenceActionShape.rounded)
-            .opacity(configuration.isPressed ? 0.75 : (isEnabled ? 1 : 0.4))
-    }
-
-    private var fill: AnyShapeStyle {
-        emphasis == .primary ? AnyShapeStyle(tint) : AnyShapeStyle(tint.opacity(0.14))
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if emphasis == .primary {
+            content.buttonStyle(.borderedProminent)
+        } else {
+            content.buttonStyle(.bordered)
+        }
     }
 }
 
 extension View {
-    /// Applies the canonical full-width action geometry to a label. Use when the
-    /// call site must stay a `NavigationLink` (which cannot be a `Button`) and
-    /// keeps its own gradient/glass fill — only the geometry and typography come
-    /// from here. Height is a *minimum*, so Dynamic Type can still grow it.
+    /// Applies the canonical full-width action geometry to a label. System button
+    /// styles own the visual treatment; this only keeps hit targets consistent.
     func cadenceActionLabel(alignment: Alignment = .leading) -> some View {
         font(.headline)
         .frame(maxWidth: .infinity,

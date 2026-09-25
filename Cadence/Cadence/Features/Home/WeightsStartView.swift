@@ -27,12 +27,9 @@ struct WeightsStartView: View {
                     }
                     .padding(.horizontal, 16)
                     .cadenceActionLabel()
-                    .foregroundStyle(.white)
-                    .cadenceGlassBackground(
-                        in: CadenceActionShape.rounded,
-                        tint: .green,
-                        interactive: true,
-                        fallback: AnyShapeStyle(Color.green))
+                    .foregroundStyle(.primary)
+                    .background(CadenceTheme.cardBackground, in: CadenceActionShape.rounded)
+                    .overlay(CadenceActionShape.rounded.stroke(CadenceTheme.accent.opacity(0.28)))
                 }
                 .buttonStyle(.plain)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))
@@ -57,15 +54,9 @@ struct WeightsStartView: View {
                     }
                     .padding(.horizontal, 16)
                     .cadenceActionLabel()
-                    .foregroundStyle(.white)
-                    .cadenceGlassBackground(
-                        in: CadenceActionShape.rounded,
-                        tint: .green,
-                        interactive: true,
-                        fallback: AnyShapeStyle(LinearGradient(
-                            colors: [.green, .teal],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing)))
+                    .foregroundStyle(.primary)
+                    .background(CadenceTheme.cardBackground, in: CadenceActionShape.rounded)
+                    .overlay(CadenceActionShape.rounded.stroke(CadenceTheme.accent.opacity(0.28)))
                 }
                 .buttonStyle(.plain)
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 6, trailing: 16))

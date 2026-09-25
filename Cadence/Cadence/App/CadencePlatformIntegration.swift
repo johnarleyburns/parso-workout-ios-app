@@ -5,6 +5,7 @@ extension Notification.Name {
     static let readinessCheckInChanged = Notification.Name("cadence.readinessCheckInChanged")
     static let cadenceStartTodaysWorkout = Notification.Name("cadence.startTodaysWorkout")
     static let cadenceShowTodaysPlan = Notification.Name("cadence.showTodaysPlan")
+    static let cadenceShowThisWeek = Notification.Name("cadence.showThisWeek")
 }
 
 enum CadenceHandoff {

@@ -100,15 +100,18 @@ struct OnboardingView: View {
                 .scaledSystemFont(34, relativeTo: .largeTitle).foregroundStyle(.tint)
                 .frame(width: 72, height: 72)
                 .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
-            Text("Private by design").font(.title.bold()).padding(.top, 22)
-            Text("A strength coach built on cited sport science — that never asks you to give anything up.")
+            Text("Free and open source").font(.title.bold()).padding(.top, 22)
+            Text("A private strength coach built on cited sport science, with no account or paywall.")
                 .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).padding(.top, 8).padding(.horizontal, 24)
             VStack(alignment: .leading, spacing: 14) {
-                valueRow("checkmark.circle.fill", "No ads. No account. No tracking.")
+                valueRow("checkmark.circle.fill", "Free forever. No ads. No account. No tracking.")
                 valueRow("iphone", "Your data stays on your iPhone")
                 valueRow("book.closed", "Every recommendation is sourced")
             }
+            CitationLink(citation: CitationRegistry.volumeDoseResponse,
+                         context: "Read the science behind coaching", compact: true)
+                .padding(.top, 12)
             .padding(.top, 28)
             Text("Location is used only while you're recording an outdoor run, walk, or ride you start — it maps your route in the background (shown by the blue status bar) and stops the moment you finish. Never at any other time.")
                 .font(.caption2).foregroundStyle(.secondary)

@@ -41,18 +41,15 @@ struct HomeWeekDashboardSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
             sectionCard {
-                disclosureRow(title: "Sets per Muscle Group", value: dashboard.volumeCoverage.displayText,
-                              progress: dashboard.volumeCoverage.normalized,
-                              tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
-                              mode: .muscleMap, identifier: "home.week.sets") {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Muscle coverage").font(.headline).foregroundStyle(.primary)
+                        Spacer()
+                        Text(dashboard.volumeCoverage.displayText)
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                    }
                     muscleMapSummary
-                }
-            }
-            sectionCard {
-                disclosureRow(title: "Muscle Group Volume", value: dashboard.volumeCoverage.displayText,
-                              progress: dashboard.volumeCoverage.normalized,
-                              tint: tint(for: WeeklySetProgress.zone(for: dashboard.volumeCoverage.completed)),
-                              mode: .muscleGroupVolume, identifier: "home.week.muscleGroupVolume") {
+                    mostBehind
                     volumeDetail
                 }
             }
@@ -99,12 +96,46 @@ struct HomeWeekDashboardSection: View {
         }
     }
 
+    private var mostBehind: some View {
+        let behind = displayedVolumeRows
+            .sorted { $0.normalized == $1.normalized
+                ? MuscleGroup.canonicalIndex($0.group) < MuscleGroup.canonicalIndex($1.group)
+                : $0.normalized < $1.normalized }
+            .prefix(3)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Most behind").font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("sets").font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(Array(behind)) { row in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack {
+                        Text(row.displayName)
+                        Spacer()
+                        Text("\(row.rangeText)").font(.caption).foregroundStyle(.secondary)
+                    }
+                    ProgressView(value: row.normalized).tint(CadenceTheme.accent)
+                }
+            }
+            NavigationLink {
+                MuscleGroupQuickStartView(missing: behind.map(\.group), onStart: { _ in })
+            } label: {
+                Label("Fill the gaps", systemImage: "plus.circle")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(CadenceTheme.accent)
+            .accessibilityIdentifier("home.week.fillGaps")
+        }
+    }
+
+
     private func sectionCard<Content: View>(
         @ViewBuilder content: () -> Content) -> some View {
         content()
-            .padding(CGFloat(LayoutMetrics.cardPadding))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
+            .cadenceCard()
     }
 
     private var volumeDetail: some View {
@@ -223,7 +254,7 @@ struct HomeWeekDashboardSection: View {
             } label: {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text(title).font(.headline).foregroundStyle(tint)
+                        Text(title).font(.headline).foregroundStyle(.primary)
                         Spacer()
                         Text(value).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")

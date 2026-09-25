@@ -37,17 +37,24 @@ extension SessionView {
                     .accessibilityIdentifier("session.info")
                     .accessibilityLabel("Workout details")
                 }
-                Button {
-                    showDeleteConfirm = true
-                } label: { Image(systemName: "trash") }
-                    .foregroundStyle(.red)
-                    .accessibilityIdentifier("session.delete")
-                    .accessibilityLabel("Delete workout")
-                Button {
-                    editedTitle = session.title; renamePresented = true
-                } label: { Image(systemName: "pencil") }
-                    .accessibilityIdentifier("session.rename")
-                    .accessibilityLabel("Rename workout")
+                Menu {
+                    Button {
+                        editedTitle = session.title; renamePresented = true
+                    } label: { Label("Edit plan", systemImage: "pencil") }
+                    Button { managePartnersPresented = true } label: {
+                        Label("Partners", systemImage: "person.2")
+                    }
+                    Button { workoutSettings = settings.lastStrengthSettings; workoutSettingsPresented = true } label: {
+                        Label("Workout settings", systemImage: "gearshape")
+                    }
+                    Button(role: .destructive) { showDeleteConfirm = true } label: {
+                        Label("Delete workout", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+                .accessibilityIdentifier("session.menu")
+                .accessibilityLabel("Workout options")
                 Button {
                     Task { await saveToHealth() }
                 } label: {
@@ -304,7 +311,25 @@ extension SessionView {
                              delta: isWarmup || person != nil ? [:] : exercise.volumeCredits)
             refreshLiveVolume()
         }
-        if isPR { Haptics.prAchieved() } else { Haptics.setLogged() }
+        if isPR {
+            Haptics.prAchieved()
+            let sample = SetSample(weight: weightKg, reps: reps, date: when, isWarmup: isWarmup)
+            let metric = PRCalculator.metric(sample, rule: settings.prRule, formula: settings.formula)
+            let loadText = Format.weight(weightKg, unit: settings.unit)
+            prMoment = PRMomentPresenter.moment(
+                exercise: exercise.name,
+                loadText: loadText,
+                changeText: "new best · (settings.prRule.displayName)",
+                isNewPR: true,
+                isWarmup: isWarmup,
+                isPartnerSet: person != nil,
+                performerName: person?.name)
+            prEvent = PREvent(exerciseName: exercise.name, date: when,
+                              kind: PRKind(rule: settings.prRule), value: metric,
+                              reps: reps, weightKg: weightKg, previous: nil)
+        } else {
+            Haptics.setLogged()
+        }
         if settings.autoStartRest && !isWarmup && !isManualLog && active.strengthSession?.id == session.id {
             rest.start(seconds: settings.restSeconds)
         }

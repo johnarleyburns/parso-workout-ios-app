@@ -23,13 +23,17 @@ struct WorkoutPlanExerciseSection: View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
             header
             if isEditingOwner {
-                TextField("Superset group (optional)", text: Binding(
-                    get: { exercise.supersetGroup?.raw ?? "" },
-                    set: { raw in
-                        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                        exercise.supersetGroup = trimmed.isEmpty ? nil : SupersetGroupID(raw: trimmed)
-                    }))
-                    .textFieldStyle(.roundedBorder)
+                Menu {
+                    Button("None") { exercise.supersetGroup = nil }
+                    Button("A") { exercise.supersetGroup = SupersetGroupID(raw: "A") }
+                    Button("B") { exercise.supersetGroup = SupersetGroupID(raw: "B") }
+                    Button("C") { exercise.supersetGroup = SupersetGroupID(raw: "C") }
+                } label: {
+                    Label("Superset: \(exercise.supersetGroup?.raw ?? "None")", systemImage: "link")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered)
+                .tint(.secondary)
                     .accessibilityIdentifier("editor.supersetGroup.\(exercise.name)")
             } else if let group = exercise.supersetGroup?.raw {
                 Label("Superset \(group)", systemImage: "link")

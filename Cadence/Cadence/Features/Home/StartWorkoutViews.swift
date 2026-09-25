@@ -20,13 +20,6 @@ struct StartWorkoutView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 actionSection(
-                    title: "Workouts Created for You",
-                    subtitle: "Review a session built from your history and weekly needs.") {
-                        recommendationButton(.strength)
-                        recommendationButton(.cardio)
-                    }
-
-                actionSection(
                     title: "Pick Your Own Workout",
                     subtitle: "Choose exactly how you want to train today.") {
                         NavigationLink {
@@ -52,6 +45,14 @@ struct StartWorkoutView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("startWorkout.pick.cardio")
+
+                        NavigationLink {
+                            TemplatesView(onStart: onEditorStart)
+                        } label: {
+                            startActionLabel("Saved workouts", symbol: "bookmark.fill", tint: .secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("startWorkout.pick.saved")
 
                     }
             }
@@ -98,14 +99,11 @@ struct StartWorkoutView: View {
             Spacer()
             Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(.primary)
         .padding(.horizontal, 18)
-        .cadenceActionLabel()
-        .background(
-            LinearGradient(colors: [tint, tint.opacity(0.72)],
-                           startPoint: .topLeading,
-                           endPoint: .bottomTrailing),
-            in: CadenceActionShape.rounded)
+        .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+        .background(CadenceTheme.cardBackground, in: CadenceActionShape.rounded)
+        .overlay(CadenceActionShape.rounded.stroke(tint.opacity(0.28), lineWidth: 1))
     }
 }
 

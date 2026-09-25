@@ -76,6 +76,7 @@ struct WorkoutPlanEditor: View {
     @State var suggestExerciseRequest: SuggestedExerciseRequest?
     @State var schedulePresented = false
     @State var suggestExerciseFailed = false
+    @State private var discardEditPresented = false
     let allowsStart: Bool
     let allowsSchedule: Bool
 
@@ -173,6 +174,7 @@ struct WorkoutPlanEditor: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(isEditing ? "Done" : "Edit") {
+                    if isEditing { originalPlan = plan }
                     withAnimation { isEditing.toggle() }
                 }
                 .accessibilityIdentifier("editor.edit")
@@ -182,19 +184,22 @@ struct WorkoutPlanEditor: View {
             if isEditing {
                 HStack(spacing: 12) {
                     Button("Cancel") {
-                        plan = originalPlan
-                        withAnimation { isEditing = false }
+                        if plan != originalPlan {
+                            discardEditPresented = true
+                        } else {
+                            withAnimation { isEditing = false }
+                        }
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
                     .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("editor.cancel")
 
-                    Button("Save") {
+                    Button("Done") {
                         originalPlan = plan
                         withAnimation { isEditing = false }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.bordered)
                     .controlSize(.large)
                     .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("editor.save")
@@ -203,6 +208,15 @@ struct WorkoutPlanEditor: View {
                 .padding(.vertical, 8)
                 .background(.bar)
             }
+        }
+        .alert("Discard changes?", isPresented: $discardEditPresented) {
+            Button("Discard", role: .destructive) {
+                plan = originalPlan
+                withAnimation { isEditing = false }
+            }
+            Button("Keep editing", role: .cancel) { }
+        } message: {
+            Text("Your changes to this workout plan will be lost.")
         }
         .sheet(item: $exercisePickerIntent) { intent in
             NavigationStack {

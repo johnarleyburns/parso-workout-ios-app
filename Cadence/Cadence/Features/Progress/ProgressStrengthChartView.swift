@@ -77,6 +77,10 @@ struct ProgressStrengthChartView: View {
             VStack(spacing: 5) {
                 ForEach(selectedSeries) { series in
                     HStack(spacing: 8) {
+                        Circle()
+                            .fill(seriesColor(for: series.exercise))
+                            .frame(width: 8, height: 8)
+                            .accessibilityHidden(true)
                         Text(series.exercise)
                             .font(.subheadline)
                             .lineLimit(1)
@@ -177,6 +181,13 @@ struct ProgressStrengthChartView: View {
             abs($0.1.weekStart.timeIntervalSince(selectedDate)) < abs($1.1.weekStart.timeIntervalSince(selectedDate))
         }) else { return nil }
         return "\(nearest.0) · \(nearest.1.weekStart.formatted(date: .abbreviated, time: .omitted)) · \(Format.weight(nearest.1.e1rm, unit: unit, decimals: 0))"
+    }
+
+    private func seriesColor(for exercise: String) -> Color {
+        let colors: [Color] = [CadenceTheme.accent, CadenceTheme.link,
+                               CadenceTheme.attention, .purple]
+        let index = data.allSeries.firstIndex { $0.exercise == exercise } ?? 0
+        return colors[index % colors.count]
     }
 
     private func trendLabel(_ trend: TrendDirection, delta: Double) -> String {

@@ -231,7 +231,7 @@ struct ExerciseCardView: View {
                 setIndexBadge(number, isWarmup: set.isWarmup)
             }
 
-            Button { if isEditing { onTapSet(set) } } label: {
+            Button { onTapSet(set) } label: {
                 if set.usesBodyweight && set.weight <= 0 {
                     Text("BW").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)
@@ -244,13 +244,13 @@ struct ExerciseCardView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.editWeight.\(context.name).\(number)")
 
-            Button { if isEditing { onTapSet(set) } } label: {
+            Button { onTapSet(set) } label: {
                 Text("\(set.reps)").monospacedDigit().frame(width: SetCol.reps)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.editReps.\(context.name).\(number)")
 
-            Button { if isEditing { onTapSet(set) } } label: {
+            Button { onTapSet(set) } label: {
                 rpeBadge(set)
             }
             .buttonStyle(.plain)

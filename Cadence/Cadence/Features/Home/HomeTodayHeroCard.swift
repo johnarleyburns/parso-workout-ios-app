@@ -7,6 +7,7 @@ struct HomeTodayHeroCard: View {
     let estimatedMinutes: Int?
     let exercises: [(name: String, detail: String)]
     let reason: String?
+    let citationIDs: [String]
     let onStart: () -> Void
     let onEdit: () -> Void
     let onChooseAnother: () -> Void
@@ -60,8 +61,12 @@ struct HomeTodayHeroCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    CitationLink(citation: CitationRegistry.volumeDoseResponse,
-                                 context: "Why this workout", compact: true)
+                    ForEach(citationIDs, id: \.self) { citationID in
+                        if let citation = CitationRegistry.citation(forId: citationID) {
+                            CitationLink(citation: citation,
+                                         context: "Why this workout", compact: true)
+                        }
+                    }
                 }
             }
 

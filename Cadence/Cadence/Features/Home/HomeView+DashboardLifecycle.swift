@@ -120,6 +120,16 @@ extension HomeView {
                 await Task.yield()
                 await refreshHomeActivitySnapshot()
             }
+            .task(id: HomeTodaySuggestionTaskIdentity(
+                historyRefreshToken: historyRefreshToken,
+                sessionCount: sessions.count,
+                isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
+                await Task.yield()
+                prepareTodaySuggestion()
+            }
+            .onChange(of: historyRefreshToken) { _, _ in
+                todaySuggestedPlan = nil
+            }
             // Passive HealthKit samples arrive asynchronously after the initial
             // pipeline run; rebuild the snapshot whenever they change.
             .onChange(of: passiveSamples) {

@@ -51,9 +51,11 @@ extension HomeView {
             .map { "\($0.displayName.lowercased()) \(WeeklySetProgress.formattedSets($0.sets)) / 12" }
         let reason = deficits.isEmpty ? "Why today: keep your weekly strength habit moving." :
             "Why today: \(deficits.joined(separator: " and ")) sets this week."
-        let suggested = TodayHero(kind: .suggested, title: "Posterior chain + core",
-                                  estimatedMinutes: 45, exercises: heroLines(nil), reason: reason,
-                                  citationIDs: [CitationRegistry.volumeDoseResponse.id])
+        let suggested = TodayHero(kind: .suggested,
+                                  title: todaySuggestedPlan?.title ?? "Posterior chain + core",
+                                  estimatedMinutes: 45,
+                                  exercises: heroLines(todaySuggestedPlan), reason: reason,
+                                  citationIDs: SuggestedWorkoutPresenter.citationIDs)
         let scheduled = todayScheduled.map {
             TodayHero(kind: .scheduled, title: $0.title, estimatedMinutes: 45,
                       exercises: heroLines(scheduledPlan), reason: nil)
@@ -76,6 +78,7 @@ extension HomeView {
         }
         return HomeTodayHeroCard(title: hero.title, tag: tag,
                                  estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,
+                                 citationIDs: hero.citationIDs,
                                  onStart: {
                                      if activeSession != nil {
                                          if let activeSession,
@@ -86,10 +89,10 @@ extension HomeView {
                                      } else if let todayScheduled {
                                          startScheduledWorkout(todayScheduled)
                                      } else {
-                                         requestSuggestedWorkout(.strength)
+                                         openTodaySuggestion()
                                      }
                                  },
-                                 onEdit: { requestSuggestedWorkout(.strength) },
+                                 onEdit: { openTodaySuggestion() },
                                  onChooseAnother: { selectWorkoutPresented = true })
     }
 

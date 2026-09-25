@@ -76,6 +76,25 @@ Verification for this audit: `swift test --package-path CadenceCore` passed all
 1,912 tests, the generic iOS build passed, `make guardrails` passed, and
 `git diff --check` is clean.
 
+## Latest follow-up audit — 2026-09-25
+
+The source audit found and fixed four additional presentation gaps: completed
+set rows now open the set sheet directly; the performer control is a native
+Menu; weight increments remain a horizontal, non-truncating chip row and the
+weight/reps steppers are secondary bordered controls; Progress lift rows now
+show the matching chart-series color; and Start Workout/Pick Workout choices
+use native bordered rows rather than custom card fills.
+
+The same audit also found the Today hero was still using a hardcoded example
+workout. It now previews the existing Personalized generator's value-only plan,
+uses that plan's citation IDs, refreshes after history changes, and hands the
+generated draft to the normal editor on Start or Edit without mutating data.
+
+The remaining plan exceptions are unchanged: the anatomy asset is one raster
+without safe per-muscle masks, the project has no Watch Widget extension target
+for the Smart Stack requirement, and simulator/device AX5 and screenshot
+verification is unavailable in this repository environment.
+
 ## Latest change — 2026-09-24: main-thread stalls and the Watch HR boundary
 
 Branch `perf-main-thread-and-watch-hr`, delivered as a patch (not pushed).

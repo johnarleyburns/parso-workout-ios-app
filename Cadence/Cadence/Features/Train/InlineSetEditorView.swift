@@ -21,8 +21,6 @@ struct InlineSetEditorView: View {
     @State private var keypadError: String?
     @State private var deletePresented = false
     @State private var performerID: UUID?
-    @State private var performerPickerPresented = false
-    @Environment(\.sizeCategory) private var sizeCategory
 
     init(config: InlineEditorConfig, wouldBePR: ((Double, Int) -> Bool)?,
          onSave: @escaping (SetDraft) -> Void, onDelete: (() -> Void)?,
@@ -139,8 +137,15 @@ struct InlineSetEditorView: View {
     private var performerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Who did this set?").font(.headline)
-            Button {
-                performerPickerPresented = true
+            Menu {
+                Button("Me") { performerID = nil }
+                ForEach(config.roster.filter { !$0.isMe && $0.personID != nil }) { person in
+                    Button(person.name) { performerID = person.personID }
+                }
+                if let onAddPartner {
+                    Divider()
+                    Button("Add Partner…") { onAddPartner() }
+                }
             } label: {
                 HStack {
                     Image(systemName: performerID == nil ? "person.fill" : "person.2.fill")
@@ -151,27 +156,9 @@ struct InlineSetEditorView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
             }
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Performer, \(selectedPerformerName)")
             .accessibilityIdentifier("setEditor.performer")
-            .sheet(isPresented: $performerPickerPresented) {
-                NavigationStack {
-                    List {
-                        Button("Me") { performerID = nil; performerPickerPresented = false }
-                            .accessibilityIdentifier("setEditor.performer.me")
-                        ForEach(config.roster.filter { !$0.isMe && $0.personID != nil }) { person in
-                            Button {
-                                performerID = person.personID
-                                performerPickerPresented = false
-                            } label: { Text(person.name) }
-                            .accessibilityIdentifier("setEditor.performer.\(person.personID!.uuidString)")
-                        }
-                        if let onAddPartner {
-                            Button("Add Partner…") { onAddPartner() }
-                                .accessibilityIdentifier("setEditor.performer.add")
-                        }
-                    }
-                    .navigationTitle("Who did this set?")
-                }
-            }
             if let onAddPartner {
                 Button("＋ Add Partner", action: onAddPartner)
                     .font(.caption.weight(.semibold))
@@ -199,22 +186,30 @@ struct InlineSetEditorView: View {
                 adjustmentButton("− \(display(increment)) \(config.unit.abbreviation)") { draft.adjustWeight(by: -increment); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.minus")
                 adjustmentButton("+ \(display(increment)) \(config.unit.abbreviation)") { draft.adjustWeight(by: increment); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.plus")
             }
-            let columnCount = sizeCategory.isAccessibilityCategory ? 2 : 4
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: columnCount), spacing: 8) {
-                ForEach(ExpandedSetDraftModel.increments(for: config.unit), id: \.self) { value in
-                    Button { increment = value; Haptics.selection() } label: {
-                        Text(display(value)).frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48)
-                    }.buttonStyle(.bordered).tint(increment == value ? .green : .secondary)
-                        .accessibilityIdentifier("setEditor.weight.increment.\(displayID(value))").accessibilityAddTraits(increment == value ? .isSelected : [])
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(ExpandedSetDraftModel.increments(for: config.unit), id: \.self) { value in
+                        Button { increment = value; Haptics.selection() } label: {
+                            Text(incrementLabel(value))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .frame(minHeight: 48)
+                                .padding(.horizontal, 10)
+                        }.buttonStyle(.bordered).tint(increment == value ? .green : .secondary)
+                            .accessibilityIdentifier("setEditor.weight.increment.\(displayID(value))").accessibilityAddTraits(increment == value ? .isSelected : [])
+                    }
+                    Button { typedWeight = weightText; keypadPresented = true } label: {
+                        Text("Type")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .frame(minHeight: 48)
+                            .padding(.horizontal, 10)
+                            .accessibilityLabel("Type weight")
+                    }.buttonStyle(.bordered).accessibilityIdentifier("setEditor.weight.type")
                 }
-                Button { typedWeight = weightText; keypadPresented = true } label: {
-                    Text("Type")
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .frame(maxWidth: .infinity, minHeight: 48, maxHeight: 48)
-                        .accessibilityLabel("Type weight")
-                }.buttonStyle(.bordered).accessibilityIdentifier("setEditor.weight.type")
+                .padding(.horizontal, 2)
             }
+            .contentMargins(.horizontal, 2, for: .scrollContent)
             if isPR { Label("Would be a PR", systemImage: "trophy.fill").foregroundStyle(.orange).font(.subheadline.weight(.semibold)) }
             if selectedDefault?.weightSourceText != nil || config.weightSourceText != nil {
                 CitationLink(citation: CitationRegistry.oneRMEstimation,
@@ -268,9 +263,10 @@ struct InlineSetEditorView: View {
         .padding(.horizontal, 20).padding(.vertical, 10).background(.bar)
     }
 
-    private func adjustmentButton(_ title: String, action: @escaping () -> Void) -> some View { Button(title, action: action).font(.title3.weight(.bold)).buttonStyle(.borderedProminent).tint(.green).frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle()).padding(.vertical, 9) }
+    private func adjustmentButton(_ title: String, action: @escaping () -> Void) -> some View { Button(title, action: action).font(.title3.weight(.bold)).buttonStyle(.bordered).tint(.green).frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle()).padding(.vertical, 9) }
     private func display(_ value: Double) -> String { value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value).replacingOccurrences(of: "0+$", with: "", options: .regularExpression) }
     private func displayID(_ value: Double) -> String { display(value) }
+    private func incrementLabel(_ value: Double) -> String { "\(value >= 10 ? "+" : "±")\(display(value))" }
 
     private var keypad: some View {
         NavigationStack { VStack(spacing: 12) { TextField("Weight", text: $typedWeight).keyboardType(.decimalPad).font(.largeTitle.monospacedDigit()).multilineTextAlignment(.center).textFieldStyle(.roundedBorder).padding(); if let keypadError { Text(keypadError).font(.caption).foregroundStyle(.red) }; ForEach([["1","2","3"],["4","5","6"],["7","8","9"],[".","0","⌫"]], id: \.self) { row in HStack { ForEach(row, id: \.self) { key in Button(key) { if key == "⌫" { if !typedWeight.isEmpty { typedWeight.removeLast() } } else if key == "." && !typedWeight.contains(".") { typedWeight += "." } else if key != "." { typedWeight += key } }.font(.title).frame(maxWidth: .infinity, minHeight: 56).buttonStyle(.bordered) } } }; Spacer() }.padding().navigationTitle(config.bodyweight ? "Enter added weight" : "Enter weight").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { if let value = Double(typedWeight), value.isFinite { draft.setWeight(value); keypadError = nil; keypadPresented = false } else { keypadError = "Enter a valid number" } } } } }

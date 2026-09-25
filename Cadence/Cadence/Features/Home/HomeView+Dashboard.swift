@@ -57,7 +57,6 @@ extension HomeView {
             }
             .sheet(isPresented: $selectWorkoutPresented, onDismiss: presentPendingSuggestedWorkout) {
                 SelectWorkoutView(
-                    onSuggestedWorkout: { requestSuggestedWorkout($0) },
                     onEditorStart: { plan in selectWorkoutPresented = false; handleEditorStart(plan) },
                     onScheduleStrength: {
                         selectWorkoutPresented = false

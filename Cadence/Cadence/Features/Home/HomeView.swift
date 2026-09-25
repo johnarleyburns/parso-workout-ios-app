@@ -18,7 +18,6 @@ struct HomeView: View {
     }
 
     let surface: Surface
-
     init(surface: Surface = .today, navigationPath: Binding<NavigationPath>? = nil) {
         self.surface = surface
         self.externalPath = navigationPath
@@ -104,6 +103,7 @@ struct HomeView: View {
     /// dismisses. Keeping it as a sheet item avoids racing a value navigation
     /// push against the nested Start Workout navigation stack.
     @State var suggestedWorkoutPlan: EditablePlan?
+    @State var todaySuggestedPlan: EditablePlan?
     /// All other Home entry points use the same direct sheet presentation. A
     /// value navigation push can lose its destination when the originating
     /// sheet is still dismissing, which surfaced as the generic warning page

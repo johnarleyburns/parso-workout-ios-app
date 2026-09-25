@@ -27,8 +27,8 @@ extension HomeView {
 
     /// Captures SwiftData values on the main actor, then lets the sheet run the
     /// pure, Sendable generator without carrying managed objects across actors.
-    private func requestSuggestedStrength() {
-        Haptics.selection()
+    func requestSuggestedStrength(present: Bool = true) {
+        if present { Haptics.selection() }
         do {
             let activeSessionID = active.strengthSession?.id
             let completedHistorySessions = sessions.filter {
@@ -136,11 +136,15 @@ extension HomeView {
                 unit: settings.unit,
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes)
-            presentSuggestedWorkout(request)
+            if present {
+                presentSuggestedWorkout(request)
+            } else {
+                generateTodaySuggestion(request)
+            }
         } catch {
             // Generation has no safe partial candidate snapshot to present when
             // the catalog fetch fails, so show a retryable error at Home.
-            presentSuggestedWorkout(SuggestedWorkoutRequest(
+            let request = SuggestedWorkoutRequest(
                 input: SuggestedWorkoutInput(completedSetsByMuscle: coachFacts.weeklySetsByMuscle,
                                               candidates: [],
                                               trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
@@ -156,7 +160,12 @@ extension HomeView {
                 unit: settings.unit,
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes,
-                failureMessage: "Exercise data could not be read. Try again to refresh the exercise catalog."))
+                failureMessage: "Exercise data could not be read. Try again to refresh the exercise catalog.")
+            if present {
+                presentSuggestedWorkout(request)
+            } else {
+                generateTodaySuggestion(request)
+            }
         }
     }
 

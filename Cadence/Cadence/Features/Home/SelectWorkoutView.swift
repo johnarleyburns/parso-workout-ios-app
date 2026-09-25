@@ -6,7 +6,6 @@ import CadenceFeatures
 /// visible Today entry now lives in `StartWorkoutView`; this wrapper keeps the
 /// sheet dismissal and Home callbacks in one place.
 struct SelectWorkoutView: View {
-    let onSuggestedWorkout: (SuggestedWorkoutModality) -> Void
     let onEditorStart: (EditablePlan) -> Void
     let onScheduleStrength: () -> Void
     let onLogWorkout: () -> Void
@@ -21,7 +20,6 @@ struct SelectWorkoutView: View {
         if inline {
             NavigationLink {
                 StartWorkoutView(
-                    onSuggestedWorkout: onSuggestedWorkout,
                     onEditorStart: onEditorStart,
                     onScheduleStrength: onScheduleStrength,
                     onLogWorkout: onLogWorkout,
@@ -45,7 +43,6 @@ struct SelectWorkoutView: View {
         } else {
             NavigationStack {
                 StartWorkoutView(
-                    onSuggestedWorkout: onSuggestedWorkout,
                     onEditorStart: onEditorStart,
                     onScheduleStrength: onScheduleStrength,
                     onLogWorkout: onLogWorkout,

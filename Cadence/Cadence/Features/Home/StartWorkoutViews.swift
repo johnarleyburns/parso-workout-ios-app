@@ -6,7 +6,6 @@ import CadenceFeatures
 /// workout choices intentionally live in separate sections so the next action
 /// is always explicit.
 struct StartWorkoutView: View {
-    let onSuggestedWorkout: (SuggestedWorkoutModality) -> Void
     let onEditorStart: (EditablePlan) -> Void
     let onScheduleStrength: () -> Void
     let onLogWorkout: () -> Void
@@ -30,7 +29,7 @@ struct StartWorkoutView: View {
                         } label: {
                             startActionLabel("Strength", symbol: "dumbbell.fill", tint: .green)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.bordered)
                         .accessibilityIdentifier("startWorkout.pick.strength")
 
                         NavigationLink {
@@ -43,7 +42,7 @@ struct StartWorkoutView: View {
                         } label: {
                             startActionLabel("Cardio", symbol: "figure.run", tint: .blue)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.bordered)
                         .accessibilityIdentifier("startWorkout.pick.cardio")
 
                         NavigationLink {
@@ -51,7 +50,7 @@ struct StartWorkoutView: View {
                         } label: {
                             startActionLabel("Saved workouts", symbol: "bookmark.fill", tint: .secondary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.bordered)
                         .accessibilityIdentifier("startWorkout.pick.saved")
 
                     }
@@ -79,19 +78,6 @@ struct StartWorkoutView: View {
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
     }
 
-    private func recommendationButton(_ modality: SuggestedWorkoutModality) -> some View {
-        Button {
-            onSuggestedWorkout(modality)
-            dismiss()
-        } label: {
-            startActionLabel(modality == .strength ? "Strength" : "Cardio",
-                             symbol: modality.symbol,
-                             tint: modality == .strength ? .green : .blue)
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("startWorkout.created.\(modality.rawValue)")
-    }
-
     private func startActionLabel(_ title: String, symbol: String, tint: Color) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol).font(.headline)
@@ -100,15 +86,14 @@ struct StartWorkoutView: View {
             Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
         }
         .foregroundStyle(.primary)
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-        .background(CadenceTheme.cardBackground, in: CadenceActionShape.rounded)
-        .overlay(CadenceActionShape.rounded.stroke(tint.opacity(0.28), lineWidth: 1))
+        .tint(tint)
     }
 }
 
 /// User-directed strength choices. Recommendation generation deliberately does
-/// not appear here; it belongs to Start Workout's created-for-you section.
+/// not appear here; Today owns the reviewed coach suggestion.
 struct PickWorkoutView: View {
     let onEditorStart: (EditablePlan) -> Void
     let onScheduleStrength: () -> Void
@@ -133,7 +118,7 @@ struct PickWorkoutView: View {
                 } label: {
                     pickActionLabel("Do a Previous Workout", symbol: "clock.arrow.circlepath")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.bordered)
                 .accessibilityIdentifier("pickWorkout.previous")
 
                 Button {
@@ -142,7 +127,7 @@ struct PickWorkoutView: View {
                 } label: {
                     pickActionLabel("Schedule Workout", symbol: "calendar.badge.plus")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.bordered)
                 .accessibilityIdentifier("pickWorkout.schedule")
 
                 Button {
@@ -151,7 +136,7 @@ struct PickWorkoutView: View {
                 } label: {
                     pickActionLabel("Log Workout", symbol: "square.and.pencil")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.bordered)
                 .accessibilityIdentifier("pickWorkout.log")
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
@@ -168,7 +153,7 @@ struct PickWorkoutView: View {
         NavigationLink { destination() } label: {
             pickActionLabel(title, symbol: symbol)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bordered)
     }
 
     private func pickActionLabel(_ title: String, symbol: String) -> some View {
@@ -179,9 +164,8 @@ struct PickWorkoutView: View {
             Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
         }
         .foregroundStyle(.primary)
-        .padding(.horizontal, 18)
+        .padding(.horizontal, 4)
         .cadenceActionLabel()
-        .background(.thinMaterial, in: CadenceActionShape.rounded)
     }
 }
 

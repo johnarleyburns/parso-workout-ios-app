@@ -111,7 +111,7 @@ struct SuggestedCardioPreviewView: View {
                     onSchedule(suggestion)
                     dismiss()
                 } label: {
-                    Label("Schedule (suggestion.type.displayName)", systemImage: "calendar.badge.plus")
+                    Label("Schedule \(suggestion.type.displayName)", systemImage: "calendar.badge.plus")
                         .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.bordered)

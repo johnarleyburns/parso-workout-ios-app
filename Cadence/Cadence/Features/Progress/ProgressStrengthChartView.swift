@@ -15,12 +15,21 @@ struct ProgressStrengthChartView: View {
         data.allSeries.filter { selectedNames.contains($0.exercise) }
     }
 
+    private var defaultNames: Set<String> { ProgressStrengthSelection.defaultNames }
+
+    private var customNames: [String] {
+        data.exerciseNames.filter { !defaultNames.contains($0) }
+    }
+
     var body: some View {
         if data.allSeries.allSatisfy({ $0.points.count < 2 }) {
-            Text("Log a few weeks of working sets and your estimated-1RM trend appears here. e1RM is projected from the weight and reps of your heaviest sets.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                liftPicker
+                Text("Log a few weeks of working sets and your estimated-1RM trend appears here. e1RM is projected from the weight and reps of your heaviest sets.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         } else {
             liftPicker
             Chart {
@@ -64,8 +73,17 @@ struct ProgressStrengthChartView: View {
 
     private var liftPicker: some View {
         Menu {
-            ForEach(data.exerciseNames, id: \.self) { name in
-                toggleButton(name)
+            Section("Default lifts") {
+                ForEach(data.exerciseNames.filter { defaultNames.contains($0) }, id: \.self) { name in
+                    toggleButton(name)
+                }
+            }
+            if !customNames.isEmpty {
+                Section("Custom lifts") {
+                    ForEach(customNames, id: \.self) { name in
+                        toggleButton(name)
+                    }
+                }
             }
         } label: {
             HStack(spacing: 6) {
@@ -79,7 +97,7 @@ struct ProgressStrengthChartView: View {
             .contentShape(Rectangle())
         }
         .accessibilityLabel("Choose lifts to chart")
-        .accessibilityHint("Select Bench Press, Squat, Deadlift, or Combined")
+        .accessibilityHint("Select one or more default or custom lifts")
         .accessibilityIdentifier("progress.strength.liftPicker")
     }
 

@@ -221,7 +221,7 @@ final class StrengthProgressTests: XCTestCase {
 
         let data = StrengthProgress.chartData(from: [input], now: now)
 
-        XCTAssertEqual(data.exerciseNames, ["Bench Press", "Squat", "Deadlift", "Combined"])
+        XCTAssertEqual(data.exerciseNames, ["Bench Press", "Barbell Squat", "Deadlift", "Combined"])
         XCTAssertFalse(data.exerciseNames.contains("Powerlifter"))
         XCTAssertEqual(data.allSeries.last?.exercise, "Combined")
         XCTAssertEqual(data.allSeries.last?.current ?? 0, 370, accuracy: 0.001)
@@ -244,11 +244,27 @@ final class StrengthProgressTests: XCTestCase {
         let data = StrengthProgress.chartData(from: [input], now: now)
         let values = Dictionary(uniqueKeysWithValues: data.allSeries.map { ($0.exercise, $0.current) })
         let expectedCombined = (values["Bench Press"] ?? 0)
-            + (values["Squat"] ?? 0)
+            + (values["Barbell Squat"] ?? 0)
             + (values["Deadlift"] ?? 0)
         let combined = values["Combined"] ?? 0
 
         XCTAssertEqual(combined, expectedCombined, accuracy: 0.001)
+    }
+
+    func testChartDataIncludesNonCanonicalLiftsAsCustomSeries() {
+        let now = Date()
+        let input = StrengthProgressSessionInput(
+            date: now.addingTimeInterval(-86_400),
+            deleted: false,
+            sets: [
+                StrengthProgressSetInput(exerciseName: "Overhead Press", completedAt: now,
+                                         weightKg: 60, reps: 5, isWarmup: false, isOwnerSet: true)
+            ])
+
+        let data = StrengthProgress.chartData(from: [input], now: now)
+
+        XCTAssertTrue(data.exerciseNames.contains("Overhead Press"))
+        XCTAssertEqual(data.exerciseNames.last, "Combined")
     }
 
     // MARK: E1RMPoint

@@ -27,8 +27,7 @@ struct TrainingProgressView: View {
     @State private var preparedStrengthData: StrengthProgressChartData?
     @State private var preparedPREvents: [PREvent] = []
     @State private var preparedFacts: TrainingFacts?
-    @State private var selectedStrengthNames: Set<String> = []
-    @State private var didInitializeStrengthSelection = false
+    @State private var selectedStrengthNames = ProgressStrengthSelection.persisted().selectedNames
 
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
     private var facts: TrainingFacts? { preparedFacts }
@@ -97,6 +96,9 @@ struct TrainingProgressView: View {
         .onChange(of: questionSelection) { _, selection in
             selection.persist()
         }
+        .onChange(of: selectedStrengthNames) { _, names in
+            ProgressStrengthSelection(selectedNames: names).persist()
+        }
         .accessibilityIdentifier("progress")
     }
 
@@ -134,10 +136,6 @@ struct TrainingProgressView: View {
         guard !Task.isCancelled else { return }
         preparedStrengthData = prepared.strength
         preparedPREvents = prepared.prEvents
-        if !didInitializeStrengthSelection {
-            selectedStrengthNames = Set(prepared.strength.exerciseNames)
-            didInitializeStrengthSelection = true
-        }
         // The slower insight facts are prepared once per history snapshot. The
         // chart and PR tabs never depend on this work, so they remain responsive
         // even while the secondary reports are being refreshed.

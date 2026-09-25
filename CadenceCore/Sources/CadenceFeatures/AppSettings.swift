@@ -35,6 +35,7 @@ public final class AppSettings {
                         "settings.coachSchedulePreferences",
                         "settings.coachHidden",
                         ProgressQuestionSelection.persistenceKey,
+                        ProgressStrengthSelection.persistenceKey,
                         "settings.lastTestRecommendationAt",
                         "settings.testRecommendationSnoozes"] {
                 defaults.removeObject(forKey: key)

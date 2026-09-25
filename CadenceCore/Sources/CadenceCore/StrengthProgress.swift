@@ -133,9 +133,10 @@ public enum StrengthProgress {
         .sorted { $0.current > $1.current }
     }
 
-    /// The four fixed series shown by Progress: Bench Press, Squat, Deadlift,
+    /// The fixed series shown by Progress: Bench Press, Barbell Squat, Deadlift,
     /// and their week-by-week Combined total. Older history may use barbell or
-    /// Back Squat aliases; those normalize into the fixed labels here.
+    /// Back Squat aliases; those normalize into the fixed labels here. Other
+    /// lifts remain available as selectable custom series.
     public static func chartData(from sessions: [StrengthProgressSessionInput],
                                  now: Date = Date(),
                                  weeks: Int = 12,
@@ -145,7 +146,7 @@ public enum StrengthProgress {
                                    formula: formula, calendar: calendar)
         let aliases: [(String, Set<String>)] = [
             ("Bench Press", ["benchpress", "barbellbenchpress"]),
-            ("Squat", ["squat", "backsquat", "barbellsquat"]),
+            ("Barbell Squat", ["squat", "backsquat", "barbellsquat"]),
             ("Deadlift", ["deadlift", "barbelldeadlift"])
         ]
         var pointsByLift: [String: [Date: Double]] = [:]
@@ -164,6 +165,10 @@ public enum StrengthProgress {
                            .sorted { $0.key < $1.key }
                            .map { E1RMPoint(weekStart: $0.key, e1rm: $0.value) })
         }
+        let canonicalNames = Set(aliases.flatMap { $0.1 })
+        let customSeries = all
+            .filter { item in !canonicalNames.contains(normalized(item.exercise)) }
+            .sorted { $0.exercise.localizedStandardCompare($1.exercise) == .orderedAscending }
         let weeksWithData = Set(pointsByLift.values.flatMap(\.keys)).sorted()
         let totalPoints = weeksWithData.compactMap { week -> E1RMPoint? in
             let total = aliases.reduce(0.0) { sum, entry in
@@ -171,7 +176,7 @@ public enum StrengthProgress {
             }
             return total > 0 ? E1RMPoint(weekStart: week, e1rm: total) : nil
         }
-        return StrengthProgressChartData(series: fixedSeries + [
+        return StrengthProgressChartData(series: fixedSeries + customSeries + [
             E1RMSeries(exercise: "Combined", points: totalPoints)
         ])
     }

@@ -583,6 +583,13 @@ extension TrainingEngineBridge {
                 exerciseRecords.first { $0.exerciseId == id }
             }
             guard record != nil || prescription.exerciseName != nil else { return nil }
+            // Keep the engine boundary subject to the same resistance-only
+            // contract as the local solver. This protects the UI if an older
+            // DB++ plan contains a mobility/stretching/cardio prescription.
+            if let record,
+               ["stretching", "mobility", "cardio", "plyometrics"].contains(record.category) {
+                return nil
+            }
             let name = record?.name ?? prescription.exerciseName ?? "Exercise"
             let sets = max(1, integerValue(prescription.sets)
                 ?? prescription.plannedSets?.count

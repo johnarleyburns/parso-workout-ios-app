@@ -104,6 +104,19 @@ struct SuggestExerciseView: View {
                 Text("Selected for your \(request.style.displayName.lowercased()) workout using the remaining allocation in this workout.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                DisclosureGroup("WHY: this exercise") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(singleExerciseWhy(exercise))
+                        Text(singleExerciseSetRepWhy(exercise))
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
+                }
+                .font(.subheadline.weight(.semibold))
+                .tint(CadenceTheme.link)
+                .accessibilityIdentifier("suggestExercise.rationale")
                 if !exercise.contributions.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Primary focus").font(.headline)
@@ -151,5 +164,26 @@ struct SuggestExerciseView: View {
             .split(separator: " ")
             .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
             .joined(separator: " ")
+    }
+
+    private func singleExerciseWhy(_ exercise: SuggestedWorkoutExercise) -> String {
+        let contributions = exercise.contributions.map {
+            "\(displayName($0.muscleID)) (\($0.weight >= VolumeCredit.direct ? "direct" : "indirect"), \(format($0.plannedSetContribution)) credited sets)"
+        }.joined(separator: ", ")
+        return "\(exercise.name) was selected because it closes the remaining allocation for \(contributions). It is an eligible \(request.style.displayName.lowercased()) movement; the solver prioritizes the largest remaining muscle gap, then compound coverage and style fit."
+    }
+
+    private func singleExerciseSetRepWhy(_ exercise: SuggestedWorkoutExercise) -> String {
+        "The prescription is \(exercise.plannedSets) sets × \(rangeText(exercise.repRange)) reps: sets follow the bounded preference for this workout, while \(request.input.trainingGoal.displayName.lowercased()) selects the rep range."
+    }
+
+    private func format(_ value: Double) -> String {
+        value.rounded() == value ? String(Int(value)) : String(format: "%.1f", value)
+    }
+
+    private func rangeText(_ range: ClosedRange<Int>) -> String {
+        range.lowerBound == range.upperBound
+            ? String(range.lowerBound)
+            : "\(range.lowerBound)–\(range.upperBound)"
     }
 }

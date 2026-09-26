@@ -46,4 +46,12 @@ final class MuscleMapLayoutTests: XCTestCase {
         let visible = Set(MuscleMapLayout.callouts.map(\.group))
         XCTAssertEqual(visible, Set(MuscleGroup.allCases))
     }
+
+    func testVisibleCalloutsCanMatchTheVolumeScope() {
+        let visible = MuscleMapLayout.callouts(
+            for: .back,
+            visibleGroups: MuscleGroup.defaultTracked)
+        XCTAssertFalse(visible.contains { $0.group == .rotatorCuff })
+        XCTAssertTrue(visible.contains { $0.group == .lats })
+    }
 }

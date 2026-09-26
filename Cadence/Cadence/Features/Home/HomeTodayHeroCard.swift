@@ -7,10 +7,12 @@ struct HomeTodayHeroCard: View {
     let estimatedMinutes: Int?
     let exercises: [(name: String, detail: String)]
     let reason: String?
+    let rationale: SuggestedWorkoutRationale?
     let citationIDs: [String]
     let onStart: () -> Void
     let onEdit: () -> Void
     let onChooseAnother: () -> Void
+    @State private var rationalePresented = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -67,6 +69,21 @@ struct HomeTodayHeroCard: View {
                                          context: "Why this workout", compact: true)
                         }
                     }
+                }
+            }
+
+            if let rationale {
+                Button {
+                    rationalePresented = true
+                } label: {
+                    Label("Why this workout", systemImage: "questionmark.circle")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(CadenceTheme.link)
+                .accessibilityIdentifier("home.hero.whyWorkout")
+                .sheet(isPresented: $rationalePresented) {
+                    RecommendationRationaleSheet(rationale: rationale)
                 }
             }
 

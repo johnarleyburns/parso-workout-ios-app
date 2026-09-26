@@ -91,7 +91,7 @@ struct SuggestedWorkoutVectorIndex: Sendable {
         // A movement that earns no weekly volume can never be suggested as
         // strength work, whatever muscles it lists (decision D3). This is what
         // keeps stretches and plyometric drills out of a strength suggestion.
-        for candidate in candidates where candidate.volumeEligible {
+        for candidate in candidates where candidate.isResistanceExercise {
             let trimmedName = candidate.name.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmedName.isEmpty else { continue }
             let key = trimmedName.lowercased()

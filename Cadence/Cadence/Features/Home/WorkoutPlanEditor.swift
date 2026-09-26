@@ -109,6 +109,11 @@ struct WorkoutPlanEditor: View {
                     if allowsSchedule { scheduleButton }
                 }
 
+                if let rationale = plan.recommendationRationale {
+                    RecommendationRationaleDisclosure(rationale: rationale)
+                        .workoutPlanCard()
+                }
+
                 WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
                                           isEditing: isEditing,
                                           allPeople: allPeople,

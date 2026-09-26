@@ -78,6 +78,7 @@ extension HomeView {
         }
         return HomeTodayHeroCard(title: hero.title, tag: tag,
                                  estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,
+                                 rationale: todaySuggestedPlan?.recommendationRationale,
                                  citationIDs: hero.citationIDs,
                                  onStart: {
                                      if activeSession != nil {

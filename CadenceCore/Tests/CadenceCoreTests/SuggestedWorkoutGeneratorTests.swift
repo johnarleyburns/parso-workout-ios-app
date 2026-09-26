@@ -303,6 +303,59 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         }
     }
 
+    func testNonResistanceClassificationIsNeverSuggestedEvenIfMarkedVolumeEligible() {
+        var completed = satisfied(at: 4)
+        completed["hamstrings"] = 0
+        let catStretch = SuggestedExerciseCandidate(
+            id: "cat-stretch", name: "Cat Stretch", mechanics: .isolation,
+            primaryMuscles: ["hamstrings"], volumeEligible: true,
+            trainingTypes: [.stretching])
+        let mobility = SuggestedExerciseCandidate(
+            id: "mobility", name: "Hip Mobility", mechanics: .isolation,
+            primaryMuscles: ["hamstrings"], volumeEligible: true,
+            trainingTypes: [.mobility])
+        let cardio = SuggestedExerciseCandidate(
+            id: "cardio", name: "Leg Cardio", mechanics: .compound,
+            primaryMuscles: ["hamstrings"], volumeEligible: true,
+            trainingTypes: [.cardio])
+        let unclassified = SuggestedExerciseCandidate(
+            id: "unclassified", name: "Unclassified Movement", mechanics: .compound,
+            primaryMuscles: ["hamstrings"], volumeEligible: true,
+            trainingTypes: [])
+
+        let bundle = generate(completed: completed,
+                              candidates: [catStretch, mobility, cardio, unclassified])
+
+        for option in bundle.options {
+            XCTAssertFalse(option.exercises.contains { exercise in
+                ["Cat Stretch", "Hip Mobility", "Leg Cardio", "Unclassified Movement"].contains(exercise.name)
+            }, "\(option.style) suggested a non-resistance movement")
+        }
+    }
+
+    func testEveryLaunchableSuggestionCarriesWorkoutAndExerciseReasons() {
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: ["chest": 0],
+            candidates: [candidate("bench", "Bench Press", primary: ["chest"])],
+            trackedGroups: [.chest],
+            preferredSetsPerExercise: 3,
+            trainingGoal: .strength)
+
+        let bundle = SuggestedWorkoutGenerator.generate(input: input)
+        for option in bundle.options where option.isLaunchable {
+            guard let rationale = option.rationale else {
+                XCTFail("Launchable \(option.style) option must carry rationale")
+                continue
+            }
+            XCTAssertFalse(rationale.whyWorkout.isEmpty)
+            XCTAssertEqual(rationale.exercises.map(\.exerciseName),
+                           option.exercises.map(\.name))
+            XCTAssertTrue(rationale.exercises.allSatisfy {
+                !$0.whyExercise.isEmpty && !$0.whySetRep.isEmpty
+            })
+        }
+    }
+
     // MARK: - Styles
 
     func testEachStylePrefersItsOwnMovementsForTheSameGap() {

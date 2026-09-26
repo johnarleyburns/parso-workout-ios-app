@@ -54,7 +54,8 @@ struct HomeMuscleMapView: View {
 
     private var heatMap: some View {
         let panel = selectedPanel == .front ? MuscleMapPanel.front : .back
-        let callouts = MuscleMapLayout.callouts(for: panel)
+        let visibleGroups = Set(rows.map(\.group))
+        let callouts = MuscleMapLayout.callouts(for: panel, visibleGroups: visibleGroups)
         return GeometryReader { proxy in
             let imageSize = anatomyImageSize(in: proxy.size)
             let imageOrigin = CGPoint(x: (proxy.size.width - imageSize.width) / 2,

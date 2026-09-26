@@ -26,6 +26,18 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
     /// completed history. Used only by the Personalized chooser option.
     public let isPersonalized: Bool
 
+    /// Strength suggestions may only use movements explicitly classified as
+    /// resistance training. An empty classification is intentionally rejected:
+    /// it is not enough evidence that a legacy or custom movement is suitable
+    /// for closing a muscle-set deficiency.
+    public var isResistanceExercise: Bool {
+        guard volumeEligible else { return false }
+        return trainingTypes.contains(.strength)
+            || trainingTypes.contains(.powerlifting)
+            || trainingTypes.contains(.olympicWeightlifting)
+            || trainingTypes.contains(.strongman)
+    }
+
     public init(id: String, name: String, mechanics: Mechanics,
                 primaryMuscles: [String], secondaryMuscles: [String] = [],
                 equipment: Equipment? = nil,
@@ -176,6 +188,38 @@ public struct SuggestedWorkoutExercise: Equatable, Sendable {
     }
 }
 
+/// The auditable explanation attached to one generated movement. These are
+/// deliberately value types so the exact inputs used by the solver can travel
+/// with the editable draft without coupling SwiftUI to DB++ internals.
+public struct SuggestedExerciseRationale: Equatable, Sendable, Hashable {
+    public let exerciseName: String
+    public let whyExercise: String
+    public let whySetRep: String
+
+    public init(exerciseName: String, whyExercise: String, whySetRep: String) {
+        self.exerciseName = exerciseName
+        self.whyExercise = whyExercise
+        self.whySetRep = whySetRep
+    }
+}
+
+/// Full, collapsed-by-default explanation for a generated workout.
+public struct SuggestedWorkoutRationale: Equatable, Sendable, Hashable {
+    public let whyWorkout: String
+    public let exercises: [SuggestedExerciseRationale]
+
+    public init(whyWorkout: String, exercises: [SuggestedExerciseRationale]) {
+        self.whyWorkout = whyWorkout
+        self.exercises = exercises
+    }
+
+    public func rationale(for exerciseName: String) -> SuggestedExerciseRationale? {
+        exercises.first {
+            $0.exerciseName.caseInsensitiveCompare(exerciseName) == .orderedSame
+        }
+    }
+}
+
 public struct SuggestedWorkoutOption: Equatable, Sendable {
     public let style: SuggestedWorkoutStyle
     public let plan: WorkoutPlan
@@ -190,6 +234,7 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
     public let enginePlanID: String?
     public let engineRevisionID: String?
     public let enginePlanJSON: Data?
+    public let rationale: SuggestedWorkoutRationale?
 
     /// How many of the chosen movements came from the style's own pool. The
     /// chooser reports this, because a style narrows the movements without ever
@@ -201,7 +246,8 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
                 remainingDeficits: [String: Double], plannedSetTotal: Int,
                 capTrimmingOccurred: Bool, citationIDs: [String],
                 enginePlanID: String? = nil, engineRevisionID: String? = nil,
-                enginePlanJSON: Data? = nil) {
+                enginePlanJSON: Data? = nil,
+                rationale: SuggestedWorkoutRationale? = nil) {
         self.style = style
         self.plan = plan
         self.exercises = exercises
@@ -213,11 +259,25 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
         self.enginePlanID = enginePlanID
         self.engineRevisionID = engineRevisionID
         self.enginePlanJSON = enginePlanJSON
+        self.rationale = rationale
     }
 
     public var isLaunchable: Bool { !exercises.isEmpty }
     public var unresolvedDeficits: [String: Double] {
         remainingDeficits.filter { $0.value > SuggestedWorkoutGenerator.epsilon }
+    }
+
+    public func withRationale(_ rationale: SuggestedWorkoutRationale) -> SuggestedWorkoutOption {
+        SuggestedWorkoutOption(
+            style: style, plan: plan, exercises: exercises,
+            initialDeficits: initialDeficits, remainingDeficits: remainingDeficits,
+            plannedSetTotal: plannedSetTotal,
+            capTrimmingOccurred: capTrimmingOccurred,
+            citationIDs: citationIDs,
+            enginePlanID: enginePlanID,
+            engineRevisionID: engineRevisionID,
+            enginePlanJSON: enginePlanJSON,
+            rationale: rationale)
     }
 }
 
@@ -401,6 +461,8 @@ public enum SuggestedWorkoutGenerator {
             solve(style: $0, completed: completed, preferredSets: preferredSets,
                   goal: input.trainingGoal, historyWorkoutCount: input.historyWorkoutCount,
                   index: index, counters: &counters)
+        }.map { option in
+            option.withRationale(rationale(for: option, input: input))
         }
         let generationDuration = generationStart.duration(to: clock.now)
 
@@ -452,7 +514,7 @@ public enum SuggestedWorkoutGenerator {
             fullCatalogScanCount: 0,
             vectorIndexBuildDuration: indexDuration,
             allStylesGenerationDuration: generationStart.duration(to: clock.now))
-        return option
+        return option.withRationale(rationale(for: option, input: input))
     }
 
     /// Chooses exactly one movement for an existing plan or live workout. The
@@ -632,6 +694,9 @@ public enum SuggestedWorkoutGenerator {
             fullCatalogScanCount: 0,
             vectorIndexBuildDuration: .zero,
             allStylesGenerationDuration: duration)
+        options = options.map { option in
+            option.withRationale(rationale(for: option, input: input))
+        }
         return SuggestedWorkoutBundle(
             options: options,
             diagnostics: diagnostics,
@@ -822,6 +887,66 @@ public enum SuggestedWorkoutGenerator {
             remainingDeficits: muscleSpace.dictionary(initial),
             plannedSetTotal: 0, capTrimmingOccurred: false,
             citationIDs: suggestedWorkoutCitationIDs)
+    }
+
+    private static func rationale(for option: SuggestedWorkoutOption,
+                                  input: SuggestedWorkoutInput) -> SuggestedWorkoutRationale {
+        let startingGaps = option.initialDeficits
+            .filter { $0.value > epsilon }
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                return MuscleGroup.canonical(lhs.key).map(MuscleGroup.massPriority(for:))
+                    ?? Int.max < (MuscleGroup.canonical(rhs.key).map(MuscleGroup.massPriority(for:)) ?? Int.max)
+            }
+        let startingGapByID = Dictionary(uniqueKeysWithValues: startingGaps)
+        let gapText = startingGaps.isEmpty
+            ? "no tracked muscle-group deficit"
+            : startingGaps.map { "\(displayName($0.key)) \(format($0.value)) credited sets short" }
+                .joined(separator: ", ")
+        let styleText = option.style == .personalized
+            ? "your history-first Personalized style"
+            : "your \(option.style.displayName.lowercased()) style"
+        let workoutText = "This workout was suggested because your starting tracked gaps were \(gapText). "
+            + "It uses \(styleText), prioritizes the largest remaining gap first, and assigns \(option.plannedSetTotal) working sets toward the open gaps. "
+            + "The \(input.trainingGoal.displayName.lowercased()) goal drives the rep range, your preferred sets-per-exercise setting is bounded to 3–4 sets here, and the workout is limited to \(suggestedWorkoutPlannedSetCap) total planned sets."
+
+        let exerciseReasons = option.exercises.map { exercise in
+            let relevant = exercise.contributions.filter { startingGapByID[$0.muscleID] ?? 0 > epsilon }
+            let gapReasons = relevant.isEmpty
+                ? "the selected movement was retained as a maintenance option after the tracked gaps were covered"
+                : relevant.map { contribution in
+                    let role = contribution.weight >= VolumeCredit.direct ? "direct" : "indirect"
+                    return "\(displayName(contribution.muscleID)) (\(role), \(format(contribution.plannedSetContribution)) credited sets)"
+                }.joined(separator: ", ")
+            let styleReason = exercise.isInStyle
+                ? "It matches the selected style."
+                : "It is a general-strength fallback because the selected style did not close that gap."
+            let score = format(exercise.selectionScore)
+            let whyExercise = "\(exercise.name) was selected for \(gapReasons). At selection it supplied \(score) credited sets across the open targets. \(styleReason) Compound movements and movements covering more open groups win ties."
+            let whySetRep = "The prescription is \(exercise.plannedSets) sets × \(rangeText(exercise.repRange)) reps: the set count follows the bounded preferred-set setting and the \(input.trainingGoal.displayName.lowercased()) goal supplies the rep range. DB++ may narrow that range when its goal policy provides a more specific prescription."
+            return SuggestedExerciseRationale(exerciseName: exercise.name,
+                                              whyExercise: whyExercise,
+                                              whySetRep: whySetRep)
+        }
+        return SuggestedWorkoutRationale(whyWorkout: workoutText, exercises: exerciseReasons)
+    }
+
+    private static func displayName(_ identifier: String) -> String {
+        MuscleGroup.canonical(identifier)?.displayName ?? identifier
+            .replacingOccurrences(of: "_", with: " ")
+            .split(separator: " ")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+            .joined(separator: " ")
+    }
+
+    private static func format(_ value: Double) -> String {
+        value.rounded() == value ? String(Int(value)) : String(format: "%.1f", value)
+    }
+
+    private static func rangeText(_ range: ClosedRange<Int>) -> String {
+        range.lowerBound == range.upperBound
+            ? String(range.lowerBound)
+            : "\(range.lowerBound)–\(range.upperBound)"
     }
 
     /// Deterministically chooses a style movement for a maintenance suggestion.

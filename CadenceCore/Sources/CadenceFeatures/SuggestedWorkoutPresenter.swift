@@ -115,6 +115,7 @@ public enum SuggestedWorkoutPresenter {
         editable.engineRevisionId = option.engineRevisionID
         editable.enginePlanJSON = option.enginePlanJSON
         editable.suggestedWorkoutStyle = option.style
+        editable.recommendationRationale = option.rationale
         return editable
     }
 

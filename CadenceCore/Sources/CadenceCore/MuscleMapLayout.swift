@@ -79,4 +79,13 @@ public enum MuscleMapLayout {
     public static func callouts(for panel: MuscleMapPanel) -> [MuscleMapCallout] {
         callouts.filter { $0.panel == panel }
     }
+
+    /// Returns only the callouts represented by a volume surface. The anatomy
+    /// artwork contains all 20 DB++ groups, while Home deliberately hides an
+    /// untracked group until it has credited work. Keeping this filter here
+    /// prevents the graphic and the list from presenting different scopes.
+    public static func callouts(for panel: MuscleMapPanel,
+                                visibleGroups: Set<MuscleGroup>) -> [MuscleMapCallout] {
+        callouts(for: panel).filter { visibleGroups.contains($0.group) }
+    }
 }

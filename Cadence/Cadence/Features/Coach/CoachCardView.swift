@@ -143,7 +143,8 @@ struct CoachSourcesLink: View {
     var identifier: String = "coach.sources.link"
 
     var body: some View {
-        let citations = CitationPresenter.citations(forIds: citationIds)
+        let presentation = CitationPresenter.scienceLinkPresentation(forIds: citationIds)
+        let citations = presentation.citations
         if !citations.isEmpty {
             NavigationLink {
                 CoachSourcesView(citations: citations, contexts: contexts)

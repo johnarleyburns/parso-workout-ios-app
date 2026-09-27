@@ -2,7 +2,7 @@
 
 > **Product name (user-visible): Cladiron.** Internal codename: Cadence — used for the repo, Xcode project, scheme, Swift package (`CadenceCore`), bundle ID, and type names.
 
-**Status:** Legacy v1 requirements; superseded by `docs/plans/cladiron-mvp-revised/CLADIRON_PLATFORM_SPEC.md` · **Platforms:** iPhone (iOS 17+) + embedded watchOS 10+ companion app · **License:** GPLv3-or-later with the Cladiron App Store Exception · **Distribution:** TestFlight + App Store
+**Status:** Legacy v1 requirements; superseded by `docs/plans/cladiron-mvp-revised/CLADIRON_PLATFORM_SPEC.md` · **Platforms:** iPhone (iOS 27+) + embedded watchOS 10+ companion app · **License:** GPLv3-or-later with the Cladiron App Store Exception · **Distribution:** TestFlight + App Store
 
 > **v1 release scope:** log strength on the phone with coaching; read steps + ingest Watch-recorded workouts/HR from HealthKit; run a no-lab fitness test battery that feeds the coach; review history, PRs, and trends; train phone-free from the Watch (FR-8, shipped 2026-07-17: strength with partners, HIIT, cardio suite, live wrist HR). FTMS/NFC and Smart Start sensors move to later releases — see §9.
 

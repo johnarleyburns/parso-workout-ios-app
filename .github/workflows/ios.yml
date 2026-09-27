@@ -10,7 +10,7 @@ env:
 
 jobs:
   core-tests:
-    runs-on: macos-latest
+    runs-on: xcode-27
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -69,7 +69,7 @@ jobs:
 
   testflight-build:
     needs: core-tests
-    runs-on: macos-latest
+    runs-on: xcode-27
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -169,7 +169,7 @@ jobs:
             -archivePath ./build/Cadence.xcarchive \
             MARKETING_VERSION="$MKT_VERSION" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            IPHONEOS_DEPLOYMENT_TARGET=17.0 \
+            IPHONEOS_DEPLOYMENT_TARGET=27.0 \
             "DEVELOPMENT_TEAM=$TEAM_ID" \
             2>&1 | tee build.log
           if [ ! -d "./build/Cadence.xcarchive" ]; then

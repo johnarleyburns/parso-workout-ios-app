@@ -71,7 +71,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 - **Live cloud sync** via SwiftData↔CloudKit mirroring to the user's own **private** CloudKit database (no third-party server); JSON export/import remains for portability.
 - **CoreBluetooth** (chest-strap HRM `0x180D`; cardio-machine FTMS `0x1826`)
 - **CoreLocation** (geofence + iPhone GPS), **CoreMotion** (activity class), **Swift Charts** (trends)
-- Targets: watchOS 10+, iOS 17+
+- Targets: watchOS 10+, iOS 27+
 
 ## Architecture (decisions already made — don't re-litigate without asking)
 - **`CadenceCore` Swift package** holds the data model, Smart Start ranking, PR logic, and the export/import layer. Both app targets depend on it. Write logging logic ONCE here; it's headlessly testable with `swift test`.

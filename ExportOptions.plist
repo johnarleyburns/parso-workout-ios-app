@@ -18,6 +18,8 @@
 	<string>Parso Workout Watch App Store</string>
 	<key>guru.parso.ios-workout-app.widgets</key>
 	<string>Parso Workout Widgets App Store</string>
+	<key>guru.parso.ios-workout-app.watchkitapp.widgets</key>
+	<string>Parso Workout Watch Widgets App Store</string>
 	</dict>
 	<key>stripSwiftSymbols</key>
 	<true/>

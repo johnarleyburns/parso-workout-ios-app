@@ -8,7 +8,8 @@ Design set written to `plans/award-polish/2026-09-26/` (overview, 01 glass &
 navigation, 02 voice grammar, 03 voice capture/confirm UI, 04 Siri/Controls/
 Live Activity/Spotlight, 05 Watch double tap + AlarmKit rest alerts, 06
 optional on-device model fallback, 07 rollout, decision sheet, handoff
-prompt, `mockups.html` with screens A1–A25, and `08-voice-battery-study.md`).
+prompt, `mockups.html` with screens A1–A27 (private copy:
+https://claude.ai/artifact/EkfyY6uNKhL4npdTRYkPg1), and `08-voice-battery-study.md`).
 No app code changed. Decided 2026-09-27: D4 save immediately when sure; D6
 Watch target → watchOS 11 (in P5); D8 Siri never logs in the background. Added
 2026-09-27: **Quick Talk** phone voice logging (hold Log set / mic, opt-in
@@ -17,8 +18,11 @@ raise-to-talk, Action Button / Lock Screen Talk control via
 session-long continuous listening costs roughly 10–30× the mic/ASR runtime
 (apps can't use Siri's low-power Always On Processor, and gym music defeats
 silence gating), so it's opt-in and gated on on-device Power Profiler
-measurement (D15). **Immediate next task:** answer the open decisions (D1, D2,
-D3, D5, D7, D9–D15), then run P0 (check the listed APIs against the iOS 27
+measurement (D15). Also decided 2026-09-27: D12 hold Log set = Quick Talk; D13 raise-to-talk and
+D15 always-listening are opt-in (offered in a new onboarding page and, while
+unset, on the Get Ready countdown with "Never show again"); D14 lock-screen
+Quick Talk saves clear commands only. **Immediate next task:** answer the open
+decisions (D1, D2, D5, D7, D9, D10), then run P0 (check the listed APIs against the iOS 27
 SDK) and start P1 per `HANDOFF.md`.
 
 ## Active task — Cladiron visual redesign (2026-09-25)

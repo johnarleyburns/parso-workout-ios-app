@@ -8,9 +8,12 @@ Design set written to `plans/award-polish/2026-09-26/` (overview, 01 glass &
 navigation, 02 voice grammar, 03 voice capture/confirm UI, 04 Siri/Controls/
 Live Activity/Spotlight, 05 Watch double tap + AlarmKit rest alerts, 06
 optional on-device model fallback, 07 rollout, decision sheet, handoff
-prompt). No app code changed. **Immediate next task:** answer
-`decision-sheet.md` (D1–D10), record the answers in `decisions.md`, then run P0
-(check the listed APIs against the iOS 27 SDK) and start P1 per `HANDOFF.md`.
+prompt, and `mockups.html` with screens A1–A20). No app code changed. Decided
+2026-09-27: D4 save immediately when sure; D6 Watch target → watchOS 11 (in P5);
+D8 Siri never logs in the background; Siri/Action Button open the app into a
+hands-free Listening mode with no wake word. **Immediate next task:** answer the
+open decisions (D1, D2, D3, D5, D7, D9, D10, D11), then run P0 (check the listed
+APIs against the iOS 27 SDK) and start P1 per `HANDOFF.md`.
 
 ## Active task — Cladiron visual redesign (2026-09-25)
 

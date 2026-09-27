@@ -25,6 +25,16 @@ final class CitationPresenterTests: XCTestCase {
         XCTAssertEqual(CitationPresenter.citations(forIds: repeated).map(\.id), [ids[0], ids[1]])
     }
 
+    func testPersonalizedWorkoutUsesOneScienceLinkForAllSources() {
+        let presentation = CitationPresenter.scienceLinkPresentation(
+            forIds: SuggestedWorkoutPresenter.citationIDs)
+
+        XCTAssertEqual(presentation.citations.map(\.id), SuggestedWorkoutPresenter.citationIDs)
+        XCTAssertEqual(presentation.citations.count, 2)
+        XCTAssertEqual(presentation.linkCount, 1,
+                       "A multi-reference personalized workout must render one science link")
+    }
+
     func testHasScienceIsFalseForEmptyAndForAllUnknownIds() {
         XCTAssertFalse(CitationPresenter.hasScience([]))
         XCTAssertFalse(CitationPresenter.hasScience(["nope", "alsoNope"]))

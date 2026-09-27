@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 
 /// Small entry for **Other Cardio** before a live recording (feedback batch 6

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 
@@ -112,7 +113,12 @@ enum HomeMuscleHistoryPresenter {
 struct HomeMuscleDetailSheet: View {
     let history: HomeMuscleHistory
     let unit: MeasurementUnitPreference
+    @Environment(AppSettings.self) private var settings
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Exercise.name) private var allExercises: [Exercise]
+    @State private var suggestionRequest: SuggestedExerciseRequest?
+    @State private var suggestExerciseFailed = false
 
     var body: some View {
         NavigationStack {
@@ -131,12 +137,35 @@ struct HomeMuscleDetailSheet: View {
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.trailing)
                     }
+                    HStack {
+                        Text("This week's exercises")
+                            .font(.headline)
+                        Spacer()
+                        Button {
+                            do {
+                                suggestionRequest = try SuggestedExerciseRequestFactory.make(
+                                    context: modelContext,
+                                    settings: settings,
+                                    style: .fitness,
+                                    existingExerciseNames: history.exercises.map(\.name),
+                                    alreadyAllocatedByMuscle: [:],
+                                    priorityMuscle: history.group)
+                            } catch {
+                                suggestExerciseFailed = true
+                            }
+                        } label: {
+                            Label("Suggest exercise", systemImage: "wand.and.stars")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(CadenceTheme.link)
+                        .accessibilityIdentifier("home.week.muscleDetail.suggestExercise")
+                    }
+
                     if history.exercises.isEmpty {
                         ContentUnavailableView("No logged work yet", systemImage: "figure.strengthtraining.traditional",
                                                description: Text("Working sets for this muscle will appear here during the current week."))
                     } else {
-                        Text("This week's exercises")
-                            .font(.headline)
                         ForEach(history.exercises) { exercise in
                             VStack(alignment: .leading, spacing: 7) {
                                 HStack {
@@ -172,6 +201,21 @@ struct HomeMuscleDetailSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .sheet(item: $suggestionRequest) { request in
+            SuggestExerciseView(
+                request: request,
+                exerciseForName: { name in
+                    allExercises.first {
+                        $0.name.localizedCaseInsensitiveCompare(name) == .orderedSame
+                    }
+                },
+                onAdd: nil)
+        }
+        .alert("Couldn't suggest an exercise", isPresented: $suggestExerciseFailed) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Exercise data could not be read. Try again after the catalog finishes loading.")
+        }
     }
 
     private func repsLabel(_ sets: [HomeMuscleHistorySet]) -> String {

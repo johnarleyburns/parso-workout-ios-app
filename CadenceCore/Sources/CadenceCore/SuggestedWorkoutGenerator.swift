@@ -526,7 +526,8 @@ public enum SuggestedWorkoutGenerator {
         style: SuggestedWorkoutStyle,
         alreadyAllocatedByMuscle: [String: Double] = [:],
         excludingCandidateIDs: Set<String> = [],
-        allowPersonalizedFallback: Bool = false
+        allowPersonalizedFallback: Bool = false,
+        priorityMuscle: MuscleGroup? = nil
     ) -> SuggestedWorkoutExercise? {
         guard style != .personalized || allowPersonalizedFallback
             || input.historyWorkoutCount >= minimumPersonalizedWorkouts else {
@@ -534,6 +535,9 @@ public enum SuggestedWorkoutGenerator {
         }
         let index = SuggestedWorkoutVectorIndex(candidates: input.candidates,
                                                 tracked: input.trackedGroups)
+        let priorityDimension = priorityMuscle.flatMap {
+            index.muscleSpace.dimensionByID[$0.rawValue]
+        }
         let completed = index.muscleSpace.completedVector(input.completedSetsByMuscle)
         let allocated = index.muscleSpace.completedVector(alreadyAllocatedByMuscle)
         let target = Double(suggestedWorkoutTargetSetsPerGroup)
@@ -570,7 +574,9 @@ public enum SuggestedWorkoutGenerator {
             for candidateIndex in index.exercises.indices where allowed(candidateIndex,
                                                                         restrictedToStyle: restrictedToStyle) {
                 let exercise = index.exercises[candidateIndex]
-                let candidateScore = score(exercise, deficits: deficits, preferredSets: preferredSets)
+                let candidateScore = score(exercise, deficits: deficits,
+                                           preferredSets: preferredSets,
+                                           priorityDimension: priorityDimension)
                 guard candidateScore.total > epsilon else { continue }
                 let selection = Selection(candidateIndex: candidateIndex,
                                           score: candidateScore,
@@ -589,7 +595,7 @@ public enum SuggestedWorkoutGenerator {
             let exercise = index.exercises[best.candidateIndex]
             return outputExercise(exercise, preferredSets: preferredSets,
                                   repRange: input.trainingGoal.repRange,
-                                  score: best.score.total,
+                                  score: best.score.credited,
                                   isInStyle: best.isInStyle,
                                   muscleSpace: index.muscleSpace)
         }
@@ -630,7 +636,8 @@ public enum SuggestedWorkoutGenerator {
                 if policyStyle != .olympic && (candidate.trainingTypes.contains(.olympicWeightlifting)
                     || ExerciseTrainingType.isOlympicOnlyMovement(named: candidate.name)) { continue }
                 let candidateScore = score(index.exercises[candidateIndex], deficits: deficits,
-                                           preferredSets: preferredSets)
+                                           preferredSets: preferredSets,
+                                           priorityDimension: priorityDimension)
                 guard candidateScore.total > epsilon else { continue }
                 let selection = Selection(candidateIndex: candidateIndex, score: candidateScore,
                                           isInStyle: membership[candidateIndex])
@@ -711,6 +718,7 @@ public enum SuggestedWorkoutGenerator {
 
     private struct Score {
         let total: Double
+        let credited: Double
     }
 
     private struct Selection {
@@ -982,13 +990,24 @@ public enum SuggestedWorkoutGenerator {
     }
 
     private static func score(_ exercise: SuggestedWorkoutIndexedExercise,
-                              deficits: [Double], preferredSets: Int) -> Score {
-        var total = 0.0
+                              deficits: [Double], preferredSets: Int,
+                              priorityDimension: Int? = nil) -> Score {
+        var priority = 0.0
+        var other = 0.0
         for element in exercise.elements where deficits[element.dimension] > epsilon {
             let credit = min(deficits[element.dimension], Double(preferredSets) * element.weight)
-            total += credit
+            if element.dimension == priorityDimension {
+                priority += credit
+            } else {
+                other += credit
+            }
         }
-        return Score(total: total)
+        // The selected muscle is the user's explicit goal. Other open gaps remain
+        // a tie-break so one exercise can cover them without extra cost.
+        let total = priorityDimension == nil
+            ? other
+            : priority * 1_000 + other
+        return Score(total: total, credited: priority + other)
     }
 
     private static func isBetter(_ lhs: Selection, than rhs: Selection,

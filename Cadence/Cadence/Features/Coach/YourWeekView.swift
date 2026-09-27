@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import SwiftData
 import CadenceCore
 import CadenceFeatures
@@ -68,9 +69,12 @@ struct YourWeekView: View {
                         Image(systemName: "dumbbell.fill").foregroundStyle(.green)
                         Text("Strength days").font(.subheadline)
                         Spacer()
-                        Text("\(balance.strengthDays)")
-                            .font(.subheadline.bold()).monospacedDigit()
-                            + Text(strengthToGo > 0 ? "  \(strengthToGo) to go · target \(effectivePrefs.strengthDaysPerWeek)+" : "  target met").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 0) {
+                            Text("\(balance.strengthDays)")
+                                .font(.subheadline.bold()).monospacedDigit()
+                            Text(strengthToGo > 0 ? "  \(strengthToGo) to go · target \(effectivePrefs.strengthDaysPerWeek)+" : "  target met")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     ProgressView(value: min(1, Double(balance.strengthDays) / Double(effectivePrefs.strengthDaysPerWeek)))
                         .tint(.green)
@@ -89,9 +93,12 @@ struct YourWeekView: View {
                         Image(systemName: "heart.fill").foregroundStyle(.teal)
                         Text("Cardio days").font(.subheadline)
                         Spacer()
-                        Text("\(balance.cardioDays)")
-                            .font(.subheadline.bold()).monospacedDigit()
-                            + Text(cardioToGo > 0 ? "  \(cardioToGo) to go · target \(effectivePrefs.cardioDaysPerWeek)" : "  target met").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 0) {
+                            Text("\(balance.cardioDays)")
+                                .font(.subheadline.bold()).monospacedDigit()
+                            Text(cardioToGo > 0 ? "  \(cardioToGo) to go · target \(effectivePrefs.cardioDaysPerWeek)" : "  target met")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     ProgressView(value: effectivePrefs.cardioDaysPerWeek > 0
                         ? min(1, Double(balance.cardioDays) / Double(effectivePrefs.cardioDaysPerWeek)) : 1)
@@ -101,9 +108,12 @@ struct YourWeekView: View {
                         Image(systemName: "timer").foregroundStyle(.blue)
                         Text("Mod-equivalent minutes").font(.subheadline)
                         Spacer()
-                        Text("\(Int(balance.moderateEquivalentMinutes))")
-                            .font(.subheadline.bold()).monospacedDigit()
-                            + Text(minutesToGo > 0 ? "  \(minutesToGo) min to go · floor 150" : "  target met").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 0) {
+                            Text("\(Int(balance.moderateEquivalentMinutes))")
+                                .font(.subheadline.bold()).monospacedDigit()
+                            Text(minutesToGo > 0 ? "  \(minutesToGo) min to go · floor 150" : "  target met")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     ProgressView(value: min(1, balance.moderateEquivalentMinutes / 150))
                         .tint(.blue)
@@ -113,9 +123,12 @@ struct YourWeekView: View {
                             .foregroundStyle(stepsColor(stepSummary.status))
                         Text("Steps (7-day avg)").font(.subheadline)
                         Spacer()
-                        Text("\(Int(stepSummary.sevenDayAverageSteps))")
-                            .font(.subheadline.bold()).monospacedDigit()
-                            + Text(stepsToGo > 0 ? "  \(stepsToGo)/day to go · target \(stepTarget)" : "  on target").font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 0) {
+                            Text("\(Int(stepSummary.sevenDayAverageSteps))")
+                                .font(.subheadline.bold()).monospacedDigit()
+                            Text(stepsToGo > 0 ? "  \(stepsToGo)/day to go · target \(stepTarget)" : "  on target")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     ProgressView(value: min(1, stepSummary.sevenDayAverageSteps / Double(stepTarget)))
                         .tint(stepsColor(stepSummary.status))

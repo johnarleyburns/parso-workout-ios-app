@@ -309,8 +309,10 @@ struct TrainingProgressView: View {
     @ViewBuilder private var effortCard: some View {
         card(title: "Effort", citation: CitationRegistry.rpeAutoregulation, compact: true, tint: .orange, equalHeight: true) {
             if let rir = facts?.avgRIR {
-                Text(String(format: "%.1f", rir)).font(.title2.weight(.semibold))
-                + Text(" RIR").font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 0) {
+                    Text(String(format: "%.1f", rir)).font(.title2.weight(.semibold))
+                    Text(" RIR").font(.caption).foregroundStyle(.secondary)
+                }
                 Text(effortRead(rir, goal: settings.trainingGoal))
                     .font(.caption2).foregroundStyle(.secondary).padding(.top, 3)
             } else {

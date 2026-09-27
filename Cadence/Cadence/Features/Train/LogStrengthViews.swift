@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 
 /// Manual after-the-fact logging for **strength** workouts (feedback batch 7

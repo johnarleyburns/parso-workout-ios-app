@@ -11,6 +11,19 @@ struct SuggestedExerciseRequest: Identifiable {
     let style: SuggestedWorkoutStyle
     let alreadyAllocatedByMuscle: [String: Double]
     let excludingCandidateIDs: Set<String>
+    let priorityMuscle: MuscleGroup?
+
+    init(input: SuggestedWorkoutInput,
+         style: SuggestedWorkoutStyle,
+         alreadyAllocatedByMuscle: [String: Double],
+         excludingCandidateIDs: Set<String>,
+         priorityMuscle: MuscleGroup? = nil) {
+        self.input = input
+        self.style = style
+        self.alreadyAllocatedByMuscle = alreadyAllocatedByMuscle
+        self.excludingCandidateIDs = excludingCandidateIDs
+        self.priorityMuscle = priorityMuscle
+    }
 }
 
 /// Builds the same catalog and history snapshot used by full suggested plans.
@@ -22,7 +35,8 @@ enum SuggestedExerciseRequestFactory {
                      style: SuggestedWorkoutStyle,
                      existingExerciseNames: [String],
                      alreadyAllocatedByMuscle: [String: Double],
-                     excludingSessionID: UUID? = nil) throws -> SuggestedExerciseRequest {
+                     excludingSessionID: UUID? = nil,
+                     priorityMuscle: MuscleGroup? = nil) throws -> SuggestedExerciseRequest {
         let allSessions = try WorkoutRepository.allSessions(context)
         let history = allSessions.filter {
             $0.id != excludingSessionID && $0.countsAsStrengthHistory
@@ -104,6 +118,7 @@ enum SuggestedExerciseRequestFactory {
         return SuggestedExerciseRequest(input: input,
                                         style: style,
                                         alreadyAllocatedByMuscle: alreadyAllocatedByMuscle,
-                                        excludingCandidateIDs: existingIDs)
+                                        excludingCandidateIDs: existingIDs,
+                                        priorityMuscle: priorityMuscle)
     }
 }

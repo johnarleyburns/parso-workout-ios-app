@@ -63,11 +63,13 @@ struct HomeTodayHeroCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    ForEach(citationIDs, id: \.self) { citationID in
-                        if let citation = CitationRegistry.citation(forId: citationID) {
-                            CitationLink(citation: citation,
-                                         context: "Why this workout", compact: true)
-                        }
+                    if !citationIDs.isEmpty {
+                        CoachSourcesLink(
+                            citationIds: citationIDs,
+                            contexts: Dictionary(uniqueKeysWithValues: citationIDs.map {
+                                ($0, "Why this workout")
+                            }),
+                            identifier: "home.hero.science")
                     }
                 }
             }

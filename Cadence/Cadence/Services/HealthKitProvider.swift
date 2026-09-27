@@ -225,7 +225,8 @@ final class HealthKitProvider: HealthDataProviding {
             guard WorkoutRepository.shouldAutoImport(summary) else { continue }
 
             let distance = w.totalDistance?.doubleValue(for: .meter())
-            let energy = w.totalEnergyBurned?.doubleValue(for: .kilocalorie())
+            let energy = w.statistics(for: HKQuantityType(.activeEnergyBurned))?
+                .sumQuantity()?.doubleValue(for: .kilocalorie())
             // Pull the recorded heart-rate curve for this workout (e.g. one the
             // Watch saved) — historical read only, no watch app needed. Capped to
             // keep the stored series light (feedback batch 4).

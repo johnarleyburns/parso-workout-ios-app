@@ -14,7 +14,7 @@ private enum SingleExerciseSuggestionState {
 struct SuggestExerciseView: View {
     let request: SuggestedExerciseRequest
     let exerciseForName: (String) -> Exercise?
-    let onAdd: (SuggestedWorkoutExercise) -> Void
+    let onAdd: ((SuggestedWorkoutExercise) -> Void)?
 
     @Environment(\.dismiss) private var dismiss
     @State private var state: SingleExerciseSuggestionState = .calculating
@@ -70,7 +70,8 @@ struct SuggestExerciseView: View {
                 style: style,
                 alreadyAllocatedByMuscle: allocated,
                 excludingCandidateIDs: excluded,
-                allowPersonalizedFallback: style == .personalized)
+                allowPersonalizedFallback: style == .personalized,
+                priorityMuscle: request.priorityMuscle)
         }.value
         guard !Task.isCancelled else { return }
         if let result {
@@ -101,7 +102,7 @@ struct SuggestExerciseView: View {
                 Text("\(exercise.plannedSets) sets · \(exercise.repRange.lowerBound)–\(exercise.repRange.upperBound) reps")
                     .font(.headline)
                     .foregroundStyle(.secondary)
-                Text("Selected for your \(request.style.displayName.lowercased()) workout using the remaining allocation in this workout.")
+                Text(selectionSummary(for: exercise))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 DisclosureGroup("WHY: this exercise") {
@@ -134,11 +135,13 @@ struct SuggestExerciseView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
                 }
-                CadenceActionButton(title: "Add to Workout", systemImage: "plus.circle.fill") {
-                    onAdd(exercise)
-                    dismiss()
+                if let onAdd {
+                    CadenceActionButton(title: "Add to Workout", systemImage: "plus.circle.fill") {
+                        onAdd(exercise)
+                        dismiss()
+                    }
+                    .accessibilityIdentifier("suggestExercise.add")
                 }
-                .accessibilityIdentifier("suggestExercise.add")
                 CadenceActionButton(title: "Suggest another", systemImage: "arrow.clockwise",
                                     emphasis: .secondary) {
                     excludedCandidateIDs.insert(exercise.candidateID)
@@ -170,7 +173,21 @@ struct SuggestExerciseView: View {
         let contributions = exercise.contributions.map {
             "\(displayName($0.muscleID)) (\($0.weight >= VolumeCredit.direct ? "direct" : "indirect"), \(format($0.plannedSetContribution)) credited sets)"
         }.joined(separator: ", ")
-        return "\(exercise.name) was selected because it closes the remaining allocation for \(contributions). It is an eligible \(request.style.displayName.lowercased()) movement; the solver prioritizes the largest remaining muscle gap, then compound coverage and style fit."
+        let priority = request.priorityMuscle.map {
+            "\($0.displayName) is the requested priority, with other open muscle gaps included when the movement covers them"
+        } ?? "the movement closes the largest remaining muscle gaps"
+        return "\(exercise.name) was selected because it closes the remaining allocation for \(contributions). It is an eligible \(request.style.displayName.lowercased()) movement; the solver prioritizes \(priority), then compound coverage and style fit."
+    }
+
+    private func selectionSummary(for exercise: SuggestedWorkoutExercise) -> String {
+        if let priority = request.priorityMuscle {
+            let covered = exercise.contributions.contains { $0.muscleID == priority.rawValue }
+            let suffix = covered
+                ? " It also covers other open muscle gaps where possible."
+                : " No eligible movement currently covers that muscle and another open gap."
+            return "Prioritized for your \(priority.displayName) gap in a general workout.\(suffix)"
+        }
+        return "Selected for your \(request.style.displayName.lowercased()) workout using the remaining allocation in this workout."
     }
 
     private func singleExerciseSetRepWhy(_ exercise: SuggestedWorkoutExercise) -> String {

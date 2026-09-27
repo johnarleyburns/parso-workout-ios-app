@@ -7,6 +7,22 @@ import CadenceCore
 /// unit-tested rather than asserted by eye in a view.
 public enum CitationPresenter {
 
+    /// The UI contract for a citation-bearing surface: zero links when no
+    /// citations resolve, otherwise one link that opens the complete source
+    /// list. This keeps multi-reference surfaces from rendering one identical
+    /// "The Science" affordance per study.
+    public struct ScienceLinkPresentation: Equatable, Sendable {
+        public let citations: [Citation]
+
+        public init(citations: [Citation]) {
+            self.citations = citations
+        }
+
+        public var linkCount: Int {
+            citations.isEmpty ? 0 : 1
+        }
+    }
+
     /// Ordered, de-duplicated citations for `ids`. Unknown ids are dropped: a raw
     /// id must never reach the UI.
     public static func citations(forIds ids: [String]) -> [Citation] {
@@ -15,6 +31,11 @@ public enum CitationPresenter {
             guard let citation = CitationRegistry.citation(forId: id) else { return nil }
             return seen.insert(citation.id).inserted ? citation : nil
         }
+    }
+
+    /// Resolves one science-link presentation for all of `ids`.
+    public static func scienceLinkPresentation(forIds ids: [String]) -> ScienceLinkPresentation {
+        ScienceLinkPresentation(citations: citations(forIds: ids))
     }
 
     /// Ids that did not resolve. Non-empty means the registry and the engines

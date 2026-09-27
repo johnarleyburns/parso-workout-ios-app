@@ -71,6 +71,29 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         XCTAssertNil(bundle.option(.fitness).initialDeficits["unknown"])
     }
 
+    func testSingleExercisePrioritizesSelectedMuscleThenCoversOtherGaps() {
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: ["chest": 3],
+            candidates: [
+                candidate("chest-only", "Chest Fly", mechanics: .isolation, primary: ["chest"]),
+                candidate("chest-shoulder", "Chest Shoulder Press",
+                          primary: ["chest", "shoulders"]),
+                candidate("shoulder-triceps", "Shoulder Triceps Press",
+                          primary: ["shoulders", "triceps"])
+            ],
+            trackedGroups: [.chest, .shoulders, .triceps],
+            preferredSetsPerExercise: 4,
+            trainingGoal: .hypertrophy)
+
+        let suggestion = SuggestedWorkoutGenerator.suggestSingleExercise(
+            input: input,
+            style: .fitness,
+            priorityMuscle: .chest)
+
+        XCTAssertEqual(suggestion?.name, "Chest Shoulder Press")
+        XCTAssertEqual(suggestion?.contributions.map(\.muscleID), ["chest", "shoulders"])
+    }
+
     // MARK: - Regenerating after excluding an exercise
 
     /// Real user report: excluding an exercise from a suggested workout left

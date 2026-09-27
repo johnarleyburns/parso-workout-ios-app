@@ -425,7 +425,7 @@ final class AppModel: NSObject, @unchecked Sendable {
                                           on session: WCSession,
                                           at date: Date) {
         let write = WatchContextWrite(session: session, context: context)
-        Self.watchContextQueue.async {
+        Self.watchContextQueue.async { [weak self] in
             do {
                 try write.session.updateApplicationContext(write.context)
                 Task { @MainActor [weak self] in
@@ -530,7 +530,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     }
 
     nonisolated private static func watchReplyHandler(owner: AppModel, requestID: UUID) -> ([String: Any]) -> Void {
-        { reply in
+        { [weak owner] reply in
             let matchesRequest = (reply["requestID"] as? String).flatMap(UUID.init(uuidString:)) == requestID
             let accepted = reply["accepted"] as? Bool
             let reason = (reply["rejection"] as? String) ?? "unavailable"
@@ -595,7 +595,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// instead; the queued copy of the command follows the launch.
     nonisolated private static func watchErrorHandler(owner: AppModel, requestID: UUID,
                                                       rawType: String) -> @Sendable (Error) -> Void {
-        { _ in
+        { [weak owner] _ in
             Task { @MainActor [weak owner] in
                 owner?.watchStartMessageFailed(requestID: requestID, rawType: rawType)
             }
@@ -624,7 +624,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// HealthKit calls this off the main thread; hop to the main actor.
     nonisolated private static func watchLaunchHandler(owner: AppModel,
                                                        requestID: UUID) -> @Sendable (Bool, (any Error)?) -> Void {
-        { launched, error in
+        { [weak owner] launched, error in
             let reason = error?.localizedDescription
             Task { @MainActor [weak owner] in
                 owner?.watchAppLaunchFinished(requestID: requestID, launched: launched, reason: reason)
@@ -646,7 +646,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     }
 
     nonisolated private static func watchTimeoutHandler(owner: AppModel) -> @Sendable (Timer) -> Void {
-        { _ in
+        { [weak owner] _ in
             Task { @MainActor [weak owner] in
                 guard let owner, owner.watchHRRelay.freshBPM == nil else { return }
                 owner.watchHRRelay.timeout()

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 
 /// Lets users tag a custom exercise with muscle group, muscles, equipment, and category

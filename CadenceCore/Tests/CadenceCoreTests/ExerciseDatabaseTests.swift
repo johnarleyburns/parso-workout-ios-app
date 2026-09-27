@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceCore
+@testable import CadenceExerciseImages
 
 /// Guards the package-backed free-exercise-db++ database. It is the source of truth
 /// for muscle roles, weekly volume credit, and every muscle-attribution citation the

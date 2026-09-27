@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceExerciseImages
 
 struct ExerciseDetailView: View {
     let exercise: Exercise

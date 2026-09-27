@@ -132,18 +132,27 @@ jobs:
           key: spm-${{ hashFiles('CadenceCore/Package.resolved') }}
           restore-keys: spm-
 
-      - name: Set Build Number
+      - name: Set App/TestFlight Build Number
         run: |
+          set -eo pipefail
+          # CFBundleVersion is the number shown by AboutView and must remain
+          # monotonically increasing for App Store Connect. GitHub's workflow
+          # run_number is a separate UI identifier and must not be used here.
           BUILD=$(git rev-list --count HEAD)
           echo "BUILD_NUMBER=$BUILD" >> "$GITHUB_ENV"
-          cd Cadence && xcrun agvtool new-version -all $BUILD
+          echo "App/TestFlight build number (About screen): $BUILD"
+          {
+            echo "### App/TestFlight build"
+            echo "- App Store build / About screen: **$BUILD**"
+            echo "- GitHub Actions workflow run: **#${GITHUB_RUN_NUMBER}** (separate identifier)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          cd Cadence && xcrun agvtool new-version -all "$BUILD"
 
       - name: Compute Marketing Version
         run: |
           set -eo pipefail
-          PATCH=$(git rev-list --count HEAD)
-          echo "MKT_VERSION=1.1.$PATCH" >> "$GITHUB_ENV"
-          echo "Marketing version: 1.1.$PATCH (build $PATCH)"
+          echo "MKT_VERSION=1.1.$BUILD_NUMBER" >> "$GITHUB_ENV"
+          echo "Marketing version: 1.1.$BUILD_NUMBER (build $BUILD_NUMBER)"
 
       - name: Write App Store Connect API Key
         env:

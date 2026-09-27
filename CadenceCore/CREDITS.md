@@ -35,6 +35,7 @@
 - Images are **bundled**, not fetched at runtime (NFR-3):
   `scripts/build-exercise-images.sh` downloads them once from the pinned commit,
   downscales to HEIC (≤400px, quality 70) with `sips`, and writes them to
-  `Sources/CadenceCore/Resources/ExerciseImages/<id>/{0,1}.heic` (~30 MB,
-  committed). `ExerciseImageCatalog` resolves them from `Bundle.module`;
+  `Sources/CadenceExerciseImages/Resources/ExerciseImages/<id>/{0,1}.heic`
+  (~30 MB, committed). `ExerciseImageCatalog` resolves them from
+  `Bundle.module`; the Watch app carries a separate downscaled catalog.
   `scripts/check-no-network.sh` keeps the runtime network-free.

@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		8D78A55C2FD28A6200AE7C2F /* CadenceCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8D78A55B2FD28A6200AE7C2F /* CadenceCore */; };
 		8D78A55F2FD28A7C00AE7C2F /* CadenceCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8D78A55E2FD28A7C00AE7C2F /* CadenceCore */; };
+		E10000010000000000000001 /* CadenceExerciseImages in Frameworks */ = {isa = PBXBuildFile; productRef = E10000020000000000000001 /* CadenceExerciseImages */; };
 		CAFEF1180000000000000001 /* CadenceFixtures in Frameworks */ = {isa = PBXBuildFile; productRef = CAFEF1180000000000000000 /* CadenceFixtures */; };
 		CAFEFEA70000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = CAFEFEA70000000000000000 /* CadenceFeatures */; };
 		WA0000020000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = WA0000060000000000000001 /* CadenceFeatures */; };
@@ -210,6 +211,7 @@
 				8D78A55C2FD28A6200AE7C2F /* CadenceCore in Frameworks */,
 				CAFEFEA70000000000000001 /* CadenceFeatures in Frameworks */,
 				CAFEF1180000000000000001 /* CadenceFixtures in Frameworks */,
+				E10000010000000000000001 /* CadenceExerciseImages in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -337,6 +339,7 @@
 				8D78A55B2FD28A6200AE7C2F /* CadenceCore */,
 				CAFEFEA70000000000000000 /* CadenceFeatures */,
 				CAFEF1180000000000000000 /* CadenceFixtures */,
+				E10000020000000000000001 /* CadenceExerciseImages */,
 			);
 			productName = Cadence;
 			productReference = 8D78A4F52FD282B500AE7C2F /* Cadence.app */;
@@ -1345,6 +1348,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
 			productName = CadenceFeatures;
+		};
+		E10000020000000000000001 /* CadenceExerciseImages */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadenceExerciseImages;
 		};
 		WA0000060000000000000001 /* CadenceFeatures */ = {
 			isa = XCSwiftPackageProductDependency;

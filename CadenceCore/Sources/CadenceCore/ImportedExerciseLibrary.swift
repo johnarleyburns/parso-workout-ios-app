@@ -176,11 +176,4 @@ public extension ExerciseLibrary {
     static let exerciseAnnotationRepoURL =
         URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
 
-    /// Local file URLs for an exercise's bundled images, in display order.
-    /// Resolves from `Bundle.module` via `ExerciseImageCatalog` — there is no
-    /// runtime network path. Empty when the exercise has no bundled photography.
-    static func imageURLs(forImageName name: String?) -> [URL] {
-        guard let name, !name.isEmpty else { return [] }
-        return ExerciseImageCatalog.imageURLs(forImageName: name)
-    }
 }

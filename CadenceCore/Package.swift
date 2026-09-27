@@ -10,6 +10,7 @@ let package = Package(
     ],
     products: [
         .library(name: "CadenceCore", targets: ["CadenceCore"]),
+        .library(name: "CadenceExerciseImages", targets: ["CadenceExerciseImages"]),
         // Headless app logic lifted out of SwiftUI Views so `swift test` can
         // exercise it without a simulator (test-pyramid plan, 2026-07-12).
         .library(name: "CadenceFeatures", targets: ["CadenceFeatures"]),
@@ -32,22 +33,27 @@ let package = Package(
                 )
             ],
             resources: [
-                // Bundled exercise photography, downscaled to HEIC by
-                // scripts/build-exercise-images.sh from free-exercise-db at pinned
-                // commit b0eed06 — the same upstream data DB++ carries in `source`. Loaded from
-                // Bundle.module — there is NO runtime network path (NFR-3), enforced
-                // by scripts/check-no-network.sh.
-                .copy("Resources/ExerciseImages"),
                 // Versioned Coach knowledge-base changelog (quarterly protocol packs).
                 .copy("Resources/coach-kb-version.json"),
             ],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .target(
+            name: "CadenceExerciseImages",
+            dependencies: ["CadenceCore"],
+            resources: [.copy("Resources/ExerciseImages")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // Foundation + SwiftData + Observation ONLY. No SwiftUI, no HealthKit,
         // no StoreKit, no UIKit — that is what keeps it testable on macOS.
         .target(name: "CadenceFeatures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(name: "CadenceFixtures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
-        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore", "CadenceFeatures"], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore", "CadenceFeatures", "CadenceExerciseImages"], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(
+            name: "CadenceExerciseImagesTests",
+            dependencies: ["CadenceCore", "CadenceExerciseImages"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .testTarget(
             name: "CadenceFeaturesTests",
             dependencies: ["CadenceFeatures", "CadenceFixtures"],

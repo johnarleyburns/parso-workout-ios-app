@@ -4,7 +4,7 @@
 # the app never fetches a photo at runtime (NFR-3, revenue plan Phase 3, D3).
 #
 # Run this ONCE on a Mac, then COMMIT the output under
-#   CadenceCore/Sources/CadenceCore/Resources/ExerciseImages/<id>/{0,1}.heic
+#   CadenceCore/Sources/CadenceExerciseImages/Resources/ExerciseImages/<id>/{0,1}.heic
 # It is NOT run at build time and NOT run in CI.
 #
 # Source: free-exercise-db, pinned to commit b0eed06 — the same upstream data
@@ -28,7 +28,7 @@ DB_JSON="${REPO_ROOT}/CadenceCore/.build/checkouts/free-exercise-db-plusplus/fre
 if [[ ! -f "$DB_JSON" ]]; then
   DB_JSON="${REPO_ROOT}/.build/dd/SourcePackages/checkouts/free-exercise-db-plusplus/free-exercise-db-plusplus.json"
 fi
-OUT_DIR="${REPO_ROOT}/CadenceCore/Sources/CadenceCore/Resources/ExerciseImages"
+OUT_DIR="${REPO_ROOT}/CadenceCore/Sources/CadenceExerciseImages/Resources/ExerciseImages"
 
 command -v sips >/dev/null 2>&1 || { echo "error: sips not found (macOS only)"; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "error: curl not found"; exit 1; }

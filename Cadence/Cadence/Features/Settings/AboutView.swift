@@ -67,7 +67,7 @@ struct AboutView: View {
                     .accessibilityIdentifier("about.title")
                 if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
                    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String {
-                    Text("Version \(version) (\(build))")
+                    Text("Version \(version) · Build \(build)")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Link("© 2026 Parso Consulting", destination: siteURL)

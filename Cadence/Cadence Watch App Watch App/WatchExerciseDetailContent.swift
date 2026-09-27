@@ -9,7 +9,7 @@ struct WatchExerciseDetailContent: View {
     let exercise: Exercise
 
     var body: some View {
-        let imageURLs = ExerciseLibrary.imageURLs(forImageName: exercise.imageName)
+        let imageURLs = WatchExerciseImageCatalog.imageURLs(forImageName: exercise.imageName)
         if !imageURLs.isEmpty {
             ForEach(imageURLs, id: \.self) { url in
                 exerciseImage(url)
@@ -47,6 +47,19 @@ struct WatchExerciseDetailContent: View {
                     Image(systemName: "photo")
                         .foregroundStyle(.secondary)
                 }
+        }
+    }
+}
+
+private enum WatchExerciseImageCatalog {
+    private static let positions = [0, 1]
+
+    static func imageURLs(forImageName name: String?) -> [URL] {
+        guard let name, !name.isEmpty else { return [] }
+        return positions.compactMap { position in
+            Bundle.main.url(forResource: "\(position)",
+                            withExtension: "heic",
+                            subdirectory: "ExerciseImages/\(name)")
         }
     }
 }

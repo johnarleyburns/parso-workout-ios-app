@@ -66,8 +66,40 @@ Verbatim: "a"
 - **D1:** Keep the bottom accessory visible across tabs; retain the Today
   Resume card only for crash-recovered paused sessions.
 
+## 2026-09-27 (third batch, via questions)
+
+- **D1:** "Keep for crash recovery (Recommended)". The tab accessory shows the
+  live workout everywhere; Today's Resume card appears only for a
+  crash-recovered paused session.
+- **D2:** "Yes, add search tab (Recommended)". `Tab(role: .search)` for the
+  exercise library; update CLAUDE.md's IA section in P1.
+- **D5:** "Yes, add nicknames (Recommended)". The additive `Person.spokenAliases`
+  field, synced and exported.
+- **D9:** "Opt-in (Recommended)". AlarmKit rest alerts default to "In app
+  only"; "Alarm (breaks through Silent)" is opt-in, with an explainer.
+- **D10:** "Build, default on". The Foundation Models fallback is on by
+  default wherever `SystemLanguageModel` is available and supports the
+  voice language. It still ships only if the device evaluation passes
+  (fewer "didn't catch" results, no more wrong logs). Its results are always
+  dashed/inferred and wait for ✓. It never writes coaching text.
+- **D7 (languages):** "at the minimum for my market I would like english,
+  spanish, and chinese, research if other languages should be supported like
+  french, portuguese, etc based on gym app usage". After the research
+  follow-up: "let's launch with hevy's english, dutch, uk english (where
+  different), spanish, and brazil/portugues, with french and german, chinese
+  because i have chinese testers, so we get good coverage at launch"
+  → Launch in en-US, en-GB (where different), nl, es, pt-BR, fr, de, zh-Hans,
+  zh-Hant, for **voice and UI**.
+- **Localization source (verbatim):** "I'd like you to add the translations
+  applicable to free-exercise-db-plusplus in that repo (it's checked out in
+  ../) adding multi-lingual support there as well, to help the community,
+  keeping app-specific translations just within the app"
+  → A DB++ additive i18n sidecar (exercise names, aliases, vocabulary)
+  plus app-only strings in `Localizable.xcstrings`. See `09`.
+- **China:** "Chinese voice without targeting China". Chinese ships for
+  speakers anywhere; no MIIT/ICP filing; the mainland storefront isn't
+  selected.
+
 ## Pending
 
-D1, D2, D5, D7, D9, D10. (D3 and D11 are no longer separate questions: they
-follow from D15 as "no auto-listen" and "no Listening while locked", unless the
-user says otherwise.)
+D16 (show machine-draft exercise-name translations before native review?). See `09`.

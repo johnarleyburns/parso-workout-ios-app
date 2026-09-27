@@ -1,6 +1,16 @@
 # Current Status
 
-Updated: 2026-09-25
+Updated: 2026-09-26
+
+## Next planned work — Award polish (planned 2026-09-26, not started)
+
+Design set written to `plans/award-polish/2026-09-26/` (overview, 01 glass &
+navigation, 02 voice grammar, 03 voice capture/confirm UI, 04 Siri/Controls/
+Live Activity/Spotlight, 05 Watch double tap + AlarmKit rest alerts, 06
+optional on-device model fallback, 07 rollout, decision sheet, handoff
+prompt). No app code changed. **Immediate next task:** answer
+`decision-sheet.md` (D1–D10), record the answers in `decisions.md`, then run P0
+(check the listed APIs against the iOS 27 SDK) and start P1 per `HANDOFF.md`.
 
 ## Active task — Cladiron visual redesign (2026-09-25)
 

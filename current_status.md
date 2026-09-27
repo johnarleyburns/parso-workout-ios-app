@@ -21,8 +21,15 @@ silence gating), so it's opt-in and gated on on-device Power Profiler
 measurement (D15). Also decided 2026-09-27: D12 hold Log set = Quick Talk; D13 raise-to-talk and
 D15 always-listening are opt-in (offered in a new onboarding page and, while
 unset, on the Get Ready countdown with "Never show again"); D14 lock-screen
-Quick Talk saves clear commands only. **Immediate next task:** answer the open
-decisions (D1, D2, D5, D7, D9, D10), then run P0 (check the listed APIs against the iOS 27
+Quick Talk saves clear commands only. All D1–D15 decided 2026-09-27 (see the
+plan's `decisions.md`): D1 keep the Resume card for crash recovery, D2 search tab,
+D5 partner nicknames, D9 AlarmKit opt-in, D10 Foundation Models fallback on by
+default, D7 launch in en-US/en-GB/nl/es/pt-BR/fr/de/zh-Hans/zh-Hant for voice and
+UI, with exercise-name translations added upstream to free-exercise-db-plusplus
+as an additive i18n sidecar (`09-languages-and-localization.md`) and no
+mainland-China storefront (no ICP filing). Mockups are now A1–A29.
+**Immediate next task:** answer D16 (show machine-draft exercise-name
+translations before native review), then run P0 (check the listed APIs against the iOS 27
 SDK) and start P1 per `HANDOFF.md`.
 
 ## Active task — Cladiron visual redesign (2026-09-25)

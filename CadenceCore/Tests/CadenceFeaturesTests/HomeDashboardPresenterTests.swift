@@ -11,8 +11,13 @@ final class HomeDashboardPresenterTests: XCTestCase {
 
     private func dashboard(chestSets: Int, now: Date) throws -> HomeDashboardState {
         let context = try makeContext()
+        // Keep the fixture inside the explicit Monday-to-now window even when
+        // CI runs during the first hour of Monday. A plain `now - 1 hour` would
+        // otherwise make the workout belong to the previous week.
+        let sessionDate = max(WeeklyStats.weekStart(now: now),
+                              now.addingTimeInterval(-3_600))
         let session = try WorkoutRepository.createSession(
-            date: now.addingTimeInterval(-3_600), in: context)
+            date: sessionDate, in: context)
         let exercise = try WorkoutRepository.findOrCreateExercise(
             named: "Dashboard Bench", primaryMuscles: ["chest"], in: context)
         for _ in 0..<chestSets {

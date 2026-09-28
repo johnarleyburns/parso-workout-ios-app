@@ -6,8 +6,10 @@ set -euo pipefail
 # Swift 6 cannot infer. Keep the exact upstream pin; patch only the generated
 # checkout used by this build until the upstream package carries the fixes.
 
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 roots=(
-  "${PWD}/CadenceCore/.build/checkouts"
+  "${repo_root}/CadenceCore/.build/checkouts"
+  "${repo_root}/.build"
   "${HOME}/Library/Developer/Xcode/DerivedData"
 )
 files=()

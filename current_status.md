@@ -26,7 +26,13 @@ selection uses a fresh identity so reopening the same muscle reliably presents
 its detail sheet. HealthKit route import uses the attached workout route
 series, and strength export includes recorded heart-rate samples.
 
-Verification for this slice: `make ci` passed 1,919 host tests and all
+The final three-pass audit also scopes HealthKit heart-rate imports to their
+own workouts, requests route authorization, removes the workout-import cap,
+and makes FIT imports deterministic and store-idempotent. The Xcode package
+resolver now applies the DB++ compatibility patch to fresh and custom
+DerivedData checkouts.
+
+Verification for this slice: `make ci` passed 1,920 host tests and all
 guardrails; a generic iOS build passed with code signing disabled. The local
 build still reports the known iOS deployment-target warning (project target
 27.0 versus the installed SDK's 26.5 maximum).

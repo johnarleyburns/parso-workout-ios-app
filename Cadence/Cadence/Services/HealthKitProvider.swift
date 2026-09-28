@@ -36,6 +36,7 @@ final class HealthKitProvider: HealthDataProviding {
                                                .heartRateVariabilitySDNN, .restingHeartRate, .bodyMass, .vo2Max]
         for id in ids { if let t = HKObjectType.quantityType(forIdentifier: id) { types.insert(t) } }
         if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { types.insert(sleep) }
+        types.insert(HKSeriesType.workoutRoute())
         return types
     }
 
@@ -48,6 +49,7 @@ final class HealthKitProvider: HealthDataProviding {
             .heartRate
         ]
         for id in ids { if let t = HKObjectType.quantityType(forIdentifier: id) { types.insert(t) } }
+        types.insert(HKSeriesType.workoutRoute())
         return types
     }
 
@@ -209,7 +211,8 @@ final class HealthKitProvider: HealthDataProviding {
         let workouts: [HKWorkout] = await withCheckedContinuation { cont in
             let predicate = since.map { HKQuery.predicateForSamples(withStart: $0, end: nil) }
             let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
-            let q = HKSampleQuery(sampleType: .workoutType(), predicate: predicate, limit: 50,
+            let q = HKSampleQuery(sampleType: .workoutType(), predicate: predicate,
+                                  limit: HKObjectQueryNoLimit,
                                   sortDescriptors: [sort]) { _, samples, _ in
                 cont.resume(returning: (samples as? [HKWorkout]) ?? [])
             }
@@ -234,7 +237,7 @@ final class HealthKitProvider: HealthDataProviding {
             // Pull the recorded heart-rate curve for this workout (e.g. one the
             // Watch saved) — historical read only, no watch app needed. Capped to
             // keep the stored series light (feedback batch 4).
-            let hr = await heartRateSamples(start: w.startDate, end: w.endDate)
+            let hr = await heartRateSamples(for: w)
             let route = type.usesGPS ? await routeSamples(for: w) : []
             let bpms = hr.map(\.bpm).filter { $0 > 0 }
             result.append(IngestedWorkout(
@@ -254,12 +257,17 @@ final class HealthKitProvider: HealthDataProviding {
 
     /// Reads the heart-rate samples recorded across `[start, end]` and maps them to
     /// `HRSamplePoint`s relative to `start`, downsampled so long workouts stay light.
-    private func heartRateSamples(start: Date, end: Date) async -> [HRSamplePoint] {
+    private func heartRateSamples(for workout: HKWorkout) async -> [HRSamplePoint] {
         guard isHealthDataAvailable,
               let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return [] }
         let unit = HKUnit.count().unitDivided(by: .minute())
         let samples: [HKQuantitySample] = await withCheckedContinuation { cont in
-            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+            let timePredicate = HKQuery.predicateForSamples(withStart: workout.startDate,
+                                                            end: workout.endDate,
+                                                            options: .strictStartDate)
+            let workoutPredicate = HKQuery.predicateForObjects(from: workout)
+            let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [timePredicate,
+                                                                                  workoutPredicate])
             let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
             let q = HKSampleQuery(sampleType: hrType, predicate: predicate, limit: HKObjectQueryNoLimit,
                                   sortDescriptors: [sort]) { _, samples, _ in
@@ -268,7 +276,7 @@ final class HealthKitProvider: HealthDataProviding {
             store.execute(q)
         }
         let points = samples.map {
-            HRSamplePoint(t: $0.startDate.timeIntervalSince(start),
+            HRSamplePoint(t: $0.startDate.timeIntervalSince(workout.startDate),
                           bpm: $0.quantity.doubleValue(for: unit))
         }
         return HRSampling.downsample(points)

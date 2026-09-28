@@ -12,10 +12,10 @@ build: resolve-dbpp
 test: resolve-dbpp
 	swift test --package-path CadenceCore
 
-test-core:
+test-core: resolve-dbpp
 	swift test --package-path CadenceCore --filter CadenceCoreTests
 
-test-features:
+test-features: resolve-dbpp
 	swift test --package-path CadenceCore --filter CadenceFeaturesTests
 
 guardrails:

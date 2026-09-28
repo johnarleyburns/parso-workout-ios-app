@@ -188,7 +188,7 @@ public enum FITExport {
         }
         guard !sessions.isEmpty else { throw Error.noActivities }
 
-        let decoded = sessions.compactMap { session -> ExportCardio? in
+        let decoded = sessions.enumerated().compactMap { index, session -> ExportCardio? in
             guard let startTimestamp = session.startTimestamp else { return nil }
             let start = date(for: startTimestamp)
             let fallbackEnd = start.addingTimeInterval(session.elapsedSeconds ?? 0)
@@ -211,10 +211,15 @@ public enum FITExport {
             }
             let averageHR = session.averageHeartRate ?? average(hrSamples.map(\.bpm))
             let maximumHR = session.maximumHeartRate ?? hrSamples.map(\.bpm).max()
-            return ExportCardio(id: UUID(), type: cardioType(for: session.sport), start: start,
+            let id = stableImportedID(index: index, start: startTimestamp,
+                                      end: endTimestamp ?? startTimestamp,
+                                      sport: session.sport,
+                                      distance: session.distanceMeters,
+                                      calories: session.calories)
+            return ExportCardio(id: id, type: cardioType(for: session.sport), start: start,
                                 end: end, distanceMeters: session.distanceMeters,
                                 activeEnergyKcal: session.calories,
-                                avgHeartRate: averageHR, source: CardioSource.watch.rawValue,
+                                avgHeartRate: averageHR, source: CardioSource.iphone.rawValue,
                                 maxHeartRate: maximumHR, isLogged: true,
                                 importedWorkoutKindRaw: importedKind(for: session.sport),
                                 hrSamples: hrSamples.isEmpty ? nil : hrSamples,
@@ -514,6 +519,38 @@ public enum FITExport {
     private static func average(_ values: [Double]) -> Double? {
         guard !values.isEmpty else { return nil }
         return values.reduce(0, +) / Double(values.count)
+    }
+
+    /// FIT has no portable app-workout UUID. Derive a stable UUID from the
+    /// session identity fields so importing the same file twice remains
+    /// idempotent while sessions with identical metadata in one file remain
+    /// distinct through their file-order index.
+    private static func stableImportedID(index: Int, start: UInt32, end: UInt32,
+                                        sport: UInt8?, distance: Double?, calories: Double?) -> UUID {
+        let seed = ["cladiron-fit-v1", String(index), String(start), String(end),
+                     String(sport ?? 0), String(distance ?? -1), String(calories ?? -1)]
+            .joined(separator: "|")
+        var first: UInt64 = 14_695_981_039_346_656_037
+        var second: UInt64 = 10_995_116_282_114_630_141
+        for byte in seed.utf8 {
+            first ^= UInt64(byte)
+            first &*= 1_099_511_628_211
+            second ^= UInt64(byte) &+ 0x9D
+            second &*= 1_405_861_558_103
+        }
+        var bytes = [UInt8](repeating: 0, count: 16)
+        for offset in 0..<8 {
+            bytes[offset] = UInt8((first >> UInt64(offset * 8)) & 0xFF)
+            bytes[offset + 8] = UInt8((second >> UInt64(offset * 8)) & 0xFF)
+        }
+        // RFC 4122 version 5 / variant bits make the value recognizable as a
+        // name-derived UUID without requiring CryptoKit in the core package.
+        bytes[6] = (bytes[6] & 0x0F) | 0x50
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3],
+                           bytes[4], bytes[5], bytes[6], bytes[7],
+                           bytes[8], bytes[9], bytes[10], bytes[11],
+                           bytes[12], bytes[13], bytes[14], bytes[15]))
     }
 
     private static func date(for timestamp: UInt32) -> Date {

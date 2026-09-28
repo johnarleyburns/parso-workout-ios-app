@@ -34,22 +34,16 @@ struct HomeTodayHeroCard: View {
             if !exercises.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(Array(exercises.prefix(5).enumerated()), id: \.offset) { _, exercise in
-                        ViewThatFits(in: .horizontal) {
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(exercise.name)
-                                Spacer(minLength: 8)
-                                Text(exercise.detail)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(exercise.name)
-                                Text(exercise.detail)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .monospacedDigit()
-                            }
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(exercise.name)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .layoutPriority(1)
+                            Spacer(minLength: 8)
+                            Text(exercise.detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
                         }
                         .padding(.vertical, 5)
                         .overlay(alignment: .bottom) { Divider().opacity(0.35) }

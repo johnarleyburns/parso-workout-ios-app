@@ -84,6 +84,9 @@ struct CadenceApp: App {
                 .task { WorkoutLiveActivityCoordinator.shared.endAllStale() }
                 .task { model.configureWatchSync(settings: settings, container: container, active: active) }
                 .task { contributions.beginSession() }
+                .onChange(of: scenePhase, initial: true) { _, phase in
+                    model.setApplicationActive(phase == .active)
+                }
                 .task(id: scenePhase) {
                     guard scenePhase == .active, !persistentStorePrepared else { return }
                     if await preparePersistentStore() {

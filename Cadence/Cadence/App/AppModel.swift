@@ -129,6 +129,12 @@ final class AppModel: NSObject, @unchecked Sendable {
     private(set) var isRestoringCloudKitHistory = false
     private(set) var cloudKitImportStatus: CloudKitImportStatus = .idle
     private var cloudKitEventObserver: NSObjectProtocol?
+    /// SwiftData's CloudKit exporter must not be kicked off by a Watch payload
+    /// while the iPhone is backgrounded. Those writes used to outlive the
+    /// WatchConnectivity callback and were the last app-owned work in the
+    /// RUNNINGBOARD 0xdead10cc crash stack.
+    private var applicationIsActive = false
+    private static let pendingWatchImportKey = "watch.pendingImports.v1"
     /// CloudKit can deliver several import events while a new device is being
     /// hydrated. Keep Home in its lightweight placeholder state until the
     /// import burst has been quiet for a moment, then let it rebuild once.
@@ -267,6 +273,14 @@ final class AppModel: NSObject, @unchecked Sendable {
         _settings = settings
         _modelContainer = container
         _active = active
+        drainPendingWatchImportsIfNeeded()
+    }
+
+    func setApplicationActive(_ active: Bool) {
+        applicationIsActive = active
+        if active {
+            drainPendingWatchImportsIfNeeded()
+        }
     }
 
     /// Checks the Apple-ID account that backs the private SwiftData store.
@@ -769,6 +783,11 @@ extension AppModel {
             return
         }
         if message["action"] as? String == "cardio_completion" {
+            guard applicationIsActive else {
+                enqueuePendingWatchImport(message)
+                replyHandler?(["ack": false])
+                return
+            }
             let accepted = handleWatchCardioCompletion(message)
             replyHandler?(accepted ? completionAck(for: message) : ["ack": false])
             return
@@ -802,21 +821,15 @@ extension AppModel {
 
     fileprivate func handleWatchUserInfo(_ userInfo: [String: Any]) {
         guard let action = userInfo["action"] as? String else { return }
-        let payload = UncheckedWatchUserInfo(value: userInfo)
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            switch action {
-            case "cardio_completion":
-                _ = self.handleWatchCardioCompletion(payload.value)
-            case "log_set", "end_session", "discard_session", "delete_exercise", "delete_set":
-                self.handleWatchStrengthMutation(payload.value)
-            case "set_unit":
-                self.handleWatchSetUnit(payload.value)
-            case "set_distance_unit":
-                self.handleWatchSetDistanceUnit(payload.value)
-            default:
-                break
-            }
+        guard ["cardio_completion", "log_set", "end_session", "discard_session",
+               "delete_exercise", "delete_set", "set_unit", "set_distance_unit"]
+                .contains(action) else { return }
+        guard applicationIsActive else {
+            enqueuePendingWatchImport(userInfo)
+            return
+        }
+        if !processWatchUserInfo(userInfo) {
+            enqueuePendingWatchImport(userInfo)
         }
     }
 
@@ -825,12 +838,6 @@ extension AppModel {
         guard let data = info["payload"] as? Data,
               let completion = try? WatchCardioCompletion.decode(data),
               let container = _modelContainer else { return false }
-        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Import Watch cardio")
-        defer {
-            if backgroundTask != .invalid {
-                UIApplication.shared.endBackgroundTask(backgroundTask)
-            }
-        }
         let ctx = ModelContext(container)
         do {
             let profile = CardioIntensityProfile.resolved(
@@ -856,14 +863,9 @@ extension AppModel {
         return ["ack": true, "action": "cardio_completion_ack", "id": completion.id.uuidString]
     }
 
-    private func handleWatchStrengthMutation(_ info: [String: Any]) {
-        guard let container = _modelContainer else { return }
-        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Import Watch strength")
-        defer {
-            if backgroundTask != .invalid {
-                UIApplication.shared.endBackgroundTask(backgroundTask)
-            }
-        }
+    @discardableResult
+    private func handleWatchStrengthMutation(_ info: [String: Any]) -> Bool {
+        guard let container = _modelContainer else { return false }
         let ctx = ModelContext(container)
         do {
             let action = try WatchStrengthSyncApplier.apply(
@@ -871,7 +873,7 @@ extension AppModel {
                 in: ctx,
                 phoneActiveID: _active?.strengthSession?.id
             )
-            guard action != .ignored else { return }
+            guard action != .ignored else { return true }
             switch action {
             case .logSet:
                 NotificationCenter.default.post(name: .watchSetLogged, object: nil)
@@ -881,7 +883,51 @@ extension AppModel {
                 break
             }
             NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
-        } catch {}
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private func processWatchUserInfo(_ info: [String: Any]) -> Bool {
+        guard let action = info["action"] as? String else { return true }
+        switch action {
+        case "cardio_completion":
+            return handleWatchCardioCompletion(info)
+        case "log_set", "end_session", "discard_session", "delete_exercise", "delete_set":
+            return handleWatchStrengthMutation(info)
+        case "set_unit":
+            handleWatchSetUnit(info)
+            return true
+        case "set_distance_unit":
+            handleWatchSetDistanceUnit(info)
+            return true
+        default:
+            return true
+        }
+    }
+
+    private func enqueuePendingWatchImport(_ info: [String: Any]) {
+        guard PropertyListSerialization.propertyList(info, isValidFor: .binary) else { return }
+        guard let data = try? PropertyListSerialization.data(fromPropertyList: info,
+                                                              format: .binary,
+                                                              options: 0) else { return }
+        var pending = UserDefaults.standard.array(forKey: Self.pendingWatchImportKey) as? [Data] ?? []
+        pending.append(data)
+        UserDefaults.standard.set(pending, forKey: Self.pendingWatchImportKey)
+    }
+
+    private func drainPendingWatchImportsIfNeeded() {
+        guard applicationIsActive, _modelContainer != nil else { return }
+        var pending = UserDefaults.standard.array(forKey: Self.pendingWatchImportKey) as? [Data] ?? []
+        while let data = pending.first,
+              let info = try? PropertyListSerialization.propertyList(from: data,
+                                                                       options: [],
+                                                                       format: nil) as? [String: Any] {
+            guard processWatchUserInfo(info) else { break }
+            pending.removeFirst()
+        }
+        UserDefaults.standard.set(pending, forKey: Self.pendingWatchImportKey)
     }
 
     private func handleWatchSetUnit(_ info: [String: Any]) {

@@ -86,38 +86,41 @@ struct CadenceApp: App {
                 .task { contributions.beginSession() }
                 .task(id: scenePhase) {
                     guard scenePhase == .active, !persistentStorePrepared else { return }
-                    persistentStorePrepared = true
-                    await preparePersistentStore()
+                    if await preparePersistentStore() {
+                        persistentStorePrepared = true
+                    }
                 }
         }
         .modelContainer(container)
     }
 
-    private func preparePersistentStore() async {
-        guard !uiTestMode else { return }
+    private func preparePersistentStore() async -> Bool {
+        guard !uiTestMode else { return true }
         // Give SwiftUI a frame for the launch surface before doing synchronous
         // SwiftData seeding. The seed can touch hundreds of exercises during a
         // catalog upgrade, so it must also run in a detached context; a single
         // yield only postpones the freeze, it does not move the work off the
         // main actor.
         await Task.yield()
+        guard !Task.isCancelled else { return false }
         let container = container
         let catalogRevision = StarterLibraryReconciliation.revision()
-        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Prepare exercise catalog")
-        defer {
-            if backgroundTask != .invalid {
-                UIApplication.shared.endBackgroundTask(backgroundTask)
-            }
-        }
-        let defaultDeviceID = await Task.detached(priority: .utility) {
+        // A detached task does not inherit cancellation from the scene task. If
+        // the user backgrounds during this store work, explicitly cancel it so
+        // a SwiftData context cannot keep the SQLite/CloudKit store open while
+        // iOS suspends the process (RUNNINGBOARD 0xdead10cc).
+        let preparation = Task.detached(priority: .utility) {
+            guard !Task.isCancelled else { return nil as UUID? }
             // Decode the bundled DB++ catalog here, off the main actor, so the
             // first Home volume, search, or template lookup does not pay it
             // while the UI waits.
             CatalogWarmup.warm()
+            guard !Task.isCancelled else { return nil as UUID? }
             let ctx = ModelContext(container)
             // Full reconciliation only when the build or stored exercise rows
             // changed since the last successful run.
             _ = try? StarterLibraryReconciliation.reconcileIfStale(ctx, revision: catalogRevision)
+            guard !Task.isCancelled else { return nil as UUID? }
             // Build the app-only Personalized projection from the complete
             // canonical history during store preparation. This includes old
             // workouts on existing installs before the user opens Suggestions;
@@ -125,13 +128,22 @@ struct CadenceApp: App {
             if let history = try? WorkoutRepository.allSessions(ctx) {
                 _ = try? ExerciseHistoryIndexStore.rebuildIfNeeded(sessions: history)
             }
+            guard !Task.isCancelled else { return nil as UUID? }
             return try? ctx.fetch(FetchDescriptor<HRMDevice>(predicate: #Predicate { $0.isDefault }))
                 .first?.id
-        }.value
+        }
+        let defaultDeviceID = await withTaskCancellationHandler(operation: {
+            await preparation.value
+        }, onCancel: {
+            preparation.cancel()
+        })
+
+        guard !Task.isCancelled else { return false }
 
         // Restore the default BLE HRM for cold-launch auto-reconnect (FR-4.4).
         if let defaultDeviceID {
             model.hrm.restoreDefaultDevice(defaultDeviceID)
         }
+        return true
     }
 }

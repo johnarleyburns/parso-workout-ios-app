@@ -36,14 +36,14 @@ struct HomeTodayHeroCard: View {
                     ForEach(Array(exercises.prefix(5).enumerated()), id: \.offset) { _, exercise in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(exercise.name)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
-                                .layoutPriority(1)
-                            Spacer(minLength: 8)
                             Text(exercise.detail)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .monospacedDigit()
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                         .padding(.vertical, 5)
                         .overlay(alignment: .bottom) { Divider().opacity(0.35) }

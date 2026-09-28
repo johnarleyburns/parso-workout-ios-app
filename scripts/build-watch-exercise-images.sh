@@ -4,7 +4,9 @@ set -euo pipefail
 # Build the smaller offline Watch photo catalog from the full iPhone catalog.
 # The Watch target must not link CadenceExerciseImages, because that would
 # embed the 30 MB iPhone catalog through SwiftPM. These assets are copied into
-# the Watch app's synchronized source tree instead.
+# the Watch app's synchronized source tree instead. Xcode flattens that
+# synchronized resource group into the app bundle, so each filename includes
+# its exercise ID to avoid 0.heic/1.heic collisions.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -22,8 +24,9 @@ failed=0
 
 while IFS= read -r -d '' source; do
     relative="${source#"${SOURCE_DIR}/"}"
-    destination="${DEST_DIR}/${relative}"
-    mkdir -p "$(dirname "${destination}")"
+    exercise="$(dirname "${relative}")"
+    position="$(basename "${relative}" .heic)"
+    destination="${DEST_DIR}/${exercise}_${position}.heic"
     if [ -f "${destination}" ]; then
         continue
     fi

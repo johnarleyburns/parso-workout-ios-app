@@ -57,9 +57,12 @@ private enum WatchExerciseImageCatalog {
     static func imageURLs(forImageName name: String?) -> [URL] {
         guard let name, !name.isEmpty else { return [] }
         return positions.compactMap { position in
-            Bundle.main.url(forResource: "\(position)",
+            // Xcode's synchronized Watch resource group flattens files into
+            // the app bundle. Keep the exercise name in each filename so the
+            // two images per exercise remain addressable without collisions.
+            Bundle.main.url(forResource: "\(name)_\(position)",
                             withExtension: "heic",
-                            subdirectory: "ExerciseImages/\(name)")
+                            subdirectory: nil)
         }
     }
 }

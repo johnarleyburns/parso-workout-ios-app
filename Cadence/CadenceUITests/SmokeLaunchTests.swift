@@ -247,8 +247,12 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "The muscle map should be expanded by default")
         XCTAssertTrue(app.scrollToHittableAndTap("home.week.muscleGroupVolume.showMore"),
                       "This Week did not expose the restored Muscle Group Volume disclosure")
-        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleGroupVolume.row.quadriceps"].waitForExistence(timeout: 5),
-                      "Muscle Group Volume did not render weekly set rows")
+        XCTAssertTrue(app.scrollToHittableAndTap("home.week.sets.muscleMap.list"),
+                      "This Week did not expose the List muscle selector")
+        XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleMap.list.quadriceps"].waitForExistence(timeout: 5),
+                      "The List selector did not render weekly set rows")
+        XCTAssertFalse(app.descendants(matching: .any)["home.week.muscleGroupVolume.row.quadriceps"].exists,
+                       "The duplicate long muscle volume list is still rendered below Fill the gaps")
         XCTAssertTrue(app.descendants(matching: .any)["home.week.muscleGroupVolume.total"].exists,
                       "Total Volume did not move into Muscle Group Volume")
         XCTAssertFalse(app.descendants(matching: .any)["home.week.sets.total"].exists,

@@ -50,7 +50,7 @@ public struct UnifiedPlanEngineEvaluation: Codable, Sendable, Equatable {
 /// This is a projection, not a second persistence model: the app Plan remains
 /// the source of truth for execution and for non-resistance item families.
 public enum UnifiedPlanDBPPBridge {
-    public static let engineVersion = "1.16.0"
+    public static let engineVersion = "1.17.0"
     public static let planSchemaVersion = "0.2.0"
 
     public static func project(_ plan: Plan) -> UnifiedPlanDBPPProjection {

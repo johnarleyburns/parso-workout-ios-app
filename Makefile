@@ -1,11 +1,15 @@
-.PHONY: build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform check-release-safety smoke ipad-smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
+.PHONY: resolve-dbpp build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform check-release-safety smoke ipad-smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
 
-build:
+resolve-dbpp:
+	swift package resolve --package-path CadenceCore
+	bash scripts/patch-dbpp-healthinterop.sh
+
+build: resolve-dbpp
 	swift build --package-path CadenceCore
 
 # The everyday gate: headless CadenceCore + CadenceFeatures unit tests.
 # No simulator. This is what every phase must keep green.
-test:
+test: resolve-dbpp
 	swift test --package-path CadenceCore
 
 test-core:

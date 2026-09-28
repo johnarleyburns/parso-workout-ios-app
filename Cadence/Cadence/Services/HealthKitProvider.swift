@@ -3,6 +3,10 @@ import CadenceCore
 import HealthKit
 import CoreLocation
 
+private final class HealthKitLocationAccumulator: @unchecked Sendable {
+    var locations: [CLLocation] = []
+}
+
 /// Real HealthKit-backed provider (FR-3, FR-2.1, FR-4.1/4.3, FR-2.5). Reads
 /// steps and Watch-recorded workouts; writes strength, cardio, and swim workout
 /// summaries with HR, distance (per-type), and GPS routes. Detailed set/rep data
@@ -231,6 +235,7 @@ final class HealthKitProvider: HealthDataProviding {
             // Watch saved) — historical read only, no watch app needed. Capped to
             // keep the stored series light (feedback batch 4).
             let hr = await heartRateSamples(start: w.startDate, end: w.endDate)
+            let route = type.usesGPS ? await routeSamples(for: w) : []
             let bpms = hr.map(\.bpm).filter { $0 > 0 }
             result.append(IngestedWorkout(
                 id: w.uuid,
@@ -241,6 +246,7 @@ final class HealthKitProvider: HealthDataProviding {
                 maxHeartRate: bpms.max(),
                 source: source,
                 hrSamples: hr,
+                routeSamples: route,
                 importedKind: importedKind))
         }
         return result
@@ -268,6 +274,40 @@ final class HealthKitProvider: HealthDataProviding {
         return HRSampling.downsample(points)
     }
 
+    /// Reads the GPS route attached to a HealthKit workout. Route data is
+    /// permission-gated by HealthKit and remains relative to the workout start
+    /// when it enters the app's portable model.
+    private func routeSamples(for workout: HKWorkout) async -> [LocationFix] {
+        let routeType = HKSeriesType.workoutRoute()
+        let predicate = HKQuery.predicateForObjects(from: workout)
+        let routes: [HKWorkoutRoute] = await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: routeType, predicate: predicate,
+                                      limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+                continuation.resume(returning: (samples as? [HKWorkoutRoute]) ?? [])
+            }
+            store.execute(query)
+        }
+
+        var locations: [CLLocation] = []
+        for route in routes {
+            let chunk: [CLLocation] = await withCheckedContinuation { continuation in
+                let accumulator = HealthKitLocationAccumulator()
+                let query = HKWorkoutRouteQuery(route: route) { _, newLocations, done, _ in
+                    accumulator.locations.append(contentsOf: newLocations ?? [])
+                    if done { continuation.resume(returning: accumulator.locations) }
+                }
+                store.execute(query)
+            }
+            locations.append(contentsOf: chunk)
+        }
+
+        return locations.sorted { $0.timestamp < $1.timestamp }.map {
+            LocationFix(t: $0.timestamp.timeIntervalSince(workout.startDate),
+                        lat: $0.coordinate.latitude, lon: $0.coordinate.longitude,
+                        elevation: $0.altitude, horizontalAccuracy: $0.horizontalAccuracy)
+        }
+    }
+
     // MARK: Write summary strength workout (FR-4.3)
 
     func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID? {
@@ -283,6 +323,16 @@ final class HealthKitProvider: HealthDataProviding {
                 let sample = HKCumulativeQuantitySample(type: energyType, quantity: quantity,
                                                         start: summary.start, end: summary.end)
                 try await builder.addSamples([sample])
+            }
+            if let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) {
+                let unit = HKUnit.count().unitDivided(by: .minute())
+                let samples = summary.hrSamples.map { point in
+                    let time = summary.start.addingTimeInterval(point.t)
+                    return HKQuantitySample(type: hrType,
+                                            quantity: HKQuantity(unit: unit, doubleValue: point.bpm),
+                                            start: time, end: time)
+                }
+                if !samples.isEmpty { try await builder.addSamples(samples) }
             }
             try await builder.endCollection(at: summary.end)
             let workout = try await builder.finishWorkout()

@@ -1041,6 +1041,10 @@ public enum WorkoutRepository {
             for p in w.hrSamples {
                 context.insert(HRSample(t: p.t, bpm: p.bpm, cardio: c))
             }
+            for route in w.routeSamples {
+                context.insert(RouteSample(t: route.t, lat: route.lat, lon: route.lon,
+                                           elevation: route.elevation, cardio: c))
+            }
             inserted += 1
         }
         if inserted > 0 || changed { try context.save() }

@@ -113,12 +113,15 @@ final class WorkoutRepositoryTests: XCTestCase {
         let w = IngestedWorkout(id: hkID, type: .run, start: Date(timeIntervalSince1970: 0),
                                 end: Date(timeIntervalSince1970: 1800), distanceMeters: 5000,
                                 hrSamples: [HRSamplePoint(t: 0, bpm: 120), HRSamplePoint(t: 60, bpm: 140)],
+                                routeSamples: [LocationFix(t: 0, lat: 37, lon: -122),
+                                                LocationFix(t: 60, lat: 37.001, lon: -122.001)],
                                 importedKind: .running)
         XCTAssertEqual(try WorkoutRepository.ingest([w], in: ctx), 1)
         XCTAssertEqual(try WorkoutRepository.ingest([w], in: ctx), 0) // dup skipped
         let all = try WorkoutRepository.allCardio(ctx)
         XCTAssertEqual(all.count, 1)
         XCTAssertEqual(all[0].orderedHRSamples.count, 2)
+        XCTAssertEqual(all[0].orderedRouteSamples.count, 2)
     }
 
     func testWatchCompletionIsIdempotentAndReconcilesLaterHealthKitImport() throws {

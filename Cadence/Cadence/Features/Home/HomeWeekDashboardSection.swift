@@ -17,10 +17,13 @@ struct HomeWeekDashboardSection: View {
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
     @State var volumeWarningMessage: String?
-    /// Keep selection as a small value instead of copying the full weekly history
-    /// graph into SwiftUI state. The old `HomeMuscleHistory?` selection made every
-    /// tap compare all exercise/set rows before the sheet could present.
-    @State private var selectedMuscleGroup: MuscleGroup?
+    /// A fresh identity on every selection lets SwiftUI present the detail sheet
+    /// again even when the user taps the same muscle after dismissing it.
+    private struct MuscleDetailSelection: Identifiable {
+        let id = UUID()
+        let group: MuscleGroup
+    }
+    @State private var selectedMuscleSelection: MuscleDetailSelection?
     @State private var selectedVolumePerformerKey: String?
 
     private var selectedVolume: [MuscleGroup: Double] {
@@ -183,9 +186,6 @@ struct HomeWeekDashboardSection: View {
                 }
                 .accessibilityIdentifier("home.week.muscleGroupVolume.performers")
             }
-            ForEach(HomeDashboardPresenter.sortedVolumeRows(displayedVolumeRows)) { row in
-                volumeRow(row)
-            }
             CoachSourcesLink(
                 citationIds: CitationRegistry.strengthVolumePool.citationIds,
                 identifier: "home.week.muscleGroupVolume.science")
@@ -220,22 +220,23 @@ struct HomeWeekDashboardSection: View {
             volumeRows: displayedVolumeRows,
             selectedPanel: $muscleMapPanel,
             onSelect: { group in
-                // Only publish the selected identity. The detail payload is
-                // resolved when the sheet is built, keeping the tap path cheap.
-                selectedMuscleGroup = group
+                // Only publish a lightweight value. The detail payload is
+                // resolved when the sheet is built, keeping the tap path cheap
+                // and giving repeated taps a new sheet identity.
+                selectedMuscleSelection = MuscleDetailSelection(group: group)
             },
             onOpenCardio: {
                 withAnimation(.easeInOut(duration: 0.18)) { detailSelection.select(.cardio) }
             })
-        .sheet(item: $selectedMuscleGroup) { group in
-            let currentSets = selectedVolume[group] ?? 0
+        .sheet(item: $selectedMuscleSelection) { selection in
+            let currentSets = selectedVolume[selection.group] ?? 0
             let selectedHistory = selectedVolumePerformerKey.flatMap {
                 muscleHistoryByPerformer[$0]
             } ?? muscleHistory
-            let cached = selectedHistory.first(where: { $0.group == group })
+            let cached = selectedHistory.first(where: { $0.group == selection.group })
             let history = HomeMuscleHistory(
-                group: group,
-                displayName: cached?.displayName ?? group.displayName,
+                group: selection.group,
+                displayName: cached?.displayName ?? selection.group.displayName,
                 creditedSets: currentSets,
                 exercises: cached?.exercises ?? [])
             HomeMuscleDetailSheet(history: history, unit: unit)

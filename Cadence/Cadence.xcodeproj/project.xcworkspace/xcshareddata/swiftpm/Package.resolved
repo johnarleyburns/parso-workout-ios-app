@@ -2,12 +2,30 @@
   "originHash" : "0d7d253088ac4f9b19601290a40a1c6cf70e41cdaf10d591d1c8d84e026eebc9",
   "pins" : [
     {
+      "identity" : "fit-swift-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/garmin/fit-swift-sdk.git",
+      "state" : {
+        "revision" : "f845616db8b355382964e28e1dfaaa00d2099c3b",
+        "version" : "21.217.0"
+      }
+    },
+    {
       "identity" : "free-exercise-db-plusplus",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/johnarleyburns/free-exercise-db-plusplus.git",
       "state" : {
-        "revision" : "352652cabde1625fbd856cb9a90c1a685c511e9c",
-        "version" : "1.16.0"
+        "revision" : "6e3c1fc08747ae76a8b1e07aeac673c266ff514e",
+        "version" : "1.17.0"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections.git",
+      "state" : {
+        "revision" : "98ef3c98609a1e31b7e157b5b619579001a789d6",
+        "version" : "1.7.1"
       }
     }
   ],

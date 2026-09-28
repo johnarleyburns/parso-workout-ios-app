@@ -1,6 +1,35 @@
 # Current Status
 
-Updated: 2026-09-26
+Updated: 2026-09-28
+
+## Latest implementation — Today row audit, DB++ 1.17.0, FIT, and HealthKit portability (2026-09-28)
+
+The Today personalized recommendation row now tail-truncates long exercise
+names so the sets × reps value stays on one line. The implementation was
+audited against the active field-testing plan; no additional scoped Today
+surface gap was found. The fix is pushed as `07054f5`, and its GitHub Actions
+run passed both core tests and the TestFlight archive.
+
+The working follow-up updates `free-exercise-db-plusplus` to exact `1.17.0`,
+adds cardio FIT import/export (duration, distance, calories, HR, and GPS route
+samples), and extends HealthKit ingest to include attached workout routes and
+strength export HR samples. JSON remains the lossless full-app backup; FIT is
+cardio/activity interchange only. A repeatable build-time compatibility patch
+contains the tag's Swift 6/macOS `HealthInterop.swift` defects until upstream
+ships the equivalent fix. FIT round-trip tests cover export/import, HR/GPS
+samples, format sniffing, and CRC rejection.
+
+The This Week Muscle coverage follow-up removes the duplicate long muscle-volume
+row list below “Fill the gaps”; the map's List selector is now the detailed
+muscle view. The map is 440pt tall with 48pt content-shaped muscle targets, and
+selection uses a fresh identity so reopening the same muscle reliably presents
+its detail sheet. HealthKit route import uses the attached workout route
+series, and strength export includes recorded heart-rate samples.
+
+Verification for this slice: `make ci` passed 1,919 host tests and all
+guardrails; a generic iOS build passed with code signing disabled. The local
+build still reports the known iOS deployment-target warning (project target
+27.0 versus the installed SDK's 26.5 maximum).
 
 ## Next planned work — Award polish (planned 2026-09-26, not started)
 

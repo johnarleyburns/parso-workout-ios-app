@@ -9,6 +9,11 @@ struct HomeMuscleMapView: View {
     let onSelect: (MuscleGroup) -> Void
     let onOpenCardio: () -> Void
 
+    private enum MapMetrics {
+        static let displayHeight: CGFloat = 440
+        static let hitPointSize: CGFloat = 48
+    }
+
     private var rows: [HomeDashboardState.VolumeRow] {
         HomeDashboardPresenter.sortedVolumeRows(volumeRows ?? dashboard.volume)
     }
@@ -72,12 +77,16 @@ struct HomeMuscleMapView: View {
                     heatButton(for: callout)
                         .position(x: imageOrigin.x + CGFloat(callout.anchorX) * imageSize.width,
                                   y: imageOrigin.y + CGFloat(callout.anchorY) * imageSize.height)
+                        .zIndex(1)
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
-        .frame(height: 250)
-        .padding(.horizontal, 24)
+        // Keep the artwork large enough that adjacent 44pt hit targets do not
+        // stack on top of one another. The targets are intentionally 48pt so
+        // they clear Apple's 44pt minimum with a small accessibility margin.
+        .frame(height: MapMetrics.displayHeight)
+        .padding(.horizontal, 8)
         .accessibilityElement(children: .contain)
     }
 
@@ -105,13 +114,15 @@ struct HomeMuscleMapView: View {
         let sets = row?.sets ?? 0
         let level = MuscleHeatPresenter.level(sets: sets, target: 12)
         return Button { onSelect(callout.group) } label: {
-            Circle().fill(.clear).frame(width: 44, height: 44)
+            Circle().fill(.clear)
+                .frame(width: MapMetrics.hitPointSize, height: MapMetrics.hitPointSize)
                 .overlay {
                     if level == .none {
-                        Circle().inset(by: 8).stroke(CadenceTheme.attention,
+                        Circle().inset(by: 9).stroke(CadenceTheme.attention,
                                         style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
                     }
                 }
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(callout.group.displayName), \(WeeklySetProgress.formattedSets(sets)) of 12 sets")
@@ -135,6 +146,7 @@ struct HomeMuscleMapView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(row.displayName), \(row.rangeText)")
+                .accessibilityIdentifier("home.week.muscleMap.list.\(row.group.rawValue)")
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowBackground(Color.clear)
             }

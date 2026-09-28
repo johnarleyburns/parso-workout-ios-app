@@ -2,7 +2,7 @@
 
 ## free-exercise-db++
 - Source: https://github.com/johnarleyburns/free-exercise-db-plusplus
-- Swift package dependency: `FreeExerciseDBPlusPlus` **1.16.0**; schema `0.3.0`,
+- Swift package dependency: `FreeExerciseDBPlusPlus` **1.17.0**; schema `0.3.0`,
   converter `0.8.1`, 927 exercises. DB++ bundles the offline database and its
   license; CadenceCore does not duplicate that resource.
 - License: **Unlicense** (public domain) — see

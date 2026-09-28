@@ -12,13 +12,16 @@ import os
 /// the export watchdog freeze/crash. Instead we build the export off-main, write
 /// it to a temp file, show a lightweight `ExportSummary` card, and share the file
 /// URL. Restore reads a file via `.fileImporter` (magic-byte sniff: `.json.gz`,
-/// `.gz`, or plain `.json`) and merges off-main.
+/// `.gz`, plain `.json`, or standards-based `.fit`) and merges off-main.
 struct ExportView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.cadenceModelContainer) private var container
     @Environment(AppSettings.self) private var settings
 
-    enum Fmt: String, CaseIterable, Identifiable { case json = "JSON", csv = "CSV"; var id: String { rawValue } }
+    enum Fmt: String, CaseIterable, Identifiable {
+        case json = "JSON", csv = "CSV", fit = "FIT"
+        var id: String { rawValue }
+    }
     @State private var format: Fmt = .json
     @State private var summary: ExportSummary?
     @State private var exportURL: URL?
@@ -78,7 +81,9 @@ struct ExportView: View {
             } header: {
                 Text("Export")
             } footer: {
-                Text("A complete backup: strength history, cardio (with heart-rate and route data), fitness-test results, and all your preferences — including what the Coach has learned. The JSON backup is compressed (.json.gz) and importing it into a fresh install restores everything, as if nothing happened. CSV opens in any spreadsheet (strength sets only).")
+                Text(format == .fit
+                     ? "FIT is a standards-based cardio/activity exchange file with workout timing, distance, calories, heart rate, and GPS route samples. It does not contain strength sets, assessments, or preferences; use JSON for a complete backup."
+                     : "A complete backup: strength history, cardio (with heart-rate and route data), fitness-test results, and all your preferences — including what the Coach has learned. The JSON backup is compressed (.json.gz) and importing it into a fresh install restores everything, as if nothing happened. CSV opens in any spreadsheet (strength sets only).")
             }
 
             Section {
@@ -100,7 +105,7 @@ struct ExportView: View {
             } header: {
                 Text("Restore")
             } footer: {
-                Text("Choose a Cladiron backup (.json.gz or .json). Your existing data is kept; anything new in the file is merged in.")
+                Text("Choose a Cladiron backup (.json.gz or .json), or a FIT activity file. JSON restores the complete backup; FIT imports cardio activity data and merges it with your existing history.")
             }
         }
         .navigationTitle("Export")
@@ -117,6 +122,7 @@ struct ExportView: View {
         var types: [UTType] = [.json]
         types.append(.gzip)
         if let jsonGz = UTType(filenameExtension: "gz") { types.append(jsonGz) }
+        if let fit = UTType(filenameExtension: "fit") { types.append(fit) }
         types.append(.data)
         return types
     }
@@ -205,7 +211,14 @@ struct ExportView: View {
             }
             if Task.isCancelled { return }
 
-            if export.sessions.isEmpty && export.cardio.isEmpty && export.assessments.isEmpty {
+            let payload: CadenceExport
+            switch fmt {
+            case .json: payload = export
+            case .csv: payload = CadenceExport(sessions: export.sessions)
+            case .fit: payload = CadenceExport(sessions: [], cardio: export.cardio)
+            }
+
+            if payload.sessions.isEmpty && payload.cardio.isEmpty && payload.assessments.isEmpty {
                 await MainActor.run {
                     self.summary = nil
                     self.exportURL = nil
@@ -232,9 +245,14 @@ struct ExportView: View {
                     rawBytes = data.count
                     compressedBytes = 0
                     url = try writeTempFile(data, ext: "csv")
+                case .fit:
+                    let data = try DataExport.encodeFIT(export)
+                    rawBytes = data.count
+                    compressedBytes = 0
+                    url = try writeTempFile(data, ext: "fit")
                 }
                 if Task.isCancelled { return }
-                let summary = ExportSummary.from(export, rawByteCount: rawBytes, compressedByteCount: compressedBytes)
+                let summary = ExportSummary.from(payload, rawByteCount: rawBytes, compressedByteCount: compressedBytes)
                 await MainActor.run {
                     self.summary = summary
                     self.exportURL = url
@@ -283,6 +301,7 @@ struct ExportView: View {
                     throw DataExport.ImportError.inputTooLarge
                 }
                 let data = try Data(contentsOf: url, options: .mappedIfSafe)
+                let isFIT = DataExport.isFIT(data)
                 let export = try DataExport.decodeAny(data)
                 let ctx = ModelContext(container)
                 let added = try WorkoutRepository.merge(export, in: ctx)
@@ -292,6 +311,7 @@ struct ExportView: View {
                         && export.assessments.isEmpty && export.suggestionExclusions.isEmpty
                     self.restoreMessage = "Restored \(added) workout\(added == 1 ? "" : "s")"
                         + (noData ? " (file contained no data)" : "")
+                        + (isFIT ? " (FIT cardio activity; JSON is the full backup format)" : "")
                         + (!export.suggestionExclusions.isEmpty
                            ? " and \(export.suggestionExclusions.count) suggestion preference\(export.suggestionExclusions.count == 1 ? "" : "s")"
                            : "")

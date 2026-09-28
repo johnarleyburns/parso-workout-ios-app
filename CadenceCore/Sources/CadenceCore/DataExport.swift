@@ -557,10 +557,28 @@ public enum DataExport {
     /// - otherwise → plain JSON (all v1–v4 exports), decode directly.
     public static func decodeAny(_ data: Data) throws -> CadenceExport {
         guard data.count <= maxImportBytes else { throw ImportError.inputTooLarge }
+        if FITExport.isFIT(data) {
+            return CadenceExport(sessions: [], cardio: try FITExport.decode(data))
+        }
         if data.count >= 2, data[data.startIndex] == 0x1f, data[data.startIndex + 1] == 0x8b {
             return try decodeJSON(DataCompression.gunzip(data))
         }
         return try decodeJSON(data)
+    }
+
+    /// Encodes cardio activities as a standards-based FIT activity file.
+    /// FIT intentionally carries cardio interchange data only; use JSON for
+    /// the lossless Cladiron backup containing strength, assessments, and settings.
+    public static func encodeFIT(_ export: CadenceExport) throws -> Data {
+        try FITExport.encode(export.cardio)
+    }
+
+    public static func decodeFIT(_ data: Data) throws -> CadenceExport {
+        CadenceExport(sessions: [], cardio: try FITExport.decode(data))
+    }
+
+    public static func isFIT(_ data: Data) -> Bool {
+        FITExport.isFIT(data)
     }
 
     // MARK: CSV (sets, one row per set — the most portable strength format)

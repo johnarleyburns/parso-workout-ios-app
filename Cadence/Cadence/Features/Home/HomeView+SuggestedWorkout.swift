@@ -40,6 +40,18 @@ extension HomeView {
             let historyWorkoutCount = completedHistorySessions.filter { session in
                 session.completedOwnerWorkingSetCount > 0
             }.count
+            // Do not borrow weekly volume from `coachFacts` here. The coach
+            // snapshot and this suggestion task are invalidated together after
+            // a workout completes, so the rendered snapshot can still describe
+            // the previous history while this request is being assembled. Build
+            // the volume projection from the just-captured sessions instead.
+            let asOf = Date()
+            let historyFacts = TrainingFacts.make(
+                sessions: completedHistorySessions,
+                now: asOf,
+                goal: settings.trainingGoal,
+                experience: settings.experienceLevel,
+                formula: settings.formula)
             // Personalized history is a complete per-exercise projection, not a
             // newest-first set scan. The first request backfills every existing
             // workout (including legacy installs with 100+ workouts); subsequent
@@ -127,10 +139,9 @@ extension HomeView {
                 ? TrainingEngineBridge.historyData(from: completedHistorySessions,
                                                    subjectId: "cladiron-local")
                 : nil
-            let asOf = Date()
             let request = SuggestedWorkoutRequest(
                 input: SuggestedWorkoutInput(
-                    completedSetsByMuscle: coachFacts.weeklySetsByMuscle,
+                    completedSetsByMuscle: historyFacts.weeklySetsByMuscle,
                     candidates: candidates,
                     historyData: historyData,
                     historyWorkoutCount: historyWorkoutCount,

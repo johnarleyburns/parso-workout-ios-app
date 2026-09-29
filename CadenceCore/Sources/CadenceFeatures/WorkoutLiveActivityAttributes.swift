@@ -7,7 +7,7 @@ import Foundation
 /// declarations in the two targets produce different module-qualified types,
 /// so ActivityKit can create an activity that the extension cannot render.
 public struct WorkoutLiveActivityAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
+    public struct ContentState: Codable, Hashable, Sendable {
         public var status: String
         public var elapsedSeconds: Int
         public var isPaused: Bool

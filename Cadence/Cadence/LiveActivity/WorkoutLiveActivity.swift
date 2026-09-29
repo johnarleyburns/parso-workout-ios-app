@@ -1,26 +1,6 @@
 @preconcurrency import ActivityKit
 import Foundation
-
-struct WorkoutLiveActivityAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
-        var status: String
-        var elapsedSeconds: Int
-        var isPaused: Bool
-        var restEndsAt: Date?
-        var nextExercise: String?
-
-        init(status: String, elapsedSeconds: Int, isPaused: Bool = false,
-             restEndsAt: Date? = nil, nextExercise: String? = nil) {
-            self.status = status
-            self.elapsedSeconds = elapsedSeconds
-            self.isPaused = isPaused
-            self.restEndsAt = restEndsAt
-            self.nextExercise = nextExercise
-        }
-    }
-
-    var workoutTitle: String
-}
+import CadenceFeatures
 
 /// Best-effort lock-screen status for an active iPhone workout. The embedded
 /// Watch app deliberately keeps using HKWorkoutSession, whose system workout

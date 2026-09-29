@@ -24,6 +24,7 @@ extension HomeView {
     func generateTodaySuggestion(_ request: SuggestedWorkoutRequest) {
         suggestedWorkoutTask?.cancel()
         suggestedWorkoutTask = nil
+        let generation = suggestedWorkoutGeneration.begin()
         guard request.failureMessage == nil else { return }
         let task = Task {
             let option = await Task.detached(priority: .userInitiated) {
@@ -31,7 +32,8 @@ extension HomeView {
             }.value
             guard !Task.isCancelled else { return }
             await MainActor.run {
-                guard suggestedWorkoutTask != nil else { return }
+                guard suggestedWorkoutTask != nil,
+                      suggestedWorkoutGeneration.accepts(generation) else { return }
                 suggestedWorkoutTask = nil
                 guard option.isLaunchable else { return }
                 todaySuggestedPlan = SuggestedWorkoutPresenter.editablePlan(

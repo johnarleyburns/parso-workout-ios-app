@@ -207,17 +207,6 @@ struct CadenceThisWeekWidgetView: View {
     }
 }
 
-struct WorkoutLiveActivityAttributes: ActivityAttributes {
-    struct ContentState: Codable, Hashable {
-        var status: String
-        var elapsedSeconds: Int
-        var isPaused: Bool
-        var restEndsAt: Date?
-        var nextExercise: String?
-    }
-    var workoutTitle: String
-}
-
 struct CadenceWorkoutLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutLiveActivityAttributes.self) { context in

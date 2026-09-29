@@ -365,6 +365,7 @@ extension HomeView {
     func cancelSuggestedWorkoutGeneration() {
         suggestedWorkoutTask?.cancel()
         suggestedWorkoutTask = nil
+        suggestedWorkoutGeneration.invalidate()
         suggestedWorkoutCalculating = false
     }
 

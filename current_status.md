@@ -37,6 +37,25 @@ guardrails; a generic iOS build passed with code signing disabled. The local
 build still reports the known iOS deployment-target warning (project target
 27.0 versus the installed SDK's 26.5 maximum).
 
+## Next planned work — Award craft (planned 2026-09-28, not started)
+
+Design set written to `plans/award-craft/2026-09-28/`, complementing award polish.
+It covers craft and identity only: 01 icon + launch (the current icon has text,
+raster noise, and a watermark-like sparkle; remove the 2.4 s blocking `SplashView`),
+02 color/type/illustration (empty AccentColor → system blue; 299 raw colors;
+retire the stock coach cartoons for muscle-map thumbnails), 03 Today states
+(new `doneToday`; replace the hard-coded `estimatedMinutes: 45` and the
+fallback title with `WorkoutDurationEstimator`), 04 signature moments
+(`CueKind` haptic vocabulary, set-logged animation, PR takeover; stacks on
+award-polish P1), 05 AX5/VoiceOver depth + the iPad decision, 06 a 4-screen
+first run, 07 store story + featuring nomination (folds into award-polish P7),
+08 rollout C0–C7, a decision sheet (D1–D10), `HANDOFF.md`, and `mockups.html`
+(B1–B16). No app code changed. **Release gate raised to C0:** Guideline
+5.1.3(ii) (health data in iCloud, already flagged in the release audit) must
+be resolved with App Review, or a fallback chosen, before any ADA path exists.
+**Immediate next task:** answer `decision-sheet.md` D1–D10 and send the
+5.1.3(ii) App Review question.
+
 ## Next planned work — Award polish (planned 2026-09-26, not started)
 
 Design set written to `plans/award-polish/2026-09-26/` (overview, 01 glass &

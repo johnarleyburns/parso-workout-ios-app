@@ -111,6 +111,17 @@ extension HomeView {
                     starterCandidates + historicalCandidates,
                     keys: exclusionKeys)
             }
+            let today = Calendar.current.startOfDay(for: Date())
+            let sameDayCompletedNames: Set<String> = completedHistorySessions
+                .filter { Calendar.current.isDate($0.date, inSameDayAs: today) }
+                .max(by: { $0.date < $1.date })?
+                .exercisesInOrder
+                .map { $0.name.localizedLowercase }
+                .map(Set.init) ?? []
+            let recentlyCompletedCandidateIDs = Set(candidates.compactMap { candidate in
+                sameDayCompletedNames.contains(candidate.name.localizedLowercase)
+                    ? candidate.id : nil
+            })
             let historyData = historyWorkingSetCount > 0
                 ? TrainingEngineBridge.historyData(from: completedHistorySessions,
                                                    subjectId: "cladiron-local")
@@ -123,6 +134,7 @@ extension HomeView {
                     historyData: historyData,
                     historyWorkoutCount: historyWorkoutCount,
                     historyWorkingSetCount: historyWorkingSetCount,
+                    recentlyCompletedCandidateIDs: recentlyCompletedCandidateIDs,
                     trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
                     preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
                     trainingGoal: settings.trainingGoal,

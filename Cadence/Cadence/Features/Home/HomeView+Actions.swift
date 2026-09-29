@@ -271,16 +271,15 @@ extension HomeView {
         let recentCardioTypes: [WorkoutType]
     }
     func openTodayWorkout(_ row: WorkoutsTodayPresenter.Row) {
-        guard let id = UUID(uuidString: row.sourceKey) else { return }
-        switch row.modality {
-        case .strength:
-            if let s = sessions.first(where: { $0.id == id }) {
-                path.append(HistorySummaryRoute.strength(s.id))
-            }
-        case .cardio:
-            if let c = cardio.first(where: { $0.id == id }) {
-                path.append(HistorySummaryRoute.cardio(c.id))
-            }
+        // Rows are produced by the background activity projection. Do not
+        // require the parent's live @Query arrays to contain the record yet;
+        // the destination owns a fresh query and resolves the stable ID there.
+        guard let route = WorkoutsTodayPresenter.historyRoute(for: row) else { return }
+        switch route {
+        case .strength(let id):
+            path.append(HistorySummaryRoute.strength(id))
+        case .cardio(let id):
+            path.append(HistorySummaryRoute.cardio(id))
         }
     }
     var weekStripSection: some View {
@@ -321,15 +320,11 @@ extension HomeView {
             set: { if !$0 { suggestedWorkoutFailure = nil } })
     }
     func openWeekWorkout(_ entry: TodayActivityPresenter.Entry) {
-        switch entry.kind {
-        case .strength:
-            if let s = sessions.first(where: { $0.id == entry.sourceId }) {
-                path.append(HistorySummaryRoute.strength(s.id))
-            }
-        case .cardio:
-            if let c = cardio.first(where: { $0.id == entry.sourceId }) {
-                path.append(HistorySummaryRoute.cardio(c.id))
-            }
+        switch WorkoutsTodayPresenter.historyRoute(for: entry) {
+        case .strength(let id):
+            path.append(HistorySummaryRoute.strength(id))
+        case .cardio(let id):
+            path.append(HistorySummaryRoute.cardio(id))
         }
     }
     func resumeCard(_ session: WorkoutSession) -> some View {

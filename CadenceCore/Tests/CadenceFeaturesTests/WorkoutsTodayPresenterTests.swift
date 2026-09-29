@@ -162,6 +162,28 @@ final class WorkoutsTodayPresenterTests: XCTestCase {
         XCTAssertEqual(rows.first?.value, "5.2 km · 30m")
     }
 
+    func testCompletedTodayRowsResolveStableStrengthAndCardioHistoryRoutes() {
+        let session = strengthSession("Push", endedMinutesAgo: 30)
+        let run = CardioWorkout(type: .run, start: now.addingTimeInterval(-3600),
+                                end: now.addingTimeInterval(-1800))
+        let rows = WorkoutsTodayPresenter.historicalRows(
+            sessions: [session], cardio: [run], now: now, calendar: cal)
+
+        XCTAssertTrue(rows.allSatisfy { WorkoutsTodayPresenter.historyRoute(for: $0) != nil })
+        XCTAssertTrue(rows.contains {
+            WorkoutsTodayPresenter.historyRoute(for: $0) == .strength(session.id)
+        })
+        XCTAssertTrue(rows.contains {
+            WorkoutsTodayPresenter.historyRoute(for: $0) == .cardio(run.id)
+        })
+    }
+
+    func testPlannedRowsNeverProduceAHistoryRoute() throws {
+        let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
+                                               now: now, calendar: cal)
+        XCTAssertNil(WorkoutsTodayPresenter.historyRoute(for: try XCTUnwrap(rows.first)))
+    }
+
     func testPlannedExerciseRowsCarrySetsRepsAndLoad() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
                                                now: now, calendar: cal)

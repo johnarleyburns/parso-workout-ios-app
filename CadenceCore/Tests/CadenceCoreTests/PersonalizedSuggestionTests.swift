@@ -84,6 +84,32 @@ final class PersonalizedSuggestionTests: XCTestCase {
         XCTAssertEqual(Set(option.exercises.map(\.candidateID)), ["history"])
     }
 
+    func testPersonalizedAvoidsTheSameDayCompletedMovementPool() {
+        let completedMovement = SuggestedExerciseCandidate(
+            id: "completed-bench", name: "Bench Press", mechanics: .compound,
+            primaryMuscles: ["chest"], isPersonalized: true)
+        let freshMovement = SuggestedExerciseCandidate(
+            id: "fresh-push-up", name: "Push-Up", mechanics: .compound,
+            primaryMuscles: ["chest"])
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: [:],
+            candidates: [completedMovement, freshMovement],
+            historyWorkoutCount: 5,
+            historyWorkingSetCount: 20,
+            recentlyCompletedCandidateIDs: [completedMovement.id],
+            trackedGroups: [.chest],
+            preferredSetsPerExercise: 3,
+            trainingGoal: .hypertrophy,
+            preferredStyle: .fitness)
+
+        let option = SuggestedWorkoutGenerator.generatePersonalized(input: input)
+
+        XCTAssertTrue(option.isLaunchable)
+        XCTAssertFalse(option.exercises.contains { $0.candidateID == completedMovement.id },
+                       "Completing a Today recommendation must not immediately recreate its movement pool")
+        XCTAssertTrue(option.exercises.contains { $0.candidateID == freshMovement.id })
+    }
+
     func testSingleSuggestionReturnsOneMovementAndExcludesExistingAllocation() {
         let press = SuggestedExerciseCandidate(
             id: "press", name: "Bench Press", mechanics: .compound,

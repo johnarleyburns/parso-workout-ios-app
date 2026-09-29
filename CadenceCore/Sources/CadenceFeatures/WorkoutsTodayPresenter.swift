@@ -9,6 +9,14 @@ import CadenceCore
 /// `HStack`s badged with the bare word `PLANNED`.
 public enum WorkoutsTodayPresenter {
 
+    /// Stable history destination derived from a compact row. The Home view
+    /// may render rows from a background projection before its live SwiftData
+    /// query has caught up, so navigation must be based on this ID alone.
+    public enum HistoryRoute: Equatable, Sendable {
+        case strength(UUID)
+        case cardio(UUID)
+    }
+
     /// Who authored a planned session. Only `.coach` is produced today; `.user`
     /// and `.trainer` exist so the badge needs no re-plumbing when self-created
     /// and trainer plans land (Cladiron Platform Spec v2.2).
@@ -146,6 +154,21 @@ public enum WorkoutsTodayPresenter {
     /// completed workout it can expand beyond today's compact list.
     public static func showsMoreHistory(for rows: [Row]) -> Bool {
         rows.contains { $0.isNavigable }
+    }
+
+    public static func historyRoute(for row: Row) -> HistoryRoute? {
+        guard row.isNavigable, let id = UUID(uuidString: row.sourceKey) else { return nil }
+        switch row.modality {
+        case .strength: return .strength(id)
+        case .cardio: return .cardio(id)
+        }
+    }
+
+    public static func historyRoute(for entry: TodayActivityPresenter.Entry) -> HistoryRoute {
+        switch entry.kind {
+        case .strength: return .strength(entry.sourceId)
+        case .cardio: return .cardio(entry.sourceId)
+        }
     }
 
     public static func plannedExercises(_ session: CoachSession) -> [PlannedExerciseRow] {

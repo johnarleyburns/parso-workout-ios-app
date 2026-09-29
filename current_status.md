@@ -2,6 +2,22 @@
 
 Updated: 2026-09-28
 
+## ACTIVE PLAN — Unified Cladiron release program (2026-09-28)
+
+The single roadmap is `plans/cladiron-release/2026-09-28/00-unified-plan.md`
+(paste-ready `HANDOFF.md` beside it). It interleaves three design sets:
+award polish (P0–P7, L0–L3), award craft (C0–C7), and health backup (H0–H7:
+your own workouts → Apple Health, non-health → a new iCloud container
+`iCloud.guru.parso.cladiron.sync`, whole-DB JSON v8, tester migration,
+restore on a new iPhone; this resolves Guideline 5.1.3(ii)). The sequence is
+G0 gate, then steps 1–23 ending in release R. Decided: award-polish D1–D15,
+award-craft D1–D9 (D8 = design for iPad), D10 direction → H stream. **Open:**
+H1–H10, U1 (first-run shape vs award-polish D13), U2 (interim public
+release?), U3 (sequential vs two lanes), award-polish D16. No app code changed.
+**Immediate next task:** G0. Answer the open decisions, send the App Review
+5.1.3(ii) question, commission the icon, run the P0 SDK check and the H0 device
+spikes S1–S8. Then step 1 = H1 (JSON v8 whole-DB export/import).
+
 ## Latest implementation — Today row audit, DB++ 1.17.0, FIT, and HealthKit portability (2026-09-28)
 
 The Today personalized recommendation row now tail-truncates long exercise
@@ -53,8 +69,8 @@ first run, 07 store story + featuring nomination (folds into award-polish P7),
 (B1–B16). No app code changed. **Release gate raised to C0:** Guideline
 5.1.3(ii) (health data in iCloud, already flagged in the release audit) must
 be resolved with App Review, or a fallback chosen, before any ADA path exists.
-**Immediate next task:** answer `decision-sheet.md` D1–D10 and send the
-5.1.3(ii) App Review question.
+D1–D9 decided 2026-09-28; D10 became the health-backup stream. Superseded
+as the next-task pointer by the unified plan above.
 
 ## Next planned work — Award polish (planned 2026-09-26, not started)
 

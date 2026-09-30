@@ -30,7 +30,7 @@ pending and completed rows now use a headless `SetRowAccessibility` presenter
 with partner-aware labels, wired Exercises and Unlogged sets rotors, and the
 existing Log/Edit/Repeat/Delete actions. A fixed-layout accessibility ratchet
 and device-only manual matrix are now part of the release evidence. Focused
-tests, the full one-worker package suite, all guardrails, and sequential
+tests, the full parallel package suite, all guardrails, and sequential
 generic iPhone→Watch builds pass. The manual VoiceOver, Switch Control, AX5,
 Reduce Motion/Transparency, and iPad checks remain device gates, as does the
 Apple Developer provisioning update required by the new H5 CloudKit container.
@@ -51,8 +51,9 @@ takeovers now present the new value, previous value, improvement, and rule.
 The release story is now internally consistent about private iCloud backup,
 with featuring-nomination and press-kit drafts under `docs/`. The localization
 catalog and Xcode project now include the eight planned locale variants for the
-core award strings, and the local package runner is explicitly one-worker and
-sequential. New H5, split-schema, PR-takeover, and existing FIT/HealthKit tests
+core award strings, and the local package runner is explicitly parallel within
+one invocation; iPhone and Watch builds remain sequential. New H5, split-schema,
+PR-takeover, and existing FIT/HealthKit tests
 remain headless and light/dark-safe; raw color growth remains below the token
 ratchet.
 
@@ -150,7 +151,8 @@ rounding. The cardio hero no longer applies the dark translucent text treatment,
 and the bottom session controls now have consistent vertical spacing.
 
 The local workflow is documented and enforced as sequential for iPhone and Watch
-builds/tests in `CLAUDE.md` and the Makefile. The full SwiftPM suite passed
+builds, while SwiftPM tests run in parallel within one invocation, in `CLAUDE.md`
+and the Makefile. The full SwiftPM suite passed
 1,951 tests with zero failures; the focused SetAlternation suite now passes 16
 tests. Generic iOS and Watch builds passed with signing disabled; and the
 repository guardrails passed. Xcode still

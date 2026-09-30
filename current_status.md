@@ -1,8 +1,29 @@
 # Current Status
 
-Updated: 2026-09-29
+Updated: 2026-09-30
 
 ## Active implementation — Full award roadmap
+
+### Current audit task — H1 JSON v8 whole-database portability
+
+H1 is now implemented locally as an additive JSON v8 native-store archive. It
+registers and round-trips all 22 SwiftData entities, preserves the rows/scalars
+not represented by the convenience DTOs, merges idempotently by stable ID, and
+deduplicates legacy cardio HR/route samples whose old nested format had no
+sample IDs. The coverage test seeds every entity, imports into a fresh store,
+re-imports it, and compares decoded row payloads. The package suite (1,951
+tests), guardrails, generic iPhone build, and standalone generic Watch build
+now pass sequentially. Commit/push, remote CI, and final cache-cleanup gates
+remain pending for this working series.
+
+The same audit also closed the C6 onboarding shape gap in code: the first-run
+flow is now four screens, health/location/age prompts stay contextual, and the
+live session has a one-time first-set teaching overlay. The audit also closed
+the remaining P4 entry points in code: the iOS 18 `AudioRecordingIntent` hands
+off to the reviewed Quick Talk sheet, exercise entities opt into Spotlight
+indexing, and the Live Activity opens the Today start route. Full P4 device
+validation, L3 localization, signature choreography, iPad/device AX5 review,
+and store-story/submission artifacts remain open in the audit below.
 
 The user authorized implementing the complete award craft and award polish
 roadmap. This pass productizes the core C1–C5 and P2/P3/P5 slices: launch/icon
@@ -46,9 +67,9 @@ and the bottom session controls now have consistent vertical spacing.
 
 The local workflow is documented and enforced as sequential for iPhone and Watch
 builds/tests in `CLAUDE.md` and the Makefile. The full SwiftPM suite passed
-1,929 tests before the final multi-partner regression case was added; the
-focused SetAlternation suite now passes 16 tests. Generic iOS and Watch builds
-passed with signing disabled; and the repository guardrails passed. Xcode still
+1,951 tests with zero failures; the focused SetAlternation suite now passes 16
+tests. Generic iOS and Watch builds passed with signing disabled; and the
+repository guardrails passed. Xcode still
 reports the known deployment-target
 warning (project target 27.0 versus the installed SDK's 26.5 maximum).
 
@@ -61,10 +82,12 @@ implementation is intentionally opt-in and never silently logs an ambiguous
 command. Permission copy is in `Cadence/Info.plist` and the settings/export
 surface carries the voice preferences.
 
-Watch audio capture and locked-screen `AudioRecordingIntent` remain open because
-they require a separate watch microphone UX and device validation. The planned
-P4 system-surface migration also still needs Live Activity tap intents/buttons,
-the Talk control, Spotlight entity indexing, and background-safe execution.
+Watch audio capture remains open because it needs a separate watch microphone
+UX and device validation. On iPhone, the iOS 18 locked-screen
+`AudioRecordingIntent` now hands off to the same reviewed Quick Talk sheet as
+the in-session hold gesture; Spotlight indexing and a Live Activity Today-start
+route are also wired. Background-safe execution and device validation remain
+release checks.
 
 ### Award-plan audit after latest pass
 

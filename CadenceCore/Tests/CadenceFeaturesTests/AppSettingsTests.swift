@@ -32,6 +32,7 @@ final class AppSettingsTests: XCTestCase {
         a.restSeconds = 120
         a.trainingGoal = .strength
         a.coachHidden = true
+        a.hasSeenFirstSetCoachMark = true
 
         let b = AppSettings(defaults: d)
         XCTAssertEqual(b.unit, .pounds)
@@ -39,6 +40,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(b.restSeconds, 120)
         XCTAssertEqual(b.trainingGoal, .strength)
         XCTAssertTrue(b.coachHidden)
+        XCTAssertTrue(b.hasSeenFirstSetCoachMark)
     }
 
     func testFavoriteRoutineToggle() {

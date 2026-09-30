@@ -37,6 +37,18 @@ public final class PersistedPlanHeader {
         self.rationaleData = try plan.rationale.map(NormalizedPlanStore.encode)
         self.originDevice = originDevice
     }
+
+    public init(id: UUID = UUID(), title: String = "", provenanceData: Data = Data(),
+                goalRaw: String = "hypertrophy", horizonData: Data = Data(),
+                createdAt: Date = Date(), updatedAt: Date = Date(),
+                authoredOnIdiomRaw: String? = nil, statusRaw: String = "draft",
+                notes: String? = nil, rationaleData: Data? = nil, originDevice: String = "") {
+        self.id = id; self.title = title; self.provenanceData = provenanceData
+        self.goalRaw = goalRaw; self.horizonData = horizonData; self.createdAt = createdAt
+        self.updatedAt = updatedAt; self.authoredOnIdiomRaw = authoredOnIdiomRaw
+        self.statusRaw = statusRaw; self.notes = notes; self.rationaleData = rationaleData
+        self.originDevice = originDevice
+    }
 }
 
 @Model
@@ -54,6 +66,12 @@ public final class PersistedPlanWeek {
         self.intendedProgressionRaw = week.intendedProgression?.rawValue
         self.isDeload = week.isDeload
     }
+
+    public init(id: UUID = UUID(), planID: UUID = UUID(), index: Int = 0,
+                intendedProgressionRaw: String? = nil, isDeload: Bool = false) {
+        self.id = id; self.planID = planID; self.index = index
+        self.intendedProgressionRaw = intendedProgressionRaw; self.isDeload = isDeload
+    }
 }
 
 @Model
@@ -66,6 +84,10 @@ public final class PersistedPlanDay {
         self.id = day.id
         self.weekID = weekID
         self.weekdayRaw = day.weekday.rawValue
+    }
+
+    public init(id: UUID = UUID(), weekID: UUID = UUID(), weekdayRaw: Int = Weekday.monday.rawValue) {
+        self.id = id; self.weekID = weekID; self.weekdayRaw = weekdayRaw
     }
 }
 
@@ -97,6 +119,17 @@ public final class PersistedPlanSession {
         self.painData = try session.painFlag.map(NormalizedPlanStore.encode)
         self.note = session.note
         self.partnersData = try NormalizedPlanStore.encode(session.partners)
+    }
+
+    public init(id: UUID = UUID(), dayID: UUID = UUID(), title: String = "",
+                goalRaw: String = "hypertrophy", estimatedDurationMinutes: Int? = nil,
+                statusRaw: String = "planned", startedAt: Date? = nil, completedAt: Date? = nil,
+                sessionRPE: Double? = nil, painData: Data? = nil, note: String? = nil,
+                partnersData: Data = Data()) {
+        self.id = id; self.dayID = dayID; self.title = title; self.goalRaw = goalRaw
+        self.estimatedDurationMinutes = estimatedDurationMinutes; self.statusRaw = statusRaw
+        self.startedAt = startedAt; self.completedAt = completedAt; self.sessionRPE = sessionRPE
+        self.painData = painData; self.note = note; self.partnersData = partnersData
     }
 }
 
@@ -135,6 +168,12 @@ public final class PersistedPlanItem {
             self.payloadData = try NormalizedPlanStore.encode(value)
         }
     }
+
+    public init(id: UUID = UUID(), sessionID: UUID = UUID(), kindRaw: String = "strength",
+                order: Int = 0, payloadData: Data = Data()) {
+        self.id = id; self.sessionID = sessionID; self.kindRaw = kindRaw
+        self.order = order; self.payloadData = payloadData
+    }
 }
 
 @Model
@@ -149,6 +188,11 @@ public final class PersistedPlanSet {
         self.itemID = itemID
         self.setIndex = set.setIndex
         self.payloadData = try NormalizedPlanStore.encode(set)
+    }
+
+    public init(id: UUID = UUID(), itemID: UUID = UUID(), setIndex: Int = 0,
+                payloadData: Data = Data()) {
+        self.id = id; self.itemID = itemID; self.setIndex = setIndex; self.payloadData = payloadData
     }
 }
 
@@ -211,6 +255,15 @@ public final class PersistedClientRelationship {
         self.shareURLString = relationship.shareURL?.absoluteString
         self.createdAt = relationship.createdAt
         self.updatedAt = relationship.updatedAt
+    }
+
+    public init(id: UUID = UUID(), displayName: String = "", notes: String? = nil,
+                goalRaw: String? = nil, statusRaw: String = ClientRelationshipStatus.active.rawValue,
+                shareZoneID: UUID? = nil, shareURLString: String? = nil,
+                createdAt: Date = Date(), updatedAt: Date = Date()) {
+        self.id = id; self.displayName = displayName; self.notes = notes; self.goalRaw = goalRaw
+        self.statusRaw = statusRaw; self.shareZoneID = shareZoneID; self.shareURLString = shareURLString
+        self.createdAt = createdAt; self.updatedAt = updatedAt
     }
 
     public func value() throws -> ClientRelationship {

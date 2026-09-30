@@ -10,8 +10,6 @@ struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var flow = OnboardingModel()
-    @State private var showHealthPriming = false
-    @State private var hasPresentedHealthPriming = false
 
     var body: some View {
         @Bindable var flow = flow
@@ -19,15 +17,9 @@ struct OnboardingView: View {
             header
             TabView(selection: $flow.step) {
                 welcomePage.tag(0)
-                privacyPage.tag(1)
-                coachingPage.tag(2)
-                goalPage.tag(3)
-                workoutTypePage.tag(4)
-                experiencePage.tag(5)
-                schedulePage.tag(6)
-                unitsPage.tag(7)
-                disclaimerPage.tag(8)
-                programPage.tag(9)
+                trainingPage.tag(1)
+                setupPage.tag(2)
+                programPage.tag(3)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut, value: flow.step)
@@ -39,14 +31,6 @@ struct OnboardingView: View {
             flow.experience = settings.experienceLevel
             flow.preferredWorkoutStyle = settings.preferredWorkoutStyle
             flow.unit = settings.unit
-        }
-        .onChange(of: flow.step) { oldStep, newStep in
-            guard oldStep < 3, newStep >= 3, !hasPresentedHealthPriming else { return }
-            hasPresentedHealthPriming = true
-            showHealthPriming = true
-        }
-        .sheet(isPresented: $showHealthPriming) {
-            HealthPrimingView { _ in }
         }
     }
 
@@ -84,7 +68,7 @@ struct OnboardingView: View {
                 Text(flow.footerTitle)
                     .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 15)
                     .foregroundStyle(.white)
-                    .background(flow.step == 8 || flow.isLastStep ? AnyShapeStyle(.green) : AnyShapeStyle(.tint),
+                    .background(flow.isLastStep ? AnyShapeStyle(.green) : AnyShapeStyle(.tint),
                                 in: RoundedRectangle(cornerRadius: 14))
             }
             .buttonStyle(.plain)
@@ -133,6 +117,60 @@ struct OnboardingView: View {
         .padding(.horizontal, 24)
     }
 
+    private var trainingPage: some View {
+        pageScaffold(title: "What are you training for?",
+                     subtitle: "These defaults shape your first workout. You can change them anytime in Coach settings.") {
+            ForEach(TrainingGoal.allCases) { g in
+                selectCard(title: g.displayName, subtitle: g.summary,
+                           systemImage: goalSymbol(g), selected: flow.goal == g) { flow.goal = g }
+            }
+            Divider().padding(.vertical, 4)
+            Text("Training experience").font(.subheadline.weight(.medium))
+            ForEach(ExperienceLevel.allCases) { e in
+                selectCard(title: e.displayName, subtitle: e.summary,
+                           systemImage: experienceSymbol(e), selected: flow.experience == e) { flow.experience = e }
+            }
+            Divider().padding(.vertical, 4)
+            Text("Workout style").font(.subheadline.weight(.medium))
+            ForEach([SuggestedWorkoutStyle.fitness, .bodyweight, .powerlifting, .olympic, .strongman], id: \.self) { style in
+                selectCard(title: style == .olympic ? "Olympic" : style.displayName,
+                           subtitle: style.subtitle, systemImage: workoutTypeSymbol(style),
+                           selected: flow.preferredWorkoutStyle == style) {
+                    flow.preferredWorkoutStyle = style
+                }
+            }
+        }
+    }
+
+    private var setupPage: some View {
+        @Bindable var flow = flow
+        return pageScaffold(title: "Make it fit your week",
+                            subtitle: "Cladiron starts with a sensible plan and learns from what you actually complete.") {
+            Text("Strength days per week").font(.subheadline.weight(.medium))
+            Picker("Strength days", selection: $flow.strengthDays) {
+                ForEach(2...5, id: \.self) { Text("\($0)").tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("onboarding.strengthDays")
+            Text("Cardio days per week").font(.subheadline.weight(.medium)).padding(.top, 4)
+            Picker("Cardio days", selection: $flow.cardioDays) {
+                ForEach(0...6, id: \.self) { Text("\($0)").tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("onboarding.cardioDays")
+            Divider().padding(.vertical, 4)
+            Text("Units").font(.subheadline.weight(.medium))
+            Picker("Units", selection: $flow.unit) {
+                Text("Pounds (lb)").tag(MeasurementUnitPreference.pounds)
+                Text("Kilograms (kg)").tag(MeasurementUnitPreference.kilograms)
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("onboarding.units")
+            Text("Age is asked later when a heart-rate zone feature needs it.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
     private func valueRow(_ symbol: String, _ text: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: symbol).font(.title3).foregroundStyle(.green).frame(width: 26)
@@ -141,137 +179,32 @@ struct OnboardingView: View {
         }
     }
 
-    private var goalPage: some View {
-        pageScaffold(title: "What are you training for?",
-                     subtitle: "This shapes your rep ranges and loads.") {
-            ForEach(TrainingGoal.allCases) { g in
-                selectCard(title: g.displayName, subtitle: g.summary,
-                           systemImage: goalSymbol(g), selected: flow.goal == g) { flow.goal = g }
-            }
-        }
-    }
-
-    private var experiencePage: some View {
-        pageScaffold(title: "How much training behind you?",
-                     subtitle: "Sets your starting weekly volume.") {
-            ForEach(ExperienceLevel.allCases) { e in
-                selectCard(title: e.displayName, subtitle: e.summary,
-                           systemImage: experienceSymbol(e), selected: flow.experience == e) { flow.experience = e }
-            }
-        }
-    }
-
-    private var workoutTypePage: some View {
-        pageScaffold(title: "What kind of workouts do you prefer?",
-                     subtitle: "This guides Personalized plans until your workout history provides enough signal.") {
-            ForEach([SuggestedWorkoutStyle.fitness, .bodyweight, .powerlifting, .olympic, .strongman], id: \.self) { style in
-                selectCard(title: style == .olympic ? "Olympic" : style.displayName,
-                           subtitle: style.subtitle,
-                           systemImage: workoutTypeSymbol(style),
-                           selected: flow.preferredWorkoutStyle == style) {
-                    flow.preferredWorkoutStyle = style
-                }
-                .accessibilityIdentifier("onboarding.workoutType.\(style.rawValue)")
-            }
-        }
-    }
-
-    private var schedulePage: some View {
-        @Bindable var flow = flow
-        return pageScaffold(title: "How often do you train?",
-                     subtitle: "You can fine-tune rest days and two-a-days in preferences.") {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Strength days per week").font(.subheadline.weight(.medium))
-                Picker("Strength days", selection: $flow.strengthDays) {
-                    Text("2").tag(2)
-                    Text("3").tag(3)
-                    Text("4").tag(4)
-                    Text("5").tag(5)
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("onboarding.strengthDays")
-
-                Text("Cardio days per week").font(.subheadline.weight(.medium))
-                Picker("Cardio days", selection: $flow.cardioDays) {
-                    Text("0").tag(0)
-                    Text("1").tag(1)
-                    Text("2").tag(2)
-                    Text("3").tag(3)
-                    Text("4").tag(4)
-                    Text("5").tag(5)
-                    Text("6").tag(6)
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("onboarding.cardioDays")
-            }
-        }
-    }
-
-    private var unitsPage: some View {
-        @Bindable var flow = flow
-        return pageScaffold(title: "One last thing",
-                     subtitle: "You can change these anytime in Settings.") {
-            Text("Units").font(.subheadline.weight(.medium))
-            Picker("Units", selection: $flow.unit) {
-                Text("Pounds (lb)").tag(MeasurementUnitPreference.pounds)
-                Text("Kilograms (kg)").tag(MeasurementUnitPreference.kilograms)
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("onboarding.units")
-
-            // Optional age for HR-zone estimation (issue 7). Skippable → defaults 40.
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Age (optional)").font(.subheadline.weight(.medium))
-                Stepper(value: $flow.age, in: 13...100, onEditingChanged: { _ in flow.ageProvided = true }) {
-                    HStack {
-                        Text("Used to estimate heart-rate zones")
-                            .font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Text(flow.ageProvided ? "\(flow.age)" : "—").monospacedDigit()
-                    }
-                }
-                .accessibilityIdentifier("onboarding.age")
-            }
-            .padding(.top, 8)
-
-        }
-    }
-
-    private var disclaimerPage: some View {
-        VStack(spacing: 0) {
-            Spacer()
-            Image(systemName: "stethoscope")
-                .scaledSystemFont(30, relativeTo: .largeTitle).foregroundStyle(.orange)
-                .frame(width: 72, height: 72)
-                .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 18))
-            Text("Coaching, not medical advice")
-                .font(.title2.bold()).padding(.top, 22)
-            Text("Cladiron's assessments and recommendations are general training guidance, not medical advice, diagnosis, or treatment. Consult a qualified professional before starting or changing an exercise program.")
-                .font(.subheadline).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center).padding(.top, 8).padding(.horizontal, 24)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(); Spacer()
-        }
-        .padding(.horizontal, 24)
-    }
-
     private var programPage: some View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Your first workout is ready").font(.title.bold()).padding(.top, 4)
-                Text("Cladiron uses your preferences until you have enough workout history for a fully personalized workout. Each workout is shown for your review before anything is started or saved.")
+                Text("Here's today's workout").font(.title.bold()).padding(.top, 4)
+                Text("A concrete starter plan, shown for your review before anything is started or saved.")
                     .font(.subheadline).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("Start Workout", systemImage: "wand.and.stars")
+                    Label("Your first workout", systemImage: "wand.and.stars")
                         .font(.headline)
-                    Text("After five completed workouts, suggestions prioritize movements you have actually used. Before then, your selected workout type fills any missing movement needs.")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                    Label("Nothing is scheduled automatically", systemImage: "calendar.badge.checkmark")
-                        .font(.headline)
-                        .padding(.top, 4)
-                    Text("You choose whether to start or schedule each reviewed workout.")
+                    if let session = flow.previewPlan(formula: settings.formula).today?.sessions.first(where: { !$0.isRest }),
+                       let exercises = session.exercises, !exercises.isEmpty {
+                        ForEach(exercises.prefix(4), id: \.name) { exercise in
+                            HStack {
+                                Text(exercise.name).lineLimit(1)
+                                Spacer()
+                                Text("\(exercise.sets ?? 3) × \(exercise.repsLow ?? 8)")
+                                    .font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
+                        Text("A full-body strength session will be ready after you choose Start Workout.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    Text("Nothing starts or schedules automatically. You stay in control.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
                 .padding()
@@ -279,7 +212,7 @@ struct OnboardingView: View {
                 .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
                 .accessibilityIdentifier("onboarding.workoutFlowPreview")
 
-                Text("Everything else in Cladiron — logging, history, trends, export — is free forever.")
+                Text("Not medical advice. Learn more in Settings. Everything else in Cladiron — logging, history, trends, export — is free forever.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             .padding(.horizontal, 24).padding(.top, 8)

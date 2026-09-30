@@ -35,7 +35,7 @@ public final class OnboardingModel {
                 age: Int = 40,
                 ageProvided: Bool = false,
                 step: Int = 0,
-                lastStep: Int = 9) {
+                lastStep: Int = 3) {
         self.goal = goal
         self.experience = experience
         self.preferredWorkoutStyle = preferredWorkoutStyle == .personalized ? .fitness : preferredWorkoutStyle
@@ -52,14 +52,15 @@ public final class OnboardingModel {
     public var canGoBack: Bool { step > 0 }
 
     /// The final-step ("program ready") page completes onboarding; every other
-    /// primary tap advances.
+    /// primary tap advances. The compact four-screen flow keeps the product demo
+    /// close to the first real workout.
     public var primaryAction: PrimaryAction { isLastStep ? .complete : .advance }
 
-    /// Footer button title per step (index 8 is the medical disclaimer).
+    /// Footer button title per step. Medical guidance is shown inline on the
+    /// final preview instead of consuming a separate onboarding page.
     public var footerTitle: String {
         switch step {
         case lastStep: return "Start training with the Coach"
-        case 8: return "I understand"
         default: return "Continue"
         }
     }

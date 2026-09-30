@@ -22,6 +22,17 @@ public final class PersistedPlan {
         self.originDevice = originDevice
     }
 
+    public init(id: UUID = UUID(), payloadVersion: Int = UnifiedPlanStore.currentPayloadVersion,
+                planData: Data = Data(), updatedAt: Date = Date(), originDevice: String = "",
+                deletedAt: Date? = nil) {
+        self.id = id
+        self.payloadVersion = payloadVersion
+        self.planData = planData
+        self.updatedAt = updatedAt
+        self.originDevice = originDevice
+        self.deletedAt = deletedAt
+    }
+
     public func decodedPlan() throws -> Plan {
         try UnifiedPlanStore.decode(planData, version: payloadVersion)
     }

@@ -1342,7 +1342,8 @@ public enum WorkoutRepository {
         return CadenceExport(sessions: sessions, cardio: cardio, assessments: assessments,
                              exercises: customExercises,
                              suggestionExclusions: suggestionExclusions,
-                             coachPreferences: coachPreferences, preferences: preferences)
+                             coachPreferences: coachPreferences, preferences: preferences,
+                             nativeDatabase: try NativeDatabaseExport.build(from: context))
     }
 
     /// Applies parsed sessions (from the Gmail importer) into the store,
@@ -1617,6 +1618,14 @@ public enum WorkoutRepository {
             }
         }
 
+        if let nativeDatabase = export.nativeDatabase {
+            // Preserve the historical return contract: callers use `added` as
+            // the user-facing count of sessions/cardio/assessments, while the
+            // native archive restores supporting rows (people, exercises,
+            // samples, templates, plans, and settings) without inflating that
+            // summary.
+            _ = try NativeDatabaseExport.merge(nativeDatabase, in: context)
+        }
         try context.save()
         return added
     }

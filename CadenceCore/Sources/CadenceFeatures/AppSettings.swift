@@ -34,6 +34,7 @@ public final class AppSettings {
                         "settings.celebrationStyle", "settings.voiceLoggingEnabled",
                         "settings.voiceConfirmationRequired", "settings.voiceLanguage",
                         "settings.smarterVoiceUnderstanding", "settings.restAlertMode",
+                        "settings.hasSeenFirstSetCoachMark",
                         "settings.coachPreferenceProfile",
                         "settings.coachSchedulePreferences",
                         "settings.coachHidden",
@@ -46,6 +47,7 @@ public final class AppSettings {
         }
         // Onboarding — true after the user completes the 4-screen flow.
         self.hasCompletedOnboarding = defaults.bool(forKey: "settings.hasCompletedOnboarding")
+        self.hasSeenFirstSetCoachMark = defaults.bool(forKey: "settings.hasSeenFirstSetCoachMark")
         self.unit = Self.read(defaults, SettingsKey.unit, MeasurementUnitPreference.self) ?? SettingsDefault.unit
         self.distanceUnit = Self.read(defaults, SettingsKey.distanceUnit, DistanceUnitPreference.self) ?? SettingsDefault.distanceUnit
         self.prRule = Self.read(defaults, SettingsKey.prRule, PRRule.self) ?? SettingsDefault.prRule
@@ -240,6 +242,12 @@ public final class AppSettings {
     }
     /// Whether the user has completed the new-user onboarding flow.
     public var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
+    /// Whether the one-time first-set teaching overlay has been dismissed.
+    /// Kept in settings so it follows the user across the phone's UI state but
+    /// never blocks logging or changes workout data.
+    public var hasSeenFirstSetCoachMark: Bool {
+        didSet { defaults.set(hasSeenFirstSetCoachMark, forKey: "settings.hasSeenFirstSetCoachMark") }
+    }
     public var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }
 
     /// Learned Coach preferences from alternative selections. Stored as JSON in

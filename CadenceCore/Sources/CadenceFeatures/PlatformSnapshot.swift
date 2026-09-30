@@ -80,6 +80,7 @@ public struct CadenceTodaySnapshot: Codable, Equatable, Sendable {
 public enum CadencePlatformRequestStore {
     private static let startKey = "cadence.platform.startWorkout.requestedAt"
     private static let logKey = "cadence.platform.logSet.request"
+    private static let quickTalkKey = "cadence.platform.quickTalk.requestedAt"
 
     public struct LogSetRequest: Codable, Equatable, Sendable {
         public let exerciseName: String
@@ -115,6 +116,20 @@ public enum CadencePlatformRequestStore {
               let request = try? JSONDecoder().decode(LogSetRequest.self, from: data) else { return nil }
         defaults.removeObject(forKey: logKey)
         return request
+    }
+
+    /// Requests that an active workout present the in-app Quick Talk recorder.
+    /// The iOS 18 AudioRecordingIntent uses this handoff and never writes
+    /// workout data or accesses the microphone while the app is locked.
+    public static func requestQuickTalk(defaults: UserDefaults? = nil) {
+        store(defaults).set(Date(), forKey: quickTalkKey)
+    }
+
+    public static func consumeQuickTalk(defaults: UserDefaults? = nil) -> Bool {
+        let defaults = store(defaults)
+        guard defaults.object(forKey: quickTalkKey) != nil else { return false }
+        defaults.removeObject(forKey: quickTalkKey)
+        return true
     }
 
     private static func store(_ defaults: UserDefaults?) -> UserDefaults {

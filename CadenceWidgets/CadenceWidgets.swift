@@ -235,6 +235,7 @@ struct CadenceWorkoutLiveActivity: Widget {
                 }
             }
             .padding()
+            .widgetURL(URL(string: "cladiron://workout"))
             .activityBackgroundTint(.black)
             .activitySystemActionForegroundColor(.green)
         } dynamicIsland: { context in

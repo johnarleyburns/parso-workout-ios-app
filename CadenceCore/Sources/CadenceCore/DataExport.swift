@@ -17,6 +17,10 @@ public struct CadenceExport: Codable, Equatable, Sendable {
     /// All app/user preferences (settings + schedule) so a fresh install round-trips
     /// completely (v4). nil for legacy exports.
     public var preferences: ExportPreferences?
+    /// v8 native-store archive. The existing top-level arrays remain readable
+    /// by older clients; this additive archive preserves every SwiftData model
+    /// and scalar that the convenience DTOs do not expose.
+    public var nativeDatabase: ExportNativeDatabase?
 
     public init(version: Int = CadenceExport.currentVersion,
                 exportedAt: Date = Date(),
@@ -26,7 +30,8 @@ public struct CadenceExport: Codable, Equatable, Sendable {
                 exercises: [ExportExercise] = [],
                 suggestionExclusions: [ExportSuggestionExclusion] = [],
                 coachPreferences: ExportCoachPreferences? = nil,
-                preferences: ExportPreferences? = nil) {
+                preferences: ExportPreferences? = nil,
+                nativeDatabase: ExportNativeDatabase? = nil) {
         self.version = version
         self.exportedAt = exportedAt
         self.sessions = sessions
@@ -36,11 +41,12 @@ public struct CadenceExport: Codable, Equatable, Sendable {
         self.suggestionExclusions = suggestionExclusions
         self.coachPreferences = coachPreferences
         self.preferences = preferences
+        self.nativeDatabase = nativeDatabase
     }
 
     enum CodingKeys: String, CodingKey {
         case version, exportedAt, sessions, cardio, assessments, exercises,
-             suggestionExclusions, coachPreferences, preferences
+             suggestionExclusions, coachPreferences, preferences, nativeDatabase
     }
 
     // Custom decode so older exports (v1–v4) that lack `exercises`/
@@ -57,6 +63,7 @@ public struct CadenceExport: Codable, Equatable, Sendable {
                                                      forKey: .suggestionExclusions) ?? []
         coachPreferences = try c.decodeIfPresent(ExportCoachPreferences.self, forKey: .coachPreferences)
         preferences = try c.decodeIfPresent(ExportPreferences.self, forKey: .preferences)
+        nativeDatabase = try c.decodeIfPresent(ExportNativeDatabase.self, forKey: .nativeDatabase)
     }
 
     /// v5 adds full custom exercise catalog export (primary/secondary muscles,
@@ -64,8 +71,10 @@ public struct CadenceExport: Codable, Equatable, Sendable {
     /// v6 adds the free-exercise-db++ annotation on exported exercises: muscle
     /// roles, volume eligibility, classification and movement patterns. Every new
     /// field is optional, so a v1–v5 file still imports exactly as it always did.
-    /// v7 adds personal automatic-suggestion exclusions.
-    public static let currentVersion = 7
+    /// v7 adds personal automatic-suggestion exclusions. v8 adds an additive
+    /// native-store archive so every model and scalar survives a new-device
+    /// restore, including partner roster, plans, schedules and readiness.
+    public static let currentVersion = 8
 }
 
 public struct ExportSuggestionExclusion: Codable, Equatable, Sendable {

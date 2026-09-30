@@ -125,6 +125,18 @@ extension SessionView {
                     .accessibilityIdentifier("session.healthSaved")
             }
         }
+        .overlay(alignment: .bottom) {
+            if isActiveSession && !settings.hasSeenFirstSetCoachMark &&
+               session.orderedSets.isEmpty && !cache.state.contexts.isEmpty {
+                FirstSetCoachMark {
+                    settings.hasSeenFirstSetCoachMark = true
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(3)
+            }
+        }
         .keepAwake(!isManualLog)
         .task(id: refreshSignature) {
             let recent = (try? WorkoutRepository.recentSessions(context, limit: 21)) ?? [] // 20-session rep window + this one
@@ -282,6 +294,9 @@ extension SessionView {
             if case .connected = model.hrm.state { return }
             model.startWatchStrength()
         }
+        .modifier(QuickTalkNotificationModifier(isActive: isActiveSession,
+                                                 isEnabled: settings.voiceLoggingEnabled,
+                                                 isPresented: $voiceLoggingPresented))
         .onDisappear { if isManualLog { cleanupEmptyLog() } }
         .onReceive(idleTimer) { _ in
             handleIdleTick()
@@ -358,5 +373,19 @@ extension SessionView {
 
     func compactSummary(for ctx: SessionRenderModel.ExerciseContext) -> String {
         SessionRenderModel.compactSummary(context: ctx, unit: settings.unit)
+    }
+
+}
+
+private struct QuickTalkNotificationModifier: ViewModifier {
+    let isActive: Bool
+    let isEnabled: Bool
+    @Binding var isPresented: Bool
+
+    func body(content: Content) -> some View {
+        content.onReceive(NotificationCenter.default.publisher(for: .cadenceQuickTalkRequested)) { _ in
+            guard isActive, isEnabled else { return }
+            isPresented = true
+        }
     }
 }

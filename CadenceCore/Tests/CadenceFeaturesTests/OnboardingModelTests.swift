@@ -17,6 +17,7 @@ final class OnboardingModelTests: XCTestCase {
         let m = OnboardingModel()
         for _ in 0..<10 { m.advance() }
         XCTAssertEqual(m.step, m.lastStep)
+        XCTAssertEqual(m.lastStep, 3)
         XCTAssertTrue(m.isLastStep)
         XCTAssertEqual(m.primaryAction, .complete)
     }
@@ -32,8 +33,8 @@ final class OnboardingModelTests: XCTestCase {
     func testFooterTitleByStep() {
         let m = OnboardingModel()
         XCTAssertEqual(m.footerTitle, "Continue")
-        m.step = 8
-        XCTAssertEqual(m.footerTitle, "I understand")
+        m.step = 2
+        XCTAssertEqual(m.footerTitle, "Continue")
         m.step = m.lastStep
         XCTAssertEqual(m.footerTitle, "Start training with the Coach")
     }

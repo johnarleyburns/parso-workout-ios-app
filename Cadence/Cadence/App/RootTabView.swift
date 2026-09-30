@@ -128,6 +128,9 @@ struct RootTabView: View {
             active.writeHeartbeat()
             guard phase == .active else { return }
             model.pushSettingsContext()
+            if CadencePlatformRequestStore.consumeQuickTalk() {
+                NotificationCenter.default.post(name: .cadenceQuickTalkRequested, object: nil)
+            }
         }
         .onChange(of: settings.unit) { _, _ in model.pushSettingsContext() }
         .onChange(of: settings.intervalColorBlind) { _, _ in model.pushSettingsContext() }
@@ -145,6 +148,10 @@ struct RootTabView: View {
             guard url.scheme == "cladiron" else { return }
             if url.host == "this-week" || url.path == "/this-week" {
                 selection = .thisWeek
+            } else if url.host == "workout" || url.path == "/workout" {
+                selection = .home
+                CadencePlatformRequestStore.requestStartWorkout()
+                NotificationCenter.default.post(name: .cadenceStartTodaysWorkout, object: nil)
             } else {
                 // Old weekly-plan deep links remain safe after the Plan tab is
                 // retired: one-off scheduled workouts are reached from Home.

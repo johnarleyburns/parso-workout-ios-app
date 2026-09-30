@@ -434,6 +434,161 @@ public enum WorkoutRepository {
         ))
     }
 
+    // MARK: Health restore (H4)
+
+    /// Applies a previously planned Health restore. The operation is deliberately
+    /// separate from planning: callers can show the exact counts and conflict
+    /// policy before mutating the local store. Partner sets already in the local
+    /// store are preserved when owner sets are replaced.
+    @discardableResult
+    public static func applyHealthRestore(_ plan: HealthRestorePlan,
+                                          in context: ModelContext) throws -> HealthRestoreApplyReport {
+        var inserted = 0
+        var replaced = 0
+        var skipped = 0
+        var summariesOnly = 0
+        let sessions = try context.fetch(FetchDescriptor<WorkoutSession>())
+        let cardio = try context.fetch(FetchDescriptor<CardioWorkout>())
+        let assessments = try context.fetch(FetchDescriptor<Assessment>())
+
+        for operation in plan.operations {
+            guard operation.action != .skip else {
+                skipped += 1
+                continue
+            }
+            switch operation.object {
+            case .strength(let summary, let healthObjectID, _):
+                let existing = sessions.first { $0.id == summary.id }
+                let title = summary.metadata[CladironHealthBackup.titleKey] ?? "Strength workout"
+                let session = existing ?? WorkoutSession(id: summary.id, title: title,
+                                                          date: summary.start)
+                if let existing {
+                    for set in existing.orderedSets where set.isOwnerSet {
+                        context.delete(set)
+                    }
+                    replaced += 1
+                } else {
+                    context.insert(session)
+                    inserted += 1
+                }
+                session.title = title
+                session.date = summary.start
+                session.endedAt = summary.end
+                session.healthKitWorkoutUUID = healthObjectID
+                session.updatedAt = summary.updatedAt ?? summary.end
+                if let notes = summary.metadata[CladironHealthBackup.notesKey] {
+                    session.notes = notes
+                }
+                let payloads = try decodeOwnerSets(from: summary.metadata)
+                for payload in payloads {
+                    let exercise = try findOrCreateExercise(named: payload.exerciseName, in: context)
+                    let entry = SetEntry(id: payload.id,
+                                         weight: payload.weightKg,
+                                         reps: payload.reps,
+                                         order: payload.order,
+                                         isWarmup: payload.isWarmup,
+                                         usesBodyweight: payload.usesBodyweight,
+                                         rpe: payload.rpe,
+                                         note: payload.note,
+                                         completedAt: payload.completedAt ?? summary.end,
+                                         updatedAt: summary.updatedAt ?? summary.end,
+                                         session: session,
+                                         exercise: exercise,
+                                         barWeightKg: payload.barWeightKg,
+                                         loadMultiplier: payload.loadMultiplier,
+                                         loadAccountingMode: payload.loadAccountingMode,
+                                         exerciseKey: payload.exerciseKey,
+                                         exerciseNameSnapshot: payload.exerciseName)
+                    context.insert(entry)
+                }
+            case .legacySummary(let summary):
+                let session = WorkoutSession(id: UUID(), title: "Strength workout",
+                                              date: summary.start, endedAt: summary.end,
+                                              healthKitWorkoutUUID: summary.healthObjectID,
+                                              isLogged: true,
+                                              updatedAt: summary.end)
+                session.notes = "Saved before set-level backup. Sets weren't recorded in Health."
+                context.insert(session)
+                inserted += 1
+                summariesOnly += 1
+            case .cardio(let summary, let healthObjectID, let source):
+                let existing = cardio.first { $0.id == summary.id }
+                let row = existing ?? CardioWorkout(id: summary.id, type: summary.type,
+                                                    start: summary.start, end: summary.end,
+                                                    distance: summary.distanceMeters,
+                                                    activeEnergy: summary.activeEnergyKcal,
+                                                    source: source == .watch ? .watch : .iphone,
+                                                    healthKitWorkoutUUID: healthObjectID,
+                                                    customTitle: summary.customTitle,
+                                                    updatedAt: summary.updatedAt ?? summary.end)
+                if let existing {
+                    for sample in existing.orderedHRSamples { context.delete(sample) }
+                    for sample in existing.orderedRouteSamples { context.delete(sample) }
+                    replaced += 1
+                } else {
+                    context.insert(row)
+                    inserted += 1
+                }
+                row.typeValue = summary.type
+                row.start = summary.start
+                row.end = summary.end
+                row.distance = summary.distanceMeters
+                row.activeEnergy = summary.activeEnergyKcal
+                row.sourceValue = source == .watch ? .watch : .iphone
+                row.healthKitWorkoutUUID = healthObjectID
+                row.customTitle = summary.customTitle
+                row.updatedAt = summary.updatedAt ?? summary.end
+                for sample in summary.hrSamples {
+                    context.insert(HRSample(t: sample.t, bpm: sample.bpm, cardio: row))
+                }
+                for sample in summary.route {
+                    context.insert(RouteSample(t: sample.t, lat: sample.lat, lon: sample.lon,
+                                               elevation: sample.elevation, cardio: row))
+                }
+            case .assessment(let payload, let healthObjectID, _):
+                let row = assessments.first { $0.id == payload.id }
+                    ?? Assessment(id: payload.id, date: payload.date,
+                                  kind: AssessmentKind(rawValue: payload.kind) ?? .pushupMax,
+                                  value: payload.value, inputWeight: payload.inputWeight,
+                                  inputReps: payload.inputReps, exerciseName: payload.exerciseName,
+                                  protocolName: payload.protocolName, notes: payload.notes,
+                                  updatedAt: payload.updatedAt, inputDistance: payload.inputDistance,
+                                  inputTime: payload.inputTime, inputEndingHR: payload.inputEndingHR,
+                                  inputAge: payload.inputAge, inputSex: payload.inputSex)
+                if let current = assessments.first(where: { $0.id == payload.id }) {
+                    current.date = payload.date
+                    current.kind = payload.kind
+                    current.value = payload.value
+                    current.inputWeight = payload.inputWeight
+                    current.inputReps = payload.inputReps
+                    current.exerciseName = payload.exerciseName
+                    current.protocolName = payload.protocolName
+                    current.notes = payload.notes
+                    current.updatedAt = payload.updatedAt
+                    current.inputDistance = payload.inputDistance
+                    current.inputTime = payload.inputTime
+                    current.inputEndingHR = payload.inputEndingHR
+                    current.inputAge = payload.inputAge
+                    current.inputSex = payload.inputSex
+                    _ = healthObjectID
+                    replaced += 1
+                } else {
+                    context.insert(row)
+                    inserted += 1
+                }
+            }
+        }
+        if !plan.operations.isEmpty { try context.save() }
+        return HealthRestoreApplyReport(inserted: inserted, replaced: replaced,
+                                        skipped: skipped, summariesOnly: summariesOnly)
+    }
+
+    private static func decodeOwnerSets(from metadata: [String: String]) throws -> [CladironHealthBackup.SetPayload] {
+        guard let raw = metadata[CladironHealthBackup.ownerSetsKey],
+              let data = raw.data(using: .utf8) else { return [] }
+        return try JSONDecoder().decode([CladironHealthBackup.SetPayload].self, from: data)
+    }
+
     /// The `limit` most recent non-deleted sessions, newest first. For callers
     /// that only look at recent history (the workout screen's 20-session rep
     /// pattern window, recent partners); `allSessions` materializes the whole

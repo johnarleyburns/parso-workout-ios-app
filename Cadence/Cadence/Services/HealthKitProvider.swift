@@ -57,6 +57,14 @@ final class HealthKitProvider: HealthDataProviding {
         guard isHealthDataAvailable else { return .unavailable }
         do {
             try await store.requestAuthorization(toShare: writeTypes, read: readTypes)
+            // Keep the restore path alive while the app is suspended. The next
+            // foreground restore still uses an anchored-compatible date query
+            // until the device-only anchor store is available, but HealthKit
+            // will now wake the app for newly delivered Cladiron workouts.
+            try? await store.enableBackgroundDelivery(for: .workoutType(), frequency: .immediate)
+            if let vo2 = HKQuantityType.quantityType(forIdentifier: .vo2Max) {
+                try? await store.enableBackgroundDelivery(for: vo2, frequency: .hourly)
+            }
             return .authorized
         } catch {
             return .denied
@@ -255,6 +263,108 @@ final class HealthKitProvider: HealthDataProviding {
         return result
     }
 
+    // MARK: Cladiron backup restore (H4)
+
+    /// Reads Cladiron-authored workouts separately from the existing third-party
+    /// cardio ingest. The source check is exact for both app targets, so another
+    /// app's workout can never become a Cladiron restore candidate. HealthKit
+    /// does not expose read authorization state; an empty result is therefore a
+    /// valid "none visible" result and is explained by the Backup center.
+    func readHealthBackups(since: Date?) async -> [HealthBackupReadObject] {
+        let workouts: [HKWorkout] = await withCheckedContinuation { continuation in
+            let predicate = since.map { HKQuery.predicateForSamples(withStart: $0, end: nil) }
+            let query = HKSampleQuery(sampleType: .workoutType(), predicate: predicate,
+                                      limit: HKObjectQueryNoLimit,
+                                      sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate,
+                                                                         ascending: true)]) { _, samples, _ in
+                continuation.resume(returning: (samples as? [HKWorkout]) ?? [])
+            }
+            store.execute(query)
+        }
+
+        var result: [HealthBackupReadObject] = []
+        for workout in workouts {
+            guard let source = Self.cladironSource(for: workout.sourceRevision) else { continue }
+            let importedKind = Self.importedWorkoutKind(from: workout.workoutActivityType)
+            let kind: HealthWorkoutPayloadKind = importedKind.isStrength ? .strength : .cardio
+            let cardioType = Self.cardioType(from: workout.workoutActivityType)
+            let distance = workout.totalDistance?.doubleValue(for: .meter())
+            let energy = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?
+                .sumQuantity()?.doubleValue(for: .kilocalorie())
+            let metadata = Self.stringMetadata(workout.metadata)
+            let hr = await heartRateSamples(for: workout)
+            let route = kind == .cardio && cardioType.usesGPS
+                ? await routeSamples(for: workout)
+                : []
+            let read = HealthWorkoutReadPayload(
+                healthObjectID: workout.uuid,
+                kind: kind,
+                activityType: importedKind,
+                start: workout.startDate,
+                end: workout.endDate,
+                activeEnergyKcal: energy,
+                distanceMeters: distance,
+                heartRate: hr,
+                route: route,
+                metadata: metadata,
+                source: source)
+            if let decoded = try? HealthBackupDecoder.workout(read) {
+                result.append(decoded)
+            }
+        }
+
+        guard let vo2Type = HKQuantityType.quantityType(forIdentifier: .vo2Max) else { return result }
+        let vo2Samples: [HKQuantitySample] = await withCheckedContinuation { continuation in
+            let predicate = since.map { HKQuery.predicateForSamples(withStart: $0, end: nil) }
+            let query = HKSampleQuery(sampleType: vo2Type, predicate: predicate,
+                                      limit: HKObjectQueryNoLimit,
+                                      sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate,
+                                                                         ascending: true)]) { _, samples, _ in
+                continuation.resume(returning: (samples as? [HKQuantitySample]) ?? [])
+            }
+            store.execute(query)
+        }
+        for sample in vo2Samples {
+            guard let source = Self.cladironSource(for: sample.sourceRevision) else { continue }
+            let value = sample.quantity.doubleValue(for: HKUnit(from: "mL/kg*min"))
+            let payload = HealthVO2ReadPayload(
+                healthObjectID: sample.uuid,
+                date: sample.startDate,
+                value: value,
+                metadata: Self.stringMetadata(sample.metadata),
+                source: source)
+            if let decoded = try? HealthBackupDecoder.vo2(payload) {
+                result.append(decoded)
+            }
+        }
+        return result
+    }
+
+    private static let cladironPhoneBundleID = "guru.parso.ios-workout-app"
+    private static let cladironWatchBundleID = "guru.parso.ios-workout-app.watchkitapp"
+
+    private static func cladironSource(for revision: HKSourceRevision) -> HealthBackupSource? {
+        let bundleID = revision.source.bundleIdentifier
+        if bundleID == cladironPhoneBundleID { return .iphone }
+        if bundleID == cladironWatchBundleID { return .watch }
+        return nil
+    }
+
+    private static func stringMetadata(_ values: [String: Any]?) -> [String: String] {
+        guard let values else { return [:] }
+        var result: [String: String] = [:]
+        for (key, value) in values {
+            if let string = value as? String {
+                result[key] = string
+            } else if let number = value as? NSNumber {
+                result[key] = number.stringValue
+            } else if let date = value as? Date {
+                result[key] = ISO8601DateFormatter().string(from: date)
+            }
+        }
+        return result
+    }
+
     /// Reads the heart-rate samples recorded across `[start, end]` and maps them to
     /// `HRSamplePoint`s relative to `start`, downsampled so long workouts stay light.
     private func heartRateSamples(for workout: HKWorkout) async -> [HRSamplePoint] {
@@ -442,6 +552,12 @@ final class HealthKitProvider: HealthDataProviding {
             if let value = payload.inputDistance { metadata[CladironHealthBackup.assessmentInputDistanceKey] = value }
             if let value = payload.inputTime { metadata[CladironHealthBackup.assessmentInputTimeKey] = value }
             if let value = payload.inputEndingHR { metadata[CladironHealthBackup.assessmentInputEndingHRKey] = value }
+            metadata[CladironHealthBackup.assessmentInputWeightKey] = payload.inputWeight
+            metadata[CladironHealthBackup.assessmentInputRepsKey] = payload.inputReps
+            if let value = payload.exerciseName, !value.isEmpty { metadata[CladironHealthBackup.assessmentExerciseNameKey] = value }
+            if let value = payload.notes, !value.isEmpty { metadata[CladironHealthBackup.assessmentNotesKey] = value }
+            if let value = payload.inputAge { metadata[CladironHealthBackup.assessmentInputAgeKey] = value }
+            if let value = payload.inputSex { metadata[CladironHealthBackup.assessmentInputSexKey] = value }
             try await builder.addMetadata(metadata)
             try await builder.endCollection(at: end)
             return try await builder.finishWorkout()?.uuid

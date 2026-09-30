@@ -169,6 +169,41 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
     }
 
+    func testHealthRestoreReplacesOwnerSetsAndPreservesPartnerSets() throws {
+        let ctx = try makeContext()
+        let id = UUID()
+        let start = Date(timeIntervalSince1970: 20_000)
+        let session = WorkoutSession(id: id, title: "Old", date: start)
+        ctx.insert(session)
+        try ctx.save()
+        let exercise = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let partner = try WorkoutRepository.findOrCreatePerson(named: "Partner", in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: 50, reps: 5,
+                                         completedAt: start, in: ctx)
+        _ = try WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: 30, reps: 8,
+                                         completedAt: start, performedBy: partner, in: ctx)
+        try ctx.save()
+
+        let replacementSet = CladironHealthBackup.SetPayload(
+            id: UUID(), exerciseKey: "bench-press", exerciseName: "Bench Press",
+            weightKg: 57, reps: 6, rpe: 8, isWarmup: false, usesBodyweight: false,
+            note: nil, order: 0, completedAt: start.addingTimeInterval(60))
+        let data = try JSONEncoder().encode([replacementSet])
+        var metadata = CladironHealthBackup.baseMetadata(id: id, updatedAt: start.addingTimeInterval(120))
+        metadata[CladironHealthBackup.ownerSetsKey] = String(decoding: data, as: UTF8.self)
+        metadata[CladironHealthBackup.titleKey] = "Restored"
+        let object = try HealthBackupDecoder.workout(HealthWorkoutReadPayload(
+            healthObjectID: UUID(), kind: .strength, activityType: .traditionalStrength,
+            start: start, end: start.addingTimeInterval(180), metadata: metadata, source: .iphone))
+        let plan = HealthRestorePlan(operations: [HealthRestoreOperation(object: object, action: .replace)])
+
+        let report = try WorkoutRepository.applyHealthRestore(plan, in: ctx)
+        XCTAssertEqual(report.replaced, 1)
+        XCTAssertEqual(session.orderedSets.filter(\.isOwnerSet).map(\.weight), [57])
+        XCTAssertEqual(session.orderedSets.filter { !$0.isOwnerSet }.map(\.weight), [30])
+        XCTAssertEqual(session.title, "Restored")
+    }
+
     // Feedback batch 6 item 3 — a manually logged cardio workout lands in history
     // identically to a recorded one, but flagged isLogged with its custom title.
     func testSaveLoggedCardioFlagsAndTitles() throws {

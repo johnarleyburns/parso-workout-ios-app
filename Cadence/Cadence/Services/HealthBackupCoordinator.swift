@@ -36,7 +36,7 @@ final class HealthBackupCoordinator {
         do {
             try await outbox.enqueue(HealthOutboxItem(job: job))
         } catch {
-            lastReport = HealthBackupDrainReport(lastError: "Couldn’t queue Apple Health backup: (error.localizedDescription)")
+            lastReport = HealthBackupDrainReport(lastError: "Couldn’t queue Apple Health backup: \(error.localizedDescription)")
             return lastReport
         }
         return await drain()
@@ -80,14 +80,14 @@ final class HealthBackupCoordinator {
                         report.lastError = message
                     }
                 } catch {
-                    let message = "Backup could not be encoded: (error.localizedDescription)"
+                    let message = "Backup could not be encoded: \(error.localizedDescription)"
                     try await outbox.markFailed(item.id, error: message)
                     report.lastError = message
                 }
             }
             report.remaining = try await outbox.snapshot().items.count
         } catch {
-            report.lastError = "Couldn’t read the Apple Health backup queue: (error.localizedDescription)"
+            report.lastError = "Couldn’t read the Apple Health backup queue: \(error.localizedDescription)"
             report.remaining = (try? await outbox.snapshot().items.count) ?? 0
         }
         lastReport = report

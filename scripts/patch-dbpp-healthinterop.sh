@@ -12,6 +12,9 @@ roots=(
   "${repo_root}/.build"
   "${HOME}/Library/Developer/Xcode/DerivedData"
 )
+if [[ $# -gt 0 ]]; then
+  roots+=("$@")
+fi
 files=()
 for root in "${roots[@]}"; do
   if [[ -d "$root" ]]; then

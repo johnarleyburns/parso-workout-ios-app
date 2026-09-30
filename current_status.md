@@ -4,6 +4,27 @@ Updated: 2026-09-30
 
 ## Active implementation — Full award roadmap
 
+### Current audit task — H4 HealthKit restore and DB++ 1.17.0
+
+H4 restore contracts are now implemented additively. Cladiron-authored Apple
+Health workouts are source-filtered, decoded by schema/sync ID, conflict-planned
+by the newest sync version, and restored into local history without replacing
+partner sets. Legacy summary-only workouts remain idempotent and clearly marked
+in their notes. Assessment restore now carries the complete recorded input set,
+including weight, reps, exercise, notes, age, and sex. The onboarding welcome
+screen and Transparency & Control both expose a safe repeatable Health restore.
+HealthKit background delivery is enabled for workouts and VO2 samples after
+authorization. DB++ is pinned to exactly 1.17.0, with the repository's
+compatibility patch applied to both SwiftPM and custom Xcode derived-data
+checkouts.
+
+The remaining H-stream release work is intentionally not represented as done:
+the two-configuration CloudKit/local store split and migration/purge (H5), a
+dedicated count/progress Backup & Restore center (H6), anchored multi-device
+delivery/device validation, and release/schema/privacy artifacts (H7) still
+need implementation and real-device validation. Watch audio capture and the
+eight-locale translation pass likewise remain open.
+
 ### Current audit task — H1 JSON v8 whole-database portability
 
 H1 is now implemented locally as an additive JSON v8 native-store archive. It
@@ -105,18 +126,20 @@ fail-closed validation; plus the requested light/dark AccentColor variants.
 The Live Activity renderer now has explicit high-contrast foreground content so
 a black background cannot hide its values.
 
-Still requiring implementation or real-device review: the H3 durable outbox and
-reader, H4–H7 store split/migration/Backup center/release work, full P4 Live Activity
-button/Control Center validation, eight-locale UI/voice localization (L3),
-full signature-moment choreography, iPad/device AX5 verification, and the
-store-story/submission artifacts. The remaining H3–H7 store split, Health outbox/restore,
-and Backup & Restore center also remain release-stream work. These are recorded
-explicitly rather than marked complete without the corresponding runtime
-behavior.
+Still requiring implementation or real-device review: H4 anchored multi-device
+delivery and Watch audio capture, H5–H7 store split/migration/Backup center/release work,
+full P4 Live Activity button/Control Center validation, eight-locale UI/voice
+localization (L3), full signature-moment choreography, iPad/device AX5
+verification, and the store-story/submission artifacts. The Health outbox,
+schema decoder, restore planner, local apply path, onboarding restore entry,
+and Apple Health background-delivery registration are now runtime behavior.
+The remaining store split, migration, dedicated Backup & Restore center,
+anchored delivery, and release-only work are recorded explicitly rather than
+marked complete without the corresponding runtime behavior.
 
-Latest verification for this pass: the focused H2/H3 contract suites passed;
-generic iPhone followed by standalone Watch builds passed sequentially with
-signing disabled. The full package/guardrail gate and the follow-up commit,
+Latest verification for this pass: the focused H4 decoder/planner/apply suites
+passed; generic iPhone followed by standalone Watch builds passed sequentially
+with signing disabled. The full final package/guardrail gate, follow-up commit,
 push, remote CI check, and final cache cleanup remain for this working series.
 
 ## Latest implementation — Today row audit, DB++ 1.17.0, FIT, and HealthKit portability (2026-09-28)

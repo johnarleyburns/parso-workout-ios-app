@@ -43,6 +43,11 @@ if [[ -n "$project" && -n "$scheme" ]]; then
   fi
   xcodebuild "${resolve_arguments[@]}"
 fi
-bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/patch-dbpp-healthinterop.sh"
+patch_script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/patch-dbpp-healthinterop.sh"
+if [[ -n "$derived_data_path" ]]; then
+  bash "$patch_script" "$derived_data_path"
+else
+  bash "$patch_script"
+fi
 
 exec xcodebuild "$@"

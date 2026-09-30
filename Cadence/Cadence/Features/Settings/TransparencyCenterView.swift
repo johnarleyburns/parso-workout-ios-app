@@ -16,6 +16,8 @@ struct TransparencyCenterView: View {
             Section("Right now") {
                 statusRow("Apple Health", systemImage: "heart.text.square",
                           value: model.healthSyncStatus.detailText)
+                statusRow("Health restore", systemImage: "arrow.down.heart",
+                          value: model.healthRestoreStatus.detailText)
                 statusRow("Watch", systemImage: "applewatch",
                           value: model.watchSyncState.settingsText(lastSyncAt: model.lastWatchSyncAt))
                 statusRow("iCloud", systemImage: "icloud",
@@ -37,6 +39,11 @@ struct TransparencyCenterView: View {
                     title: "Apple Health import",
                     detail: "When Home opens and when you pull to refresh, Cladiron checks for new Watch/Health workouts and imports only records it has not already seen.",
                     control: "You can see the current status above and repeat the check with pull-to-refresh. Imported records remain editable through History; auto-save back to Health is separately controlled below.")
+
+                explanationRow(
+                    title: "Apple Health restore",
+                    detail: "Restore re-reads Cladiron workouts from Apple Health, keeps newer local edits, and preserves partner sets that only exist in Cladiron.",
+                    control: "Run it again whenever Health finishes syncing to a new iPhone. A zero result can also mean Health read access is off in Settings.")
 
                 explanationRow(
                     title: "Coach refresh",
@@ -70,6 +77,17 @@ struct TransparencyCenterView: View {
             }
 
             Section {
+                Button {
+                    Task { await model.restoreHealthBackups() }
+                } label: {
+                    if model.healthRestoreStatus.isInProgress {
+                        HStack { ProgressView(); Text("Restoring from Apple Health…") }
+                    } else {
+                        Label("Restore from Apple Health", systemImage: "arrow.down.heart")
+                    }
+                }
+                .disabled(model.healthRestoreStatus.isInProgress)
+                .accessibilityIdentifier("settings.restoreHealth")
                 NavigationLink {
                     CloudKitSyncDiagnosticsView()
                 } label: {

@@ -57,6 +57,28 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
+    enum HealthRestoreStatus: Equatable, Sendable {
+        case idle
+        case restoring
+        case completed(Date, HealthRestoreApplyReport)
+        case failed(String)
+
+        var isInProgress: Bool {
+            if case .restoring = self { return true }
+            return false
+        }
+
+        var detailText: String {
+            switch self {
+            case .idle: return "Not run yet"
+            case .restoring: return "Restoring from Apple Health…"
+            case .completed(_, let report):
+                return "Restored \(report.inserted + report.replaced) · \(report.summariesOnly) summary-only"
+            case .failed(let message): return "Restore paused: \(message)"
+            }
+        }
+    }
+
     enum CloudKitImportStatus: Equatable, Sendable {
         case idle
         case updating
@@ -143,6 +165,7 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var healthSyncStatus: HealthSyncStatus = .idle
+    var healthRestoreStatus: HealthRestoreStatus = .idle
     /// Published while Home recomputes its ephemeral coach projection so the
     /// operation is visible in Settings → Transparency & Control without
     /// inserting transient content into the Home layout.
@@ -151,6 +174,44 @@ final class AppModel: NSObject, @unchecked Sendable {
     var lastHealthSync: Date? {
         get { (UserDefaults.standard.object(forKey: SettingsKey.lastHealthSync) as? Double).map { Date(timeIntervalSince1970: $0) } }
         set { UserDefaults.standard.set(newValue?.timeIntervalSince1970, forKey: SettingsKey.lastHealthSync) }
+    }
+
+    /// Re-reads Cladiron-authored Health objects and applies the pure conflict
+    /// policy to the local store. This is safe to repeat and intentionally does
+    /// not report "no history" as an error because HealthKit can hide read data
+    /// when its permission is disabled.
+    func restoreHealthBackups() async {
+        guard !healthRestoreStatus.isInProgress, let container = _modelContainer else { return }
+        healthRestoreStatus = .restoring
+        do {
+            let incoming = await health.readHealthBackups(since: nil)
+            let context = ModelContext(container)
+            let local: [HealthRestoreLocalState] =
+                (try context.fetch(FetchDescriptor<WorkoutSession>())).map {
+                    HealthRestoreLocalState(kind: .strengthSession, id: $0.id,
+                                            updatedAt: $0.updatedAt,
+                                            healthObjectID: $0.healthKitWorkoutUUID,
+                                            isDeleted: $0.deletedAt != nil)
+                }
+                + (try context.fetch(FetchDescriptor<CardioWorkout>())).map {
+                    HealthRestoreLocalState(kind: .cardioWorkout, id: $0.id,
+                                            updatedAt: $0.updatedAt,
+                                            healthObjectID: $0.healthKitWorkoutUUID,
+                                            isDeleted: $0.deletedAt != nil)
+                }
+                + (try context.fetch(FetchDescriptor<Assessment>())).map {
+                    HealthRestoreLocalState(kind: .assessment, id: $0.id,
+                                            updatedAt: $0.updatedAt)
+                }
+            let plan = HealthBackupRestorePlanner.plan(incoming: incoming, local: local)
+            let report = try WorkoutRepository.applyHealthRestore(plan, in: context)
+            healthRestoreStatus = .completed(Date(), report)
+            if report.inserted > 0 || report.replaced > 0 {
+                NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
+            }
+        } catch {
+            healthRestoreStatus = .failed(error.localizedDescription)
+        }
     }
 
     @MainActor

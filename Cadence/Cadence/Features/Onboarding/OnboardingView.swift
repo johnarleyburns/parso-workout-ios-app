@@ -6,6 +6,7 @@ import CadenceFeatures
 /// Coach engine needs (goal, experience, units) so the very first Home view is
 /// already personalized. Skippable; never gates on a permission.
 struct OnboardingView: View {
+    @Environment(AppModel.self) private var model
     @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
 
@@ -112,6 +113,28 @@ struct OnboardingView: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 22).padding(.horizontal, 8)
+            Button {
+                Haptics.selection()
+                Task { await model.restoreHealthBackups() }
+            } label: {
+                Label("Used Cladiron before? Restore from Apple Health", systemImage: "arrow.down.heart")
+                    .font(.subheadline.weight(.medium))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .disabled(model.healthRestoreStatus.isInProgress)
+            .accessibilityIdentifier("onboarding.restoreHealth")
+            if case .completed(_, let report) = model.healthRestoreStatus {
+                Text("Restored \(report.inserted + report.replaced) workouts. Partner sets and other app-only details can be brought back with a Cladiron JSON export.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if model.healthRestoreStatus.isInProgress {
+                ProgressView("Restoring from Apple Health…")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+            }
             Spacer(); Spacer()
         }
         .padding(.horizontal, 24)

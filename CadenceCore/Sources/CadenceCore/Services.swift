@@ -121,7 +121,7 @@ public struct IngestedWorkout: Equatable, Sendable, Identifiable {
 
 /// Preserved HealthKit workout activity type so the coach can distinguish
 /// imported strength from unknown cardio rather than mapping all to .other.
-public enum ImportedWorkoutKind: String, Sendable, CaseIterable {
+public enum ImportedWorkoutKind: String, Codable, Sendable, CaseIterable {
     case traditionalStrength
     case functionalStrength
     case running
@@ -228,6 +228,10 @@ public protocol HealthDataProviding: AnyObject {
     func activityTrend(days: Int) async -> [DayActivity]
     /// Workouts saved after `since` (e.g. by the Watch), for ingest (FR-2.1).
     func newWorkouts(since: Date?) async -> [IngestedWorkout]
+    /// Cladiron-authored HealthKit objects for restore. This is separate from
+    /// third-party cardio ingest: only objects carrying Cladiron metadata are
+    /// returned, including legacy summary workouts without that metadata.
+    func readHealthBackups(since: Date?) async -> [HealthBackupReadObject]
     /// Write a summary strength workout (FR-4.3). Returns the HK UUID on success.
     func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID?
     /// Write a recorded cardio workout with HR + route (FR-2.5).
@@ -249,6 +253,7 @@ public protocol HealthDataProviding: AnyObject {
 }
 
 public extension HealthDataProviding {
+    func readHealthBackups(since: Date?) async -> [HealthBackupReadObject] { [] }
     /// Default: no passive data (keeps fakes/mocks and older conformers compiling).
     func passiveReadinessSamples(days: Int) async -> [PassiveReadinessSample] { [] }
     func latestVO2Max() async -> Double? { nil }

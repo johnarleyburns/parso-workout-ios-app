@@ -117,8 +117,12 @@ extension SessionView {
         .task(id: refreshSignature, refreshSession)
         .onAppear(perform: handleSessionAppear)
         .onDisappear(perform: handleSessionDisappear)
-        .onChange(of: settings.raiseToTalk, perform: handleRaiseToTalkSettingChange)
-        .onChange(of: raiseToTalkMonitor.isRaised, perform: handleRaiseToTalkChange)
+        .onChange(of: settings.raiseToTalk) { _, enabled in
+            handleRaiseToTalkSettingChange(enabled)
+        }
+        .onChange(of: raiseToTalkMonitor.isRaised) { _, raised in
+            handleRaiseToTalkChange(raised)
+        }
         .sheet(isPresented: $pickerPresented) {
             ExercisePickerView(onPick: handleExercisePickerSelection)
         }
@@ -212,7 +216,9 @@ extension SessionView {
         .onReceive(idleTimer) { date in
             handleIdleTimer(date)
         }
-        .onChange(of: scenePhase, perform: handleScenePhaseChange)
+        .onChange(of: scenePhase) { _, phase in
+            handleScenePhaseChange(phase)
+        }
         .modifier(SessionIdlePromptModifier(isPresented: $idlePromptShown,
                                              message: idlePromptMessage,
                                              onKeepGoing: recordActivity,

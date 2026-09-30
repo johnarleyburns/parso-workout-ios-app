@@ -74,8 +74,8 @@ final class VoiceCaptureController: ObservableObject {
             let engine = SpeechAnalyzerTranscriptionEngine()
             engine.onTranscript = { [weak self] value in self?.transcript = value }
             modernEngine = engine
-            Task { [weak self, weak engine] in
-                guard let self, let engine else { return }
+            Task { [weak engine] in
+                guard let engine else { return }
                 try? await engine.prepare(format: format)
             }
         }

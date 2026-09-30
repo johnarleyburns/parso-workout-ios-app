@@ -99,7 +99,7 @@ struct HomeMuscleMapView: View {
     private func muscleRegion(for callout: MuscleMapCallout, imageSize: CGSize) -> some View {
         let row = rows.first { $0.group == callout.group }
         let level = MuscleHeatPresenter.level(sets: row?.sets ?? 0, target: 12)
-        return Image("MuscleMask-\(callout.panel.rawValue)-\(callout.group.rawValue)")
+        let mask = Image("MuscleMask-\(callout.panel.rawValue)-\(callout.group.rawValue)")
             .renderingMode(.template)
             .resizable()
             .scaledToFit()
@@ -107,6 +107,16 @@ struct HomeMuscleMapView: View {
             .foregroundStyle(CadenceTheme.accent.opacity(opacity(for: level)))
             .allowsHitTesting(false)
             .accessibilityHidden(true)
+
+        // The bundled abs mask contains the left half of the rectus region.
+        // Mirror it around the anatomy centre so both sides of the group share
+        // the same heat level instead of lighting only a few tiles.
+        return ZStack {
+            mask
+            if callout.group == .abdominals && callout.panel == .front {
+                mask.scaleEffect(x: -1, y: 1)
+            }
+        }
     }
 
     private func heatButton(for callout: MuscleMapCallout) -> some View {

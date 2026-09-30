@@ -3,19 +3,16 @@ import SwiftData
 import Charts
 import CadenceCore
 import CadenceFeatures
-
 private struct ProgressSessionSignature: Equatable {
     let id: UUID
     let date: Date
     let updatedAt: Date
     let deletedAt: Date?
 }
-
 private struct ProgressPreparedSnapshot: Sendable {
     let strength: StrengthProgressChartData
     let prEvents: [PREvent]
 }
-
 struct TrainingProgressView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ActiveWorkoutModel.self) private var active
@@ -23,7 +20,6 @@ struct TrainingProgressView: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .forward) private var allAssessments: [Assessment]
-
     @State private var path = NavigationPath()
     @State private var questionSelection = ProgressQuestionSelection.persisted()
     @State private var preparedStrengthData: StrengthProgressChartData?
@@ -31,7 +27,6 @@ struct TrainingProgressView: View {
     @State private var preparedFacts: TrainingFacts?
     @State private var selectedStrengthNames = ProgressStrengthSelection.persisted().selectedNames
     @State private var addLiftPlan: EditablePlan?
-
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
     private var facts: TrainingFacts? { preparedFacts }
 
@@ -40,12 +35,19 @@ struct TrainingProgressView: View {
                                                  updatedAt: $0.updatedAt,
                                                  deletedAt: $0.deletedAt) }
     }
-
     var body: some View {
         NavigationStack(path: $path) {
             Group {
                 if questionSelection.selected == .workoutHistory {
-                    HistoryView(path: $path)
+                    VStack(spacing: 0) {
+                        ProgressQuestionSummaryView(
+                            selection: $questionSelection,
+                            sessions: activeSessions,
+                            detailContent: { progressQuestionContent(for: $0) })
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        HistoryView(path: $path)
+                    }
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 14) {

@@ -70,6 +70,7 @@ public struct HomeDashboardState: Sendable, Equatable {
         public let moderateEquivalentMinutes: Double
         public let targetMinutes: Double
         public let citationID: String
+        public let citationIDs: [String]
         public let belowModerateMinutes: Double
         public let unclassifiedMinutes: Double
         public let zoneMinutes: [TrainingZone: Double]
@@ -78,6 +79,7 @@ public struct HomeDashboardState: Sendable, Equatable {
         public init(loggedMinutes: Double, easyMinutes: Double, moderateMinutes: Double,
                     vigorousMinutes: Double, moderateEquivalentMinutes: Double,
                     targetMinutes: Double, citationID: String,
+                    citationIDs: [String] = [],
                     belowModerateMinutes: Double? = nil,
                     unclassifiedMinutes: Double = 0,
                     zoneMinutes: [TrainingZone: Double] = [:],
@@ -89,6 +91,7 @@ public struct HomeDashboardState: Sendable, Equatable {
             self.moderateEquivalentMinutes = moderateEquivalentMinutes
             self.targetMinutes = targetMinutes
             self.citationID = citationID
+            self.citationIDs = citationIDs.isEmpty ? [citationID] : citationIDs
             self.belowModerateMinutes = belowModerateMinutes ?? easyMinutes
             self.unclassifiedMinutes = unclassifiedMinutes
             self.zoneMinutes = zoneMinutes
@@ -107,8 +110,9 @@ public struct HomeDashboardState: Sendable, Equatable {
 
         public var explanation: String {
             "Public-health guidance counts 150 moderate-equivalent minutes a week. "
-                + "Vigorous work counts double; below-moderate activity gets no credit "
-                + "measures effort, not just time on the clock."
+                + "Vigorous work counts double. With resting HR, moderate is 40–<60% heart-rate reserve; "
+                + "without it, the app uses 50–<70% of maximum HR so its Z2 time receives moderate credit. "
+                + "Below-moderate activity receives no guideline credit."
         }
 
         /// One row per intensity actually trained, for the expanded card.
@@ -228,6 +232,12 @@ public enum HomeDashboardPresenter {
             moderateEquivalentMinutes: cardioCredit,
             targetMinutes: cardioTarget,
             citationID: CitationRegistry.piercy2018PhysicalActivityGuidelines.id,
+            citationIDs: [
+                CitationRegistry.piercy2018PhysicalActivityGuidelines.id,
+                CitationRegistry.swainLeutholtz1997HRR.id,
+                CitationRegistry.mezzani2013AerobicIntensity.id,
+                CitationRegistry.acsmGarber2011AerobicGuidelines.id
+            ],
             belowModerateMinutes: weeklyCardio?.belowModerateMinutes,
             unclassifiedMinutes: weeklyCardio?.unclassifiedMinutes ?? 0,
             zoneMinutes: weeklyCardio?.zoneMinutes ?? [:],

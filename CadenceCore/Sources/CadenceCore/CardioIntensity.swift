@@ -224,10 +224,15 @@ public enum CardioIntensityPolicy {
     public static let moderateHRR = 0.60
     public static let veryHardHRR = 0.85
     public static let nearMaximalHRR = 0.95
+    /// When resting HR is unavailable, use the conventional 50–70% of maximum
+    /// HR moderate band. This keeps the fallback aligned with the app's Z2
+    /// display instead of treating all Z2 time as zero-credit.
+    public static let moderateMinimumMaximumFraction = 0.50
     public static let moderateMaximumFraction = 0.70
     public static let vigorousMaximumFraction = 0.80
     public static let citationIDs = ["swainLeutholtz1997HRR", "acsmGarber2011AerobicGuidelines",
-                                     "piercy2018PhysicalActivityGuidelines", "tanakaMaxHR2001"]
+                                     "piercy2018PhysicalActivityGuidelines",
+                                     "mezzani2013AerobicIntensity", "tanakaMaxHR2001"]
 }
 
 public enum CardioIntensityClassifier {
@@ -272,8 +277,9 @@ public enum CardioIntensityClassifier {
         case ..<0.95: relative = .veryHard
         default: relative = .nearMaximal
         }
-        let guideline: GuidelineIntensity = fraction < CardioIntensityPolicy.moderateMaximumFraction
-            ? .belowModerate : fraction < CardioIntensityPolicy.vigorousMaximumFraction ? .moderate : .vigorous
+        let guideline: GuidelineIntensity = fraction < CardioIntensityPolicy.moderateMinimumMaximumFraction
+            ? .belowModerate
+            : fraction < CardioIntensityPolicy.moderateMaximumFraction ? .moderate : .vigorous
         return IntensityClassification(
             heartRate: heartRate, hrrFraction: nil, maximumFraction: fraction,
             relativeIntensity: relative, guidelineIntensity: guideline,
@@ -471,12 +477,16 @@ public enum WeeklyCardioAggregator {
             let duration = max(0, workout.duration)
             actual += duration / 60
             let summary: CardioMinuteSummary?
-            if let stored = workout.intensitySummary {
-                summary = stored
-            } else if let profile, !workout.orderedHRSamples.isEmpty {
+            // Recalculate whenever current HR/profile data is available. Older
+            // rows may contain a summary produced before the Z2 fallback was
+            // corrected, and keeping that stored value would make real moderate
+            // work remain at zero credit forever.
+            if let profile, !workout.orderedHRSamples.isEmpty {
                 summary = CardioMinuteAccumulator.summarize(
                     duration: duration, samples: workout.orderedHRSamples.map { HRSamplePoint(t: $0.t, bpm: $0.bpm) },
                     profile: profile)
+            } else if let stored = workout.intensitySummary {
+                summary = stored
             } else {
                 summary = nil
                 usedLegacy = true

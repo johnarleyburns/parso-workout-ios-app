@@ -114,7 +114,7 @@ struct CardioIntensityScienceView: View {
         List {
             Section("Intensity") {
                 Text("Cladiron classifies each timestamped heart-rate interval independently. Heart-rate reserve is (heart rate − resting heart rate) ÷ (maximum heart rate − resting heart rate), an estimate of relative effort rather than a whole-workout average.")
-                Text("Below 40% reserve is below moderate; 40–<60% is moderate; 60% or more is vigorous for guideline credit. Below-moderate minutes receive zero credit, moderate minutes count once, and vigorous minutes count twice.")
+                Text("With resting heart rate, below 40% reserve is below moderate; 40–<60% is moderate; 60% or more is vigorous. Without resting heart rate, 50–<70% of maximum heart rate (the app’s Z2 band) is moderate. Below-moderate minutes receive zero credit, moderate minutes count once, and vigorous minutes count twice.")
             }
             Section("Separate measurements") {
                 Text("Actual exercise minutes, guideline credit, training-zone time, and standardized MET-minutes are separate axes. MET-minutes describe population-level activity dose and do not replace guideline credit.")

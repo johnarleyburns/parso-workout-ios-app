@@ -318,8 +318,10 @@ struct HomeWeekDashboardSection: View {
                     }
                 }
             }
-            if let citation = CitationRegistry.citation(forId: dashboard.cardioDetail.citationID) {
-                CitationLink(citation: citation, context: dashboard.cardioDetail.explanation, compact: true)
+            ForEach(dashboard.cardioDetail.citationIDs, id: \.self) { citationID in
+                if let citation = CitationRegistry.citation(forId: citationID) {
+                    CitationLink(citation: citation, context: dashboard.cardioDetail.explanation, compact: true)
+                }
             }
         }
         .accessibilityElement(children: .contain)

@@ -444,6 +444,17 @@ public enum CitationRegistry {
         url: "https://pubmed.ncbi.nlm.nih.gov/30418471/"
     )
 
+    /// Peer-reviewed position statement for translating relative heart-rate
+    /// measures into aerobic-intensity bands.
+    public static let mezzani2013AerobicIntensity = Citation(
+        id: "mezzani2013AerobicIntensity",
+        authors: "Mezzani et al.",
+        year: 2013,
+        title: "Aerobic exercise intensity assessment and prescription in cardiac rehabilitation",
+        source: "European Journal of Preventive Cardiology 20(3)",
+        url: "https://doi.org/10.1177/2047487312466829"
+    )
+
     public static let compendium2024AdultPhysicalActivities = Citation(
         id: "compendium2024AdultPhysicalActivities",
         authors: "Tudor-Locke et al.",
@@ -705,6 +716,7 @@ public enum CitationRegistry {
         halsonRecovery2014, drewFinchInjury2016, dupuyFatigue2018,
         zourdosRIR2016, tanakaMaxHR2001, swainLeutholtz1997HRR,
         acsmGarber2011AerobicGuidelines, piercy2018PhysicalActivityGuidelines,
+        mezzani2013AerobicIntensity,
         compendium2024AdultPhysicalActivities, pag2018AerobicStrengthGuidelines,
         kaufmannThreshold2023, milanovicHIIT2015,
         slothSIT2013, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
@@ -770,6 +782,7 @@ public enum CitationRegistry {
         "swainLeutholtz1997HRR": "Heart-rate reserve tracks oxygen-reserve intensity more closely than raw maximum-heart-rate percentages.",
         "acsmGarber2011AerobicGuidelines": "ACSM aerobic exercise guidance — backs the moderate/vigorous guideline accounting model.",
         "piercy2018PhysicalActivityGuidelines": "U.S. Physical Activity Guidelines — backs 150 moderate or 75 vigorous minutes and their equivalence.",
+        "mezzani2013AerobicIntensity": "Aerobic-intensity position statement — backs using relative HRR and maximum-HR bands to distinguish moderate from vigorous aerobic work.",
         "compendium2024AdultPhysicalActivities": "2024 Adult Compendium — backs standardized MET estimates for common activities and resistance training.",
         "pag2018AerobicStrengthGuidelines": "Physical Activity Guidelines — backs treating aerobic and muscle-strengthening health targets separately.",
         "seilerPolarized2010": "Training intensity distribution in endurance athletes — backs how the coach reads weekly cardio time spread across HR zones (mostly easy, some hard).",

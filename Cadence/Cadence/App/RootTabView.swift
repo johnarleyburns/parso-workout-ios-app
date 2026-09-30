@@ -253,8 +253,12 @@ private struct LiveWorkoutTabAccessory: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.tabViewBottomAccessory {
-                if active.isActive, let session = active.strengthSession {
+            // Do not install an empty bottom-accessory host. iOS 26 reserves
+            // the mini-player slot as soon as `tabViewBottomAccessory` is
+            // present, even when its content closure returns an empty view.
+            // That leaves a blank strip on Home when no workout is active.
+            if active.isActive, let session = active.strengthSession {
+                content.tabViewBottomAccessory {
                     Button { active.present() } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "figure.strengthtraining.traditional")
@@ -269,6 +273,8 @@ private struct LiveWorkoutTabAccessory: ViewModifier {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("tab.liveWorkoutAccessory")
                 }
+            } else {
+                content
             }
         } else {
             content

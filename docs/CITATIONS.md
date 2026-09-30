@@ -266,8 +266,42 @@ detrimental association of sitting time with mortality?* **The Lancet 388(10051)
 - **What it supports:** a harmonised meta-analysis of over 1 million adults found a
   graded dose-response between physical activity volume and reduced all-cause mortality;
   ~60–75 min/day of moderate activity eliminated the excess risk of prolonged sitting.
-- **Replaces:** `whoPhysicalActivity2020` (WHO guidelines — removed as appeal to
-  authority) and `usPhysicalActivity2018` (HHS guidelines — removed).
+
+### `mezzani2013AerobicIntensity` — relative aerobic intensity bands
+Mezzani et al. (2013). *Aerobic exercise intensity assessment and prescription in cardiac
+rehabilitation.* **European Journal of Preventive Cardiology 20(3).**
+<https://doi.org/10.1177/2047487312466829>
+
+- **Used by:** the Home Cardio Minutes credit disclosure and the intensity classifier's
+  explanation of HRR and maximum-HR bands.
+- **What it supports:** relative intensity can be expressed with heart-rate reserve or
+  maximum-heart-rate bands; the paper's table places moderate work around 55–69% HRmax
+  and 40–59% HRR, with higher bands treated as vigorous.
+- **Important distinction:** the 150-minute health target and 2:1 vigorous equivalence
+  come from the U.S. Physical Activity Guidelines; this paper supports the heart-rate
+  translation, not the target itself.
+
+### `swainLeutholtz1997HRR` — heart-rate reserve is not percent HRmax
+Swain & Leutholtz (1997). *Heart rate reserve is equivalent to %VO2 reserve, not to
+%VO2max.* **Medicine & Science in Sports & Exercise 29(3):410–414.**
+<https://pubmed.ncbi.nlm.nih.gov/9139182/>
+
+- **Used by:** the classifier when resting HR is available.
+- **What it supports:** HRR should be interpreted as an oxygen-reserve measure rather
+  than treated as a raw percent of maximum HR; Cladiron therefore prefers the 40–<60%
+  HRR moderate band when it has a resting-HR baseline.
+
+### `acsmGarber2011AerobicGuidelines` — relative aerobic intensity bands
+Garber et al. (2011). *Quantity and Quality of Exercise for Developing and Maintaining
+Cardiorespiratory, Musculoskeletal, and Neuromotor Fitness in Apparently Healthy Adults: Guidance for Prescribing Exercise.* **Medicine & Science in Sports & Exercise 43(7).**
+<https://pubmed.ncbi.nlm.nih.gov/21694556/>
+
+- **Used by:** the fallback explanation beside Cardio Minutes when resting HR is not
+  available.
+- **What it supports:** exercise intensity can be prescribed using relative heart-rate
+  measures, with moderate and vigorous bands separated by the individual's effort level.
+  Cladiron's conservative fallback maps 50–<70% of maximum HR (the displayed Z2 band)
+  to moderate guideline credit, then counts vigorous minutes twice.
 
 ### `pellandDoseResponse2026` — dose-response meta-regression
 Pelland, Remmert, Robinson, Hinson & Zourdos (2026). *The Resistance Training Dose

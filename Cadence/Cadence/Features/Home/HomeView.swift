@@ -126,9 +126,9 @@ struct HomeView: View {
     @State var observationsExpanded = false
     @State var readinessExpanded = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
+    @State var coachSnapshotReady = false
     // Historical Home projections are cached separately from the coach
     // snapshot. Recomputing SwiftData relationships from the render path made
-    // Home stutter whenever SwiftData published an unrelated change.
     @State var cachedWorkoutsTodayRows: [WorkoutsTodayPresenter.Row] = []
     @State var cachedWeekStrengthEntries: [TodayActivityPresenter.Entry] = []
     @State var cachedWeekCardioEntries: [TodayActivityPresenter.Entry] = []
@@ -298,6 +298,7 @@ struct HomeView: View {
         model.coachRefreshInProgress = true
         defer { model.coachRefreshInProgress = false }
         coachSnapshot = await buildCoachSnapshot()
+        coachSnapshotReady = true
         liveVolumeDelta = [:]
         cachedDashboard = makeDashboard()
     }

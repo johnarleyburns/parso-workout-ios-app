@@ -1,7 +1,7 @@
 import Foundation
 
 public struct TodayHero: Equatable, Sendable {
-    public enum Kind: Equatable, Sendable { case suggested, scheduled, inProgress, doneToday, restDay, needsHistory }
+    public enum Kind: Equatable, Sendable { case suggested, scheduled, inProgress, doneToday, restDay, needsHistory, loading }
     public struct Line: Equatable, Sendable {
         public let name: String
         public let detail: String
@@ -29,8 +29,10 @@ public struct TodayHero: Equatable, Sendable {
 
 public enum TodayHeroPresenter {
     public static func hero(inProgress: TodayHero?, scheduled: TodayHero?, suggested: TodayHero?,
+                            fallbackRecommendation: TodayHero? = nil,
                             completedWorkoutCount: Int, completedToday: DaySummary? = nil,
                             remainingScheduledToday: Int = 0,
+                            recommendationReady: Bool = true,
                             computedAt: Date = Date()) -> TodayHero {
         if let inProgress { return inProgress.with(kind: .inProgress, computedAt: computedAt) }
         if let scheduled { return scheduled.with(kind: .scheduled, computedAt: computedAt) }
@@ -43,7 +45,13 @@ public enum TodayHeroPresenter {
                              title: "Log a workout and your coach will start suggesting.",
                              computedAt: computedAt)
         }
-        return (suggested ?? TodayHero(kind: .restDay, title: "Recovery day", computedAt: computedAt))
+        if !recommendationReady {
+            return TodayHero(kind: .loading,
+                             title: "Checking today's plan…",
+                             computedAt: computedAt)
+        }
+        return (suggested ?? fallbackRecommendation
+                ?? TodayHero(kind: .restDay, title: "Recovery day", computedAt: computedAt))
             .with(computedAt: computedAt)
     }
 }

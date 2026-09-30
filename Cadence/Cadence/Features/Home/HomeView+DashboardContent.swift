@@ -68,13 +68,43 @@ extension HomeView {
             .map { "\($0.displayName.lowercased()) \(WeeklySetProgress.formattedSets($0.sets)) / 12" }
         let reason = deficits.isEmpty ? "Why today: keep your weekly strength habit moving." :
             "Why today: \(deficits.joined(separator: " and ")) sets this week."
-        let suggested = todaySuggestedPlan.map { plan in
+        let coachRecommendsStrength = coachSnapshotReady && coachDecision.primary.kind == .strength
+        let suggested = coachRecommendsStrength ? todaySuggestedPlan.map { plan in
             TodayHero(kind: .suggested, title: plan.title,
                       estimatedMinutes: WorkoutDurationEstimator.estimate(
                           plan: plan, history: sessions)?.minutes,
                       exercises: heroLines(plan), reason: reason,
                       citationIDs: SuggestedWorkoutPresenter.citationIDs)
-        }
+        } : nil
+        // The personalized generator is intentionally asynchronous and may
+        // briefly have no result while the Home card is already rendering.
+        // Falling straight through to "Recovery day" made the same Today
+        // recommendation appear to flip between strength and recovery based on
+        // launch timing. The already-computed Coach decision is the stable
+        // fallback until the personalized plan arrives (or if generation has
+        // no launchable catalog result).
+        let coachFallback: TodayHero? = {
+            let session = coachDecision.primary
+            guard coachRecommendsStrength else { return nil }
+            let lines = (session.exercises ?? []).prefix(5).map { exercise in
+                let reps: String
+                if let low = exercise.repsLow, let high = exercise.repsHigh, low != high {
+                    reps = "\(low)–\(high)"
+                } else if let repsLow = exercise.repsLow {
+                    reps = "\(repsLow)"
+                } else {
+                    reps = "—"
+                }
+                let sets = exercise.sets.map(String.init) ?? "—"
+                return TodayHero.Line(name: exercise.name, detail: "\(sets) × \(reps)")
+            }
+            return TodayHero(kind: .suggested,
+                             title: session.title,
+                             estimatedMinutes: session.durationMinutes,
+                             exercises: Array(lines),
+                             reason: session.subtitle.isEmpty ? reason : "Why today: \(session.subtitle)",
+                             citationIDs: session.citationIds)
+        }()
         let scheduled = todayScheduled.map {
             TodayHero(kind: .scheduled, title: $0.title,
                       estimatedMinutes: WorkoutDurationEstimator.estimate(
@@ -113,9 +143,11 @@ extension HomeView {
         }.count
         let hero = TodayHeroPresenter.hero(inProgress: inProgress, scheduled: scheduled,
                                            suggested: suggested,
+                                           fallbackRecommendation: coachFallback,
                                            completedWorkoutCount: sessions.filter { $0.hasSets && $0.deletedAt == nil }.count,
                                            completedToday: completedSummary,
-                                           remainingScheduledToday: remainingScheduledToday)
+                                           remainingScheduledToday: remainingScheduledToday,
+                                           recommendationReady: coachSnapshotReady)
         let tag: String = switch hero.kind {
         case .inProgress: "In progress"
         case .scheduled: "Scheduled for you"
@@ -123,6 +155,7 @@ extension HomeView {
         case .needsHistory: "Build your history"
         case .restDay: "Recovery day"
         case .suggested: "Suggested for you"
+        case .loading: "Loading"
         }
         return HomeTodayHeroCard(title: hero.title, tag: tag,
                                  estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,

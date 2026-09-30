@@ -94,7 +94,16 @@ struct HomeTodayHeroCard: View {
                     }
                 }
 
-                if tag == "Recovery day" {
+                if tag == "Loading" {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Preparing today's recommendation…")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
+                } else if tag == "Recovery day" {
                     Button("Easy options", action: onChooseAnother)
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity)

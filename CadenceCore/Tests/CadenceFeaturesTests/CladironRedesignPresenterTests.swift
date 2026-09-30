@@ -31,6 +31,7 @@ final class CladironRedesignPresenterTests: XCTestCase {
 
     func testTodayHeroPrecedenceAndHistoryGate() {
         let suggested = TodayHero(kind: .suggested, title: "Suggested")
+        let fallback = TodayHero(kind: .suggested, title: "Coach fallback")
         let scheduled = TodayHero(kind: .scheduled, title: "Scheduled")
         let inProgress = TodayHero(kind: .inProgress, title: "Resume")
         XCTAssertEqual(TodayHeroPresenter.hero(inProgress: inProgress, scheduled: scheduled,
@@ -39,6 +40,26 @@ final class CladironRedesignPresenterTests: XCTestCase {
                                                suggested: suggested, completedWorkoutCount: 10).kind, .scheduled)
         XCTAssertEqual(TodayHeroPresenter.hero(inProgress: nil, scheduled: nil,
                                                suggested: suggested, completedWorkoutCount: 1).kind, .needsHistory)
+        XCTAssertEqual(TodayHeroPresenter.hero(inProgress: nil, scheduled: nil,
+                                               suggested: nil, fallbackRecommendation: fallback,
+                                               completedWorkoutCount: 10).title, "Coach fallback")
+    }
+
+    func testTodayHeroDoesNotInventRecoveryWhenCoachHasARecommendation() {
+        let fallback = TodayHero(kind: .suggested, title: "Strength session")
+        let hero = TodayHeroPresenter.hero(inProgress: nil, scheduled: nil,
+                                           suggested: nil, fallbackRecommendation: fallback,
+                                           completedWorkoutCount: 4)
+        XCTAssertEqual(hero.kind, .suggested)
+        XCTAssertNotEqual(hero.title, "Recovery day")
+    }
+
+    func testTodayHeroShowsLoadingUntilTheRecommendationIsReady() {
+        let hero = TodayHeroPresenter.hero(inProgress: nil, scheduled: nil,
+                                           suggested: nil, completedWorkoutCount: 4,
+                                           recommendationReady: false)
+        XCTAssertEqual(hero.kind, .loading)
+        XCTAssertNotEqual(hero.title, "Recovery day")
     }
 
     func testTodayHeroCapsExercises() {

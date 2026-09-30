@@ -21,6 +21,16 @@ final class CardioIntensityTests: XCTestCase {
         XCTAssertEqual(fallback.maximumHRSource, .userEntered)
     }
 
+    func testZ2PercentMaximumHeartRateReceivesModerateGuidelineCredit() {
+        let profile = CardioIntensityProfile(
+            maximumHR: 200, maximumHRSource: .userEntered)
+
+        let result = CardioIntensityClassifier.classify(heartRate: 130, profile: profile)
+
+        XCTAssertEqual(result.trainingZone, .z2)
+        XCTAssertEqual(result.guidelineIntensity, .moderate)
+    }
+
     func testHRRBoundariesAndGuidelineCredit() {
         let cases: [(Double, RelativeIntensity, GuidelineIntensity, TrainingZone)] = [
             (101, .veryLight, .belowModerate, .z1),
@@ -76,6 +86,28 @@ final class CardioIntensityTests: XCTestCase {
         XCTAssertEqual(weekly.actualMinutes, 10, accuracy: 0.001)
         XCTAssertEqual(weekly.vigorousMinutes, 4, accuracy: 0.001)
         XCTAssertEqual(weekly.moderateEquivalentMinutes, 8, accuracy: 0.001)
+    }
+
+    func testWeeklyAggregatorRecomputesStoredSummaryForZ2WithCurrentProfile() {
+        let workout = CardioWorkout(type: .run, start: Date(timeIntervalSince1970: 100),
+                                    end: Date(timeIntervalSince1970: 700))
+        workout.hrSamples = [0, 120, 240, 360, 480].map {
+            HRSample(t: TimeInterval($0), bpm: 130, cardio: workout)
+        }
+        // Simulate a row saved before the Z2 fallback was corrected.
+        workout.intensitySummary = CardioMinuteSummary(
+            actualDuration: 600, classifiedDuration: 600, unclassifiedDuration: 0,
+            belowModerateDuration: 600, moderateDuration: 0, vigorousDuration: 0,
+            zoneDurations: [.z2: 600], method: .percentMaximumHeartRate,
+            confidence: .estimated)
+
+        let weekly = WeeklyCardioAggregator.summarize(
+            [workout], since: Date(timeIntervalSince1970: 0),
+            profile: CardioIntensityProfile(maximumHR: 200, maximumHRSource: .userEntered))
+
+        XCTAssertEqual(weekly.moderateMinutes, 10, accuracy: 0.001)
+        XCTAssertEqual(weekly.moderateEquivalentMinutes, 10, accuracy: 0.001)
+        XCTAssertEqual(weekly.belowModerateMinutes, 0, accuracy: 0.001)
     }
 
     func testMETDoseStaysSeparateFromGuidelineCredit() {

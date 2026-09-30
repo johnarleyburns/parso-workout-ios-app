@@ -102,6 +102,7 @@ extension HomeView {
             .task(id: HomeCoachTaskIdentity(
                 signature: coachSignature,
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
+                coachSnapshotReady = false
                 await refreshCoachSnapshot()
             }
             .task(id: HomeActivityTaskIdentity(

@@ -42,7 +42,7 @@ struct HomeWeekDashboardSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
+        AdaptiveDashboardColumns {
             sectionCard {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {

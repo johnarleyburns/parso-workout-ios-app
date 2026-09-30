@@ -2,6 +2,17 @@
 
 Updated: 2026-09-30
 
+## Latest implementation — regular-width dashboard and AX5 fallback (2026-09-30)
+
+The C5 re-audit found the weekly dashboard had no runtime regular-width
+adaptation even though the iOS target supports iPad. `AdaptiveSurfaceLayout`
+now keeps the dashboard stacked on compact width and at accessibility Dynamic
+Type sizes, while presenting its cards in a readable two-column grid on a
+regular-width iPad. The decision is headless-tested in `CadenceFeatures`, and
+the view remains system-color/token based for both light and dark mode. The
+existing muscle-map List selector remains the single detailed muscle list;
+the duplicate long list below “Fill the gaps” is not present.
+
 ## Latest implementation — C5 accessibility contract and rotor audit (2026-09-30)
 
 The C5 re-audit found that the live workout had custom actions and

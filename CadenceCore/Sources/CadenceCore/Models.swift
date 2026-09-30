@@ -174,6 +174,7 @@ public final class Exercise {
     public var originDevice: String = ""
     /// Default load-accounting mode for sets of this exercise. Raw `LoadAccountingMode`.
     public var loadAccountingMode: String?
+
     /// Default bar weight in kg (canonical). For barbell exercises, this is the bar
     /// weight added to the user-entered plate load. Default 0 = not set / no bar.
     public var defaultBarWeightKg: Double = 0
@@ -784,6 +785,16 @@ public final class SetEntry {
     /// without accounting metadata (effective load = weight).
     public var loadAccountingMode: String?
 
+    /// Cross-store exercise identity used by the Health/CloudKit split. The
+    /// relationship remains during the migration window, but readers can keep
+    /// a set when the related Exercise lives in another SwiftData
+    /// configuration or is temporarily unavailable.
+    public var exerciseID: UUID?
+    public var exerciseKey: String?
+    public var exerciseNameSnapshot: String?
+    /// Cross-store performer identity. nil means the device owner.
+    public var performerID: UUID?
+
     // To-one relationships (inverses declared on the parents above).
     public var session: WorkoutSession?
     public var exercise: Exercise?
@@ -808,7 +819,11 @@ public final class SetEntry {
                 performedBy: Person? = nil,
                 barWeightKg: Double = 0,
                 loadMultiplier: Double = 1.0,
-                loadAccountingMode: String? = nil) {
+                loadAccountingMode: String? = nil,
+                exerciseID: UUID? = nil,
+                exerciseKey: String? = nil,
+                exerciseNameSnapshot: String? = nil,
+                performerID: UUID? = nil) {
         self.id = id
         self.weight = weight
         self.reps = reps
@@ -826,6 +841,10 @@ public final class SetEntry {
         self.barWeightKg = barWeightKg
         self.loadMultiplier = loadMultiplier
         self.loadAccountingMode = loadAccountingMode
+        self.exerciseID = exerciseID ?? exercise?.id
+        self.exerciseKey = exerciseKey ?? exercise.map { ExerciseKey(raw: $0.name).raw }
+        self.exerciseNameSnapshot = exerciseNameSnapshot ?? exercise?.name
+        self.performerID = performerID ?? (performedBy?.isMe == true ? nil : performedBy?.id)
     }
 
     /// True when the set belongs to the device owner (nobody attributed, or the
@@ -833,6 +852,20 @@ public final class SetEntry {
     public var isOwnerSet: Bool {
         guard let p = performedBy else { return true }
         return p.isMe
+    }
+
+    /// Backfills the additive cross-store references from legacy relationships.
+    /// Calling this before a write/export is idempotent and intentionally does
+    /// not clear an existing snapshot when the relationship is unavailable.
+    public func refreshCrossStoreReferences() {
+        if let exercise {
+            exerciseID = exercise.id
+            exerciseKey = ExerciseKey(raw: exercise.name).raw
+            exerciseNameSnapshot = exercise.name
+        }
+        if let performer = performedBy {
+            performerID = performer.isMe ? nil : performer.id
+        }
     }
 
     public var loadAccountingModeValue: LoadAccountingMode? {

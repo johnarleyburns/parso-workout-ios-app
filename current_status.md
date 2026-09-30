@@ -32,8 +32,10 @@ colors, cue policy, accessibility actions/announcements, phone Quick Talk
 voice logging, a typed Foundation Models fallback, locked Talk handoff,
 Spotlight, Watch double-tap affordances, and AlarmKit rest-alert plumbing.
 Existing partner logging, exact-weight, FIT/HealthKit, and sequential-build
-changes remain preserved. Remaining device-only and release-artifact work is
-called out explicitly in the audit below.
+changes remain preserved. The H2 cross-store reference layer is now additive
+and tested, and H3 has its HealthKit metadata/sync-version contract plus
+restore conflict policy. The durable outbox/reader, store migration, and
+remaining device-only/release-artifact work are called out explicitly below.
 
 ## ACTIVE PLAN — Unified Cladiron release program (2026-09-28)
 
@@ -103,19 +105,19 @@ fail-closed validation; plus the requested light/dark AccentColor variants.
 The Live Activity renderer now has explicit high-contrast foreground content so
 a black background cannot hide its values.
 
-Still requiring implementation or real-device review: full P4 Live Activity
+Still requiring implementation or real-device review: the H3 durable outbox and
+reader, H4–H7 store split/migration/Backup center/release work, full P4 Live Activity
 button/Control Center validation, eight-locale UI/voice localization (L3),
 full signature-moment choreography, iPad/device AX5 verification, and the
-store-story/submission artifacts. The H2–H7 store split, Health outbox/restore,
+store-story/submission artifacts. The remaining H3–H7 store split, Health outbox/restore,
 and Backup & Restore center also remain release-stream work. These are recorded
 explicitly rather than marked complete without the corresponding runtime
 behavior.
 
-Latest verification for this pass: the complete package suite passed 1,956
-tests with zero failures; all guardrails passed; and generic iPhone followed by
-standalone Watch builds passed sequentially with signing disabled. The
-follow-up commit, push, remote CI check, and final cache cleanup remain for this
-working series.
+Latest verification for this pass: the focused H2/H3 contract suites passed;
+generic iPhone followed by standalone Watch builds passed sequentially with
+signing disabled. The full package/guardrail gate and the follow-up commit,
+push, remote CI check, and final cache cleanup remain for this working series.
 
 ## Latest implementation — Today row audit, DB++ 1.17.0, FIT, and HealthKit portability (2026-09-28)
 

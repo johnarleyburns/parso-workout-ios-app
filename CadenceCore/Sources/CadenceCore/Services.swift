@@ -153,10 +153,14 @@ public struct StrengthWorkoutSummary: Equatable, Sendable {
     public var hrSamples: [HRSamplePoint]
     public var avgHR: Double?
     public var maxHR: Double?
+    /// Plain metadata prepared by CadenceCore. The iOS HealthKit adapter turns
+    /// it into HealthKit-safe values; partner identities are never included.
+    public var metadata: [String: String]
     public init(id: UUID, start: Date, end: Date, activeEnergyKcal: Double? = nil,
-                hrSamples: [HRSamplePoint] = [], avgHR: Double? = nil, maxHR: Double? = nil) {
+                hrSamples: [HRSamplePoint] = [], avgHR: Double? = nil, maxHR: Double? = nil,
+                metadata: [String: String] = [:]) {
         self.id = id; self.start = start; self.end = end; self.activeEnergyKcal = activeEnergyKcal
-        self.hrSamples = hrSamples; self.avgHR = avgHR; self.maxHR = maxHR
+        self.hrSamples = hrSamples; self.avgHR = avgHR; self.maxHR = maxHR; self.metadata = metadata
     }
 }
 

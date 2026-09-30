@@ -296,7 +296,8 @@ extension SessionView {
             id: session.id, start: first, end: end,
             activeEnergyKcal: kcal, hrSamples: hrSamples,
             avgHR: bpmValues.isEmpty ? nil : bpmValues.reduce(0, +) / Double(bpmValues.count),
-            maxHR: bpmValues.max())
+            maxHR: bpmValues.max(),
+            metadata: CladironHealthBackup.strengthMetadata(for: session))
         let hkID = await model.health.saveStrengthWorkout(summary)
         if let hkID { session.healthKitWorkoutUUID = hkID; try? context.save() }
         withAnimation { healthSaved = true }

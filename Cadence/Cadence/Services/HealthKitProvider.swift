@@ -325,6 +325,12 @@ final class HealthKitProvider: HealthDataProviding {
         let builder = HKWorkoutBuilder(healthStore: store, configuration: config, device: .local())
         do {
             try await builder.beginCollection(at: summary.start)
+            var metadata: [String: Any] = [
+                HKMetadataKeySyncIdentifier: summary.id.uuidString,
+                HKMetadataKeySyncVersion: NSNumber(value: CladironHealthBackup.syncVersion(for: summary.end)),
+            ]
+            for (key, value) in summary.metadata { metadata[key] = value }
+            try await builder.addMetadata(metadata)
             if let kcal = summary.activeEnergyKcal,
                let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
                 let quantity = HKQuantity(unit: .kilocalorie(), doubleValue: kcal)
@@ -359,6 +365,15 @@ final class HealthKitProvider: HealthDataProviding {
         let builder = HKWorkoutBuilder(healthStore: store, configuration: config, device: .local())
         do {
             try await builder.beginCollection(at: summary.start)
+            var metadata: [String: Any] = [
+                HKMetadataKeySyncIdentifier: summary.id.uuidString,
+                HKMetadataKeySyncVersion: NSNumber(value: CladironHealthBackup.syncVersion(for: summary.end)),
+                CladironHealthBackup.schemaKey: CladironHealthBackup.schemaVersion,
+            ]
+            if let title = summary.customTitle, !title.isEmpty {
+                metadata[CladironHealthBackup.titleKey] = title
+            }
+            try await builder.addMetadata(metadata)
             var samples: [HKSample] = []
             if let kcal = summary.activeEnergyKcal,
                let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {

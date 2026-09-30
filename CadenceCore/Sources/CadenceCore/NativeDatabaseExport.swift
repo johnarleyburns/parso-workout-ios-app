@@ -95,7 +95,10 @@ private struct NativeSetEntry: Codable, Equatable, Sendable {
     var loadAccountingMode: String?
     var sessionID: UUID?
     var exerciseID: UUID?
+    var exerciseKey: String?
+    var exerciseNameSnapshot: String?
     var performerID: UUID?
+    var performerReferenceID: UUID?
 }
 
 private struct NativeExercise: Codable, Equatable, Sendable {
@@ -413,7 +416,10 @@ public enum NativeDatabaseExport {
                                        loadMultiplier: row.loadMultiplier,
                                        loadAccountingMode: row.loadAccountingMode,
                                        sessionID: row.session?.id, exerciseID: row.exercise?.id,
-                                       performerID: row.performedBy?.id))
+                                       exerciseKey: row.exerciseKey,
+                                       exerciseNameSnapshot: row.exerciseNameSnapshot,
+                                       performerID: row.performedBy?.id,
+                                       performerReferenceID: row.performerID))
         }
         for row in try context.fetch(FetchDescriptor<Exercise>()) {
             try append("Exercise", id: row.id, updatedAt: row.updatedAt,
@@ -755,7 +761,10 @@ public enum NativeDatabaseExport {
                                exercise: value.exerciseID.flatMap { exercisesByID[$0] },
                                performedBy: value.performerID.flatMap { peopleByID[$0] },
                                barWeightKg: value.barWeightKg, loadMultiplier: value.loadMultiplier,
-                               loadAccountingMode: value.loadAccountingMode)
+                               loadAccountingMode: value.loadAccountingMode,
+                               exerciseKey: value.exerciseKey,
+                               exerciseNameSnapshot: value.exerciseNameSnapshot,
+                               performerID: value.performerReferenceID ?? value.performerID)
                 context.insert(set); setsByID[value.id] = set; changed += 1
             }
             set.weight = value.weight; set.reps = value.reps; set.order = value.order
@@ -767,6 +776,10 @@ public enum NativeDatabaseExport {
             set.session = value.sessionID.flatMap { sessionsByID[$0] }
             set.exercise = value.exerciseID.flatMap { exercisesByID[$0] }
             set.performedBy = value.performerID.flatMap { peopleByID[$0] }
+            set.exerciseID = value.exerciseID
+            set.exerciseKey = value.exerciseKey
+            set.exerciseNameSnapshot = value.exerciseNameSnapshot
+            set.performerID = value.performerReferenceID ?? value.performerID
         }
 
         try mergeCardio(records, in: context, changed: &changed)

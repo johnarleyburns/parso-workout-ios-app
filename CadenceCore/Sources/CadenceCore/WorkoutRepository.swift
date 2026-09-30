@@ -589,6 +589,7 @@ public enum WorkoutRepository {
             // A "Me"/owner Person is normalized to nil so owner stats stay correct.
             set.performedBy = (performedBy?.isMe ?? true) ? nil : performedBy
         }
+        set.refreshCrossStoreReferences()
         set.updatedAt = Date()
         set.session?.updatedAt = Date()
         try context.save()
@@ -609,6 +610,7 @@ public enum WorkoutRepository {
         let moved = (session.sets ?? []).filter { $0.exercise?.id == oldExercise.id }
         for s in moved {
             s.exercise = newExercise
+            s.refreshCrossStoreReferences()
             s.updatedAt = now
         }
         var names = session.plannedExerciseNames

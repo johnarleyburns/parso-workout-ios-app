@@ -21,6 +21,7 @@ final class RestAlarmCoordinator {
     private var alarmID: UUID?
 
     func schedule(endsAt: Date) {
+        guard #available(iOS 26.1, *) else { return }
         let duration = max(1, endsAt.timeIntervalSinceNow)
         let id = alarmID ?? UUID()
         alarmID = id

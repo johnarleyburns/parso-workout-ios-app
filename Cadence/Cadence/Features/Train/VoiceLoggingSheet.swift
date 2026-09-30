@@ -47,7 +47,9 @@ final class VoiceCaptureController: ObservableObject {
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0) }
         }
         let microphone: Bool = await withCheckedContinuation { continuation in
-            AVAudioSession.sharedInstance().requestRecordPermission { continuation.resume(returning: $0) }
+            AVAudioApplication.requestRecordPermission {
+                continuation.resume(returning: $0)
+            }
         }
         return speech == .authorized && microphone
     }
@@ -71,7 +73,7 @@ final class VoiceCaptureController: ObservableObject {
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.record, mode: .measurement,
-                                    options: [.mixWithOthers, .allowBluetooth])
+                                    options: [.mixWithOthers, .allowBluetoothHFP])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             audioEngine.prepare()
             try audioEngine.start()

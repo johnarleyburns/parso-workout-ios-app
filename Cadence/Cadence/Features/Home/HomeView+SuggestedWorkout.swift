@@ -123,16 +123,15 @@ extension HomeView {
                     starterCandidates + historicalCandidates,
                     keys: exclusionKeys)
             }
-            let today = Calendar.current.startOfDay(for: Date())
-            let sameDayCompletedNames: Set<String> = {
-                guard let latest = completedHistorySessions
-                    .filter({ Calendar.current.isDate($0.date, inSameDayAs: today) })
-                    .max(by: { $0.date < $1.date })
-                else { return [] }
-                return Set(latest.exercisesInOrder.map { $0.name.localizedLowercase })
-            }()
+            let mostRecentCompletedNames = RecentSuggestionExclusion.exerciseNames(
+                from: completedHistorySessions.map {
+                    RecentCompletedWorkoutSnapshot(
+                        startedAt: $0.date,
+                        endedAt: $0.endedAt,
+                        exerciseNames: $0.exercisesInOrder.map(\.name))
+                })
             let recentlyCompletedCandidateIDs = Set(candidates.compactMap { candidate in
-                sameDayCompletedNames.contains(candidate.name.localizedLowercase)
+                mostRecentCompletedNames.contains(candidate.name.localizedLowercase)
                     ? candidate.id : nil
             })
             let historyData = historyWorkingSetCount > 0

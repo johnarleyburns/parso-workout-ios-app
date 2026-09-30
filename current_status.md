@@ -2,6 +2,15 @@
 
 Updated: 2026-09-30
 
+## Latest implementation — most-recent-workout recommendation exclusion (2026-09-30)
+
+Today’s personalized strength recommendation now rebuilds a temporary exercise
+exclusion set from the most recently completed workout, using completion time
+and not a same-day filter. This prevents the immediately preceding workout’s
+movements from being selected again while leaving the catalog and user history
+unchanged. The policy is headless-tested for cross-day history, completion-time
+ordering, normalization, and personalized substitution behavior.
+
 ## Latest implementation — regular-width dashboard and AX5 fallback (2026-09-30)
 
 The C5 re-audit found the weekly dashboard had no runtime regular-width

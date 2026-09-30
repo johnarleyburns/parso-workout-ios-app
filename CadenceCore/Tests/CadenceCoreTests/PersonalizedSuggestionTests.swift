@@ -84,7 +84,7 @@ final class PersonalizedSuggestionTests: XCTestCase {
         XCTAssertEqual(Set(option.exercises.map(\.candidateID)), ["history"])
     }
 
-    func testPersonalizedAvoidsTheSameDayCompletedMovementPool() {
+    func testPersonalizedAvoidsTheMostRecentCompletedMovementPool() {
         let completedMovement = SuggestedExerciseCandidate(
             id: "completed-bench", name: "Bench Press", mechanics: .compound,
             primaryMuscles: ["chest"], isPersonalized: true)

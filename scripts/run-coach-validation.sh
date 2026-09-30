@@ -15,7 +15,7 @@ echo ""
 # Run tests with verbose output, capture to log
 TEST_LOG="/tmp/coach-validation-$(date +%s).log"
 cd "$PROJECT_DIR"
-swift test --package-path CadenceCore --filter "CoachScientificValidationTests" 2>&1 | tee "$TEST_LOG"
+swift test --package-path CadenceCore --parallel --filter "CoachScientificValidationTests" 2>&1 | tee "$TEST_LOG"
 
 # Parse results
 echo ""

@@ -30,7 +30,6 @@ extension SessionView {
             }
             if let plan { planBanner(plan) }
             partnerBar
-
             if isEmptySession {
                 CadenceActionButton(title: "Use Previous Workout",
                                     systemImage: "clock.arrow.circlepath",
@@ -80,7 +79,10 @@ extension SessionView {
             .padding(.top, 8)
         }
         .padding(CGFloat(LayoutMetrics.pagePadding))
-
+        .accessibilityRotor("Exercises", entries: cache.state.contexts,
+                            entryID: \.exerciseID, entryLabel: \.name)
+        .accessibilityRotor("Unlogged sets", entries: pendingRotorEntries,
+                            entryID: \.id, entryLabel: \.label)
     }
 
     var body: some View {

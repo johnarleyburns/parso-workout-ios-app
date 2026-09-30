@@ -2,6 +2,19 @@
 
 Updated: 2026-09-30
 
+## Latest implementation — C5 accessibility contract and rotor audit (2026-09-30)
+
+The C5 re-audit found that the live workout had custom actions and
+announcements, but no semantic set-row contract or VoiceOver rotors. The
+pending and completed rows now use a headless `SetRowAccessibility` presenter
+with partner-aware labels, wired Exercises and Unlogged sets rotors, and the
+existing Log/Edit/Repeat/Delete actions. A fixed-layout accessibility ratchet
+and device-only manual matrix are now part of the release evidence. Focused
+tests, the full one-worker package suite, all guardrails, and sequential
+generic iPhone→Watch builds pass. The manual VoiceOver, Switch Control, AX5,
+Reduce Motion/Transparency, and iPad checks remain device gates, as does the
+Apple Developer provisioning update required by the new H5 CloudKit container.
+
 ## Latest implementation — award-plan audit and H5/C4/release closure (2026-09-30)
 
 This working series audited the active award craft, award polish, and unified

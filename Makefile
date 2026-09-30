@@ -27,6 +27,7 @@ guardrails:
 	bash scripts/check-citations-sync.sh
 	bash scripts/check-engine-boundary.sh
 	bash scripts/check-history-safety.sh
+	bash scripts/check-accessibility-ratchet.sh
 	bash scripts/check-cloudkit-schema.sh
 	bash scripts/check-watch-appicon.sh
 	bash scripts/check-watch-background-modes.sh

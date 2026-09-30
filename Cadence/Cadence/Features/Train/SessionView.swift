@@ -4,6 +4,8 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
+struct SessionPendingRotorEntry: Identifiable { let id: String; let label: String }
+
 struct SessionView: View {
     @Bindable var session: WorkoutSession
     var isManualLog: Bool = false
@@ -56,6 +58,7 @@ struct SessionView: View {
     @State var idlePromptShown = false
     @Environment(\.scenePhase) var scenePhase
     @Environment(\.accessibilityReduceMotion) var reduceMotion
+    @Namespace var sessionRotorNamespace
     @State var usePreviousPresented = false
     @State var swapTarget: ExerciseSwap.SwapTarget?
     @State var coolingDown = false
@@ -145,6 +148,13 @@ struct SessionView: View {
         }
         return result
     }
+
+    var pendingRotorEntries: [SessionPendingRotorEntry] { cache.state.contexts.flatMap { context in
+        let pending = context.pendingSets.isEmpty ? context.pendingReps.enumerated().map { offset, reps in
+            SessionRenderModel.PendingSetDisplay(performerID: nil, performerName: "Me", setIndex: context.sets.filter { !$0.isWarmup }.count + offset, targetReps: reps, targetWeightKg: nil)
+        } : context.pendingSets
+        return pending.map { SessionPendingRotorEntry(id: "pending-\($0.id)", label: "\(context.name), set \($0.setIndex + 1)") }
+    } }
 
 
 }

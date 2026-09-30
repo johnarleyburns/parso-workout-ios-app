@@ -12,6 +12,7 @@ struct ExerciseCardView: View {
     let isExpanded: Bool
     let isCurrent: Bool
     let compactSummary: String
+    let rotorNamespace: Namespace.ID
     let onToggleExpansion: () -> Void
 
     let isInlineActive: Bool
@@ -203,6 +204,7 @@ struct ExerciseCardView: View {
     @ViewBuilder
     private func completedSetRow(_ set: SessionRenderModel.SetDisplay) -> some View {
         let number = setNumber(set)
+        let descriptor = SetRowAccessibility.completed(exercise: context.name, setNumber: number, weight: set.usesBodyweight && set.weight <= 0 ? "bodyweight" : "\(Format.weightValue(set.weight, unit: unit)) \(unit.abbreviation)", reps: set.reps, rpe: set.rpe.map { Int($0.rounded()) }, performer: set.performedBy?.name, isWarmup: set.isWarmup)
         HStack(spacing: SetCol.gap) {
             if isEditing {
                 Button {
@@ -263,7 +265,7 @@ struct ExerciseCardView: View {
         .contentShape(Rectangle())
         .contextMenu { setRowMenu(set) }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("set.row.\(context.name).\(number)")
+        .accessibilityIdentifier("set.row.\(context.name).\(number)").accessibilityLabel(descriptor.label).accessibilityHint(descriptor.hint).accessibilityRotorEntry(id: set.setID, in: rotorNamespace)
         .accessibilityAction(named: "Edit set") { onTapSet(set) }
         .accessibilityAction(named: "Repeat set") { onRepeat() }
         .accessibilityAction(named: "Delete set") { setToDelete = set }
@@ -291,6 +293,7 @@ struct ExerciseCardView: View {
 
     private func pendingRow(pending: SessionRenderModel.PendingSetDisplay) -> some View {
         let isCurrentPending = context.isCurrentPending(pending)
+        let descriptor = SetRowAccessibility.pending(exercise: context.name, setNumber: pending.setIndex + 1, planned: max(context.sets.filter { !$0.isWarmup }.count + context.pendingSets.filter { $0.kind != .warmup }.count, pending.setIndex + 1), reps: pending.targetReps, weight: pending.targetWeightKg.map { Format.weight($0, unit: unit) }, performer: hasPartners ? pending.performerName : nil, isCurrent: isCurrentPending)
         return HStack(spacing: SetCol.gap) {
             Button { onTapPending(pending) } label: {
                 HStack(spacing: SetCol.gap) {
@@ -315,9 +318,7 @@ struct ExerciseCardView: View {
                 .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("set.pending.\(context.name).\(pending.setIndex + 1)")
-            .accessibilityLabel("\(pending.targetReps) reps, \(pending.kind.displayName)")
-            .accessibilityHint(isCurrentPending ? "This is the next set. Double tap to edit." : "Double tap to edit this planned set.")
+            .accessibilityIdentifier("set.pending.\(context.name).\(pending.setIndex + 1)").accessibilityLabel(descriptor.label).accessibilityHint(descriptor.hint).accessibilityRotorEntry(id: "pending-\(pending.id)", in: rotorNamespace)
             .accessibilityAction(named: "Edit set") { onTapPending(pending) }
 
             if isCurrentPending {

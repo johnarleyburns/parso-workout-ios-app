@@ -118,6 +118,7 @@ extension SessionView {
                 (inlineExerciseID == nil &&
                  cache.state.contexts.first(where: { !$0.pendingSets.isEmpty || !$0.pendingReps.isEmpty })?.exerciseID == ctx.exerciseID),
             compactSummary: compactSummary(for: ctx),
+            rotorNamespace: sessionRotorNamespace,
             onToggleExpansion: {
                 if reduceMotion {
                     expandedExerciseID = expandedExerciseID == ctx.exerciseID ? nil : ctx.exerciseID

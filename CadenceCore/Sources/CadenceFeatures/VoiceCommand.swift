@@ -77,6 +77,144 @@ public struct VoiceParseResult: Equatable, Sendable {
     }
 }
 
+/// The deliberately small, typed contract accepted from an optional on-device
+/// language model. The model never returns prose or mutates a workout; its
+/// output is validated and then passed through the same resolver as rules-based
+/// speech. Keeping this type FoundationModels-free makes the safety boundary
+/// testable on macOS and usable by older iOS deployments.
+public enum VoiceModelCommandKind: String, Codable, Sendable {
+    case logSet
+    case repeatLastSet
+    case adjustNext
+    case addExercise
+    case switchExercise
+    case setPerformer
+    case addPartner
+    case rest
+    case skipRest
+    case pause
+    case resume
+    case undo
+    case startWorkout
+    case finishWorkout
+}
+
+public struct ModelVoiceCommand: Codable, Equatable, Sendable {
+    public let kind: VoiceModelCommandKind
+    public let exercise: String?
+    public let performer: String?
+    public let weightKg: Double?
+    public let reps: Int?
+    public let rpe: Double?
+    public let adjustKg: Double?
+    public let seconds: Int?
+    public let isWarmup: Bool
+
+    public init(kind: VoiceModelCommandKind, exercise: String? = nil,
+                performer: String? = nil, weightKg: Double? = nil,
+                reps: Int? = nil, rpe: Double? = nil, adjustKg: Double? = nil,
+                seconds: Int? = nil, isWarmup: Bool = false) {
+        self.kind = kind
+        self.exercise = exercise
+        self.performer = performer
+        self.weightKg = weightKg
+        self.reps = reps
+        self.rpe = rpe
+        self.adjustKg = adjustKg
+        self.seconds = seconds
+        self.isWarmup = isWarmup
+    }
+}
+
+public struct VoiceModelContext: Sendable {
+    public let currentExercise: String?
+    public let exercises: [String]
+    public let performers: [String]
+
+    public init(currentExercise: String?, exercises: [String], performers: [String]) {
+        self.currentExercise = currentExercise
+        self.exercises = exercises
+        self.performers = performers
+    }
+}
+
+public protocol VoiceModelInterpreting: Sendable {
+    func interpret(_ phrase: String, context: VoiceModelContext) async -> ModelVoiceCommand?
+}
+
+public enum VoiceModelCommandMapper {
+    /// Converts model output into the existing parser result, rejecting values
+    /// outside the same safe bounds used by the handwritten parser. A mapped
+    /// command is always `.inferred`, so the UI cannot auto-apply it as exact.
+    public static func parse(_ model: ModelVoiceCommand) -> VoiceParseResult? {
+        guard valid(model) else { return nil }
+        let performer = model.performer.map(VoicePerformerRef.init(name:))
+        let exercise = model.exercise.map(VoiceExerciseRef.init(name:))
+        let setSpec = VoiceSetSpec(exercise: exercise, weightKg: model.weightKg,
+                                   reps: model.reps, rpe: model.rpe,
+                                   isWarmup: model.isWarmup, performer: performer)
+
+        let command: VoiceCommand
+        switch model.kind {
+        case .logSet: command = .logSet(setSpec)
+        case .repeatLastSet:
+            command = .repeatLastSet(performer: performer,
+                                     adjust: model.adjustKg.map(VoiceAdjust.init(deltaKg:)))
+        case .adjustNext: command = .adjustNext(VoiceAdjust(deltaKg: model.adjustKg ?? 0))
+        case .addExercise: command = .addExercise(exercise ?? VoiceExerciseRef(name: ""))
+        case .switchExercise: command = .switchExercise(exercise ?? VoiceExerciseRef(name: ""))
+        case .setPerformer: command = .setPerformer(performer ?? VoicePerformerRef(name: ""))
+        case .addPartner: command = .addPartner(performer ?? VoicePerformerRef(name: ""))
+        case .rest: command = .rest(seconds: model.seconds)
+        case .skipRest: command = .skipRest
+        case .pause: command = .pause
+        case .resume: command = .resume
+        case .undo: command = .undo
+        case .startWorkout: command = .startWorkout(exercise)
+        case .finishWorkout: command = .finishWorkout
+        }
+        return VoiceParseResult(command: command, confidence: .inferred)
+    }
+
+    private static func valid(_ model: ModelVoiceCommand) -> Bool {
+        guard model.exercise?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != true,
+              model.performer?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != true else {
+            return false
+        }
+        if let reps = model.reps, !(1...100).contains(reps) { return false }
+        if let weight = model.weightKg, !(0...1_000).contains(weight) || !weight.isFinite { return false }
+        if let rpe = model.rpe, !(0...10).contains(rpe) || !rpe.isFinite { return false }
+        if let adjustment = model.adjustKg, !(abs(adjustment) <= 1_000) || !adjustment.isFinite { return false }
+        if let seconds = model.seconds, !(0...7_200).contains(seconds) { return false }
+        switch model.kind {
+        case .logSet:
+            return model.reps != nil || model.weightKg != nil
+        case .adjustNext:
+            return model.adjustKg != nil
+        case .addExercise, .switchExercise, .startWorkout:
+            return model.exercise != nil || model.kind == .startWorkout
+        case .setPerformer, .addPartner:
+            return model.performer != nil
+        default:
+            return true
+        }
+    }
+}
+
+public enum VoiceModelFallback {
+    /// Consults the model only when deterministic parsing could not produce a
+    /// command. Errors, unavailable models, and invalid output all preserve the
+    /// original parse result and therefore fail closed.
+    public static func enhance(_ parsed: VoiceParseResult, phrase: String,
+                               context: VoiceModelContext,
+                               interpreter: (any VoiceModelInterpreting)?) async -> VoiceParseResult {
+        guard parsed.command == nil, let interpreter,
+              let model = await interpreter.interpret(phrase, context: context),
+              let mapped = VoiceModelCommandMapper.parse(model) else { return parsed }
+        return mapped
+    }
+}
+
 public enum VoiceCommandParser {
     public static func parse(_ phrase: String,
                              unit: MeasurementUnitPreference = .pounds,

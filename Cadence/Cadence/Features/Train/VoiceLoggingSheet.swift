@@ -118,12 +118,15 @@ struct VoiceLoggingSheet: View {
     let activePerformer: String?
     let unit: MeasurementUnitPreference
     let bodyweight: Bool
+    let smarterVoiceUnderstanding: Bool
     let onAction: (VoiceResolvedAction) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var capture = VoiceCaptureController()
     @State private var phrase = ""
     @State private var resolution: VoiceResolutionResult?
+    @State private var isUnderstanding = false
+    @State private var usedModelUnderstanding = false
 
     var body: some View {
         NavigationStack {
@@ -149,6 +152,7 @@ struct VoiceLoggingSheet: View {
                         Button("Clear") {
                             phrase = ""
                             resolution = nil
+                            usedModelUnderstanding = false
                             capture.clear()
                         }
                         .buttonStyle(.bordered)
@@ -166,15 +170,22 @@ struct VoiceLoggingSheet: View {
 
                 if !phrase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Section {
-                        Button("Review command") {
+                        Button(isUnderstanding ? "Understanding…" : "Review command") {
                             review()
                         }
+                        .disabled(isUnderstanding)
                         .accessibilityIdentifier("voice.review")
                     }
                 }
 
                 if let resolution {
                     Section("Review") {
+                        if usedModelUnderstanding {
+                            Label("Understood with Apple Intelligence — review before applying.",
+                                  systemImage: "sparkles")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                         if let action = resolution.action {
                             Text(actionSummary(action)).font(.headline)
                             Button("Apply") {
@@ -208,9 +219,40 @@ struct VoiceLoggingSheet: View {
 
     private func review() {
         let parsed = VoiceCommandParser.parse(phrase, unit: unit, bodyweight: bodyweight)
-        resolution = VoiceCommandResolver.resolve(parsed, currentExercise: currentExercise,
-                                                  exercises: exercises, performers: performers,
-                                                  activePerformer: activePerformer)
+        guard parsed.command == nil, smarterVoiceUnderstanding else {
+            usedModelUnderstanding = false
+            resolution = resolve(parsed)
+            return
+        }
+
+        isUnderstanding = true
+        let context = VoiceModelContext(currentExercise: currentExercise,
+                                        exercises: exercises, performers: performers)
+        Task { @MainActor in
+            #if canImport(FoundationModels)
+            let interpreter: (any VoiceModelInterpreting)?
+            if #available(iOS 26.0, *) {
+                interpreter = FoundationModelsVoiceInterpreter()
+            } else {
+                interpreter = nil
+            }
+            let enhanced = await VoiceModelFallback.enhance(parsed, phrase: phrase,
+                                                             context: context,
+                                                             interpreter: interpreter)
+            usedModelUnderstanding = enhanced.command != nil && parsed.command == nil
+            resolution = resolve(enhanced)
+            #else
+            resolution = resolve(parsed)
+            usedModelUnderstanding = false
+            #endif
+            isUnderstanding = false
+        }
+    }
+
+    private func resolve(_ parsed: VoiceParseResult) -> VoiceResolutionResult {
+        VoiceCommandResolver.resolve(parsed, currentExercise: currentExercise,
+                                     exercises: exercises, performers: performers,
+                                     activePerformer: activePerformer)
     }
 
     private func actionSummary(_ action: VoiceResolvedAction) -> String {

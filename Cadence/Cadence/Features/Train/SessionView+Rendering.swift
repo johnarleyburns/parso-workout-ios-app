@@ -187,6 +187,7 @@ extension SessionView {
                 unit: settings.unit,
                 bodyweight: cache.state.contexts.first(where: { !$0.pendingSets.isEmpty })
                     .flatMap { exerciseForID($0.exerciseID) }.map(isBodyweight) ?? false,
+                smarterVoiceUnderstanding: settings.smarterVoiceUnderstanding,
                 onAction: applyVoiceAction)
         }
         .sheet(item: $suggestExerciseRequest) { request in

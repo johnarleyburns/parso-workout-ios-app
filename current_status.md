@@ -13,8 +13,8 @@ deduplicates legacy cardio HR/route samples whose old nested format had no
 sample IDs. The coverage test seeds every entity, imports into a fresh store,
 re-imports it, and compares decoded row payloads. The package suite (1,951
 tests), guardrails, generic iPhone build, and standalone generic Watch build
-now pass sequentially. Commit/push, remote CI, and final cache-cleanup gates
-remain pending for this working series.
+now pass sequentially; the final commit, remote CI, and cache-cleanup results
+are recorded in the handoff for this working series.
 
 The same audit also closed the C6 onboarding shape gap in code: the first-run
 flow is now four screens, health/location/age prompts stay contextual, and the
@@ -26,13 +26,14 @@ validation, L3 localization, signature choreography, iPad/device AX5 review,
 and store-story/submission artifacts remain open in the audit below.
 
 The user authorized implementing the complete award craft and award polish
-roadmap. This pass productizes the core C1–C5 and P2/P3/P5 slices: launch/icon
-cleanup, Today completion/duration behavior, semantic light/dark colors, cue
-policy, accessibility actions/announcements, phone Quick Talk voice logging,
-Watch double-tap affordances, and AlarmKit rest-alert plumbing. Existing
-partner logging, exact-weight, FIT/HealthKit, and sequential-build changes
-remain preserved. Remaining device-only and release-artifact work is called out
-explicitly in the audit below.
+roadmap. This pass productizes the core C1–C6 and P2/P3/P4/P5/P6 slices:
+launch/icon cleanup, Today completion/duration behavior, semantic light/dark
+colors, cue policy, accessibility actions/announcements, phone Quick Talk
+voice logging, a typed Foundation Models fallback, locked Talk handoff,
+Spotlight, Watch double-tap affordances, and AlarmKit rest-alert plumbing.
+Existing partner logging, exact-weight, FIT/HealthKit, and sequential-build
+changes remain preserved. Remaining device-only and release-artifact work is
+called out explicitly in the audit below.
 
 ## ACTIVE PLAN — Unified Cladiron release program (2026-09-28)
 
@@ -94,24 +95,27 @@ release checks.
 Closed in code: C1 launch/icon cleanup; C2 named accent palette and design-token
 guardrail; C3 Today done state and duration estimator; C4 cue-policy tests plus
 set/PR/rest VoiceOver announcements; C5 custom set/rest accessibility actions;
-P2/P3a phone voice capture/parser/resolver; P5 watchOS 11 target, double-tap
-primary actions, pure rest planner, and AlarmKit adapter; plus the requested
-light/dark AccentColor variants. The Live Activity renderer now has explicit
-high-contrast foreground content so a black background cannot hide its values.
+C6 four-screen onboarding and first-set coach mark; P2/P3a phone voice
+capture/parser/resolver; P4 locked Talk handoff, Spotlight indexing, and Today
+Live Activity route; P5 watchOS 11 target, double-tap primary actions, pure rest
+planner, and AlarmKit adapter; P6 typed Foundation Models fallback with
+fail-closed validation; plus the requested light/dark AccentColor variants.
+The Live Activity renderer now has explicit high-contrast foreground content so
+a black background cannot hide its values.
 
-Still requiring implementation or real-device review: the four-screen onboarding
-rewrite and first-set coach mark (C6), full P4 Live Activity/Control Center/
-Spotlight/locked Talk controls, optional Foundation Models fallback (P6),
-eight-locale UI/voice localization (L3), full signature-moment choreography,
-iPad/device AX5 verification, and the store-story/submission artifacts. These
-are recorded explicitly rather than marked complete without the corresponding
-runtime behavior.
+Still requiring implementation or real-device review: full P4 Live Activity
+button/Control Center validation, eight-locale UI/voice localization (L3),
+full signature-moment choreography, iPad/device AX5 verification, and the
+store-story/submission artifacts. The H2–H7 store split, Health outbox/restore,
+and Backup & Restore center also remain release-stream work. These are recorded
+explicitly rather than marked complete without the corresponding runtime
+behavior.
 
-Latest verification for this pass: the complete package suite passed 1,949
+Latest verification for this pass: the complete package suite passed 1,956
 tests with zero failures; all guardrails passed; and generic iPhone followed by
-standalone Watch builds passed sequentially with signing disabled. The final
-commit, push, remote CI check, and cache cleanup are the remaining release-gate
-actions.
+standalone Watch builds passed sequentially with signing disabled. The
+follow-up commit, push, remote CI check, and final cache cleanup remain for this
+working series.
 
 ## Latest implementation — Today row audit, DB++ 1.17.0, FIT, and HealthKit portability (2026-09-28)
 

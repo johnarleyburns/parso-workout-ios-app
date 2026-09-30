@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
+# The Watch app's icon is the watchOS circle (Icon Composer's 1088 canvas) of the
+# shared Icon Composer file Cadence/Cadence/AppIcon.icon. The Watch target gets it
+# through a synchronized-folder membership exception on the "Cadence" folder, and
+# must not carry its own AppIcon.appiconset (two icons named AppIcon clash).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-ICON_DIR="$ROOT/Cadence/Cadence Watch App Watch App/Assets.xcassets/AppIcon.appiconset"
-CONTENTS="$ICON_DIR/Contents.json"
+ICON="$ROOT/Cadence/Cadence/AppIcon.icon"
+LEGACY_SET="$ROOT/Cadence/Cadence Watch App Watch App/Assets.xcassets/AppIcon.appiconset"
 PROJECT="$ROOT/Cadence/Cadence.xcodeproj"
 WATCH_TARGET="Cadence Watch App Watch App"
 
@@ -12,39 +16,24 @@ fail() {
   exit 1
 }
 
-[[ -f "$CONTENTS" ]] || fail "missing $CONTENTS"
+[[ -f "$ICON/icon.json" ]] || fail "missing $ICON/icon.json (edit the icon in Icon Composer)"
+[[ ! -e "$LEGACY_SET" ]] \
+  || fail "remove $LEGACY_SET; the Watch icon comes from AppIcon.icon"
 [[ -f "$PROJECT/project.pbxproj" ]] || fail "missing Xcode project"
 
-extract() {
-  /usr/bin/plutil -extract "$1" raw -o - "$CONTENTS"
-}
-
-filename="$(extract images.0.filename 2>/dev/null)" \
-  || fail "the first AppIcon image has no filename"
-platform="$(extract images.0.platform 2>/dev/null)" \
-  || fail "the first AppIcon image has no platform"
-size="$(extract images.0.size 2>/dev/null)" \
-  || fail "the first AppIcon image has no size"
-
-[[ "$platform" == "watchos" ]] \
-  || fail "AppIcon image platform is '$platform', expected 'watchos'"
-[[ "$size" == "1024x1024" ]] \
-  || fail "AppIcon image size is '$size', expected '1024x1024'"
-
-[[ "$filename" != /* && "$filename" != *".."* ]] \
-  || fail "AppIcon filename is not a safe asset-relative path: $filename"
-image="$ICON_DIR/$filename"
-[[ -f "$image" ]] || fail "AppIcon references missing file: $filename"
-
-format="$(sips -g format "$image" 2>/dev/null | awk '/format:/ {print $2}')"
-width="$(sips -g pixelWidth "$image" 2>/dev/null | awk '/pixelWidth:/ {print $2}')"
-height="$(sips -g pixelHeight "$image" 2>/dev/null | awk '/pixelHeight:/ {print $2}')"
-alpha="$(sips -g hasAlpha "$image" 2>/dev/null | awk '/hasAlpha:/ {print $2}')"
-
-[[ "$format" == "png" ]] || fail "AppIcon is not a PNG (format: ${format:-unknown})"
-[[ "$width" == "1024" && "$height" == "1024" ]] \
-  || fail "AppIcon dimensions are ${width:-unknown}x${height:-unknown}, expected 1024x1024"
-[[ "$alpha" == "no" ]] || fail "AppIcon must not have an alpha channel"
+python3 - "$ICON/icon.json" "$PROJECT/project.pbxproj" "$WATCH_TARGET" <<'PY' || exit 1
+import json, re, sys
+icon_json, pbxproj, watch_target = sys.argv[1:]
+circles = json.load(open(icon_json)).get("supported-platforms", {}).get("circles", [])
+if "watchOS" not in circles:
+    sys.exit("watch-appicon: AppIcon.icon does not declare the watchOS circle; enable watchOS in Icon Composer")
+project = open(pbxproj).read()
+pattern = (r'Exceptions for "Cadence" folder in "' + re.escape(watch_target) + r'" target \*/ = \{'
+           r'[^}]*membershipExceptions = \([^)]*AppIcon\.icon,')
+if not re.search(pattern, project):
+    sys.exit("watch-appicon: AppIcon.icon is not a member of the Watch target "
+             "(tick the Watch target under Target Membership for Cadence/AppIcon.icon)")
+PY
 
 if ! command -v xcodebuild >/dev/null 2>&1; then
   fail "xcodebuild is required to verify the Watch target settings"
@@ -59,4 +48,17 @@ grep -Fq 'SDKROOT = ' <<<"$settings" \
 grep -Fq '/Platforms/WatchOS.platform/Developer/SDKs/' <<<"$settings" \
   || fail "Watch target does not resolve to the watchOS SDK"
 
-echo "watch-appicon: valid watchOS AppIcon ($filename, ${width}x${height}, alpha=${alpha})"
+# A missing watchOS runtime icon builds silently and only fails at upload, so
+# compile the .icon with watchOS actool and require CFBundleIconName.
+out="$(mktemp -d "${TMPDIR:-/tmp}/cladiron-watch-icon.XXXXXX")"
+trap 'rm -rf "$out"' EXIT
+xcrun actool "$ICON" --compile "$out" --platform watchos --target-device watch \
+  --minimum-deployment-target 10.0 --app-icon AppIcon \
+  --output-partial-info-plist "$out/info.plist" --output-format human-readable-text \
+  --errors --warnings >/dev/null 2>&1 \
+  || fail "watchOS actool rejected AppIcon.icon"
+icon_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$out/info.plist" 2>/dev/null || true)"
+[[ "$icon_name" == "AppIcon" ]] \
+  || fail "watchOS actool did not produce CFBundleIconName=AppIcon from AppIcon.icon"
+
+echo "watch-appicon: valid watchOS AppIcon (AppIcon.icon watchOS circle, CFBundleIconName=AppIcon)"

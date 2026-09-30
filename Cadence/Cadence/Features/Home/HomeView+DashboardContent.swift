@@ -18,6 +18,26 @@ extension HomeView {
                 .accessibilityIdentifier("home.supporterBadge")
             }
         }
+        if surface == .thisWeek,
+           let close = WeekCloseMoment.make(
+               workingSets: dashboard.volumeCoverage.completed,
+               setTarget: dashboard.volumeCoverage.target,
+               cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,
+               cardioTarget: dashboard.cardioDetail.targetMinutes,
+               sessions: dashboard.strength.completed,
+               sessionTarget: dashboard.strength.target) {
+            VStack(alignment: .leading, spacing: 4) {
+                Label(close.title, systemImage: "party.popper.fill")
+                    .font(.headline)
+                    .foregroundStyle(CadenceTheme.achievement)
+                Text(close.detail).font(.subheadline).foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(CadenceTheme.achievement.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .sensoryFeedback(.success, trigger: close.title)
+            .accessibilityIdentifier("week.closeMoment")
+        }
         todayHeroCard
         HomeWeekRingsCard(dashboard: dashboard)
         HomeMyWorkoutsSection(
@@ -160,7 +180,7 @@ extension HomeView {
         if observationsExpanded {
             HomeCoachSuggestionsSection(
                 suggestions: dashboard.suggestions,
-                illustration: coachIllustration,
+                focusGroup: dashboard.volume.first(where: { $0.isTracked && $0.sets < 12 })?.group ?? .chest,
                 expanded: $suggestionsExpanded)
         }
         homeDetailDisclosure(

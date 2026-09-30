@@ -33,7 +33,7 @@ public final class AppSettings {
                         "settings.useHRMonitoring",
                         "settings.celebrationStyle", "settings.voiceLoggingEnabled",
                         "settings.voiceConfirmationRequired", "settings.voiceLanguage",
-                        "settings.smarterVoiceUnderstanding", "settings.restAlertMode",
+                        "settings.smarterVoiceUnderstanding", "settings.raiseToTalk", "settings.restAlertMode",
                         "settings.hasSeenFirstSetCoachMark",
                         "settings.coachPreferenceProfile",
                         "settings.coachSchedulePreferences",
@@ -77,6 +77,7 @@ public final class AppSettings {
         self.voiceConfirmationRequired = defaults.object(forKey: "settings.voiceConfirmationRequired") as? Bool ?? true
         self.voiceLanguage = defaults.string(forKey: "settings.voiceLanguage")
         self.smarterVoiceUnderstanding = defaults.object(forKey: "settings.smarterVoiceUnderstanding") as? Bool ?? true
+        self.raiseToTalk = defaults.object(forKey: "settings.raiseToTalk") as? Bool ?? false
         self.restAlertMode = Self.read(defaults, "settings.restAlertMode", RestAlertMode.self) ?? .inAppOnly
         self.preWorkoutCountdown = defaults.object(forKey: "settings.preWorkoutCountdown") as? Int ?? 10
         // Coach engine inputs (strength-pivot P3, D4): personalize insights. Full
@@ -179,6 +180,10 @@ public final class AppSettings {
     public var voiceConfirmationRequired: Bool { didSet { defaults.set(voiceConfirmationRequired, forKey: "settings.voiceConfirmationRequired") } }
     public var voiceLanguage: String? { didSet { defaults.set(voiceLanguage, forKey: "settings.voiceLanguage") } }
     public var smarterVoiceUnderstanding: Bool { didSet { defaults.set(smarterVoiceUnderstanding, forKey: "settings.smarterVoiceUnderstanding") } }
+    /// Opt-in motion shortcut: raising the phone starts the same hold-to-talk
+    /// capture path. It is off by default because motion sensing has a battery
+    /// cost and should never surprise a user during ordinary navigation.
+    public var raiseToTalk: Bool { didSet { defaults.set(raiseToTalk, forKey: "settings.raiseToTalk") } }
     public var restAlertMode: RestAlertMode { didSet { defaults.set(restAlertMode.rawValue, forKey: "settings.restAlertMode") } }
     /// Get-ready countdown before a workout starts (seconds; 0 disables).
     public var preWorkoutCountdown: Int { didSet { defaults.set(preWorkoutCountdown, forKey: "settings.preWorkoutCountdown") } }
@@ -332,7 +337,8 @@ public extension AppSettings {
             autoSaveHealth: autoSaveHealth, autoEndOnIdle: autoEndOnIdle, workoutSounds: workoutSounds,
             celebrationStyle: celebrationStyle.rawValue, voiceLoggingEnabled: voiceLoggingEnabled,
             voiceConfirmationRequired: voiceConfirmationRequired, voiceLanguage: voiceLanguage,
-            smarterVoiceUnderstanding: smarterVoiceUnderstanding, restAlertMode: restAlertMode.rawValue,
+            smarterVoiceUnderstanding: smarterVoiceUnderstanding,
+            restAlertMode: restAlertMode.rawValue, raiseToTalk: raiseToTalk,
             preWorkoutCountdown: preWorkoutCountdown, trainingGoal: trainingGoal.rawValue,
             experienceLevel: experienceLevel.rawValue, preferredWorkoutStyle: preferredWorkoutStyle.rawValue,
             useHRMonitoring: useHRMonitoring,
@@ -371,6 +377,7 @@ public extension AppSettings {
         if let v = p.voiceConfirmationRequired { voiceConfirmationRequired = v }
         if let v = p.voiceLanguage { voiceLanguage = v }
         if let v = p.smarterVoiceUnderstanding { smarterVoiceUnderstanding = v }
+        if let v = p.raiseToTalk { raiseToTalk = v }
         if let v = p.restAlertMode.flatMap(RestAlertMode.init(rawValue:)) { restAlertMode = v }
         if let v = p.preWorkoutCountdown { preWorkoutCountdown = v }
         if let v = p.trainingGoal.flatMap(TrainingGoal.init(rawValue:)) { trainingGoal = v }

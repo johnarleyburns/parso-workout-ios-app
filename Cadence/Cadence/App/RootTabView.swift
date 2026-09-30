@@ -5,7 +5,7 @@ import CadenceCore
 import CadenceFeatures
 
 struct RootTabView: View {
-    enum Tab: Hashable { case home, thisWeek, progress, settings }
+    enum Tab: Hashable { case home, thisWeek, progress, settings, search }
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
     @Environment(ActiveWorkoutModel.self) private var active
@@ -68,7 +68,7 @@ struct RootTabView: View {
         .fullScreenCover(item: $active.presentedSurface) { surface in
             switch surface {
             case .session(let session):
-                NavigationStack { SessionView(session: session) }
+                AdaptiveSessionRoot(session: session)
             case .summary(let finished):
                 // Tapping an exercise expands it read-only in place (field test
                 // 2026-08-18 #1, decision D7). Editing what was just logged stays
@@ -182,19 +182,21 @@ struct RootTabView: View {
                 SwiftUI.Tab("Today", systemImage: "house", value: .home) { HomeView() }
                 SwiftUI.Tab("This Week", systemImage: "calendar", value: .thisWeek) { ThisWeekView() }
                 SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
-                    TrainingProgressView()
+                    AdaptiveProgressRoot()
                 }
                 SwiftUI.Tab("Settings", systemImage: "gearshape", value: .settings) {
-                    NavigationStack { SettingsView() }
+                    AdaptiveSettingsRoot()
                 }
+                SwiftUI.Tab(value: .search, role: .search) { ExercisePickerView(action: .use) { _ in } }
             }
             .modifier(MinimizeTabBarOnScrollDown())
+            .modifier(LiveWorkoutTabAccessory(active: active))
         } else {
             TabView(selection: $selection) {
                 HomeView().tabItem { Label("Today", systemImage: "house") }.tag(Tab.home)
                 ThisWeekView().tabItem { Label("This Week", systemImage: "calendar") }.tag(Tab.thisWeek)
-                TrainingProgressView().tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.progress)
-                NavigationStack { SettingsView() }
+                AdaptiveProgressRoot().tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.progress)
+                AdaptiveSettingsRoot()
                     .tabItem { Label("Settings", systemImage: "gearshape") }
                     .tag(Tab.settings)
             }
@@ -239,6 +241,35 @@ private struct MinimizeTabBarOnScrollDown: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content.tabBarMinimizeBehavior(.onScrollDown)
+        } else {
+            content
+        }
+    }
+}
+
+private struct LiveWorkoutTabAccessory: ViewModifier {
+    let active: ActiveWorkoutModel
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.tabViewBottomAccessory {
+                if active.isActive, let session = active.strengthSession {
+                    Button { active.present() } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: "figure.strengthtraining.traditional")
+                            Text(session.title.isEmpty ? "Workout in progress" : session.title)
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName: "chevron.up")
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("tab.liveWorkoutAccessory")
+                }
+            }
         } else {
             content
         }

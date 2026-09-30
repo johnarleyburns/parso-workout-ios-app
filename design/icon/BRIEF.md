@@ -1,15 +1,10 @@
-# Cladiron icon brief
+# Cladiron icon
 
-The icon is a quiet Fe monogram: one clean glyph, with no product name,
-atomic number, mass, watermark, or decorative text. It uses a graphite-to-iron
-green background and two foreground layers so it remains legible in Default,
-Dark, Clear, and Tinted appearances and inside the watchOS circular mask.
+**Delivered 2026-09-30.** The icon is the Parso family "Fe" glyph (Iron): a custom-drawn monogram in an iron-green
+gradient (`#85E4B5` → `#20B97D` → `#009460`) on a graphite gradient (`#16211D` → `#070B0A`). No tile, number or
+words. It is one of three sibling icons (Voxglass V, Platterhead Pt, Cladiron Fe) drawn on one grid.
 
-The committed vector source is `cladiron-fe.svg`; it is the source of truth for
-the current PNG export. A designer should review the mark at 1024, 180, 120,
-87, 60, and 40 px, plus the watchOS mask. The silhouette must survive
-monochrome/tinted rendering with at least 4.5:1 glyph contrast.
-
-The current implementation uses the same source-derived export for iOS and
-Watch. An Icon Composer `.icon` file can replace the asset-catalog export when
-final commissioned layers are available.
+- Shipping file: `Cadence/Cadence/AppIcon.icon` (Icon Composer; iOS + watchOS circle).
+- Watch: the same `.icon`'s watchOS circle (1088 canvas), via Target Membership; there is no Watch appiconset.
+- Sources: `layers/`, `mono/`, `FAMILY_README.md` (designer spec), `style-guide.pdf`.
+- Exact P3/sRGB colours, metrics and Icon Composer settings: `plans/award-craft/2026-09-28/01-icon-and-launch.md`.

@@ -35,6 +35,9 @@ let package = Package(
             resources: [
                 // Versioned Coach knowledge-base changelog (quarterly protocol packs).
                 .copy("Resources/coach-kb-version.json"),
+                // DB++ names remain the canonical identifiers; this sidecar is
+                // the user-facing localized label layer.
+                .copy("Resources/exercise-names.i18n.json"),
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

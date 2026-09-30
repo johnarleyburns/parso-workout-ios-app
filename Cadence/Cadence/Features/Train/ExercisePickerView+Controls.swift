@@ -133,6 +133,7 @@ extension ExercisePickerView {
             }
             .contentShape(Rectangle())
         }
+        .matchedTransitionSource(id: ex.id, in: searchTransition)
         .accessibilityIdentifier("picker.row.\(ex.name)")
     }
 

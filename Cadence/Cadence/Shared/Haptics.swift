@@ -1,21 +1,27 @@
 import UIKit
 import SwiftUI
 import CadenceFeatures
+#if canImport(CoreHaptics)
+import CoreHaptics
+#endif
 
 /// Restrained, purposeful haptics (NFR-1). Distinct cues for set logged, new PR,
 /// and rest complete (mirrors FR-8.5 on the watch later).
 @MainActor
 enum Haptics {
+    #if canImport(CoreHaptics)
+    private static var engine: CHHapticEngine?
+    #endif
     /// Light selection tick when the user taps a navigational/actionable item —
     /// history rows, start/log tiles, primary buttons (batch 7 item 2, Apple HIG).
     static func selection() {
         UISelectionFeedbackGenerator().selectionChanged()
     }
     static func setLogged() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if playPattern(named: "SetLogged") != true { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
     }
     static func prAchieved() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if playPattern(named: "PRTakeover") != true { UINotificationFeedbackGenerator().notificationOccurred(.success) }
     }
     static func restComplete() {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
@@ -28,6 +34,32 @@ enum Haptics {
     }
     static func countdownWarning() {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
+
+    @discardableResult
+    private static func playPattern(named name: String) -> Bool? {
+        #if canImport(CoreHaptics)
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics,
+              let url = Bundle.main.url(forResource: name, withExtension: "ahap"),
+              let data = try? Data(contentsOf: url),
+              let object = try? JSONSerialization.jsonObject(with: data),
+              let raw = object as? [String: Any],
+              let version = raw["Version"],
+              let events = raw["Pattern"] else { return nil }
+        let dictionary: [CHHapticPattern.Key: Any] = [
+            .version: version,
+            .pattern: events
+        ]
+        guard let pattern = try? CHHapticPattern(dictionary: dictionary) else { return nil }
+        do {
+            if engine == nil { engine = try CHHapticEngine() }
+            try engine?.start()
+            try engine?.makePlayer(with: pattern).start(atTime: CHHapticTimeImmediate)
+            return true
+        } catch { return nil }
+        #else
+        return nil
+        #endif
     }
 
     static func play(_ cue: CueKind) {

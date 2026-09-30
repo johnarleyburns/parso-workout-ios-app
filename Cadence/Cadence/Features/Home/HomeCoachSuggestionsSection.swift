@@ -5,7 +5,7 @@ import CadenceFeatures
 /// Home's cited Observations card.
 struct HomeCoachSuggestionsSection: View {
     let suggestions: [HomeSuggestion]
-    let illustration: HomeCoachIllustration
+    let focusGroup: MuscleGroup
     @Binding var expanded: Bool
 
     /// The heading reserves the artwork's width so it cannot slide under the
@@ -31,7 +31,7 @@ struct HomeCoachSuggestionsSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .purple)
         .overlay(alignment: .topTrailing) {
-            HomeCoachIllustrationView(illustration: illustration, compact: true)
+            MuscleFocusThumbnail(group: focusGroup)
                 .padding(Self.illustrationInset)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)

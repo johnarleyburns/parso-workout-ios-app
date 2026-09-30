@@ -2,6 +2,32 @@
 
 Updated: 2026-09-30
 
+## Latest implementation — award audit remediation (2026-09-30, pre-commit)
+
+This pass implements the repository-owned award gaps identified in the latest
+audit. Quick Talk now has a hold-to-talk path on the next uncompleted set,
+SpeechAnalyzer-first transcription on iOS 26+, exact-command auto-save with an
+Undo confirmation chip and eight-second follow-up window, an opt-in
+raise-to-talk motion monitor, named entity-resolution/execution contracts, and
+a bounded local Heard log with no audio persistence. Ambiguous speech still
+opens review rather than mutating the workout. Partner rows use the same path.
+
+Liquid Glass is now restricted to floating controls; content cards use plain
+semantic surfaces. The iOS search tab, live-workout bottom accessory, search
+zoom transition, sensory feedback, centered PR takeover, set-logged animation,
+AHAP patterns, week-close moment, iPad Progress/Settings/session split roots,
+muscle-map recommendation thumbnails, and compact “Why this workout” summary
+are implemented. DB++ exercise-name localization now has a versioned sidecar,
+launch-locale coverage tests/guardrails, and the new raise-to-talk preference is
+portable with settings export/import.
+
+The D1 app icon is intentionally not changed in this pass: it is a manual
+designer commission. The exact source/asset package is specified in
+`docs/brand/app-icon-designer-brief.md`. Final device screenshots, preview
+video, App Store Connect nomination fields, human translation review, and
+real-device AX5/HealthKit/Watch validation remain release gates; this file does
+not claim those external outcomes.
+
 ## Latest implementation — most-recent-workout recommendation exclusion (2026-09-30)
 
 Today’s personalized strength recommendation now rebuilds a temporary exercise

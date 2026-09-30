@@ -25,6 +25,7 @@ extension SessionView {
             postVolumeChange(date: when, delta: isWarmup || person != nil ? [:] : exercise.volumeCredits)
             refreshLiveVolume()
         }
+        setLoggedRevision &+= 1
         if isPR {
             Haptics.prAchieved()
             UIAccessibility.post(notification: .announcement,

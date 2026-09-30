@@ -51,10 +51,11 @@ successful contribution records Supporter status locally and displays a
 Supporter badge; it unlocks nothing. There are no subscriptions, trials,
 entitlements, paywalls, or Pro targets.
 
-## Information Architecture (3 tabs)
+## Information Architecture (4 primary tabs plus system Search)
 - **Today** (Home) — strength-first workout flow, secondary cardio, coach observations, scheduling, and compact weekly review.
 - **Progress** — history, PR timeline, per-exercise trends, assessment trends, consistency heatmap, and the Tests entry point.
 - **Settings** — exercise library, saved workouts, coach controls, transparency, sync, and app settings.
+- **Search** — the iOS 18+ system search tab for the unified exercise catalog.
 
 ## Current release (v1) — iPhone + embedded Watch app
 The watch app **shipped 2026-07-17** (W1–W4: strength with partners, HIIT/Boxing, cardio suite, live wrist HR, Health save + phone sync); the W5 backlog (Resume, complication, routes) is deferred — see `plans/watch-app/2026-07-17/`. v1 ships:

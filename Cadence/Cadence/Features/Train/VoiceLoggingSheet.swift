@@ -21,6 +21,7 @@ final class VoiceCaptureController: ObservableObject {
     private let audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    private var modernEngine: (any QuickTalkTranscriptionEngine)?
 
     func toggle() {
         if isRecording { stop() } else { start() }
@@ -31,7 +32,7 @@ final class VoiceCaptureController: ObservableObject {
         errorMessage = nil
     }
 
-    private func start() {
+    func start() {
         errorMessage = nil
         guard let recognizer, recognizer.isAvailable else {
             errorMessage = "Speech recognition is unavailable right now."
@@ -44,7 +45,7 @@ final class VoiceCaptureController: ObservableObject {
                 errorMessage = "Microphone and speech access are needed for voice logging."
                 return
             }
-            beginRecognition(with: recognizer)
+        beginRecognition(with: recognizer)
         }
     }
 
@@ -69,8 +70,21 @@ final class VoiceCaptureController: ObservableObject {
 
         let input = audioEngine.inputNode
         let format = input.outputFormat(forBus: 0)
+        if #available(iOS 26.0, *) {
+            let engine = SpeechAnalyzerTranscriptionEngine()
+            engine.onTranscript = { [weak self] value in self?.transcript = value }
+            modernEngine = engine
+            Task { [weak self, weak engine] in
+                guard let self, let engine else { return }
+                try? await engine.prepare(format: format)
+            }
+        }
         cadenceInstallAudioTap(input, 1_024, format) { [weak self, weak request] buffer, _ in
-            request?.append(buffer)
+            if let engine = self?.modernEngine {
+                Task { @MainActor in engine.append(buffer) }
+            } else {
+                request?.append(buffer)
+            }
             let level = buffer.floatChannelData?.pointee
             _ = level // Keep the tap allocation-free; the transcript is the useful feedback.
             _ = self
@@ -84,11 +98,13 @@ final class VoiceCaptureController: ObservableObject {
             audioEngine.prepare()
             try audioEngine.start()
             isRecording = true
-            task = recognizer.recognitionTask(with: request) { [weak self] result, error in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
-                    if let result { transcript = result.bestTranscription.formattedString }
-                    if error != nil { stop() }
+            if modernEngine == nil {
+                task = recognizer.recognitionTask(with: request) { [weak self] result, error in
+                    Task { @MainActor [weak self] in
+                        guard let self else { return }
+                        if let result { transcript = result.bestTranscription.formattedString }
+                        if error != nil { stop() }
+                    }
                 }
             }
         } catch {
@@ -98,13 +114,15 @@ final class VoiceCaptureController: ObservableObject {
     }
 
     func stop() {
-        guard isRecording || request != nil else { return }
+        guard isRecording || request != nil || modernEngine != nil else { return }
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
         request?.endAudio()
         task?.cancel()
         task = nil
         request = nil
+        modernEngine?.finish()
+        modernEngine = nil
         isRecording = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
@@ -119,6 +137,7 @@ struct VoiceLoggingSheet: View {
     let unit: MeasurementUnitPreference
     let bodyweight: Bool
     let smarterVoiceUnderstanding: Bool
+    let initialPhrase: String?
     let onAction: (VoiceResolvedAction) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -212,6 +231,9 @@ struct VoiceLoggingSheet: View {
             }
             .onChange(of: capture.transcript) { _, value in
                 if !value.isEmpty { phrase = value }
+            }
+            .onAppear {
+                if phrase.isEmpty, let initialPhrase { phrase = initialPhrase }
             }
             .onDisappear { capture.stop() }
         }

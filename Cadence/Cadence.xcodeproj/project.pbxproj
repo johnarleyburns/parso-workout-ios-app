@@ -117,6 +117,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		PW00AI010000000000000001 /* Exceptions for "Cadence" folder in "Cadence Watch App Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				AppIcon.icon,
+			);
+			target = 8D78A5252FD286E200AE7C2F /* Cadence Watch App Watch App */;
+		};
 		8D78A5562FD2875E00AE7C2F /* Exceptions for "Cadence" folder in "Cadence" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -153,6 +160,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				8D78A5562FD2875E00AE7C2F /* Exceptions for "Cadence" folder in "Cadence" target */,
+				PW00AI010000000000000001 /* Exceptions for "Cadence" folder in "Cadence Watch App Watch App" target */,
 			);
 			path = Cadence;
 			sourceTree = "<group>";

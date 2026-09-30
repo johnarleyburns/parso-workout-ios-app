@@ -13,7 +13,7 @@ extension SessionView {
                 Image(systemName: "trophy.fill")
                     .font(.title2)
                     .foregroundStyle(CadenceTheme.achievement)
-                    .symbolEffect(.bounce, value: reduceMotion ? 0 : 1)
+                    .symbolEffect(.bounce, value: reduceMotion ? 0 : setLoggedRevision)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(takeover?.headline ?? moment.headline).font(.headline)
                     Text(takeover?.exerciseName ?? moment.context)
@@ -147,6 +147,9 @@ extension SessionView {
             onLogPending: { pending in
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 logPendingSet(pending, for: ex)
+            },
+            onTalkPressing: { pending, pressing in
+                quickTalkPressing(pending, exercise: exerciseForID(ctx.exerciseID), pressing: pressing)
             },
             onRepeat: {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }

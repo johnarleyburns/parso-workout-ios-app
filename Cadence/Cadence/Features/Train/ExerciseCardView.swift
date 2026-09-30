@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+
 struct ExerciseCardView: View {
     let context: SessionRenderModel.ExerciseContext
     let prSetIDs: Set<UUID>
@@ -23,6 +24,7 @@ struct ExerciseCardView: View {
     let onTapSet: (SessionRenderModel.SetDisplay) -> Void
     let onTapPending: (SessionRenderModel.PendingSetDisplay) -> Void
     let onLogPending: (SessionRenderModel.PendingSetDisplay) -> Void
+    let onTalkPressing: (SessionRenderModel.PendingSetDisplay, Bool) -> Void
     let onRepeat: () -> Void
     let onAddSet: () -> Void
     let onChangeExercise: () -> Void
@@ -329,6 +331,8 @@ struct ExerciseCardView: View {
                     .accessibilityIdentifier("session.set.log.\(context.name).\(pending.setIndex + 1)")
                     .accessibilityHint("Logs the next uncompleted set.")
                     .accessibilityAction(named: "Log set") { onLogPending(pending) }
+                    .onLongPressGesture(minimumDuration: 0.35, maximumDistance: 44,
+                                        pressing: { onTalkPressing(pending, $0) }, perform: {})
             }
         }
         .padding(.vertical, 2)
@@ -367,19 +371,6 @@ struct ExerciseCardView: View {
             Label(set.isWarmup ? "Mark as working set" : "Mark as warm-up",
                   systemImage: set.isWarmup ? "flame" : "flame.fill")
         }
-    }
-
-    @ViewBuilder
-    private func setIndexBadge(_ label: String, isWarmup: Bool) -> some View {
-        Group {
-            if isWarmup {
-                Text("W").font(.caption2.weight(.bold)).foregroundStyle(.orange)
-                    .frame(width: 22, height: 22).background(.orange.opacity(0.15), in: Circle())
-            } else {
-                Text(label).font(.subheadline.weight(.medium)).monospacedDigit()
-            }
-        }
-        .frame(width: SetCol.num, alignment: .leading)
     }
 
     @ViewBuilder

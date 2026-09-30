@@ -58,6 +58,7 @@ struct ExercisePickerView: View {
     @State var selectedCreationCategory: ExerciseCategory = .other
     @State var selectedCreationMuscles: Set<String> = []
     @State var selectedCreationSecondary: Set<String> = []
+    @Namespace var searchTransition
     let action: PickAction
     let source: Exercise?
     let onPick: (Exercise) -> Void
@@ -278,6 +279,7 @@ struct ExercisePickerView: View {
                             onPick(picked)
                             dismiss()
                         }
+                        .navigationTransition(.zoom(sourceID: id, in: searchTransition))
                     } else {
                         ContentUnavailableView(
                             "Exercise unavailable",

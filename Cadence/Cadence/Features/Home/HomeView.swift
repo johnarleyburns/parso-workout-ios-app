@@ -115,7 +115,6 @@ struct HomeView: View {
     @State var pendingSuggestedCardioInput: CardioSuggestionInput?
     @State var weeklyDetailSelection = WeeklyDetailSelection.persisted()
     @State var weeklyMuscleMapPanel: MuscleMapPanel = .front
-    @State var coachIllustration = HomeCoachIllustration.random()
     @State var showWorkoutConflict = false
     @State var scheduledWorkoutBeingStarted: UUID?
     @State var routeFailure: HomeRouteFailure?

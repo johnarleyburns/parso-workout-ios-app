@@ -359,6 +359,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
     public var voiceConfirmationRequired: Bool?
     public var voiceLanguage: String?
     public var smarterVoiceUnderstanding: Bool?
+    public var raiseToTalk: Bool?
     public var restAlertMode: String?
     public var preWorkoutCountdown: Int?
     public var trainingGoal: String?
@@ -390,6 +391,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
                 celebrationStyle: String? = nil, voiceLoggingEnabled: Bool? = nil,
                 voiceConfirmationRequired: Bool? = nil, voiceLanguage: String? = nil,
                 smarterVoiceUnderstanding: Bool? = nil, restAlertMode: String? = nil,
+                raiseToTalk: Bool? = nil,
                 preWorkoutCountdown: Int? = nil, trainingGoal: String? = nil, experienceLevel: String? = nil,
                 preferredWorkoutStyle: String? = nil,
                 useHRMonitoring: Bool? = nil, recoveryAwareCoachV2: Bool? = nil,
@@ -408,7 +410,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
         self.autoSaveHealth = autoSaveHealth; self.autoEndOnIdle = autoEndOnIdle; self.workoutSounds = workoutSounds
         self.celebrationStyle = celebrationStyle; self.voiceLoggingEnabled = voiceLoggingEnabled
         self.voiceConfirmationRequired = voiceConfirmationRequired; self.voiceLanguage = voiceLanguage
-        self.smarterVoiceUnderstanding = smarterVoiceUnderstanding; self.restAlertMode = restAlertMode
+        self.smarterVoiceUnderstanding = smarterVoiceUnderstanding; self.raiseToTalk = raiseToTalk; self.restAlertMode = restAlertMode
         self.preWorkoutCountdown = preWorkoutCountdown; self.trainingGoal = trainingGoal
         self.experienceLevel = experienceLevel; self.useHRMonitoring = useHRMonitoring
         self.preferredWorkoutStyle = preferredWorkoutStyle

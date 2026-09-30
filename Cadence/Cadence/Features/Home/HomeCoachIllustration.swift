@@ -1,4 +1,5 @@
 import SwiftUI
+import CadenceCore
 
 /// The coach artwork is selected once when Home's view identity is created.
 /// Keeping the catalog separate from the view makes the selection rule explicit
@@ -51,5 +52,23 @@ struct HomeCoachIllustrationView: View {
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .accessibilityLabel(illustration.accessibilityLabel)
             .accessibilityIdentifier("home.coachIllustration")
+    }
+}
+
+struct MuscleFocusThumbnail: View {
+    let group: MuscleGroup
+
+    var body: some View {
+        ZStack {
+            Circle().fill(CadenceTheme.accent.opacity(0.14))
+            Image("MuscleMask-front-\(group.rawValue)")
+                .resizable()
+                .scaledToFit()
+                .padding(8)
+                .accessibilityHidden(true)
+        }
+        .frame(width: 64, height: 64)
+        .accessibilityLabel("Muscle focus: \(group.displayName)")
+        .accessibilityIdentifier("home.muscleFocusThumbnail")
     }
 }

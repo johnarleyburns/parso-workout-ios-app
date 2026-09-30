@@ -53,7 +53,7 @@ public enum VoiceCommand: Equatable, Sendable {
     case finishWorkout
 }
 
-public enum VoiceConfidence: Equatable, Sendable {
+public enum VoiceConfidence: String, Codable, Equatable, Sendable {
     case exact
     case inferred
     case ambiguous

@@ -24,9 +24,9 @@ extension View {
         }
     }
 
-    /// Subtle dashboard glass for grouped surfaces. The tinted wash and hairline
-    /// keep the effect visible over plain system backgrounds without turning every
-    /// row into a glass control.
+    /// Content surfaces stay content surfaces. Liquid Glass belongs on controls
+    /// floating over them; applying it to every card made the hierarchy noisy
+    /// and stacked glass harder to read in both appearances.
     @ViewBuilder
     func cadenceGlassCard<S: Shape>(
         in shape: S = RoundedRectangle(cornerRadius: 16, style: .continuous),
@@ -34,22 +34,7 @@ extension View {
         interactive: Bool = false,
         fallback: Material = .thinMaterial
     ) -> some View {
-        let accent = tint ?? .primary
-        let fillOpacity = tint == nil ? 0.045 : 0.08
-        let strokeOpacity = tint == nil ? 0.18 : 0.28
-        let glassTint = tint?.opacity(0.45)
-
-        if GlassFeature.isEnabled, #available(iOS 26.0, *) {
-            background(accent.opacity(fillOpacity), in: shape)
-                .glassEffect(GlassFactory.regular(tint: glassTint, interactive: interactive), in: shape)
-                .overlay(shape.stroke(accent.opacity(strokeOpacity), lineWidth: 0.75))
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
-        } else {
-            background(accent.opacity(fillOpacity), in: shape)
-                .background(fallback, in: shape)
-                .overlay(shape.stroke(accent.opacity(strokeOpacity), lineWidth: 0.75))
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
-        }
+        background(.background.secondary, in: shape)
     }
 
     /// Liquid Glass on iOS 26+, otherwise the call site's original non-material
@@ -131,7 +116,7 @@ extension View {
 }
 
 struct CadenceGlassBackdrop: View {
-    var tint: Color = .green
+    var tint: Color = CadenceTheme.accent
 
     var body: some View {
         ZStack {
@@ -139,7 +124,7 @@ struct CadenceGlassBackdrop: View {
             LinearGradient(
                 colors: [
                     tint.opacity(0.09),
-                    Color.teal.opacity(0.035),
+                    CadenceTheme.link.opacity(0.035),
                     Color.clear
                 ],
                 startPoint: .topLeading,

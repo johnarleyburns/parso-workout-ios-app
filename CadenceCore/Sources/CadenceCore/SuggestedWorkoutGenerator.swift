@@ -921,31 +921,28 @@ public enum SuggestedWorkoutGenerator {
                     ?? Int.max < (MuscleGroup.canonical(rhs.key).map(MuscleGroup.massPriority(for:)) ?? Int.max)
             }
         let startingGapByID = Dictionary(uniqueKeysWithValues: startingGaps)
-        let gapText = startingGaps.isEmpty
-            ? "no tracked muscle-group deficit"
-            : startingGaps.map { "\(displayName($0.key)) \(format($0.value)) credited sets short" }
-                .joined(separator: ", ")
+        let gapText: String = {
+            guard !startingGaps.isEmpty else { return "your tracked muscle coverage is on target" }
+            let names = startingGaps.prefix(3).map { displayName($0.key) }
+            let suffix = startingGaps.count > names.count ? " and \(startingGaps.count - names.count) more areas" : ""
+            return "the biggest gaps in \(names.joined(separator: ", "))\(suffix)"
+        }()
         let styleText = option.style == .personalized
             ? "your history-first Personalized style"
             : "your \(option.style.displayName.lowercased()) style"
-        let workoutText = "This workout was suggested because your starting tracked gaps were \(gapText). "
-            + "It uses \(styleText), prioritizes the largest remaining gap first, and assigns \(option.plannedSetTotal) working sets toward the open gaps. "
-            + "The \(input.trainingGoal.displayName.lowercased()) goal drives the rep range, your preferred sets-per-exercise setting is bounded to 3–4 sets here, and the workout is limited to \(suggestedWorkoutPlannedSetCap) total planned sets."
+        let workoutText = "Built to address \(gapText) with \(styleText). "
+            + "It prioritizes the largest need first and keeps the session to \(option.plannedSetTotal) focused working sets for your \(input.trainingGoal.displayName.lowercased()) goal."
 
         let exerciseReasons = option.exercises.map { exercise in
             let relevant = exercise.contributions.filter { startingGapByID[$0.muscleID] ?? 0 > epsilon }
             let gapReasons = relevant.isEmpty
-                ? "the selected movement was retained as a maintenance option after the tracked gaps were covered"
-                : relevant.map { contribution in
-                    let role = contribution.weight >= VolumeCredit.direct ? "direct" : "indirect"
-                    return "\(displayName(contribution.muscleID)) (\(role), \(format(contribution.plannedSetContribution)) credited sets)"
-                }.joined(separator: ", ")
+                ? "a maintenance option after the main gaps were covered"
+                : "the open target for \(displayName(relevant[0].muscleID))"
             let styleReason = exercise.isInStyle
                 ? "It matches the selected style."
                 : "It is a general-strength fallback because the selected style did not close that gap."
-            let score = format(exercise.selectionScore)
-            let whyExercise = "\(exercise.name) was selected for \(gapReasons). At selection it supplied \(score) credited sets across the open targets. \(styleReason) Compound movements and movements covering more open groups win ties."
-            let whySetRep = "The prescription is \(exercise.plannedSets) sets × \(rangeText(exercise.repRange)) reps: the set count follows the bounded preferred-set setting and the \(input.trainingGoal.displayName.lowercased()) goal supplies the rep range. DB++ may narrow that range when its goal policy provides a more specific prescription."
+            let whyExercise = "Selected for \(gapReasons). \(styleReason)"
+            let whySetRep = "\(exercise.plannedSets) sets × \(rangeText(exercise.repRange)) reps, matched to your \(input.trainingGoal.displayName.lowercased()) goal."
             return SuggestedExerciseRationale(exerciseName: exercise.name,
                                               whyExercise: whyExercise,
                                               whySetRep: whySetRep)

@@ -3,7 +3,6 @@ import SwiftData
 import UIKit
 import CadenceCore
 import CadenceFeatures
-
 extension SessionView {
     @ViewBuilder
     var scrollContent: some View {
@@ -42,7 +41,6 @@ extension SessionView {
                                        systemImage: "dumbbell",
                                        description: Text("Use a previous workout, or add exercises below."))
             }
-
             ForEach(cache.state.contexts, id: \.exerciseID) { ctx in
                 exerciseCardView(for: ctx)
                     .id(ctx.exerciseID)
@@ -50,7 +48,6 @@ extension SessionView {
             ForEach(plannedOnlyNames, id: \.self) { name in
                 plannedCard(name)
             }
-
             VStack(alignment: .leading, spacing: 16) {
                 CadenceActionButton(title: "Add Exercise",
                                     systemImage: "plus.circle.fill",
@@ -79,30 +76,14 @@ extension SessionView {
             .padding(.top, 8)
         }
         .padding(CGFloat(LayoutMetrics.pagePadding))
-        .accessibilityRotor("Exercises", entries: cache.state.contexts,
-                            entryID: \.exerciseID, entryLabel: \.name)
-        .accessibilityRotor("Unlogged sets", entries: pendingRotorEntries,
-                            entryID: \.id, entryLabel: \.label)
+        .accessibilityRotor("Exercises", entries: cache.state.contexts, entryID: \.exerciseID, entryLabel: \.name)
+        .accessibilityRotor("Unlogged sets", entries: pendingRotorEntries, entryID: \.id, entryLabel: \.label)
+        .sensoryFeedback(.success, trigger: setLoggedRevision)
+        .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: setLoggedRevision)
     }
 
-    var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView { scrollContent }
-                // Saving a set returns here with that exercise expanded and pulled
-                // to the top of the screen, so the next set is always what you are
-                // looking at (field test 2026-08-19 #6).
-                .onChange(of: scrollTarget) { _, target in
-                    guard let target else { return }
-                    if reduceMotion {
-                        proxy.scrollTo(target, anchor: .top)
-                    } else {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            proxy.scrollTo(target, anchor: .top)
-                        }
-                    }
-                    scrollTarget = nil
-                }
-        }
+    private var sessionSurfaceBase: some View {
+        sessionScrollSurface
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -114,20 +95,9 @@ extension SessionView {
             }
         }
         .toolbar { toolbarContent }
-        .overlay(alignment: .top) {
-            if let prMoment {
-                prMomentCard(prMoment)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .zIndex(2)
-            } else if healthSaved {
-                Text("Saved to Apple Health")
-                    .font(.caption).padding(8)
-                    .cadenceGlass(in: Capsule(), fallback: .thinMaterial)
-                    .accessibilityIdentifier("session.healthSaved")
-            }
-        }
+        .overlay { sessionTopOverlay }
         .overlay(alignment: .bottom) {
+            quickTalkOverlay
             if isActiveSession && !settings.hasSeenFirstSetCoachMark &&
                session.orderedSets.isEmpty && !cache.state.contexts.isEmpty {
                 FirstSetCoachMark {
@@ -140,44 +110,17 @@ extension SessionView {
             }
         }
         .keepAwake(!isManualLog)
-        .task(id: refreshSignature) {
-            let recent = (try? WorkoutRepository.recentSessions(context, limit: 21)) ?? [] // 20-session rep window + this one
-            generalRepLadders = SessionRenderModel.generalRepLadders(recentSessions: recent,
-                                                                     excluding: session)
-            plannedExerciseIndex = indexedPlannedExercises()
-            refreshLiveVolume()
-            cache.refresh(signature: refreshSignature) {
-                SessionRenderModel.build(session: session, prRule: settings.prRule,
-                                         formula: settings.formula, allPeople: allPeople,
-                                         recentSessions: recent)
-            }
-            updateLiveActivityNextSet()
-            if expandedExerciseID == nil {
-                // Strength starts compact. Focused history review may opt into
-                // one expanded exercise explicitly.
-                expandedExerciseID = initiallyExpandedExerciseID
-            }
-            if let target = pendingScrollExerciseID,
-               cache.state.contexts.contains(where: { $0.exerciseID == target }) {
-                pendingScrollExerciseID = nil
-                expandedExerciseID = target
-                scrollTarget = target
-            }
-        }
-        .onAppear {
-            if expandedExerciseID == nil {
-                expandedExerciseID = initiallyExpandedExerciseID
-            }
-        }
+    }
+
+    private var sessionPresentation: some View {
+        sessionSurfaceBase
+        .task(id: refreshSignature, refreshSession)
+        .onAppear(perform: handleSessionAppear)
+        .onDisappear(perform: handleSessionDisappear)
+        .onChange(of: settings.raiseToTalk, perform: handleRaiseToTalkSettingChange)
+        .onChange(of: raiseToTalkMonitor.isRaised, perform: handleRaiseToTalkChange)
         .sheet(isPresented: $pickerPresented) {
-            ExercisePickerView { exercise in
-                if !session.exercisesInOrder.contains(where: { $0.id == exercise.id }) &&
-                   !session.plannedExerciseNames.contains(exercise.name) {
-                    session.plannedExerciseNames.append(exercise.name)
-                    try? context.save()
-                }
-                openInlineEditor(for: exercise)
-            }
+            ExercisePickerView(onPick: handleExercisePickerSelection)
         }
         .sheet(isPresented: $voiceLoggingPresented) {
             VoiceLoggingSheet(
@@ -191,15 +134,10 @@ extension SessionView {
                 bodyweight: cache.state.contexts.first(where: { !$0.pendingSets.isEmpty })
                     .flatMap { exerciseForID($0.exerciseID) }.map(isBodyweight) ?? false,
                 smarterVoiceUnderstanding: settings.smarterVoiceUnderstanding,
+                initialPhrase: quickTalkTranscript,
                 onAction: applyVoiceAction)
         }
-        .sheet(item: $suggestExerciseRequest) { request in
-            SuggestExerciseView(request: request,
-                                exerciseForName: { name in
-                                    plannedExerciseIndex[name] ?? exerciseForName(named: name)
-                                },
-                                onAdd: addSuggestedExercise)
-        }
+        .sheet(item: $suggestExerciseRequest, content: suggestedExerciseSheet)
         .sheet(item: $swapTarget) { target in
             let pickAction: ExercisePickerView.PickAction = {
                 switch target {
@@ -256,72 +194,29 @@ extension SessionView {
                 plateRounding: $workoutSettings.plateRounding,
                 useHR: $workoutSettings.useHRMonitoring)
         }
-        .alert("Couldn't suggest an exercise", isPresented: $suggestExerciseFailed) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Exercise data could not be read. Try again after the catalog finishes loading.")
-        }
-        .sheet(item: $setEditorRoute) { _ in
-            if let cfg = inlineEditorConfig(), let ex = inlineExercise {
-                InlineSetEditorView(config: cfg,
-                                    wouldBePR: { [cache] kg, reps in cache.state.wouldBePR(weightKg: kg, reps: reps, isWarmup: false, rule: settings.prRule, formula: settings.formula, for: ex.id) },
-                                    onSave: { draft in recordInlineSet(for: ex, draft: draft) },
-                                    onDelete: inlineEditingSetID == nil ? nil : { deleteInlineSet() },
-                                    onCancel: { closeInlineEditor() }, onActivity: { recordActivity() },
-                                    onEffortMode: { lastEffortMode = $0 },
-                                    onAddPartner: { setEditorRoute = nil; addPartnerPresented = true })
-            } else { Color.clear }
-        }
-        .fullScreenCover(isPresented: $coolingDown) {
-            GuidedPhaseOverlay(
-                title: "Cool Down",
-                minutes: session.cooldownSeconds > 0 ? Int(session.cooldownSeconds / 60) : settings.cooldownMinutes,
-                tint: .teal,
-                idPrefix: "cooldown",
-                soundsEnabled: settings.workoutSounds,
-                onFinish: { secs in
-                    session.cooldownSeconds = Double(secs)
-                    coolingDown = false
-                    endWorkout()
-                })
-        }
-        .confirmationDialog("Start cool-down?", isPresented: $coolDownConfirm, titleVisibility: .visible) {
-            Button("Start Cool Down") { active.pause(); coolingDown = true }
-                .accessibilityIdentifier("workout.coolDownConfirm")
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This ends your workout and starts the cool-down timer.")
-        }
+        .modifier(SuggestionFailureAlertModifier(isPresented: $suggestExerciseFailed))
+        .sheet(item: $setEditorRoute) { _ in inlineSetEditorSheetContent }
+        .fullScreenCover(isPresented: $coolingDown, content: cooldownOverlay)
+        .modifier(SessionCooldownConfirmationModifier(isPresented: $coolDownConfirm,
+                                                       onStart: startCooldown))
         .task { _ = try? WorkoutRepository.me(in: context) }
-        .onAppear {
-            guard !isManualLog, model.watchAvailable else { return }
-            if case .connected = model.hrm.state { return }
-            model.startWatchStrength()
-        }
+        .onAppear(perform: startWatchIfNeeded)
         .modifier(QuickTalkNotificationModifier(isActive: isActiveSession,
                                                  isEnabled: settings.voiceLoggingEnabled,
                                                  isPresented: $voiceLoggingPresented))
-        .onReceive(NotificationCenter.default.publisher(for: .cadenceLiveActivityActionRequested)) { note in
-            guard isActiveSession,
-                  let request = note.object as? CadencePlatformRequestStore.LiveActivityRequest else { return }
-            applyLiveActivityAction(request.action, token: request.token)
+        .onReceive(NotificationCenter.default.publisher(for: .cadenceLiveActivityActionRequested), perform: handleLiveActivityRequest)
+        .onDisappear(perform: handleSessionDisappear)
+        // Keep the Date publisher closure explicit. Passing the method as a
+        // `perform:` witness makes Swift 6.3 emit an oversized reabstraction
+        // thunk for this view's generic modifier chain.
+        .onReceive(idleTimer) { date in
+            handleIdleTimer(date)
         }
-        .onDisappear { if isManualLog { cleanupEmptyLog() } }
-        .onReceive(idleTimer) { _ in
-            handleIdleTick()
-            guard isActiveSession else { return }
-            sampleHR()
-            active.writeHeartbeat()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { recordActivity() }
-        }
-        .alert("Still training?", isPresented: $idlePromptShown) {
-            Button("Keep going") { recordActivity() }
-            Button("Save now", role: .destructive) { endWorkout() }
-        } message: {
-            Text("No activity for \(settings.idleTimeoutMinutes) min. Your workout will pause — it never ends on its own.")
-        }
+        .onChange(of: scenePhase, perform: handleScenePhaseChange)
+        .modifier(SessionIdlePromptModifier(isPresented: $idlePromptShown,
+                                             message: idlePromptMessage,
+                                             onKeepGoing: recordActivity,
+                                             onSave: endWorkout))
         .alert("Rename workout", isPresented: $renamePresented) {
             TextField("Title", text: $editedTitle).accessibilityIdentifier("rename.field")
             Button("Save") {
@@ -330,71 +225,15 @@ extension SessionView {
             }
             Button("Cancel", role: .cancel) { }
         }
-        .confirmationDialog("Delete this workout?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) {
-                let wasActive = active.strengthSession?.id == session.id
-                if wasActive { active.endStrength(); active.minimize() }
-                try? WorkoutRepository.softDeleteSession(session, in: context)
-                if !wasActive { dismiss() }
-            }
-            .accessibilityIdentifier("session.deleteConfirm")
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("All sets and exercises in this session will be removed. You can restore it from History → View Deleted.")
-        }
-        .sheet(isPresented: $datePickerPresented) {
-            NavigationStack {
-                DatePicker("Workout date", selection: Binding(
-                    get: { session.date },
-                    set: { session.date = $0; try? context.save()
-                           NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil) }
-                ))
-                .datePickerStyle(.graphical).padding()
-                .navigationTitle("Edit Date").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { datePickerPresented = false } } }
-            }
-            .presentationDetents([.medium])
-        }
-        .sheet(isPresented: $endDatePickerPresented) {
-            NavigationStack {
-                DatePicker("End time", selection: Binding(
-                    get: { session.endedAt ?? session.date },
-                    set: { session.endedAt = $0; try? context.save() }
-                ))
-                .datePickerStyle(.graphical).padding()
-                .navigationTitle("Edit End Time").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { endDatePickerPresented = false } } }
-            }
-            .presentationDetents([.medium])
-        }
-        .confirmationDialog("Remove this exercise?", isPresented: exerciseRemovalPresented,
-                           titleVisibility: .visible) {
-            Button("Remove exercise and all its sets", role: .destructive) {
-                if let ex = exerciseToRemove {
-                    _ = try? WorkoutRepository.removeExercise(ex, from: session, in: context)
-                    recordActivity()
-                }
-                exerciseToRemove = nil
-            }
-            Button("Cancel", role: .cancel) { exerciseToRemove = nil }
-        }
+        .modifier(SessionDeleteConfirmationModifier(isPresented: $showDeleteConfirm,
+                                                     onDelete: deleteSessionFromConfirmation))
+        .sheet(isPresented: $datePickerPresented, content: sessionDatePickerSheet)
+        .sheet(isPresented: $endDatePickerPresented, content: sessionEndDatePickerSheet)
+        .modifier(ExerciseRemovalConfirmationModifier(isPresented: exerciseRemovalPresented,
+                                                       onRemove: removeExerciseFromConfirmation))
     }
 
-    func compactSummary(for ctx: SessionRenderModel.ExerciseContext) -> String {
-        SessionRenderModel.compactSummary(context: ctx, unit: settings.unit)
-    }
-
-}
-
-private struct QuickTalkNotificationModifier: ViewModifier {
-    let isActive: Bool
-    let isEnabled: Bool
-    @Binding var isPresented: Bool
-
-    func body(content: Content) -> some View {
-        content.onReceive(NotificationCenter.default.publisher(for: .cadenceQuickTalkRequested)) { _ in
-            guard isActive, isEnabled else { return }
-            isPresented = true
-        }
+    var body: some View {
+        sessionPresentation
     }
 }

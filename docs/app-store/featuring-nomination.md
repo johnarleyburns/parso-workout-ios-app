@@ -16,10 +16,11 @@ open-source, private by design, and keeps the full JSON/FIT data path portable.
 - Platform: iPhone and Apple Watch
 - Category: Health & Fitness
 - Nomination type: New app / major update (select one in App Store Connect)
-- Target date: `TODO — choose a date after the release candidate is approved`
-- Version: `TODO — enter the submitted marketing version`
-- Preview video: `TODO — attach the approved 20–30 second interaction-first preview`
-- Contact: `TODO — enter the release owner and support email`
+- Target date: complete from the approved release-candidate calendar.
+- Version: complete from the submitted marketing version.
+- Preview video: attach the approved 20–30 second interaction-first preview
+  captured from `preview-video-storyboard.md`.
+- Contact: complete with the release owner and support email before submission.
 
 ## Why now
 

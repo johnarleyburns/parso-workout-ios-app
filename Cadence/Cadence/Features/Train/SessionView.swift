@@ -44,6 +44,24 @@ struct SessionView: View {
     @State var voicePerformerID: UUID?
     @State var voicePerformerWasProvided = false
     @State var voiceWeightAdjustmentKg: Double = 0
+    @StateObject var quickTalkCapture = VoiceCaptureController()
+    @StateObject var raiseToTalkMonitor = RaiseToTalkMonitor()
+    @State var quickTalkDelayTask: Task<Void, Never>?
+    @State var quickTalkListening = false
+    @State var quickTalkTargetExercise: String?
+    @State var quickTalkBodyweight = false
+    @State var quickTalkPending: SessionRenderModel.PendingSetDisplay?
+    @State var quickTalkTranscript = ""
+    @State var quickTalkResolution: VoiceResolutionResult?
+    @State var quickTalkChipText = ""
+    @State var quickTalkChipVisible = false
+    @State var quickTalkUndoSetID: UUID?
+    @State var quickTalkFollowUp: QuickTalkFollowUpWindow?
+    @AppStorage("quickTalk.heardEntries") var quickTalkHeardEntriesData = Data()
+    var quickTalkHeardEntries: [HeardVoiceEntry] {
+        get { (try? JSONDecoder().decode([HeardVoiceEntry].self, from: quickTalkHeardEntriesData)) ?? [] }
+        set { quickTalkHeardEntriesData = (try? JSONEncoder().encode(newValue)) ?? Data() }
+    }
     @State var healthSaved = false
     @Query(sort: \Person.name) var allPeople: [Person]
     @State var addPartnerPresented = false
@@ -65,6 +83,7 @@ struct SessionView: View {
     @State var coolDownConfirm = false
     @State var prMoment: PRMoment?
     @State var prEvent: PREvent?
+    @State var setLoggedRevision = 0
     let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     @State var hrSamples: [HRSamplePoint] = []
     @State var cache = SessionHistoryCache()

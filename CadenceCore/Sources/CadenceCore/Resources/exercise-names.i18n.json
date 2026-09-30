@@ -1,0 +1,12 @@
+{
+  "bench press": {"en":"Bench Press","en-GB":"Bench Press","de":"Bankdrücken","es":"Press de banca","fr":"Développé couché","nl":"Bankdrukken","pt-BR":"Supino","zh-Hans":"卧推","zh-Hant":"臥推"},
+  "back squat": {"en":"Back Squat","en-GB":"Back Squat","de":"Kniebeuge","es":"Sentadilla trasera","fr":"Squat arrière","nl":"Back squat","pt-BR":"Agachamento livre","zh-Hans":"杠铃深蹲","zh-Hant":"槓鈴深蹲"},
+  "deadlift": {"en":"Deadlift","en-GB":"Deadlift","de":"Kreuzheben","es":"Peso muerto","fr":"Soulevé de terre","nl":"Deadlift","pt-BR":"Levantamento terra","zh-Hans":"硬拉","zh-Hant":"硬舉"},
+  "overhead press": {"en":"Overhead Press","en-GB":"Overhead Press","de":"Schulterdrücken","es":"Press militar","fr":"Développé militaire","nl":"Overhead press","pt-BR":"Desenvolvimento","zh-Hans":"肩上推举","zh-Hant":"肩上推舉"},
+  "barbell row": {"en":"Barbell Row","en-GB":"Barbell Row","de":"Langhantelrudern","es":"Remo con barra","fr":"Rowing barre","nl":"Barbell row","pt-BR":"Remada com barra","zh-Hans":"杠铃划船","zh-Hant":"槓鈴划船"},
+  "pull up": {"en":"Pull-Up","en-GB":"Pull-Up","de":"Klimmzug","es":"Dominada","fr":"Traction","nl":"Optrekken","pt-BR":"Barra fixa","zh-Hans":"引体向上","zh-Hant":"引體向上"},
+  "push up": {"en":"Push-Up","en-GB":"Push-Up","de":"Liegestütz","es":"Flexión","fr":"Pompe","nl":"Push-up","pt-BR":"Flexão","zh-Hans":"俯卧撑","zh-Hant":"伏地挺身"},
+  "dumbbell curl": {"en":"Dumbbell Curl","en-GB":"Dumbbell Curl","de":"Kurzhantelcurl","es":"Curl con mancuernas","fr":"Curl haltères","nl":"Dumbbell curl","pt-BR":"Rosca com halteres","zh-Hans":"哑铃弯举","zh-Hant":"啞鈴彎舉"},
+  "leg press": {"en":"Leg Press","en-GB":"Leg Press","de":"Beinpresse","es":"Prensa de piernas","fr":"Presse à cuisses","nl":"Leg press","pt-BR":"Leg press","zh-Hans":"腿举","zh-Hant":"腿推"},
+  "plank": {"en":"Plank","en-GB":"Plank","de":"Unterarmstütz","es":"Plancha","fr":"Planche","nl":"Plank","pt-BR":"Prancha","zh-Hans":"平板支撑","zh-Hant":"棒式"}
+}

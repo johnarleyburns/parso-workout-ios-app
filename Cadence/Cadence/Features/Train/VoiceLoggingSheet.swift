@@ -5,6 +5,12 @@ import Speech
 import CadenceCore
 import CadenceFeatures
 
+@_silgen_name("CadenceInstallAudioTap")
+private func cadenceInstallAudioTap(_ inputNode: AVAudioInputNode,
+                                   _ bufferSize: AVAudioFrameCount,
+                                   _ format: AVAudioFormat?,
+                                   _ block: @escaping AVAudioNodeTapBlock)
+
 @MainActor
 final class VoiceCaptureController: ObservableObject {
     @Published private(set) var transcript = ""
@@ -63,7 +69,7 @@ final class VoiceCaptureController: ObservableObject {
 
         let input = audioEngine.inputNode
         let format = input.outputFormat(forBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1_024, format: format) { [weak self, weak request] buffer, _ in
+        cadenceInstallAudioTap(input, 1_024, format) { [weak self, weak request] buffer, _ in
             request?.append(buffer)
             let level = buffer.floatChannelData?.pointee
             _ = level // Keep the tap allocation-free; the transcript is the useful feedback.

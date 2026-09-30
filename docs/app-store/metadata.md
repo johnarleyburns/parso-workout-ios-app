@@ -16,12 +16,12 @@ Core promise:
 Differentiators:
 
 - Cited coaching: every recommendation links to published training research.
-- Private by design: no account, no ads, no telemetry, and sync only through the user's private iCloud.
+- Private by design: no account, no ads, no telemetry, and optional backup only through the user's private iCloud.
 - Strength-first: fast set logging, PR context, routines, and progress trends.
 - Companion Apple Watch app: phone-free strength (with partner rotation),
   HIIT/boxing rounds, and a full cardio suite (run, walk, cycle, swim, rowing)
   with live wrist heart rate; every watch workout saves to Apple Health and
-  syncs back to the phone.
+  is relayed back to the phone.
 - Complete free app with one optional contribution: the tracker, history,
   analytics, coach, planning, execution, and export are available without
   purchase. A successful $9.99 contribution only adds a Supporter badge.
@@ -128,12 +128,12 @@ program, prescribes exact sets and reps, autoregulates from logged performance
 and recovery, plans deloads, and cites the research behind every call.
 
 PRIVACY BY DESIGN
-- No account, no ads, no telemetry, no developer-operated server; optional private-iCloud sync
+- No account, no ads, no telemetry, no developer-operated server; optional private-iCloud backup
 - Health, Bluetooth, Location, and Motion data stay on your device
 - Open-source and privacy-first, with no developer-operated server or tracking
 
 APPLE WATCH INCLUDED
-Train phone-free from your wrist: strength with partner rotation, HIIT and boxing rounds, and cardio (run, walk, cycle, swim with lap counting, rowing). Live heart rate streams from the wrist, workouts count toward your Activity rings, and everything syncs back to your iPhone automatically.
+Train phone-free from your wrist: strength with partner rotation, HIIT and boxing rounds, and cardio (run, walk, cycle, swim with lap counting, rowing). Live heart rate streams from the wrist, workouts count toward your Activity rings, and completed sessions are relayed back to your iPhone automatically.
 
 Cladiron's fitness tests and training recommendations are general educational coaching guidance, not medical advice, diagnosis, or treatment. Consult a qualified professional before starting or changing an exercise program.
 
@@ -193,7 +193,7 @@ Connect will not submit without at least one Apple Watch screenshot):
 ## Review Notes
 
 ```text
-Cladiron is an open-source, privacy-first strength app for iPhone. It has no accounts, no ads, no analytics, and no developer-operated server; private iCloud sync is optional. The application is released under GPLv3-or-later with the Cladiron App Store Exception; brand assets remain protected under TRADEMARKS.md.
+Cladiron is an open-source, privacy-first strength app for iPhone. It has no accounts, no ads, no analytics, and no developer-operated server; private iCloud backup is optional. The application is released under GPLv3-or-later with the Cladiron App Store Exception; brand assets remain protected under TRADEMARKS.md.
 
 The tracker is free: logging, history, PRs, analytics, assessments, routines, Apple Health import/write, and JSON export/import. Free users also see the coach's live insights (observations about their training).
 
@@ -209,7 +209,7 @@ Bluetooth is used only for standard heart-rate monitors that expose the Bluetoot
 
 This version includes a companion Apple Watch app for phone-free workouts (strength, HIIT/boxing, and cardio including swim). The watch app runs an HKWorkoutSession for live heart rate, saves workouts to Apple Health, and relays completed sessions to the iPhone over WatchConnectivity. Like the phone app, it has no accounts and no networking.
 
-The app also automatically backs up the user's local data to the user's own private CloudKit database (hence the iCloud entitlement). This is user-owned storage processed by Apple; the developer operates no server and cannot access the data, so App Privacy remains "Data Not Collected".
+The app can back up the user's local data to the user's own private CloudKit database (hence the iCloud entitlement). This is user-owned storage processed by Apple; the developer operates no server and cannot access the data, so App Privacy remains "Data Not Collected".
 ```
 
 ## Privacy Answers

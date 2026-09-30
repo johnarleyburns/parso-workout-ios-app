@@ -9,6 +9,7 @@
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
 		<string>iCloud.guru.parso.ios-workout-app</string>
+		<string>iCloud.guru.parso.cladiron.sync</string>
 	</array>
 	<key>com.apple.developer.icloud-services</key>
 	<array>

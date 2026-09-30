@@ -35,7 +35,7 @@ struct CloudKitSyncDiagnosticsView: View {
             Section("iCloud") {
                 if let snapshot {
                     diagnosticRow("Account", value: snapshot.account.displayName)
-                    diagnosticRow("Container", value: CadenceStore.cloudKitContainerID)
+                    diagnosticRow("Container", value: CadenceStore.activeCloudKitContainerID())
                     diagnosticRow("Sync mode", value: "Automatic · incremental")
                     diagnosticRow("Legacy backup", value: snapshot.legacyBackupFound ? "Found" : "Not found")
                     if snapshot.legacyBackupFound {
@@ -175,7 +175,7 @@ final class CloudKitRecoveryService {
     private let cloud: CKContainer
 
     init(container: ModelContainer,
-         cloud: CKContainer = CKContainer(identifier: CadenceStore.cloudKitContainerID)) {
+         cloud: CKContainer = CKContainer(identifier: CadenceStore.activeCloudKitContainerID())) {
         self.modelContainer = container
         self.cloud = cloud
     }

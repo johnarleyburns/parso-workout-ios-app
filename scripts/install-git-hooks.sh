@@ -8,5 +8,5 @@ chmod +x scripts/git-hooks/pre-commit scripts/git-hooks/pre-push
 git config core.hooksPath scripts/git-hooks
 
 echo "Installed git hooks from scripts/git-hooks"
-echo "pre-commit: swift test --package-path CadenceCore (no simulator)"
+echo "pre-commit: swift test --package-path CadenceCore --parallel --num-workers 1 (no simulator)"
 echo "pre-push: make pre-push"

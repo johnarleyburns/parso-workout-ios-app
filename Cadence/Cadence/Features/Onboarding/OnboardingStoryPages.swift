@@ -22,7 +22,7 @@ extension OnboardingView {
                 .padding(.horizontal, 24)
             storyRow("person.crop.circle.badge.xmark", "No account required")
             storyRow("location.slash", "No tracking outside workouts you start")
-            storyRow("icloud.and.arrow.up", "Private iCloud sync when available")
+            storyRow("icloud.and.arrow.up", "Private iCloud backup when available")
             Spacer()
             Spacer()
         }

@@ -95,6 +95,19 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
+    enum StoreMigrationStatus: Equatable, Sendable {
+        case notNeeded
+        case needsHealthAccess
+        case migrating
+        case readyToRestart
+        case failed(String)
+
+        var isInProgress: Bool {
+            if case .migrating = self { return true }
+            return false
+        }
+    }
+
     let health: HealthDataProviding
     let healthBackup: HealthBackupCoordinator
     let hrm: HeartRateMonitor
@@ -166,6 +179,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var healthSyncStatus: HealthSyncStatus = .idle
     var healthRestoreStatus: HealthRestoreStatus = .idle
+    var storeMigrationStatus: StoreMigrationStatus = .notNeeded
     /// Published while Home recomputes its ephemeral coach projection so the
     /// operation is visible in Settings → Transparency & Control without
     /// inserting transient content into the Home layout.
@@ -211,6 +225,51 @@ final class AppModel: NSObject, @unchecked Sendable {
             }
         } catch {
             healthRestoreStatus = .failed(error.localizedDescription)
+        }
+    }
+
+    var legacyStoreNeedsMigration: Bool {
+        let directory = CadenceStore.applicationSupportDirectory()
+        let legacyURL = CadenceStore.legacyStoreURL(in: directory)
+        return FileManager.default.fileExists(atPath: legacyURL.path)
+            && !CadenceStore.splitStoreReady(in: directory)
+    }
+
+    /// Runs the user-approved H5 migration. The old container remains active
+    /// for this launch; the ready marker deliberately makes the split store
+    /// selectable only on the next launch, after the HealthKit outbox is safe.
+    func migrateLegacyStore() async {
+        guard !isUITestMode, !storeMigrationStatus.isInProgress,
+              legacyStoreNeedsMigration, let oldContainer = _modelContainer,
+              let settings = _settings else {
+            storeMigrationStatus = .notNeeded
+            return
+        }
+        guard settings.autoSaveHealth else {
+            storeMigrationStatus = .needsHealthAccess
+            return
+        }
+
+        storeMigrationStatus = .migrating
+        let directory = CadenceStore.applicationSupportDirectory()
+        let legacyURL = CadenceStore.legacyStoreURL(in: directory)
+        let urls = CadenceStore.splitStoreURLs(in: directory)
+        let stateURL = directory.appendingPathComponent(StoreMigrationRuntime.stateFileName)
+        let snapshotURL = directory.appendingPathComponent(StoreMigrationRuntime.snapshotFileName)
+        do {
+            guard await health.requestAuthorization() == .authorized else {
+                storeMigrationStatus = .needsHealthAccess
+                return
+            }
+            _ = try StoreMigrationRuntime.migrate(
+                legacyURL: legacyURL, localURL: urls.local, syncURL: urls.sync,
+                stateURL: stateURL, snapshotURL: snapshotURL, cloudKitEnabled: true)
+            let context = ModelContext(oldContainer)
+            _ = try await healthBackup.enqueueMigrationBackfill(from: context)
+            try StoreMigrationRuntime.markHealthBackfillQueued(stateURL: stateURL)
+            storeMigrationStatus = .readyToRestart
+        } catch {
+            storeMigrationStatus = .failed(error.localizedDescription)
         }
     }
 
@@ -357,7 +416,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             return
         }
         cloudKitAccountAvailability = .checking
-        CKContainer(identifier: CadenceStore.cloudKitContainerID).accountStatus { [weak self] status, _ in
+        CKContainer(identifier: CadenceStore.activeCloudKitContainerID()).accountStatus { [weak self] status, _ in
             Task { @MainActor [weak self] in
                 self?.cloudKitAccountAvailability = CloudKitAccountGate.availability(for: status.rawValue)
             }

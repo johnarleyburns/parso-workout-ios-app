@@ -4,6 +4,13 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
+test -s "docs/app-store/featuring-nomination.md"
+test -s "docs/press/press-kit.md"
+if rg -n "private iCloud sync|everything syncs back|syncs back to" docs/app-store/metadata.md >/dev/null; then
+  echo "release-safety: store copy overclaims cloud sync" >&2
+  exit 1
+fi
+
 plist_files=(
   "Cadence/Cadence/Info.plist"
   "Cadence/Cadence/PrivacyInfo.xcprivacy"

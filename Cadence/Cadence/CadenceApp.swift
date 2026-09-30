@@ -46,10 +46,18 @@ struct CadenceApp: App {
                                                          options: [.mixWithOthers])
 
         do {
-            container = try CadenceStore.makeModelContainer(
-                inMemory: uiTest && !persistentUITest,
-                cloudKitEnabled: !persistentUITest,
-                storeURL: uiTestStoreURL)
+            if !uiTest && !persistentUITest {
+                // New installs and completed H5 migrations use the split
+                // local/Sync container. Existing legacy installs stay on the
+                // old container until the user explicitly starts migration
+                // from Backup & Restore, preserving an upgrade-safe path.
+                container = try CadenceStore.makeApplicationModelContainer()
+            } else {
+                container = try CadenceStore.makeModelContainer(
+                    inMemory: uiTest && !persistentUITest,
+                    cloudKitEnabled: !persistentUITest,
+                    storeURL: uiTestStoreURL)
+            }
         } catch {
             // Never delete or replace an on-disk store on a model-container
             // error. The store contains irreplaceable workout history and may

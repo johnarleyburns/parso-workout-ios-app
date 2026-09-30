@@ -33,10 +33,47 @@ struct BackupRestoreCenterView: View {
             if !settings.autoSaveHealth {
                 Section {
                     Label("Apple Health backup is off", systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(CadenceTheme.attention)
                     Text("Your Cladiron history is still available in the app and in the full JSON archive. Turn this on if you want Cladiron-authored workouts copied into Apple Health.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            if model.legacyStoreNeedsMigration {
+                Section("Private store upgrade") {
+                    Text("This device still has Cladiron’s older single iCloud store. Move local workout history and the sync-safe library into separate stores before the legacy format is retired. The old copy is retained for 30 days as a rollback safety net.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    Button {
+                        Task { await model.migrateLegacyStore() }
+                    } label: {
+                        if model.storeMigrationStatus.isInProgress {
+                            HStack { ProgressView(); Text("Preparing private store upgrade…") }
+                        } else {
+                            Label("Upgrade private store", systemImage: "arrow.triangle.2.circlepath.icloud")
+                        }
+                    }
+                    .disabled(model.storeMigrationStatus.isInProgress)
+                    .accessibilityIdentifier("backupCenter.migrateStore")
+
+                    switch model.storeMigrationStatus {
+                    case .needsHealthAccess:
+                        Text("Apple Health backup must be enabled and authorized before Cladiron can migrate this history safely.")
+                            .font(.caption)
+                            .foregroundStyle(CadenceTheme.attention)
+                    case .readyToRestart:
+                        Text("Migration is staged safely. Quit and reopen Cladiron to switch to the new stores.")
+                            .font(.caption)
+                            .foregroundStyle(CadenceTheme.positive)
+                    case .failed(let message):
+                        Text("Migration paused: \(message)")
+                            .font(.caption)
+                            .foregroundStyle(CadenceTheme.attention)
+                    case .notNeeded, .migrating:
+                        EmptyView()
+                    }
                 }
             }
 

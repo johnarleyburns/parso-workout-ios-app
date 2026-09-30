@@ -59,4 +59,14 @@ final class CladironRedesignPresenterTests: XCTestCase {
                                                 isWarmup: false, isPartnerSet: true,
                                                 performerName: "Audrey")?.performerName, "Audrey")
     }
+
+    func testPRTakeoverContainsPreviousAndNewValues() {
+        let event = PREvent(exerciseName: "Bench Press", date: Date(), kind: .weight,
+                            value: 60, reps: 5, weightKg: 60, previous: 57)
+        let takeover = PRMomentPresenter.takeover(for: event, unit: .kilograms)
+        XCTAssertEqual(takeover.exerciseName, "Bench Press")
+        XCTAssertEqual(takeover.newValue, "60 kg")
+        XCTAssertEqual(takeover.previousValue, "57 kg")
+        XCTAssertEqual(takeover.improvement, "+3 kg over previous")
+    }
 }

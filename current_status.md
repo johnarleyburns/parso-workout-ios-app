@@ -2,6 +2,33 @@
 
 Updated: 2026-09-30
 
+## Latest implementation — award-plan audit and H5/C4/release closure (2026-09-30)
+
+This working series audited the active award craft, award polish, and unified
+release plans against the repository and closed the highest-risk repository-owned
+gaps. H5 now has explicit local/sync SwiftData schemas, a separate private
+CloudKit container identifier, a file-backed migration runner, rollback JSON
+snapshot, count verification, 30-day legacy retention, and an explicit purge
+guard. Backup & Restore exposes the migration only when Apple Health backup is
+enabled; all supported HealthKit backfill jobs are queued durably before the
+split-store readiness marker is written, and the app switches stores on the next
+launch. C4 interval cues no longer use a PR haptic for work transitions, and PR
+takeovers now present the new value, previous value, improvement, and rule.
+
+The release story is now internally consistent about private iCloud backup,
+with featuring-nomination and press-kit drafts under `docs/`. The localization
+catalog and Xcode project now include the eight planned locale variants for the
+core award strings, and the local package runner is explicitly one-worker and
+sequential. New H5, split-schema, PR-takeover, and existing FIT/HealthKit tests
+remain headless and light/dark-safe; raw color growth remains below the token
+ratchet.
+
+Remaining release gates are intentionally explicit: native CloudKit Production
+schema deployment, multi-device/HealthKit/Watch field validation, full native
+translation review beyond the seeded core catalog, iPad AX5 review, and final
+App Store Connect submission/featuring work. The repository does not claim those
+external/device outcomes as complete.
+
 ## Active implementation — Full award roadmap
 
 ### Current audit task — H4 HealthKit restore and DB++ 1.17.0

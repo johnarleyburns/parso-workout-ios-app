@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import CadenceCore
 
 /// User-visible outcome of one durable Health backup drain. A queued item is
@@ -40,6 +41,34 @@ final class HealthBackupCoordinator {
             return lastReport
         }
         return await drain()
+    }
+
+    /// Queues every HealthKit-representable row from the legacy store before
+    /// the H5 split-store marker is written. This intentionally does not drain
+    /// yet: the durable outbox must survive the restart that switches the app
+    /// to the new local/sync configurations.
+    func enqueueMigrationBackfill(from context: ModelContext) async throws -> Int {
+        let sessions = try context.fetch(FetchDescriptor<WorkoutSession>())
+        let cardio = try context.fetch(FetchDescriptor<CardioWorkout>())
+        let assessments = try context.fetch(FetchDescriptor<Assessment>())
+        var queued = 0
+
+        for session in sessions {
+            guard let summary = HealthBackupEncoder.strengthSummary(for: session) else { continue }
+            try await outbox.enqueue(HealthOutboxItem(job: .strength(summary)))
+            queued += 1
+        }
+        for workout in cardio {
+            try await outbox.enqueue(HealthOutboxItem(
+                job: .cardio(HealthBackupEncoder.cardioSummary(for: workout))))
+            queued += 1
+        }
+        for assessment in assessments {
+            try await outbox.enqueue(HealthOutboxItem(
+                job: .assessment(HealthBackupEncoder.assessmentPayload(for: assessment))))
+            queued += 1
+        }
+        return queued
     }
 
     func drain() async -> HealthBackupDrainReport {

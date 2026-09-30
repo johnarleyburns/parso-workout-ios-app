@@ -65,9 +65,9 @@ final class IntervalCues {
             TonePlayer.playTick()
         }
         switch kind {
-        case .work: Haptics.prAchieved()
-        case .rest, .cooldown: Haptics.restComplete()
-        case .warmup: Haptics.setLogged()
+        case .work: Haptics.play(.intervalWork)
+        case .rest, .cooldown: Haptics.play(.intervalRest)
+        case .warmup: Haptics.play(.setLogged)
         }
         if spokenEnabled { speak(spokenPhrase(for: kind, label: label)) }
     }
@@ -80,12 +80,12 @@ final class IntervalCues {
             activateSession()
             TonePlayer.playAlert()
         }
-        Haptics.restComplete()
+        Haptics.play(.restEnding)
     }
 
     /// Final-3-seconds tick (haptic only; the bells/beeps carry the audio).
     func countdownTick() {
-        Haptics.setLogged()
+        Haptics.play(.restEnding)
     }
 
     func completed() {
@@ -95,7 +95,7 @@ final class IntervalCues {
             activateSession()
             TonePlayer.playAlert()
         }
-        Haptics.prAchieved()
+        Haptics.play(.dayClosed)
         if spokenEnabled { speak("Workout complete") }
     }
 

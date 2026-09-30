@@ -11,6 +11,7 @@ enum CadenceTheme {
     /// Source-compatible alias while the remaining screens migrate.
     static let link = accent
     static let attention = Color.orange
+    static let positive = Color.green
     static let achievement = Color(red: 0.95, green: 0.66, blue: 0.23)
     static let cardBackground = Color(.secondarySystemBackground)
     static let heroFill = accent.opacity(0.12)

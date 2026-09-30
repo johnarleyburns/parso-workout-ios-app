@@ -12,13 +12,13 @@ build: resolve-dbpp
 # The everyday gate: headless CadenceCore + CadenceFeatures unit tests.
 # No simulator. This is what every phase must keep green.
 test: resolve-dbpp
-	swift test --package-path CadenceCore
+	swift test --package-path CadenceCore --parallel --num-workers 1
 
 test-core: resolve-dbpp
-	swift test --package-path CadenceCore --filter CadenceCoreTests
+	swift test --package-path CadenceCore --parallel --num-workers 1 --filter CadenceCoreTests
 
 test-features: resolve-dbpp
-	swift test --package-path CadenceCore --filter CadenceFeaturesTests
+	swift test --package-path CadenceCore --parallel --num-workers 1 --filter CadenceFeaturesTests
 
 guardrails:
 	bash scripts/check-design-tokens.sh

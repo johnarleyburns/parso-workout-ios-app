@@ -39,6 +39,124 @@ public enum CadenceStore {
         ScheduledWorkout.self
     ])
 
+    /// The H5 boundary. Health-bearing rows remain in an on-device
+    /// configuration; library, roster, plans, and schedule rows are the only
+    /// rows eligible for the new CloudKit container. The two schemas are kept
+    /// explicit so a new @Model cannot silently cross the privacy boundary.
+    public static let localSchema = Schema([
+        WorkoutSession.self,
+        SetEntry.self,
+        CardioWorkout.self,
+        ReadinessEntry.self,
+        HRSample.self,
+        RouteSample.self,
+        Assessment.self
+    ])
+
+    public static let syncSchema = Schema([
+        Exercise.self,
+        SessionTemplate.self,
+        TemplateExercise.self,
+        HRMDevice.self,
+        Person.self,
+        PersistedPlan.self,
+        PersistedPlanHeader.self,
+        PersistedPlanWeek.self,
+        PersistedPlanDay.self,
+        PersistedPlanSession.self,
+        PersistedPlanItem.self,
+        PersistedPlanSet.self,
+        PersistedClientRelationship.self,
+        ExerciseSuggestionExclusion.self,
+        ScheduledWorkout.self
+    ])
+
+    public static let splitCloudKitContainerID = "iCloud.guru.parso.cladiron.sync"
+
+    public static let legacyStoreFileName = "default.store"
+    public static let localStoreFileName = "Local.store"
+    public static let syncStoreFileName = "Sync.store"
+
+    /// The default SwiftData location used by the legacy single-store app.
+    /// Keeping this explicit lets H5 inspect it without opening or deleting an
+    /// unknown path.
+    public static func applicationSupportDirectory(
+        fileManager: FileManager = .default
+    ) -> URL {
+        fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+    }
+
+    public static func legacyStoreURL(
+        in directory: URL = applicationSupportDirectory()
+    ) -> URL { directory.appendingPathComponent(legacyStoreFileName) }
+
+    public static func splitStoreURLs(
+        in directory: URL = applicationSupportDirectory()
+    ) -> (local: URL, sync: URL) {
+        (directory.appendingPathComponent(localStoreFileName),
+         directory.appendingPathComponent(syncStoreFileName))
+    }
+
+    public static func splitStoreReady(
+        in directory: URL = applicationSupportDirectory(),
+        fileManager: FileManager = .default
+    ) -> Bool {
+        let urls = splitStoreURLs(in: directory)
+        return fileManager.fileExists(atPath: directory
+            .appendingPathComponent(StoreMigrationRuntime.readyMarkerFileName).path)
+            && fileManager.fileExists(atPath: urls.local.path)
+            && fileManager.fileExists(atPath: urls.sync.path)
+    }
+
+    /// Uses the split container for new installs and completed H5 migrations;
+    /// existing legacy installs remain on their original container until the
+    /// user explicitly completes the migration in Backup & Restore.
+    public static func makeApplicationModelContainer(
+        cloudKitEnabled: Bool = true,
+        directory: URL = applicationSupportDirectory(),
+        fileManager: FileManager = .default
+    ) throws -> ModelContainer {
+        let legacy = legacyStoreURL(in: directory)
+        let urls = splitStoreURLs(in: directory)
+        let hasLegacy = fileManager.fileExists(atPath: legacy.path)
+        if splitStoreReady(in: directory, fileManager: fileManager) || !hasLegacy {
+            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+            return try makeSplitModelContainer(localURL: urls.local, syncURL: urls.sync,
+                                                cloudKitEnabled: cloudKitEnabled)
+        }
+        return try makeModelContainer(inMemory: false, cloudKitEnabled: cloudKitEnabled)
+    }
+
+    public static func activeCloudKitContainerID(
+        directory: URL = applicationSupportDirectory(),
+        fileManager: FileManager = .default
+    ) -> String {
+        let legacy = legacyStoreURL(in: directory)
+        return splitStoreReady(in: directory, fileManager: fileManager)
+            || !fileManager.fileExists(atPath: legacy.path)
+            ? splitCloudKitContainerID : cloudKitContainerID
+    }
+
+    /// Builds the two-configuration container used by H5 migration and new
+    /// installs after the production schema is deployed. Both URLs are
+    /// caller-owned so tests can use temporary local-only stores and the app
+    /// can retain an old store for the rollback window.
+    public static func makeSplitModelContainer(
+        localURL: URL,
+        syncURL: URL,
+        cloudKitEnabled: Bool = true
+    ) throws -> ModelContainer {
+        let local = ModelConfiguration("local", schema: localSchema, url: localURL,
+                                       cloudKitDatabase: .none)
+        let syncDatabase: ModelConfiguration.CloudKitDatabase = cloudKitEnabled
+            ? .private(splitCloudKitContainerID)
+            : .none
+        let sync = ModelConfiguration("sync", schema: syncSchema, url: syncURL,
+                                      cloudKitDatabase: syncDatabase)
+        return try ModelContainer(for: schema, configurations: [local, sync])
+    }
+
     /// - Parameters:
     ///   - inMemory: pass `true` for previews/tests — that store never touches CloudKit.
     ///   - cloudKitEnabled: pass `false` for the watch app; the phone remains the

@@ -1,5 +1,6 @@
 import UIKit
 import SwiftUI
+import CadenceFeatures
 
 /// Restrained, purposeful haptics (NFR-1). Distinct cues for set logged, new PR,
 /// and rest complete (mirrors FR-8.5 on the watch later).
@@ -18,6 +19,27 @@ enum Haptics {
     }
     static func restComplete() {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
+    static func intervalWork() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+    static func intervalRest() {
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred(intensity: 0.65)
+    }
+    static func countdownWarning() {
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+    }
+
+    static func play(_ cue: CueKind) {
+        switch cue {
+        case .setLogged: setLogged()
+        case .personalBest, .dayClosed: prAchieved()
+        case .restEnding: countdownWarning()
+        case .restDone: restComplete()
+        case .intervalWork: intervalWork()
+        case .intervalRest: intervalRest()
+        case .undo: selection()
+        }
     }
 }
 

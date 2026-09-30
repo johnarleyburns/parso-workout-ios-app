@@ -4,17 +4,45 @@ import CadenceFeatures
 
 extension SessionView {
     func prMomentCard(_ moment: PRMoment) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        let takeover = prEvent.map {
+            PRMomentPresenter.takeover(for: $0, unit: settings.unit,
+                                       performerName: moment.performerName)
+        }
+        return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 Image(systemName: "trophy.fill")
                     .font(.title2)
                     .foregroundStyle(CadenceTheme.achievement)
                     .symbolEffect(.bounce, value: reduceMotion ? 0 : 1)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(moment.headline).font(.headline)
-                    Text(moment.context).font(.subheadline).foregroundStyle(.secondary)
+                    Text(takeover?.headline ?? moment.headline).font(.headline)
+                    Text(takeover?.exerciseName ?? moment.context)
+                        .font(.subheadline).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
+            }
+            if let takeover {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("New").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        Text(takeover.newValue).font(.title2.weight(.bold).monospacedDigit())
+                    }
+                    if let previous = takeover.previousValue {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Previous").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                            Text(previous).font(.subheadline.monospacedDigit())
+                        }
+                    }
+                    Spacer(minLength: 4)
+                    Text(takeover.ruleLabel).font(.caption).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.trailing)
+                }
+                if let improvement = takeover.improvement {
+                    Text(improvement).font(.subheadline.weight(.semibold))
+                        .foregroundStyle(CadenceTheme.achievement)
+                }
+            } else {
+                Text(moment.context).font(.subheadline).foregroundStyle(.secondary)
             }
             HStack(spacing: 10) {
                 if let event = prEvent,

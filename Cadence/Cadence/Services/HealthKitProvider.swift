@@ -327,7 +327,8 @@ final class HealthKitProvider: HealthDataProviding {
             try await builder.beginCollection(at: summary.start)
             var metadata: [String: Any] = [
                 HKMetadataKeySyncIdentifier: summary.id.uuidString,
-                HKMetadataKeySyncVersion: NSNumber(value: CladironHealthBackup.syncVersion(for: summary.end)),
+                HKMetadataKeySyncVersion: NSNumber(value: CladironHealthBackup.syncVersion(for: summary.updatedAt ?? summary.end)),
+                CladironHealthBackup.schemaKey: CladironHealthBackup.schemaVersion,
             ]
             for (key, value) in summary.metadata { metadata[key] = value }
             try await builder.addMetadata(metadata)
@@ -348,6 +349,7 @@ final class HealthKitProvider: HealthDataProviding {
                 }
                 if !samples.isEmpty { try await builder.addSamples(samples) }
             }
+            try await addOwnerSetActivities(to: builder, summary: summary)
             try await builder.endCollection(at: summary.end)
             let workout = try await builder.finishWorkout()
             return workout?.uuid
@@ -367,7 +369,7 @@ final class HealthKitProvider: HealthDataProviding {
             try await builder.beginCollection(at: summary.start)
             var metadata: [String: Any] = [
                 HKMetadataKeySyncIdentifier: summary.id.uuidString,
-                HKMetadataKeySyncVersion: NSNumber(value: CladironHealthBackup.syncVersion(for: summary.end)),
+                HKMetadataKeySyncVersion: NSNumber(value: CladironHealthBackup.syncVersion(for: summary.updatedAt ?? summary.end)),
                 CladironHealthBackup.schemaKey: CladironHealthBackup.schemaVersion,
             ]
             if let title = summary.customTitle, !title.isEmpty {
@@ -407,6 +409,121 @@ final class HealthKitProvider: HealthDataProviding {
         } catch {
             return nil
         }
+    }
+
+    func saveAssessment(_ payload: HealthAssessmentPayload) async -> UUID? {
+        guard isHealthDataAvailable else { return nil }
+        let config = HKWorkoutConfiguration()
+        let kind = AssessmentKind(rawValue: payload.kind)
+        if kind == .cooper12min || kind == .run1_5mile || kind == .rockportWalk || kind == .queensCollegeStep {
+            config.activityType = .running
+        } else if kind == .wingate {
+            config.activityType = .cycling
+        } else if kind == .plankHold || kind == .hollowHold {
+            config.activityType = .coreTraining
+        } else {
+            config.activityType = .functionalStrengthTraining
+        }
+        let end = payload.date.addingTimeInterval(60)
+        let builder = HKWorkoutBuilder(healthStore: store, configuration: config, device: .local())
+        do {
+            try await builder.beginCollection(at: payload.date)
+            var metadata: [String: Any] = [
+                HKMetadataKeySyncIdentifier: payload.id.uuidString,
+                HKMetadataKeySyncVersion: NSNumber(value: CladironHealthBackup.syncVersion(for: payload.updatedAt)),
+                CladironHealthBackup.schemaKey: CladironHealthBackup.schemaVersion,
+                CladironHealthBackup.assessmentIDKey: payload.id.uuidString,
+                CladironHealthBackup.assessmentKindKey: payload.kind,
+                CladironHealthBackup.assessmentValueKey: payload.value
+            ]
+            if let protocolName = payload.protocolName, !protocolName.isEmpty {
+                metadata[CladironHealthBackup.assessmentProtocolKey] = protocolName
+            }
+            if let value = payload.inputDistance { metadata[CladironHealthBackup.assessmentInputDistanceKey] = value }
+            if let value = payload.inputTime { metadata[CladironHealthBackup.assessmentInputTimeKey] = value }
+            if let value = payload.inputEndingHR { metadata[CladironHealthBackup.assessmentInputEndingHRKey] = value }
+            try await builder.addMetadata(metadata)
+            try await builder.endCollection(at: end)
+            return try await builder.finishWorkout()?.uuid
+        } catch {
+            return nil
+        }
+    }
+
+    func deleteHealthBackup(kind: HealthBackupEntityKind, id: UUID) async -> Bool {
+        guard isHealthDataAvailable else { return false }
+        // HealthKit's sync identifier is the only identity this app owns. The
+        // predicate is deliberately constrained to Cladiron-authored objects;
+        // deleting a third-party workout is never attempted.
+        let predicate = HKQuery.predicateForObjects(withMetadataKey: HKMetadataKeySyncIdentifier,
+                                                    allowedValues: [id.uuidString])
+        return await withCheckedContinuation { continuation in
+            store.deleteObjects(of: .workoutType(), predicate: predicate) { success, _, _ in
+                continuation.resume(returning: success)
+            }
+        }
+    }
+
+    /// Stores owner-only sets as HealthKit workout activities. The payload is
+    /// deliberately metadata-only: Health receives the user's own training
+    /// facts, while partner identity and partner loads never cross the app
+    /// boundary. Legacy/edited sets without monotonic timestamps use synthetic
+    /// evenly-spaced intervals, which keeps the payload deterministic.
+    private func addOwnerSetActivities(to builder: HKWorkoutBuilder,
+                                       summary: StrengthWorkoutSummary) async throws {
+        guard let json = summary.metadata[CladironHealthBackup.ownerSetsKey],
+              let data = json.data(using: .utf8),
+              let payloads = try? JSONDecoder().decode([CladironHealthBackup.SetPayload].self, from: data),
+              !payloads.isEmpty else { return }
+
+        let ordered = payloads.sorted { $0.order == $1.order ? $0.id.uuidString < $1.id.uuidString : $0.order < $1.order }
+        let duration = max(1, summary.end.timeIntervalSince(summary.start))
+        let syntheticStep = duration / Double(ordered.count)
+        var previousEnd = summary.start
+        var usedSynthetic = false
+
+        for (index, payload) in ordered.enumerated() {
+            let candidateEnd = payload.completedAt.map { min(summary.end, max(summary.start, $0)) }
+            let validCandidate = candidateEnd.map { $0 > previousEnd } ?? false
+            let end = validCandidate ? candidateEnd! : summary.start.addingTimeInterval(syntheticStep * Double(index + 1))
+            let synthetic = !validCandidate
+            usedSynthetic = usedSynthetic || synthetic
+            let start: Date
+            if synthetic {
+                start = summary.start.addingTimeInterval(syntheticStep * Double(index))
+            } else {
+                start = max(summary.start, end.addingTimeInterval(-90))
+            }
+            let config = HKWorkoutConfiguration()
+            config.activityType = .traditionalStrengthTraining
+            var metadata: [String: Any] = [
+                CladironHealthBackup.schemaKey: CladironHealthBackup.schemaVersion,
+                CladironHealthBackup.setIDKey: payload.id.uuidString,
+                CladironHealthBackup.exerciseKey: payload.exerciseKey,
+                CladironHealthBackup.exerciseNameKey: payload.exerciseName,
+                CladironHealthBackup.orderKey: payload.order,
+                CladironHealthBackup.weightKgKey: payload.weightKg,
+                CladironHealthBackup.repsKey: payload.reps,
+                CladironHealthBackup.warmupKey: payload.isWarmup,
+                CladironHealthBackup.bodyweightKey: payload.usesBodyweight,
+                CladironHealthBackup.barWeightKgKey: payload.barWeightKg,
+                CladironHealthBackup.loadMultiplierKey: payload.loadMultiplier,
+                CladironHealthBackup.timingSyntheticKey: synthetic
+            ]
+            if let rpe = payload.rpe { metadata[CladironHealthBackup.rPEKey] = rpe }
+            if let note = payload.note, !note.isEmpty { metadata[CladironHealthBackup.noteKey] = note }
+            if let mode = payload.loadAccountingMode { metadata[CladironHealthBackup.loadModeKey] = mode }
+            let activity = HKWorkoutActivity(workoutConfiguration: config,
+                                              start: start, end: end,
+                                              metadata: metadata)
+            try await builder.addWorkoutActivity(activity)
+            previousEnd = end
+        }
+
+        // `usedSynthetic` is intentionally not written into the parent object:
+        // each activity carries its own timing provenance and old HealthKit
+        // readers can still decode the parent metadata safely.
+        _ = usedSynthetic
     }
 
     /// Writes a GPS route as an `HKWorkoutRoute` attached to `workout`.

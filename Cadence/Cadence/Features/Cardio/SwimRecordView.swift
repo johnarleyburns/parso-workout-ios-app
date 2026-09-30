@@ -148,15 +148,21 @@ struct SwimRecordView: View {
                                                hrSamples: [], route: [], intensityProfile: profile,
                                                intensitySummary: intensity,
                                                metEstimate: METEstimator.cardio(type: .swim, duration: duration))
-            let hkID = await model.health.saveCardioWorkout(summary)
             if let saved = try? WorkoutRepository.saveSwim(
+                id: summary.id,
                 start: startDate, end: end,
                 laps: laps, targetLaps: targetLaps,
-                healthKitWorkoutUUID: hkID,
+                healthKitWorkoutUUID: nil,
                 intensityProfile: summary.intensityProfile,
                 intensitySummary: summary.intensitySummary,
                 metEstimate: summary.metEstimate,
                 in: context) {
+                let report = await model.healthBackup.enqueueAndDrain(
+                    .cardio(HealthBackupEncoder.cardioSummary(for: saved)))
+                if let hkID = report.savedObjectIDs[saved.id] {
+                    saved.healthKitWorkoutUUID = hkID
+                    try? context.save()
+                }
                 onSaved(saved)
                 finishedSummary = WorkoutSummaryData.from(cardio: saved)
             } else {

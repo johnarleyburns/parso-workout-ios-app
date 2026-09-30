@@ -14,6 +14,7 @@ struct RecordAssessmentView: View {
     @Environment(\.modelContext) var context
     @Environment(\.dismiss) var dismiss
     @Environment(AppSettings.self) var settings
+    @Environment(AppModel.self) private var model
 
     @State var exerciseName = ""
     @State var picking = false
@@ -195,6 +196,8 @@ struct RecordAssessmentView: View {
             inputSex: savedSex)
         context.insert(assessment)
         try? context.save()
+        let backup = HealthBackupEncoder.assessmentPayload(for: assessment)
+        Task { _ = await model.healthBackup.enqueueAndDrain(.assessment(backup)) }
         Haptics.prAchieved()
         dismiss()
     }

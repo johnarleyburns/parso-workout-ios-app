@@ -1194,13 +1194,13 @@ public enum WorkoutRepository {
     /// distance/calorie estimate. `targetLaps` is the goal the user set, `laps`
     /// what they completed.
     @discardableResult
-    public static func saveSwim(start: Date, end: Date, laps: Int, targetLaps: Int?,
+    public static func saveSwim(id: UUID = UUID(), start: Date, end: Date, laps: Int, targetLaps: Int?,
                                 healthKitWorkoutUUID: UUID? = nil,
                                 intensityProfile: CardioIntensityProfile? = nil,
                                 intensitySummary: CardioMinuteSummary? = nil,
                                 metEstimate: METEstimate? = nil,
                                 in context: ModelContext) throws -> CardioWorkout {
-        let c = CardioWorkout(type: .swim, start: start, end: end,
+        let c = CardioWorkout(id: id, type: .swim, start: start, end: end,
                                laps: laps, targetLaps: targetLaps, source: .iphone)
         c.healthKitWorkoutUUID = healthKitWorkoutUUID
         if let profile = intensityProfile {

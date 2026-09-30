@@ -145,7 +145,7 @@ public struct HRSamplePoint: Codable, Equatable, Sendable {
 }
 
 /// Summary of a strength session to write back to HealthKit (FR-4.3).
-public struct StrengthWorkoutSummary: Equatable, Sendable {
+public struct StrengthWorkoutSummary: Codable, Equatable, Sendable {
     public var id: UUID
     public var start: Date
     public var end: Date
@@ -153,19 +153,23 @@ public struct StrengthWorkoutSummary: Equatable, Sendable {
     public var hrSamples: [HRSamplePoint]
     public var avgHR: Double?
     public var maxHR: Double?
+    /// Source-row version used by the HealthKit sync identifier contract. Nil
+    /// keeps legacy callers source-compatible and falls back to `end`.
+    public var updatedAt: Date?
     /// Plain metadata prepared by CadenceCore. The iOS HealthKit adapter turns
     /// it into HealthKit-safe values; partner identities are never included.
     public var metadata: [String: String]
     public init(id: UUID, start: Date, end: Date, activeEnergyKcal: Double? = nil,
                 hrSamples: [HRSamplePoint] = [], avgHR: Double? = nil, maxHR: Double? = nil,
-                metadata: [String: String] = [:]) {
+                metadata: [String: String] = [:], updatedAt: Date? = nil) {
         self.id = id; self.start = start; self.end = end; self.activeEnergyKcal = activeEnergyKcal
-        self.hrSamples = hrSamples; self.avgHR = avgHR; self.maxHR = maxHR; self.metadata = metadata
+        self.hrSamples = hrSamples; self.avgHR = avgHR; self.maxHR = maxHR
+        self.metadata = metadata; self.updatedAt = updatedAt
     }
 }
 
 /// Summary of a recorded cardio workout to write back to HealthKit (FR-2.5).
-public struct CardioWorkoutSummary: Equatable, Sendable {
+public struct CardioWorkoutSummary: Codable, Equatable, Sendable {
     public var id: UUID
     public var type: CardioType
     public var start: Date
@@ -186,6 +190,8 @@ public struct CardioWorkoutSummary: Equatable, Sendable {
     public var intensityProfile: CardioIntensityProfile?
     public var intensitySummary: CardioMinuteSummary?
     public var metEstimate: METEstimate?
+    /// Source-row version used by the HealthKit sync identifier contract.
+    public var updatedAt: Date?
     public init(id: UUID, type: CardioType, start: Date, end: Date,
                 distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
                 hrSamples: [HRSamplePoint] = [], route: [LocationFix] = [],
@@ -194,7 +200,7 @@ public struct CardioWorkoutSummary: Equatable, Sendable {
                 targetDistanceMeters: Double? = nil,
                 intensityProfile: CardioIntensityProfile? = nil,
                 intensitySummary: CardioMinuteSummary? = nil,
-                metEstimate: METEstimate? = nil) {
+                metEstimate: METEstimate? = nil, updatedAt: Date? = nil) {
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.hrSamples = hrSamples; self.route = route
@@ -204,6 +210,7 @@ public struct CardioWorkoutSummary: Equatable, Sendable {
         self.intensityProfile = intensityProfile
         self.intensitySummary = intensitySummary
         self.metEstimate = metEstimate
+        self.updatedAt = updatedAt
     }
 }
 
@@ -225,6 +232,13 @@ public protocol HealthDataProviding: AnyObject {
     func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID?
     /// Write a recorded cardio workout with HR + route (FR-2.5).
     func saveCardioWorkout(_ summary: CardioWorkoutSummary) async -> UUID?
+    /// Write an assessment as a Cladiron-authored HealthKit object when the
+    /// platform supports the assessment's representation. The default keeps
+    /// older fakes and non-HealthKit platforms source-compatible.
+    func saveAssessment(_ payload: HealthAssessmentPayload) async -> UUID?
+    /// Delete a Cladiron-authored HealthKit object by sync identifier. Partner
+    /// and third-party records are never addressed by this API.
+    func deleteHealthBackup(kind: HealthBackupEntityKind, id: UUID) async -> Bool
     /// Passive recovery samples (HRV SDNN, resting HR, sleep hours) for the trailing
     /// `days`, one per calendar day where data exists (revenue Phase 4). On-device
     /// reads only — never egresses, so the Data Not Collected label is unaffected.
@@ -238,6 +252,8 @@ public extension HealthDataProviding {
     /// Default: no passive data (keeps fakes/mocks and older conformers compiling).
     func passiveReadinessSamples(days: Int) async -> [PassiveReadinessSample] { [] }
     func latestVO2Max() async -> Double? { nil }
+    func saveAssessment(_ payload: HealthAssessmentPayload) async -> UUID? { nil }
+    func deleteHealthBackup(kind: HealthBackupEntityKind, id: UUID) async -> Bool { false }
 }
 
 // MARK: - Heart-rate monitor (FR-2.3, FR-4.4)
@@ -302,7 +318,7 @@ public enum HRSource: String, CaseIterable, Codable, Sendable {
 
 // MARK: - Location tracking (FR-2.2)
 
-public struct LocationFix: Equatable, Sendable {
+public struct LocationFix: Codable, Equatable, Sendable {
     public var t: TimeInterval
     public var lat: Double
     public var lon: Double

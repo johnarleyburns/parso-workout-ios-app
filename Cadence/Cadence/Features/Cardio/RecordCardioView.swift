@@ -166,10 +166,15 @@ struct RecordCardioView: View {
             samples: summary.hrSamples, profile: profile)
         summary.metEstimate = METEstimator.cardio(type: summary.type,
                                                    duration: summary.end.timeIntervalSince(summary.start))
-        let hkID = await model.health.saveCardioWorkout(summary)
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
-                                                               healthKitWorkoutUUID: hkID, in: context)
+                                                               healthKitWorkoutUUID: nil, in: context)
         if let saved {
+            let report = await model.healthBackup.enqueueAndDrain(
+                .cardio(HealthBackupEncoder.cardioSummary(for: saved)))
+            if let hkID = report.savedObjectIDs[saved.id] {
+                saved.healthKitWorkoutUUID = hkID
+                try? context.save()
+            }
             onSaved(saved)
             finishedSummary = WorkoutSummaryData.from(cardio: saved)
         } else {

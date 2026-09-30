@@ -74,6 +74,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     }
 
     let health: HealthDataProviding
+    let healthBackup: HealthBackupCoordinator
     let hrm: HeartRateMonitor
     let location: LocationTracker
     let isUITestMode: Bool
@@ -159,6 +160,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         self.isUITestMode = uiTest
 
         #if DEBUG
+        let healthProvider: HealthDataProviding
         if uiTest {
             let fake = FakeHealthProvider()
             fake.authStatus = .authorized
@@ -168,13 +170,15 @@ final class AppModel: NSObject, @unchecked Sendable {
             if args.contains("-noHealthWorkouts") {
                 fake.pendingWorkouts = []
             }
-            self.health = fake
+            healthProvider = fake
         } else {
-            self.health = HealthKitProvider()
+            healthProvider = HealthKitProvider()
         }
         #else
-        self.health = HealthKitProvider()
+        let healthProvider: HealthDataProviding = HealthKitProvider()
         #endif
+        self.health = healthProvider
+        self.healthBackup = HealthBackupCoordinator(health: healthProvider)
 
         self.hrm = HeartRateMonitor(simulated: uiTest)
         self.location = LocationTracker(simulated: uiTest)

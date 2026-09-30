@@ -297,10 +297,16 @@ extension SessionView {
             activeEnergyKcal: kcal, hrSamples: hrSamples,
             avgHR: bpmValues.isEmpty ? nil : bpmValues.reduce(0, +) / Double(bpmValues.count),
             maxHR: bpmValues.max(),
-            metadata: CladironHealthBackup.strengthMetadata(for: session))
-        let hkID = await model.health.saveStrengthWorkout(summary)
-        if let hkID { session.healthKitWorkoutUUID = hkID; try? context.save() }
-        withAnimation { healthSaved = true }
+            metadata: CladironHealthBackup.strengthMetadata(for: session),
+            updatedAt: session.updatedAt)
+        let report = await model.healthBackup.enqueueAndDrain(.strength(summary))
+        if let hkID = report.savedObjectIDs[session.id] {
+            session.healthKitWorkoutUUID = hkID
+            try? context.save()
+            withAnimation { healthSaved = true }
+        } else {
+            withAnimation { healthSaved = false }
+        }
     }
     func finishManualLog() { cleanupEmptyLog(); Haptics.selection(); onDone?() }
 

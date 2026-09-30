@@ -52,7 +52,7 @@ struct HomeWeekDashboardSection: View {
                             .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                     }
                     muscleMapSummary
-                    mostBehind
+                    fillGapsButton
                     volumeDetail
                 }
             }
@@ -99,38 +99,21 @@ struct HomeWeekDashboardSection: View {
         }
     }
 
-    private var mostBehind: some View {
+    private var fillGapsButton: some View {
         let behind = displayedVolumeRows
             .sorted { $0.normalized == $1.normalized
                 ? MuscleGroup.canonicalIndex($0.group) < MuscleGroup.canonicalIndex($1.group)
                 : $0.normalized < $1.normalized }
             .prefix(3)
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Most behind").font(.subheadline.weight(.semibold))
-                Spacer()
-                Text("sets").font(.caption).foregroundStyle(.secondary)
-            }
-            ForEach(Array(behind)) { row in
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack {
-                        Text(row.displayName)
-                        Spacer()
-                        Text("\(row.rangeText)").font(.caption).foregroundStyle(.secondary)
-                    }
-                    ProgressView(value: row.normalized).tint(CadenceTheme.accent)
-                }
-            }
-            NavigationLink {
-                MuscleGroupQuickStartView(missing: behind.map(\.group), onStart: { _ in })
-            } label: {
-                Label("Fill the gaps", systemImage: "plus.circle")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .tint(CadenceTheme.accent)
-            .accessibilityIdentifier("home.week.fillGaps")
+        return NavigationLink {
+            MuscleGroupQuickStartView(missing: behind.map(\.group), onStart: { _ in })
+        } label: {
+            Label("Fill the gaps", systemImage: "plus.circle")
+                .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.bordered)
+        .tint(CadenceTheme.accent)
+        .accessibilityIdentifier("home.week.fillGaps")
     }
 
 

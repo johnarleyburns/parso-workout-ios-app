@@ -135,6 +135,23 @@ final class HealthRestoreContractsTests: XCTestCase {
                                                healthObjectID: legacyID)
         XCTAssertEqual(HealthBackupRestorePlanner.plan(incoming: [legacy], local: [matching]).skipped, 1)
     }
+
+    func testRestorePlannerTurnsHealthDeletionIntoLocalDelete() {
+        let healthID = UUID()
+        let local = HealthRestoreLocalState(kind: .cardioWorkout, id: UUID(),
+                                            updatedAt: start,
+                                            healthObjectID: healthID)
+        let plan = HealthBackupRestorePlanner.plan(
+            incoming: [.deleted(healthObjectID: healthID)], local: [local])
+        XCTAssertEqual(plan.operations.count, 1)
+        XCTAssertEqual(plan.operations.first?.action, .delete)
+    }
+
+    func testUnknownHealthDeletionIsIgnored() {
+        let plan = HealthBackupRestorePlanner.plan(
+            incoming: [.deleted(healthObjectID: UUID())], local: [])
+        XCTAssertEqual(plan.skipped, 1)
+    }
 }
 
 private extension StrengthWorkoutSummary {

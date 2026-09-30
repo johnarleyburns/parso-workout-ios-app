@@ -94,7 +94,7 @@ struct TransparencyCenterView: View {
                     Label("Open iCloud Details & Diagnostics", systemImage: "stethoscope")
                 }
                 NavigationLink {
-                    ExportView()
+                    BackupRestoreCenterView()
                 } label: {
                     Label("Open Backup & Restore", systemImage: "square.and.arrow.up")
                 }

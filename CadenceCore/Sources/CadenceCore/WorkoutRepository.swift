@@ -447,6 +447,7 @@ public enum WorkoutRepository {
         var replaced = 0
         var skipped = 0
         var summariesOnly = 0
+        var deleted = 0
         let sessions = try context.fetch(FetchDescriptor<WorkoutSession>())
         let cardio = try context.fetch(FetchDescriptor<CardioWorkout>())
         let assessments = try context.fetch(FetchDescriptor<Assessment>())
@@ -457,6 +458,24 @@ public enum WorkoutRepository {
                 continue
             }
             switch operation.object {
+            case .deleted(let healthObjectID):
+                let now = Date()
+                var changed = false
+                for session in sessions where session.healthKitWorkoutUUID == healthObjectID {
+                    if session.deletedAt == nil {
+                        session.deletedAt = now
+                        session.updatedAt = now
+                        changed = true
+                    }
+                }
+                for row in cardio where row.healthKitWorkoutUUID == healthObjectID {
+                    if row.deletedAt == nil {
+                        row.deletedAt = now
+                        row.updatedAt = now
+                        changed = true
+                    }
+                }
+                if changed { deleted += 1 } else { skipped += 1 }
             case .strength(let summary, let healthObjectID, _):
                 let existing = sessions.first { $0.id == summary.id }
                 let title = summary.metadata[CladironHealthBackup.titleKey] ?? "Strength workout"
@@ -580,7 +599,8 @@ public enum WorkoutRepository {
         }
         if !plan.operations.isEmpty { try context.save() }
         return HealthRestoreApplyReport(inserted: inserted, replaced: replaced,
-                                        skipped: skipped, summariesOnly: summariesOnly)
+                                        skipped: skipped, summariesOnly: summariesOnly,
+                                        deleted: deleted)
     }
 
     private static func decodeOwnerSets(from metadata: [String: String]) throws -> [CladironHealthBackup.SetPayload] {

@@ -15,6 +15,20 @@ private final class HealthKitLocationAccumulator: @unchecked Sendable {
 final class HealthKitProvider: HealthDataProviding {
     private let store = HKHealthStore()
 
+    /// Anchors are device-local cursors. They deliberately live outside
+    /// SwiftData/CloudKit because a cursor belongs to this HealthKit database
+    /// and must never be mirrored to another device.
+    private let anchorDefaults: UserDefaults
+
+    private enum AnchorKey {
+        static let workouts = "health.restore.workouts.anchor.v1"
+        static let vo2Max = "health.restore.vo2max.anchor.v1"
+    }
+
+    init(anchorDefaults: UserDefaults = .standard) {
+        self.anchorDefaults = anchorDefaults
+    }
+
     var isHealthDataAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
     /// Opens Cladiron on the paired Apple Watch with a workout, using the
@@ -271,6 +285,14 @@ final class HealthKitProvider: HealthDataProviding {
     /// does not expose read authorization state; an empty result is therefore a
     /// valid "none visible" result and is explained by the Backup center.
     func readHealthBackups(since: Date?) async -> [HealthBackupReadObject] {
+        // Restore uses an anchored query after the first successful read. This
+        // picks up late Health-iCloud arrivals without repeatedly scanning the
+        // entire database. The older date path remains for callers that ask
+        // for a bounded historical window (and for compatibility with the
+        // existing ingest surface).
+        if since == nil {
+            return await readAnchoredHealthBackups()
+        }
         let workouts: [HKWorkout] = await withCheckedContinuation { continuation in
             let predicate = since.map { HKQuery.predicateForSamples(withStart: $0, end: nil) }
             let query = HKSampleQuery(sampleType: .workoutType(), predicate: predicate,
@@ -338,6 +360,112 @@ final class HealthKitProvider: HealthDataProviding {
             }
         }
         return result
+    }
+
+    /// Reads only newly delivered HealthKit objects and advances the cursor
+    /// after the query has returned successfully. A failed query leaves the
+    /// prior cursor untouched so the next foreground retry cannot silently
+    /// skip data.
+    private func readAnchoredHealthBackups() async -> [HealthBackupReadObject] {
+        let workoutResult = await anchoredWorkouts()
+        let workouts = workoutResult.objects
+        var result: [HealthBackupReadObject] = []
+        result.append(contentsOf: workoutResult.deleted.map { .deleted(healthObjectID: $0) })
+        for workout in workouts {
+            guard let source = Self.cladironSource(for: workout.sourceRevision) else { continue }
+            let importedKind = Self.importedWorkoutKind(from: workout.workoutActivityType)
+            let kind: HealthWorkoutPayloadKind = importedKind.isStrength ? .strength : .cardio
+            let cardioType = Self.cardioType(from: workout.workoutActivityType)
+            let distance = workout.totalDistance?.doubleValue(for: .meter())
+            let energy = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?
+                .sumQuantity()?.doubleValue(for: .kilocalorie())
+            let metadata = Self.stringMetadata(workout.metadata)
+            let hr = await heartRateSamples(for: workout)
+            let route = kind == .cardio && cardioType.usesGPS
+                ? await routeSamples(for: workout)
+                : []
+            let read = HealthWorkoutReadPayload(
+                healthObjectID: workout.uuid,
+                kind: kind,
+                activityType: importedKind,
+                start: workout.startDate,
+                end: workout.endDate,
+                activeEnergyKcal: energy,
+                distanceMeters: distance,
+                heartRate: hr,
+                route: route,
+                metadata: metadata,
+                source: source)
+            if let decoded = try? HealthBackupDecoder.workout(read) {
+                result.append(decoded)
+            }
+        }
+
+        let vo2Result = await anchoredVO2Samples()
+        let vo2Samples = vo2Result.objects
+        result.append(contentsOf: vo2Result.deleted.map { .deleted(healthObjectID: $0) })
+        for sample in vo2Samples {
+            guard let source = Self.cladironSource(for: sample.sourceRevision) else { continue }
+            let value = sample.quantity.doubleValue(for: HKUnit(from: "mL/kg*min"))
+            let payload = HealthVO2ReadPayload(
+                healthObjectID: sample.uuid,
+                date: sample.startDate,
+                value: value,
+                metadata: Self.stringMetadata(sample.metadata),
+                source: source)
+            if let decoded = try? HealthBackupDecoder.vo2(payload) {
+                result.append(decoded)
+            }
+        }
+        return result
+    }
+
+    private func anchoredWorkouts() async -> (objects: [HKWorkout], deleted: [UUID]) {
+        guard let result = await anchoredObjects(
+            sampleType: .workoutType(),
+            anchor: loadAnchor(forKey: AnchorKey.workouts)) else { return ([], []) }
+        saveAnchor(result.anchor, forKey: AnchorKey.workouts)
+        return (result.objects.compactMap { $0 as? HKWorkout },
+                result.deleted.map(\.uuid))
+    }
+
+    private func anchoredVO2Samples() async -> (objects: [HKQuantitySample], deleted: [UUID]) {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .vo2Max),
+              let result = await anchoredObjects(
+                sampleType: type,
+                anchor: loadAnchor(forKey: AnchorKey.vo2Max)) else { return ([], []) }
+        saveAnchor(result.anchor, forKey: AnchorKey.vo2Max)
+        return (result.objects.compactMap { $0 as? HKQuantitySample },
+                result.deleted.map(\.uuid))
+    }
+
+    private func anchoredObjects(sampleType: HKSampleType,
+                                 anchor: HKQueryAnchor?) async
+        -> (objects: [HKSample], deleted: [HKDeletedObject], anchor: HKQueryAnchor)? {
+        await withCheckedContinuation { continuation in
+            let query = HKAnchoredObjectQuery(type: sampleType,
+                                              predicate: nil,
+                                              anchor: anchor,
+                                              limit: HKObjectQueryNoLimit) { _, samples, deleted, newAnchor, error in
+                guard error == nil, let newAnchor else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: (samples ?? [], deleted ?? [], newAnchor))
+            }
+            store.execute(query)
+        }
+    }
+
+    private func loadAnchor(forKey key: String) -> HKQueryAnchor? {
+        guard let data = anchorDefaults.data(forKey: key) else { return nil }
+        return try? NSKeyedUnarchiver.unarchivedObject(ofClass: HKQueryAnchor.self, from: data)
+    }
+
+    private func saveAnchor(_ anchor: HKQueryAnchor, forKey key: String) {
+        guard let data = try? NSKeyedArchiver.archivedData(withRootObject: anchor,
+                                                            requiringSecureCoding: true) else { return }
+        anchorDefaults.set(data, forKey: key)
     }
 
     private static let cladironPhoneBundleID = "guru.parso.ios-workout-app"

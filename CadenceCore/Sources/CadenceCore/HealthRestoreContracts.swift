@@ -94,6 +94,9 @@ public enum HealthBackupReadObject: Codable, Equatable, Sendable {
     case assessment(payload: HealthAssessmentPayload, healthObjectID: UUID,
                     source: HealthBackupSource)
     case legacySummary(LegacyHealthWorkoutSummary)
+    /// HealthKit reports deletions as UUID-only tombstones. The local state
+    /// lookup supplies the entity kind and preserves the deletion locally.
+    case deleted(healthObjectID: UUID)
 
     public var entityKind: HealthBackupEntityKind {
         switch self {
@@ -101,6 +104,7 @@ public enum HealthBackupReadObject: Codable, Equatable, Sendable {
         case .cardio: return .cardioWorkout
         case .assessment: return .assessment
         case .legacySummary: return .strengthSession
+        case .deleted: return .strengthSession
         }
     }
 
@@ -111,6 +115,7 @@ public enum HealthBackupReadObject: Codable, Equatable, Sendable {
         case .cardio(let summary, _, _): return summary.id
         case .assessment(let payload, _, _): return payload.id
         case .legacySummary(let summary): return summary.healthObjectID
+        case .deleted(let id): return id
         }
     }
 
@@ -120,6 +125,7 @@ public enum HealthBackupReadObject: Codable, Equatable, Sendable {
         case .cardio(_, let id, _): return id
         case .assessment(_, let id, _): return id
         case .legacySummary(let summary): return summary.healthObjectID
+        case .deleted(let id): return id
         }
     }
 
@@ -129,6 +135,7 @@ public enum HealthBackupReadObject: Codable, Equatable, Sendable {
         case .cardio(let summary, _, _): return summary.updatedAt ?? summary.end
         case .assessment(let payload, _, _): return payload.updatedAt
         case .legacySummary(let summary): return summary.end
+        case .deleted: return .distantFuture
         }
     }
 
@@ -138,11 +145,17 @@ public enum HealthBackupReadObject: Codable, Equatable, Sendable {
         case .cardio(_, _, let source): return source
         case .assessment(_, _, let source): return source
         case .legacySummary(let summary): return summary.source
+        case .deleted: return .other
         }
     }
 
     public var isLegacy: Bool {
         if case .legacySummary = self { return true }
+        return false
+    }
+
+    public var isDeletion: Bool {
+        if case .deleted = self { return true }
         return false
     }
 }
@@ -336,6 +349,7 @@ public enum HealthRestoreAction: String, Codable, Equatable, Sendable {
     case replace
     case skip
     case summaryOnly
+    case delete
 }
 
 public struct HealthRestoreOperation: Codable, Equatable, Sendable {
@@ -359,6 +373,7 @@ public struct HealthRestorePlan: Codable, Equatable, Sendable {
     public var replacements: Int { operations.filter { $0.action == .replace }.count }
     public var skipped: Int { operations.filter { $0.action == .skip }.count }
     public var summariesOnly: Int { operations.filter { $0.action == .summaryOnly }.count }
+    public var deletions: Int { operations.filter { $0.action == .delete }.count }
 }
 
 public struct HealthRestoreApplyReport: Equatable, Sendable {
@@ -366,13 +381,15 @@ public struct HealthRestoreApplyReport: Equatable, Sendable {
     public let replaced: Int
     public let skipped: Int
     public let summariesOnly: Int
+    public let deleted: Int
 
     public init(inserted: Int = 0, replaced: Int = 0,
-                skipped: Int = 0, summariesOnly: Int = 0) {
+                skipped: Int = 0, summariesOnly: Int = 0, deleted: Int = 0) {
         self.inserted = inserted
         self.replaced = replaced
         self.skipped = skipped
         self.summariesOnly = summariesOnly
+        self.deleted = deleted
     }
 }
 
@@ -384,7 +401,9 @@ public enum HealthBackupRestorePlanner {
                             local: [HealthRestoreLocalState]) -> HealthRestorePlan {
         var newest: [String: HealthBackupReadObject] = [:]
         for object in incoming {
-            let key = "\(object.entityKind.rawValue):\(object.entityID.uuidString)"
+            let key = object.isDeletion
+                ? "health:\(object.healthObjectID.uuidString)"
+                : "\(object.entityKind.rawValue):\(object.entityID.uuidString)"
             guard let existing = newest[key] else {
                 newest[key] = object
                 continue
@@ -406,6 +425,12 @@ public enum HealthBackupRestorePlanner {
             let key = "\(object.entityKind.rawValue):\(object.entityID.uuidString)"
             let existingByID = localByID[key]
             let existingByHealthID = localByHealthID[object.healthObjectID.uuidString]
+            if object.isDeletion {
+                guard let existing = existingByHealthID, !existing.isDeleted else {
+                    return HealthRestoreOperation(object: object, action: .skip)
+                }
+                return HealthRestoreOperation(object: object, action: .delete)
+            }
             // A legacy summary has no stable Cladiron ID. Once its Health
             // object is linked locally, re-reading it must be idempotent even
             // though the synthetic local session ID is different.

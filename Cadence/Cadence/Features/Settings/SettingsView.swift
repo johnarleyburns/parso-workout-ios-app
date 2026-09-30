@@ -243,7 +243,7 @@ struct SettingsView: View {
                 } label: { Label("Import Workout Log", systemImage: "square.and.arrow.down") }
                     .accessibilityIdentifier("settings.import")
                 NavigationLink {
-                    ExportView()
+                    BackupRestoreCenterView()
                 } label: { Label("Backup & Restore", systemImage: "square.and.arrow.up") }
                     .accessibilityIdentifier("settings.export")
             }

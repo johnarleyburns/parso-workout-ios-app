@@ -45,6 +45,26 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.workoutPreferences")
                 Toggle("Workout sounds", isOn: $settings.workoutSounds)
                     .accessibilityIdentifier("settings.workoutSounds")
+                Picker("Celebrations", selection: $settings.celebrationStyle) {
+                    ForEach(CelebrationStyle.allCases) { style in
+                        Text(style.displayName).tag(style)
+                    }
+                }
+                .accessibilityIdentifier("settings.celebrationStyle")
+                Picker("Rest alerts", selection: $settings.restAlertMode) {
+                    ForEach(RestAlertMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .accessibilityIdentifier("settings.restAlertMode")
+                Toggle("Quick Talk voice logging", isOn: $settings.voiceLoggingEnabled)
+                    .accessibilityIdentifier("settings.voiceLoggingEnabled")
+                Toggle("Require review before voice logging", isOn: $settings.voiceConfirmationRequired)
+                    .disabled(!settings.voiceLoggingEnabled)
+                    .accessibilityIdentifier("settings.voiceConfirmationRequired")
+                Toggle("Smarter understanding (Apple Intelligence)", isOn: $settings.smarterVoiceUnderstanding)
+                    .disabled(!settings.voiceLoggingEnabled)
+                    .accessibilityIdentifier("settings.smarterVoiceUnderstanding")
             }
 
             settingsDisclosure("Health & Sensors", expanded: $healthExpanded,

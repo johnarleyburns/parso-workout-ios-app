@@ -122,14 +122,21 @@ extension SessionView {
             onRepeat: {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 let sets = session.orderedSets.filter { $0.exercise?.id == ex.id }
-                if let last = sets.last(where: {
-                    if let next = nextPerson(for: ex) { return setPerformedBy($0, person: next) }
-                    return $0.isOwnerSet
-                }) ?? sets.last {
-                    addSet(to: ex, weightKg: last.weight, reps: last.reps, rpe: last.rpe,
-                           isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight,
-                           note: nil, performedBy: nextPerson(for: ex))
-                }
+                // In a partner workout, the interleaved pending queue is the
+                // source of truth for whose turn it is. Never fall back to a
+                // different performer's last set: that silently copies the
+                // owner's set onto a partner when the partner has not logged
+                // this exercise yet.
+                let fallbackPerformerID = nextPerson(for: ex).flatMap { $0.isMe ? nil : $0.id }
+                let performerID = SetAlternation.performerForRepeat(
+                    pendingSets: ctx.pendingSets,
+                    fallbackPerformerID: fallbackPerformerID)
+                guard let last = sets.last(where: {
+                    setPerformedBy($0, performerID: performerID)
+                }) else { return }
+                addSet(to: ex, weightKg: last.weight, reps: last.reps, rpe: last.rpe,
+                       isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight,
+                       note: nil, performedBy: people(for: performerID))
             },
             onAddSet: {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }

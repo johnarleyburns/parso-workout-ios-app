@@ -46,4 +46,13 @@ final class ExpandedSetDraftModelTests: XCTestCase {
         XCTAssertNotNil(model.submit())
         XCTAssertNil(model.submit())
     }
+
+    func testUntouchedDirectWeightIsBlankButExplicitZeroIsVisible() {
+        XCTAssertEqual(ExpandedSetDraftModel.displayWeightText(
+            0, hasExplicitEntry: false, bodyweight: false), "")
+        XCTAssertEqual(ExpandedSetDraftModel.displayWeightText(
+            0, hasExplicitEntry: true, bodyweight: false), "0")
+        XCTAssertEqual(ExpandedSetDraftModel.displayWeightText(
+            0, hasExplicitEntry: false, bodyweight: true), "0")
+    }
 }

@@ -83,10 +83,6 @@ struct WorkoutHero: View {
             }
             .foregroundStyle(.white)
             .padding(compact ? 8 : 12)
-            .cadenceGlassIfAvailable(
-                in: RoundedRectangle(cornerRadius: 14, style: .continuous),
-                interactive: true)
-            .padding(2)
         }
         .frame(maxWidth: .infinity,
                minHeight: compact ? 0 : 120,

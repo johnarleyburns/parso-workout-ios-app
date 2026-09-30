@@ -185,10 +185,10 @@ struct HomeView: View {
         let target = dashboard.volume.filter(\.isTracked).reduce(0.0) { total, _ in total + 12 }
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(
             dayKey: Self.dayString(),
-            planTitle: todayScheduled?.title ?? "Posterior chain + core",
+            planTitle: todayScheduled?.title ?? "Recovery day",
             sessionTitles: todayScheduled.map { [$0.title] } ?? [],
             readinessLabel: todayReadiness.map { ReadinessCheckInPresenter.summary(for: $0) },
-            estimatedMinutes: 45,
+            estimatedMinutes: nil,
             setsCompleted: dashboard.volume.reduce(0) { $0 + $1.sets },
             setsTarget: target,
             cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,

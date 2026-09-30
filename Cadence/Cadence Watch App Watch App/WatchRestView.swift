@@ -44,6 +44,7 @@ struct WatchRestView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("watchRest.nextSet")
+                .handGestureShortcut(.primaryAction)
             }
             Spacer()
         }

@@ -37,6 +37,15 @@ struct RestTimerBar: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("rest.bar")
         .accessibilityLabel("Rest timer, \(model.remaining) seconds remaining")
+        .accessibilityValue(Format.clock(model.remaining))
+        .accessibilityAction(named: "Add 30 seconds") {
+            model.add(30)
+            onChange(model.endsAt)
+        }
+        .accessibilityAction(named: "Skip rest") {
+            model.skip()
+            onChange(nil)
+        }
         .confirmationDialog("Skip rest?", isPresented: $showSkipConfirmation, titleVisibility: .visible) {
             Button("Skip", role: .destructive) { model.skip(); onChange(nil) }
             Button("Cancel", role: .cancel) {}

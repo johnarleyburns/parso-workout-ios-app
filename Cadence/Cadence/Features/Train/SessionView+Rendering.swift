@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 import CadenceCore
 import CadenceFeatures
 
@@ -20,8 +21,12 @@ extension SessionView {
             }
             if rest.isRunning {
                 RestTimerBar(model: rest,
-                             onComplete: { Haptics.restComplete() },
-                             onChange: { active.restEndsAt = $0 })
+                             onComplete: {
+                                 Haptics.restComplete()
+                                 UIAccessibility.post(notification: .announcement,
+                                                      argument: "Rest complete. Ready for the next set.")
+                             },
+                             onChange: { syncRestAlarm(to: $0) })
             }
             if let plan { planBanner(plan) }
             partnerBar
@@ -47,29 +52,32 @@ extension SessionView {
                 plannedCard(name)
             }
 
-            CadenceActionButton(title: "Add Exercise",
-                                systemImage: "plus.circle.fill",
-                                emphasis: .secondary) {
-                pickerPresented = true
-            }
-            .accessibilityIdentifier("session.addExercise")
-
-            suggestExerciseButton
-
-            if active.strengthSession?.id == session.id {
-                WorkoutControlBar(
-                    isPaused: active.isPaused,
-                    onPauseToggle: togglePause,
-                    onEnd: endWorkout,
-                    onCoolDown: { coolDownConfirm = true },
-                    confirmMessage: "This finishes and saves your workout."
-                )
-            } else if isManualLog {
-                CadenceActionButton(title: "Done", systemImage: "checkmark") {
-                    finishManualLog()
+            VStack(alignment: .leading, spacing: 16) {
+                CadenceActionButton(title: "Add Exercise",
+                                    systemImage: "plus.circle.fill",
+                                    emphasis: .secondary) {
+                    pickerPresented = true
                 }
-                .accessibilityIdentifier("log.done")
+                .accessibilityIdentifier("session.addExercise")
+
+                suggestExerciseButton
+
+                if active.strengthSession?.id == session.id {
+                    WorkoutControlBar(
+                        isPaused: active.isPaused,
+                        onPauseToggle: togglePause,
+                        onEnd: endWorkout,
+                        onCoolDown: { coolDownConfirm = true },
+                        confirmMessage: "This finishes and saves your workout."
+                    )
+                } else if isManualLog {
+                    CadenceActionButton(title: "Done", systemImage: "checkmark") {
+                        finishManualLog()
+                    }
+                    .accessibilityIdentifier("log.done")
+                }
             }
+            .padding(.top, 8)
         }
         .padding(CGFloat(LayoutMetrics.pagePadding))
 
@@ -155,6 +163,19 @@ extension SessionView {
                 }
                 openInlineEditor(for: exercise)
             }
+        }
+        .sheet(isPresented: $voiceLoggingPresented) {
+            VoiceLoggingSheet(
+                currentExercise: cache.state.contexts.first(where: { !$0.pendingSets.isEmpty })
+                    .flatMap { exerciseForID($0.exerciseID) }?.name,
+                exercises: session.exercisesInOrder.map(\.name),
+                performers: roster.map(\.name),
+                activePerformer: voicePerformerWasProvided
+                    ? (voicePerformerID.flatMap(people(for:))?.name ?? "Me") : nil,
+                unit: settings.unit,
+                bodyweight: cache.state.contexts.first(where: { !$0.pendingSets.isEmpty })
+                    .flatMap { exerciseForID($0.exerciseID) }.map(isBodyweight) ?? false,
+                onAction: applyVoiceAction)
         }
         .sheet(item: $suggestExerciseRequest) { request in
             SuggestExerciseView(request: request,

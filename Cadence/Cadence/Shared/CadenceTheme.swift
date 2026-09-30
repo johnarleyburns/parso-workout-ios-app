@@ -5,10 +5,13 @@ import CadenceFeatures
 /// here makes it difficult for a screen to invent a one-off card or action
 /// color and gives light/dark mode the same hierarchy.
 enum CadenceTheme {
-    static let accent = Color.green
-    static let link = Color.cyan
+    /// AccentColor contains light, dark, and high-contrast variants. Using the
+    /// named color keeps system controls and custom surfaces in sync.
+    static let accent = Color("AccentColor")
+    /// Source-compatible alias while the remaining screens migrate.
+    static let link = accent
     static let attention = Color.orange
-    static let achievement = Color.yellow
+    static let achievement = Color(red: 0.95, green: 0.66, blue: 0.23)
     static let cardBackground = Color(.secondarySystemBackground)
     static let heroFill = accent.opacity(0.12)
     static let heroStroke = accent.opacity(0.25)

@@ -75,7 +75,9 @@ extension SessionView {
             ? (editingSet?.performedBy?.isMe ?? true ? nil : editingSet?.performedBy?.id)
             : (pendingPerformerWasProvided
                 ? pendingPerformerID
-                : nextPerson(for: exercise).flatMap { $0.isMe ? nil : $0.id })
+                : (voicePerformerWasProvided
+                   ? voicePerformerID
+                   : nextPerson(for: exercise).flatMap { $0.isMe ? nil : $0.id }))
 
         let defaults = performerDefaults(for: exercise)
         let own = defaults.first { $0.performerID == performerID }
@@ -166,7 +168,9 @@ extension SessionView {
     func logPendingSet(_ pending: SessionRenderModel.PendingSetDisplay, for exercise: Exercise) {
         let defaultWeight = performerDefaults(for: exercise)
             .first { $0.performerID == pending.performerID }?.weightKg
-        let weightKg = pending.targetWeightKg ?? defaultWeight ?? session.prescribedLoadKg
+        let weightKg = (pending.targetWeightKg ?? defaultWeight ?? session.prescribedLoadKg)
+            + voiceWeightAdjustmentKg
+        voiceWeightAdjustmentKg = 0
         addSet(to: exercise, weightKg: max(0, weightKg), reps: pending.targetReps,
                rpe: nil, isWarmup: pending.kind == .warmup,
                usesBodyweight: isBodyweight(exercise), note: nil,

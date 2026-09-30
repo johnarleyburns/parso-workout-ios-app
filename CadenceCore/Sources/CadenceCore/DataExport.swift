@@ -323,7 +323,7 @@ public struct ExportAssessment: Codable, Equatable, Sendable {
     }
 }
 
-/// All app/user preferences for a lossless round-trip (v4). The coach's *learned*
+/// All app/user preferences for a lossless round-trip (v5). The coach's *learned*
 /// profile travels in `CadenceExport.coachPreferences`; this carries the rest.
 public struct ExportPreferences: Codable, Equatable, Sendable {
     public var unit: String?
@@ -345,6 +345,12 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
     public var autoSaveHealth: Bool?
     public var autoEndOnIdle: Bool?
     public var workoutSounds: Bool?
+    public var celebrationStyle: String?
+    public var voiceLoggingEnabled: Bool?
+    public var voiceConfirmationRequired: Bool?
+    public var voiceLanguage: String?
+    public var smarterVoiceUnderstanding: Bool?
+    public var restAlertMode: String?
     public var preWorkoutCountdown: Int?
     public var trainingGoal: String?
     public var experienceLevel: String?
@@ -372,6 +378,9 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
                 idleTimeoutMinutes: Int? = nil, gpsHighAccuracy: Bool? = nil, autoPause: Bool? = nil,
                 intervalColorBlind: Bool? = nil, spokenCues: Bool? = nil, plateRounding: Bool? = nil,
                 autoSaveHealth: Bool? = nil, autoEndOnIdle: Bool? = nil, workoutSounds: Bool? = nil,
+                celebrationStyle: String? = nil, voiceLoggingEnabled: Bool? = nil,
+                voiceConfirmationRequired: Bool? = nil, voiceLanguage: String? = nil,
+                smarterVoiceUnderstanding: Bool? = nil, restAlertMode: String? = nil,
                 preWorkoutCountdown: Int? = nil, trainingGoal: String? = nil, experienceLevel: String? = nil,
                 preferredWorkoutStyle: String? = nil,
                 useHRMonitoring: Bool? = nil, recoveryAwareCoachV2: Bool? = nil,
@@ -388,6 +397,9 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
         self.gpsHighAccuracy = gpsHighAccuracy; self.autoPause = autoPause
         self.intervalColorBlind = intervalColorBlind; self.spokenCues = spokenCues; self.plateRounding = plateRounding
         self.autoSaveHealth = autoSaveHealth; self.autoEndOnIdle = autoEndOnIdle; self.workoutSounds = workoutSounds
+        self.celebrationStyle = celebrationStyle; self.voiceLoggingEnabled = voiceLoggingEnabled
+        self.voiceConfirmationRequired = voiceConfirmationRequired; self.voiceLanguage = voiceLanguage
+        self.smarterVoiceUnderstanding = smarterVoiceUnderstanding; self.restAlertMode = restAlertMode
         self.preWorkoutCountdown = preWorkoutCountdown; self.trainingGoal = trainingGoal
         self.experienceLevel = experienceLevel; self.useHRMonitoring = useHRMonitoring
         self.preferredWorkoutStyle = preferredWorkoutStyle

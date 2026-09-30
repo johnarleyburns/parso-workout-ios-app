@@ -202,6 +202,16 @@ public enum SessionRenderModel {
         /// no pending rows the field is `nil` and callers fall back to rotation.
         public var nextPerformerID: UUID? { pendingSets.first?.performerID }
 
+        /// The first row in the interleaved pending list is the actionable row.
+        /// A partner's set index is local to that performer, so comparing it to
+        /// the exercise-wide completed count can hide the quick-log affordance.
+        public func isCurrentPending(_ pending: PendingSetDisplay) -> Bool {
+            if let first = pendingSets.first {
+                return first.id == pending.id
+            }
+            return pending.setIndex == sets.filter { !$0.isWarmup }.count
+        }
+
         public init(exerciseID: UUID, name: String, sets: [SetDisplay],
                     pendingCount: Int, pendingReps: [Int],
                     performerContexts: [PerformerContext],

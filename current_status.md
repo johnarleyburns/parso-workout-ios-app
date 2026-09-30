@@ -1,6 +1,17 @@
 # Current Status
 
-Updated: 2026-09-28
+Updated: 2026-09-29
+
+## Active implementation — Full award roadmap
+
+The user authorized implementing the complete award craft and award polish
+roadmap. This pass productizes the core C1–C5 and P2/P3/P5 slices: launch/icon
+cleanup, Today completion/duration behavior, semantic light/dark colors, cue
+policy, accessibility actions/announcements, phone Quick Talk voice logging,
+Watch double-tap affordances, and AlarmKit rest-alert plumbing. Existing
+partner logging, exact-weight, FIT/HealthKit, and sequential-build changes
+remain preserved. Remaining device-only and release-artifact work is called out
+explicitly in the audit below.
 
 ## ACTIVE PLAN — Unified Cladiron release program (2026-09-28)
 
@@ -13,10 +24,71 @@ restore on a new iPhone; this resolves Guideline 5.1.3(ii)). The sequence is
 G0 gate, then steps 1–23 ending in release R. Decided: award-polish D1–D15,
 award-craft D1–D9 (D8 = design for iPad), D10 direction → H stream. **Open:**
 H1–H10, U1 (first-run shape vs award-polish D13), U2 (interim public
-release?), U3 (sequential vs two lanes), award-polish D16. No app code changed.
-**Immediate next task:** G0. Answer the open decisions, send the App Review
-5.1.3(ii) question, commission the icon, run the P0 SDK check and the H0 device
-spikes S1–S8. Then step 1 = H1 (JSON v8 whole-DB export/import).
+release?), U3 (sequential vs two lanes), award-polish D16. The repository now
+contains the implemented app slices and guardrails; device/release-only
+decisions remain documented for the release phase rather than being represented
+as shipped runtime behavior.
+
+## Latest implementation — Partner-aware set logging and field audit (2026-09-29)
+
+The partner workout logging path now treats the first interleaved pending row as
+the actionable row, so Quick Log appears for the next uncompleted partner set
+instead of comparing a partner's local set index with the combined session
+count. Repeat is performer-scoped: it copies the selected partner's most recent
+set and never falls back to Me's set when that partner has not logged the
+exercise yet. These behaviors have focused regression coverage.
+
+Untouched direct weights now render blank rather than prefilled `0` (an explicit
+zero remains visible), and exact historical loads are used as starting values
+without plate rounding. Estimated loads may still use the existing fallback
+rounding. The cardio hero no longer applies the dark translucent text treatment,
+and the bottom session controls now have consistent vertical spacing.
+
+The local workflow is documented and enforced as sequential for iPhone and Watch
+builds/tests in `CLAUDE.md` and the Makefile. The full SwiftPM suite passed
+1,929 tests before the final multi-partner regression case was added; the
+focused SetAlternation suite now passes 16 tests. Generic iOS and Watch builds
+passed with signing disabled; and the repository guardrails passed. Xcode still
+reports the known deployment-target
+warning (project target 27.0 versus the installed SDK's 26.5 maximum).
+
+### Audio logging audit
+
+Phone Quick Talk is now implemented: microphone and Speech framework capture,
+the command grammar/parser, exercise/partner resolution, review-before-apply,
+and live transcript UI are wired into the active strength session. The
+implementation is intentionally opt-in and never silently logs an ambiguous
+command. Permission copy is in `Cadence/Info.plist` and the settings/export
+surface carries the voice preferences.
+
+Watch audio capture and locked-screen `AudioRecordingIntent` remain open because
+they require a separate watch microphone UX and device validation. The planned
+P4 system-surface migration also still needs Live Activity tap intents/buttons,
+the Talk control, Spotlight entity indexing, and background-safe execution.
+
+### Award-plan audit after latest pass
+
+Closed in code: C1 launch/icon cleanup; C2 named accent palette and design-token
+guardrail; C3 Today done state and duration estimator; C4 cue-policy tests plus
+set/PR/rest VoiceOver announcements; C5 custom set/rest accessibility actions;
+P2/P3a phone voice capture/parser/resolver; P5 watchOS 11 target, double-tap
+primary actions, pure rest planner, and AlarmKit adapter; plus the requested
+light/dark AccentColor variants. The Live Activity renderer now has explicit
+high-contrast foreground content so a black background cannot hide its values.
+
+Still requiring implementation or real-device review: the four-screen onboarding
+rewrite and first-set coach mark (C6), full P4 Live Activity/Control Center/
+Spotlight/locked Talk controls, optional Foundation Models fallback (P6),
+eight-locale UI/voice localization (L3), full signature-moment choreography,
+iPad/device AX5 verification, and the store-story/submission artifacts. These
+are recorded explicitly rather than marked complete without the corresponding
+runtime behavior.
+
+Latest verification for this pass: the complete package suite passed 1,949
+tests with zero failures; all guardrails passed; and generic iPhone followed by
+standalone Watch builds passed sequentially with signing disabled. The final
+commit, push, remote CI check, and cache cleanup are the remaining release-gate
+actions.
 
 ## Latest implementation — Today row audit, DB++ 1.17.0, FIT, and HealthKit portability (2026-09-28)
 

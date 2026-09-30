@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 import CadenceCore
 import CadenceFeatures
 
@@ -28,6 +29,13 @@ extension SessionView {
         }
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 12) {
+                if active.strengthSession?.id == session.id {
+                    Button { voiceLoggingPresented = true } label: {
+                        Image(systemName: "mic")
+                    }
+                    .accessibilityIdentifier("session.quickTalk")
+                    .accessibilityLabel("Quick Talk voice logging")
+                }
                 if let plan {
                     NavigationLink {
                         RoutineDetailView(plan: plan, onEditorStart: { _ in })
@@ -64,6 +72,75 @@ extension SessionView {
                 .accessibilityIdentifier("session.saveHealth")
                 .accessibilityLabel(healthSaved ? "Saved to Apple Health" : "Save workout to Apple Health")
             }
+        }
+    }
+
+    func applyVoiceAction(_ action: VoiceResolvedAction) {
+        recordActivity()
+        switch action {
+        case .logSet(let exercise, let weightKg, let reps, let rpe, let warmup, let performer):
+            guard let ex = session.exercisesInOrder.first(where: {
+                $0.name.caseInsensitiveCompare(exercise.name) == .orderedSame
+            }) else { return }
+            addSet(to: ex, weightKg: max(0, weightKg ?? 0), reps: reps, rpe: rpe,
+                   isWarmup: warmup, usesBodyweight: isBodyweight(ex), note: nil,
+                   performedBy: performer.isOwner ? nil : allPeople.first {
+                       !$0.isMe && $0.name.caseInsensitiveCompare(performer.name) == .orderedSame
+                   })
+        case .repeatLastSet(let exercise, let performer, let adjustKg):
+            guard let ex = session.exercisesInOrder.first(where: {
+                $0.name.caseInsensitiveCompare(exercise.name) == .orderedSame
+            }) else { return }
+            let performerID = performer.isOwner ? nil : allPeople.first {
+                !$0.isMe && $0.name.caseInsensitiveCompare(performer.name) == .orderedSame
+            }?.id
+            guard let last = session.orderedSets.last(where: { setPerformedBy($0, performerID: performerID) && $0.exercise?.id == ex.id }) else { return }
+            addSet(to: ex, weightKg: max(0, last.weight + (adjustKg ?? 0)), reps: last.reps,
+                   rpe: last.rpe, isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight,
+                   note: nil, performedBy: performer.isOwner ? nil : people(for: performerID))
+        case .adjustNext(_, let deltaKg):
+            voiceWeightAdjustmentKg += deltaKg
+        case .addExercise(let name):
+            guard let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) else { return }
+            if !session.plannedExerciseNames.contains(where: { $0.caseInsensitiveCompare(ex.name) == .orderedSame }) {
+                session.plannedExerciseNames.append(ex.name)
+                try? context.save()
+            }
+            openInlineEditor(for: ex)
+        case .switchExercise(let name):
+            guard let currentContext = cache.state.contexts.first,
+                  let current = exerciseForID(currentContext.exerciseID),
+                  let replacement = try? WorkoutRepository.findOrCreateExercise(named: name, in: context),
+                  current.id != replacement.id else { return }
+            _ = try? WorkoutRepository.changeExercise(in: session, from: current, to: replacement, in: context)
+            recordActivity()
+        case .setPerformer(let performer):
+            voicePerformerWasProvided = true
+            voicePerformerID = performer.isOwner ? nil : allPeople.first {
+                !$0.isMe && $0.name.caseInsensitiveCompare(performer.name) == .orderedSame
+            }?.id
+        case .addPartner(let name):
+            guard let person = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) else { return }
+            var ids = explicitRosterIDs()
+            if !ids.contains(person.id.uuidString) { ids.append(person.id.uuidString) }
+            session.activePartnerIDs = normalizedRosterIDs(ids)
+            try? context.save()
+        case .rest(let seconds):
+            rest.start(seconds: seconds ?? settings.restSeconds)
+            active.restEndsAt = rest.endsAt
+            syncRestAlarm(to: rest.endsAt)
+        case .skipRest:
+            rest.skip()
+            active.restEndsAt = nil
+            syncRestAlarm(to: nil)
+        case .pause: active.pause(origin: .manual)
+        case .resume: active.resume()
+        case .undo:
+            guard let last = session.orderedSets.last else { return }
+            try? WorkoutRepository.deleteSet(last, in: context)
+            try? context.save()
+        case .startWorkout, .finishWorkout:
+            break
         }
     }
     @ViewBuilder
@@ -186,6 +263,7 @@ extension SessionView {
     }
     func endWorkout() {
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
+        RestAlarmCoordinator.shared.cancel()
         model.stopWatchWorkout()
         if settings.autoSaveHealth, session.healthKitWorkoutUUID == nil, !session.orderedSets.isEmpty {
             Task { await saveToHealth() }
@@ -295,75 +373,4 @@ extension SessionView {
         try? context.save()
     }
 
-    func addSet(to exercise: Exercise, weightKg: Double, reps: Int,
-                        rpe: Double?, isWarmup: Bool, usesBodyweight: Bool = false,
-                        note: String?, performedBy: Person? = nil) {
-        recordActivity()
-        let person = (performedBy?.isMe ?? true) ? nil : performedBy
-        let priorOwnerSamples = (exercise.sets ?? [])
-            .filter { $0.session?.id != session.id && $0.isOwnerSet }
-            .map { SetSample.from($0) }
-        let priorPR = PRCalculator.best(priorOwnerSamples, rule: settings.prRule,
-                                        formula: settings.formula)
-        let priorPRSample = PRCalculator.bestSample(priorOwnerSamples, rule: settings.prRule,
-                                                    formula: settings.formula)
-        let isPR = person == nil && WorkoutRepository.wouldBePR(exercise: exercise, weightKg: weightKg, reps: reps,
-                                               isWarmup: isWarmup, rule: settings.prRule, formula: settings.formula)
-        let when = session.isLogged ? session.date : Date()
-        if let _ = try? WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: weightKg,
-                                                 reps: reps, rpe: rpe, isWarmup: isWarmup,
-                                                 usesBodyweight: usesBodyweight, note: note,
-                                                 completedAt: when, performedBy: person, in: context) {
-            postVolumeChange(date: when,
-                             delta: isWarmup || person != nil ? [:] : exercise.volumeCredits)
-            refreshLiveVolume()
-        }
-        if isPR {
-            Haptics.prAchieved()
-            let sample = SetSample(weight: weightKg, reps: reps, date: when, isWarmup: isWarmup)
-            let metric = PRCalculator.metric(sample, rule: settings.prRule, formula: settings.formula)
-            let loadText = Format.weight(weightKg, unit: settings.unit)
-            let changeText: String = {
-                guard let priorPR else { return "first \(settings.prRule.displayName.lowercased()) PR" }
-                let delta = metric - priorPR
-                let weeks = priorPRSample.map {
-                    max(1, Int(ceil(max(0, when.timeIntervalSince($0.date)) / 604_800)))
-                } ?? 1
-                return "up \(Format.weight(abs(delta), unit: settings.unit)) in \(weeks) weeks"
-            }()
-            prMoment = PRMomentPresenter.moment(
-                exercise: exercise.name,
-                loadText: loadText,
-                changeText: changeText,
-                isNewPR: true,
-                isWarmup: isWarmup,
-                isPartnerSet: person != nil,
-                performerName: person?.name)
-            prEvent = PREvent(exerciseName: exercise.name, date: when,
-                              kind: PRKind(rule: settings.prRule), value: metric,
-                              reps: reps, weightKg: weightKg, previous: priorPR)
-        } else {
-            Haptics.setLogged()
-        }
-        if active.strengthSession?.id == session.id {
-            let exercises = session.exercisesInOrder
-            if let currentIndex = exercises.firstIndex(where: { $0.id == exercise.id }),
-               exercises.indices.contains(currentIndex + 1) {
-                active.nextExercise = exercises[currentIndex + 1].name
-            } else {
-                active.nextExercise = nil
-            }
-        }
-        if settings.autoStartRest && !isWarmup && !isManualLog && active.strengthSession?.id == session.id {
-            rest.start(seconds: settings.restSeconds)
-            active.restEndsAt = rest.endsAt
-        }
-    }
-
-    func postVolumeChange(date: Date, delta: [MuscleGroup: Double]) {
-        guard !delta.isEmpty else { return }
-        NotificationCenter.default.post(
-            name: .workoutVolumeChanged,
-            object: WorkoutVolumeChange(sessionID: session.id, date: date, delta: delta))
-    }
 }

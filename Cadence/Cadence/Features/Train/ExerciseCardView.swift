@@ -74,8 +74,6 @@ struct ExerciseCardView: View {
         }
     }
 
-    // MARK: - Header
-
     private var headerRow: some View {
         HStack {
             Button(action: onToggleExpansion) {
@@ -139,8 +137,6 @@ struct ExerciseCardView: View {
         }
     }
 
-    // MARK: - Context lines
-
     @ViewBuilder
     private var contextLines: some View {
         if !context.performerContexts.isEmpty {
@@ -186,8 +182,6 @@ struct ExerciseCardView: View {
         }
     }
 
-    // MARK: - Column header
-
     private var setColumnHeader: some View {
         HStack(spacing: SetCol.gap) {
             Text(hasPartners ? "WHO" : "Set")
@@ -205,8 +199,6 @@ struct ExerciseCardView: View {
         .lineLimit(1).minimumScaleFactor(0.5)
         .padding(.horizontal, 2)
     }
-
-    // MARK: - Set rows
 
     @ViewBuilder
     private func completedSetRow(_ set: SessionRenderModel.SetDisplay) -> some View {
@@ -272,6 +264,9 @@ struct ExerciseCardView: View {
         .contextMenu { setRowMenu(set) }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("set.row.\(context.name).\(number)")
+        .accessibilityAction(named: "Edit set") { onTapSet(set) }
+        .accessibilityAction(named: "Repeat set") { onRepeat() }
+        .accessibilityAction(named: "Delete set") { setToDelete = set }
     }
 
     @ViewBuilder
@@ -295,8 +290,7 @@ struct ExerciseCardView: View {
     }
 
     private func pendingRow(pending: SessionRenderModel.PendingSetDisplay) -> some View {
-        let firstPendingIndex = context.sets.filter { !$0.isWarmup }.count
-        let isCurrentPending = pending.setIndex == firstPendingIndex
+        let isCurrentPending = context.isCurrentPending(pending)
         return HStack(spacing: SetCol.gap) {
             Button { onTapPending(pending) } label: {
                 HStack(spacing: SetCol.gap) {
@@ -322,6 +316,9 @@ struct ExerciseCardView: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.pending.\(context.name).\(pending.setIndex + 1)")
+            .accessibilityLabel("\(pending.targetReps) reps, \(pending.kind.displayName)")
+            .accessibilityHint(isCurrentPending ? "This is the next set. Double tap to edit." : "Double tap to edit this planned set.")
+            .accessibilityAction(named: "Edit set") { onTapPending(pending) }
 
             if isCurrentPending {
                 Button("Log") { onLogPending(pending) }
@@ -329,6 +326,8 @@ struct ExerciseCardView: View {
                     .tint(CadenceTheme.accent)
                     .controlSize(.small)
                     .accessibilityIdentifier("session.set.log.\(context.name).\(pending.setIndex + 1)")
+                    .accessibilityHint("Logs the next uncompleted set.")
+                    .accessibilityAction(named: "Log set") { onLogPending(pending) }
             }
         }
         .padding(.vertical, 2)

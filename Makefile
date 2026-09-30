@@ -1,3 +1,5 @@
+.NOTPARALLEL:
+
 .PHONY: resolve-dbpp build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform check-release-safety smoke ipad-smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
 
 resolve-dbpp:
@@ -19,6 +21,7 @@ test-features: resolve-dbpp
 	swift test --package-path CadenceCore --filter CadenceFeaturesTests
 
 guardrails:
+	bash scripts/check-design-tokens.sh
 	bash scripts/check-test-pyramid.sh
 	bash scripts/check-no-network.sh
 	bash scripts/check-citations-sync.sh
@@ -128,7 +131,9 @@ shutdown-sims:
 	fi
 
 # Full regression suite (opt-in, not part of the commit gate): SwiftPM suite +
-# iPhone, iPad planning, and watch UI smoke.
+# iPhone, iPad planning, and watch UI smoke. `.NOTPARALLEL` is intentional:
+# the iPhone and Watch builds share Xcode/DerivedData resources and must never
+# overlap on a developer machine.
 all-tests: test smoke ipad-smoke watch-smoke
 
 # CI-equivalent host gate without simulators.

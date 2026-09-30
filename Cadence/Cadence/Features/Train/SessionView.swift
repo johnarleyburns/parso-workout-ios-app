@@ -38,6 +38,10 @@ struct SessionView: View {
     @AppStorage("dumbbellInfoShown") var dumbbellInfoShown = false
     @AppStorage("kettlebellInfoShown") var kettlebellInfoShown = false
     @State var showDeleteConfirm = false
+    @State var voiceLoggingPresented = false
+    @State var voicePerformerID: UUID?
+    @State var voicePerformerWasProvided = false
+    @State var voiceWeightAdjustmentKg: Double = 0
     @State var healthSaved = false
     @Query(sort: \Person.name) var allPeople: [Person]
     @State var addPartnerPresented = false

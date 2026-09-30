@@ -5,7 +5,7 @@ let package = Package(
     name: "CadenceCore",
     platforms: [
         .iOS(.v17),
-        .watchOS(.v10),
+        .watchOS(.v11),
         .macOS(.v14)
     ],
     products: [

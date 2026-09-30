@@ -126,9 +126,10 @@ public enum PerformerSetPlanner {
     ///  7. `defaultReps`.
     ///
     /// Weight, in order: the explicit plan's weight → the owner's planned load →
-    /// the previous set in this session → historical estimation → their own
-    /// prior-session working weight. A partner NEVER inherits the owner's load
-    /// (decision **D13**).
+    /// the previous set in this session → an exact historical rep match → the
+    /// performer's actual prior-session working weight → an estimated fallback.
+    /// Actual history is never rounded when it becomes a new workout's starting
+    /// point. A partner NEVER inherits the owner's load (decision **D13**).
     public static func resolve(setIndex: Int,
                                performerPlan: [PlannedSetPrescription]?,
                                ownerPlan: [PlannedSetPrescription],
@@ -157,12 +158,21 @@ public enum PerformerSetPlanner {
                              ownerLadder: isOwner ? ownerLadder : nil,
                              history: history),
             history: history.weightSamples,
-            formula: formula) {
+            formula: formula), suggestion.basis == .exactRepMatch {
             weight = suggestion.weightKg
-            weightBasis = suggestion.basis == .exactRepMatch ? .exactHistory : .estimatedHistory
+            weightBasis = .exactHistory
         } else if let prior = history.firstWorkingWeightKg, prior > 0 {
             weight = prior
             weightBasis = .priorHistory
+        } else if let suggestion = WeightSuggestion.suggest(
+            targetReps: reps(setIndex: setIndex, planned: planned,
+                             ownerPlanned: ownerPlanned,
+                             ownerLadder: isOwner ? ownerLadder : nil,
+                             history: history),
+            history: history.weightSamples,
+            formula: formula) {
+            weight = suggestion.weightKg
+            weightBasis = .estimatedHistory
         } else {
             weight = nil
             weightBasis = .none

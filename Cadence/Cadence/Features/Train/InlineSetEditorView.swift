@@ -17,6 +17,7 @@ struct InlineSetEditorView: View {
     @State private var draft: ExpandedSetDraftModel
     @State private var increment: Double
     @State private var typedWeight: String
+    @State private var hasExplicitWeightEntry: Bool
     @State private var keypadPresented = false
     @State private var keypadError: String?
     @State private var deletePresented = false
@@ -37,12 +38,14 @@ struct InlineSetEditorView: View {
                                                             effortMode: config.effortMode))
         _increment = State(initialValue: config.unit == .pounds ? 5 : 2.5)
         _typedWeight = State(initialValue: config.weight)
+        _hasExplicitWeightEntry = State(initialValue: !config.weight.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         _performerID = State(initialValue: config.performerID)
     }
 
     private var weightText: String {
-        let value = draft.weight
-        return value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value).replacingOccurrences(of: "0+$", with: "", options: .regularExpression)
+        ExpandedSetDraftModel.displayWeightText(draft.weight,
+                                                hasExplicitEntry: hasExplicitWeightEntry,
+                                                bodyweight: config.bodyweight)
     }
     private var effortValues: [Double] { Array(1...10).map(Double.init) }
     private var effortDescription: String {
@@ -183,8 +186,8 @@ struct InlineSetEditorView: View {
                     .frame(maxWidth: .infinity)
             }.buttonStyle(.plain).accessibilityIdentifier("setEditor.weightValue").accessibilityValue("\(weightText) \(config.unit.abbreviation)")
             HStack(spacing: 10) {
-                adjustmentButton("− \(display(increment)) \(config.unit.abbreviation)") { draft.adjustWeight(by: -increment); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.minus")
-                adjustmentButton("+ \(display(increment)) \(config.unit.abbreviation)") { draft.adjustWeight(by: increment); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.plus")
+                adjustmentButton("− \(display(increment)) \(config.unit.abbreviation)") { hasExplicitWeightEntry = true; draft.adjustWeight(by: -increment); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.minus")
+                adjustmentButton("+ \(display(increment)) \(config.unit.abbreviation)") { hasExplicitWeightEntry = true; draft.adjustWeight(by: increment); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.plus")
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -269,6 +272,6 @@ struct InlineSetEditorView: View {
     private func incrementLabel(_ value: Double) -> String { "\(value >= 10 ? "+" : "±")\(display(value))" }
 
     private var keypad: some View {
-        NavigationStack { VStack(spacing: 12) { TextField("Weight", text: $typedWeight).keyboardType(.decimalPad).font(.largeTitle.monospacedDigit()).multilineTextAlignment(.center).textFieldStyle(.roundedBorder).padding(); if let keypadError { Text(keypadError).font(.caption).foregroundStyle(.red) }; ForEach([["1","2","3"],["4","5","6"],["7","8","9"],[".","0","⌫"]], id: \.self) { row in HStack { ForEach(row, id: \.self) { key in Button(key) { if key == "⌫" { if !typedWeight.isEmpty { typedWeight.removeLast() } } else if key == "." && !typedWeight.contains(".") { typedWeight += "." } else if key != "." { typedWeight += key } }.font(.title).frame(maxWidth: .infinity, minHeight: 56).buttonStyle(.bordered) } } }; Spacer() }.padding().navigationTitle(config.bodyweight ? "Enter added weight" : "Enter weight").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { if let value = Double(typedWeight), value.isFinite { draft.setWeight(value); keypadError = nil; keypadPresented = false } else { keypadError = "Enter a valid number" } } } } }
+        NavigationStack { VStack(spacing: 12) { TextField("Weight", text: $typedWeight).keyboardType(.decimalPad).font(.largeTitle.monospacedDigit()).multilineTextAlignment(.center).textFieldStyle(.roundedBorder).padding(); if let keypadError { Text(keypadError).font(.caption).foregroundStyle(CadenceTheme.attention) }; ForEach([["1","2","3"],["4","5","6"],["7","8","9"],[".","0","⌫"]], id: \.self) { row in HStack { ForEach(row, id: \.self) { key in Button(key) { if key == "⌫" { if !typedWeight.isEmpty { typedWeight.removeLast() } } else if key == "." && !typedWeight.contains(".") { typedWeight += "." } else if key != "." { typedWeight += key } }.font(.title).frame(maxWidth: .infinity, minHeight: 56).buttonStyle(.bordered) } } }; Spacer() }.padding().navigationTitle(config.bodyweight ? "Enter added weight" : "Enter weight").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { if let value = Double(typedWeight), value.isFinite { hasExplicitWeightEntry = true; draft.setWeight(value); keypadError = nil; keypadPresented = false } else { keypadError = "Enter a valid number" } } } } }
     }
 }

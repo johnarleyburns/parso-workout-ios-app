@@ -40,10 +40,7 @@ extension HomeView {
             plan?.exercises.prefix(5).map {
                 TodayHero.Line(name: $0.name,
                                detail: "\($0.sets.count) × \($0.sets.first?.targetReps ?? 0)")
-            } ?? dashboard.volume.filter(\.isTracked).prefix(3).map {
-                TodayHero.Line(name: $0.displayName,
-                               detail: "\(WeeklySetProgress.formattedSets($0.sets)) sets")
-            }
+            } ?? []
         }
         let deficits = dashboard.volume.filter { $0.isTracked && $0.sets < 12 }
             .sorted { $0.sets < $1.sets }
@@ -51,27 +48,58 @@ extension HomeView {
             .map { "\($0.displayName.lowercased()) \(WeeklySetProgress.formattedSets($0.sets)) / 12" }
         let reason = deficits.isEmpty ? "Why today: keep your weekly strength habit moving." :
             "Why today: \(deficits.joined(separator: " and ")) sets this week."
-        let suggested = TodayHero(kind: .suggested,
-                                  title: todaySuggestedPlan?.title ?? "Posterior chain + core",
-                                  estimatedMinutes: 45,
-                                  exercises: heroLines(todaySuggestedPlan), reason: reason,
-                                  citationIDs: SuggestedWorkoutPresenter.citationIDs)
+        let suggested = todaySuggestedPlan.map { plan in
+            TodayHero(kind: .suggested, title: plan.title,
+                      estimatedMinutes: WorkoutDurationEstimator.estimate(
+                          plan: plan, history: sessions)?.minutes,
+                      exercises: heroLines(plan), reason: reason,
+                      citationIDs: SuggestedWorkoutPresenter.citationIDs)
+        }
         let scheduled = todayScheduled.map {
-            TodayHero(kind: .scheduled, title: $0.title, estimatedMinutes: 45,
+            TodayHero(kind: .scheduled, title: $0.title,
+                      estimatedMinutes: WorkoutDurationEstimator.estimate(
+                          plan: scheduledPlan, history: sessions)?.minutes,
                       exercises: heroLines(scheduledPlan), reason: nil)
         }
         let inProgress = activeSession.map {
             TodayHero(kind: .inProgress,
                       title: $0.title.isEmpty ? "Resume your workout" : $0.title,
-                      estimatedMinutes: 45, exercises: heroLines(EditablePlan.from(session: $0)),
+                      estimatedMinutes: Int(max(0, $0.duration) / 60),
+                      exercises: heroLines(EditablePlan.from(session: $0)),
                       reason: nil)
         }
+        let today = Calendar.current.startOfDay(for: Date())
+        let completedToday = sessions
+            .filter { session in
+                session.deletedAt == nil && session.endedAt != nil && session.hasSets
+                    && Calendar.current.isDate(session.endedAt ?? session.date, inSameDayAs: today)
+            }
+            .sorted { ($0.endedAt ?? $0.date) > ($1.endedAt ?? $1.date) }
+            .first
+        let nextScheduled = scheduledWorkouts
+            .filter { $0.isVisible && $0.scheduledDate >= today && !Calendar.current.isDateInToday($0.scheduledDate) }
+            .sorted { $0.scheduledDate < $1.scheduledDate }
+            .first
+        let completedSummary = completedToday.map {
+            DaySummary(title: $0.title.isEmpty ? "Workout complete" : $0.title,
+                       setCount: $0.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet }.count,
+                       volumeKg: $0.totalVolume,
+                       durationMinutes: $0.duration > 0 ? Int(($0.duration / 60).rounded()) : nil,
+                       nextSessionTitle: nextScheduled?.title,
+                       nextSessionDate: nextScheduled?.scheduledDate)
+        }
+        let remainingScheduledToday = scheduledWorkouts.filter {
+            Calendar.current.isDateInToday($0.scheduledDate) && $0.isVisible
+        }.count
         let hero = TodayHeroPresenter.hero(inProgress: inProgress, scheduled: scheduled,
                                            suggested: suggested,
-                                           completedWorkoutCount: sessions.filter { $0.hasSets && $0.deletedAt == nil }.count)
+                                           completedWorkoutCount: sessions.filter { $0.hasSets && $0.deletedAt == nil }.count,
+                                           completedToday: completedSummary,
+                                           remainingScheduledToday: remainingScheduledToday)
         let tag: String = switch hero.kind {
         case .inProgress: "In progress"
         case .scheduled: "Scheduled for you"
+        case .doneToday: "Done for today"
         case .needsHistory: "Build your history"
         case .restDay: "Recovery day"
         case .suggested: "Suggested for you"
@@ -80,6 +108,8 @@ extension HomeView {
                                  estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,
                                  rationale: todaySuggestedPlan?.recommendationRationale,
                                  citationIDs: hero.citationIDs,
+                                 summary: hero.summary,
+                                 unit: settings.unit,
                                  onStart: {
                                      if activeSession != nil {
                                          if let activeSession,
@@ -94,7 +124,13 @@ extension HomeView {
                                      }
                                  },
                                  onEdit: { openTodaySuggestion() },
-                                 onChooseAnother: { selectWorkoutPresented = true })
+                                 onChooseAnother: { selectWorkoutPresented = true },
+                                 onViewSummary: {
+                                     if let row = workoutsTodayRows.first(where: { $0.modality == .strength }) {
+                                         openTodayWorkout(row)
+                                     }
+                                 },
+                                 onAddSomething: { selectWorkoutPresented = true })
     }
 
     var dashboardWeekContent: some View {

@@ -28,6 +28,10 @@
 	<string>Cladiron connects to a Bluetooth chest strap to record accurate heart rate during workouts.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Cladiron uses your location to map and measure outdoor runs and rides recorded on your iPhone.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Cladiron uses the microphone only when you choose Quick Talk to log a workout hands-free.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Cladiron transcribes your spoken workout command so you can review it before anything is logged.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSSupportsLiveActivities</key>

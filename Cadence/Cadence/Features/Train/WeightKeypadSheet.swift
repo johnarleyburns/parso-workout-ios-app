@@ -70,7 +70,7 @@ struct WeightKeypadSheet: View {
     private var weightKg: Double { WorkoutMath.canonical(parse(entry) ?? 0, from: unit) }
     private var displayWeight: String {
         if !entry.isEmpty { return entry }
-        return usesBodyweight ? "BW" : "0"
+        return usesBodyweight ? "BW" : ""
     }
     /// Opposite-unit read-out, auto-converted; "—" until a positive weight is typed.
     private var altText: String {

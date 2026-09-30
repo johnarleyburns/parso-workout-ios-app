@@ -57,4 +57,14 @@ public enum SetAlternation {
         }
         return pendingSets.first?.performerID ?? (rosterOrder.first ?? nil)
     }
+
+    /// Chooses whose last set the Repeat action should copy. A pending row is
+    /// authoritative even after the exercise has started; otherwise the repeat
+    /// action can copy Me's load onto a partner who has not logged yet.
+    public static func performerForRepeat(
+        pendingSets: [SessionRenderModel.PendingSetDisplay],
+        fallbackPerformerID: UUID?
+    ) -> UUID? {
+        pendingSets.first?.performerID ?? fallbackPerformerID
+    }
 }

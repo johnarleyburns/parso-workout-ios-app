@@ -216,17 +216,22 @@ struct CadenceWorkoutLiveActivity: Widget {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(context.state.restEndsAt == nil ? context.attributes.workoutTitle : "Rest")
                         .font(.headline)
+                        .foregroundStyle(.white)
                     if let end = context.state.restEndsAt {
                         Text(timerInterval: Date()...end, countsDown: true)
                             .font(.title2.weight(.bold)).monospacedDigit()
+                            .foregroundStyle(.white)
                     } else {
                         Text(Format.duration(TimeInterval(context.state.elapsedSeconds)))
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(.white.opacity(0.78))
                     }
                 }
                 Spacer()
                 if let next = context.state.nextExercise {
-                    Text(next).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("Next").font(.caption2).foregroundStyle(.white.opacity(0.7))
+                        Text(next).font(.caption).foregroundStyle(.white).lineLimit(1)
+                    }
                 }
             }
             .padding()

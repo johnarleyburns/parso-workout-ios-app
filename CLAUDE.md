@@ -71,7 +71,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 - **Live cloud sync** via SwiftData↔CloudKit mirroring to the user's own **private** CloudKit database (no third-party server); JSON export/import remains for portability.
 - **CoreBluetooth** (chest-strap HRM `0x180D`; cardio-machine FTMS `0x1826`)
 - **CoreLocation** (geofence + iPhone GPS), **CoreMotion** (activity class), **Swift Charts** (trends)
-- Targets: watchOS 10+, iOS 27+
+- Targets: watchOS 11+, iOS 27+
 
 ## Architecture (decisions already made — don't re-litigate without asking)
 - **`CadenceCore` Swift package** holds the data model, Smart Start ranking, PR logic, and the export/import layer. Both app targets depend on it. Write logging logic ONCE here; it's headlessly testable with `swift test`.
@@ -83,6 +83,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 - Core package: `cd CadenceCore && swift build` / `swift test`
 - App: open `Cadence.xcodeproj`; schemes are **Cadence** (iOS) and **Cadence Watch App**. The `.xcodeproj` is committed (created in Xcode, not generated).
 - CLI build: `bash scripts/xcodebuild-safe.sh -project Cadence/Cadence.xcodeproj -scheme Cadence -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build`; use destination-based builds only — never pass a global `-sdk` override because the scheme embeds the Watch target.
+- Local iPhone and Watch builds/tests must run sequentially, never concurrently. The Watch target shares Xcode/DerivedData resources with the iPhone target; use the repository Makefile runner (which is non-parallel) or finish the iPhone build before starting the Watch build.
 - Real-device runs are required to test HealthKit — the simulator has no real Health data.
 - **Do not boot or run any simulator, UI smoke suite, or simulator-based Xcode test unless the user explicitly requests it in the current task.** This includes `make smoke`, `make ipad-smoke`, `make watch-smoke`, and `make all-tests`. Prefer the headless package tests, destination-based generic builds, and non-simulator guardrails by default.
 - Git hooks (installed via `scripts/install-git-hooks.sh`): **pre-commit** runs only `swift test --package-path CadenceCore` and never boots a simulator; **pre-push** runs no tests.

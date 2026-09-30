@@ -12,7 +12,6 @@ struct RootTabView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: Tab = .home
-    @State private var showSplash = true
     @State private var watchSyncToast: WatchSyncToast?
     /// UI-test seam backing the `-uiTestWatchStop` counter: `AppModel` writes
     /// each `stopWatchWorkout()` call to this UserDefaults key, and the hidden
@@ -31,12 +30,6 @@ struct RootTabView: View {
                 set: { presented in if !presented { settings.hasCompletedOnboarding = true } }
             )) {
                 OnboardingView()
-            }
-
-            if showSplash && settings.hasCompletedOnboarding {
-                SplashView(isPresented: $showSplash)
-                    .zIndex(10)
-                    .transition(.opacity)
             }
 
             // Explicit Watch action results use one non-layout-affecting host.

@@ -137,6 +137,19 @@ final class PerformerSetPlannerTests: XCTestCase {
                        15.08, accuracy: 0.001)
     }
 
+    func testPriorHistoricalWeightIsExactStartingPointWhenTargetRepsDiffer() {
+        let history = PerformerSetPlanner.History(
+            firstWorkingWeightKg: 57,
+            weightSamples: [SetSample(weight: 57, reps: 5)])
+        let resolved = PerformerSetPlanner.resolve(
+            setIndex: 0, performerPlan: plan([8]), ownerPlan: [], ownerLadder: nil,
+            isOwner: false, history: history)
+
+        XCTAssertEqual(resolved.weightBasis, .priorHistory)
+        XCTAssertEqual(resolved.weightKg, 57,
+                       "A real historical load must not be replaced by an estimated or rounded load")
+    }
+
     // MARK: - Within-session continuation
 
     func testLaterSetsFollowWhatWasAlreadyLoggedToday() {

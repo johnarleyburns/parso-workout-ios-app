@@ -71,6 +71,7 @@ struct WatchSetKeypadView: View {
                 .tint(.green)
                 .disabled(isLoggingSet || isLoggingLastSet)
                 .accessibilityIdentifier("logSetButton")
+                .handGestureShortcut(.primaryAction)
 
                 Button {
                     logSet(last: true)

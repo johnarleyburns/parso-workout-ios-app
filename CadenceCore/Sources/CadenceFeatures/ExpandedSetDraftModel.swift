@@ -34,6 +34,19 @@ public struct ExpandedSetDraftModel: Equatable, Sendable {
 
     public var canonicalWeightKg: Double { WorkoutMath.canonical(weight, from: unit) }
 
+    /// Formats the editor's weight display without treating an untouched empty
+    /// field as a typed numeric zero. An explicit zero remains valid, as does
+    /// the bodyweight added-load default.
+    public static func displayWeightText(_ value: Double,
+                                         hasExplicitEntry: Bool,
+                                         bodyweight: Bool) -> String {
+        if !bodyweight && !hasExplicitEntry && value == 0 { return "" }
+        return value == value.rounded()
+            ? String(Int(value))
+            : String(format: "%.2f", value)
+                .replacingOccurrences(of: "0+$", with: "", options: .regularExpression)
+    }
+
     public mutating func adjustWeight(by amount: Double) {
         weight = Self.clampWeight(weight + amount)
     }

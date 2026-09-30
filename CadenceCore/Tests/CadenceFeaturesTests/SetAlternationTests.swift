@@ -146,4 +146,43 @@ final class SetAlternationTests: XCTestCase {
             pendingSets: [], rosterOrder: [], lastLoggedPerformerID: nil,
             hasLoggedWorkingSet: true))
     }
+
+    func testCurrentPendingUsesInterleavedFirstRowNotPerformerSetIndex() {
+        let partner = UUID()
+        let completed = SessionRenderModel.SetDisplay(
+            setID: UUID(), weight: 57, reps: 8, rpe: nil, isWarmup: false,
+            usesBodyweight: false, isOwnerSet: true, performedBy: nil,
+            isAllTimePR: false)
+        let partnerPending = pending(partner, 0)
+        let ownerPending = pending(nil, 1)
+        let context = SessionRenderModel.ExerciseContext(
+            exerciseID: UUID(), name: "Cable Row", sets: [completed],
+            pendingCount: 2, pendingReps: [], performerContexts: [],
+            pendingSets: [partnerPending, ownerPending], hasPlannedWork: true)
+
+        XCTAssertTrue(context.isCurrentPending(partnerPending))
+        XCTAssertFalse(context.isCurrentPending(ownerPending))
+    }
+
+    func testRepeatTargetsTheFirstPendingPartnerInsteadOfOwnersLastSet() {
+        let partner = UUID()
+        let partnerPending = pending(partner, 0)
+
+        XCTAssertEqual(SetAlternation.performerForRepeat(
+            pendingSets: [partnerPending], fallbackPerformerID: nil), partner)
+        XCTAssertNil(SetAlternation.performerForRepeat(
+            pendingSets: [], fallbackPerformerID: nil))
+    }
+
+    func testRepeatTracksEachPartnerInTheInterleavedQueue() {
+        let firstPartner = UUID()
+        let secondPartner = UUID()
+        let first = pending(firstPartner, 0)
+        let second = pending(secondPartner, 0)
+
+        XCTAssertEqual(SetAlternation.performerForRepeat(
+            pendingSets: [first, second], fallbackPerformerID: nil), firstPartner)
+        XCTAssertEqual(SetAlternation.performerForRepeat(
+            pendingSets: [second], fallbackPerformerID: firstPartner), secondPartner)
+    }
 }

@@ -227,11 +227,6 @@ struct AboutView: View {
     private var disclaimer: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Image Credits").font(.title3.bold())
-            Text("Splash image: \"Fitness exercise\" by Robertgombos, licensed under CC BY-SA 4.0.")
-                .font(.footnote).foregroundStyle(.secondary)
-            Link("View on Wikimedia Commons",
-                 destination: URL(string: "https://commons.wikimedia.org/wiki/File:Fitness_exercise.jpg")!)
-                .font(.footnote)
             Text("Coach illustrations: VideoPlasty, licensed under CC BY-SA 4.0. Used unchanged from Wikimedia Commons.")
                 .font(.footnote).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 4) {

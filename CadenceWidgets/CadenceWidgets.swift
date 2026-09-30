@@ -227,13 +227,29 @@ struct CadenceWorkoutLiveActivity: Widget {
                     }
                 }
                 Spacer()
-                if let next = context.state.nextExercise {
+                if let next = context.state.nextSetSummary ?? context.state.nextExercise {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("Next").font(.caption2).foregroundStyle(.white.opacity(0.7))
                         Text(next).font(.caption).foregroundStyle(.white).lineLimit(1)
                     }
                 }
             }
+            HStack(spacing: 8) {
+                if context.state.restEndsAt != nil {
+                    Button(intent: AddRestFromLiveActivityIntent()) {
+                        Label("+30s", systemImage: "plus")
+                    }
+                    Button(intent: SkipRestFromLiveActivityIntent()) {
+                        Label("Skip", systemImage: "forward.fill")
+                    }
+                }
+                if context.state.nextSetSummary != nil || context.state.nextExercise != nil {
+                    Button(intent: LogPlannedSetFromLiveActivityIntent(token: context.state.nextSetToken)) {
+                        Label("Log", systemImage: "checkmark")
+                    }
+                }
+            }
+            .font(.caption.weight(.semibold))
             .padding()
             .widgetURL(URL(string: "cladiron://workout"))
             .activityBackgroundTint(.black)
@@ -249,8 +265,18 @@ struct CadenceWorkoutLiveActivity: Widget {
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text(context.state.nextExercise ?? context.attributes.workoutTitle)
-                        .lineLimit(1)
+                    HStack {
+                        Text(context.state.nextSetSummary ?? context.state.nextExercise ?? context.attributes.workoutTitle)
+                            .lineLimit(1)
+                        Spacer()
+                        if context.state.restEndsAt != nil {
+                            Button(intent: AddRestFromLiveActivityIntent()) { Image(systemName: "plus") }
+                            Button(intent: SkipRestFromLiveActivityIntent()) { Image(systemName: "forward.fill") }
+                        }
+                        Button(intent: LogPlannedSetFromLiveActivityIntent(token: context.state.nextSetToken)) {
+                            Image(systemName: "checkmark")
+                        }
+                    }
                 }
             } compactLeading: {
                 Image(systemName: "timer").foregroundStyle(.green)
@@ -264,6 +290,54 @@ struct CadenceWorkoutLiveActivity: Widget {
                 Image(systemName: "timer").foregroundStyle(.green)
             }
         }
+    }
+}
+
+struct LogPlannedSetFromLiveActivityIntent: LiveActivityIntent {
+    static let title: LocalizedStringResource = "Log planned set"
+    @Parameter(title: "Pending set token")
+    var token: String?
+
+    init() {
+        token = nil
+    }
+
+    init(token: String? = nil) {
+        self.token = token
+    }
+
+    func perform() throws -> some IntentResult {
+        CadencePlatformRequestStore.requestLiveActivity(.logPlannedSet, token: token)
+        return .result()
+    }
+}
+
+struct AddRestFromLiveActivityIntent: LiveActivityIntent {
+    static let title: LocalizedStringResource = "Add 30 seconds"
+
+    func perform() throws -> some IntentResult {
+        CadencePlatformRequestStore.requestLiveActivity(.addRest)
+        return .result()
+    }
+}
+
+struct SkipRestFromLiveActivityIntent: LiveActivityIntent {
+    static let title: LocalizedStringResource = "Skip rest"
+
+    func perform() throws -> some IntentResult {
+        CadencePlatformRequestStore.requestLiveActivity(.skipRest)
+        return .result()
+    }
+}
+
+struct WidgetTalkIntent: AppIntent {
+    static let title: LocalizedStringResource = "Talk to log a set"
+    static let description = IntentDescription("Open Quick Talk in the active workout.")
+    static var openAppWhenRun: Bool { true }
+
+    func perform() async throws -> some IntentResult {
+        CadencePlatformRequestStore.requestQuickTalk()
+        return .result()
     }
 }
 
@@ -281,6 +355,34 @@ struct CadenceStartControl: ControlWidget {
     }
 }
 
+@available(iOS 18.0, *)
+struct CadenceLogSetControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "CadenceLogSetControl") {
+            ControlWidgetButton(action: LogPlannedSetFromLiveActivityIntent()) {
+                Label("Log set", systemImage: "checkmark.circle")
+            }
+            .tint(.green)
+        }
+        .displayName("Log set")
+        .description("Log the next planned set in an active workout.")
+    }
+}
+
+@available(iOS 18.0, *)
+struct CadenceTalkControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "CadenceTalkControl") {
+            ControlWidgetButton(action: WidgetTalkIntent()) {
+                Label("Talk", systemImage: "mic.fill")
+            }
+            .tint(.green)
+        }
+        .displayName("Talk to log")
+        .description("Open Quick Talk for hands-free logging.")
+    }
+}
+
 @main
 struct CadenceWidgets: WidgetBundle {
     var body: some Widget {
@@ -289,6 +391,8 @@ struct CadenceWidgets: WidgetBundle {
         CadenceWorkoutLiveActivity()
         if #available(iOS 18.0, *) {
             CadenceStartControl()
+            CadenceLogSetControl()
+            CadenceTalkControl()
         }
     }
 }

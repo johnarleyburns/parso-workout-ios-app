@@ -45,6 +45,28 @@ final class PlatformSnapshotTests: XCTestCase {
         XCTAssertFalse(CadencePlatformRequestStore.consumeQuickTalk(defaults: defaults))
     }
 
+    func testLiveActivityActionIsConsumedOnce() {
+        let defaults = UserDefaults(suiteName: "PlatformSnapshotTests.liveActivity.\(UUID().uuidString)")!
+        CadencePlatformRequestStore.requestLiveActivity(.logPlannedSet, token: "owner-2", defaults: defaults)
+        XCTAssertEqual(CadencePlatformRequestStore.consumeLiveActivityRequest(defaults: defaults),
+                       .init(action: .logPlannedSet, token: "owner-2"))
+        XCTAssertNil(CadencePlatformRequestStore.consumeLiveActivity(defaults: defaults))
+    }
+
+    func testLatestLiveActivityActionReplacesStaleAction() {
+        let defaults = UserDefaults(suiteName: "PlatformSnapshotTests.liveActivity.replace.\(UUID().uuidString)")!
+        CadencePlatformRequestStore.requestLiveActivity(.addRest, defaults: defaults)
+        CadencePlatformRequestStore.requestLiveActivity(.skipRest, defaults: defaults)
+        XCTAssertEqual(CadencePlatformRequestStore.consumeLiveActivityRequest(defaults: defaults)?.action, .skipRest)
+    }
+
+    func testLegacyLiveActivityStringIsDiscarded() {
+        let defaults = UserDefaults(suiteName: "PlatformSnapshotTests.liveActivity.legacy.\(UUID().uuidString)")!
+        defaults.set(CadencePlatformRequestStore.LiveActivityAction.addRest.rawValue,
+                     forKey: "cadence.platform.liveActivity.action")
+        XCTAssertNil(CadencePlatformRequestStore.consumeLiveActivityRequest(defaults: defaults))
+    }
+
     func testReadinessPresenterKeepsSafetyCopySeparate() {
         let concern = ReadinessEntry(muscleSoreness: 1, fatigueEnergy: 2,
                                      sleepQuality: 2, stressMood: 1,

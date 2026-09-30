@@ -10,6 +10,7 @@ extension Notification.Name {
     static let cadenceShowThisWeek = Notification.Name("cadence.showThisWeek")
     static let cadenceLogSetRequested = Notification.Name("cadence.logSetRequested")
     static let cadenceQuickTalkRequested = Notification.Name("cadence.quickTalkRequested")
+    static let cadenceLiveActivityActionRequested = Notification.Name("cadence.liveActivityActionRequested")
 }
 
 enum CadenceHandoff {

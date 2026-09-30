@@ -81,6 +81,27 @@ public enum CadencePlatformRequestStore {
     private static let startKey = "cadence.platform.startWorkout.requestedAt"
     private static let logKey = "cadence.platform.logSet.request"
     private static let quickTalkKey = "cadence.platform.quickTalk.requestedAt"
+    private static let liveActivityActionKey = "cadence.platform.liveActivity.action"
+
+    /// Actions are written by a Live Activity or Control Center extension and
+    /// consumed by the foreground workout surface. They are intentionally
+    /// small, idempotent commands rather than serialized SwiftData objects:
+    /// the extension must never open or mutate the user's training store.
+    public enum LiveActivityAction: String, Codable, Equatable, Sendable {
+        case logPlannedSet
+        case addRest
+        case skipRest
+    }
+
+    public struct LiveActivityRequest: Codable, Equatable, Sendable {
+        public let action: LiveActivityAction
+        public let token: String?
+
+        public init(action: LiveActivityAction, token: String? = nil) {
+            self.action = action
+            self.token = token
+        }
+    }
 
     public struct LogSetRequest: Codable, Equatable, Sendable {
         public let exerciseName: String
@@ -130,6 +151,32 @@ public enum CadencePlatformRequestStore {
         guard defaults.object(forKey: quickTalkKey) != nil else { return false }
         defaults.removeObject(forKey: quickTalkKey)
         return true
+    }
+
+    public static func requestLiveActivity(_ action: LiveActivityAction,
+                                           token: String? = nil,
+                                           defaults: UserDefaults? = nil) {
+        guard let data = try? JSONEncoder().encode(LiveActivityRequest(action: action, token: token)) else {
+            return
+        }
+        store(defaults).set(data, forKey: liveActivityActionKey)
+    }
+
+    public static func consumeLiveActivity(defaults: UserDefaults? = nil) -> LiveActivityAction? {
+        consumeLiveActivityRequest(defaults: defaults)?.action
+    }
+
+    public static func consumeLiveActivityRequest(defaults: UserDefaults? = nil) -> LiveActivityRequest? {
+        let defaults = store(defaults)
+        guard let data = defaults.data(forKey: liveActivityActionKey),
+              let request = try? JSONDecoder().decode(LiveActivityRequest.self, from: data) else {
+            // Remove pre-release string values after a version upgrade rather
+            // than replaying an action without a verified request envelope.
+            defaults.removeObject(forKey: liveActivityActionKey)
+            return nil
+        }
+        defaults.removeObject(forKey: liveActivityActionKey)
+        return request
     }
 
     private static func store(_ defaults: UserDefaults?) -> UserDefaults {

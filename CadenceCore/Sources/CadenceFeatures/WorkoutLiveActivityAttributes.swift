@@ -13,14 +13,19 @@ public struct WorkoutLiveActivityAttributes: ActivityAttributes {
         public var isPaused: Bool
         public var restEndsAt: Date?
         public var nextExercise: String?
+        public var nextSetSummary: String?
+        public var nextSetToken: String?
 
         public init(status: String, elapsedSeconds: Int, isPaused: Bool = false,
-                    restEndsAt: Date? = nil, nextExercise: String? = nil) {
+                    restEndsAt: Date? = nil, nextExercise: String? = nil,
+                    nextSetSummary: String? = nil, nextSetToken: String? = nil) {
             self.status = status
             self.elapsedSeconds = elapsedSeconds
             self.isPaused = isPaused
             self.restEndsAt = restEndsAt
             self.nextExercise = nextExercise
+            self.nextSetSummary = nextSetSummary
+            self.nextSetToken = nextSetToken
         }
     }
 

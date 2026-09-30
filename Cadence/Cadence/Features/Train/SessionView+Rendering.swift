@@ -104,7 +104,7 @@ extension SessionView {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {
-            if active.strengthSession?.id == session.id {
+            if isActiveSession {
                 VStack(spacing: 0) {
                     WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused, timers: $timers)
                     SessionLiveHRBand()
@@ -149,6 +149,7 @@ extension SessionView {
                                          formula: settings.formula, allPeople: allPeople,
                                          recentSessions: recent)
             }
+            updateLiveActivityNextSet()
             if expandedExerciseID == nil {
                 // Strength starts compact. Focused history review may opt into
                 // one expanded exercise explicitly.
@@ -298,6 +299,11 @@ extension SessionView {
         .modifier(QuickTalkNotificationModifier(isActive: isActiveSession,
                                                  isEnabled: settings.voiceLoggingEnabled,
                                                  isPresented: $voiceLoggingPresented))
+        .onReceive(NotificationCenter.default.publisher(for: .cadenceLiveActivityActionRequested)) { note in
+            guard isActiveSession,
+                  let request = note.object as? CadencePlatformRequestStore.LiveActivityRequest else { return }
+            applyLiveActivityAction(request.action, token: request.token)
+        }
         .onDisappear { if isManualLog { cleanupEmptyLog() } }
         .onReceive(idleTimer) { _ in
             handleIdleTick()

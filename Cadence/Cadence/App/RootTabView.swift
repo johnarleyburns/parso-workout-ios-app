@@ -91,13 +91,19 @@ struct RootTabView: View {
         .keepAwake(active.isActive && !(active.isPaused && active.presentedSurface == nil))
         .onReceive(heartbeatTimer) { _ in
             active.writeHeartbeat()
+            if let request = CadencePlatformRequestStore.consumeLiveActivityRequest() {
+                NotificationCenter.default.post(name: .cadenceLiveActivityActionRequested,
+                                                object: request)
+            }
             if active.isActive {
                 WorkoutLiveActivityCoordinator.shared.update(
                     elapsedSeconds: Int(active.clock.elapsed()),
                     status: active.isPaused ? "Paused" : "Active",
                     isPaused: active.isPaused,
                     restEndsAt: active.restEndsAt,
-                    nextExercise: active.nextExercise)
+                    nextExercise: active.nextExercise,
+                    nextSetSummary: active.nextSetSummary,
+                    nextSetToken: active.nextSetToken)
             }
         }
         .onChange(of: active.isActive) { _, isActive in
@@ -105,7 +111,9 @@ struct RootTabView: View {
                 WorkoutLiveActivityCoordinator.shared.start(
                     title: session.title.isEmpty ? "Workout" : session.title,
                     restEndsAt: active.restEndsAt,
-                    nextExercise: active.nextExercise)
+                    nextExercise: active.nextExercise,
+                    nextSetSummary: active.nextSetSummary,
+                    nextSetToken: active.nextSetToken)
             } else {
                 WorkoutLiveActivityCoordinator.shared.end()
             }
@@ -128,6 +136,10 @@ struct RootTabView: View {
             active.writeHeartbeat()
             guard phase == .active else { return }
             model.pushSettingsContext()
+            if let request = CadencePlatformRequestStore.consumeLiveActivityRequest() {
+                NotificationCenter.default.post(name: .cadenceLiveActivityActionRequested,
+                                                object: request)
+            }
             if CadencePlatformRequestStore.consumeQuickTalk() {
                 NotificationCenter.default.post(name: .cadenceQuickTalkRequested, object: nil)
             }

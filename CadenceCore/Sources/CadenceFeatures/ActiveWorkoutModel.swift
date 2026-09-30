@@ -75,6 +75,10 @@ public final class ActiveWorkoutModel {
     /// Shared platform projection for the currently visible rest timer.
     public var restEndsAt: Date?
     public var nextExercise: String?
+    /// Presentation-only identity for the next pending set shown on the Live
+    /// Activity. It is intentionally not persisted or used as a store key.
+    public var nextSetSummary: String?
+    public var nextSetToken: String?
 
     /// The root-level workout cover's content. `.session` while training,
     /// `.summary` after an explicit end, nil when minimized/idle.
@@ -117,6 +121,8 @@ public final class ActiveWorkoutModel {
         strengthSession = session
         restEndsAt = nil
         nextExercise = nil
+        nextSetSummary = nil
+        nextSetToken = nil
         clock = WorkoutClock(startedAt: session.date)
         pauseOrigin = nil
         presentedSurface = .session(session)
@@ -136,6 +142,8 @@ public final class ActiveWorkoutModel {
         strengthSession = session
         restEndsAt = nil
         nextExercise = nil
+        nextSetSummary = nil
+        nextSetToken = nil
         clock = WorkoutClock(startedAt: session.date)
         pauseOrigin = nil
         presentedSurface = .session(session)
@@ -186,6 +194,8 @@ public final class ActiveWorkoutModel {
         strengthSession = nil
         restEndsAt = nil
         nextExercise = nil
+        nextSetSummary = nil
+        nextSetToken = nil
         pauseOrigin = nil
         WorkoutHeartbeatStore.clear(defaults: defaults)
         if let lease = liveWorkout.lease { _ = liveWorkout.release(lease) }
@@ -196,6 +206,10 @@ public final class ActiveWorkoutModel {
     public func discardActive() {
         if strengthSession != nil, let lease = liveWorkout.lease { _ = liveWorkout.release(lease) }
         strengthSession = nil
+        restEndsAt = nil
+        nextExercise = nil
+        nextSetSummary = nil
+        nextSetToken = nil
         pauseOrigin = nil
         presentedSurface = nil
         WorkoutHeartbeatStore.clear(defaults: defaults)
@@ -210,6 +224,8 @@ public final class ActiveWorkoutModel {
         let elapsed = ActiveSessionRecovery.adoptedElapsed(sessionID: session.id, heartbeat: heartbeat)
         let gross = max(0, now.timeIntervalSince(session.date))
         strengthSession = session
+        nextSetSummary = nil
+        nextSetToken = nil
         _ = liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? "Workout" : session.title))
         clock = WorkoutClock(startedAt: session.date,
                              pausedAccumulated: max(0, gross - elapsed),

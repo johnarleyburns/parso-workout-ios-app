@@ -37,7 +37,8 @@ final class ProgressPresenterTests: XCTestCase {
                    E1RMPoint(weekStart: Date(timeIntervalSince1970: 7 * 86_400), e1rm: 110)]
         let series = [E1RMSeries(exercise: "Bench Press", points: pts)]
         let summary = ProgressPresenter.strengthTrendSummary(series: series, unit: .kilograms)
-        XCTAssertTrue(summary.hasPrefix("1 lifts tracked."))
+        XCTAssertTrue(CatalogPlural.renderings("%lld lifts tracked. ", 1).contains { summary.hasPrefix($0) }, summary)
+        XCTAssertEqual(CatalogPlural.english("%lld lifts tracked. ", 1), "1 lift tracked. ")
         XCTAssertTrue(summary.contains("Bench Press"))
     }
 

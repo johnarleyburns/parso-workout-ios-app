@@ -1,8 +1,8 @@
 import Foundation
 
-/// `swift test` copies `Localizable.xcstrings` into the resource bundle without
-/// compiling it, so plural keys render their English source form ("1 days").
-/// Xcode compiles the catalog and picks the `one` variation. Tests accept
+/// Whether `swift test` compiles `Localizable.xcstrings` depends on the
+/// toolchain: some copy it raw, so plural keys render their English source form
+/// ("1 days"); others (and Xcode) compile it and pick the `one` variation. Tests accept
 /// either rendering and separately pin the catalog's English plural text.
 enum CatalogPlural {
     /// The catalog's English `one`/`other` text for `key`, with `%lld` filled.

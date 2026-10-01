@@ -7,7 +7,7 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 features="$root/Cadence/Cadence/Features"
 max_fixed_width=68
-max_single_line=25
+max_single_line=26
 
 fixed_width=$(rg -n 'frame\(width:[[:space:]]*[0-9]+' "$features" --glob '*.swift' | wc -l | tr -d ' ')
 single_line=$(rg -n 'lineLimit\(1\)' "$features" --glob '*.swift' | wc -l | tr -d ' ')

@@ -2,59 +2,53 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
+/// Watch redesign §5 C2 — partners as an ordered rotation: who's lifting, who's next; tap to make
+/// someone current. Rotation advances automatically after each logged set (D-W3).
 struct WatchPartnersView: View {
     let model: WatchStrengthFlowModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var newPartner = ""
 
     var body: some View {
         List {
-            Section("Lifter") {
+            Section("Rotation") {
                 ForEach(model.performerOptions) { option in
-                    HStack {
-                        Circle()
-                            .fill(option.isMe ? Color.green : Color.blue)
-                            .frame(width: 20, height: 20)
-                            .overlay(Text(String(option.name.prefix(1))).font(.caption2.bold()).foregroundStyle(.white))
-                        Text(option.name)
-                        Spacer()
-                        if option.index == model.currentPerformerIndex {
-                            Text("Lifting").font(.caption2).foregroundStyle(.green)
-                        } else if option.index == nextPerformerIndex {
-                            Text("Up next").font(.caption2).foregroundStyle(.secondary)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
+                    Button {
                         WatchHaptics.tap()
                         model.selectPerformer(at: option.index)
+                        if case .partners = model.stage { model.goBackToHome() } else { dismiss() }
+                    } label: {
+                        HStack {
+                            Text("\(option.index + 1)").font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                            Text(option.name).font(.body)
+                            Spacer()
+                            if option.index == model.currentPerformerIndex {
+                                Text("Lifting").font(.caption2).foregroundStyle(WatchTone.accent)
+                            } else if option.index == nextPerformerIndex {
+                                Text("Next").font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
                     }
-                    .accessibilityIdentifier("watchPartners.performer.\(option.name)")
+                    .listRowBackground(RoundedRectangle(cornerRadius: 12)
+                        .fill(option.index == model.currentPerformerIndex ? WatchTone.accentSoft : WatchTone.surface))
+                    .accessibilityIdentifier("watchPerformer.\(option.name)")
                 }
-            }
-
-            Section("Partners") {
-                ForEach(Array(model.partners.enumerated()), id: \.element.persistentModelID) { idx, partner in
-                    HStack {
-                        Circle()
-                            .fill(Color.blue)
-                            .frame(width: 20, height: 20)
-                            .overlay(Text(String(partner.name.prefix(1))).font(.caption2.bold()).foregroundStyle(.white))
-                        Text(partner.name)
-                        Spacer()
-                    }
-                }
-                .onDelete { idxs in
+                .onDelete { offsets in
                     WatchHaptics.delete()
-                    for i in idxs { model.removePartner(at: i) }
+                    // Index 0 is the device owner; partners start at 1.
+                    for offset in offsets where offset > 0 { model.removePartner(at: offset - 1) }
                 }
             }
-
             Section {
-                Button {
-                    WatchHaptics.tap()
-                    model.addPartner(named: "New Partner")
-                } label: {
-                    Label("Add partner...", systemImage: "plus")
-                }
+                TextField("Add partner", text: $newPartner)
+                    .onSubmit {
+                        let name = newPartner.trimmingCharacters(in: .whitespacesAndNewlines)
+                        newPartner = ""
+                        guard !name.isEmpty else { return }
+                        WatchHaptics.tap()
+                        model.addPartner(named: name)
+                    }
+                    .accessibilityIdentifier("watchPartners.add")
             }
         }
         .navigationTitle("Partners")

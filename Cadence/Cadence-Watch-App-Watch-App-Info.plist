@@ -10,6 +10,8 @@
 	<string>Cladiron reads heart rate from your Apple Watch during workouts.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Cladiron saves your workout summary to Health.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Cladiron uses the microphone only while you hold Log set to speak a set. Your iPhone turns it into text, then the recording is deleted.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

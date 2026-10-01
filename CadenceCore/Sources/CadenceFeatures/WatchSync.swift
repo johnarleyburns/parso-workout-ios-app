@@ -54,6 +54,14 @@ public enum WatchSync {
 
         public static let todayPlanSessions = "todayPlan.sessions"
         public static let todayPlanUpdatedAt = "todayPlan.updatedAt"
+
+        /// Watch Quick Talk (decision D-W2): the watch sends a ≤10 s clip; the iPhone transcribes it
+        /// with SpeechAnalyzer and replies with the text (or an error code). Audio is not kept.
+        public static let transcribeQuickTalk = "transcribe_quick_talk"
+        public static let quickTalkAudio = "quickTalk.audio"
+        public static let quickTalkFileExtension = "quickTalk.fileExtension"
+        public static let quickTalkTranscript = "quickTalk.transcript"
+        public static let quickTalkError = "quickTalk.error"
     }
 
     /// Property-list-safe snapshot of a user-created exercise sent from the

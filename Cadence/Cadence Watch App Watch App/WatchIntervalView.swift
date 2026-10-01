@@ -11,8 +11,12 @@ struct WatchIntervalView: View {
     @State private var haptics: WatchIntervalHaptics
     @State private var isShowingConfirmEnd = false
     @State private var showSummary = false
+    @State private var page: Page = .main
+
+    enum Page: Hashable { case controls, main, heart }
 
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchAppSettings
@@ -31,7 +35,7 @@ struct WatchIntervalView: View {
                 summaryView
             } else {
                 TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                    intervalContent(date: context.date)
+                    pager
                         .onChange(of: context.date) { _, d in advance(to: d) }
                 }
                 .alert("End Workout?", isPresented: $isShowingConfirmEnd) {
@@ -55,116 +59,124 @@ struct WatchIntervalView: View {
         }
     }
 
-    // MARK: - Interval content
+    // MARK: - Pager (I1: Controls ◂ Interval ▸ Heart, like strength and steady cardio)
 
-    private func intervalContent(date: Date) -> some View {
-        GeometryReader { geo in
-            let compact = geo.size.height < 190
-            let timerSize = min(max(geo.size.height * 0.27, compact ? 38 : 42), 52)
-            let controlSize: CGFloat = compact ? 34 : 38
-
-            ZStack {
-                bgColor
-                    .ignoresSafeArea(.all)
-                    .animation(.easeInOut(duration: 0.3), value: runner.colorState)
-
-                VStack(spacing: compact ? 2 : 4) {
-                    Text(runner.phaseLabel.uppercased())
-                        .font(.caption2.bold())
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .foregroundStyle(fgColor)
-
-                    Text(formatTime(runner.phaseRemaining))
-                        .font(.system(size: timerSize, weight: .heavy, design: .monospaced))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(fgColor)
-                        .accessibilityIdentifier("intervalCountdown")
-
-                    Text(roundLabel)
-                        .font(.caption2.weight(.semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .foregroundStyle(fgColor.opacity(0.82))
-
-                    metricStrip
-                        .padding(.top, compact ? 0 : 1)
-
-                    Spacer(minLength: compact ? 1 : 4)
-
-                    controlsToolbar(controlSize: controlSize)
-                        .frame(height: controlSize)
-                }
-                .padding(.horizontal, 8)
-                .padding(.top, compact ? 2 : 5)
-                .padding(.bottom, 5)
-            }
+    private var pager: some View {
+        TabView(selection: $page) {
+            controlsPage.tag(Page.controls)
+            intervalPage.tag(Page.main)
+            WatchHeartPage().tag(Page.heart)
         }
+        .tabViewStyle(.page)
     }
 
-    private var metricStrip: some View {
-        HStack(spacing: 7) {
-            let bpmText = watchManager.currentBPM.map { "\(Int($0))" } ?? "--"
-            Label(bpmText, systemImage: "heart.fill")
-                .labelStyle(.titleAndIcon)
-                .foregroundStyle(.red.opacity(0.95))
-                .accessibilityLabel(watchManager.currentBPM.map { "\(Int($0)) BPM" } ?? "Heart rate unavailable")
-            Text("Tot \(formatTime(runner.overallRemaining))")
-                .monospacedDigit()
-        }
-        .font(.caption2.weight(.semibold))
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
-        .foregroundStyle(fgColor.opacity(0.62))
-    }
-
-    private func controlsToolbar(controlSize: CGFloat) -> some View {
-        HStack(spacing: 7) {
-            toolbarButton(accessibilityLabel: runner.isPaused ? String(localized: "Resume") : String(localized: "Pause"), controlSize: controlSize) {
-                togglePause()
-            } label: {
-                Image(systemName: runner.isPaused ? "play.fill" : "pause.fill")
+    /// Watch redesign §5 I1 — phase is colour **and** word (red Work, green Rest, amber when work is
+    /// ending, blue for warm-up/cool-down), the countdown huge, the round in the title, heart rate
+    /// and zone underneath. Always On drops the gradient and keeps the numbers.
+    private var intervalPage: some View {
+        let tone = WatchIntervalPhaseTone.tone(for: runner.colorState)
+        return ZStack {
+            if !isLuminanceReduced {
+                RadialGradient(colors: [toneColor(tone).opacity(0.75), .black], center: .top,
+                               startRadius: 0, endRadius: 190)
+                    .ignoresSafeArea()
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: tone)
             }
-
-            toolbarButton(accessibilityLabel: String(localized: "Skip phase"), controlSize: controlSize) {
-                skipPhase()
-            } label: {
-                Image(systemName: "forward.end.fill")
-            }
-
-            toolbarButton(accessibilityLabel: String(localized: "Add one minute"), controlSize: controlSize) {
-                addOneMinute()
-            } label: {
-                Text("+1m")
-                    .font(.caption.bold())
+            VStack(spacing: 2) {
+                Text(titleLine)
+                    .font(.footnote.weight(.semibold))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 2)
+                Text(runner.phaseLabel)
+                    .font(.headline)
+                    .foregroundStyle(toneInk(tone))
+                Text(formatTime(runner.phaseRemaining))
+                    .font(.system(size: 52, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .accessibilityIdentifier("intervalCountdown")
+                heartLine
+                if !isLuminanceReduced { zoneBar.padding(.horizontal, 14).padding(.top, 6) }
+                Spacer(minLength: 0)
             }
+            .padding(.horizontal, 6)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("\(runner.phaseLabel), \(formatTime(runner.phaseRemaining)) left, \(titleLine)"))
+    }
 
-            toolbarButton(accessibilityLabel: String(localized: "End workout"), controlSize: controlSize, foreground: .red) {
-                isShowingConfirmEnd = true
-            } label: {
-                Image(systemName: "stop.fill")
+    private var titleLine: String {
+        "\(kind) · \(roundLabel)"
+    }
+
+    private var heartLine: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "heart.fill").foregroundStyle(WatchTone.heart)
+            Text(watchManager.currentBPM.map { "\(Int($0))" } ?? "--").monospacedDigit()
+            if let zone = heartZone { Text(verbatim: "· Z\(zone)") }
+        }
+        .font(.footnote.weight(.semibold))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var heartZone: Int? {
+        guard let bpm = watchManager.currentBPM, bpm > 0 else { return nil }
+        return CardioMath.hrZone(bpm: bpm, maxHR: CardioMath.defaultMaxHR(age: watchAppSettings.userAge))
+    }
+
+    private var zoneBar: some View {
+        HStack(spacing: 3) {
+            ForEach(1...5, id: \.self) { zone in
+                Capsule()
+                    .fill(zone <= (heartZone ?? 0) ? WatchTone.heart : Color.white.opacity(0.18))
+                    .frame(height: 5)
             }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var controlsPage: some View {
+        ScrollView {
+            VStack(spacing: 6) {
+                Text(formatTime(runner.overallRemaining))
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(WatchTone.accent)
+                    .accessibilityLabel(Text("\(formatTime(runner.overallRemaining)) left in the workout"))
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                    controlTile(runner.isPaused ? "Resume" : "Pause",
+                                systemImage: runner.isPaused ? "play.fill" : "pause.fill",
+                                identifier: "watchInterval.pause") { togglePause() }
+                    controlTile("End", systemImage: "xmark", destructive: true,
+                                identifier: "watchInterval.end") { isShowingConfirmEnd = true }
+                    controlTile("Skip phase", systemImage: "forward.end.fill",
+                                identifier: "watchInterval.skip") { skipPhase(); page = .main }
+                    controlTile("+1 min", systemImage: "plus",
+                                identifier: "watchInterval.addMinute") { addOneMinute(); page = .main }
+                }
+            }
+            .padding(.horizontal, 2)
         }
     }
 
-    private func toolbarButton<LabelView: View>(accessibilityLabel: String,
-                                                controlSize: CGFloat,
-                                                foreground: Color? = nil,
-                                                action: @escaping () -> Void,
-                                                @ViewBuilder label: () -> LabelView) -> some View {
-        Button(action: action) {
-            label()
-                .font(.system(size: 17, weight: .bold))
-                .frame(width: controlSize, height: controlSize)
-                .foregroundStyle(foreground ?? fgColor)
-                .background(.black.opacity(0.16), in: Circle())
+    private func controlTile(_ title: LocalizedStringKey, systemImage: String, destructive: Bool = false,
+                             identifier: String, action: @escaping () -> Void) -> some View {
+        Button {
+            WatchHaptics.tap()
+            action()
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: systemImage).font(.title3)
+                Text(title).font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.7)
+            }
+            .foregroundStyle(destructive ? Color.red : Color.primary)
+            .frame(maxWidth: .infinity, minHeight: 62)
+            .background(RoundedRectangle(cornerRadius: 14).fill(destructive ? Color.red.opacity(0.18) : WatchTone.surface))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(identifier)
     }
 
     // MARK: - Summary
@@ -223,24 +235,21 @@ struct WatchIntervalView: View {
 
     // MARK: Color mapping
 
-    private var bgColor: Color {
-        switch runner.colorState {
-        case .work: return .green
-        case .warning: return .yellow
-        case .imminent:
-            if isLuminanceReduced {
-                return .orange
-            }
-            return runner.phaseRemaining.truncatingRemainder(dividingBy: 0.4) < 0.2 ? .orange : .yellow
-        case .rest: return .red.opacity(0.85)
-        case .neutral: return .blue
+    private func toneColor(_ tone: WatchIntervalPhaseTone) -> Color {
+        switch tone {
+        case .work: Color(red: 0.75, green: 0.16, blue: 0.11)
+        case .ending: Color(red: 0.85, green: 0.55, blue: 0.08)
+        case .rest: Color(red: 0.11, green: 0.6, blue: 0.3)
+        case .easy: Color(red: 0.12, green: 0.35, blue: 0.75)
         }
     }
 
-    private var fgColor: Color {
-        switch runner.colorState {
-        case .work, .warning, .imminent, .rest: return .white
-        case .neutral: return .white
+    private func toneInk(_ tone: WatchIntervalPhaseTone) -> Color {
+        switch tone {
+        case .work: Color(red: 1, green: 0.7, blue: 0.66)
+        case .ending: Color(red: 1, green: 0.85, blue: 0.5)
+        case .rest: Color(red: 0.62, green: 0.95, blue: 0.77)
+        case .easy: Color(red: 0.7, green: 0.82, blue: 1)
         }
     }
 

@@ -23,6 +23,11 @@ struct WatchRootView: View {
     @State private var activeCardioKind: WorkoutConfigurationSpec.CardioKind?
     @State private var activeCardioSpec: WorkoutConfigurationSpec?
     @State private var activeIntervalSession: ActiveIntervalSession?
+    @State private var startingPlanned = false
+    @State private var resumingSession: WorkoutSession?
+    @State private var confirmDiscardResume = false
+    @State private var startingQuickLift = false
+    private let launchRequests = WatchLaunchRequests.shared
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
         let intervalSession: ActiveIntervalSession?
@@ -57,136 +62,205 @@ struct WatchRootView: View {
             // phone replays an unchanged list (it does on every activation).
             watchManager.applyCustomExercisesInBackground(container: context.container)
         }
+        .onOpenURL { launchRequests.handle($0) }
+        .onChange(of: launchRequests.pendingStart, initial: true) { _, style in
+            guard style != nil, !watchManager.isActive, activeIntervalSession == nil, activeCardioKind == nil,
+                  let style = launchRequests.consumeStart() else { return }
+            handleStartRequest(style)
+        }
         .accessibilityIdentifier("watch.root")
     }
 
+    /// D-W5 / A2 — Start from the Action Button or the Smart Stack: an unfinished workout resumes
+    /// first (nothing is ever silently discarded), then today's plan, then a quick lift.
+    private func handleStartRequest(_ style: CladironWorkoutStyle) {
+        if let resume = resumableStrengthSession {
+            resumingSession = resume
+            return
+        }
+        if style == .todaysPlan {
+            if watchManager.todayPlan?.sessions.contains(where: \.isStrength) == true {
+                startingPlanned = true
+                return
+            }
+            if let cardio = watchManager.todayPlan?.sessions.first(where: { !$0.isStrength }) {
+                startPlannedCardio(cardio)
+                return
+            }
+        }
+        startingQuickLift = true
+    }
+
+    /// Watch redesign §5 T1–T4 — Today: one hero (resume / today's plan / rest day), two tiles
+    /// (Quick lift · Cardio), settings behind ⚙︎. Double Tap = the hero's primary action.
     private var launcher: some View {
         NavigationStack {
             List {
-                if let resume = resumableStrengthSession {
-                    Section {
-                        NavigationLink { WatchStrengthView(resuming: resume) }
-                            label: {
-                                HStack {
-                                    Image(systemName: "arrow.clockwise.circle.fill").foregroundStyle(.green)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Resume \(resume.title.isEmpty ? "Workout" : resume.title)")
-                                            .fontWeight(.semibold)
-                                        Text("\(resume.orderedSets.count) sets logged")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            .accessibilityIdentifier("watch.resumeStrength")
-                            // Abandoned sessions were previously deletable only by
-                            // opening them, which starts a workout session just to
-                            // throw one away.
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    discardResumable(resume)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                                .accessibilityIdentifier("watch.resumeStrength.delete")
-                            }
-                    }
-                }
-
-                Section("Your Plan") {
-                    yourPlanRows
-                }
-
-                Section("Strength Workout") {
-                    NavigationLink { WatchStrengthStartView() }
-                        label: { Label("Strength Workout", systemImage: "dumbbell.fill") }
-                        .accessibilityIdentifier("watch.startStrength")
-                }
-
-                Section {
-                    ForEach(cardioTypes, id: \.self) { ct in
-                        NavigationLink {
-                            cardioSetupView(for: ct)
-                        } label: {
-                            Label(ct.displayName, systemImage: ct.symbol)
-                        }
-                    }
-
-                    NavigationLink { LiveHRView() }
-                        label: { Label("Live HR", systemImage: "heart.fill") }
-                }
-
-                if !watchManager.workoutShareAuthorized && !watchManager.isActive {
-                    Section {
-                        Button {
-                            Task { _ = await watchManager.requestWorkoutAuthorization() }
-                        } label: {
-                            Label("Health access needed. Tap to enable.", systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption2).foregroundStyle(.orange)
-                        }
-                        .accessibilityIdentifier("healthWarningRow")
-                    }
-                }
-
-                Section {
-                    NavigationLink { HRSettingsView() }
-                        label: { Label("Heart-rate source", systemImage: "heart.fill") }
-
-                    NavigationLink { WatchUnitsView(appSettings: watchAppSettings) }
-                        label: { Label("Units", systemImage: "scalemass") }
-
-                    Toggle("Spoken workout cues", isOn: Binding(
-                        get: { watchAppSettings.spokenCues },
-                        set: { watchAppSettings.spokenCues = $0 }))
-                        .accessibilityIdentifier("watch.settings.spokenCues")
-                }
-
-                Section("Phone Sync") {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Image(systemName: "iphone.and.arrow.forward")
-                            Text("Status").fontWeight(.bold)
-                            Spacer()
-                            if watchManager.phoneSyncState.isInProgress {
-                                ProgressView()
-                                    .controlSize(.mini)
-                            }
-                        }
-                        Text(watchManager.phoneSyncState.settingsText(lastSyncAt: watchManager.lastPhoneSyncAt))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Image(systemName: "clock.arrow.2.circlepath")
-                            Text("Last sync").fontWeight(.bold)
-                        }
-                        Text(WatchSync.Status.lastSyncText(watchManager.lastPhoneSyncAt))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-
+                if needsHealthAccess {
                     Button {
-                        watchManager.requestSettingsSync()
+                        Task { _ = await watchManager.requestWorkoutAuthorization() }
                     } label: {
-                        Label(watchManager.phoneSyncState.isFailure ? "Retry sync" : "Sync now",
-                              systemImage: "arrow.triangle.2.circlepath")
+                        Label("Health access needed. Tap to enable.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2).foregroundStyle(WatchTone.attention)
                     }
-                    .disabled(watchManager.phoneSyncState.isInProgress)
-                    .accessibilityIdentifier("watch.phoneSync.retry")
+                    .listRowBackground(Color.clear)
+                    .accessibilityIdentifier("healthWarningRow")
                 }
-
-                Section {
-                    NavigationLink {
-                        WatchAboutView()
-                    } label: {
-                        Label("About", systemImage: "info.circle")
+                heroCard
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                HStack(spacing: 6) {
+                    NavigationLink { WatchStrengthStartView() } label: {
+                        tile(title: "Quick lift", systemImage: "dumbbell.fill")
                     }
-                    .accessibilityIdentifier("watch.about")
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("watch.startStrength")
+                    NavigationLink {
+                        WatchCardioPickerView(types: cardioTypes) { ct in AnyView(cardioSetupView(for: ct)) }
+                    } label: {
+                        tile(title: "Cardio", systemImage: "figure.run")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("watch.cardio")
+                }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
+            .listStyle(.plain)
+            .navigationTitle("Cladiron")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { WatchSettingsView() } label: { Image(systemName: "gearshape") }
+                        .accessibilityLabel(Text("Settings"))
+                        .accessibilityIdentifier("watch.settings")
                 }
             }
-            .navigationTitle("Cladiron")
+            .navigationDestination(isPresented: $startingPlanned) { plannedStrengthDestination }
+            .navigationDestination(item: $resumingSession) { session in WatchStrengthView(resuming: session) }
+            .navigationDestination(isPresented: $startingQuickLift) { WatchStrengthStartView() }
+            .alert("Discard this workout?", isPresented: $confirmDiscardResume) {
+                Button("Discard", role: .destructive) {
+                    if let resume = resumableStrengthSession { discardResumable(resume) }
+                }
+                .accessibilityIdentifier("watch.resumeStrength.delete")
+                Button("Keep", role: .cancel) {}
+            } message: {
+                Text("The sets logged on this watch are removed.")
+            }
+        }
+    }
+
+    private var needsHealthAccess: Bool { !watchManager.workoutShareAuthorized && !watchManager.isActive }
+
+    private var hero: WatchTodayHero {
+        let resume = resumableStrengthSession.map { session in
+            WatchTodayHeroBuilder.ResumeInput(
+                title: session.title.isEmpty ? String(localized: "Workout") : session.title,
+                startedAt: session.date,
+                exercises: Self.loggedPerExercise(session),
+                plannedSets: Dictionary(session.plannedPrescriptions.map {
+                    ($0.exerciseName, $0.sets.filter { $0.kind != .warmup }.count) }, uniquingKeysWith: { a, _ in a }))
+        }
+        return WatchTodayHeroBuilder.make(resume: resume, plan: watchManager.todayPlan)
+    }
+
+    private static func loggedPerExercise(_ session: WorkoutSession) -> [(name: String, sets: Int)] {
+        var order: [String] = []
+        var counts: [String: Int] = [:]
+        for set in session.orderedSets where !set.isWarmup {
+            let name = set.exercise?.name ?? ""
+            if counts[name] == nil { order.append(name) }
+            counts[name, default: 0] += 1
+        }
+        return order.map { ($0, counts[$0] ?? 0) }
+    }
+
+    @ViewBuilder
+    private var heroCard: some View {
+        switch hero {
+        case .resume(let title, let detail, let startedAt):
+            heroContainer(colors: [Color(red: 0.35, green: 0.23, blue: 0.06), Color(red: 0.12, green: 0.08, blue: 0.02)]) {
+                Text("Unfinished · \(startedAt, style: .relative) ago").font(.caption2.weight(.bold)).foregroundStyle(WatchTone.gold)
+                Text(title).font(.headline)
+                Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
+                HStack(spacing: 6) {
+                    Button("Resume") { resumingSession = resumableStrengthSession }
+                        .buttonStyle(WatchPillStyle(kind: .light, small: true))
+                        .handGestureShortcut(.primaryAction)
+                        .accessibilityIdentifier("watch.resumeStrength")
+                    Button("Discard…") { confirmDiscardResume = true }
+                        .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
+                }
+            }
+        case .planned(_, let title, let exercises, let minutes, let advice):
+            heroContainer(colors: [Color(red: 0.08, green: 0.35, blue: 0.2), Color(red: 0.04, green: 0.12, blue: 0.08)]) {
+                Text("Today · \(title)").font(.caption2.weight(.bold)).foregroundStyle(WatchTone.accent)
+                Text(exercises.prefix(5).joined(separator: " · ")).font(.footnote.weight(.semibold)).lineLimit(3)
+                if let minutes {
+                    (Text("\(exercises.count) exercises") + Text(verbatim: " · ~") + Text("\(minutes) min")).font(.caption2).foregroundStyle(.secondary)
+                }
+                if let advice { WatchCoachLineView(line: advice) }
+                Button { startingPlanned = true } label: { Label("Start", systemImage: "play.fill") }
+                    .buttonStyle(WatchPillStyle(kind: .primary))
+                    .handGestureShortcut(.primaryAction)
+                    .accessibilityIdentifier("watch.startPlanned")
+            }
+        case .plannedCardio(let sessionID, let title, let detail, let advice):
+            heroContainer(colors: [Color(red: 0.05, green: 0.25, blue: 0.3), Color(red: 0.02, green: 0.08, blue: 0.1)]) {
+                Text("Today").font(.caption2.weight(.bold)).foregroundStyle(.teal)
+                Text(title).font(.headline)
+                if !detail.isEmpty { Text(detail).font(.caption2).foregroundStyle(.secondary) }
+                if let advice { WatchCoachLineView(line: advice) }
+                Button {
+                    if let session = watchManager.todayPlan?.sessions.first(where: { $0.id == sessionID }) {
+                        startPlannedCardio(session)
+                    }
+                } label: { Label("Start", systemImage: "play.fill") }
+                    .buttonStyle(WatchPillStyle(kind: .primary))
+                    .handGestureShortcut(.primaryAction)
+                    .accessibilityIdentifier("watch.startPlannedCardio")
+            }
+        case .restDay(let advice):
+            heroContainer(colors: [WatchTone.surface, WatchTone.surface]) {
+                Label("Rest day", systemImage: "bed.double.fill").font(.headline)
+                if let advice { WatchCoachLineView(line: advice) }
+                Text("Training anyway is your call.").font(.caption2).foregroundStyle(.secondary)
+            }
+        case .unplanned(let synced):
+            heroContainer(colors: [WatchTone.surface, WatchTone.surface]) {
+                Text(synced ? "Nothing planned today" : "Open Cladiron on iPhone to sync today.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func heroContainer<Content: View>(colors: [Color], @ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 4, content: content)
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("watch.todayHero")
+    }
+
+    private func tile(title: LocalizedStringKey, systemImage: String) -> some View {
+        VStack(spacing: 3) {
+            Image(systemName: systemImage).font(.title3)
+            Text(title).font(.caption2.weight(.semibold))
+        }
+        .frame(maxWidth: .infinity, minHeight: 56)
+        .background(RoundedRectangle(cornerRadius: 14).fill(WatchTone.surface))
+    }
+
+    @ViewBuilder
+    private var plannedStrengthDestination: some View {
+        if let session = watchManager.todayPlan?.sessions.first(where: \.isStrength) {
+            WatchStrengthView(
+                title: session.label.isEmpty ? "Strength" : session.label,
+                plannedExerciseNames: session.exerciseNames,
+                repLadder: session.repLadder,
+                planPayload: session.planPayload)
         }
     }
 
@@ -201,84 +275,6 @@ struct WatchRootView: View {
         guard let payload = WatchResumableSession.discard(session, in: context) else { return }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)
-    }
-
-    @ViewBuilder
-    private var yourPlanRows: some View {
-        if let plan = watchManager.todayPlan {
-            if plan.sessions.isEmpty || plan.isRestDay {
-                Label("Rest", systemImage: "bed.double.fill")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(plan.sessions) { session in
-                    switch session.kind {
-                    case .strength:
-                        NavigationLink {
-                            WatchStrengthView(
-                                title: session.label.isEmpty ? "Strength" : session.label,
-                                plannedExerciseNames: session.exerciseNames,
-                                repLadder: session.repLadder,
-                                planPayload: session.planPayload
-                            )
-                        } label: {
-                            plannedStrengthLabel(session)
-                        }
-                    case .cardio:
-                        Button {
-                            startPlannedCardio(session)
-                        } label: {
-                            plannedCardioLabel(session)
-                        }
-                    case .rest:
-                        Label(session.label.isEmpty ? String(localized: "Rest") : session.label, systemImage: "bed.double.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-        } else {
-            Text("Open Cladiron on iPhone to sync today.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func plannedStrengthLabel(_ session: WatchSync.TodayPlan.Session) -> some View {
-        HStack {
-            Image(systemName: "checklist.checked").foregroundStyle(.green)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(session.label.isEmpty ? String(localized: "Strength") : session.label)
-                    .fontWeight(.semibold)
-                if !session.exerciseNames.isEmpty {
-                    Text(session.exerciseNames.prefix(3).joined(separator: ", "))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
-            }
-        }
-    }
-
-    private func plannedCardioLabel(_ session: WatchSync.TodayPlan.Session) -> some View {
-        HStack {
-            Image(systemName: cardioType(from: session.cardioType).symbol).foregroundStyle(.teal)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(session.label.isEmpty ? String(localized: "Cardio") : session.label)
-                    .fontWeight(.semibold)
-                let detail = plannedCardioDetail(session)
-                if !detail.isEmpty {
-                    Text(detail)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
-    private func plannedCardioDetail(_ session: WatchSync.TodayPlan.Session) -> String {
-        var parts: [String] = []
-        if let minutes = session.durationMinutes { parts.append(String(localized: "\(minutes) min")) }
-        if let zone = session.zone { parts.append("Z\(zone)") }
-        return parts.joined(separator: " · ")
     }
 
     private func startPlannedCardio(_ session: WatchSync.TodayPlan.Session) {

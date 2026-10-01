@@ -73,6 +73,10 @@ public final class WatchStrengthFlowModel {
     public private(set) var prefillReps: Double = 0
     /// Set when the last logged set beat this lifter's previous best (watch redesign M2).
     public private(set) var lastLoggedSetWasPR = false
+    /// PRs logged in this workout (F1 review).
+    public private(set) var personalRecordCount = 0
+    /// The id of the most recently logged set (Quick Talk "undo").
+    public private(set) var lastLoggedSetID: UUID?
     /// The user's PR rule and 1RM formula (Settings), so the watch's PR moment agrees with Progress.
     public var prRule: PRRule = SettingsDefault.prRule
     public var prFormula: OneRepMaxFormula = SettingsDefault.oneRepMaxFormula
@@ -325,9 +329,11 @@ public final class WatchStrengthFlowModel {
             )
 
             let isOwner = set.isOwnerSet
+            lastLoggedSetID = set.id
             lastLoggedSetWasPR = isOwner && !isWarmupSet && WorkoutRepository.wouldBePR(
                 exercise: exercise, weightKg: set.effectiveLoadKg, reps: set.reps, isWarmup: false,
                 rule: prRule, formula: prFormula, excluding: session)
+            if lastLoggedSetWasPR { personalRecordCount += 1 }
             syncLogSet(session: session, exercise: exercise, set: set)
             if !partners.isEmpty { advancePerformer() }
             if isOwner, !isWarmupSet {
@@ -362,6 +368,13 @@ public final class WatchStrengthFlowModel {
     }
 
     public func addRestTime(_ seconds: Int) { restTimer.add(seconds) }
+
+    /// Quick Talk "rest two minutes": restart the rest timer at a spoken length.
+    public func startRest(seconds: Int) {
+        restTimer.start(seconds: max(5, seconds))
+        if stage != .rest, case .keypad(let exercise) = stage { exercisePendingAfterRest = exercise }
+        stage = .rest
+    }
 
     @discardableResult
     public func deleteExercise(_ exercise: Exercise) -> [String: Any]? {

@@ -13,6 +13,9 @@ struct WatchCardioSessionView: View {
     @State private var metrics: CardioMetricsModel?
     @State private var pendingSummary: WatchWorkoutManager.SavedWorkoutSummary?
     @State private var isShowingConfirmEnd = false
+    @State private var page: Page = .metrics
+
+    enum Page: Hashable { case controls, metrics, heart }
 
     var body: some View {
         Group {
@@ -52,8 +55,8 @@ struct WatchCardioSessionView: View {
 
     private func activePages(_ metrics: CardioMetricsModel) -> some View {
         TimelineView(.periodic(from: .now, by: 1.0)) { context in
-            TabView {
-                WatchCardioView(metrics: metrics, kind: kind)
+            // I2 — the same pager as strength and intervals: Controls ◂ Metrics ▸ Heart.
+            TabView(selection: $page) {
                 WatchCardioControlsView(
                     isSwim: kind == .swim,
                     isPaused: watchManager.isPaused,
@@ -68,7 +71,14 @@ struct WatchCardioSessionView: View {
                     onLock: { watchManager.enableWaterLock() },
                     onLap: { watchManager.incrementManualLap(); update(metrics) }
                 )
+                .tag(Page.controls)
+                WatchCardioView(metrics: metrics, kind: kind, spec: spec)
+                    .navigationTitle(Text(kindTitle))
+                    .tag(Page.metrics)
+                WatchHeartPage()
+                    .tag(Page.heart)
             }
+            .tabViewStyle(.page)
             .onAppear { update(metrics) }
             .onChange(of: context.date) { _, _ in update(metrics) }
         }
@@ -124,6 +134,13 @@ struct WatchCardioSessionView: View {
         WatchWorkoutVoiceCoach.shared.stop()
         watchManager.stopWorkout(save: false)
         onDone()
+    }
+
+    private var kindTitle: String {
+        let type = cardioType
+        guard spec.usesGPS else { return type.displayName }
+        return spec.location == .outdoor ? String(localized: "Outdoor \(type.displayName)")
+                                         : type.displayName
     }
 
     private var lapSummaryText: String? {

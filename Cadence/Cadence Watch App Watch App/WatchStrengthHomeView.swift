@@ -1,113 +1,89 @@
 import SwiftUI
-import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
 
+/// Watch redesign §5 P3 — the Plan page (swipe left): today's exercises with their progress, tap to
+/// jump to one, swipe to delete (with the existing confirmation semantics), and Add exercise.
 struct WatchStrengthHomeView: View {
     let model: WatchStrengthFlowModel
+    let onSelect: () -> Void
     @State private var pendingExerciseID: UUID?
-    @State private var showingDeleteWorkoutConfirm = false
 
     var body: some View {
         List {
-            Section {
-                ForEach(model.exerciseList, id: \.exercise.persistentModelID) { item in
-                    HStack(spacing: 6) {
-                        Button {
-                            WatchHaptics.tap()
-                            pendingExerciseID = item.exercise.id
-                            DispatchQueue.main.async {
-                                model.startLogSet(for: item.exercise)
-                                pendingExerciseID = nil
-                            }
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 5) {
-                                    Text(item.exercise.name).lineLimit(1)
-                                    if pendingExerciseID == item.exercise.id {
-                                        ProgressView()
-                                            .controlSize(.mini)
-                                            .accessibilityIdentifier("watchStrength.exercise.loading")
-                                    }
-                                }
-                                if item.setCount > 0 {
-                                    Text("\(item.setCount) sets")
-                                        .font(.caption2).foregroundStyle(.secondary)
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("watchStrength.exercise.\(item.exercise.name)")
-
-                        Button(role: .destructive) {
-                            WatchHaptics.delete()
-                            if model.deleteExercise(item.exercise) != nil {
-                                sendSync()
-                            }
-                        } label: {
-                            Image(systemName: "trash")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("watchStrength.deleteExercise.\(item.exercise.name)")
-                    }
-                }
-
+            ForEach(model.exerciseList, id: \.exercise.persistentModelID) { item in
                 Button {
                     WatchHaptics.tap()
-                    model.goToAddExercise()
+                    pendingExerciseID = item.exercise.id
+                    DispatchQueue.main.async {
+                        model.startLogSet(for: item.exercise)
+                        pendingExerciseID = nil
+                        onSelect()
+                    }
                 } label: {
-                    Label("Add exercise", systemImage: "plus")
+                    row(item.exercise, logged: item.setCount)
                 }
-                .accessibilityIdentifier("watchStrength.addExercise")
-
-                if !model.partners.isEmpty {
-                    Button {
-                        WatchHaptics.tap()
-                        model.goToPartners()
+                .buttonStyle(.plain)
+                .listRowBackground(RoundedRectangle(cornerRadius: 12).fill(isCurrent(item.exercise) ? WatchTone.accentSoft : WatchTone.surface))
+                .accessibilityIdentifier("watchStrength.exercise.\(item.exercise.name)")
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        WatchHaptics.delete()
+                        if let payload = model.deleteExercise(item.exercise) { WatchSyncSender.send(payload) }
                     } label: {
-                        Label("Partners", systemImage: "person.2")
+                        Label("Delete", systemImage: "trash")
                     }
-                    .accessibilityIdentifier("watchStrength.partners")
+                    .accessibilityIdentifier("watchStrength.deleteExercise.\(item.exercise.name)")
                 }
-
-                Button {
-                    WatchHaptics.success()
-                    model.finish()
-                } label: {
-                    Label("Finish & Save", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                }
-                .accessibilityIdentifier("watchStrength.finish")
             }
 
-            Section {
-                Button(role: .destructive) {
-                    WatchHaptics.tap()
-                    showingDeleteWorkoutConfirm = true
-                } label: {
-                    Label("Delete Workout", systemImage: "trash")
-                }
-                .accessibilityIdentifier("watchStrength.deleteWorkout")
+            Button {
+                WatchHaptics.tap()
+                model.goToAddExercise()
+                onSelect()
+            } label: {
+                Label("Add exercise", systemImage: "plus")
             }
+            .accessibilityIdentifier("watchStrength.addExercise")
         }
-        .navigationTitle("Strength")
-        .alert("Delete Workout?", isPresented: $showingDeleteWorkoutConfirm) {
-            Button("Delete", role: .destructive) {
-                WatchHaptics.delete()
-                model.cancel()
-            }
-            .accessibilityIdentifier("watchStrength.deleteWorkout.confirm")
-            Button("Keep Workout", role: .cancel) {}
-                .accessibilityIdentifier("watchStrength.deleteWorkout.cancel")
-        } message: {
-            Text("This removes the workout and all sets logged on the watch.")
-        }
+        .navigationTitle(model.session?.title ?? String(localized: "Plan"))
     }
 
-    private func sendSync() {
-        guard let payload = model.lastSyncPayload else { return }
-        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
-        WCSession.default.transferUserInfo(payload)
+    private func row(_ exercise: Exercise, logged: Int) -> some View {
+        let planned = model.plannedWorkingSets(for: exercise).count
+        let done = model.completedWorkingSets(for: exercise)
+        return HStack(spacing: 8) {
+            ZStack {
+                Circle().stroke(Color.white.opacity(0.18), lineWidth: 3)
+                if planned > 0 {
+                    Circle().trim(from: 0, to: min(1, Double(done) / Double(planned)))
+                        .stroke(WatchTone.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
+                if planned > 0 && done >= planned {
+                    Image(systemName: "checkmark").font(.caption2.weight(.bold)).foregroundStyle(WatchTone.accent)
+                }
+            }
+            .frame(width: 22, height: 22)
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text(exercise.name).font(.body).lineLimit(1)
+                    if pendingExerciseID == exercise.id { ProgressView().controlSize(.mini) }
+                }
+                Text(detail(planned: planned, done: done, logged: logged)).font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func detail(planned: Int, done: Int, logged: Int) -> String {
+        if planned > 0 { return String(localized: "\(done) of \(planned)") }
+        return logged > 0 ? String(localized: "\(logged) logged") : String(localized: "Not started")
+    }
+
+    private func isCurrent(_ exercise: Exercise) -> Bool {
+        if case .keypad(let current) = model.stage { return current.id == exercise.id }
+        return false
     }
 }

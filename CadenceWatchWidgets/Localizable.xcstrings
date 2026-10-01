@@ -1,6 +1,59 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Next · %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Nächster · %@"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Next · %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Siguiente · %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Suivant · %@"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Volgende · %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Próximo · %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "下一组 · %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "下一組 · %@"
+          }
+        }
+      },
+      "comment" : "Watch redesign UI text (plans/watch-redesign/2026-09-30/DESIGN.md)."
+    },
     "Open Cladiron" : {
       "localizations" : {
         "de" : {
@@ -107,58 +160,58 @@
       },
       "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
     },
-    "See today's workout or the active rest timer." : {
+    "Start" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Heutiges Training oder aktiven Pausentimer sehen."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Consulta el entrenamiento de hoy o el temporizador de descanso activo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Voir l’entraînement du jour ou le minuteur de repos actif."
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Zie de training van vandaag of de actieve rusttimer."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Veja o treino de hoje ou o timer de descanso ativo."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "查看今天的训练或正在进行的休息计时。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "查看今天的訓練或正在進行的休息計時。"
+            "value" : "Starten"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "See today's workout or the active rest timer."
+            "value" : "Start"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Empezar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Commencer"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Start"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Iniciar"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "开始"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "開始"
           }
         }
       },
-      "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
+      "comment" : "Watch redesign UI text (plans/watch-redesign/2026-09-30/DESIGN.md)."
     },
     "Strength session" : {
       "localizations" : {
@@ -265,6 +318,59 @@
         }
       },
       "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
+    },
+    "Today's plan with Start, or your rest and next set during a workout." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Der heutige Plan mit Start – oder im Workout deine Pause und der nächste Satz."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Today's plan with Start, or your rest and next set during a workout."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "El plan de hoy con Empezar, o tu descanso y la siguiente serie durante el entrenamiento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Le programme du jour avec Commencer, ou votre repos et la série suivante pendant la séance."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Het plan van vandaag met Start, of je rust en volgende set tijdens een workout."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "O plano de hoje com Iniciar, ou seu descanso e a próxima série durante o treino."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "今日计划及“开始”，或训练中的休息和下一组。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "今日計畫及「開始」，或訓練中的休息和下一組。"
+          }
+        }
+      },
+      "comment" : "Watch redesign UI text (plans/watch-redesign/2026-09-30/DESIGN.md)."
     },
     "Upper strength" : {
       "localizations" : {

@@ -2,9 +2,13 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
+/// Watch redesign §5 I2 — steady cardio: a big-number stack (distance and pace when there is GPS,
+/// otherwise time), heart rate with its zone and the elapsed time, and the plan's target
+/// underneath. Always On keeps the numbers and drops the tint.
 struct WatchCardioView: View {
     let metrics: CardioMetricsModel
     let kind: WorkoutConfigurationSpec.CardioKind
+    let spec: WorkoutConfigurationSpec
 
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
     @Environment(AppSettings.self) private var watchSettings
@@ -18,42 +22,67 @@ struct WatchCardioView: View {
                 userEnteredMaximumHR: watchSettings.cardioMaximumHROverride,
                 age: watchSettings.userAge)
         )
-        VStack(spacing: 4) {
-            Text(presentation.elapsedText)
-                .font(.system(size: 34, weight: .heavy, design: .monospaced))
-                .frame(maxWidth: .infinity, alignment: .center)
-                .accessibilityLabel("Elapsed time \(presentation.elapsedText)")
-
-            if let bpm = presentation.bpmText {
-                Text(bpm)
-                    .font(.system(size: 34, weight: .bold, design: .monospaced))
-                    .foregroundStyle(zoneColor(presentation.hrTint))
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .accessibilityLabel("\(bpm) beats per minute")
-                    .accessibilityIdentifier("watch.cardio.bpm")
+        VStack(alignment: .leading, spacing: 4) {
+            if let distance = presentation.distanceText {
+                bigNumber(distance, size: 30)
+                    .accessibilityLabel(Text("Distance \(distance)"))
+                    .accessibilityIdentifier("watch.cardio.distance")
+                bigNumber(metrics.formatPace(), size: 24)
+                    .accessibilityLabel(Text("Pace \(metrics.formatPace())"))
+            } else {
+                bigNumber(presentation.elapsedText, size: 32)
+                    .accessibilityLabel(Text("Elapsed time \(presentation.elapsedText)"))
             }
-
-            if let intensity = presentation.relativeIntensity,
-               intensity != .unknown {
+            HStack {
+                if let bpm = presentation.bpmText {
+                    HStack(spacing: 3) {
+                        Image(systemName: "heart.fill")
+                        Text(bpm).monospacedDigit()
+                        if let zone = presentation.hrZone { Text(verbatim: "Z\(zone)") }
+                    }
+                    .foregroundStyle(zoneColor(presentation.hrTint))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(Text("\(bpm) beats per minute"))
+                    .accessibilityIdentifier("watch.cardio.bpm")
+                }
+                Spacer(minLength: 4)
+                if presentation.distanceText != nil {
+                    Text(presentation.elapsedText).monospacedDigit()
+                        .accessibilityLabel(Text("Elapsed time \(presentation.elapsedText)"))
+                }
+            }
+            .font(.footnote.weight(.semibold))
+            if let intensity = presentation.relativeIntensity, intensity != .unknown {
                 Text(intensity.displayName)
-                    .font(.caption.bold())
+                    .font(.caption2.bold())
                     .foregroundStyle(zoneColor(presentation.hrTint))
                     .accessibilityIdentifier("watch.cardio.intensity")
             }
-
-            if let distance = presentation.distanceText {
-                HStack {
-                    Text(distance)
-                        .font(.caption.bold())
-                        .monospacedDigit()
-                        .accessibilityLabel("Distance \(distance)")
-                        .accessibilityIdentifier("watch.cardio.distance")
-                    Spacer()
+            if let target = WatchCardioPlanTarget.text(durationSeconds: spec.plannedDurationSeconds, zone: spec.targetZone) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(target).font(.caption2).foregroundStyle(WatchTone.accent)
+                    if let progress = WatchCardioPlanTarget.progress(elapsed: metrics.elapsed,
+                                                                     durationSeconds: spec.plannedDurationSeconds) {
+                        ProgressView(value: progress).tint(WatchTone.accent)
+                            .accessibilityLabel(Text("Planned time"))
+                    }
                 }
+                .padding(.top, 2)
+                .accessibilityIdentifier("watch.cardio.planTarget")
             }
         }
-        .padding()
-        .background(zoneColor(presentation.hrTint).opacity(presentation.showsHeartRate ? 0.15 : 0))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 6)
+        .background(isLuminanceReduced || !presentation.showsHeartRate
+                    ? Color.clear : zoneColor(presentation.hrTint).opacity(0.12))
+    }
+
+    private func bigNumber(_ text: String, size: CGFloat) -> some View {
+        Text(text)
+            .font(.system(size: size, weight: .bold, design: .rounded))
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
     }
 
     private func zoneColor(_ tint: HRZoneTint) -> Color {

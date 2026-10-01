@@ -211,3 +211,26 @@ extension Array {
         indices.contains(index) ? self[index] : nil
     }
 }
+
+extension WatchStrengthFlowModel {
+    /// The exercise on the keypad (or waiting after rest), for Quick Talk's "current exercise".
+    public var currentExerciseName: String? {
+        if case .keypad(let exercise) = stage { return exercise.name }
+        return exerciseList.last?.exercise.name
+    }
+
+    /// A planned exercise by name (case-insensitive).
+    public func plannedExercise(named name: String) -> Exercise? {
+        exerciseList.first { $0.exercise.name.caseInsensitiveCompare(name) == .orderedSame }?.exercise
+    }
+
+    /// Select a lifter by name; `nil` (or "Me") is the device owner.
+    public func selectPerformer(named name: String?) {
+        guard !performerOptions.isEmpty else { return }
+        let match = performerOptions.first { option in
+            guard let name else { return option.isMe }
+            return option.name.caseInsensitiveCompare(name) == .orderedSame
+        }
+        if let match { selectPerformer(at: match.index) }
+    }
+}

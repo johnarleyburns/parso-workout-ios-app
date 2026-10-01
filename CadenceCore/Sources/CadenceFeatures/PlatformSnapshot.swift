@@ -214,10 +214,16 @@ public enum CadencePlatformSnapshotStore {
 public struct CadenceWatchWidgetState: Codable, Equatable, Sendable {
     public let workoutTitle: String
     public let restEndsAt: Date?
+    /// Watch redesign A2: the rest's full length (for the Smart Stack ring) and the next set.
+    public let restTotalSeconds: Int?
+    public let nextSet: String?
 
-    public init(workoutTitle: String, restEndsAt: Date? = nil) {
+    public init(workoutTitle: String, restEndsAt: Date? = nil, restTotalSeconds: Int? = nil,
+                nextSet: String? = nil) {
         self.workoutTitle = workoutTitle
         self.restEndsAt = restEndsAt
+        self.restTotalSeconds = restTotalSeconds
+        self.nextSet = nextSet
     }
 }
 

@@ -918,6 +918,19 @@ extension AppModel {
             replyHandler?(accepted ? completionAck(for: message) : ["ack": false])
             return
         }
+        if message[WatchSync.Key.command] as? String == WatchSync.Key.transcribeQuickTalk {
+            // Watch Quick Talk (D-W2): transcribe the clip here and reply; the clip is deleted.
+            guard let audio = message[WatchSync.Key.quickTalkAudio] as? Data else {
+                replyHandler?([WatchSync.Key.quickTalkError: "noAudio"])
+                return
+            }
+            let ext = message[WatchSync.Key.quickTalkFileExtension] as? String ?? "m4a"
+            Task { @MainActor in
+                let reply = await QuickTalkClipTranscriber.transcribe(audio, fileExtension: ext)
+                replyHandler?(reply)
+            }
+            return
+        }
         if message[WatchSync.Key.command] as? String == WatchSync.Key.requestSettingsSync {
             Task { @MainActor [weak self] in
                 self?.pushSettingsContext(force: true)

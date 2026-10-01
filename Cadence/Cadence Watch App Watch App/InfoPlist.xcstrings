@@ -180,6 +180,66 @@
           }
         }
       }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron nutzt das Mikrofon nur, solange du „Satz eintragen“ gedrückt hältst, um einen Satz zu sprechen. Dein iPhone wandelt ihn in Text um, danach wird die Aufnahme gelöscht."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cladiron uses the microphone only while you hold Log set to speak a set. Your iPhone turns it into text, then the recording is deleted."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron uses the microphone only while you hold Log set to speak a set. Your iPhone turns it into text, then the recording is deleted."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron usa el micrófono solo mientras mantienes pulsado Registrar serie para dictar una serie. Tu iPhone la convierte en texto y luego se elimina la grabación."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron utilise le micro uniquement lorsque vous maintenez Enregistrer la série pour dicter une série. Votre iPhone la convertit en texte, puis l’enregistrement est supprimé."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron gebruikt de microfoon alleen terwijl je ‘Set loggen’ ingedrukt houdt om een set in te spreken. Je iPhone zet die om in tekst, daarna wordt de opname verwijderd."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "O Cladiron usa o microfone só enquanto você mantém Registrar série pressionado para ditar uma série. Seu iPhone converte em texto e depois a gravação é apagada."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "仅当你按住“记录组”说出一组训练时，Cladiron 才会使用麦克风。你的 iPhone 会将其转为文字，随后删除录音。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "只有當你按住「記錄組數」說出一組訓練時，Cladiron 才會使用麥克風。你的 iPhone 會將其轉為文字，隨後刪除錄音。"
+          }
+        }
+      },
+      "comment" : "Info.plist NSMicrophoneUsageDescription — Apple Watch Quick Talk permission prompt"
     }
   },
   "version" : "1.0"

@@ -20,30 +20,33 @@ struct WatchCardioControlsView: View {
         self.onLap = onLap
     }
 
+    /// I2 — Controls page, the same tiles as strength and intervals (red End, surface others).
     var body: some View {
-        VStack(spacing: 10) {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                controlButton("End", "stop.fill", isDestructive: true, action: onEnd)
-                controlButton(isPaused ? String(localized: "Resume") : String(localized: "Pause"), isPaused ? "play.fill" : "pause.fill", isPause: true, action: onPause)
-                controlButton(String(localized: "Lock"), "lock.fill", action: onLock)
-                controlButton(isSwim ? "Lap" : "Lap", "plus", action: onLap)
-            }
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+            controlButton(isPaused ? "Resume" : "Pause", isPaused ? "play.fill" : "pause.fill",
+                          identifier: "watchCardio.pause", action: onPause)
+            controlButton("End", "xmark", isDestructive: true, identifier: "watchCardio.end", action: onEnd)
+            controlButton("Water Lock", "drop.fill", identifier: "watchCardio.lock", action: onLock)
+            controlButton("Lap", "plus", identifier: "watchCardio.lap", action: onLap)
         }
-        .padding()
+        .padding(.horizontal, 2)
     }
 
-    private func controlButton(_ label: String, _ icon: String, isDestructive: Bool = false, isPause: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func controlButton(_ label: LocalizedStringKey, _ icon: String, isDestructive: Bool = false,
+                               identifier: String, action: @escaping () -> Void) -> some View {
+        Button {
+            WatchHaptics.tap()
+            action()
+        } label: {
             VStack(spacing: 4) {
                 Image(systemName: icon).font(.title3)
-                Text(label).font(.caption2)
+                Text(label).font(.caption2.weight(.semibold))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(isDestructive ? Color.red.opacity(0.3) : isPause ? Color.yellow.opacity(0.25) : Color.white.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .foregroundStyle(isDestructive ? .red : isPause ? .yellow : .white)
+            .foregroundStyle(isDestructive ? Color.red : Color.primary)
+            .frame(maxWidth: .infinity, minHeight: 62)
+            .background(RoundedRectangle(cornerRadius: 14).fill(isDestructive ? Color.red.opacity(0.18) : WatchTone.surface))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
     }
 }

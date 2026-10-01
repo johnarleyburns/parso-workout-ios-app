@@ -230,3 +230,24 @@ final class WatchRedesignTests: XCTestCase {
                                  nextLifter: nil, effortText: nil, isWarmup: false)
     }
 }
+
+/// Watch redesign §5 I1–I2 — interval phase tone and the steady-cardio plan target.
+final class WatchCardioRedesignTests: XCTestCase {
+    func testIntervalToneIsWorkRestEndingOrEasy() {
+        XCTAssertEqual(WatchIntervalPhaseTone.tone(for: .work), .work)
+        XCTAssertEqual(WatchIntervalPhaseTone.tone(for: .warning), .ending)
+        XCTAssertEqual(WatchIntervalPhaseTone.tone(for: .imminent), .ending)
+        XCTAssertEqual(WatchIntervalPhaseTone.tone(for: .rest), .rest)
+        XCTAssertEqual(WatchIntervalPhaseTone.tone(for: .neutral), .easy)
+    }
+
+    func testPlanTargetShowsOnlyWhatWasPlanned() {
+        XCTAssertNil(WatchCardioPlanTarget.text(durationSeconds: nil, zone: nil))
+        XCTAssertNil(WatchCardioPlanTarget.text(durationSeconds: 0, zone: 9))
+        XCTAssertEqual(WatchCardioPlanTarget.text(durationSeconds: 1800, zone: 2), "Planned: 30 min · Zone 2")
+        XCTAssertEqual(WatchCardioPlanTarget.text(durationSeconds: nil, zone: 3), "Planned: Zone 3")
+        XCTAssertEqual(WatchCardioPlanTarget.progress(elapsed: 900, durationSeconds: 1800), 0.5)
+        XCTAssertEqual(WatchCardioPlanTarget.progress(elapsed: 4000, durationSeconds: 1800), 1)
+        XCTAssertNil(WatchCardioPlanTarget.progress(elapsed: 10, durationSeconds: nil))
+    }
+}

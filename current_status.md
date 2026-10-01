@@ -2,6 +2,25 @@
 
 Updated: 2026-09-30
 
+## Latest implementation — field fixes and custom-lift Combined strength (2026-09-30)
+
+The field-fix pass now keeps Today workout and summary routes inside their
+own navigation root, disables the live-workout accessory when no session is
+active, keeps the Done-for-today actions on one line, and uses “Do more”. The
+This Week rings retain their captions while removing the redundant completed /
+target ratio, and Cardio Minutes presents one Science row that opens all
+citations together.
+
+Muscle-map hit targets are 64pt with the artwork excluded from hit testing;
+back masks were regenerated symmetrically. Watch workouts now have an opt-in
+spoken-cue setting, route cues through the Watch audio session, announce
+interval phases and boxing round numbers, and sync the preference from iPhone.
+Strength Over Time Combined carries each lift’s latest known e1RM forward and
+includes every custom charted lift, not only the powerlifting trio. The full
+parallel package suite passes (2,015 tests). Generic app builds still encounter
+the known Swift frontend IRGen crash in the pre-existing large Train compile
+batch; the failure is not a source diagnostic from this pass.
+
 ## Latest implementation — award audit remediation (2026-09-30, pre-commit)
 
 This pass implements the repository-owned award gaps identified in the latest

@@ -134,6 +134,11 @@ struct WatchRootView: View {
 
                     NavigationLink { WatchUnitsView(appSettings: watchAppSettings) }
                         label: { Label("Units", systemImage: "scalemass") }
+
+                    Toggle("Spoken workout cues", isOn: Binding(
+                        get: { watchAppSettings.spokenCues },
+                        set: { watchAppSettings.spokenCues = $0 }))
+                        .accessibilityIdentifier("watch.settings.spokenCues")
                 }
 
                 Section("Phone Sync") {

@@ -76,9 +76,12 @@ struct WatchStrengthView: View {
                 } else {
                     watchManager.startWorkout(type: "strength")
                 }
+                WatchWorkoutVoiceCoach.shared.speak(
+                    .workoutStarted(title: title), enabled: watchSettings.spokenCues)
             }
         }
         .onDisappear {
+            WatchWorkoutVoiceCoach.shared.stop()
             if shouldStopWorkoutOnDisappear, watchManager.isActive {
                 watchManager.stopWorkout(save: false)
                 CadenceWatchWidgetStore.clear()

@@ -143,9 +143,10 @@ public enum StrengthProgress {
     }
 
     /// The fixed series shown by Progress: Bench Press, Barbell Squat, Deadlift,
-    /// and their week-by-week Combined total. Older history may use barbell or
-    /// Back Squat aliases; those normalize into the fixed labels here. Other
-    /// lifts remain available as selectable custom series.
+    /// and a Combined total across every canonical and custom lift in the chart.
+    /// Older history may use barbell or Back Squat aliases; those normalize into
+    /// the fixed labels here. Other lifts remain available as selectable custom
+    /// series and are included in Combined.
     public static func chartData(from sessions: [StrengthProgressSessionInput],
                                  now: Date = Date(),
                                  weeks: Int = 12,
@@ -179,10 +180,32 @@ public enum StrengthProgress {
         let customSeries = all
             .filter { item in !canonicalNames.contains(normalized(item.exercise)) }
             .sorted { $0.exercise.localizedStandardCompare($1.exercise) == .orderedAscending }
-        let weeksWithData = Set(pointsByLift.values.flatMap(\.keys)).sorted()
+        // Custom lifts are first-class chart series too. Combined therefore
+        // follows every lift in the chart, not only the three power lifts.
+        // A user adding Hack Squat should see it included automatically.
+        var combinedPointsByLift = Dictionary(uniqueKeysWithValues:
+            fixedSeries.map { ($0.exercise, $0.points.reduce(into: [Date: Double]()) {
+                $0[$1.weekStart] = $1.e1rm
+            }) })
+        for series in customSeries {
+            combinedPointsByLift[series.exercise] = series.points.reduce(into: [Date: Double]()) {
+                $0[$1.weekStart] = $1.e1rm
+            }
+        }
+        let weeksWithData = Set(combinedPointsByLift.values.flatMap(\.keys)).sorted()
+        // Combined is a current strength total, not a total of only the lifts
+        // performed in the same calendar week. Carry each lift's latest known
+        // estimate forward so a recent deadlift cannot make Combined look like
+        // deadlift alone when bench and squat were trained earlier.
+        var latestByLift: [String: Double] = [:]
         let totalPoints = weeksWithData.compactMap { week -> E1RMPoint? in
-            let total = aliases.reduce(0.0) { sum, entry in
-                sum + (pointsByLift[entry.0]?[week] ?? 0)
+            for (name, points) in combinedPointsByLift {
+                if let value = points[week] {
+                    latestByLift[name] = value
+                }
+            }
+            let total = combinedPointsByLift.keys.reduce(0.0) { sum, name in
+                sum + (latestByLift[name] ?? 0)
             }
             return total > 0 ? E1RMPoint(weekStart: week, e1rm: total) : nil
         }

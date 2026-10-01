@@ -62,6 +62,16 @@ final class WatchSyncTests: XCTestCase {
         XCTAssertFalse(prefs.workoutSounds)
     }
 
+    func testContextAppliesSpokenCues() {
+        let prefs = WatchSync.Preferences().applying(context: [WatchSync.Key.spokenCues: true])
+        XCTAssertTrue(prefs.spokenCues)
+    }
+
+    func testWatchVoiceCueUsesRoundNumbersForWorkIntervals() {
+        XCTAssertEqual(WatchVoiceCue.phase(kind: "work", round: 2).speechText, "Round 2")
+        XCTAssertEqual(WatchVoiceCue.phase(kind: "rest", round: 2).speechText, "Rest")
+    }
+
     func testContextAppliesDistanceUnit() {
         var prefs = WatchSync.Preferences(distanceUnit: .kilometers)
         prefs = prefs.applying(context: ["settings.distanceUnit": "miles"])

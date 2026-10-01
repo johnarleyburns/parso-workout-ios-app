@@ -58,6 +58,8 @@ struct WatchRestView: View {
                     publishWidgetState()
                     if wasRunning, !model.restTimer.isRunning, model.restTimer.remaining == 0 {
                         cues.restComplete(soundsEnabled: watchSettings.workoutSounds)
+                        WatchWorkoutVoiceCoach.shared.speak(
+                            .restComplete, enabled: watchSettings.spokenCues)
                         WatchHaptics.success()
                     }
                 }

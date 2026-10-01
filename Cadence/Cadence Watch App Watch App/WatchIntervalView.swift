@@ -44,6 +44,8 @@ struct WatchIntervalView: View {
             watchManager.resetSavedSummary()
             watchManager.startWorkout(type: kind.lowercased(), cardioType: kind == "HIIT" ? .hiit : .boxing)
             watchManager.startHeartRatePolling()
+            WatchWorkoutVoiceCoach.shared.speak(
+                .workoutStarted(title: kind), enabled: watchAppSettings.spokenCues)
         }
         .onDisappear {
             if scenePhase != .background, watchManager.isActive {
@@ -259,14 +261,24 @@ struct WatchIntervalView: View {
     private func advance(to date: Date) {
         runner.now = date
         guard !runner.isPaused else { return }
-        haptics.tick(runner: runner, soundsEnabled: watchAppSettings.workoutSounds, isBoxing: isBoxingInterval)
+        haptics.tick(runner: runner,
+                     soundsEnabled: watchAppSettings.workoutSounds,
+                     spokenEnabled: watchAppSettings.spokenCues,
+                     isBoxing: isBoxingInterval,
+                     currentRound: plan.currentWorkRound(atElapsed: runner.elapsed))
         if runner.isComplete, !showSummary {
             transitionToSummary()
         }
     }
 
     private func togglePause() {
-        if runner.isPaused { runner.resume() } else { runner.pause() }
+        if runner.isPaused {
+            runner.resume()
+            WatchWorkoutVoiceCoach.shared.speak(.resumed, enabled: watchAppSettings.spokenCues)
+        } else {
+            runner.pause()
+            WatchWorkoutVoiceCoach.shared.speak(.paused, enabled: watchAppSettings.spokenCues)
+        }
     }
 
     private func skipPhase() {
@@ -282,6 +294,8 @@ struct WatchIntervalView: View {
     }
 
     private func transitionToSummary() {
+        WatchWorkoutVoiceCoach.shared.speak(.workoutComplete,
+                                            enabled: watchAppSettings.spokenCues)
         let sum = watchManager.liveSummary()
         watchManager.savedSummary = WatchWorkoutManager.SavedWorkoutSummary(
             duration: sum.duration,

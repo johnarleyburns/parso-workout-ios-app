@@ -13,12 +13,7 @@ extension HomeView {
 
     private var dashboardNavigation: some View {
         AnyView(
-            homeNavigationDestinations(
-                usesExternalNavigation
-                    ? AnyView(dashboardScrollContent)
-                    : AnyView(NavigationStack(path: pathBinding) {
-                        dashboardScrollContent
-                    }))
+            dashboardNavigationRoot
             .task {
                 // HealthKit queries are asynchronous, but the old launch chain
                 // started the heaviest reads immediately. Keep each query
@@ -326,6 +321,20 @@ extension HomeView {
                 Text("Recovery may be the limiting factor. You can continue, but keep it easy if performance drops.")
             }
         )
+    }
+
+    /// Register destinations inside the NavigationStack that owns the screen.
+    /// A destination modifier applied outside ThisWeekView's stack produces the
+    /// system's blank warning destination for workout history routes.
+    @ViewBuilder
+    private var dashboardNavigationRoot: some View {
+        if usesExternalNavigation {
+            homeNavigationDestinations(dashboardScrollContent)
+        } else {
+            NavigationStack(path: pathBinding) {
+                homeNavigationDestinations(dashboardScrollContent)
+            }
+        }
     }
 
     private var dashboardScrollContent: some View {

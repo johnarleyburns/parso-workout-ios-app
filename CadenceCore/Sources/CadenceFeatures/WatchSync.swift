@@ -48,6 +48,7 @@ public enum WatchSync {
         public static let warmupMinutes = "settings.warmupMinutes"
         public static let cooldownMinutes = "settings.cooldownMinutes"
         public static let workoutSounds = "settings.workoutSounds"
+        public static let spokenCues = "settings.spokenCues"
         public static let recentPartners = "partners.recent"
         public static let customExercises = "exercises.custom"
 
@@ -335,6 +336,7 @@ public enum WatchSync {
         public var warmupMinutes: Int
         public var cooldownMinutes: Int
         public var workoutSounds: Bool
+        public var spokenCues: Bool
         public var recentPartnerNames: [String]
 
         public init(unit: MeasurementUnitPreference = .kilograms,
@@ -344,6 +346,7 @@ public enum WatchSync {
                     warmupMinutes: Int = 5,
                     cooldownMinutes: Int = 5,
                     workoutSounds: Bool = true,
+                    spokenCues: Bool = false,
                     recentPartnerNames: [String] = []) {
             self.unit = unit
             self.distanceUnit = distanceUnit
@@ -352,6 +355,7 @@ public enum WatchSync {
             self.warmupMinutes = warmupMinutes
             self.cooldownMinutes = cooldownMinutes
             self.workoutSounds = workoutSounds
+            self.spokenCues = spokenCues
             self.recentPartnerNames = recentPartnerNames
         }
 
@@ -364,6 +368,7 @@ public enum WatchSync {
                 Key.warmupMinutes: prefs.warmupMinutes,
                 Key.cooldownMinutes: prefs.cooldownMinutes,
                 Key.workoutSounds: prefs.workoutSounds,
+                Key.spokenCues: prefs.spokenCues,
             ]
             if !prefs.recentPartnerNames.isEmpty {
                 dict[Key.recentPartners] = prefs.recentPartnerNames
@@ -401,6 +406,9 @@ public enum WatchSync {
             }
             if let sounds = context[Key.workoutSounds] as? Bool {
                 copy.workoutSounds = sounds
+            }
+            if let spoken = context[Key.spokenCues] as? Bool {
+                copy.spokenCues = spoken
             }
             if let names = context[Key.recentPartners] as? [String] {
                 copy.recentPartnerNames = names

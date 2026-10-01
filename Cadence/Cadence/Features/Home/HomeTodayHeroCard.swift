@@ -175,9 +175,16 @@ struct HomeTodayHeroCard: View {
                     .font(.subheadline.weight(.semibold))
             }
             HStack(spacing: 18) {
-                Button("View summary", action: onViewSummary)
-                    .buttonStyle(.bordered)
-                Button("Add something", action: onAddSomething)
+                Button {
+                    onViewSummary()
+                } label: {
+                    Text("View summary")
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                Button("Do more", action: onAddSomething)
                     .buttonStyle(.plain)
                     .foregroundStyle(CadenceTheme.link)
             }

@@ -11,7 +11,7 @@ struct HomeMuscleMapView: View {
 
     private enum MapMetrics {
         static let displayHeight: CGFloat = 440
-        static let hitPointSize: CGFloat = 48
+        static let hitPointSize: CGFloat = 64
     }
 
     private var rows: [HomeDashboardState.VolumeRow] {
@@ -69,6 +69,7 @@ struct HomeMuscleMapView: View {
                 Image(panel == .front ? "MuscleMapFront" : "MuscleMapBack")
                     .resizable().scaledToFit()
                     .frame(width: imageSize.width, height: imageSize.height)
+                    .allowsHitTesting(false)
                     .accessibilityLabel("\(panel == .front ? "Front" : "Back") muscle heat map")
                 ForEach(callouts) { callout in
                     muscleRegion(for: callout, imageSize: imageSize)
@@ -83,8 +84,8 @@ struct HomeMuscleMapView: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
         // Keep the artwork large enough that adjacent 44pt hit targets do not
-        // stack on top of one another. The targets are intentionally 48pt so
-        // they clear Apple's 44pt minimum with a small accessibility margin.
+        // stack on top of one another. The targets intentionally exceed
+        // Apple's 44pt minimum because this map is used while moving.
         .frame(height: MapMetrics.displayHeight)
         .padding(.horizontal, 8)
         .accessibilityElement(children: .contain)
@@ -108,15 +109,7 @@ struct HomeMuscleMapView: View {
             .allowsHitTesting(false)
             .accessibilityHidden(true)
 
-        // The bundled abs mask contains the left half of the rectus region.
-        // Mirror it around the anatomy centre so both sides of the group share
-        // the same heat level instead of lighting only a few tiles.
-        return ZStack {
-            mask
-            if callout.group == .abdominals && callout.panel == .front {
-                mask.scaleEffect(x: -1, y: 1)
-            }
-        }
+        return mask
     }
 
     private func heatButton(for callout: MuscleMapCallout) -> some View {
@@ -132,7 +125,7 @@ struct HomeMuscleMapView: View {
                                         style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
                     }
                 }
-                .contentShape(Circle())
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(callout.group.displayName), \(WeeklySetProgress.formattedSets(sets)) of 12 sets")

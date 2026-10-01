@@ -34,9 +34,12 @@ struct WatchCardioSessionView: View {
             if metrics == nil {
                 metrics = CardioMetricsModel(kind: kind, unit: watchSettings.unit, distanceUnit: watchSettings.distanceUnit,
                                              heartRateEnabled: spec.heartRateEnabled, gpsEnabled: spec.usesGPS)
+                WatchWorkoutVoiceCoach.shared.speak(
+                    .workoutStarted(title: String(describing: kind)), enabled: watchSettings.spokenCues)
             }
         }
         .onDisappear {
+            WatchWorkoutVoiceCoach.shared.stop()
             if case nil = pendingSummary, watchManager.isActive {
                 watchManager.stopWorkout(save: false)
             }
@@ -55,7 +58,13 @@ struct WatchCardioSessionView: View {
                     isSwim: kind == .swim,
                     isPaused: watchManager.isPaused,
                     onEnd: { isShowingConfirmEnd = true },
-                    onPause: { watchManager.togglePause(); update(metrics) },
+                    onPause: {
+                        watchManager.togglePause()
+                        WatchWorkoutVoiceCoach.shared.speak(
+                            watchManager.isPaused ? .paused : .resumed,
+                            enabled: watchSettings.spokenCues)
+                        update(metrics)
+                    },
                     onLock: { watchManager.enableWaterLock() },
                     onLap: { watchManager.incrementManualLap(); update(metrics) }
                 )
@@ -76,6 +85,8 @@ struct WatchCardioSessionView: View {
     }
 
     private func prepareSummary() {
+        WatchWorkoutVoiceCoach.shared.speak(
+            .workoutComplete, enabled: watchSettings.spokenCues)
         if let metrics { update(metrics) }
         let live = watchManager.liveSummary()
         pendingSummary = WatchWorkoutManager.SavedWorkoutSummary(
@@ -110,6 +121,7 @@ struct WatchCardioSessionView: View {
     }
 
     private func discard() {
+        WatchWorkoutVoiceCoach.shared.stop()
         watchManager.stopWorkout(save: false)
         onDone()
     }

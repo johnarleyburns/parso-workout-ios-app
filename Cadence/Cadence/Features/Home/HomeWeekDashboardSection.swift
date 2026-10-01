@@ -53,7 +53,6 @@ struct HomeWeekDashboardSection: View {
                     }
                     muscleMapSummary
                     fillGapsButton
-                    volumeDetail
                 }
             }
             sectionCard {
@@ -318,11 +317,12 @@ struct HomeWeekDashboardSection: View {
                     }
                 }
             }
-            ForEach(dashboard.cardioDetail.citationIDs, id: \.self) { citationID in
-                if let citation = CitationRegistry.citation(forId: citationID) {
-                    CitationLink(citation: citation, context: dashboard.cardioDetail.explanation, compact: true)
-                }
-            }
+            CoachSourcesLink(
+                citationIds: dashboard.cardioDetail.citationIDs,
+                contexts: Dictionary(uniqueKeysWithValues: dashboard.cardioDetail.citationIDs.map {
+                    ($0, dashboard.cardioDetail.explanation)
+                }),
+                identifier: "home.week.cardio.science")
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.week.cardioMinutes")

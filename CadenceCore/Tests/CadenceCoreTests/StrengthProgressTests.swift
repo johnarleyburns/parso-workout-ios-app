@@ -251,6 +251,47 @@ final class StrengthProgressTests: XCTestCase {
         XCTAssertEqual(combined, expectedCombined, accuracy: 0.001)
     }
 
+    func testChartDataCombinedCarriesOlderLiftsIntoTheLatestWeek() {
+        let calendar = Calendar(identifier: .gregorian)
+        let weekOne = Date(timeIntervalSince1970: 1_700_000_000)
+        let weekTwo = calendar.date(byAdding: .day, value: 7, to: weekOne)!
+        let input = StrengthProgressSessionInput(
+            date: weekOne,
+            deleted: false,
+            sets: [
+                StrengthProgressSetInput(exerciseName: "Bench Press", completedAt: weekOne,
+                                         weightKg: 100, reps: 1, isWarmup: false, isOwnerSet: true),
+                StrengthProgressSetInput(exerciseName: "Back Squat", completedAt: weekOne,
+                                         weightKg: 120, reps: 1, isWarmup: false, isOwnerSet: true),
+                StrengthProgressSetInput(exerciseName: "Deadlift", completedAt: weekTwo,
+                                         weightKg: 150, reps: 1, isWarmup: false, isOwnerSet: true)
+            ])
+
+        let data = StrengthProgress.chartData(from: [input], now: weekTwo,
+                                              calendar: calendar)
+        let combined = data.allSeries.first { $0.exercise == "Combined" }
+        XCTAssertEqual(combined?.points.last?.e1rm ?? 0, 370, accuracy: 0.001)
+    }
+
+    func testChartDataCombinedIncludesCustomChartedLifts() {
+        let now = Date()
+        let input = StrengthProgressSessionInput(
+            date: now.addingTimeInterval(-86_400),
+            deleted: false,
+            sets: [
+                StrengthProgressSetInput(exerciseName: "Bench Press", completedAt: now,
+                                         weightKg: 100, reps: 1, isWarmup: false, isOwnerSet: true),
+                StrengthProgressSetInput(exerciseName: "Deadlift", completedAt: now,
+                                         weightKg: 150, reps: 1, isWarmup: false, isOwnerSet: true),
+                StrengthProgressSetInput(exerciseName: "Hack Squat", completedAt: now,
+                                         weightKg: 80, reps: 1, isWarmup: false, isOwnerSet: true)
+            ])
+
+        let data = StrengthProgress.chartData(from: [input], now: now)
+        let values = Dictionary(uniqueKeysWithValues: data.allSeries.map { ($0.exercise, $0.current) })
+        XCTAssertEqual(values["Combined"] ?? 0, 330, accuracy: 0.001)
+    }
+
     func testChartDataIncludesNonCanonicalLiftsAsCustomSeries() {
         let now = Date()
         let input = StrengthProgressSessionInput(

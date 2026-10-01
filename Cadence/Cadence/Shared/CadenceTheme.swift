@@ -64,9 +64,6 @@ struct CadenceProgressRing: View {
             }
             .frame(width: 58, height: 58)
             .accessibilityLabel("\(label), \(Format.number(value)) of \(Format.number(total))")
-            Text("\(Format.number(value)) / \(Format.number(total))")
-                .font(.caption2.weight(.semibold))
-                .monospacedDigit()
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
     }

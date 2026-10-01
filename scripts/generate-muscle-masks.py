@@ -56,6 +56,7 @@ BILATERAL = {
     "shoulders", "biceps", "hip_flexors", "abductors", "quadriceps",
     "tibialis", "chest", "abdominals", "forearms", "adductors", "calves",
     "triceps", "lats", "hamstrings", "rotator_cuff", "glutes",
+    "middle_back", "traps",
 }
 
 

@@ -484,6 +484,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             warmupMinutes: settings.warmupMinutes,
             cooldownMinutes: settings.cooldownMinutes,
             workoutSounds: settings.workoutSounds,
+            spokenCues: settings.spokenCues,
             recentPartnerNames: []
         )
         let container = _modelContainer
@@ -534,6 +535,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         fingerprint.combine(prefs.warmupMinutes)
         fingerprint.combine(prefs.cooldownMinutes)
         fingerprint.combine(prefs.workoutSounds)
+        fingerprint.combine(prefs.spokenCues)
         fingerprint.combine(prefs.recentPartnerNames)
         for exercise in payload.customExercises.sorted(by: { $0.id.uuidString < $1.id.uuidString }) {
             fingerprint.combine(exercise.id)

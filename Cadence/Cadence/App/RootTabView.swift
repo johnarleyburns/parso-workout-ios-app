@@ -252,12 +252,10 @@ private struct LiveWorkoutTabAccessory: ViewModifier {
             content.tabViewBottomAccessory(isEnabled: enabled) {
                 if let session = active.strengthSession, enabled { accessory(session) }
             }
-        } else if #available(iOS 26.0, *) {
+        } else {
             content.tabViewBottomAccessory {
                 if active.isActive, let session = active.strengthSession { accessory(session) }
             }
-        } else {
-            content
         }
     }
 

@@ -62,7 +62,7 @@ struct AdaptiveSessionRoot: View {
                         }
                     }
                 }
-                .navigationTitle(session.title.isEmpty ? "Workout" : session.title)
+                .navigationTitle(session.title.isEmpty ? String(localized: "Workout") : session.title)
             } detail: {
                 NavigationStack { SessionView(session: session) }
             }

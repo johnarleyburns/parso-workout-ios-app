@@ -198,9 +198,9 @@ struct ExerciseDetailView: View {
     private var muscles: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Muscle roles").font(.headline)
-            roleRow("Trains directly", exercise.directMuscles)
-            roleRow("Trains indirectly", exercise.indirectMuscles)
-            if !exercise.stabilizerMuscles.isEmpty { roleRow("Stabilises", exercise.stabilizerMuscles) }
+            roleRow(String(localized: "Trains directly"), exercise.directMuscles)
+            roleRow(String(localized: "Trains indirectly"), exercise.indirectMuscles)
+            if !exercise.stabilizerMuscles.isEmpty { roleRow(String(localized: "Stabilises"), exercise.stabilizerMuscles) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

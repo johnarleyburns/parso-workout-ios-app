@@ -65,16 +65,16 @@ struct RPEInfoView: View {
     }
 
     private let rpeScale: [RPERow] = [
-        .init(rpe: 10, label: "Maximal", detail: "Couldn't do another rep (0 RIR)"),
-        .init(rpe: 9, label: "Very hard", detail: "Could do 1 more rep (1 RIR)"),
-        .init(rpe: 8, label: "Hard", detail: "Could do 2 more reps (2 RIR)"),
-        .init(rpe: 7, label: "Moderately hard", detail: "Could do 3 more reps (3 RIR)"),
-        .init(rpe: 6, label: "Moderate", detail: "Could do 4+ more reps"),
-        .init(rpe: 5, label: "Light", detail: "Warm-up feel, easy"),
-        .init(rpe: 4, label: "Very light", detail: "Barely any effort"),
-        .init(rpe: 3, label: "Minimal", detail: "Movement practice"),
-        .init(rpe: 2, label: "Trivial", detail: "No effort at all"),
-        .init(rpe: 1, label: "Rest", detail: "No exertion"),
+        .init(rpe: 10, label: String(localized: "Maximal"), detail: String(localized: "Couldn't do another rep (0 RIR)")),
+        .init(rpe: 9, label: String(localized: "Very hard"), detail: String(localized: "Could do 1 more rep (1 RIR)")),
+        .init(rpe: 8, label: String(localized: "Hard"), detail: String(localized: "Could do 2 more reps (2 RIR)")),
+        .init(rpe: 7, label: String(localized: "Moderately hard"), detail: String(localized: "Could do 3 more reps (3 RIR)")),
+        .init(rpe: 6, label: String(localized: "Moderate"), detail: String(localized: "Could do 4+ more reps")),
+        .init(rpe: 5, label: String(localized: "Light"), detail: String(localized: "Warm-up feel, easy")),
+        .init(rpe: 4, label: String(localized: "Very light"), detail: String(localized: "Barely any effort")),
+        .init(rpe: 3, label: String(localized: "Minimal"), detail: String(localized: "Movement practice")),
+        .init(rpe: 2, label: String(localized: "Trivial"), detail: String(localized: "No effort at all")),
+        .init(rpe: 1, label: String(localized: "Rest"), detail: String(localized: "No exertion")),
     ]
 
     private func rpeColor(_ rpe: Int) -> Color {

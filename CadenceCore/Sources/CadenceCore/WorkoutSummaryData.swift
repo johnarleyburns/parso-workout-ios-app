@@ -242,7 +242,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         }
         let volumeByPerformer = session.orderedSets.reduce(into: [String: [MuscleGroup: Double]]()) { result, set in
             guard !set.isWarmup, set.reps > 0, let exercise = set.exercise else { return }
-            let performer = set.isOwnerSet ? "Me" : (set.performedBy?.name ?? "Partner")
+            let performer = set.isOwnerSet ? String(localized: "Me", bundle: .module) : (set.performedBy?.name ?? String(localized: "Partner", bundle: .module))
             for (group, credit) in exercise.volumeCredits where credit > 0 {
                 result[performer, default: [:]][group, default: 0] += credit
             }

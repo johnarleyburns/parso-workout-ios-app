@@ -313,8 +313,8 @@ public enum UnifiedPlanCoachEngine {
                 candidateExerciseKey: candidateKey,
                 candidateName: $0.candidate.name,
                 score: $0.score,
-                preserves: "Direct stimulus overlaps \(direct) (\(overlap)% direct overlap).",
-                tradeoff: $0.candidate.equipment.map { "Equipment: \($0.displayName)" },
+                preserves: String(localized: "Direct stimulus overlaps \(direct) (\(overlap)% direct overlap).", bundle: .module),
+                tradeoff: $0.candidate.equipment.map { String(localized: "Equipment: \($0.displayName)", bundle: .module) },
                 citationIDs: ["schoenfeld2021", "pellandDoseResponse2026"],
                 confidence: $0.directOverlap >= 0.5 ? .moderate : .limited)
         }
@@ -435,24 +435,24 @@ public enum UnifiedPlanCoachEngine {
                 output.append(UnifiedPlanCoachInsight(
                     id: "plan-volume-low|\(group.rawValue)", severity: .attention,
                     title: "\(group.displayName) is lightly planned",
-                    message: "The plan provides \(Format.sets(planned)) sets against a \(Format.sets(bands.mev)) starting minimum.",
-                    detail: "This is a planning signal, not a diagnosis. Add volume only if recovery and the user's goal support it.",
+                    message: String(localized: "The plan provides \(Format.sets(planned)) sets against a \(Format.sets(bands.mev)) starting minimum.", bundle: .module),
+                    detail: String(localized: "This is a planning signal, not a diagnosis. Add volume only if recovery and the user's goal support it.", bundle: .module),
                     citationIDs: ["pellandDoseResponse2026"],
                     confidence: .moderate))
             } else if planned >= bands.mrv {
                 output.append(UnifiedPlanCoachInsight(
                     id: "plan-volume-high|\(group.rawValue)", severity: .warning,
                     title: "\(group.displayName) is near the recovery ceiling",
-                    message: "The plan assigns \(Format.sets(planned)) sets, at or above the starting MRV band.",
-                    detail: "Review exercise overlap and recovery before accepting this volume; the coach will not silently trim an authored plan.",
+                    message: String(localized: "The plan assigns \(Format.sets(planned)) sets, at or above the starting MRV band.", bundle: .module),
+                    detail: String(localized: "Review exercise overlap and recovery before accepting this volume; the coach will not silently trim an authored plan.", bundle: .module),
                     citationIDs: ["pellandDoseResponse2026", "drewFinchInjury2016"],
                     confidence: .limited))
             } else if actual > 0 && planned < actual * 0.75 {
                 output.append(UnifiedPlanCoachInsight(
                     id: "plan-vs-history|\(group.rawValue)", severity: .info,
                     title: "\(group.displayName) is planned below recent work",
-                    message: "Recent work is \(Format.sets(actual)) sets; this plan schedules \(Format.sets(planned)).",
-                    detail: "That may be deliberate during a recovery week. Confirm the reduction matches the intended block.",
+                    message: String(localized: "Recent work is \(Format.sets(actual)) sets; this plan schedules \(Format.sets(planned)).", bundle: .module),
+                    detail: String(localized: "That may be deliberate during a recovery week. Confirm the reduction matches the intended block.", bundle: .module),
                     citationIDs: ["pellandDoseResponse2026", "rpeAutoregulation"],
                     confidence: .moderate))
             }
@@ -463,9 +463,9 @@ public enum UnifiedPlanCoachEngine {
                 guard trend == .declining else { continue }
                 output.append(UnifiedPlanCoachInsight(
                     id: "plan-trend-declining|\(exercise)", severity: .attention,
-                    title: "\(exercise) needs a closer review",
-                    message: "Estimated 1RM has declined across the comparison window.",
-                    detail: "Coach proposes checking effort, recovery, and exercise fit before adding load.",
+                    title: String(localized: "\(exercise) needs a closer review", bundle: .module),
+                    message: String(localized: "Estimated 1RM has declined across the comparison window.", bundle: .module),
+                    detail: String(localized: "Coach proposes checking effort, recovery, and exercise fit before adding load.", bundle: .module),
                     citationIDs: ["oneRMEstimation", "rpeAutoregulation"],
                     confidence: .moderate))
             }
@@ -474,9 +474,9 @@ public enum UnifiedPlanCoachEngine {
         if let coachFacts, coachFacts.readiness?.isPoor == true {
             output.append(UnifiedPlanCoachInsight(
                 id: "plan-readiness-low", severity: .warning,
-                title: "Readiness is low",
-                message: "Keep the plan available, but review hard work before starting.",
-                detail: "Self-reported readiness is treated as a soft modifier. The athlete remains in control and no session is changed automatically.",
+                title: String(localized: "Readiness is low", bundle: .module),
+                message: String(localized: "Keep the plan available, but review hard work before starting.", bundle: .module),
+                detail: String(localized: "Self-reported readiness is treated as a soft modifier. The athlete remains in control and no session is changed automatically.", bundle: .module),
                 citationIDs: ["sawMonitoring2016", "halsonRecovery2014"],
                 confidence: .limited))
         }
@@ -495,8 +495,8 @@ public enum UnifiedPlanCoachEngine {
         guard poorReadiness || hardRPE else { return [] }
         let direction: UnifiedPlanAutoregulationDirection = poorReadiness ? .reduceVolume : .reduceLoad
         let detail = poorReadiness
-            ? "Readiness is low; consider one fewer working set on hard items and reassess between sets."
-            : "Recent working-set RPE is high; consider reducing the next loaded prescription modestly while keeping the effort target."
+            ? String(localized: "Readiness is low; consider one fewer working set on hard items and reassess between sets.", bundle: .module)
+            : String(localized: "Recent working-set RPE is high; consider reducing the next loaded prescription modestly while keeping the effort target.", bundle: .module)
         return strengthItems(in: plan).map { located in
             UnifiedPlanAutoregulationProposal(
                 id: "autoregulate|\(located.item.id.uuidString)",
@@ -520,33 +520,33 @@ public enum UnifiedPlanCoachEngine {
         var decisions = [
             RationaleDecision(
                 id: stableUUID("rationale|volume|\(plan.id.raw.uuidString)"),
-                claim: "Weekly working-set volume is distributed across the scheduled sessions.",
-                basis: "The coach uses experience-scaled starting landmarks and spreads volume rather than maximizing one session.",
+                claim: String(localized: "Weekly working-set volume is distributed across the scheduled sessions.", bundle: .module),
+                basis: String(localized: "The coach uses experience-scaled starting landmarks and spreads volume rather than maximizing one session.", bundle: .module),
                 citationIDs: ["pellandDoseResponse2026"],
                 confidence: .moderate),
             RationaleDecision(
                 id: stableUUID("rationale|effort|\(plan.id.raw.uuidString)"),
-                claim: "Strength prescriptions use a goal-appropriate rep range and effort target.",
-                basis: "Load and proximity to failure are complementary controls; the user can edit every prescription.",
+                claim: String(localized: "Strength prescriptions use a goal-appropriate rep range and effort target.", bundle: .module),
+                basis: String(localized: "Load and proximity to failure are complementary controls; the user can edit every prescription.", bundle: .module),
                 citationIDs: ["schoenfeld2021", "rpeAutoregulation"],
                 confidence: .moderate),
             RationaleDecision(
                 id: stableUUID("rationale|recovery|\(plan.id.raw.uuidString)"),
-                claim: "Hard sessions are separated when recent history indicates recovery is still relevant.",
-                basis: "Recovery is a soft planning constraint and never silently overrides an authored plan.",
+                claim: String(localized: "Hard sessions are separated when recent history indicates recovery is still relevant.", bundle: .module),
+                basis: String(localized: "Recovery is a soft planning constraint and never silently overrides an authored plan.", bundle: .module),
                 citationIDs: ["parejaBlancoRecovery2020", "meeusenOvertraining2013"],
                 confidence: .moderate)
         ]
         if request.schedulePreferences.cardioDaysPerWeek > 0 {
             decisions.append(RationaleDecision(
                 id: stableUUID("rationale|cardio|\(plan.id.raw.uuidString)"),
-                claim: "Cardio sessions retain their modality and intensity prescription in the unified plan.",
-                basis: "The plan keeps steady, interval, and open cardio distinct so execution can preserve the intended stimulus.",
+                claim: String(localized: "Cardio sessions retain their modality and intensity prescription in the unified plan.", bundle: .module),
+                basis: String(localized: "The plan keeps steady, interval, and open cardio distinct so execution can preserve the intended stimulus.", bundle: .module),
                 citationIDs: ["ekelundActivityMortality2016", "schumannConcurrent2022"],
                 confidence: .moderate))
         }
         return EngineRationale(
-            summary: "Generated for \(request.goal.displayName.lowercased()) with the current schedule and recent training state. Review the cited decisions, then edit or accept the draft.",
+            summary: String(localized: "Generated for \(request.goal.displayName.lowercased()) with the current schedule and recent training state. Review the cited decisions, then edit or accept the draft.", bundle: .module),
             knowledgeBaseVersion: CoachKnowledgeBaseLoader.current.version,
             decisions: decisions)
     }
@@ -564,16 +564,16 @@ public enum UnifiedPlanCoachEngine {
             if sets > 0 && sets >= bands.mrv {
                 findings.append(UnifiedPlanCoachCritique(
                     id: "critique|volume-high|\(group.rawValue)", kind: .volume,
-                    severity: .warning, title: "\(group.displayName) volume is high",
-                    detail: "The plan assigns \(Format.sets(sets)) working sets, at or above the starting MRV band of \(Format.sets(bands.mrv)).",
-                    suggestedFix: "Reduce redundant sets or mark the week as an intentional overload block.",
+                    severity: .warning, title: String(localized: "\(group.displayName) volume is high", bundle: .module),
+                    detail: String(localized: "The plan assigns \(Format.sets(sets)) working sets, at or above the starting MRV band of \(Format.sets(bands.mrv)).", bundle: .module),
+                    suggestedFix: String(localized: "Reduce redundant sets or mark the week as an intentional overload block.", bundle: .module),
                     citationIDs: ["pellandDoseResponse2026", "drewFinchInjury2016"], confidence: .limited))
             } else if sets > 0 && sets < bands.mev {
                 findings.append(UnifiedPlanCoachCritique(
                     id: "critique|volume-low|\(group.rawValue)", kind: .volume,
-                    severity: .attention, title: "\(group.displayName) volume is below the starting range",
-                    detail: "The plan assigns \(Format.sets(sets)) working sets, below the starting MEV band of \(Format.sets(bands.mev)).",
-                    suggestedFix: "Add a compatible movement or accept this as a maintenance/recovery choice.",
+                    severity: .attention, title: String(localized: "\(group.displayName) volume is below the starting range", bundle: .module),
+                    detail: String(localized: "The plan assigns \(Format.sets(sets)) working sets, below the starting MEV band of \(Format.sets(bands.mev)).", bundle: .module),
+                    suggestedFix: String(localized: "Add a compatible movement or accept this as a maintenance/recovery choice.", bundle: .module),
                     citationIDs: ["pellandDoseResponse2026"], confidence: .moderate))
             }
         }
@@ -584,9 +584,9 @@ public enum UnifiedPlanCoachEngine {
             let names = missing.sorted { $0.rawValue < $1.rawValue }.map(\.displayName).joined(separator: ", ")
             findings.append(UnifiedPlanCoachCritique(
                 id: "critique|patterns|\(names)", kind: .movementCoverage,
-                severity: .attention, title: "Movement coverage is incomplete",
-                detail: "The strength plan does not currently include: \(names.lowercased()).",
-                suggestedFix: "Add or substitute a movement only if it fits the user's equipment and constraints.",
+                severity: .attention, title: String(localized: "Movement coverage is incomplete", bundle: .module),
+                detail: String(localized: "The strength plan does not currently include: \(names.lowercased()).", bundle: .module),
+                suggestedFix: String(localized: "Add or substitute a movement only if it fits the user's equipment and constraints.", bundle: .module),
                 citationIDs: ["schoenfeld2021", "ramosCampoSplit2024"], confidence: .moderate))
         }
 
@@ -595,25 +595,25 @@ public enum UnifiedPlanCoachEngine {
             if working.isEmpty {
                 findings.append(UnifiedPlanCoachCritique(
                     id: "critique|no-working-set|\(located.item.id.uuidString)", kind: .intensity,
-                    severity: .warning, title: "No working sets for \(located.item.exerciseKey.raw)",
-                    detail: "This item cannot express a meaningful strength prescription without at least one working set.",
-                    suggestedFix: "Add a working set or remove the item from the session.",
+                    severity: .warning, title: String(localized: "No working sets for \(located.item.exerciseKey.raw)", bundle: .module),
+                    detail: String(localized: "This item cannot express a meaningful strength prescription without at least one working set.", bundle: .module),
+                    suggestedFix: String(localized: "Add a working set or remove the item from the session.", bundle: .module),
                     citationIDs: ["schoenfeld2021"], confidence: .strong))
             }
             for set in working where set.targetRPE == nil && set.targetRIR == nil && set.load == .unspecified {
                 findings.append(UnifiedPlanCoachCritique(
                     id: "critique|underspecified|\(set.id.uuidString)", kind: .intensity,
-                    severity: .info, title: "Effort is not specified",
-                    detail: "\(located.item.exerciseKey.raw) has no load or RPE/RIR target on set \(set.setIndex + 1).",
-                    suggestedFix: "Add a load, %1RM, or effort target if the engine is expected to progress this set.",
+                    severity: .info, title: String(localized: "Effort is not specified", bundle: .module),
+                    detail: String(localized: "\(located.item.exerciseKey.raw) has no load or RPE/RIR target on set \(set.setIndex + 1).", bundle: .module),
+                    suggestedFix: String(localized: "Add a load, %1RM, or effort target if the engine is expected to progress this set.", bundle: .module),
                     citationIDs: ["rpeAutoregulation", "oneRMEstimation"], confidence: .moderate))
             }
             if located.item.defaultRestSeconds == nil && working.allSatisfy({ $0.restSeconds == nil }) {
                 findings.append(UnifiedPlanCoachCritique(
                     id: "critique|rest|" + located.item.id.uuidString, kind: .rest,
-                    severity: .info, title: "Rest is not specified",
+                    severity: .info, title: String(localized: "Rest is not specified", bundle: .module),
                     detail: located.item.exerciseKey.raw + " has no rest target, so the execution surface must rely on a generic timer.",
-                    suggestedFix: "Set a rest target appropriate to the exercise and goal, then adjust it from actual performance.",
+                    suggestedFix: String(localized: "Set a rest target appropriate to the exercise and goal, then adjust it from actual performance.", bundle: .module),
                     citationIDs: ["schoenfeld2021", "rpeAutoregulation"], confidence: .moderate))
             }
         }
@@ -622,9 +622,9 @@ public enum UnifiedPlanCoachEngine {
             where session.painFlag?.present == true {
             findings.append(UnifiedPlanCoachCritique(
                 id: "critique|safety|pain|" + session.id.uuidString, kind: .safety,
-                severity: .warning, title: "Pain or illness is flagged",
+                severity: .warning, title: String(localized: "Pain or illness is flagged", bundle: .module),
                 detail: session.title + " carries a pain or illness flag. The plan should not be treated as a clearance to train through symptoms.",
-                suggestedFix: "Pause hard work, choose rest or gentle movement, and seek qualified advice if symptoms persist.",
+                suggestedFix: String(localized: "Pause hard work, choose rest or gentle movement, and seek qualified advice if symptoms persist.", bundle: .module),
                 citationIDs: ["meeusenOvertraining2013", "sawMonitoring2016"], confidence: .limited))
         }
 
@@ -632,9 +632,9 @@ public enum UnifiedPlanCoachEngine {
            trainingFacts?.repeatedDeclineByExercise.values.contains(where: { $0 >= 2 }) == true {
             findings.append(UnifiedPlanCoachCritique(
                 id: "critique|deload-signal", kind: .recovery,
-                severity: .attention, title: "Recent performance suggests a deload review",
-                detail: "At least one lift has repeated week-over-week decline; this is a review signal, not an automatic plan change.",
-                suggestedFix: "Consider a lower-volume week and inspect sleep, pain, effort, and exercise fit.",
+                severity: .attention, title: String(localized: "Recent performance suggests a deload review", bundle: .module),
+                detail: String(localized: "At least one lift has repeated week-over-week decline; this is a review signal, not an automatic plan change.", bundle: .module),
+                suggestedFix: String(localized: "Consider a lower-volume week and inspect sleep, pain, effort, and exercise fit.", bundle: .module),
                 citationIDs: ["rpeAutoregulation", "halsonRecovery2014", "meeusenOvertraining2013"],
                 confidence: .limited))
         }
@@ -657,8 +657,8 @@ public enum UnifiedPlanCoachEngine {
                     itemID: located.item.id, setID: set.id, exerciseKey: located.item.exerciseKey,
                     current: set, proposed: proposed,
                     reason: declining
-                        ? "Hold or reduce the next exposure after repeated decline."
-                        : "The recent top set supports the next step in the selected progression model.",
+                        ? String(localized: "Hold or reduce the next exposure after repeated decline.", bundle: .module)
+                        : String(localized: "The recent top set supports the next step in the selected progression model.", bundle: .module),
                     citationIDs: ["rpeAutoregulation", "oneRMEstimation", "schoenfeld2021"],
                     confidence: declining ? .limited : .moderate))
                 break

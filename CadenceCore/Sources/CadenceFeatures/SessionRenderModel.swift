@@ -47,7 +47,7 @@ public enum SessionRenderModel {
             guard !sets.isEmpty else { return nil }
             return "\(performer.label): " + sets.map { setLineText($0, unit: unit) }.joined(separator: ", ")
         }
-        return segments.isEmpty ? nil : "Done: " + segments.joined(separator: "; ")
+        return segments.isEmpty ? nil : String(localized: "Done: ", bundle: .module) + segments.joined(separator: "; ")
     }
 
     /// The combined `6/6 sets · reps · weight · BW` summary, used solo and as
@@ -56,10 +56,10 @@ public enum SessionRenderModel {
                                       unit: MeasurementUnitPreference) -> String {
         let completed = context.sets.filter { !$0.isWarmup }.count
         let planned = completed + context.pendingSets.count
-        var parts = ["\(completed)/\(max(completed, planned)) sets"]
+        var parts = [String(localized: "\(completed)/\(max(completed, planned)) sets", bundle: .module)]
         let reps = (context.sets.filter { !$0.isWarmup }.map(\.reps) + context.pendingSets.map(\.targetReps)).filter { $0 > 0 }
         if let minReps = reps.min(), let maxReps = reps.max() {
-            parts.append(minReps == maxReps ? "\(minReps) reps" : "\(minReps)–\(maxReps) reps")
+            parts.append(minReps == maxReps ? String(localized: "\(minReps) reps", bundle: .module) : String(localized: "\(minReps)–\(maxReps) reps", bundle: .module))
         }
         let weights = context.sets.filter { !$0.isWarmup && !$0.usesBodyweight }.map(\.weight) +
             context.pendingSets.compactMap(\.targetWeightKg)

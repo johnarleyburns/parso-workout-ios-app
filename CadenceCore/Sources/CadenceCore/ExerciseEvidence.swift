@@ -11,12 +11,12 @@ public enum ExerciseEvidence {
     }
 
     private static let sourceLabels: [String: String] = [
-        "systematic_review": "Systematic review",
-        "experimental": "Experimental study",
-        "meta_regression": "Meta-regression",
-        "review_or_position": "Review / position statement",
-        "training_intervention": "Training intervention",
-        "randomized_controlled_trial": "Randomized controlled trial",
+        "systematic_review": String(localized: "Systematic review", bundle: .module),
+        "experimental": String(localized: "Experimental study", bundle: .module),
+        "meta_regression": String(localized: "Meta-regression", bundle: .module),
+        "review_or_position": String(localized: "Review / position statement", bundle: .module),
+        "training_intervention": String(localized: "Training intervention", bundle: .module),
+        "randomized_controlled_trial": String(localized: "Randomized controlled trial", bundle: .module),
     ]
 
     public static let patterns: [String: PatternEvidence] = TrainingEngineBridge.evidencePatterns
@@ -52,14 +52,14 @@ public enum ExerciseEvidence {
 
     private static func displayName(for id: String) -> String {
         let overrides = [
-            "kettlebell_figure8": "Kettlebell Figure 8",
-            "olympic_clean_and_jerk": "Olympic Clean and Jerk",
-            "horizontal_press_triceps_bias": "Horizontal Press (Triceps Bias)",
-            "elbow_flexion_brachioradialis_bias": "Elbow Flexion (Brachioradialis Bias)",
-            "dip_chest_bias": "Dip (Chest Bias)", "dip_triceps_bias": "Dip (Triceps Bias)",
-            "squat_quad_bias": "Squat (Quad Bias)",
-            "plantar_flexion_straight_knee": "Plantar Flexion (Straight Knee)",
-            "plantar_flexion_bent_knee": "Plantar Flexion (Bent Knee)",
+            "kettlebell_figure8": String(localized: "Kettlebell Figure 8", bundle: .module),
+            "olympic_clean_and_jerk": String(localized: "Olympic Clean and Jerk", bundle: .module),
+            "horizontal_press_triceps_bias": String(localized: "Horizontal Press (Triceps Bias)", bundle: .module),
+            "elbow_flexion_brachioradialis_bias": String(localized: "Elbow Flexion (Brachioradialis Bias)", bundle: .module),
+            "dip_chest_bias": String(localized: "Dip (Chest Bias)", bundle: .module), "dip_triceps_bias": String(localized: "Dip (Triceps Bias)", bundle: .module),
+            "squat_quad_bias": String(localized: "Squat (Quad Bias)", bundle: .module),
+            "plantar_flexion_straight_knee": String(localized: "Plantar Flexion (Straight Knee)", bundle: .module),
+            "plantar_flexion_bent_knee": String(localized: "Plantar Flexion (Bent Knee)", bundle: .module),
         ]
         if let override = overrides[id] { return override }
         return id.split(separator: "_").map { $0.capitalized }.joined(separator: " ")

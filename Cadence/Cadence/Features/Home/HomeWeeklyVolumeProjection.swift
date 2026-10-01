@@ -28,7 +28,7 @@ enum HomeWeeklyVolumeProjection {
         let performers = keys.map { key in
             key == VolumeSummaryPerformer.ownerKey
                 ? .owner
-                : VolumeSummaryPerformer(id: key, name: names[key] ?? "Partner",
+                : VolumeSummaryPerformer(id: key, name: names[key] ?? String(localized: "Partner"),
                                          personID: UUID(uuidString: key))
         }
         let volumes = Dictionary(uniqueKeysWithValues: keys.map { key in

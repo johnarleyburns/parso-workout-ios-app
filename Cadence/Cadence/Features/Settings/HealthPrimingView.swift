@@ -18,9 +18,9 @@ struct HealthPrimingView: View {
                 Text("Connect Apple Health")
                     .font(.title2.bold())
                 VStack(alignment: .leading, spacing: 16) {
-                    primingRow("figure.walk", "Read your steps and daily activity to show them on Today.")
-                    primingRow("figure.run", "Import workouts and heart rate recorded by your Apple Watch.")
-                    primingRow("square.and.arrow.up", "Save a summary of your strength workouts back to Health.")
+                    primingRow("figure.walk", String(localized: "Read your steps and daily activity to show them on Today."))
+                    primingRow("figure.run", String(localized: "Import workouts and heart rate recorded by your Apple Watch."))
+                    primingRow("square.and.arrow.up", String(localized: "Save a summary of your strength workouts back to Health."))
                 }
                 .padding(.horizontal)
                 Text("Cladiron requests only what it needs, and your health data never leaves your device.")

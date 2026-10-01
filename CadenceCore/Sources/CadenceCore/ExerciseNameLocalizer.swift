@@ -15,13 +15,26 @@ public struct ExerciseNameLocalizer: Sendable {
 
     public func localizedName(for canonicalName: String, locale: Locale = .current) -> String {
         let key = canonicalName.normalizedExerciseName
-        let language = locale.identifier
-        let languageCode = locale.language.languageCode.map(\.identifier)
-            ?? language.split(separator: "-").first.map(String.init)
-            ?? language
-        return names[key]?[language]
-            ?? names[key]?[languageCode]
-            ?? canonicalName
+        guard let translations = names[key] else { return canonicalName }
+        return Self.lookupKeys(for: locale).lazy.compactMap { translations[$0] }.first ?? canonicalName
+    }
+
+    /// Sidecar keys use BCP-47 tags ("pt-BR", "zh-Hant"), while `Locale.identifier`
+    /// is ICU-style ("pt_BR", "zh-Hant_TW"), so try script and region forms too.
+    static func lookupKeys(for locale: Locale) -> [String] {
+        let identifier = locale.identifier.replacingOccurrences(of: "_", with: "-")
+        let language = locale.language.languageCode?.identifier
+            ?? identifier.split(separator: "-").first.map(String.init) ?? identifier
+        var keys = [identifier]
+        if let script = locale.language.script?.identifier { keys.append("\(language)-\(script)") }
+        if let region = locale.region?.identifier { keys.append("\(language)-\(region)") }
+        if language == "zh", locale.language.script == nil {
+            // zh-TW / zh-HK default to Traditional, other Chinese regions to Simplified.
+            let region = locale.region?.identifier
+            keys.append(region == "TW" || region == "HK" || region == "MO" ? "zh-Hant" : "zh-Hans")
+        }
+        keys.append(language)
+        return keys
     }
 
     public var localizedExerciseCount: Int { names.count }

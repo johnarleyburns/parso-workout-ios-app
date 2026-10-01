@@ -15,7 +15,7 @@ final class WorkoutLiveActivityCoordinator {
         endAllStale()
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let attributes = WorkoutLiveActivityAttributes(workoutTitle: title)
-        let state = WorkoutLiveActivityAttributes.ContentState(status: "Active", elapsedSeconds: 0,
+        let state = WorkoutLiveActivityAttributes.ContentState(status: String(localized: "Active"), elapsedSeconds: 0,
                                                                restEndsAt: restEndsAt,
                                                                nextExercise: nextExercise,
                                                                nextSetSummary: nextSetSummary,

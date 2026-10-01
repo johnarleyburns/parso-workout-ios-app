@@ -99,7 +99,7 @@ final class WatchStoreBootstrap: ObservableObject {
 
     var recoveryMessage: String? {
         if case .recovered(let url) = state {
-            return "Previous Watch data was recovered to \(url.lastPathComponent)."
+            return String(localized: "Previous Watch data was recovered to \(url.lastPathComponent).")
         }
         return nil
     }

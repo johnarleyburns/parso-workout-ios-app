@@ -72,7 +72,7 @@ struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
 
-            settingsDisclosure("Health & Sensors", expanded: $healthExpanded,
+            settingsDisclosure(String(localized: "Health & Sensors"), expanded: $healthExpanded,
                               identifier: "settings.section.health") {
                 Button {
                     primingPresented = true
@@ -110,7 +110,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure("Watch Sync", expanded: $watchExpanded,
+            settingsDisclosure(String(localized: "Watch Sync"), expanded: $watchExpanded,
                               identifier: "settings.section.watch") {
                 HStack {
                     Label("Status", systemImage: "applewatch")
@@ -158,7 +158,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure("Coach, Science & Rationale", expanded: $coachExpanded,
+            settingsDisclosure(String(localized: "Coach, Science & Rationale"), expanded: $coachExpanded,
                               identifier: "settings.section.coach") {
                 NavigationLink {
                     CardioIntensitySettingsView()
@@ -217,7 +217,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure("Exercises & Exclusions", expanded: $exercisesExpanded,
+            settingsDisclosure(String(localized: "Exercises & Exclusions"), expanded: $exercisesExpanded,
                               identifier: "settings.section.exercises") {
                 NavigationLink {
                     TemplatesView(onStart: { _ in })
@@ -241,7 +241,7 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.excludedExercises")
             }
 
-            settingsDisclosure("Data & Backup", expanded: $dataExpanded,
+            settingsDisclosure(String(localized: "Data & Backup"), expanded: $dataExpanded,
                               identifier: "settings.section.data") {
                 NavigationLink {
                     ImportView()
@@ -253,7 +253,7 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.export")
             }
 
-            settingsDisclosure("Transparency & Control", expanded: $transparencyExpanded,
+            settingsDisclosure(String(localized: "Transparency & Control"), expanded: $transparencyExpanded,
                               identifier: "settings.section.transparency") {
                 NavigationLink {
                     TransparencyCenterView()
@@ -266,7 +266,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure("CloudKit Sync", expanded: $cloudKitExpanded,
+            settingsDisclosure(String(localized: "CloudKit Sync"), expanded: $cloudKitExpanded,
                               identifier: "settings.section.cloudKit") {
                 HStack {
                     Label("iCloud Sync", systemImage: "arrow.triangle.2.circlepath.icloud")
@@ -288,7 +288,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure("Support & About", expanded: $supportExpanded,
+            settingsDisclosure(String(localized: "Support & About"), expanded: $supportExpanded,
                               identifier: "settings.section.support") {
                 NavigationLink {
                     AboutView()
@@ -348,10 +348,10 @@ struct SettingsView: View {
 
     private var statusText: String {
         switch healthStatus {
-        case .authorized: return "Connected"
-        case .denied: return "Denied"
-        case .unavailable: return "Unavailable"
-        case .notDetermined: return "Not connected"
+        case .authorized: return String(localized: "Connected")
+        case .denied: return String(localized: "Denied")
+        case .unavailable: return String(localized: "Unavailable")
+        case .notDetermined: return String(localized: "Not connected")
         }
     }
 }

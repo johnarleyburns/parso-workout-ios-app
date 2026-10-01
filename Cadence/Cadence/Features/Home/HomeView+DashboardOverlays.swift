@@ -33,7 +33,7 @@ extension HomeView {
         }
         if warmupActive {
             GuidedPhaseOverlay(
-                title: "Warm Up",
+                title: String(localized: "Warm Up"),
                 minutes: pendingPlan?.warmupMinutes ?? settings.warmupMinutes,
                 tint: .orange,
                 idPrefix: "warmup",

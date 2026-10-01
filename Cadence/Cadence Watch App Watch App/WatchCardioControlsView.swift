@@ -24,8 +24,8 @@ struct WatchCardioControlsView: View {
         VStack(spacing: 10) {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 controlButton("End", "stop.fill", isDestructive: true, action: onEnd)
-                controlButton(isPaused ? "Resume" : "Pause", isPaused ? "play.fill" : "pause.fill", isPause: true, action: onPause)
-                controlButton("Lock", "lock.fill", action: onLock)
+                controlButton(isPaused ? String(localized: "Resume") : String(localized: "Pause"), isPaused ? "play.fill" : "pause.fill", isPause: true, action: onPause)
+                controlButton(String(localized: "Lock"), "lock.fill", action: onLock)
                 controlButton(isSwim ? "Lap" : "Lap", "plus", action: onLap)
             }
         }

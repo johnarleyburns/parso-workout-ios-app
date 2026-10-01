@@ -29,7 +29,7 @@ extension SessionView {
         if isPR {
             Haptics.prAchieved()
             UIAccessibility.post(notification: .announcement,
-                                 argument: "New best, \(exercise.name), \(Format.weight(weightKg, unit: settings.unit)) for \(reps)")
+                                 argument: String(localized: "New best, \(exercise.name), \(Format.weight(weightKg, unit: settings.unit)) for \(reps)"))
             let sample = SetSample(weight: weightKg, reps: reps, date: when, isWarmup: isWarmup)
             let metric = PRCalculator.metric(sample, rule: settings.prRule, formula: settings.formula)
             let changeText: String = {
@@ -55,7 +55,7 @@ extension SessionView {
             Haptics.setLogged()
             let performerText = person.map { " for \($0.name)" } ?? ""
             UIAccessibility.post(notification: .announcement,
-                                 argument: "Set logged, \(exercise.name), \(Format.weight(weightKg, unit: settings.unit)) for \(reps)\(performerText)")
+                                 argument: String(localized: "Set logged, \(exercise.name), \(Format.weight(weightKg, unit: settings.unit)) for \(reps)\(performerText)"))
         }
         if active.strengthSession?.id == session.id {
             let exercises = session.exercisesInOrder

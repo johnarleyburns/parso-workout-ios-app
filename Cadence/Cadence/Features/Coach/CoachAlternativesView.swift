@@ -139,7 +139,7 @@ struct CoachAlternativesView: View {
     private func altSubtitle(for session: CoachSession) -> String {
         if !session.subtitle.isEmpty { return session.subtitle }
         var parts: [String] = []
-        if let dur = session.durationMinutes { parts.append("\(dur) min") }
+        if let dur = session.durationMinutes { parts.append(String(localized: "\(dur) min")) }
         if let intensity = session.intensity { parts.append(intensity.rawValue) }
         return parts.joined(separator: " · ")
     }

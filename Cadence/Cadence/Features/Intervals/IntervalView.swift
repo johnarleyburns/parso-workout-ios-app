@@ -102,7 +102,7 @@ struct IntervalView: View {
                 Text("Total left \(Format.duration(runner.overallRemaining))")
                     .font(.headline).opacity(0.85)
                 LiveHRBigView(bpm: model.hrm.currentBPM, zone: liveZone, avgHR: liveAvgHR,
-                              idPrefix: "interval", label: "Interval heart rate")
+                              idPrefix: "interval", label: String(localized: "Interval heart rate"))
                 Spacer()
 
                 // Skip the current phase (warm-up/work/rest/cool-down) — feedback
@@ -197,7 +197,7 @@ struct IntervalView: View {
         case .neutral: return "figure.cooldown"
         }
     }
-    private var label: String { runner.phaseLabel.isEmpty ? "Get Ready" : runner.phaseLabel }
+    private var label: String { runner.phaseLabel.isEmpty ? String(localized: "Get Ready") : runner.phaseLabel }
 
     // MARK: Loop
 

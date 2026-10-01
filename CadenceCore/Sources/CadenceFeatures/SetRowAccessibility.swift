@@ -14,10 +14,10 @@ public enum SetRowAccessibility {
 
         public var displayName: String {
             switch self {
-            case .log: return "Log set"
-            case .edit: return "Edit set"
-            case .repeatSet: return "Repeat set"
-            case .delete: return "Delete set"
+            case .log: return String(localized: "Log set", bundle: .module)
+            case .edit: return String(localized: "Edit set", bundle: .module)
+            case .repeatSet: return String(localized: "Repeat set", bundle: .module)
+            case .delete: return String(localized: "Delete set", bundle: .module)
             }
         }
     }
@@ -42,7 +42,7 @@ public enum SetRowAccessibility {
         let rpeText = rpe.map { ", RPE \($0)" } ?? ""
         return Descriptor(
             label: "\(setText), \(exercise)\(performerText), \(weight) × \(reps), logged\(rpeText)",
-            hint: "Swipe up or use the actions menu to edit, repeat, or delete this set.",
+            hint: String(localized: "Swipe up or use the actions menu to edit, repeat, or delete this set.", bundle: .module),
             actions: [.edit, .repeatSet, .delete])
     }
 
@@ -53,8 +53,8 @@ public enum SetRowAccessibility {
         let weightText = weight.map { ", \($0)" } ?? ""
         let state = isCurrent ? "next set, not logged" : "not logged"
         return Descriptor(
-            label: "Set \(setNumber) of \(max(setNumber, planned)), \(exercise)\(performerText)\(weightText), \(reps) reps, \(state)",
-            hint: isCurrent ? "Double tap to edit, or use Log set to save the next set." : "Double tap to edit this planned set.",
+            label: String(localized: "Set \(setNumber) of \(max(setNumber, planned)), \(exercise)\(performerText)\(weightText), \(reps) reps, \(state)", bundle: .module),
+            hint: isCurrent ? String(localized: "Double tap to edit, or use Log set to save the next set.", bundle: .module) : String(localized: "Double tap to edit this planned set.", bundle: .module),
             actions: isCurrent ? [.log, .edit] : [.edit])
     }
 }

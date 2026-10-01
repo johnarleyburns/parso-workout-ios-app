@@ -159,7 +159,7 @@ struct YourWeekView: View {
                 if completed.count > 0 {
                     HStack {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                        Text("\(completed.count) day\(completed.count == 1 ? "" : "s") completed").font(.caption)
+                        Text("\(completed.count) days completed").font(.caption)
                     }
                 }
             }
@@ -213,7 +213,7 @@ struct YourWeekView: View {
                     HStack {
                         Text(String(format: "%.1f", vo2)).font(.title.bold()).foregroundStyle(.teal)
                         VStack(alignment: .leading) {
-                            Text(balance.vo2maxProtocol ?? "Field test").font(.caption)
+                            Text(balance.vo2maxProtocol ?? String(localized: "Field test")).font(.caption)
                             if let trend = balance.vo2maxTrend {
                                 Text(trend == .rising ? "Improving" : trend == .declining ? "Declining" : "Stable")
                                     .font(.caption2).foregroundStyle(.secondary)
@@ -359,10 +359,10 @@ struct YourWeekView: View {
         }
 
         private var accessibilitySummary: String {
-            guard total > 0 else { return "No cardio this week" }
+            guard total > 0 else { return String(localized: "No cardio this week") }
             return segments.map { seg in
                 let pct = Int((seg.minutes / total * 100).rounded())
-                return "Zone \(seg.zone), \(CardioMath.zoneName(seg.zone)): \(Int(seg.minutes.rounded())) minutes, \(pct) percent"
+                return String(localized: "Zone \(seg.zone), \(CardioMath.zoneName(seg.zone)): \(Int(seg.minutes.rounded())) minutes, \(pct) percent")
             }.joined(separator: ". ")
         }
     }

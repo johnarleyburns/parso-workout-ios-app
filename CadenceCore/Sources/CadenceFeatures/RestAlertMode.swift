@@ -7,8 +7,8 @@ public enum RestAlertMode: String, Codable, CaseIterable, Sendable, Identifiable
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .inAppOnly: return "In app only"
-        case .alarm: return "Alarm (breaks through Silent)"
+        case .inAppOnly: return String(localized: "In app only", bundle: .module)
+        case .alarm: return String(localized: "Alarm (breaks through Silent)", bundle: .module)
         }
     }
 }

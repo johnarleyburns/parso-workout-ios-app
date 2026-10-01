@@ -43,7 +43,7 @@ struct ConsistencyHeatmapView: View {
             }
             Divider().padding(.top, 12).padding(.bottom, 8)
             CitationLink(citation: CitationRegistry.frequencyMeta,
-                         context: "Why weekly training frequency matters", compact: true)
+                         context: String(localized: "Why weekly training frequency matters"), compact: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

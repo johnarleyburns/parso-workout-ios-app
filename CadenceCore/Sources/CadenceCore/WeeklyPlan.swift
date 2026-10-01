@@ -11,9 +11,9 @@ public enum StrengthFocus: String, Sendable, Equatable {
 
     public var label: String {
         switch self {
-        case .fullBody: return "Full body"
-        case .upper: return "Upper body"
-        case .lower: return "Lower body"
+        case .fullBody: return String(localized: "Full body", bundle: .module)
+        case .upper: return String(localized: "Upper body", bundle: .module)
+        case .lower: return String(localized: "Lower body", bundle: .module)
         }
     }
 
@@ -447,7 +447,7 @@ public struct WeeklyPlan: Sendable, Equatable {
         // scheduled training day into a forced Recovery day ("coach suggests, it
         // does not proscribe").
         if isRestDay(date: date, restPreference: restPreference, calendar: calendar) {
-            return [PlannedSession(id: "f-\(date)-rest", kind: .rest, label: "Rest",
+            return [PlannedSession(id: "f-\(date)-rest", kind: .rest, label: String(localized: "Rest", bundle: .module),
                                     isHard: false, isRest: true)]
         }
 
@@ -467,9 +467,9 @@ public struct WeeklyPlan: Sendable, Equatable {
         let recommendsLighter = poorReadinessApplies || priorHardStreak >= 6
         let adviceNote: String?
         if poorReadinessApplies {
-            adviceNote = "Readiness is low — consider keeping today lighter."
+            adviceNote = String(localized: "Readiness is low — consider keeping today lighter.", bundle: .module)
         } else if recommendsLighter {
-            adviceNote = "Consider a lighter session — \(priorHardStreak) hard days in a row."
+            adviceNote = String(localized: "Consider a lighter session — \(priorHardStreak) hard days in a row.", bundle: .module)
         } else {
             adviceNote = nil
         }
@@ -514,7 +514,7 @@ public struct WeeklyPlan: Sendable, Equatable {
             )
             sessions.append(PlannedSession(id: "f-\(date)-strength",
                                             kind: .strength,
-                                            label: useSplit ? "Strength · \(planFocus.label)" : "Strength",
+                                            label: useSplit ? String(localized: "Strength · \(planFocus.label)", bundle: .module) : "Strength",
                                             isHard: true, isRest: false,
                                             adviceNote: adviceNote,
                                             recommendsLighter: recommendsLighter,
@@ -536,7 +536,7 @@ public struct WeeklyPlan: Sendable, Equatable {
 
         // If nothing scheduled, rest
         if sessions.isEmpty {
-            sessions.append(PlannedSession(id: "f-\(date)-rest", kind: .rest, label: "Rest",
+            sessions.append(PlannedSession(id: "f-\(date)-rest", kind: .rest, label: String(localized: "Rest", bundle: .module),
                                             isHard: false, isRest: true))
         }
 
@@ -622,7 +622,7 @@ public struct WeeklyPlan: Sendable, Equatable {
 
     private static func cardioLabel(_ kind: CoachSessionKind) -> String {
         switch kind {
-        case .easyAerobic: return "Easy aerobic"
+        case .easyAerobic: return String(localized: "Easy aerobic", bundle: .module)
         case .moderateAerobic: return "Cardio"
         case .vo2Intervals: return "VO₂ intervals"
         default: return "Cardio"

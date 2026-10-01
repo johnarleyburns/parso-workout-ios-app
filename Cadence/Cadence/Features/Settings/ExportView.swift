@@ -130,9 +130,9 @@ struct ExportView: View {
     @ViewBuilder
     private func summaryCard(_ s: ExportSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            summaryRow("Strength", value: "\(s.strengthSessionCount) session\(s.strengthSessionCount == 1 ? "" : "s") · \(s.strengthSetCount) sets")
+            summaryRow("Strength", value: String(localized: "Sessions: \(s.strengthSessionCount) · Sets: \(s.strengthSetCount)"))
             if s.cardioCount > 0 {
-                summaryRow("Cardio", value: "\(s.cardioCount) workout\(s.cardioCount == 1 ? "" : "s")")
+                summaryRow("Cardio", value: String(localized: "\(s.cardioCount) workouts"))
                 if !s.cardioByType.isEmpty {
                     Text(cardioBreakdown(s.cardioByType))
                         .font(.caption)
@@ -140,19 +140,19 @@ struct ExportView: View {
                 }
             }
             if s.hrSampleCount > 0 || s.routeSampleCount > 0 {
-                summaryRow("Samples", value: "\(s.hrSampleCount) HR · \(s.routeSampleCount) route")
+                summaryRow(String(localized: "Samples"), value: "\(s.hrSampleCount) HR · \(s.routeSampleCount) route")
             }
             if s.assessmentCount > 0 {
-                summaryRow("Fitness tests", value: "\(s.assessmentCount)")
+                summaryRow(String(localized: "Fitness tests"), value: "\(s.assessmentCount)")
             }
             if let span = dateSpan(s) {
-                summaryRow("Date range", value: span)
+                summaryRow(String(localized: "Date range"), value: span)
             }
             if s.includesPreferences {
-                summaryRow("Preferences", value: "\(s.preferenceKeyCount) settings\(s.includesCoachProfile ? " · Coach profile" : "")")
+                summaryRow(String(localized: "Preferences"), value: "\(s.preferenceKeyCount) settings\(s.includesCoachProfile ? " · Coach profile" : "")")
             }
             Divider()
-            summaryRow("Backup size", value: sizeText(s))
+            summaryRow(String(localized: "Backup size"), value: sizeText(s))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 4)
@@ -186,7 +186,7 @@ struct ExportView: View {
 
     private func rebuild() {
         guard let container else {
-            exportError = "Database unavailable."
+            exportError = String(localized: "Database unavailable.")
             return
         }
         buildTask?.cancel()
@@ -206,7 +206,7 @@ struct ExportView: View {
                     coachPreferences: coachDTO,
                     preferences: prefs)
             } catch {
-                await finish(error: "Export failed: \(error.localizedDescription)")
+                await finish(error: String(localized: "Export failed: \(error.localizedDescription)"))
                 return
             }
             if Task.isCancelled { return }
@@ -260,7 +260,7 @@ struct ExportView: View {
                     self.isLoading = false
                 }
             } catch {
-                await finish(error: "Encode failed: \(error.localizedDescription)")
+                await finish(error: String(localized: "Encode failed: \(error.localizedDescription)"))
             }
         }
     }
@@ -275,7 +275,7 @@ struct ExportView: View {
 
     private func handleImport(_ result: Result<[URL], Error>) {
         guard let container else {
-            restoreMessage = "Database unavailable."
+            restoreMessage = String(localized: "Database unavailable.")
             return
         }
         let url: URL
@@ -284,7 +284,7 @@ struct ExportView: View {
             guard let first = urls.first else { return }
             url = first
         case .failure(let error):
-            restoreMessage = "Couldn't open that file: \(error.localizedDescription)"
+            restoreMessage = String(localized: "Couldn't open that file: \(error.localizedDescription)")
             return
         }
 
@@ -309,20 +309,21 @@ struct ExportView: View {
                     if let prefs = export.preferences { prefsSink.applyImportedPreferences(prefs) }
                     let noData = added == 0 && export.sessions.isEmpty && export.cardio.isEmpty
                         && export.assessments.isEmpty && export.suggestionExclusions.isEmpty
-                    self.restoreMessage = "Restored \(added) workout\(added == 1 ? "" : "s")"
-                        + (noData ? " (file contained no data)" : "")
-                        + (isFIT ? " (FIT cardio activity; JSON is the full backup format)" : "")
-                        + (!export.suggestionExclusions.isEmpty
-                           ? " and \(export.suggestionExclusions.count) suggestion preference\(export.suggestionExclusions.count == 1 ? "" : "s")"
-                           : "")
-                        + (export.preferences != nil ? " and your preferences" : "") + "."
+                    let exclusionCount = export.suggestionExclusions.count
+                    self.restoreMessage = [
+                        String(localized: "Restored \(added) workouts."),
+                        noData ? String(localized: "The file contained no data.") : nil,
+                        isFIT ? String(localized: "This was a FIT cardio activity; JSON is the full backup format.") : nil,
+                        exclusionCount > 0 ? String(localized: "Also restored \(exclusionCount) suggestion preferences.") : nil,
+                        export.preferences != nil ? String(localized: "Your preferences were restored too.") : nil
+                    ].compactMap { $0 }.joined(separator: " ")
                     self.isRestoring = false
                     self.rebuild()
                 }
             } catch {
                 await MainActor.run {
                     self.logger.error("Import failed: \(error.localizedDescription)")
-                    self.restoreMessage = "Import failed: \(error.localizedDescription)"
+                    self.restoreMessage = String(localized: "Import failed: \(error.localizedDescription)")
                     self.isRestoring = false
                 }
             }

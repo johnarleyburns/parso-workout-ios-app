@@ -16,7 +16,7 @@ extension SessionView {
 
         let load = pending.targetWeightKg.map {
             "\(Format.weightValue($0, unit: settings.unit)) \(settings.unit.abbreviation)"
-        } ?? "Bodyweight"
+        } ?? String(localized: "Bodyweight")
         active.nextSetSummary = "\(context.name) · \(load) × \(pending.targetReps)"
         active.nextSetToken = pending.id
     }

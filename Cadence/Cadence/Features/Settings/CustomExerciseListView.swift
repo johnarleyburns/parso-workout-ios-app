@@ -37,7 +37,7 @@ struct CustomExerciseListView: View {
     var body: some View {
         List {
             if !incomplete.isEmpty {
-                Section("Needs Definition — \(incomplete.count) exercise\(incomplete.count == 1 ? "" : "s")") {
+                Section("Needs Definition — \(incomplete.count) exercises") {
                     ForEach(incomplete) { ex in
                         incompleteRow(for: ex)
                     }
@@ -45,7 +45,7 @@ struct CustomExerciseListView: View {
             }
 
             if !complete.isEmpty {
-                Section("Defined — \(complete.count) exercise\(complete.count == 1 ? "" : "s")") {
+                Section("Defined — \(complete.count) exercises") {
                     ForEach(complete) { ex in
                         row(for: ex)
                     }
@@ -104,9 +104,9 @@ struct CustomExerciseListView: View {
 
     private var reassignConfirmTitle: String {
         guard let target = deleteTarget, let match = bestMatch(for: target) else {
-            return "Reassign exercise"
+            return String(localized: "Reassign exercise")
         }
-        return "Reassigning to \(match.name), proceed?"
+        return String(localized: "Reassigning to \(match.name), proceed?")
     }
 
     private func incompleteRow(for ex: Exercise) -> some View {

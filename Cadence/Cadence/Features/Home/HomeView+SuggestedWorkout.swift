@@ -329,7 +329,7 @@ extension HomeView {
                 suggestedCardioCalculating = false
                 suggestedCardioTask = nil
                 guard let suggestion else {
-                    suggestedCardioFailure = "No supported cardio history is available yet. Try again after recording a cardio workout."
+                    suggestedCardioFailure = String(localized: "No supported cardio history is available yet. Try again after recording a cardio workout.")
                     return
                 }
                 suggestedCardio = suggestion

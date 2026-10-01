@@ -96,13 +96,13 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
         func add(_ kind: IntervalPhaseKind, _ dur: TimeInterval, _ label: String) {
             if dur > 0 { phases.append(IntervalPhase(id: id, kind: kind, duration: dur, label: label)); id += 1 }
         }
-        add(.warmup, warmup, "Warm Up")
+        add(.warmup, warmup, String(localized: "Warm Up", bundle: .module))
         for r in 1...max(1, rounds) {
-            add(.work, work, "Work · Round \(r)/\(rounds)")
-            add(.rest, rest, "Rest · Round \(r)/\(rounds)")
+            add(.work, work, String(localized: "Work · Round \(r)/\(rounds)", bundle: .module))
+            add(.rest, rest, String(localized: "Rest · Round \(r)/\(rounds)", bundle: .module))
         }
-        add(.cooldown, cooldown, "Cool Down")
-        return IntervalPlan(name: "Tabata", phases: phases)
+        add(.cooldown, cooldown, String(localized: "Cool Down", bundle: .module))
+        return IntervalPlan(name: String(localized: "Tabata", bundle: .module), phases: phases)
     }
 
     /// Norwegian 4×4: warmup → 4 × (4 min hard / 3 min recover) → cooldown.
@@ -114,13 +114,13 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
         func add(_ kind: IntervalPhaseKind, _ dur: TimeInterval, _ label: String) {
             if dur > 0 { phases.append(IntervalPhase(id: id, kind: kind, duration: dur, label: label)); id += 1 }
         }
-        add(.warmup, warmup, "Warm Up")
+        add(.warmup, warmup, String(localized: "Warm Up", bundle: .module))
         for r in 1...max(1, rounds) {
-            add(.work, work, "Effort · \(r)/\(rounds)")
-            if r < rounds { add(.rest, recover, "Recover · \(r)/\(rounds)") }
+            add(.work, work, String(localized: "Effort · \(r)/\(rounds)", bundle: .module))
+            if r < rounds { add(.rest, recover, String(localized: "Recover · \(r)/\(rounds)", bundle: .module)) }
         }
-        add(.cooldown, cooldown, "Cool Down")
-        return IntervalPlan(name: "Norwegian 4×4", phases: phases)
+        add(.cooldown, cooldown, String(localized: "Cool Down", bundle: .module))
+        return IntervalPlan(name: String(localized: "Norwegian 4×4", bundle: .module), phases: phases)
     }
 
     /// Boxing rounds: rounds × (round work / rest between).
@@ -129,9 +129,9 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
         var phases: [IntervalPhase] = []
         var id = 0
         for r in 1...max(1, rounds) {
-            phases.append(IntervalPhase(id: id, kind: .work, duration: round, label: "Round \(r)/\(rounds)")); id += 1
+            phases.append(IntervalPhase(id: id, kind: .work, duration: round, label: String(localized: "Round \(r)/\(rounds)", bundle: .module))); id += 1
             if r < rounds {
-                phases.append(IntervalPhase(id: id, kind: .rest, duration: rest, label: "Rest · Round \(r)/\(rounds)")); id += 1
+                phases.append(IntervalPhase(id: id, kind: .rest, duration: rest, label: String(localized: "Rest · Round \(r)/\(rounds)", bundle: .module))); id += 1
             }
         }
         return IntervalPlan(name: "Boxing", phases: phases)
@@ -141,8 +141,8 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
     public static func gibala(warmup: TimeInterval = 180, rounds: Int = 8,
                               work: TimeInterval = 60, rest: TimeInterval = 60,
                               cooldown: TimeInterval = 120) -> IntervalPlan {
-        rounded(name: "Gibala", warmup: warmup, rounds: rounds, work: work,
-                workLabel: { "Work · \($0)/\(rounds)" }, rest: rest, restLabel: "Rest",
+        rounded(name: String(localized: "Gibala", bundle: .module), warmup: warmup, rounds: rounds, work: work,
+                workLabel: { String(localized: "Work · \($0)/\(rounds)", bundle: .module) }, rest: rest, restLabel: String(localized: "Rest", bundle: .module),
                 cooldown: cooldown)
     }
 
@@ -151,7 +151,7 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
                            work: TimeInterval = 30, recover: TimeInterval = 240,
                            cooldown: TimeInterval = 180) -> IntervalPlan {
         rounded(name: "SIT (Wingate)", warmup: warmup, rounds: rounds, work: work,
-                workLabel: { "Sprint · \($0)/\(rounds)" }, rest: recover, restLabel: "Recover",
+                workLabel: { String(localized: "Sprint · \($0)/\(rounds)", bundle: .module) }, rest: recover, restLabel: String(localized: "Recover", bundle: .module),
                 cooldown: cooldown)
     }
 
@@ -160,7 +160,7 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
                              work: TimeInterval = 20, recover: TimeInterval = 180,
                              cooldown: TimeInterval = 120) -> IntervalPlan {
         rounded(name: "REHIT", warmup: warmup, rounds: rounds, work: work,
-                workLabel: { "Sprint · \($0)/\(rounds)" }, rest: recover, restLabel: "Recover",
+                workLabel: { String(localized: "Sprint · \($0)/\(rounds)", bundle: .module) }, rest: recover, restLabel: String(localized: "Recover", bundle: .module),
                 cooldown: cooldown)
     }
 
@@ -174,16 +174,16 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
         func add(_ kind: IntervalPhaseKind, _ dur: TimeInterval, _ label: String) {
             if dur > 0 { phases.append(IntervalPhase(id: id, kind: kind, duration: dur, label: label)); id += 1 }
         }
-        add(.warmup, warmup, "Warm Up")
+        add(.warmup, warmup, String(localized: "Warm Up", bundle: .module))
         for set in 1...max(1, sets) {
             for _ in 1...max(1, reps) {
-                add(.rest, 30, "Easy")
-                add(.work, 20, "Moderate")
-                add(.work, 10, "Sprint!")
+                add(.rest, 30, String(localized: "Easy", bundle: .module))
+                add(.work, 20, String(localized: "Moderate", bundle: .module))
+                add(.work, 10, String(localized: "Sprint!", bundle: .module))
             }
-            if set < sets { add(.rest, recover, "Recover · set \(set)/\(sets)") }
+            if set < sets { add(.rest, recover, String(localized: "Recover · set \(set)/\(sets)", bundle: .module)) }
         }
-        add(.cooldown, cooldown, "Cool Down")
+        add(.cooldown, cooldown, String(localized: "Cool Down", bundle: .module))
         return IntervalPlan(name: "10-20-30", phases: phases)
     }
 
@@ -197,12 +197,12 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
         func add(_ kind: IntervalPhaseKind, _ dur: TimeInterval, _ label: String) {
             if dur > 0 { phases.append(IntervalPhase(id: id, kind: kind, duration: dur, label: label)); id += 1 }
         }
-        add(.warmup, warmup, "Warm Up")
+        add(.warmup, warmup, String(localized: "Warm Up", bundle: .module))
         for r in 1...max(1, rounds) {
             add(.work, work, workLabel(r))
             if r < rounds { add(.rest, rest, "\(restLabel) · \(r)/\(rounds)") }
         }
-        add(.cooldown, cooldown, "Cool Down")
+        add(.cooldown, cooldown, String(localized: "Cool Down", bundle: .module))
         return IntervalPlan(name: name, phases: phases)
     }
 
@@ -214,12 +214,12 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
         func add(_ kind: IntervalPhaseKind, _ dur: TimeInterval, _ label: String) {
             if dur > 0 { phases.append(IntervalPhase(id: id, kind: kind, duration: dur, label: label)); id += 1 }
         }
-        add(.warmup, warmup, "Warm Up")
+        add(.warmup, warmup, String(localized: "Warm Up", bundle: .module))
         for r in 1...max(1, rounds) {
-            add(.work, work, "Work · Round \(r)/\(rounds)")
-            if r < rounds { add(.rest, rest, "Rest · Round \(r)/\(rounds)") }
+            add(.work, work, String(localized: "Work · Round \(r)/\(rounds)", bundle: .module))
+            if r < rounds { add(.rest, rest, String(localized: "Rest · Round \(r)/\(rounds)", bundle: .module)) }
         }
-        add(.cooldown, cooldown, "Cool Down")
+        add(.cooldown, cooldown, String(localized: "Cool Down", bundle: .module))
         return IntervalPlan(name: name, phases: phases)
     }
 

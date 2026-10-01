@@ -82,10 +82,10 @@ public enum TodayActivityPresenter {
                 let detail = exercises.isEmpty ? nil : exercises.joined(separator: ", ")
                 let duration = Self.formatDuration(s.duration)
                 let setCount = s.orderedSets.count
-                let value = setCount > 0 ? "\(setCount) set\(setCount == 1 ? "" : "s") · \(duration)" : duration
+                let value = setCount > 0 ? String(localized: "\(setCount) sets", bundle: .module) + " · " + duration : duration
                 return Entry(
                     id: s.id, kind: .strength,
-                    title: s.title.isEmpty ? "Strength session" : s.title,
+                    title: s.title.isEmpty ? String(localized: "Strength session", bundle: .module) : s.title,
                     detail: detail,
                     value: value,
                     occurredAt: s.endedAt ?? s.date,
@@ -110,7 +110,7 @@ public enum TodayActivityPresenter {
                 let cardioTitle = c.displayTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                 let heartRateDetail: String? = {
                     guard let hr = c.avgHeartRate, hr > 0 else { return nil }
-                    return "\(Int(hr)) bpm"
+                    return String(localized: "\(Int(hr)) bpm", bundle: .module)
                 }()
                 return (c, Entry(
                     id: c.id, kind: .cardio,

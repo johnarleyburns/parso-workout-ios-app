@@ -5,7 +5,7 @@ import CadenceFeatures
 
 extension SessionView {
     var suggestExerciseButton: some View {
-        CadenceActionButton(title: "Suggest Exercise…",
+        CadenceActionButton(title: String(localized: "Suggest Exercise…"),
                             systemImage: "wand.and.stars",
                             emphasis: .secondary) {
             do {

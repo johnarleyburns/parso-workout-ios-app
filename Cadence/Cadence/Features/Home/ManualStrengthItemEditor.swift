@@ -134,10 +134,10 @@ enum LoadChoice: String, CaseIterable, Hashable {
 
     var title: String {
         switch self {
-        case .unspecified: return "No load"
-        case .absolute: return "Weight"
+        case .unspecified: return String(localized: "No load")
+        case .absolute: return String(localized: "Weight")
         case .percentage: return "% 1RM"
-        case .bodyweight: return "Bodyweight"
+        case .bodyweight: return String(localized: "Bodyweight")
         }
     }
 }

@@ -222,11 +222,11 @@ struct ManualCardioItemEditor: View {
             TextField("Work seconds", text: $workSecondsText)
                 .keyboardType(.numberPad)
             intensityFields(mode: $intensityMode, value: $intensityText,
-                            title: "Work intensity")
+                            title: String(localized: "Work intensity"))
             TextField("Recovery seconds", text: $recoverySecondsText)
                 .keyboardType(.numberPad)
             intensityFields(mode: $recoveryMode, value: $recoveryIntensityText,
-                            title: "Recovery intensity")
+                            title: String(localized: "Recovery intensity"))
         }
     }
 
@@ -244,7 +244,7 @@ struct ManualCardioItemEditor: View {
     @ViewBuilder
     private func intensityFields(mode: Binding<ManualIntensityMode>,
                                  value: Binding<String>,
-                                 title: String = "Intensity") -> some View {
+                                 title: String = String(localized: "Intensity")) -> some View {
         Picker(title, selection: mode) {
             ForEach(ManualIntensityMode.allCases) { option in
                 Text(option.rawValue).tag(option)

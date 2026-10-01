@@ -15,17 +15,17 @@ public enum MovementFamily: String, CaseIterable, Sendable, Codable {
 
     public var displayName: String {
         switch self {
-        case .squat: "Squat"
-        case .hinge: "Hinge"
-        case .horizontalPush: "Horizontal Push"
-        case .horizontalPull: "Horizontal Pull"
-        case .verticalPush: "Vertical Push"
-        case .verticalPull: "Vertical Pull"
-        case .carry: "Carry"
-        case .core: "Core"
-        case .locomotion: "Locomotion"
-        case .olympic: "Olympic"
-        case .other: "Other"
+        case .squat: String(localized: "Squat", bundle: .module)
+        case .hinge: String(localized: "Hinge", bundle: .module)
+        case .horizontalPush: String(localized: "Horizontal Push", bundle: .module)
+        case .horizontalPull: String(localized: "Horizontal Pull", bundle: .module)
+        case .verticalPush: String(localized: "Vertical Push", bundle: .module)
+        case .verticalPull: String(localized: "Vertical Pull", bundle: .module)
+        case .carry: String(localized: "Carry", bundle: .module)
+        case .core: String(localized: "Core", bundle: .module)
+        case .locomotion: String(localized: "Locomotion", bundle: .module)
+        case .olympic: String(localized: "Olympic", bundle: .module)
+        case .other: String(localized: "Other", bundle: .module)
         }
     }
 

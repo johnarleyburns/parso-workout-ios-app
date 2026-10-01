@@ -32,11 +32,11 @@ public final class WatchHRProvider {
 
     private func zoneLabel(for zone: Int) -> String {
         switch zone {
-        case 1: return "Recovery"
-        case 2: return "Endurance"
-        case 3: return "Tempo"
-        case 4: return "Threshold"
-        case 5: return "Max"
+        case 1: return String(localized: "Recovery", bundle: .module)
+        case 2: return String(localized: "Endurance", bundle: .module)
+        case 3: return String(localized: "Tempo", bundle: .module)
+        case 4: return String(localized: "Threshold", bundle: .module)
+        case 5: return String(localized: "Max", bundle: .module)
         default: return "--"
         }
     }

@@ -26,6 +26,9 @@ struct AboutView: View {
                 methodology
                     .padding(.horizontal, 20).padding(.vertical, 24)
                 Divider()
+                languages
+                    .padding(.horizontal, 20).padding(.vertical, 24)
+                Divider()
                 licensing
                     .padding(.horizontal, 20).padding(.vertical, 24)
                 Divider()
@@ -83,14 +86,14 @@ struct AboutView: View {
             Text("Our Principles").font(.title3.bold())
             Text("Cladiron is your private, science-based strength coach. It's built on a few commitments we don't compromise on:")
                 .font(.body).foregroundStyle(.secondary)
-            principle("lock.shield", "Private by design",
-                      "Everything runs on your device. There's no account, no server, and nothing about your training is ever sent to us.")
-            principle("book.closed", "Science-based & transparent",
-                      "Every recommendation comes from published exercise-science research and shows the principle and citation behind it. No black box.")
-            principle("lock.open", "Open source & privacy-first",
-                      "Cladiron is free and open-source software. Its privacy commitments are auditable in the public source and reinforced by an on-device, serverless design, clear permissions, data export, and a published privacy policy.")
-            principle("square.and.arrow.up", "Your data, fully portable",
-                      "Your history lives on your devices and syncs through your private iCloud, never a Cladiron server. You can export a complete backup and import it into a fresh install, so your data is never locked in.")
+            principle("lock.shield", String(localized: "Private by design"),
+                      String(localized: "Everything runs on your device. There's no account, no server, and nothing about your training is ever sent to us."))
+            principle("book.closed", String(localized: "Science-based & transparent"),
+                      String(localized: "Every recommendation comes from published exercise-science research and shows the principle and citation behind it. No black box."))
+            principle("lock.open", String(localized: "Open source & privacy-first"),
+                      String(localized: "Cladiron is free and open-source software. Its privacy commitments are auditable in the public source and reinforced by an on-device, serverless design, clear permissions, data export, and a published privacy policy."))
+            principle("square.and.arrow.up", String(localized: "Your data, fully portable"),
+                      String(localized: "Your history lives on your devices and syncs through your private iCloud, never a Cladiron server. You can export a complete backup and import it into a fresh install, so your data is never locked in."))
         }
     }
 
@@ -122,6 +125,41 @@ struct AboutView: View {
     }
 
     // MARK: Licensing
+
+    // MARK: Languages
+
+    /// Every language this build ships, named in its own language, read from
+    /// the bundle so the list can never drift from the string catalogs.
+    private static var shippedLanguageNames: [String] {
+        Bundle.main.localizations
+            .filter { $0 != "Base" }
+            .sorted()
+            .map { code in
+                let locale = Locale(identifier: code)
+                let name = locale.localizedString(forIdentifier: code) ?? code
+                return name.prefix(1).uppercased(with: locale) + name.dropFirst()
+            }
+    }
+
+    private var languages: some View {
+        let names = Self.shippedLanguageNames
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Languages").font(.title3.bold())
+            Text("Cladiron is available in \(names.count) languages. It follows your iPhone’s language, or you can choose a language just for Cladiron in Settings. Research titles in citations stay in their original English.")
+                .font(.body).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: names.joined(separator: " · "))
+                .font(.body)
+                .accessibilityIdentifier("about.languages")
+            Button("Change Language") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            .font(.body)
+            .accessibilityIdentifier("about.changeLanguage")
+        }
+    }
 
     private var licensing: some View {
         VStack(alignment: .leading, spacing: 12) {

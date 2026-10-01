@@ -230,7 +230,7 @@ struct WatchRootView: View {
                             plannedCardioLabel(session)
                         }
                     case .rest:
-                        Label(session.label.isEmpty ? "Rest" : session.label, systemImage: "bed.double.fill")
+                        Label(session.label.isEmpty ? String(localized: "Rest") : session.label, systemImage: "bed.double.fill")
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -276,7 +276,7 @@ struct WatchRootView: View {
 
     private func plannedCardioDetail(_ session: WatchSync.TodayPlan.Session) -> String {
         var parts: [String] = []
-        if let minutes = session.durationMinutes { parts.append("\(minutes) min") }
+        if let minutes = session.durationMinutes { parts.append(String(localized: "\(minutes) min")) }
         if let zone = session.zone { parts.append("Z\(zone)") }
         return parts.joined(separator: " · ")
     }

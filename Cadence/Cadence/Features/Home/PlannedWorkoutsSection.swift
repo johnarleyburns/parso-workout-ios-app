@@ -69,7 +69,7 @@ struct HomePlannedWorkoutsSection: View {
                 Text(item.status == .started ? "IN PROGRESS" : "SCHEDULED")
                     .font(.caption2.weight(.bold)).foregroundStyle(.teal)
             }
-            CadenceActionButton(title: item.status == .started ? "Resume Workout" : "Start This Workout",
+            CadenceActionButton(title: item.status == .started ? String(localized: "Resume Workout") : String(localized: "Start This Workout"),
                                 systemImage: item.status == .started ? "arrow.clockwise" : "play.fill",
                                 action: { onStart(record) })
                 .accessibilityIdentifier("home.planned.start.\(record.id.uuidString)")
@@ -97,10 +97,10 @@ struct HomePlannedWorkoutsSection: View {
         } else if let plan = try? ScheduledWorkoutStore.decode(input.payloadData,
                                                                version: input.payloadVersion) {
             let sets = plan.exercises.reduce(0) { $0 + $1.sets.count }
-            let body = "\(plan.exercises.count) exercise\(plan.exercises.count == 1 ? "" : "s") · \(sets) sets"
+            let body = String(localized: "Exercises: \(plan.exercises.count) · Sets: \(sets)")
             detail = [time, body].compactMap { $0 }.joined(separator: " · ")
         } else {
-            detail = [time, "Workout plan"].compactMap { $0 }.joined(separator: " · ")
+            detail = [time, String(localized: "Workout plan")].compactMap { $0 }.joined(separator: " · ")
         }
         return PlannedWorkoutsPresenter.Item(id: input.id, date: input.date,
                                              title: input.title, detail: detail,
@@ -138,9 +138,9 @@ struct PlannedWorkoutsListView: View {
             let todayIDs = Set(today.map(\.id))
             let future = PlannedWorkoutsPresenter.todayAndFuture(items).filter { !todayIDs.contains($0.id) }
             let overdue = PlannedWorkoutsPresenter.overdue(items)
-            if !today.isEmpty { itemSection("Today", items: today) }
-            if !future.isEmpty { itemSection("Upcoming", items: future) }
-            if !overdue.isEmpty { itemSection("Past planned workouts", items: overdue) }
+            if !today.isEmpty { itemSection(String(localized: "Today"), items: today) }
+            if !future.isEmpty { itemSection(String(localized: "Upcoming"), items: future) }
+            if !overdue.isEmpty { itemSection(String(localized: "Past planned workouts"), items: overdue) }
             if today.isEmpty && future.isEmpty && overdue.isEmpty {
                 ContentUnavailableView("No planned workouts", systemImage: "calendar",
                                        description: Text("Schedule a workout from Workout Plan View."))

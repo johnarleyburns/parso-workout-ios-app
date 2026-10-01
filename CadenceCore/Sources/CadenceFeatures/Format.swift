@@ -98,7 +98,7 @@ public enum Format {
 
     public static func heartRate(_ bpm: Double?) -> String {
         guard let bpm else { return "—" }
-        return "\(Int(bpm.rounded())) bpm"
+        return String(localized: "\(Int(bpm.rounded())) bpm", bundle: .module)
     }
 
     /// A prescription line for a `PlanItem` (round4b §B-1).
@@ -110,7 +110,7 @@ public enum Format {
         if let ladder, !ladder.isEmpty {
             parts.append(ladder.map(String.init).joined(separator: "-") + " reps")
         } else if let reps = item.reps {
-            parts.append("\(reps) reps")
+            parts.append(String(localized: "\(reps) reps", bundle: .module))
         }
         if let d = item.distanceM { parts.append(distance(d)) }
         var line = parts.joined(separator: " · ")

@@ -74,9 +74,9 @@ struct WorkoutSummaryExerciseRow: View {
     /// Expansion state plus, when open, every performer's sets — so VoiceOver
     /// gets the detail without having to swipe through each row.
     private var accessibilityValue: String {
-        guard isExpanded else { return "Collapsed" }
+        guard isExpanded else { return String(localized: "Collapsed") }
         let detail = WorkoutSummaryPresenter.expandedAccessibilityValue(line, unit: unit)
-        return detail.isEmpty ? "Expanded" : "Expanded. \(detail)"
+        return detail.isEmpty ? String(localized: "Expanded") : String(localized: "Expanded. \(detail)")
     }
 
     private var performers: [WorkoutSummaryData.PerformerLine] {
@@ -93,7 +93,7 @@ struct WorkoutSummaryExerciseRow: View {
         if let done = WorkoutSummaryPresenter.doneSummary(line, unit: unit) {
             return done
         }
-        return "\(line.setCount) set\(line.setCount == 1 ? "" : "s") · reps "
+        return String(localized: "\(line.setCount) sets") + " · " + String(localized: "reps") + " "
             + line.reps.map(String.init).joined(separator: ", ")
     }
 }

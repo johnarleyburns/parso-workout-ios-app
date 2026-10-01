@@ -15,7 +15,7 @@ struct WatchStrengthSummaryView: View {
             Text("Saved").font(.headline)
                 .accessibilityIdentifier("watchSummary.saved")
 
-            summaryRow("Duration", model.durationText)
+            summaryRow(String(localized: "Duration"), model.durationText)
 
             Button("Done") {
                 WatchHaptics.success()

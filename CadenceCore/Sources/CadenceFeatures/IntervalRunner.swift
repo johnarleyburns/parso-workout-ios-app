@@ -56,7 +56,7 @@ public final class IntervalRunner {
 
     public var currentPhaseID: Int? { current?.phase.id }
     public var phaseKind: IntervalPhaseKind? { current?.phase.kind }
-    public var phaseLabel: String { current?.phase.label ?? (isComplete ? "Done" : "") }
+    public var phaseLabel: String { current?.phase.label ?? (isComplete ? String(localized: "Done", bundle: .module) : "") }
     public var phaseRemaining: TimeInterval { current?.phaseRemaining ?? 0 }
     public var phaseDuration: TimeInterval { current.map { $0.phase.duration + (phaseExtensions[$0.index] ?? 0) } ?? 0 }
     public var overallRemaining: TimeInterval { current?.overallRemaining ?? 0 }

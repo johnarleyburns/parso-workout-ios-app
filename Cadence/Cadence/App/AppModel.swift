@@ -46,13 +46,13 @@ final class AppModel: NSObject, @unchecked Sendable {
 
         var detailText: String {
             switch self {
-            case .idle: return "Not run yet"
-            case .syncing: return "Checking Apple Health…"
+            case .idle: return String(localized: "Not run yet")
+            case .syncing: return String(localized: "Checking Apple Health…")
             case .completed(_, let insertedCount):
                 return insertedCount == 0
-                    ? "Checked; no new workouts"
-                    : "Imported (insertedCount) workout\(insertedCount == 1 ? "" : "s")"
-            case .failed(let message): return "Couldn’t check Apple Health: \(message)"
+                    ? String(localized: "Checked; no new workouts")
+                    : String(localized: "Imported \(insertedCount) workouts")
+            case .failed(let message): return String(localized: "Couldn’t check Apple Health: \(message)")
             }
         }
     }
@@ -70,11 +70,11 @@ final class AppModel: NSObject, @unchecked Sendable {
 
         var detailText: String {
             switch self {
-            case .idle: return "Not run yet"
-            case .restoring: return "Restoring from Apple Health…"
+            case .idle: return String(localized: "Not run yet")
+            case .restoring: return String(localized: "Restoring from Apple Health…")
             case .completed(_, let report):
-                return "Restored \(report.inserted + report.replaced) · \(report.summariesOnly) summary-only"
-            case .failed(let message): return "Restore paused: \(message)"
+                return String(localized: "Restored \(report.inserted + report.replaced) · \(report.summariesOnly) summary-only")
+            case .failed(let message): return String(localized: "Restore paused: \(message)")
             }
         }
     }
@@ -87,10 +87,10 @@ final class AppModel: NSObject, @unchecked Sendable {
 
         var detailText: String {
             switch self {
-            case .idle: return "No recent import"
-            case .updating: return "Updating private history…"
-            case .completed: return "Private history up to date"
-            case .failed: return "Update paused — open Diagnostics"
+            case .idle: return String(localized: "No recent import")
+            case .updating: return String(localized: "Updating private history…")
+            case .completed: return String(localized: "Private history up to date")
+            case .failed: return String(localized: "Update paused — open Diagnostics")
             }
         }
     }
@@ -328,20 +328,20 @@ final class AppModel: NSObject, @unchecked Sendable {
         if let watchError { return watchError }
         switch watchHRRelay.state {
         case .launchingWatchApp:
-            return "Opening Cladiron on your Apple Watch…"
+            return String(localized: "Opening Cladiron on your Apple Watch…")
         case .connecting:
-            return "Connecting to your Apple Watch…"
+            return String(localized: "Connecting to your Apple Watch…")
         case .waitingForSample:
-            return "Apple Watch connected · waiting for the first heart-rate reading…"
+            return String(localized: "Apple Watch connected · waiting for the first heart-rate reading…")
         case .live:
-            return "Live heart rate from Apple Watch"
+            return String(localized: "Live heart rate from Apple Watch")
         case .timedOut(let message), .failed(let message):
             return message
         case .unavailable(let reason):
-            if watchStartInProgress { return "Preparing the Apple Watch connection…" }
+            if watchStartInProgress { return String(localized: "Preparing the Apple Watch connection…") }
             return reason
         case .actionRequired(let message):
-            if watchStartInProgress { return "Preparing the Apple Watch connection…" }
+            if watchStartInProgress { return String(localized: "Preparing the Apple Watch connection…") }
             return message
         }
     }
@@ -468,11 +468,11 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     func pushSettingsContext(force: Bool = false) {
         guard let settings = _settings else {
-            if force { recordWatchSyncFailure("Settings unavailable") }
+            if force { recordWatchSyncFailure(String(localized: "Settings unavailable")) }
             return
         }
         guard let session = wcSession, session.isWatchAppInstalled else {
-            if force { recordWatchSyncFailure("Watch unavailable") }
+            if force { recordWatchSyncFailure(String(localized: "Watch unavailable")) }
             return
         }
         let now = Date()
@@ -632,7 +632,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchStartInProgress = true
         guard watchAvailable, let session = wcSession else {
             watchStartInProgress = false
-            watchError = "Apple Watch is unavailable — install Cladiron on your Apple Watch and try again"
+            watchError = String(localized: "Apple Watch is unavailable — install Cladiron on your Apple Watch and try again")
             return
         }
         watchError = nil
@@ -782,7 +782,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         // Cladiron opens on the Watch.
         stopWatchWorkout(targetRequestID: requestID)
         let detail = reason.map { " (\($0))" } ?? ""
-        watchHRRelay.fail("Couldn’t open Cladiron on your Apple Watch\(detail). Check that it’s on your wrist and unlocked, then tap Check for Live HR.")
+        watchHRRelay.fail(String(localized: "Couldn’t open Cladiron on your Apple Watch\(detail). Check that it’s on your wrist and unlocked, then tap Check for Live HR."))
     }
 
     nonisolated private static func watchTimeoutHandler(owner: AppModel) -> @Sendable (Timer) -> Void {
@@ -792,7 +792,7 @@ final class AppModel: NSObject, @unchecked Sendable {
                 owner.watchHRRelay.timeout()
                 owner.watchActive = false
                 owner.watchStartInProgress = false
-                owner.watchError = "No heart rate arrived from your Apple Watch. Check that it’s on your wrist and unlocked, then tap Check for Live HR."
+                owner.watchError = String(localized: "No heart rate arrived from your Apple Watch. Check that it’s on your wrist and unlocked, then tap Check for Live HR.")
                 owner.watchTimeout?.invalidate()
             }
         }

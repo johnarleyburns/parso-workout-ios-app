@@ -161,7 +161,7 @@ struct ExerciseCardView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(pc.label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 if !pc.lastTimeSets.isEmpty {
-                    Text("Last time: " + pc.lastTimeSets.map { SessionRenderModel.setLineText($0, unit: unit) }.joined(separator: ", "))
+                    Text(String(localized: "Last time: ") + pc.lastTimeSets.map { SessionRenderModel.setLineText($0, unit: unit) }.joined(separator: ", "))
                         .font(.caption).foregroundStyle(.secondary)
                         .accessibilityIdentifier("exercise.lastTime.\(pc.label)")
                 }
@@ -173,7 +173,7 @@ struct ExerciseCardView: View {
             }
         } else {
             if !pc.lastTimeSets.isEmpty {
-                Text("Last time: " + pc.lastTimeSets.map { SessionRenderModel.setLineText($0, unit: unit) }.joined(separator: ", "))
+                Text(String(localized: "Last time: ") + pc.lastTimeSets.map { SessionRenderModel.setLineText($0, unit: unit) }.joined(separator: ", "))
                     .font(.caption).foregroundStyle(.secondary)
                     .accessibilityIdentifier("exercise.lastTime")
             }

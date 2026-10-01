@@ -150,19 +150,19 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
 
     public var displayName: String {
         switch self {
-        case .e1RM: return "Estimated 1RM test"
-        case .repMax: return "Rep-max test"
-        case .pushupMax: return "Max push-ups"
-        case .pullupMax: return "Max pull-ups"
-        case .bodyweightSquatMax: return "Max bodyweight squats"
-        case .plankHold: return "Plank hold"
-        case .hollowHold: return "Hollow-body hold"
+        case .e1RM: return String(localized: "Estimated 1RM test", bundle: .module)
+        case .repMax: return String(localized: "Rep-max test", bundle: .module)
+        case .pushupMax: return String(localized: "Max push-ups", bundle: .module)
+        case .pullupMax: return String(localized: "Max pull-ups", bundle: .module)
+        case .bodyweightSquatMax: return String(localized: "Max bodyweight squats", bundle: .module)
+        case .plankHold: return String(localized: "Plank hold", bundle: .module)
+        case .hollowHold: return String(localized: "Hollow-body hold", bundle: .module)
         case .vo2maxField: return "VO\u{2082}max (manual entry)"
-        case .cooper12min: return "Cooper 12-min run"
+        case .cooper12min: return String(localized: "Cooper 12-min run", bundle: .module)
         case .run1_5mile: return "1.5-mile run"
-        case .rockportWalk: return "Rockport 1-mile walk"
-        case .queensCollegeStep: return "Queens College step test"
-        case .wingate: return "Wingate test"
+        case .rockportWalk: return String(localized: "Rockport 1-mile walk", bundle: .module)
+        case .queensCollegeStep: return String(localized: "Queens College step test", bundle: .module)
+        case .wingate: return String(localized: "Wingate test", bundle: .module)
         }
     }
 
@@ -185,31 +185,31 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
     public var protocolText: String {
         switch self {
         case .e1RM:
-            return "Warm up thoroughly, then work up to a heavy single (or a hard set of 2\u{2013}5 reps left in good form). Record the load and reps \u{2014} your estimated 1RM is computed from them."
+            return String(localized: "Warm up thoroughly, then work up to a heavy single (or a hard set of 2\u{2013}5 reps left in good form). Record the load and reps \u{2014} your estimated 1RM is computed from them.", bundle: .module)
         case .repMax:
-            return "Pick a fixed load you\u{2019}ll keep across re-tests. After a warm-up, do one all-out set with good form and record the reps."
+            return String(localized: "Pick a fixed load you\u{2019}ll keep across re-tests. After a warm-up, do one all-out set with good form and record the reps.", bundle: .module)
         case .pushupMax:
-            return "After a light warm-up, do as many strict push-ups as you can in one unbroken set. Chest to within a fist of the floor, full lockout, no rest at the top."
+            return String(localized: "After a light warm-up, do as many strict push-ups as you can in one unbroken set. Chest to within a fist of the floor, full lockout, no rest at the top.", bundle: .module)
         case .pullupMax:
-            return "Do as many strict, dead-hang pull-ups as you can in one set \u{2014} full extension at the bottom, chin over the bar at the top, no kipping."
+            return String(localized: "Do as many strict, dead-hang pull-ups as you can in one set \u{2014} full extension at the bottom, chin over the bar at the top, no kipping.", bundle: .module)
         case .bodyweightSquatMax:
-            return "Do as many bodyweight squats as you can in one set at a steady cadence, hips below parallel each rep."
+            return String(localized: "Do as many bodyweight squats as you can in one set at a steady cadence, hips below parallel each rep.", bundle: .module)
         case .plankHold:
-            return "Hold a forearm plank with a flat back and braced core for as long as form stays solid. Stop the clock when your hips sag or rise."
+            return String(localized: "Hold a forearm plank with a flat back and braced core for as long as form stays solid. Stop the clock when your hips sag or rise.", bundle: .module)
         case .hollowHold:
-            return "Lie on your back, lower back pressed down, legs and shoulders lifted into a hollow position. Hold as long as the lower back stays flat."
+            return String(localized: "Lie on your back, lower back pressed down, legs and shoulders lifted into a hollow position. Hold as long as the lower back stays flat.", bundle: .module)
         case .vo2maxField:
-            return "Enter your VO\u{2082}max value from a wearable device or lab test (mL/kg/min). For an on-device estimate, use the Cooper 12-min run, 1.5-mile run, or Rockport walk tests instead."
+            return String(localized: "Enter your VO\u{2082}max value from a wearable device or lab test (mL/kg/min). For an on-device estimate, use the Cooper 12-min run, 1.5-mile run, or Rockport walk tests instead.", bundle: .module)
         case .cooper12min:
-            return "Warm up for 5\u{2013}10 minutes with light jogging. Then run as far as you can in exactly 12 minutes on a flat track or field. Record the total distance in meters. Your VO\u{2082}max is computed as (distance \u{2212} 504.9) \u{00f7} 44.73."
+            return String(localized: "Warm up for 5\u{2013}10 minutes with light jogging. Then run as far as you can in exactly 12 minutes on a flat track or field. Record the total distance in meters. Your VO\u{2082}max is computed as (distance \u{2212} 504.9) \u{00f7} 44.73.", bundle: .module)
         case .run1_5mile:
-            return "Warm up for 5\u{2013}10 minutes. Run 1.5 miles (2.4 km) as fast as you can on a flat course. Record your time. Your VO\u{2082}max is computed as 483 \u{00f7} time (minutes) + 3.5."
+            return String(localized: "Warm up for 5\u{2013}10 minutes. Run 1.5 miles (2.4 km) as fast as you can on a flat course. Record your time. Your VO\u{2082}max is computed as 483 \u{00f7} time (minutes) + 3.5.", bundle: .module)
         case .rockportWalk:
-            return "Walk 1 mile (1.6 km) as fast as you can on a flat course. Immediately after finishing, record your walk time and your heart rate (use a chest strap or take a 15-second pulse \u{00d7} 4). The app computes your VO\u{2082}max from your age, sex, weight, walk time, and ending heart rate (Kline et al. 1987)."
+            return String(localized: "Walk 1 mile (1.6 km) as fast as you can on a flat course. Immediately after finishing, record your walk time and your heart rate (use a chest strap or take a 15-second pulse \u{00d7} 4). The app computes your VO\u{2082}max from your age, sex, weight, walk time, and ending heart rate (Kline et al. 1987).", bundle: .module)
         case .queensCollegeStep:
-            return "Step up and down on a 16.25-inch (41.3 cm) bench for 3 minutes at a steady cadence: 24 steps/min for men, 22 steps/min for women. Immediately after, count your pulse for 15 seconds (starting 5 seconds post-exercise) and multiply by 4 to get recovery HR. The app computes your VO\u{2082}max (McArdle et al. 1972)."
+            return String(localized: "Step up and down on a 16.25-inch (41.3 cm) bench for 3 minutes at a steady cadence: 24 steps/min for men, 22 steps/min for women. Immediately after, count your pulse for 15 seconds (starting 5 seconds post-exercise) and multiply by 4 to get recovery HR. The app computes your VO\u{2082}max (McArdle et al. 1972).", bundle: .module)
         case .wingate:
-            return "Advanced \u{2014} requires a cycle ergometer. After a thorough warm-up, sprint all-out for 30 seconds against a fixed resistance (typically 7.5% of body weight). Record the highest average power output (watts)."
+            return String(localized: "Advanced \u{2014} requires a cycle ergometer. After a thorough warm-up, sprint all-out for 30 seconds against a fixed resistance (typically 7.5% of body weight). Record the highest average power output (watts).", bundle: .module)
         }
     }
 
@@ -239,7 +239,7 @@ public enum AssessmentKind: String, CaseIterable, Codable, Sendable, Identifiabl
         case .pushupMax, .pullupMax, .bodyweightSquatMax, .hollowHold:
             return .personalBenchmark(
                 citationIds: ["fieldFitnessReliability2022"],
-                caveat: "Tracked as a personal benchmark — no population-validated equation maps this to a lab measure. Compare yourself to yourself over time.")
+                caveat: String(localized: "Tracked as a personal benchmark — no population-validated equation maps this to a lab measure. Compare yourself to yourself over time.", bundle: .module))
         }
     }
 
@@ -256,7 +256,7 @@ public enum AssessmentCategory: String, CaseIterable, Sendable, Identifiable {
     public var displayName: String {
         switch self {
         case .strength: return "Strength"
-        case .strengthEndurance: return "Strength-endurance"
+        case .strengthEndurance: return String(localized: "Strength-endurance", bundle: .module)
         case .cardio: return "Cardio"
         }
     }

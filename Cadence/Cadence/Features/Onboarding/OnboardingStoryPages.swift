@@ -20,9 +20,9 @@ extension OnboardingView {
                 .multilineTextAlignment(.center)
                 .padding(.top, 8)
                 .padding(.horizontal, 24)
-            storyRow("person.crop.circle.badge.xmark", "No account required")
-            storyRow("location.slash", "No tracking outside workouts you start")
-            storyRow("icloud.and.arrow.up", "Private iCloud backup when available")
+            storyRow("person.crop.circle.badge.xmark", String(localized: "No account required"))
+            storyRow("location.slash", String(localized: "No tracking outside workouts you start"))
+            storyRow("icloud.and.arrow.up", String(localized: "Private iCloud backup when available"))
             Spacer()
             Spacer()
         }
@@ -47,7 +47,7 @@ extension OnboardingView {
                 .padding(.top, 8)
                 .padding(.horizontal, 24)
             CitationLink(citation: CitationRegistry.volumeDoseResponse,
-                         context: "Read the science behind coaching", compact: true)
+                         context: String(localized: "Read the science behind coaching"), compact: true)
                 .padding(.top, 16)
             Spacer()
             Spacer()

@@ -13,7 +13,7 @@ public enum AssessmentDisplay {
     public static func value(_ value: Double, kind: AssessmentKind, unit: MeasurementUnitPreference) -> String {
         switch kind.unit {
         case .reps:
-            return "\(Int(value.rounded())) reps"
+            return String(localized: "\(Int(value.rounded())) reps", bundle: .module)
         case .seconds:
             return Format.duration(value)
         case .weightKg:
@@ -30,7 +30,7 @@ public enum AssessmentDisplay {
         if summary.kind.concernsLift, let lift = summary.exerciseName, !lift.isEmpty {
             switch summary.kind {
             case .e1RM: return "\(lift) 1RM"
-            case .repMax: return "\(lift) rep-max"
+            case .repMax: return String(localized: "\(lift) rep-max", bundle: .module)
             default: return summary.kind.displayName
             }
         }

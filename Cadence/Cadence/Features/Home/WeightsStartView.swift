@@ -76,7 +76,7 @@ struct WeightsStartView: View {
                         WorkoutPlanEditor(plan: .from(session: s), onStart: onEditorStart)
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(s.title.isEmpty ? "Workout" : s.title).font(.headline)
+                            Text(s.title.isEmpty ? String(localized: "Workout") : s.title).font(.headline)
                             Text("\(s.date.formatted(date: .abbreviated, time: .omitted)) · \(s.exercisesInOrder.count) exercises · \(s.orderedSets.count) sets")
                                 .font(.caption).foregroundStyle(.secondary)
                         }

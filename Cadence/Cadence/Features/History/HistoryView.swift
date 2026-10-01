@@ -83,7 +83,7 @@ struct HistoryView: View {
                     Image(systemName: session.symbol).foregroundStyle(.tint).frame(width: 26)
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 8) {
-                            Text(session.title.isEmpty ? "Workout" : session.title)
+                            Text(session.title.isEmpty ? String(localized: "Workout") : session.title)
                             if session.isLogged { LoggedTag() }
                             if session.deletedAt != nil { DeletedTag() }
                         }

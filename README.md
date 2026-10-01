@@ -71,6 +71,14 @@ because it builds and launches the pinned iPhone and Watch targets. CI workflows
 should budget ≥5 min for the core-tests job and ≥10 min for any local
 smoke/xcodebuild jobs.
 
+## Languages
+
+Cladiron ships in nine locales: English (US), English (UK), Deutsch, Español, Français, Nederlands, Português (Brasil), 简体中文 and 繁體中文. It follows the iPhone's language; to pick a language just for Cladiron, open Settings → Apps → Cladiron → Language. Settings → About → Languages lists every language in the build and links there.
+
+The iPhone app, Apple Watch app, widgets, App Shortcuts phrases, coach explanations and the system permission prompts are translated. Counts use each language's own plural rules. Research paper titles in citations stay in their original English. Exercise names come from DB++ and are localized through `CadenceCore/Sources/CadenceCore/Resources/exercise-names.i18n.json`; names not yet in that file appear in English.
+
+The translations are first drafts: every entry is marked `needs_review` until a native speaker checks it in context. Strings are extracted by the Swift compiler: after changing UI text, run `scripts/sync-localization-catalogs.sh`, add the new keys in every locale, and run `scripts/check-localization-coverage.sh`, which fails on any missing locale, stale key, or hand-built English plural.
+
 ## Status
 
 Active development. The app ships a recovery-aware coaching engine with 60 movement-evidence references, 873 DB++ exercises, a normalized 20-muscle ontology, direct/indirect/stabilizer set credits, and five suggested-workout styles. See `current_status.md` and `docs/CITATIONS.md` for details.

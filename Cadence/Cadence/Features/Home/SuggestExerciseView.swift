@@ -77,7 +77,7 @@ struct SuggestExerciseView: View {
         if let result {
             state = .ready(result)
         } else {
-            state = .failed("No eligible movement remains after applying your workout, style, and suggestion preferences.")
+            state = .failed(String(localized: "No eligible movement remains after applying your workout, style, and suggestion preferences."))
         }
     }
 
@@ -136,13 +136,13 @@ struct SuggestExerciseView: View {
                     .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
                 }
                 if let onAdd {
-                    CadenceActionButton(title: "Add to Workout", systemImage: "plus.circle.fill") {
+                    CadenceActionButton(title: String(localized: "Add to Workout"), systemImage: "plus.circle.fill") {
                         onAdd(exercise)
                         dismiss()
                     }
                     .accessibilityIdentifier("suggestExercise.add")
                 }
-                CadenceActionButton(title: "Suggest another", systemImage: "arrow.clockwise",
+                CadenceActionButton(title: String(localized: "Suggest another"), systemImage: "arrow.clockwise",
                                     emphasis: .secondary) {
                     excludedCandidateIDs.insert(exercise.candidateID)
                     Task { await calculate() }
@@ -171,12 +171,14 @@ struct SuggestExerciseView: View {
 
     private func singleExerciseWhy(_ exercise: SuggestedWorkoutExercise) -> String {
         let contributions = exercise.contributions.map {
-            "\(displayName($0.muscleID)) (\($0.weight >= VolumeCredit.direct ? "direct" : "indirect"), \(format($0.plannedSetContribution)) credited sets)"
+            $0.weight >= VolumeCredit.direct
+                ? String(localized: "\(displayName($0.muscleID)) (direct, \(format($0.plannedSetContribution)) credited sets)")
+                : String(localized: "\(displayName($0.muscleID)) (indirect, \(format($0.plannedSetContribution)) credited sets)")
         }.joined(separator: ", ")
         let priority = request.priorityMuscle.map {
-            "\($0.displayName) is the requested priority, with other open muscle gaps included when the movement covers them"
+            String(localized: "\($0.displayName) is the requested priority, with other open muscle gaps included when the movement covers them")
         } ?? "the movement closes the largest remaining muscle gaps"
-        return "\(exercise.name) was selected because it closes the remaining allocation for \(contributions). It is an eligible \(request.style.displayName.lowercased()) movement; the solver prioritizes \(priority), then compound coverage and style fit."
+        return String(localized: "\(exercise.name) was selected because it closes the remaining allocation for \(contributions). It is an eligible \(request.style.displayName.lowercased()) movement; the solver prioritizes \(priority), then compound coverage and style fit.")
     }
 
     private func selectionSummary(for exercise: SuggestedWorkoutExercise) -> String {
@@ -185,13 +187,13 @@ struct SuggestExerciseView: View {
             let suffix = covered
                 ? " It also covers other open muscle gaps where possible."
                 : " No eligible movement currently covers that muscle and another open gap."
-            return "Prioritized for your \(priority.displayName) gap in a general workout.\(suffix)"
+            return String(localized: "Prioritized for your \(priority.displayName) gap in a general workout.\(suffix)")
         }
-        return "Selected for your \(request.style.displayName.lowercased()) workout using the remaining allocation in this workout."
+        return String(localized: "Selected for your \(request.style.displayName.lowercased()) workout using the remaining allocation in this workout.")
     }
 
     private func singleExerciseSetRepWhy(_ exercise: SuggestedWorkoutExercise) -> String {
-        "The prescription is \(exercise.plannedSets) sets × \(rangeText(exercise.repRange)) reps: sets follow the bounded preference for this workout, while \(request.input.trainingGoal.displayName.lowercased()) selects the rep range."
+        String(localized: "The prescription is \(exercise.plannedSets) sets × \(rangeText(exercise.repRange)) reps: sets follow the bounded preference for this workout, while \(request.input.trainingGoal.displayName.lowercased()) selects the rep range.")
     }
 
     private func format(_ value: Double) -> String {

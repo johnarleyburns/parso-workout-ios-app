@@ -9,11 +9,11 @@ extension WatchWorkoutManager {
         phoneSyncState = .syncing(Date())
         lastPhoneSyncError = nil
         guard let session = wcSession, session.activationState == .activated else {
-            recordPhoneSyncFailure("Phone unavailable")
+            recordPhoneSyncFailure(String(localized: "Phone unavailable"))
             return
         }
         guard session.isReachable else {
-            recordPhoneSyncFailure("Open Cladiron on iPhone")
+            recordPhoneSyncFailure(String(localized: "Open Cladiron on iPhone"))
             return
         }
         session.sendMessage(WatchSync.requestSettingsSyncMessage(), replyHandler: nil) { [weak self] error in

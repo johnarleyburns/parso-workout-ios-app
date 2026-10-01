@@ -51,7 +51,7 @@ extension HomeView {
                 route: "HomeRoute.workoutEditor",
                 source: "scheduled-workout",
                 requestID: UUID(),
-                failureReason: "Scheduled workout payload could not be decoded")
+                failureReason: String(localized: "Scheduled workout payload could not be decoded"))
             #endif
             return
         }
@@ -308,10 +308,10 @@ extension HomeView {
             .sorted { $0.occurredAt > $1.occurredAt }
     }
     var homeReadinessTitle: String {
-        todayReadiness == nil ? "Readiness" : "Today's readiness"
+        todayReadiness == nil ? String(localized: "Readiness") : String(localized: "Today's readiness")
     }
     var homeReadinessSubtitle: String {
-        guard let todayReadiness else { return "Optional check-in" }
+        guard let todayReadiness else { return String(localized: "Optional check-in") }
         return ReadinessCheckInPresenter.summary(for: todayReadiness)
     }
     var suggestedWorkoutFailurePresented: Binding<Bool> {

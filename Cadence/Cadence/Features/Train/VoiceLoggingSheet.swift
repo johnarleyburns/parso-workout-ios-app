@@ -35,14 +35,14 @@ final class VoiceCaptureController: ObservableObject {
     func start() {
         errorMessage = nil
         guard let recognizer, recognizer.isAvailable else {
-            errorMessage = "Speech recognition is unavailable right now."
+            errorMessage = String(localized: "Speech recognition is unavailable right now.")
             return
         }
         Task { [weak self] in
             guard let self else { return }
             let allowed = await requestPermissions()
             guard allowed else {
-                errorMessage = "Microphone and speech access are needed for voice logging."
+                errorMessage = String(localized: "Microphone and speech access are needed for voice logging.")
                 return
             }
         beginRecognition(with: recognizer)
@@ -108,7 +108,7 @@ final class VoiceCaptureController: ObservableObject {
                 }
             }
         } catch {
-            errorMessage = "Could not start the microphone."
+            errorMessage = String(localized: "Could not start the microphone.")
             stop()
         }
     }
@@ -280,23 +280,27 @@ struct VoiceLoggingSheet: View {
     private func actionSummary(_ action: VoiceResolvedAction) -> String {
         switch action {
         case .logSet(let exercise, let weightKg, let reps, _, let warmup, let performer):
-            let weight = weightKg.map { Format.weight($0, unit: unit) } ?? "bodyweight"
-            return "\(warmup ? "Warm-up" : "Log") \(exercise.name): \(weight) × \(reps) for \(performer.name)"
+            let weight = weightKg.map { Format.weight($0, unit: unit) } ?? String(localized: "bodyweight")
+            return warmup
+                ? String(localized: "Warm-up \(exercise.name): \(weight) × \(reps) for \(performer.name)")
+                : String(localized: "Log \(exercise.name): \(weight) × \(reps) for \(performer.name)")
         case .repeatLastSet(let exercise, let performer, let adjust):
-            return "Repeat \(exercise.name) for \(performer.name)" + (adjust == nil ? "" : " with adjustment")
+            return adjust == nil
+                ? String(localized: "Repeat \(exercise.name) for \(performer.name)")
+                : String(localized: "Repeat \(exercise.name) for \(performer.name) with adjustment")
         case .adjustNext(let exercise, let deltaKg):
-            return "Adjust the next \(exercise.name) set by \(Format.weight(deltaKg, unit: unit))"
-        case .addExercise(let name): return "Add \(name)"
-        case .switchExercise(let name): return "Switch to \(name)"
-        case .setPerformer(let performer): return "Use \(performer.name) for the next set"
-        case .addPartner(let name): return "Add partner \(name)"
-        case .rest(let seconds): return seconds.map { "Rest \($0 / 60) minutes" } ?? "Start rest"
-        case .skipRest: return "Skip rest"
-        case .pause: return "Pause workout"
-        case .resume: return "Resume workout"
-        case .undo: return "Undo the last set"
-        case .startWorkout(let name): return "Start \(name ?? "workout")"
-        case .finishWorkout: return "Finish workout"
+            return String(localized: "Adjust the next \(exercise.name) set by \(Format.weight(deltaKg, unit: unit))")
+        case .addExercise(let name): return String(localized: "Add \(name)")
+        case .switchExercise(let name): return String(localized: "Switch to \(name)")
+        case .setPerformer(let performer): return String(localized: "Use \(performer.name) for the next set")
+        case .addPartner(let name): return String(localized: "Add partner \(name)")
+        case .rest(let seconds): return seconds.map { String(localized: "Rest \($0 / 60) minutes") } ?? String(localized: "Start rest")
+        case .skipRest: return String(localized: "Skip rest")
+        case .pause: return String(localized: "Pause workout")
+        case .resume: return String(localized: "Resume workout")
+        case .undo: return String(localized: "Undo the last set")
+        case .startWorkout(let name): return name.map { String(localized: "Start \($0)") } ?? String(localized: "Start workout")
+        case .finishWorkout: return String(localized: "Finish workout")
         }
     }
 }

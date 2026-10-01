@@ -160,7 +160,7 @@ struct CoachSourcesLink: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier(identifier)
-            .accessibilityLabel("The science, \(citations.count) source\(citations.count == 1 ? "" : "s")")
+            .accessibilityLabel("The science, \(citations.count) sources")
         }
     }
 }

@@ -9,17 +9,17 @@ struct ExercisePickerView: View {
 
         var navigationTitle: String {
             switch self {
-            case .add: return "Add Exercise"
-            case .swap: return "Swap Exercise"
-            case .use: return "Choose Exercise"
+            case .add: return String(localized: "Add Exercise")
+            case .swap: return String(localized: "Swap Exercise")
+            case .use: return String(localized: "Choose Exercise")
             }
         }
 
         var detailActionTitle: String {
             switch self {
             case .add: return "Add"
-            case .swap: return "Swap"
-            case .use: return "Use Exercise"
+            case .swap: return String(localized: "Swap")
+            case .use: return String(localized: "Use Exercise")
             }
         }
     }
@@ -152,10 +152,10 @@ struct ExercisePickerView: View {
     }
 
     var sectionTitle: String {
-        if !trimmedQuery.isEmpty { return "Results" }
+        if !trimmedQuery.isEmpty { return String(localized: "Results") }
         switch selectedTab {
-        case .recents: return "Recent"
-        case .popular: return browseAll ? "All" : "Popular"
+        case .recents: return String(localized: "Recent")
+        case .popular: return browseAll ? String(localized: "All") : String(localized: "Popular")
         case .browse:
             switch browseMode {
             case .byMuscleGroup:

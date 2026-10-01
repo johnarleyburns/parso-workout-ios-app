@@ -42,16 +42,16 @@ public enum TodayHeroPresenter {
         }
         if completedWorkoutCount < 2 {
             return TodayHero(kind: .needsHistory,
-                             title: "Log a workout and your coach will start suggesting.",
+                             title: String(localized: "Log a workout and your coach will start suggesting.", bundle: .module),
                              computedAt: computedAt)
         }
         if !recommendationReady {
             return TodayHero(kind: .loading,
-                             title: "Checking today's plan…",
+                             title: String(localized: "Checking today's plan…", bundle: .module),
                              computedAt: computedAt)
         }
         return (suggested ?? fallbackRecommendation
-                ?? TodayHero(kind: .restDay, title: "Recovery day", computedAt: computedAt))
+                ?? TodayHero(kind: .restDay, title: String(localized: "Recovery day", bundle: .module), computedAt: computedAt))
             .with(computedAt: computedAt)
     }
 }

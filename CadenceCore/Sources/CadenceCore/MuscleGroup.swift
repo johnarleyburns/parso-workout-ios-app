@@ -39,51 +39,51 @@ public enum MuscleGroup: String, CaseIterable, Codable, Sendable, Identifiable, 
 
     public var displayName: String {
         switch self {
-        case .abdominals: "Abs"
-        case .abductors: "Abductors"
-        case .adductors: "Adductors"
-        case .biceps: "Biceps"
-        case .calves: "Calves"
-        case .chest: "Chest"
-        case .forearms: "Forearms"
-        case .glutes: "Glutes"
-        case .hamstrings: "Hamstrings"
-        case .lats: "Lats"
-        case .lowerBack: "Lower Back"
-        case .middleBack: "Mid Back"
-        case .neck: "Neck"
-        case .quadriceps: "Quads"
-        case .shoulders: "Shoulders"
-        case .traps: "Traps"
-        case .triceps: "Triceps"
-        case .tibialis: "Tibialis"
-        case .rotatorCuff: "Rotator Cuff"
-        case .hipFlexors: "Hip Flexors"
+        case .abdominals: String(localized: "Abs", bundle: .module)
+        case .abductors: String(localized: "Abductors", bundle: .module)
+        case .adductors: String(localized: "Adductors", bundle: .module)
+        case .biceps: String(localized: "Biceps", bundle: .module)
+        case .calves: String(localized: "Calves", bundle: .module)
+        case .chest: String(localized: "Chest", bundle: .module)
+        case .forearms: String(localized: "Forearms", bundle: .module)
+        case .glutes: String(localized: "Glutes", bundle: .module)
+        case .hamstrings: String(localized: "Hamstrings", bundle: .module)
+        case .lats: String(localized: "Lats", bundle: .module)
+        case .lowerBack: String(localized: "Lower Back", bundle: .module)
+        case .middleBack: String(localized: "Mid Back", bundle: .module)
+        case .neck: String(localized: "Neck", bundle: .module)
+        case .quadriceps: String(localized: "Quads", bundle: .module)
+        case .shoulders: String(localized: "Shoulders", bundle: .module)
+        case .traps: String(localized: "Traps", bundle: .module)
+        case .triceps: String(localized: "Triceps", bundle: .module)
+        case .tibialis: String(localized: "Tibialis", bundle: .module)
+        case .rotatorCuff: String(localized: "Rotator Cuff", bundle: .module)
+        case .hipFlexors: String(localized: "Hip Flexors", bundle: .module)
         }
     }
 
     public var scientificName: String {
         switch self {
-        case .abdominals: "Rectus Abdominis"
-        case .abductors: "Hip Abductors"
-        case .adductors: "Hip Adductors"
-        case .biceps: "Biceps Brachii"
-        case .calves: "Triceps Surae"
-        case .chest: "Pectoralis Major"
-        case .forearms: "Forearm Flexors and Extensors"
-        case .glutes: "Gluteus Maximus"
-        case .hamstrings: "Hamstrings"
-        case .lats: "Latissimus Dorsi"
-        case .lowerBack: "Erector Spinae"
-        case .middleBack: "Rhomboids and Middle Trapezius"
-        case .neck: "Cervical Flexors and Extensors"
-        case .quadriceps: "Quadriceps"
-        case .shoulders: "Deltoid"
-        case .traps: "Trapezius"
-        case .triceps: "Triceps Brachii"
-        case .tibialis: "Tibialis Anterior"
-        case .rotatorCuff: "Rotator Cuff"
-        case .hipFlexors: "Iliopsoas"
+        case .abdominals: String(localized: "Rectus Abdominis", bundle: .module)
+        case .abductors: String(localized: "Hip Abductors", bundle: .module)
+        case .adductors: String(localized: "Hip Adductors", bundle: .module)
+        case .biceps: String(localized: "Biceps Brachii", bundle: .module)
+        case .calves: String(localized: "Triceps Surae", bundle: .module)
+        case .chest: String(localized: "Pectoralis Major", bundle: .module)
+        case .forearms: String(localized: "Forearm Flexors and Extensors", bundle: .module)
+        case .glutes: String(localized: "Gluteus Maximus", bundle: .module)
+        case .hamstrings: String(localized: "Hamstrings", bundle: .module)
+        case .lats: String(localized: "Latissimus Dorsi", bundle: .module)
+        case .lowerBack: String(localized: "Erector Spinae", bundle: .module)
+        case .middleBack: String(localized: "Rhomboids and Middle Trapezius", bundle: .module)
+        case .neck: String(localized: "Cervical Flexors and Extensors", bundle: .module)
+        case .quadriceps: String(localized: "Quadriceps", bundle: .module)
+        case .shoulders: String(localized: "Deltoid", bundle: .module)
+        case .traps: String(localized: "Trapezius", bundle: .module)
+        case .triceps: String(localized: "Triceps Brachii", bundle: .module)
+        case .tibialis: String(localized: "Tibialis Anterior", bundle: .module)
+        case .rotatorCuff: String(localized: "Rotator Cuff", bundle: .module)
+        case .hipFlexors: String(localized: "Iliopsoas", bundle: .module)
         }
     }
 

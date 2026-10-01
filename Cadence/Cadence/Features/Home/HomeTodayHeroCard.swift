@@ -51,7 +51,7 @@ struct HomeTodayHeroCard: View {
                 }
             }
 
-            if let summary, tag == "Done for today" {
+            if let summary, tag == String(localized: "Done for today") {
                 doneSummary(summary)
             } else {
                 Text(title)
@@ -72,7 +72,7 @@ struct HomeTodayHeroCard: View {
                             CoachSourcesLink(
                                 citationIds: citationIDs,
                                 contexts: Dictionary(uniqueKeysWithValues: citationIDs.map {
-                                    ($0, "Why this workout")
+                                    ($0, String(localized: "Why this workout"))
                                 }),
                                 identifier: "home.hero.science")
                         }
@@ -94,7 +94,7 @@ struct HomeTodayHeroCard: View {
                     }
                 }
 
-                if tag == "Loading" {
+                if tag == String(localized: "Loading") {
                     HStack(spacing: 8) {
                         ProgressView()
                         Text("Preparing today's recommendation…")
@@ -103,7 +103,7 @@ struct HomeTodayHeroCard: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
-                } else if tag == "Recovery day" {
+                } else if tag == String(localized: "Recovery day") {
                     Button("Easy options", action: onChooseAnother)
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity)
@@ -114,7 +114,7 @@ struct HomeTodayHeroCard: View {
                 } else {
                     Button(action: onStart) {
                         Label(tag == "In progress" ? "Resume" : "Start Workout",
-                              systemImage: tag == "In progress" ? "play.fill" : "play.fill")
+                              systemImage: tag == String(localized: "In progress") ? "play.fill" : "play.fill")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -166,7 +166,7 @@ struct HomeTodayHeroCard: View {
                 fact("\(summary.setCount)", "sets")
                 fact(WorkoutMath.tonnageLabel(volumeKg: summary.volumeKg, unit: unit), "volume")
                 if let duration = summary.durationMinutes {
-                    fact("\(duration) min", "duration")
+                    fact(String(localized: "\(duration) min"), "duration")
                 }
             }
             if let bestPR = summary.bestPR {

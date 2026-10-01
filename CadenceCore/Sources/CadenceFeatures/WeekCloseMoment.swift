@@ -10,7 +10,7 @@ public struct WeekCloseMoment: Equatable, Sendable {
         let complete = [workingSets >= setTarget, cardioMinutes >= cardioTarget,
                         sessions >= sessionTarget].allSatisfy { $0 }
         guard complete, setTarget > 0, cardioTarget > 0, sessionTarget > 0 else { return nil }
-        return WeekCloseMoment(title: "Week complete",
-                               detail: "You reached your strength, cardio, and consistency goals.")
+        return WeekCloseMoment(title: String(localized: "Week complete", bundle: .module),
+                               detail: String(localized: "You reached your strength, cardio, and consistency goals.", bundle: .module))
     }
 }

@@ -76,8 +76,8 @@ struct WatchIntervalSetupView: View {
                     .foregroundStyle(.secondary)
             }
             boxingPickerRow("#Rnds", value: $model.rounds, range: 1...20, step: 1, format: { "\($0)" }, compact: compact)
-            boxingRadioRow("Work", selection: $model.boxingRoundMinutes, options: [(2, "2 min"), (3, "3 min")], compact: compact)
-            boxingRadioRow("Rest", selection: $model.boxingRestSeconds, options: [(30, "30 sec"), (60, "60 sec")], compact: compact)
+            boxingRadioRow(String(localized: "Work"), selection: $model.boxingRoundMinutes, options: [(2, "2 min"), (3, "3 min")], compact: compact)
+            boxingRadioRow(String(localized: "Rest"), selection: $model.boxingRestSeconds, options: [(30, "30 sec"), (60, "60 sec")], compact: compact)
         }
     }
 
@@ -151,11 +151,11 @@ struct WatchIntervalSetupView: View {
     private func genericSetup(compact: Bool) -> some View {
         let rowHeight: CGFloat = compact ? 24 : 28
         return VStack(spacing: compact ? 3 : 5) {
-            setupRow("Warmup", value: $model.warmupSeconds, range: 0...600, step: 60, format: timeFormat, rowHeight: rowHeight)
-            setupRow("Rounds", value: $model.rounds, range: 1...30, step: 1, format: { "\($0)" }, rowHeight: rowHeight)
-            setupRow("Round", value: $model.workSeconds, range: 5...600, step: 60, format: timeFormat, rowHeight: rowHeight)
-            setupRow("Rest", value: $model.restSeconds, range: 5...600, step: 30, format: timeFormat, rowHeight: rowHeight)
-            setupRow("Cooldown", value: $model.cooldownSeconds, range: 0...600, step: 60, format: timeFormat, rowHeight: rowHeight)
+            setupRow(String(localized: "Warmup"), value: $model.warmupSeconds, range: 0...600, step: 60, format: timeFormat, rowHeight: rowHeight)
+            setupRow(String(localized: "Rounds"), value: $model.rounds, range: 1...30, step: 1, format: { "\($0)" }, rowHeight: rowHeight)
+            setupRow(String(localized: "Round"), value: $model.workSeconds, range: 5...600, step: 60, format: timeFormat, rowHeight: rowHeight)
+            setupRow(String(localized: "Rest"), value: $model.restSeconds, range: 5...600, step: 30, format: timeFormat, rowHeight: rowHeight)
+            setupRow(String(localized: "Cooldown"), value: $model.cooldownSeconds, range: 0...600, step: 60, format: timeFormat, rowHeight: rowHeight)
         }
     }
 

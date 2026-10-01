@@ -96,7 +96,7 @@ final class IntervalCues {
             TonePlayer.playAlert()
         }
         Haptics.play(.dayClosed)
-        if spokenEnabled { speak("Workout complete") }
+        if spokenEnabled { speak(String(localized: "Workout complete")) }
     }
 
     private func speak(_ text: String) {
@@ -109,9 +109,9 @@ final class IntervalCues {
     private func spokenPhrase(for kind: IntervalPhaseKind, label: String) -> String {
         switch kind {
         case .work: return label.replacingOccurrences(of: "·", with: ",")
-        case .rest: return "Rest"
-        case .warmup: return "Warm up"
-        case .cooldown: return "Cool down"
+        case .rest: return String(localized: "Rest")
+        case .warmup: return String(localized: "Warm up")
+        case .cooldown: return String(localized: "Cool down")
         }
     }
 }

@@ -16,12 +16,12 @@ public enum HRMaximumSource: String, Codable, Sendable, Equatable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .laboratoryMeasured: return "Laboratory measured"
-        case .fieldTest: return "Field tested"
-        case .observed: return "Observed"
-        case .userEntered: return "User entered"
-        case .agePredicted: return "Age-estimated"
-        case .unavailable: return "Unavailable"
+        case .laboratoryMeasured: return String(localized: "Laboratory measured", bundle: .module)
+        case .fieldTest: return String(localized: "Field tested", bundle: .module)
+        case .observed: return String(localized: "Observed", bundle: .module)
+        case .userEntered: return String(localized: "User entered", bundle: .module)
+        case .agePredicted: return String(localized: "Age-estimated", bundle: .module)
+        case .unavailable: return String(localized: "Unavailable", bundle: .module)
         }
     }
 }
@@ -31,13 +31,13 @@ public enum RelativeIntensity: String, Codable, Sendable, Equatable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .veryLight: return "Very light"
-        case .light: return "Light"
-        case .moderate: return "Moderate"
-        case .vigorous: return "Vigorous"
-        case .veryHard: return "Very hard"
-        case .nearMaximal: return "Near maximal"
-        case .unknown: return "Unclassified"
+        case .veryLight: return String(localized: "Very light", bundle: .module)
+        case .light: return String(localized: "Light", bundle: .module)
+        case .moderate: return String(localized: "Moderate", bundle: .module)
+        case .vigorous: return String(localized: "Vigorous", bundle: .module)
+        case .veryHard: return String(localized: "Very hard", bundle: .module)
+        case .nearMaximal: return String(localized: "Near maximal", bundle: .module)
+        case .unknown: return String(localized: "Unclassified", bundle: .module)
         }
     }
 }
@@ -47,10 +47,10 @@ public enum GuidelineIntensity: String, Codable, Sendable, Equatable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .belowModerate: return "Below moderate"
-        case .moderate: return "Moderate"
-        case .vigorous: return "Vigorous"
-        case .unknown: return "Unclassified"
+        case .belowModerate: return String(localized: "Below moderate", bundle: .module)
+        case .moderate: return String(localized: "Moderate", bundle: .module)
+        case .vigorous: return String(localized: "Vigorous", bundle: .module)
+        case .unknown: return String(localized: "Unclassified", bundle: .module)
         }
     }
 
@@ -77,10 +77,10 @@ public enum IntensityMethod: String, Codable, Sendable, Equatable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .heartRateReserve: return "Heart-rate reserve"
+        case .heartRateReserve: return String(localized: "Heart-rate reserve", bundle: .module)
         case .percentMaximumHeartRate: return "% maximum heart rate"
-        case .activityMetadata: return "Activity metadata"
-        case .unavailable: return "Unavailable"
+        case .activityMetadata: return String(localized: "Activity metadata", bundle: .module)
+        case .unavailable: return String(localized: "Unavailable", bundle: .module)
         }
     }
 }
@@ -88,7 +88,7 @@ public enum IntensityMethod: String, Codable, Sendable, Equatable, Hashable {
 public enum TrainingZone: Int, Codable, CaseIterable, Hashable, Sendable {
     case z1 = 1, z2, z3, z4, z5
 
-    public var displayName: String { "Zone \(rawValue)" }
+    public var displayName: String { String(localized: "Zone \(rawValue)", bundle: .module) }
 }
 
 public enum TrainingZonePolicy: String, Codable, Sendable, Equatable, Hashable {
@@ -99,8 +99,8 @@ public enum TrainingZonePolicy: String, Codable, Sendable, Equatable, Hashable {
     public var displayName: String {
         switch self {
         case .hrrFiveZone: return "5-zone HRR"
-        case .thresholdBased: return "Threshold-based"
-        case .custom: return "Custom"
+        case .thresholdBased: return String(localized: "Threshold-based", bundle: .module)
+        case .custom: return String(localized: "Custom", bundle: .module)
         }
     }
 }

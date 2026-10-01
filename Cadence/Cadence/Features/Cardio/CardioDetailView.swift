@@ -35,26 +35,26 @@ struct CardioDetailView: View {
             let hr = workout.orderedHRSamples
             if let summary = workout.intensitySummary {
                 Section("Intensity") {
-                    detailRow("Actual exercise", "\(minutes(summary.actualDuration)) min")
-                    detailRow("Below moderate", "\(minutes(summary.belowModerateDuration)) min · 0 credited")
-                    detailRow("Moderate", "\(minutes(summary.moderateDuration)) min · \(minutes(summary.moderateDuration)) credited")
-                    detailRow("Vigorous", "\(minutes(summary.vigorousDuration)) min · \(minutes(summary.vigorousDuration * 2)) credited")
+                    detailRow(String(localized: "Actual exercise"), "\(minutes(summary.actualDuration)) min")
+                    detailRow(String(localized: "Below moderate"), "\(minutes(summary.belowModerateDuration)) min · 0 credited")
+                    detailRow(String(localized: "Moderate"), "\(minutes(summary.moderateDuration)) min · \(minutes(summary.moderateDuration)) credited")
+                    detailRow(String(localized: "Vigorous"), "\(minutes(summary.vigorousDuration)) min · \(minutes(summary.vigorousDuration * 2)) credited")
                     if summary.unclassifiedDuration > 0 {
-                        detailRow("Unclassified", "\(minutes(summary.unclassifiedDuration)) min")
+                        detailRow(String(localized: "Unclassified"), "\(minutes(summary.unclassifiedDuration)) min")
                     }
-                    detailRow("Guideline credit", "\(minutes(summary.moderateEquivalentMinutes * 60)) min")
-                    detailRow("Method", summary.method.displayName)
-                    detailRow("Confidence", summary.confidence.displayName)
+                    detailRow(String(localized: "Guideline credit"), "\(minutes(summary.moderateEquivalentMinutes * 60)) min")
+                    detailRow(String(localized: "Method"), summary.method.displayName)
+                    detailRow(String(localized: "Confidence"), summary.confidence.displayName)
                     if !summary.zoneDurations.isEmpty {
                         Divider()
                         Text("Training zones").font(.caption.weight(.semibold))
                         ForEach(summary.zoneDurations.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { zone in
-                            detailRow(zone.displayName, "\(minutes(summary.zoneDurations[zone] ?? 0)) min")
+                            detailRow(zone.displayName, String(localized: "\(minutes(summary.zoneDurations[zone] ?? 0)) min"))
                         }
                     }
                     if let citation = CitationRegistry.citation(forId: "swainLeutholtz1997HRR") {
                         CitationLink(citation: citation,
-                                     context: "Heart-rate reserve estimates relative effort. Guideline credit is separate from actual minutes and does not credit below-moderate work.",
+                                     context: String(localized: "Heart-rate reserve estimates relative effort. Guideline credit is separate from actual minutes and does not credit below-moderate work."),
                                      compact: true)
                     }
                 }
@@ -69,12 +69,12 @@ struct CardioDetailView: View {
 
             if let met = workout.standardMETMinutes {
                 Section("Activity Dose") {
-                    detailRow("Standard MET", workout.standardMETValue.map { String(format: "%.1f", $0) } ?? "—")
+                    detailRow(String(localized: "Standard MET"), workout.standardMETValue.map { String(format: "%.1f", $0) } ?? "—")
                     detailRow("MET-minutes", "\(Int(met.rounded()))")
                     Text("A separate standardized activity estimate; it is not guideline credit.")
                         .font(.caption).foregroundStyle(.secondary)
                     if let citation = CitationRegistry.citation(forId: "compendium2024AdultPhysicalActivities") {
-                        CitationLink(citation: citation, context: "Adult Compendium of Physical Activities", compact: true)
+                        CitationLink(citation: citation, context: String(localized: "Adult Compendium of Physical Activities"), compact: true)
                     }
                 }
                 .accessibilityIdentifier("cardioDetail.activityDose")
@@ -198,25 +198,25 @@ struct CardioDetailView: View {
     /// Spoken summary of an HR series for VoiceOver (the chart itself is opaque).
     private func hrChartAXSummary(_ bpms: [Double]) -> String {
         let valid = bpms.filter { $0 > 0 }
-        guard !valid.isEmpty else { return "No heart rate samples" }
+        guard !valid.isEmpty else { return String(localized: "No heart rate samples") }
         let lo = Int(valid.min() ?? 0)
         let hi = Int(valid.max() ?? 0)
         let avg = Int(valid.reduce(0, +) / Double(valid.count))
-        return "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples"
+        return String(localized: "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples")
     }
 
     @ViewBuilder
     private func intervalRow(_ s: IntervalSummary) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            detailRow("Protocol", s.protocolName)
-            detailRow("Rounds", "completed \(s.completedRounds)/\(s.rounds)")
-            detailRow("Work / Rest",
+            detailRow(String(localized: "Protocol"), s.protocolName)
+            detailRow(String(localized: "Rounds"), "completed \(s.completedRounds)/\(s.rounds)")
+            detailRow(String(localized: "Work / Rest"),
                       "\(Format.duration(s.workSeconds)) / \(Format.duration(s.restSeconds))")
             if s.warmupSeconds > 0 {
-                detailRow("Warm-up", Format.duration(s.warmupSeconds))
+                detailRow(String(localized: "Warm-up"), Format.duration(s.warmupSeconds))
             }
             if s.cooldownSeconds > 0 {
-                detailRow("Cool-down", Format.duration(s.cooldownSeconds))
+                detailRow(String(localized: "Cool-down"), Format.duration(s.cooldownSeconds))
             }
         }
     }

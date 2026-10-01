@@ -19,7 +19,7 @@ struct WatchCardioSummaryView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 28)).foregroundStyle(.green)
 
-            summaryRow("Total", formatTime(summary.duration))
+            summaryRow(String(localized: "Total"), formatTime(summary.duration))
             if presentation.showsHeartRate {
                 Text("Heart Rate")
                     .font(.caption.bold())
@@ -41,17 +41,17 @@ struct WatchCardioSummaryView: View {
                 .padding(.horizontal, 12)
                 .accessibilityLabel("Heart rate graph")
                 if let avg = presentation.averageBPM {
-                    summaryRow("Avg HR", "\(Int(avg.rounded()))")
+                    summaryRow(String(localized: "Avg HR"), "\(Int(avg.rounded()))")
                 }
                 if let max = presentation.maximumBPM {
-                    summaryRow("Max HR", "\(Int(max.rounded()))")
+                    summaryRow(String(localized: "Max HR"), "\(Int(max.rounded()))")
                 }
             }
             if summary.distanceMeters > 0 {
-                summaryRow("Distance", metrics.formatDistance())
+                summaryRow(String(localized: "Distance"), metrics.formatDistance())
             }
             if let laps = lapText {
-                summaryRow("Laps", laps)
+                summaryRow(String(localized: "Laps"), laps)
             }
 
             Button("Save") { onSave() }

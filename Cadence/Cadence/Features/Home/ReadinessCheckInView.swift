@@ -26,14 +26,14 @@ struct ReadinessCheckInView: View {
         NavigationStack {
             Form {
                 Section {
-                    rating("Muscle soreness", value: $muscleSoreness,
-                           low: "Very sore", high: "No soreness")
-                    rating("Energy", value: $fatigueEnergy,
-                           low: "Exhausted", high: "Full of energy")
-                    rating("Sleep", value: $sleepQuality,
-                           low: "Terrible", high: "Great")
-                    rating("Stress / mood", value: $stressMood,
-                           low: "Very stressed", high: "Relaxed")
+                    rating(String(localized: "Muscle soreness"), value: $muscleSoreness,
+                           low: String(localized: "Very sore"), high: String(localized: "No soreness"))
+                    rating(String(localized: "Energy"), value: $fatigueEnergy,
+                           low: String(localized: "Exhausted"), high: String(localized: "Full of energy"))
+                    rating(String(localized: "Sleep"), value: $sleepQuality,
+                           low: String(localized: "Terrible"), high: String(localized: "Great"))
+                    rating(String(localized: "Stress / mood"), value: $stressMood,
+                           low: String(localized: "Very stressed"), high: String(localized: "Relaxed"))
                 } header: {
                     Text("How are you today?")
                 } footer: {

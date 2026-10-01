@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "CadenceCore",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v17),
         .watchOS(.v11),
@@ -38,6 +39,9 @@ let package = Package(
                 // DB++ names remain the canonical identifiers; this sidecar is
                 // the user-facing localized label layer.
                 .copy("Resources/exercise-names.i18n.json"),
+                // UI copy produced by Core (labels, summaries, errors), looked
+                // up with `bundle: .module`.
+                .process("Resources/Localizable.xcstrings"),
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
@@ -49,7 +53,12 @@ let package = Package(
         ),
         // Foundation + SwiftData + Observation ONLY. No SwiftUI, no HealthKit,
         // no StoreKit, no UIKit — that is what keeps it testable on macOS.
-        .target(name: "CadenceFeatures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .target(
+            name: "CadenceFeatures",
+            dependencies: ["CadenceCore"],
+            resources: [.process("Resources/Localizable.xcstrings")],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .target(name: "CadenceFixtures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore", "CadenceFeatures", "CadenceExerciseImages"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(

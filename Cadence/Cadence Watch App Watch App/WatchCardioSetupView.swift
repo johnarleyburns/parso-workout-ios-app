@@ -58,25 +58,25 @@ struct WatchCardioSetupView: View {
 
     private var displayName: String {
         switch kind {
-        case .run: return "Run"
-        case .walk: return "Walk"
-        case .cycle: return "Cycle"
-        case .swim: return "Swim"
-        case .rowing: return "Rowing"
-        case .other: return "Other"
-        default: return "Setup"
+        case .run: return String(localized: "Run")
+        case .walk: return String(localized: "Walk")
+        case .cycle: return String(localized: "Cycle")
+        case .swim: return String(localized: "Swim")
+        case .rowing: return String(localized: "Rowing")
+        case .other: return String(localized: "Other")
+        default: return String(localized: "Setup")
         }
     }
 
     private var buttonTitle: String {
         switch kind {
-        case .run: return "Start run"
-        case .walk: return "Start walk"
-        case .cycle: return "Start cycle"
-        case .swim: return "Start swim"
-        case .rowing: return "Start row"
-        case .other: return "Start other"
-        default: return "Start"
+        case .run: return String(localized: "Start run")
+        case .walk: return String(localized: "Start walk")
+        case .cycle: return String(localized: "Start cycle")
+        case .swim: return String(localized: "Start swim")
+        case .rowing: return String(localized: "Start row")
+        case .other: return String(localized: "Start other")
+        default: return String(localized: "Start")
         }
     }
 

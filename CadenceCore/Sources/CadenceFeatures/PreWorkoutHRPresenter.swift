@@ -38,9 +38,9 @@ public struct PreWorkoutHRState: Equatable, Sendable {
 public enum PreWorkoutHRPresenter {
 
     public static func continueLabel(_ s: PreWorkoutHRState) -> String {
-        if s.watchBPM != nil { return "Continue with Apple Watch" }
-        if s.strapConnected { return "Continue with Bluetooth" }
-        return "Continue without heart rate"
+        if s.watchBPM != nil { return String(localized: "Continue with Apple Watch", bundle: .module) }
+        if s.strapConnected { return String(localized: "Continue with Bluetooth", bundle: .module) }
+        return String(localized: "Continue without heart rate", bundle: .module)
     }
 
     /// ALWAYS true — the fix. `continueAction` resolves the source for the live

@@ -60,8 +60,8 @@ public final class OnboardingModel {
     /// final preview instead of consuming a separate onboarding page.
     public var footerTitle: String {
         switch step {
-        case lastStep: return "Start training with the Coach"
-        default: return "Continue"
+        case lastStep: return String(localized: "Start training with the Coach", bundle: .module)
+        default: return String(localized: "Continue", bundle: .module)
         }
     }
 

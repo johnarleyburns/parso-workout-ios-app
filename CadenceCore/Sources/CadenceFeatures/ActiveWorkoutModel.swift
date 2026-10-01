@@ -117,7 +117,7 @@ public final class ActiveWorkoutModel {
 
     @discardableResult
     public func startStrength(_ session: WorkoutSession) -> Bool {
-        guard liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? "Workout" : session.title)) else { return false }
+        guard liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? String(localized: "Workout", bundle: .module) : session.title)) else { return false }
         strengthSession = session
         restEndsAt = nil
         nextExercise = nil
@@ -138,7 +138,7 @@ public final class ActiveWorkoutModel {
               liveWorkout.lease == lease,
               liveWorkout.adopt(lease, descriptor: LiveWorkoutDescriptor(
                 kind: .strength(sessionID: session.id),
-                name: session.title.isEmpty ? "Workout" : session.title)) else { return false }
+                name: session.title.isEmpty ? String(localized: "Workout", bundle: .module) : session.title)) else { return false }
         strengthSession = session
         restEndsAt = nil
         nextExercise = nil
@@ -226,7 +226,7 @@ public final class ActiveWorkoutModel {
         strengthSession = session
         nextSetSummary = nil
         nextSetToken = nil
-        _ = liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? "Workout" : session.title))
+        _ = liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? String(localized: "Workout", bundle: .module) : session.title))
         clock = WorkoutClock(startedAt: session.date,
                              pausedAccumulated: max(0, gross - elapsed),
                              pausedSince: now)

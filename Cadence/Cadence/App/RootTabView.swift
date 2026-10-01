@@ -98,7 +98,7 @@ struct RootTabView: View {
             if active.isActive {
                 WorkoutLiveActivityCoordinator.shared.update(
                     elapsedSeconds: Int(active.clock.elapsed()),
-                    status: active.isPaused ? "Paused" : "Active",
+                    status: active.isPaused ? String(localized: "Paused") : String(localized: "Active"),
                     isPaused: active.isPaused,
                     restEndsAt: active.restEndsAt,
                     nextExercise: active.nextExercise,
@@ -109,7 +109,7 @@ struct RootTabView: View {
         .onChange(of: active.isActive) { _, isActive in
             if isActive, let session = active.strengthSession {
                 WorkoutLiveActivityCoordinator.shared.start(
-                    title: session.title.isEmpty ? "Workout" : session.title,
+                    title: session.title.isEmpty ? String(localized: "Workout") : session.title,
                     restEndsAt: active.restEndsAt,
                     nextExercise: active.nextExercise,
                     nextSetSummary: active.nextSetSummary,
@@ -260,7 +260,7 @@ private struct LiveWorkoutTabAccessory: ViewModifier {
                     Button { active.present() } label: {
                         HStack(spacing: 10) {
                             Image(systemName: "figure.strengthtraining.traditional")
-                            Text(session.title.isEmpty ? "Workout in progress" : session.title)
+                            Text(session.title.isEmpty ? String(localized: "Workout in progress") : session.title)
                                 .lineLimit(1)
                             Spacer()
                             Image(systemName: "chevron.up")

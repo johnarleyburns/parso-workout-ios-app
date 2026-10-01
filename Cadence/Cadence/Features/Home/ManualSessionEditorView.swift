@@ -143,7 +143,7 @@ struct ManualSessionEditorView: View {
         case let .cardio(value):
             switch value.prescription {
             case let .steadyState(details): return cardioActivityName(details.activity)
-            case let .intervals(details): return "\(cardioActivityName(details.activity)) intervals"
+            case let .intervals(details): return String(localized: "\(cardioActivityName(details.activity)) intervals")
             case let .open(details): return cardioActivityName(details.activity)
             }
         case let .mobility(value):
@@ -173,7 +173,7 @@ struct ManualSessionEditorView: View {
 
     private func addMobilityItem() {
         let item = MobilityItem(order: nextItemOrder,
-                                name: "Mobility flow",
+                                name: String(localized: "Mobility flow"),
                                 rounds: 2,
                                 perRound: .duration(seconds: 30))
         session.items.append(.mobility(item))
@@ -182,7 +182,7 @@ struct ManualSessionEditorView: View {
 
     private func addInstructionItem() {
         let item = InstructionItem(order: nextItemOrder,
-                                   text: "Add a note for this session.")
+                                   text: String(localized: "Add a note for this session."))
         session.items.append(.instruction(item))
         itemRoute = ItemRoute(item: .instruction(item))
     }

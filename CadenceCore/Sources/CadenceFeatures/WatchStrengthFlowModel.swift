@@ -628,7 +628,7 @@ public final class WatchStrengthFlowModel {
             !$0.isWarmup && belongsToCurrentPerformer($0)
         }
         guard let last = working.last else { return nil }
-        return "Previous: \(Format.previousShort(last.effectiveLoadKg, reps: last.reps, unit: unit))"
+        return String(localized: "Previous: \(Format.previousShort(last.effectiveLoadKg, reps: last.reps, unit: unit))", bundle: .module)
     }
 
     public var previousWorkoutHistoryLines: [WatchSetHistoryLine] {

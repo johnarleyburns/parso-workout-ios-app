@@ -75,8 +75,8 @@ struct OutdoorCardioView: View {
                     .accessibilityIdentifier("outdoor.elapsed")
 
                 HStack(spacing: 14) {
-                    bigMetric(Format.distance(recorder?.distanceMeters ?? 0), "Distance", id: "outdoor.distance")
-                    bigMetric(CardioMath.formatPace(secPerKm: paceSecPerKm), "Pace", id: "outdoor.pace")
+                    bigMetric(Format.distance(recorder?.distanceMeters ?? 0), String(localized: "Distance"), id: "outdoor.distance")
+                    bigMetric(CardioMath.formatPace(secPerKm: paceSecPerKm), String(localized: "Pace"), id: "outdoor.pace")
                 }
                 if let goalMeters,
                    let p = CardioMath.goalProgress(distanceMeters: recorder?.distanceMeters ?? 0, goalMeters: goalMeters) {

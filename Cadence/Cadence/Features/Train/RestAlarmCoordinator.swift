@@ -33,7 +33,7 @@ final class RestAlarmCoordinator {
                     countdown: .init(title: "Rest"))
                 let attributes = AlarmAttributes(
                     presentation: presentation,
-                    metadata: Metadata(title: "Rest"),
+                    metadata: Metadata(title: String(localized: "Rest")),
                     tintColor: .green)
                 _ = try await AlarmManager.shared.schedule(
                     id: id,

@@ -64,9 +64,9 @@ public struct SetTarget: Equatable, Sendable {
     public func summary(unit: MeasurementUnitPreference) -> String {
         var head: String
         if repsLow == repsHigh {
-            head = sets.map { "\($0)×\(repsLow)" } ?? "\(repsLow) reps"
+            head = sets.map { "\($0)×\(repsLow)" } ?? String(localized: "\(repsLow) reps", bundle: .module)
         } else {
-            head = sets.map { "\($0) sets · \(repsLow)–\(repsHigh) reps" } ?? "\(repsLow)–\(repsHigh) reps"
+            head = sets.map { String(localized: "\($0) sets · \(repsLow)–\(repsHigh) reps", bundle: .module) } ?? String(localized: "\(repsLow)–\(repsHigh) reps", bundle: .module)
         }
         if let kg = loadKg {
             let value = WorkoutMath.display(kg, in: unit)
@@ -124,7 +124,7 @@ public extension Recommendation {
     /// the set count open (e.g. double-progression "keep your current sets").
     func prescribedSession(defaultSets: Int = 3, goal: TrainingGoal = .hypertrophy) -> PrescribedSession {
         guard kind != .cardioHIIT else {
-            return PrescribedSession(title: cardioPrescription ?? "Interval session",
+            return PrescribedSession(title: cardioPrescription ?? String(localized: "Interval session", bundle: .module),
                                      exerciseNames: [],
                                      repLadder: [],
                                      loadKg: nil)
@@ -196,9 +196,9 @@ public extension Recommendation {
     /// single-lift rec, the muscle group for an add-volume rec, else a neutral label.
     var prescribedTitle: String {
         if let exercise { return exercise }
-        if kind == .starter { return "Full-body session" }
-        if let group { return "\(group.displayName) focus" }
-        return "Coach session"
+        if kind == .starter { return String(localized: "Full-body session", bundle: .module) }
+        if let group { return String(localized: "\(group.displayName) focus", bundle: .module) }
+        return String(localized: "Coach session", bundle: .module)
     }
 }
 

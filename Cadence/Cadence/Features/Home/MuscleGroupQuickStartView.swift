@@ -26,8 +26,8 @@ struct MuscleGroupQuickStartView: View {
             List {
                 Section {
                     Text(missing.isEmpty
-                         ? "You've hit every muscle group this week 💪"
-                         : "Missing: " + missing.map(\.displayName).joined(separator: ", "))
+                         ? String(localized: "You've hit every muscle group this week 💪")
+                         : String(localized: "Missing: ") + missing.map(\.displayName).joined(separator: ", "))
                         .font(.subheadline).foregroundStyle(.secondary)
                         .accessibilityIdentifier("groupQuick.missing")
                 }
@@ -39,9 +39,9 @@ struct MuscleGroupQuickStartView: View {
                                 reuse(item.session)
                             } label: {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.session.title.isEmpty ? "Workout" : item.session.title)
+                                    Text(item.session.title.isEmpty ? String(localized: "Workout") : item.session.title)
                                         .font(.headline)
-                                    Text("Covers: " + item.covered.map(\.displayName).joined(separator: ", "))
+                                    Text(String(localized: "Covers: ") + item.covered.map(\.displayName).joined(separator: ", "))
                                         .font(.caption).foregroundStyle(.secondary)
                                 }
                             }
@@ -93,7 +93,7 @@ struct MuscleGroupQuickStartView: View {
     }
 
     private func buildFromSuggestions() {
-        guard let s = try? WorkoutRepository.createSession(title: "Workout", in: context) else { return }
+        guard let s = try? WorkoutRepository.createSession(title: String(localized: "Workout"), in: context) else { return }
         s.plannedExerciseNames = suggestions.map(\.name)
         for name in suggestions { _ = try? WorkoutRepository.findOrCreateExercise(named: name.name, in: context) }
         try? context.save()

@@ -13,19 +13,19 @@ public enum WatchHRRejection: String, Codable, Sendable {
     public var userMessage: String {
         switch self {
         case .alreadyActive:
-            return "Your Apple Watch is still finishing an earlier heart-rate session. Tap Check for Live HR again."
+            return String(localized: "Your Apple Watch is still finishing an earlier heart-rate session. Tap Check for Live HR again.", bundle: .module)
         case .watchWorkoutActive:
             return "A workout is already running in Cladiron on your Apple Watch. End it there, then tap Check for Live HR."
         case .unavailable:
-            return "Heart rate isn’t available from your Apple Watch right now. Tap Check for Live HR to try again."
+            return String(localized: "Heart rate isn’t available from your Apple Watch right now. Tap Check for Live HR to try again.", bundle: .module)
         case .unsupported:
-            return "This Apple Watch can’t stream heart rate to your iPhone."
+            return String(localized: "This Apple Watch can’t stream heart rate to your iPhone.", bundle: .module)
         case .healthPermissionDenied:
             // The one case the user must act on the Watch: watchOS shows the
             // Health permission sheet only there.
-            return "Cladiron doesn’t have Health access on your Apple Watch yet. Open Cladiron on the Watch once to allow it, then tap Check for Live HR."
+            return String(localized: "Cladiron doesn’t have Health access on your Apple Watch yet. Open Cladiron on the Watch once to allow it, then tap Check for Live HR.", bundle: .module)
         case .sessionStartFailed:
-            return "Your Apple Watch couldn’t start the workout. Tap Check for Live HR to try again."
+            return String(localized: "Your Apple Watch couldn’t start the workout. Tap Check for Live HR to try again.", bundle: .module)
         }
     }
 }
@@ -67,7 +67,9 @@ public final class WatchHRRelay {
     /// after three heartbeats have been missed.
     nonisolated public static let staleAfter: TimeInterval = 3 * WatchHRRelaySchedule.heartbeatInterval
 
-    public init(initial: WatchHRConnectionState = .actionRequired(message: "Tap Check for Live HR to connect your Apple Watch")) { state = initial }
+    public init(initial: WatchHRConnectionState? = nil) {
+        state = initial ?? .actionRequired(message: String(localized: "Tap Check for Live HR to connect your Apple Watch", bundle: .module))
+    }
     /// Starts a request. `launchingWatchApp` when the phone is opening
     /// Cladiron on the Watch first; otherwise the Watch app is already running.
     public func begin(requestID: UUID = UUID(), launchingWatchApp: Bool = false, now: Date = Date()) {
@@ -119,12 +121,12 @@ public final class WatchHRRelay {
     }
 
     public func timeout() {
-        state = .timedOut(message: "No heart rate arrived from your Apple Watch. Check that it’s on your wrist and unlocked, then tap Check for Live HR.")
+        state = .timedOut(message: String(localized: "No heart rate arrived from your Apple Watch. Check that it’s on your wrist and unlocked, then tap Check for Live HR.", bundle: .module))
     }
     public func fail(_ message: String) { state = .failed(message: message) }
     public func cancel() {
         requestID = nil
-        state = .actionRequired(message: "Apple Watch HR is not connected")
+        state = .actionRequired(message: String(localized: "Apple Watch HR is not connected", bundle: .module))
     }
     public var activeRequestID: UUID? {
         requestID

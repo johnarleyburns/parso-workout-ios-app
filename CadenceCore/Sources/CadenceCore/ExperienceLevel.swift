@@ -13,17 +13,17 @@ public enum ExperienceLevel: String, CaseIterable, Codable, Sendable, Identifiab
 
     public var displayName: String {
         switch self {
-        case .beginner:     return "Beginner"
-        case .intermediate: return "Intermediate"
-        case .advanced:     return "Advanced"
+        case .beginner:     return String(localized: "Beginner", bundle: .module)
+        case .intermediate: return String(localized: "Intermediate", bundle: .module)
+        case .advanced:     return String(localized: "Advanced", bundle: .module)
         }
     }
 
     public var summary: String {
         switch self {
-        case .beginner:     return "New to lifting (under ~1 year)."
-        case .intermediate: return "Training consistently for a year or more."
-        case .advanced:     return "Years of consistent, structured training."
+        case .beginner:     return String(localized: "New to lifting (under ~1 year).", bundle: .module)
+        case .intermediate: return String(localized: "Training consistently for a year or more.", bundle: .module)
+        case .advanced:     return String(localized: "Years of consistent, structured training.", bundle: .module)
         }
     }
 

@@ -100,12 +100,12 @@ struct OnboardingView: View {
                 .font(.subheadline).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).padding(.top, 8).padding(.horizontal, 24)
             VStack(alignment: .leading, spacing: 14) {
-                valueRow("checkmark.circle.fill", "Free forever. No ads. No account. No tracking.")
-                valueRow("iphone", "Your data stays on your iPhone")
-                valueRow("book.closed", "Every recommendation is sourced")
+                valueRow("checkmark.circle.fill", String(localized: "Free forever. No ads. No account. No tracking."))
+                valueRow("iphone", String(localized: "Your data stays on your iPhone"))
+                valueRow("book.closed", String(localized: "Every recommendation is sourced"))
             }
             CitationLink(citation: CitationRegistry.volumeDoseResponse,
-                         context: "Read the science behind coaching", compact: true)
+                         context: String(localized: "Read the science behind coaching"), compact: true)
                 .padding(.top, 12)
             .padding(.top, 28)
             Text("Location is used only while you're recording an outdoor run, walk, or ride you start — it maps your route in the background (shown by the blue status bar) and stops the moment you finish. Never at any other time.")
@@ -141,8 +141,8 @@ struct OnboardingView: View {
     }
 
     private var trainingPage: some View {
-        pageScaffold(title: "What are you training for?",
-                     subtitle: "These defaults shape your first workout. You can change them anytime in Coach settings.") {
+        pageScaffold(title: String(localized: "What are you training for?"),
+                     subtitle: String(localized: "These defaults shape your first workout. You can change them anytime in Coach settings.")) {
             ForEach(TrainingGoal.allCases) { g in
                 selectCard(title: g.displayName, subtitle: g.summary,
                            systemImage: goalSymbol(g), selected: flow.goal == g) { flow.goal = g }
@@ -156,7 +156,7 @@ struct OnboardingView: View {
             Divider().padding(.vertical, 4)
             Text("Workout style").font(.subheadline.weight(.medium))
             ForEach([SuggestedWorkoutStyle.fitness, .bodyweight, .powerlifting, .olympic, .strongman], id: \.self) { style in
-                selectCard(title: style == .olympic ? "Olympic" : style.displayName,
+                selectCard(title: style == .olympic ? String(localized: "Olympic") : style.displayName,
                            subtitle: style.subtitle, systemImage: workoutTypeSymbol(style),
                            selected: flow.preferredWorkoutStyle == style) {
                     flow.preferredWorkoutStyle = style
@@ -167,8 +167,8 @@ struct OnboardingView: View {
 
     private var setupPage: some View {
         @Bindable var flow = flow
-        return pageScaffold(title: "Make it fit your week",
-                            subtitle: "Cladiron starts with a sensible plan and learns from what you actually complete.") {
+        return pageScaffold(title: String(localized: "Make it fit your week"),
+                            subtitle: String(localized: "Cladiron starts with a sensible plan and learns from what you actually complete.")) {
             Text("Strength days per week").font(.subheadline.weight(.medium))
             Picker("Strength days", selection: $flow.strengthDays) {
                 ForEach(2...5, id: \.self) { Text("\($0)").tag($0) }

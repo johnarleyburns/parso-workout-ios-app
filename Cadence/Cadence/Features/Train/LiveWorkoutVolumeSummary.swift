@@ -322,7 +322,7 @@ extension SessionView {
             .subtracting(known)
             .subtracting([VolumeSummaryPerformer.ownerKey])
         for key in unknownKeys.sorted() {
-            result.append(VolumeSummaryPerformer(id: key, name: "Partner"))
+            result.append(VolumeSummaryPerformer(id: key, name: String(localized: "Partner")))
         }
         return result
     }

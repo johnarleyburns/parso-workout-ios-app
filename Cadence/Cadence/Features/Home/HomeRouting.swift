@@ -127,12 +127,12 @@ enum HomeRouteFailure: Identifiable {
         }
     }
 
-    var title: String { "Couldn't open this workout" }
+    var title: String { String(localized: "Couldn't open this workout") }
 
     var message: String {
         switch self {
         case .scheduledWorkout:
-            "This scheduled workout could not be read. It is still saved, and you can try opening it again or edit it from Planned Workouts."
+            String(localized: "This scheduled workout could not be read. It is still saved, and you can try opening it again or edit it from Planned Workouts.")
         }
     }
 }

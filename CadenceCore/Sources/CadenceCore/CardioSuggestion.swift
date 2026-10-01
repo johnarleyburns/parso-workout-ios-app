@@ -9,8 +9,8 @@ public enum SuggestedWorkoutModality: String, CaseIterable, Codable, Hashable, S
 
     public var displayName: String {
         switch self {
-        case .strength: return "Strength"
-        case .cardio: return "Cardio"
+        case .strength: return String(localized: "Strength", bundle: .module)
+        case .cardio: return String(localized: "Cardio", bundle: .module)
         }
     }
 
@@ -154,7 +154,7 @@ public enum CardioSuggestionGenerator {
                 intervalRounds: 4,
                 intervalWorkSeconds: 120,
                 intervalRestSeconds: 120,
-                rationale: "You have an established cardio base and recent interval work. This keeps the interval dose bounded while giving you a clear session to review.",
+                rationale: String(localized: "You have an established cardio base and recent interval work. This keeps the interval dose bounded while giving you a clear session to review.", bundle: .module),
                 citationIDs: ["hiitVo2max"])
         }
 
@@ -167,9 +167,9 @@ public enum CardioSuggestionGenerator {
         if usableHistory.isEmpty {
             rationale = "A moderate indoor starter gives you a manageable way to build cardio history. You can switch to outdoors before starting."
         } else if remaining > 0 {
-            rationale = "This follows your recent \(type.displayName.lowercased()) history and contributes about \(duration) minutes toward this week's cardio gap."
+            rationale = String(localized: "This follows your recent \(type.displayName.lowercased()) history and contributes about \(duration) minutes toward this week's cardio gap.", bundle: .module)
         } else {
-            rationale = "Your weekly cardio target is covered, so this keeps your recent \(type.displayName.lowercased()) habit moving without adding unnecessary intensity."
+            rationale = String(localized: "Your weekly cardio target is covered, so this keeps your recent \(type.displayName.lowercased()) habit moving without adding unnecessary intensity.", bundle: .module)
         }
         return CardioSuggestion(
             type: type,

@@ -670,12 +670,12 @@ public enum SetKind: String, Codable, Sendable, Hashable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .warmup: return "Warm-up"
-        case .working: return "Working"
-        case .backoff: return "Back-off"
+        case .warmup: return String(localized: "Warm-up", bundle: .module)
+        case .working: return String(localized: "Working", bundle: .module)
+        case .backoff: return String(localized: "Back-off", bundle: .module)
         case .amrap: return "AMRAP"
-        case .drop: return "Drop"
-        case .failure: return "Failure"
+        case .drop: return String(localized: "Drop", bundle: .module)
+        case .failure: return String(localized: "Failure", bundle: .module)
         }
     }
 }

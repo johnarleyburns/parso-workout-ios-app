@@ -42,7 +42,7 @@ struct PreWorkoutHRView: View {
         return false
     }
     private var strapName: String {
-        defaultDevice?.name ?? hrm.discovered.first?.name ?? "Chest strap"
+        defaultDevice?.name ?? hrm.discovered.first?.name ?? String(localized: "Chest strap")
     }
     private var strapBPM: Double? {
         strapConnected ? hrm.currentBPM : nil
@@ -66,7 +66,7 @@ struct PreWorkoutHRView: View {
 
     private var watchStatus: String {
         if case .live = model.watchHRRelay.state, watchBPM == nil {
-            return "No recent heart rate from Apple Watch · tap Check for Live HR"
+            return String(localized: "No recent heart rate from Apple Watch · tap Check for Live HR")
         }
         return model.watchConnectionStatus
     }
@@ -88,7 +88,7 @@ struct PreWorkoutHRView: View {
             VStack(spacing: 12) {
                 strapRow
                 if model.watchAvailable {
-                    HRSourceCard(icon: "applewatch", title: "Apple Watch", tint: .blue) {
+                    HRSourceCard(icon: "applewatch", title: String(localized: "Apple Watch"), tint: .blue) {
                         Button(watchSelected ? "Check for Live HR" : "Check for Live HR") {
                             watchSelected = true
                             if let workoutType { model.startWatchWorkout(type: workoutType) } else { model.startWatchStrength() }
@@ -126,7 +126,7 @@ struct PreWorkoutHRView: View {
                         }
                     }
                 } else {
-                    HRSourceCard(icon: "applewatch.slash", title: "Apple Watch unavailable", tint: .secondary) {
+                    HRSourceCard(icon: "applewatch.slash", title: String(localized: "Apple Watch unavailable"), tint: .secondary) {
                         Text("Install Cladiron on your Apple Watch")
                             .font(.caption).foregroundStyle(.secondary)
                             .multilineTextAlignment(.trailing)

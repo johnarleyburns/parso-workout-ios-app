@@ -12,11 +12,11 @@ struct CadenceWatchWidgetProvider: TimelineProvider {
     func placeholder(in context: Context) -> CadenceWatchWidgetEntry {
         CadenceWatchWidgetEntry(
             date: Date(),
-            state: CadenceWatchWidgetState(workoutTitle: "Upper strength"),
+            state: CadenceWatchWidgetState(workoutTitle: String(localized: "Upper strength")),
             snapshot: CadenceTodaySnapshot(
                 dayKey: "preview",
-                planTitle: "Upper strength",
-                sessionTitles: ["Strength session"]))
+                planTitle: String(localized: "Upper strength"),
+                sessionTitles: [String(localized: "Strength session")]))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CadenceWatchWidgetEntry) -> Void) {
@@ -56,7 +56,7 @@ struct CadenceWatchSmartStackView: View {
                         .foregroundStyle(.green)
                     Text(timerInterval: Date()...restEndsAt, countsDown: true)
                         .font(.title3.weight(.bold).monospacedDigit())
-                    Text(entry.state?.workoutTitle ?? "Workout")
+                    Text(entry.state?.workoutTitle ?? String(localized: "Workout"))
                         .font(.caption2)
                         .lineLimit(1)
                 }
@@ -65,7 +65,7 @@ struct CadenceWatchSmartStackView: View {
                     Label("Today", systemImage: "figure.strengthtraining.traditional")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.green)
-                    Text(entry.state?.workoutTitle ?? entry.snapshot?.planTitle ?? "Open Cladiron")
+                    Text(entry.state?.workoutTitle ?? entry.snapshot?.planTitle ?? String(localized: "Open Cladiron"))
                         .font(.headline)
                         .lineLimit(2)
                     if let session = entry.snapshot?.sessionTitles.first {

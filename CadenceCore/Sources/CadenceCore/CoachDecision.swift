@@ -153,8 +153,8 @@ public enum CoachDecisionEngine {
         // Gate 1: pain/illness block
         if hasPainConcern {
             let restSession = candidates.first { $0.kind == .rest } ?? CoachSession(
-                id: "rest.safety", kind: .rest, title: "Rest — safety first",
-                subtitle: "Pain or illness reported. Choose rest or easy activity.",
+                id: "rest.safety", kind: .rest, title: String(localized: "Rest — safety first", bundle: .module),
+                subtitle: String(localized: "Pain or illness reported. Choose rest or easy activity.", bundle: .module),
                 launchPayload: .rest)
             return CoachDecision(
                 id: "decision.\(now.timeIntervalSince1970)",
@@ -164,7 +164,7 @@ public enum CoachDecisionEngine {
                 deferred: [],
                 warnings: [
                     CoachWarning(id: "painConcern",
-                                 message: "You reported pain or illness concern. If symptoms persist, seek qualified medical advice.",
+                                 message: String(localized: "You reported pain or illness concern. If symptoms persist, seek qualified medical advice.", bundle: .module),
                                  citationIds: ["meeusenOvertraining2013"])
                 ],
                 observedFacts: [],
@@ -211,7 +211,7 @@ public enum CoachDecisionEngine {
                 primary = deferredStrength.session
                 strengthOverrideWarning = CoachWarning(
                     id: "strengthOverride",
-                    message: "Coach is recommending strength despite some muscle groups still recovering. Prioritize the exercises that feel recovered.",
+                    message: String(localized: "Coach is recommending strength despite some muscle groups still recovering. Prioritize the exercises that feel recovered.", bundle: .module),
                     citationIds: ["schoenfeld2021"])
             } else {
                 // Phase C (field-test-fixes): rescue still-due cardio before ever
@@ -226,8 +226,8 @@ public enum CoachDecisionEngine {
                     primary = deferredCardio.session
                 } else {
                     primary = candidates.first { $0.kind == .rest } ?? CoachSession(
-                        id: "rest.fallback", kind: .rest, title: "Rest day",
-                        subtitle: "No eligible training candidates right now.", launchPayload: .rest)
+                        id: "rest.fallback", kind: .rest, title: String(localized: "Rest day", bundle: .module),
+                        subtitle: String(localized: "No eligible training candidates right now.", bundle: .module), launchPayload: .rest)
                 }
             }
         }
@@ -290,7 +290,7 @@ public enum CoachDecisionEngine {
             }
             factsList.append(ObservedFact(
                 kind: .lastStrength,
-                title: "Last strength",
+                title: String(localized: "Last strength", bundle: .module),
                 value: formatRelative(lastStrength.start, now),
                 detail: exerciseDetails.isEmpty ? nil : exerciseDetails.joined(separator: ", "),
                 occurredAt: lastStrength.start,
@@ -301,13 +301,13 @@ public enum CoachDecisionEngine {
         if let lastCardio = facts.rolling72hCompletedEvents.filter(\.isAerobic).max(by: { $0.end < $1.end }) {
             var cardioDetail = ""
             if case .aerobic(let d) = lastCardio.kind {
-                cardioDetail = "\(d.modality.displayName) · \(Int(d.duration / 60)) min"
+                cardioDetail = String(localized: "\(d.modality.displayName) · \(Int(d.duration / 60)) min", bundle: .module)
             } else if case .intervals(let d) = lastCardio.kind {
-                cardioDetail = "\(d.modality.displayName) intervals · \(Int(d.duration / 60)) min"
+                cardioDetail = String(localized: "\(d.modality.displayName) intervals · \(Int(d.duration / 60)) min", bundle: .module)
             }
             factsList.append(ObservedFact(
                 kind: .lastCardio,
-                title: "Last cardio",
+                title: String(localized: "Last cardio", bundle: .module),
                 value: formatRelative(lastCardio.start, now),
                 detail: cardioDetail.isEmpty ? nil : cardioDetail,
                 occurredAt: lastCardio.start,
@@ -317,25 +317,25 @@ public enum CoachDecisionEngine {
 
         factsList.append(ObservedFact(
             kind: .weeklyStrengthDays,
-            title: "Strength days this week",
+            title: String(localized: "Strength days this week", bundle: .module),
             value: {
                 let done = facts.weeklyBalance.strengthDays
                 let target = schedulePreferences.strengthDaysPerWeek
                 let toGo = max(0, target - done)
                 return toGo > 0 ? "\(done)/\(target)+ · \(toGo) to go" : "\(done)/\(target)+ · target met"
             }(),
-            detail: "Target is \(schedulePreferences.strengthDaysPerWeek) or more"
+            detail: String(localized: "Target is \(schedulePreferences.strengthDaysPerWeek) or more", bundle: .module)
         ))
 
         factsList.append(ObservedFact(
             kind: .weeklyModerateEquivalentMinutes,
-            title: "Moderate-equivalent minutes",
+            title: String(localized: "Moderate-equivalent minutes", bundle: .module),
             value: {
                 let done = Int(facts.weeklyBalance.moderateEquivalentMinutes)
                 let toGo = max(0, 150 - done)
-                return toGo > 0 ? "\(done)/150 · \(toGo) min to go" : "\(done)/150 · target met"
+                return toGo > 0 ? String(localized: "\(done)/150 · \(toGo) min to go", bundle: .module) : "\(done)/150 · target met"
             }(),
-            detail: "Research-informed aerobic target"
+            detail: String(localized: "Research-informed aerobic target", bundle: .module)
         ))
 
         if let stepSummary = facts.stepSummary {
@@ -345,14 +345,14 @@ public enum CoachDecisionEngine {
             let stepGap = max(0, stepTarget - avg)
             factsList.append(ObservedFact(
                 kind: .weeklySteps,
-                title: "Steps (7-day avg)",
+                title: String(localized: "Steps (7-day avg)", bundle: .module),
                 value: stepGap > 0 ? "\(avgStr)/day · \(formatted(stepGap))/day to go" : "\(avgStr)/day · on target",
                 detail: "\(stepSummary.status.displayName) — evidence-informed target is \(formatted(StepActivitySummary.targetDailySteps))"
             ))
             if stepSummary.status == .low {
                 warnings.append(CoachWarning(
                     id: "lowSteps",
-                    message: "Your 7-day step average (\(avgStr)/day) is below the research-informed floor of \(formatted(StepActivitySummary.floorDailySteps)). An easy walk or short walking breaks can help without compromising your training.",
+                    message: String(localized: "Your 7-day step average (\(avgStr)/day) is below the research-informed floor of \(formatted(StepActivitySummary.floorDailySteps)). An easy walk or short walking breaks can help without compromising your training.", bundle: .module),
                     citationIds: CitationRegistry.stepsHealthPool.citationIds
                 ))
             }
@@ -407,7 +407,7 @@ public enum CoachDecisionEngine {
             let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
                                                            schedulePreferences: schedulePreferences)
             return .planComplete(completedKind: nil,
-                                  todayDescription: "Strength and cardio — both in the books",
+                                  todayDescription: String(localized: "Strength and cardio — both in the books", bundle: .module),
                                   tomorrowPreview: tomorrowPreview)
         }
 
@@ -432,7 +432,7 @@ public enum CoachDecisionEngine {
                 let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
                                                                schedulePreferences: schedulePreferences)
                 return .planComplete(completedKind: nil,
-                                      todayDescription: "Strength and cardio — both in the books",
+                                      todayDescription: String(localized: "Strength and cardio — both in the books", bundle: .module),
                                       tomorrowPreview: tomorrowPreview)
             }
             return .planAhead
@@ -446,7 +446,7 @@ public enum CoachDecisionEngine {
                 let tomorrowPreview = generateTomorrowPreview(facts: facts, candidates: candidates,
                                                                schedulePreferences: schedulePreferences)
                 return .planComplete(completedKind: .strength,
-                                      todayDescription: "Strength and cardio — both in the books",
+                                      todayDescription: String(localized: "Strength and cardio — both in the books", bundle: .module),
                                       tomorrowPreview: tomorrowPreview)
             }
             return .planAhead
@@ -574,11 +574,11 @@ public enum CoachDecisionEngine {
         switch event.kind {
         case .aerobic(let d), .intervals(let d):
             let mins = Int(d.duration / 60)
-            return "\(d.modality.displayName) · \(mins) min in the books"
+            return String(localized: "\(d.modality.displayName) · \(mins) min in the books", bundle: .module)
         case .strength:
-            return "You put in the work today"
+            return String(localized: "You put in the work today", bundle: .module)
         case .unknown:
-            return "Workout in the books"
+            return String(localized: "Workout in the books", bundle: .module)
         }
     }
 
@@ -601,24 +601,24 @@ public enum CoachDecisionEngine {
         }
 
         if strengthNeeded && canStrength {
-            return "Strength session"
+            return String(localized: "Strength session", bundle: .module)
         }
 
         if strengthNeeded && !canStrength {
             let hrs = facts.recovery.wholeBody.map { Int($0.hardEligibleAt.timeIntervalSince(facts.referenceDate) / 3600) } ?? 24
-            return "Recovery — strength eligible in ~\(hrs)h"
+            return String(localized: "Recovery — strength eligible in ~\(hrs)h", bundle: .module)
         }
 
         if aerobicNeeded {
-            return "Cardio session"
+            return String(localized: "Cardio session", bundle: .module)
         }
 
         if balance.consecutiveHardDays >= 3 {
-            return "Rest or easy recovery"
+            return String(localized: "Rest or easy recovery", bundle: .module)
         }
 
         // Balanced: suggest a rest or easy day
-        return "Rest or light activity"
+        return String(localized: "Rest or light activity", bundle: .module)
     }
 
     // MARK: - Same-day repetition damping
@@ -707,7 +707,7 @@ public enum CoachDecisionEngine {
               let sys = session.systemsTrained.first else { return [] }
         return [EvidenceClaim(
             id: "systemNeed.\(session.id)",
-            text: "\(sys.displayName) has had little work recently — training it now restores balance.",
+            text: String(localized: "\(sys.displayName) has had little work recently — training it now restores balance.", bundle: .module),
             category: category, date: facts.referenceDate)]
     }
 
@@ -764,7 +764,7 @@ public enum CoachDecisionEngine {
         if facts.weeklyBalance.consecutiveHardDays >= 6 {
             warnings.append(CoachWarning(
                 id: "consecutiveHardDays",
-                message: "You've trained hard \(facts.weeklyBalance.consecutiveHardDays) days in a row. Evidence suggests recovery periods improve long-term adaptation.",
+                message: String(localized: "You've trained hard \(facts.weeklyBalance.consecutiveHardDays) days in a row. Evidence suggests recovery periods improve long-term adaptation.", bundle: .module),
                 citationIds: ["meeusenOvertraining2013", "drewFinchInjury2016"]
             ))
         }
@@ -773,7 +773,7 @@ public enum CoachDecisionEngine {
         for (part, sets) in setsByPart where sets > 20 {
             warnings.append(CoachWarning(
                 id: "excessiveWeeklyVolume.\(part.rawValue)",
-                message: "\(part.displayName) has \(Int(sets)) sets this week — well above the research-backed starting range. Diminishing returns are likely.",
+                message: String(localized: "\(part.displayName) has \(Int(sets)) sets this week — well above the research-backed starting range. Diminishing returns are likely.", bundle: .module),
                 citationIds: ["pellandDoseResponse2026"]
             ))
         }
@@ -784,7 +784,7 @@ public enum CoachDecisionEngine {
                     && !Exercise.cnsLiftNames.contains(ex.exerciseName) {
                 warnings.append(CoachWarning(
                     id: "excessiveSetsPerSession.\(ex.exerciseName)",
-                    message: "\(ex.exerciseName) had \(ex.hardSetCount) hard sets in one session. Research found no advantage beyond ~5 hard sets per muscle per session.",
+                    message: String(localized: "\(ex.exerciseName) had \(ex.hardSetCount) hard sets in one session. Research found no advantage beyond ~5 hard sets per muscle per session.", bundle: .module),
                     citationIds: ["amirthalingamGVT"]
                 ))
             }

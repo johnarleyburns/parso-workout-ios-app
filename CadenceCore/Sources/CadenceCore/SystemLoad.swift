@@ -22,15 +22,15 @@ public enum TrainingSystem: String, Sendable, Codable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .maximalStrength: return "Max strength"
-        case .hypertrophy: return "Hypertrophy"
-        case .strengthEndurance: return "Strength endurance"
-        case .aerobicBase: return "Aerobic base"
+        case .maximalStrength: return String(localized: "Max strength", bundle: .module)
+        case .hypertrophy: return String(localized: "Hypertrophy", bundle: .module)
+        case .strengthEndurance: return String(localized: "Strength endurance", bundle: .module)
+        case .aerobicBase: return String(localized: "Aerobic base", bundle: .module)
         case .vo2max: return "VO\u{2082}max"
-        case .threshold: return "Threshold"
-        case .anaerobicPower: return "Anaerobic power"
-        case .flexibility: return "Flexibility"
-        case .recovery: return "Recovery"
+        case .threshold: return String(localized: "Threshold", bundle: .module)
+        case .anaerobicPower: return String(localized: "Anaerobic power", bundle: .module)
+        case .flexibility: return String(localized: "Flexibility", bundle: .module)
+        case .recovery: return String(localized: "Recovery", bundle: .module)
         }
     }
 }

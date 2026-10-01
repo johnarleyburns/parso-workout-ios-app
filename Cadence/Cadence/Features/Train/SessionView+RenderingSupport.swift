@@ -159,7 +159,7 @@ extension SessionView {
     }
 
     var idlePromptMessage: String {
-        "No activity for \(settings.idleTimeoutMinutes) min. Your workout will pause — it never ends on its own."
+        String(localized: "No activity for \(settings.idleTimeoutMinutes) min. Your workout will pause — it never ends on its own.")
     }
 
     func setSessionDate(_ date: Date) {
@@ -178,7 +178,7 @@ extension SessionView {
         NavigationStack {
             DatePicker("Workout date", selection: Binding(
                 get: { session.date },
-                set: setSessionDate))
+                set: { setSessionDate($0) }))
                 .datePickerStyle(.graphical)
                 .padding()
                 .navigationTitle("Edit Date")
@@ -197,7 +197,7 @@ extension SessionView {
         NavigationStack {
             DatePicker("End time", selection: Binding(
                 get: { session.endedAt ?? session.date },
-                set: setSessionEndDate))
+                set: { setSessionEndDate($0) }))
                 .datePickerStyle(.graphical)
                 .padding()
                 .navigationTitle("Edit End Time")
@@ -214,7 +214,7 @@ extension SessionView {
     @ViewBuilder
     func cooldownOverlay() -> some View {
         GuidedPhaseOverlay(
-            title: "Cool Down",
+            title: String(localized: "Cool Down"),
             minutes: session.cooldownSeconds > 0 ? Int(session.cooldownSeconds / 60) : settings.cooldownMinutes,
             tint: .teal,
             idPrefix: "cooldown",

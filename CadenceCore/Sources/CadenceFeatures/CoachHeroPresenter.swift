@@ -46,19 +46,19 @@ public enum CoachHeroPresenter {
             let title: String
             switch planAdherenceCompletedKind {
             case .strength:
-                title = "You put in the work"
+                title = String(localized: "You put in the work", bundle: .module)
             case .easyAerobic, .moderateAerobic:
-                title = "Cardio banked for today"
+                title = String(localized: "Cardio banked for today", bundle: .module)
             case .vo2Intervals:
-                title = "Speed work in the books"
+                title = String(localized: "Speed work in the books", bundle: .module)
             case .recovery:
-                title = "Recovery done for today"
+                title = String(localized: "Recovery done for today", bundle: .module)
             case .rest:
-                title = "Rest earned for today"
+                title = String(localized: "Rest earned for today", bundle: .module)
             case .assessment:
-                title = "Baseline in the books"
+                title = String(localized: "Baseline in the books", bundle: .module)
             case nil:
-                title = "Today's workouts are completed"
+                title = String(localized: "Today's workouts are completed", bundle: .module)
             }
             return Content(title: title, subtitle: desc)
         }
@@ -85,21 +85,21 @@ public enum CoachHeroPresenter {
                 let names = Array(todayLoggedExerciseNames.prefix(3))
                 switch names.count {
                 case 0: return ""
-                case 1: return "\(names[0]) logged."
-                case 2: return "\(names[0]) and \(names[1]) logged."
-                default: return "\(names[0]), \(names[1]), and \(names[2]) logged."
+                case 1: return String(localized: "\(names[0]) logged.", bundle: .module)
+                case 2: return String(localized: "\(names[0]) and \(names[1]) logged.", bundle: .module)
+                default: return String(localized: "\(names[0]), \(names[1]), and \(names[2]) logged.", bundle: .module)
                 }
             }()
             let subtitle = recentFactText.isEmpty
                 ? loggedText
                 : "\(loggedText) \(recentFactText)"
-            return Content(title: "Strength is done today",
+            return Content(title: String(localized: "Strength is done today", bundle: .module),
                            subtitle: subtitle.trimmingCharacters(in: .whitespaces))
         }
 
         // ── Rest day ────────────────────────────────────────────────────
         if primaryKind == .rest {
-            return Content(title: "Rest is training too",
+            return Content(title: String(localized: "Rest is training too", bundle: .module),
                            subtitle: primarySubtitle.isEmpty ? recentFactText : primarySubtitle)
         }
 

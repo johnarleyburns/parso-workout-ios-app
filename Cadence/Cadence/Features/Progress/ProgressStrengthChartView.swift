@@ -169,7 +169,7 @@ struct ProgressStrengthChartView: View {
 
     private var accessibilitySummary: String {
         let names = selectedSeries.map(\.exercise)
-        return names.isEmpty ? "No lifts selected." : names.joined(separator: ", ")
+        return names.isEmpty ? String(localized: "No lifts selected.") : names.joined(separator: ", ")
     }
 
     private var selectionText: String? {
@@ -228,8 +228,8 @@ private struct ProgressChartAccessibility: AXChartDescriptorRepresentable {
         let values = data.flatMap { $0.points.map { WorkoutMath.display($0.e1rm, in: unit) } }
         let lower = max(0, (values.min() ?? 0) * 0.9)
         let upper = max(lower + 1, (values.max() ?? 1) * 1.1)
-        let xAxis = AXCategoricalDataAxisDescriptor(title: "Week", categoryOrder: categories)
-        let yAxis = AXNumericDataAxisDescriptor(title: "Estimated 1RM",
+        let xAxis = AXCategoricalDataAxisDescriptor(title: String(localized: "Week"), categoryOrder: categories)
+        let yAxis = AXNumericDataAxisDescriptor(title: String(localized: "Estimated 1RM"),
                                                  range: lower...upper,
                                                  gridlinePositions: [],
                                                  valueDescriptionProvider: { value in
@@ -243,7 +243,7 @@ private struct ProgressChartAccessibility: AXChartDescriptorRepresentable {
                                                    y: WorkoutMath.display(point.e1rm, in: unit))
                                    })
         }
-        return AXChartDescriptor(title: "Estimated 1RM trend",
+        return AXChartDescriptor(title: String(localized: "Estimated 1RM trend"),
                                  summary: ProgressPresenter.strengthTrendSummary(series: data,
                                                                                    unit: unit),
                                  xAxis: xAxis, yAxis: yAxis, series: series)

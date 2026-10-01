@@ -68,7 +68,7 @@ struct WatchRestView: View {
         .onDisappear {
             timer?.invalidate()
             CadenceWatchWidgetStore.save(CadenceWatchWidgetState(
-                workoutTitle: model.session?.title ?? "Workout"))
+                workoutTitle: model.session?.title ?? String(localized: "Workout")))
             reloadWidget()
             cues.stop()
         }
@@ -76,7 +76,7 @@ struct WatchRestView: View {
 
     private func publishWidgetState() {
         CadenceWatchWidgetStore.save(CadenceWatchWidgetState(
-            workoutTitle: model.session?.title ?? "Workout",
+            workoutTitle: model.session?.title ?? String(localized: "Workout"),
             restEndsAt: model.restTimer.endsAt))
     }
 

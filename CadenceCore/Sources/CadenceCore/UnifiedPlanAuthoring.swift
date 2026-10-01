@@ -310,27 +310,27 @@ public enum UnifiedPlanAuthoring {
         switch model {
         case .accumulationIntensificationDeload:
             var result = [PlanPhase(
-                id: "accumulation", title: "Accumulation",
+                id: "accumulation", title: String(localized: "Accumulation", bundle: .module),
                 durationCycles: max(1, weeks - 2),
                 cycleLengthDays: cycleLengthDays,
                 progression: progression)]
             if weeks > 2 {
                 result.append(PlanPhase(
-                    id: "intensification", title: "Intensification",
+                    id: "intensification", title: String(localized: "Intensification", bundle: .module),
                     durationCycles: 1,
                     cycleLengthDays: cycleLengthDays,
                     progression: progression))
             }
             if weeks >= 4 {
                 result.append(PlanPhase(
-                    id: "deload", title: "Deload", durationCycles: 1,
+                    id: "deload", title: String(localized: "Deload", bundle: .module), durationCycles: 1,
                     cycleLengthDays: cycleLengthDays,
                     progression: progression, isDeload: true))
             }
             return result
-        case .linear: return [phase("linear", "Linear", weeks, progression, cycleLengthDays)]
-        case .dailyUndulating: return [phase("daily-undulating", "Daily undulating", weeks, progression, cycleLengthDays)]
-        case .block: return [phase("block", "Block", weeks, progression, cycleLengthDays)]
+        case .linear: return [phase("linear", String(localized: "Linear", bundle: .module), weeks, progression, cycleLengthDays)]
+        case .dailyUndulating: return [phase("daily-undulating", String(localized: "Daily undulating", bundle: .module), weeks, progression, cycleLengthDays)]
+        case .block: return [phase("block", String(localized: "Block", bundle: .module), weeks, progression, cycleLengthDays)]
         case .none: return nil
         }
     }

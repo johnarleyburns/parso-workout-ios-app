@@ -29,7 +29,7 @@ public enum SessionEligibilityPolicy {
         var notes: [DecisionNote] = []
         var reasons: [DecisionReason] = []
 
-        if session.kind == .rest { return .eligible(notes: [DecisionNote("Rest is always eligible.")]) }
+        if session.kind == .rest { return .eligible(notes: [DecisionNote(String(localized: "Rest is always eligible.", bundle: .module))]) }
 
         let now = facts.referenceDate
         let recovery = facts.recovery
@@ -43,7 +43,7 @@ public enum SessionEligibilityPolicy {
             return .deferred(until: now.addingTimeInterval(86400), reasons: [
                 DecisionReason(
                     id: "lowReadiness",
-                    message: "Your latest check-in flagged poor recovery (soreness, sleep, stress, or energy). Easy movement or recovery is a better fit today.",
+                    message: String(localized: "Your latest check-in flagged poor recovery (soreness, sleep, stress, or energy). Easy movement or recovery is a better fit today.", bundle: .module),
                     citationIds: CitationRegistry.citationPool(for: .recoveryMonitoring).citationIds)
             ])
         }
@@ -88,7 +88,7 @@ public enum SessionEligibilityPolicy {
                     let hrs = Int(window.hardEligibleAt.timeIntervalSince(now) / 3600) + 1
                     reasons.append(DecisionReason(
                         id: "pattern.\(pattern.rawValue)",
-                        message: "\(pattern.displayName) pattern is recovering — eligible in about \(hrs)h.",
+                        message: String(localized: "\(pattern.displayName) pattern is recovering — eligible in about \(hrs)h.", bundle: .module),
                         citationIds: ["parejaBlancoRecovery2020"]
                     ))
                 }
@@ -99,7 +99,7 @@ public enum SessionEligibilityPolicy {
                     let hrs = Int(window.hardEligibleAt.timeIntervalSince(now) / 3600) + 1
                     reasons.append(DecisionReason(
                         id: "muscleGroup.\(group.rawValue)",
-                        message: "\(group.displayName) muscles are recovering — eligible in about \(hrs)h.",
+                        message: String(localized: "\(group.displayName) muscles are recovering — eligible in about \(hrs)h.", bundle: .module),
                         citationIds: ["parejaBlancoRecovery2020"]
                     ))
                 }
@@ -163,7 +163,7 @@ public enum SessionEligibilityPolicy {
             if hoursSince < 24 && (isHard || session.kind == .moderateAerobic) {
                 reasons.append(DecisionReason(
                     id: "lowerBodyCollision",
-                    message: "Hard lower-body strength \(formatRelative(event.end, now)) — deferring hard cardio. Easy walking or cycling is still fine.",
+                    message: String(localized: "Hard lower-body strength \(formatRelative(event.end, now)) — deferring hard cardio. Easy walking or cycling is still fine.", bundle: .module),
                     citationIds: ["schumannConcurrent2022"]
                 ))
             }
@@ -175,7 +175,7 @@ public enum SessionEligibilityPolicy {
         return .blocked(reasons: [
             DecisionReason(
                 id: "painConcern",
-                message: "You reported pain or illness concern. Choose rest or easy activity. If symptoms persist, seek qualified medical advice.",
+                message: String(localized: "You reported pain or illness concern. Choose rest or easy activity. If symptoms persist, seek qualified medical advice.", bundle: .module),
                 citationIds: ["meeusenOvertraining2013"]
             )
         ])

@@ -4,7 +4,7 @@ import CadenceFeatures
 
 extension WorkoutPlanEditor {
     var addExerciseButton: some View {
-        CadenceActionButton(title: "Add Exercise",
+        CadenceActionButton(title: String(localized: "Add Exercise"),
                             systemImage: "plus.circle.fill",
                             emphasis: .secondary) {
             exercisePickerIntent = .add
@@ -17,7 +17,7 @@ extension WorkoutPlanEditor {
     }
 
     var suggestExerciseButton: some View {
-        CadenceActionButton(title: "Suggest Exercise…",
+        CadenceActionButton(title: String(localized: "Suggest Exercise…"),
                             systemImage: "wand.and.stars",
                             emphasis: .secondary) {
             do {

@@ -144,7 +144,7 @@ struct PlannedDayPreviewView: View {
         var parts: [String] = []
         if let minutes = session.cardioDurationMinutes { parts.append("~\(minutes) min") }
         if let zone = session.cardioZone {
-            parts.append("Zone \(zone) (\(CardioMath.zoneName(zone)))")
+            parts.append(String(localized: "Zone \(zone) (\(CardioMath.zoneName(zone)))"))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }

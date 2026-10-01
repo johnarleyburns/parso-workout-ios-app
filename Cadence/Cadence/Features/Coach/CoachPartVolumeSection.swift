@@ -145,7 +145,7 @@ struct CoachPartVolumeSection: View {
     private func warningMessage(for row: WeekVolumePresenter.PartRow) -> String? {
         switch row.status {
         case .short(let toGo):
-            return "\(row.displayName) is \(Format.sets(toGo)) sets below the current minimum. You can add work if that fits your recovery and plan."
+            return String(localized: "\(row.displayName) is \(Format.sets(toGo)) sets below the current minimum. You can add work if that fits your recovery and plan.")
         case .high:
             return "\(row.displayName) is above the current recommended range. Consider reducing volume or allowing more recovery before adding more work."
         case .targetMet, .onTrack:
@@ -183,9 +183,9 @@ struct CoachPartVolumeSection: View {
         switch row.status {
         case .targetMet: statusText = "target met"
         case .onTrack: statusText = "within target range"
-        case .short(let toGo): statusText = "\(Int(toGo.rounded())) sets to go"
+        case .short(let toGo): statusText = String(localized: "\(Int(toGo.rounded())) sets to go")
         case .high: statusText = "above maximum recommended"
         }
-        return "\(row.displayName): \(Format.sets(row.doneSets)) sets done, \(Format.sets(row.plannedSets)) planned, \(statusText). Recommended \(Int(row.band.lowerBound.rounded())) to \(Int(row.band.upperBound.rounded()))."
+        return String(localized: "\(row.displayName): \(Format.sets(row.doneSets)) sets done, \(Format.sets(row.plannedSets)) planned, \(statusText). Recommended \(Int(row.band.lowerBound.rounded())) to \(Int(row.band.upperBound.rounded())).")
     }
 }

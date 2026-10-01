@@ -47,7 +47,7 @@ struct RoutineDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 8) {
                     tag(plan.schemeSummary)
-                    if plan.flexibleScheme { tag("Flexible") }
+                    if plan.flexibleScheme { tag(String(localized: "Flexible")) }
                 }
 
                 if !muscleGroups.isEmpty {

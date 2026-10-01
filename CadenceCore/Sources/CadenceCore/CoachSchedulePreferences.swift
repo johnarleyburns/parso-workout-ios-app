@@ -13,13 +13,13 @@ public enum Weekday: Int, Codable, Sendable, CaseIterable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .sunday: return "Sun"
-        case .monday: return "Mon"
-        case .tuesday: return "Tue"
-        case .wednesday: return "Wed"
-        case .thursday: return "Thu"
-        case .friday: return "Fri"
-        case .saturday: return "Sat"
+        case .sunday: return String(localized: "Sun", bundle: .module)
+        case .monday: return String(localized: "Mon", bundle: .module)
+        case .tuesday: return String(localized: "Tue", bundle: .module)
+        case .wednesday: return String(localized: "Wed", bundle: .module)
+        case .thursday: return String(localized: "Thu", bundle: .module)
+        case .friday: return String(localized: "Fri", bundle: .module)
+        case .saturday: return String(localized: "Sat", bundle: .module)
         }
     }
 
@@ -38,10 +38,10 @@ public enum RestPreference: Codable, Sendable, Equatable {
     public var displayName: String {
         switch self {
         case .fixed(let days):
-            if days.isEmpty { return "None" }
+            if days.isEmpty { return String(localized: "None", bundle: .module) }
             return days.sorted(by: { $0.rawValue < $1.rawValue }).map(\.displayName).joined(separator: ", ")
         case .rolling(let n):
-            return "Every \(n) days"
+            return String(localized: "Every \(n) days", bundle: .module)
         }
     }
 

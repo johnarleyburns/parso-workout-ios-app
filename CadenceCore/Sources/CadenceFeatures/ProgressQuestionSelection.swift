@@ -14,13 +14,13 @@ public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
 
     public var displayName: String {
         switch self {
-        case .consistency: return "Consistency"
-        case .effort: return "Effort"
-        case .intensity: return "Intensity"
-        case .personalRecords: return "Personal Records"
-        case .strengthOverTime: return "Strength over time"
-        case .tests: return "Tests"
-        case .workoutHistory: return "Workout History"
+        case .consistency: return String(localized: "Consistency", bundle: .module)
+        case .effort: return String(localized: "Effort", bundle: .module)
+        case .intensity: return String(localized: "Intensity", bundle: .module)
+        case .personalRecords: return String(localized: "Personal Records", bundle: .module)
+        case .strengthOverTime: return String(localized: "Strength over time", bundle: .module)
+        case .tests: return String(localized: "Tests", bundle: .module)
+        case .workoutHistory: return String(localized: "Workout History", bundle: .module)
         }
     }
 

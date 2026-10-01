@@ -113,12 +113,12 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Equatable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .personalized: "Personalized"
-        case .fitness: "Fitness"
-        case .bodyweight: "Bodyweight"
-        case .powerlifting: "Powerlifting"
-        case .olympic: "Olympic Weightlifting"
-        case .strongman: "Strongman"
+        case .personalized: String(localized: "Personalized", bundle: .module)
+        case .fitness: String(localized: "Fitness", bundle: .module)
+        case .bodyweight: String(localized: "Bodyweight", bundle: .module)
+        case .powerlifting: String(localized: "Powerlifting", bundle: .module)
+        case .olympic: String(localized: "Olympic Weightlifting", bundle: .module)
+        case .strongman: String(localized: "Strongman", bundle: .module)
         }
     }
 
@@ -127,12 +127,12 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Equatable, Sendable {
 
     public var subtitle: String {
         switch self {
-        case .personalized: "History-first movements, with your preferred style filling any gaps."
-        case .fitness: "General gym movements — machines, cables and free weights."
-        case .bodyweight: "No equipment — movements you load with your own body."
-        case .powerlifting: "Squat, bench and deadlift variations and their accessories."
-        case .olympic: "Snatch, clean and jerk variations, pulls and squats."
-        case .strongman: "Carries, loads, drags and odd-object lifts."
+        case .personalized: String(localized: "History-first movements, with your preferred style filling any gaps.", bundle: .module)
+        case .fitness: String(localized: "General gym movements — machines, cables and free weights.", bundle: .module)
+        case .bodyweight: String(localized: "No equipment — movements you load with your own body.", bundle: .module)
+        case .powerlifting: String(localized: "Squat, bench and deadlift variations and their accessories.", bundle: .module)
+        case .olympic: String(localized: "Snatch, clean and jerk variations, pulls and squats.", bundle: .module)
+        case .strongman: String(localized: "Carries, loads, drags and odd-object lifts.", bundle: .module)
         }
     }
 }
@@ -930,8 +930,8 @@ public enum SuggestedWorkoutGenerator {
         let styleText = option.style == .personalized
             ? "your history-first Personalized style"
             : "your \(option.style.displayName.lowercased()) style"
-        let workoutText = "Built to address \(gapText) with \(styleText). "
-            + "It prioritizes the largest need first and keeps the session to \(option.plannedSetTotal) focused working sets for your \(input.trainingGoal.displayName.lowercased()) goal."
+        let workoutText = String(localized: "Built to address \(gapText) with \(styleText). ", bundle: .module)
+            + String(localized: "It prioritizes the largest need first and keeps the session to \(option.plannedSetTotal) focused working sets for your \(input.trainingGoal.displayName.lowercased()) goal.", bundle: .module)
 
         let exerciseReasons = option.exercises.map { exercise in
             let relevant = exercise.contributions.filter { startingGapByID[$0.muscleID] ?? 0 > epsilon }
@@ -939,9 +939,9 @@ public enum SuggestedWorkoutGenerator {
                 ? "a maintenance option after the main gaps were covered"
                 : "the open target for \(displayName(relevant[0].muscleID))"
             let styleReason = exercise.isInStyle
-                ? "It matches the selected style."
-                : "It is a general-strength fallback because the selected style did not close that gap."
-            let whyExercise = "Selected for \(gapReasons). \(styleReason)"
+                ? String(localized: "It matches the selected style.", bundle: .module)
+                : String(localized: "It is a general-strength fallback because the selected style did not close that gap.", bundle: .module)
+            let whyExercise = String(localized: "Selected for \(gapReasons). \(styleReason)", bundle: .module)
             let whySetRep = "\(exercise.plannedSets) sets × \(rangeText(exercise.repRange)) reps, matched to your \(input.trainingGoal.displayName.lowercased()) goal."
             return SuggestedExerciseRationale(exerciseName: exercise.name,
                                               whyExercise: whyExercise,

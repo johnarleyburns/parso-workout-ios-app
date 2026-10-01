@@ -10,7 +10,7 @@ extension RecordAssessmentView {
                 picking = true
             } label: {
                 HStack {
-                    Text(exerciseName.isEmpty ? "Choose a lift" : exerciseName)
+                    Text(exerciseName.isEmpty ? String(localized: "Choose a lift") : exerciseName)
                         .foregroundStyle(exerciseName.isEmpty ? .secondary : .primary)
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)

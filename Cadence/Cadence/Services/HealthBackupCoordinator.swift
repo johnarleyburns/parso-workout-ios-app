@@ -37,7 +37,7 @@ final class HealthBackupCoordinator {
         do {
             try await outbox.enqueue(HealthOutboxItem(job: job))
         } catch {
-            lastReport = HealthBackupDrainReport(lastError: "Couldn’t queue Apple Health backup: \(error.localizedDescription)")
+            lastReport = HealthBackupDrainReport(lastError: String(localized: "Couldn’t queue Apple Health backup: \(error.localizedDescription)"))
             return lastReport
         }
         return await drain()
@@ -74,7 +74,7 @@ final class HealthBackupCoordinator {
     func drain() async -> HealthBackupDrainReport {
         guard !draining else { return lastReport }
         guard health.isHealthDataAvailable else {
-            lastReport = (try? await pendingReport()) ?? HealthBackupDrainReport(lastError: "Apple Health is unavailable on this device.")
+            lastReport = (try? await pendingReport()) ?? HealthBackupDrainReport(lastError: String(localized: "Apple Health is unavailable on this device."))
             return lastReport
         }
 
@@ -104,19 +104,19 @@ final class HealthBackupCoordinator {
                             report.savedObjectIDs[item.entityID] = objectID
                         }
                     } else {
-                        let message = "Apple Health did not accept this backup yet."
+                        let message = String(localized: "Apple Health did not accept this backup yet.")
                         try await outbox.markFailed(item.id, error: message)
                         report.lastError = message
                     }
                 } catch {
-                    let message = "Backup could not be encoded: \(error.localizedDescription)"
+                    let message = String(localized: "Backup could not be encoded: \(error.localizedDescription)")
                     try await outbox.markFailed(item.id, error: message)
                     report.lastError = message
                 }
             }
             report.remaining = try await outbox.snapshot().items.count
         } catch {
-            report.lastError = "Couldn’t read the Apple Health backup queue: \(error.localizedDescription)"
+            report.lastError = String(localized: "Couldn’t read the Apple Health backup queue: \(error.localizedDescription)")
             report.remaining = (try? await outbox.snapshot().items.count) ?? 0
         }
         lastReport = report

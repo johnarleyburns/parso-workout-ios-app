@@ -218,8 +218,8 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
             guard let self, let peripheral = self.peripheral else { return }
             self.reconnectAttempts += 1
             if self.reconnectAttempts >= self.maxReconnectAttempts {
-                self.state = .reconnectionFailed(peripheral.identifier, error: "Reconnection failed after \(self.maxReconnectAttempts) attempts")
-                self.connectionError = "Reconnection failed after \(self.maxReconnectAttempts) attempts"
+                self.state = .reconnectionFailed(peripheral.identifier, error: String(localized: "Reconnection failed after \(self.maxReconnectAttempts) attempts"))
+                self.connectionError = String(localized: "Reconnection failed after \(self.maxReconnectAttempts) attempts")
                 self.lastKnownBPM = nil; self.bufferExpiryTime = nil
                 self.currentBPM = nil
                 self.bufferTimer?.invalidate(); self.bufferTimer = nil
@@ -260,7 +260,7 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
 
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
-        let name = peripheral.name ?? advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? "Heart-Rate Monitor"
+        let name = peripheral.name ?? advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? String(localized: "Heart-Rate Monitor")
         let device = DiscoveredHRM(id: peripheral.identifier, name: name, rssi: RSSI.intValue)
         if !discovered.contains(where: { $0.id == device.id }) { discovered.append(device) }
     }
@@ -283,13 +283,13 @@ extension HeartRateMonitor: CBCentralManagerDelegate, CBPeripheralDelegate {
             state = .reconnecting(peripheral.identifier, attempts: reconnectAttempts)
             scheduleReconnect()
         } else {
-            state = .reconnectionFailed(peripheral.identifier, error: "Reconnection failed after \(maxReconnectAttempts) attempts")
-            connectionError = "Reconnection failed after \(maxReconnectAttempts) attempts"
+            state = .reconnectionFailed(peripheral.identifier, error: String(localized: "Reconnection failed after \(maxReconnectAttempts) attempts"))
+            connectionError = String(localized: "Reconnection failed after \(maxReconnectAttempts) attempts")
         }
     }
 
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
-        let msg = error?.localizedDescription ?? "Connection failed"
+        let msg = error?.localizedDescription ?? String(localized: "Connection failed")
         connectionError = msg
         state = .reconnectionFailed(peripheral.identifier, error: msg)
     }

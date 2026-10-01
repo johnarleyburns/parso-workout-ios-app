@@ -25,7 +25,7 @@ struct WorkoutControlBar: View {
     /// `outdoor.end`). Defaults to the generic `workout`.
     var idPrefix: String = "workout"
     var endTitle: String = "End"
-    var confirmTitle: String = "End workout?"
+    var confirmTitle: String = String(localized: "End workout?")
     var confirmMessage: String? = nil
     /// When false, End fires immediately with no confirm — used where there is
     /// nothing to lose (e.g. the pre-workout countdown's discard).

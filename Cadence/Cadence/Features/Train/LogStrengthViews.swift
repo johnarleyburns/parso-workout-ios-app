@@ -66,7 +66,7 @@ struct LogStrengthEntryView: View {
     private func start() {
         let secs = Double(max(0, minutes ?? 0)) * 60
         let created = try? WorkoutRepository.createSession(
-            title: "Workout", date: date, isLogged: true, in: context)
+            title: String(localized: "Workout"), date: date, isLogged: true, in: context)
         guard let created else { return }
         // Optional duration drives the summary's workout length; 0 leaves it at the
         // start instant (summary shows no meaningful length).

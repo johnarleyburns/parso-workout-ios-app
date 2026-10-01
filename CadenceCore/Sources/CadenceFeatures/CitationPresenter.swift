@@ -51,6 +51,6 @@ public enum CitationPresenter {
 
     /// Screen title: "Source" for one, "Sources" for several.
     public static func sourcesTitle(count: Int) -> String {
-        count == 1 ? "Source" : "Sources"
+        count == 1 ? String(localized: "Source", bundle: .module) : String(localized: "Sources", bundle: .module)
     }
 }

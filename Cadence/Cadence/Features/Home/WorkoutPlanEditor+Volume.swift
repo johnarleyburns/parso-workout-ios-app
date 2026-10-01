@@ -5,14 +5,14 @@ import CadenceFeatures
 
 extension WorkoutPlanEditor {
     var startButton: some View {
-        CadenceActionButton(title: "Start Workout", systemImage: "play.fill") {
+        CadenceActionButton(title: String(localized: "Start Workout"), systemImage: "play.fill") {
             saveAndStart()
         }
         .accessibilityIdentifier("editor.start")
     }
 
     var scheduleButton: some View {
-        CadenceActionButton(title: "Schedule this Workout",
+        CadenceActionButton(title: String(localized: "Schedule this Workout"),
                             systemImage: "calendar.badge.plus",
                             emphasis: .secondary) {
             if isEditing {
@@ -25,7 +25,7 @@ extension WorkoutPlanEditor {
     }
 
     var settingsButton: some View {
-        CadenceActionButton(title: "Show workout settings\u{2026}",
+        CadenceActionButton(title: String(localized: "Show workout settings\u{2026}"),
                             systemImage: "gearshape",
                             emphasis: .secondary) {
             settingsPresented = true
@@ -48,7 +48,7 @@ extension WorkoutPlanEditor {
         let credits = planVolumeCreditsByName()
         var performers: [VolumeSummaryPerformer] = [.owner]
         for id in plan.partnerIDs {
-            let name = allPeople.first(where: { $0.id == id })?.name ?? "Partner"
+            let name = allPeople.first(where: { $0.id == id })?.name ?? String(localized: "Partner")
             performers.append(VolumeSummaryPerformer(id: id.uuidString,
                                                      name: name,
                                                      personID: id))

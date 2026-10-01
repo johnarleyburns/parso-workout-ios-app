@@ -29,13 +29,13 @@ func manualIntensityValue(for intensity: CardioIntensity?) -> String {
 
 func cardioActivityName(_ activity: CardioActivity) -> String {
     switch activity {
-    case .walk: return "Walk"
-    case .run: return "Run"
-    case .bike: return "Bike"
+    case .walk: return String(localized: "Walk")
+    case .run: return String(localized: "Run")
+    case .bike: return String(localized: "Bike")
     case .row: return "Row"
-    case .swim: return "Swim"
-    case .elliptical: return "Elliptical"
-    case .stairs: return "Stairs"
+    case .swim: return String(localized: "Swim")
+    case .elliptical: return String(localized: "Elliptical")
+    case .stairs: return String(localized: "Stairs")
     case let .other(value): return value
     }
 }

@@ -52,9 +52,9 @@ struct HomeWeekRingsCard: View {
 private extension WeekRing.Kind {
     var accessibilityName: String {
         switch self {
-        case .sets: return "Sets"
-        case .cardioMinutes: return "Cardio minutes"
-        case .sessions: return "Sessions"
+        case .sets: return String(localized: "Sets")
+        case .cardioMinutes: return String(localized: "Cardio minutes")
+        case .sessions: return String(localized: "Sessions")
         }
     }
 }

@@ -248,7 +248,7 @@ private struct LoadEditor: View {
         case .percentageOfOneRepMax:
             return set.oneRepMaxPercent.map { "\(Int($0))% 1RM" } ?? "% 1RM"
         case .straight:
-            guard let weight = set.targetWeight else { return "Set load" }
+            guard let weight = set.targetWeight else { return String(localized: "Set load") }
             return Format.weight(weight, unit: unit, decimals: 0)
         }
     }
@@ -267,7 +267,7 @@ private struct LoadEditorSheet: View {
         Form {
             Picker("Load", selection: $set.loadMode) {
                 Text("Straight weight").tag(EditableLoadMode.straight)
-                Text("% of 1RM").tag(EditableLoadMode.percentageOfOneRepMax)
+                Text("Percentage of 1RM").tag(EditableLoadMode.percentageOfOneRepMax)
                 Text("Bodyweight").tag(EditableLoadMode.bodyweight)
             }
             if set.loadMode == .straight {

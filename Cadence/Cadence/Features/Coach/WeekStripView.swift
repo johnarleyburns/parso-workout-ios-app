@@ -114,7 +114,7 @@ struct WeekStripView: View {
         let cardioDone = balance.cardioDays
         let cardioTarget = preferences.cardioDaysPerWeek
         let dayLabels = plan.currentWeekDays.map { dayAccessibilityLabel($0) }.joined(separator: ", ")
-        return "This week: \(strengthDone) of \(strengthTarget) strength, \(cardioDone) of \(cardioTarget) cardio. \(dayLabels)"
+        return String(localized: "This week: \(strengthDone) of \(strengthTarget) strength, \(cardioDone) of \(cardioTarget) cardio. \(dayLabels)")
     }
 
     private func calendarShort(for date: Date) -> String {
@@ -134,15 +134,15 @@ struct WeekStripView: View {
         f.dateFormat = "EEEE"
         let name = f.string(from: day.date)
         if day.isCompleted {
-            return "\(name) completed"
+            return String(localized: "\(name) completed")
         } else if day.isToday {
-            return "\(name) today"
+            return String(localized: "\(name) today")
         } else if day.isPast {
-            return "\(name) past"
+            return String(localized: "\(name) past")
         } else {
             let sessions = day.sessions.filter { !$0.isRest || $0.kind == .rest }
             if sessions.isEmpty {
-                return "\(name) rest"
+                return String(localized: "\(name) rest")
             } else {
                 let labels = sessions.map(\.label).joined(separator: ", ")
                 return "\(name): \(labels)"

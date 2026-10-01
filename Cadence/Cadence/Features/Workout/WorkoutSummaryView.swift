@@ -154,31 +154,31 @@ struct WorkoutSummaryView: View {
 
     private var metricsGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            metric("Duration", Format.duration(data.durationSec), id: "summary.duration")
+            metric(String(localized: "Duration"), Format.duration(data.durationSec), id: "summary.duration")
             if data.kind == .strength {
                 if let vol = data.totalVolumeKg {
-                    metric("Total Volume", Format.weight(vol, unit: settings.unit, decimals: 0),
+                    metric(String(localized: "Total Volume"), Format.weight(vol, unit: settings.unit, decimals: 0),
                            id: "summary.metric.volume")
                 }
-                metric("Sets", Format.integer(data.setCount), id: "summary.metric.sets")
+                metric(String(localized: "Sets"), Format.integer(data.setCount), id: "summary.metric.sets")
                 // Total reps across all exercises (round4b feedback #8) — useful
                 // for volume/work even on bodyweight days.
-                metric("Total Reps", Format.integer(data.totalReps), id: "summary.metric.reps")
+                metric(String(localized: "Total Reps"), Format.integer(data.totalReps), id: "summary.metric.reps")
             } else {
                 // Swimming (round4b feedback #3): laps, not distance/pace.
                 if let laps = data.laps {
                     let value = data.targetLaps.map { "\(laps)/\($0)" } ?? "\(laps)"
-                    metric("Laps", value, id: "summary.metric.laps")
+                    metric(String(localized: "Laps"), value, id: "summary.metric.laps")
                 } else if let d = data.distanceM {
-                    metric("Distance", Format.distance(d), id: "summary.metric.distance")
-                    metric("Pace", CardioMath.formatPace(secPerKm: data.paceSecPerKm),
+                    metric(String(localized: "Distance"), Format.distance(d), id: "summary.metric.distance")
+                    metric(String(localized: "Pace"), CardioMath.formatPace(secPerKm: data.paceSecPerKm),
                            id: "summary.metric.pace")
                 }
                 if let avg = data.avgHR {
-                    metric("Avg HR", Format.heartRate(avg), id: "summary.metric.avgHR")
+                    metric(String(localized: "Avg HR"), Format.heartRate(avg), id: "summary.metric.avgHR")
                 }
                 if let mx = data.maxHR {
-                    metric("Max HR", Format.heartRate(mx), id: "summary.metric.maxHR")
+                    metric(String(localized: "Max HR"), Format.heartRate(mx), id: "summary.metric.maxHR")
                 }
             }
         }
@@ -187,16 +187,16 @@ struct WorkoutSummaryView: View {
     private func cardioIntensitySection(_ summary: CardioMinuteSummary) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Intensity").font(.headline)
-            summaryRow("Actual exercise", "\(wholeMinutes(summary.actualDuration)) min")
-            summaryRow("Below moderate", "\(wholeMinutes(summary.belowModerateDuration)) min · 0 credited")
-            summaryRow("Moderate", "\(wholeMinutes(summary.moderateDuration)) min · \(wholeMinutes(summary.moderateDuration)) credited")
-            summaryRow("Vigorous", "\(wholeMinutes(summary.vigorousDuration)) min · \(wholeMinutes(summary.vigorousDuration * 2)) credited")
+            summaryRow(String(localized: "Actual exercise"), "\(wholeMinutes(summary.actualDuration)) min")
+            summaryRow(String(localized: "Below moderate"), "\(wholeMinutes(summary.belowModerateDuration)) min · 0 credited")
+            summaryRow(String(localized: "Moderate"), "\(wholeMinutes(summary.moderateDuration)) min · \(wholeMinutes(summary.moderateDuration)) credited")
+            summaryRow(String(localized: "Vigorous"), "\(wholeMinutes(summary.vigorousDuration)) min · \(wholeMinutes(summary.vigorousDuration * 2)) credited")
             if summary.unclassifiedDuration > 0 {
-                summaryRow("Unclassified", "\(wholeMinutes(summary.unclassifiedDuration)) min")
+                summaryRow(String(localized: "Unclassified"), "\(wholeMinutes(summary.unclassifiedDuration)) min")
             }
-            summaryRow("Guideline credit", "\(wholeMinutes(summary.moderateEquivalentMinutes * 60)) min")
+            summaryRow(String(localized: "Guideline credit"), "\(wholeMinutes(summary.moderateEquivalentMinutes * 60)) min")
             if let metMinutes = data.standardMETMinutes {
-                summaryRow("Standard MET-minutes", "\(Int(metMinutes.rounded()))")
+                summaryRow(String(localized: "Standard MET-minutes"), "\(Int(metMinutes.rounded()))")
             }
             Text("Heart-rate reserve classifies each sampled interval; guideline credit is separate from actual minutes.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -270,10 +270,10 @@ struct WorkoutSummaryView: View {
             Text("Warm-up & Cool-down").font(.headline)
             VStack(alignment: .leading, spacing: 6) {
                 if data.warmupSec > 0 {
-                    intervalRow("Warm-up", Format.duration(data.warmupSec), id: "summary.strength.warmup")
+                    intervalRow(String(localized: "Warm-up"), Format.duration(data.warmupSec), id: "summary.strength.warmup")
                 }
                 if data.cooldownSec > 0 {
-                    intervalRow("Cool-down", Format.duration(data.cooldownSec), id: "summary.strength.cooldown")
+                    intervalRow(String(localized: "Cool-down"), Format.duration(data.cooldownSec), id: "summary.strength.cooldown")
                 }
             }
             .padding(12)
@@ -290,19 +290,19 @@ struct WorkoutSummaryView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Intervals").font(.headline)
             VStack(alignment: .leading, spacing: 6) {
-                intervalRow("Protocol", s.protocolName, id: "summary.interval.protocol")
-                intervalRow("Rounds",
+                intervalRow(String(localized: "Protocol"), s.protocolName, id: "summary.interval.protocol")
+                intervalRow(String(localized: "Rounds"),
                             "completed \(s.completedRounds)/\(s.rounds)",
                             id: "summary.interval.rounds")
-                intervalRow("Work / Rest",
+                intervalRow(String(localized: "Work / Rest"),
                             "\(Format.duration(s.workSeconds)) / \(Format.duration(s.restSeconds))",
                             id: "summary.interval.workRest")
                 if s.warmupSeconds > 0 {
-                    intervalRow("Warm-up", Format.duration(s.warmupSeconds),
+                    intervalRow(String(localized: "Warm-up"), Format.duration(s.warmupSeconds),
                                 id: "summary.interval.warmup")
                 }
                 if s.cooldownSeconds > 0 {
-                    intervalRow("Cool-down", Format.duration(s.cooldownSeconds),
+                    intervalRow(String(localized: "Cool-down"), Format.duration(s.cooldownSeconds),
                                 id: "summary.interval.cooldown")
                 }
             }

@@ -11,8 +11,8 @@ struct HomeView: View {
 
         var title: String {
             switch self {
-            case .today: return "Today"
-            case .thisWeek: return "This Week"
+            case .today: return String(localized: "Today")
+            case .thisWeek: return String(localized: "This Week")
             }
         }
     }
@@ -184,7 +184,7 @@ struct HomeView: View {
         let target = dashboard.volume.filter(\.isTracked).reduce(0.0) { total, _ in total + 12 }
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(
             dayKey: Self.dayString(),
-            planTitle: todayScheduled?.title ?? "Recovery day",
+            planTitle: todayScheduled?.title ?? String(localized: "Recovery day"),
             sessionTitles: todayScheduled.map { [$0.title] } ?? [],
             readinessLabel: todayReadiness.map { ReadinessCheckInPresenter.summary(for: $0) },
             estimatedMinutes: nil,
@@ -286,7 +286,7 @@ struct HomeView: View {
             scheduledWorkouts.map(HomePlannedWorkoutsSection.item))
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(
             dayKey: Self.dayString(),
-            planTitle: "Planned Workouts",
+            planTitle: String(localized: "Planned Workouts"),
             sessionTitles: todayScheduled.map(\.title),
             readinessLabel: todayReadiness.map { ReadinessCheckInPresenter.summary(for: $0) },
             updatedAt: Date()))

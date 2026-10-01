@@ -13,17 +13,17 @@ public enum TrainingGoal: String, CaseIterable, Codable, Sendable, Identifiable 
     public var displayName: String {
         switch self {
         case .strength:    return "Strength"
-        case .hypertrophy: return "Hypertrophy"
-        case .endurance:   return "Endurance"
+        case .hypertrophy: return String(localized: "Hypertrophy", bundle: .module)
+        case .endurance:   return String(localized: "Endurance", bundle: .module)
         }
     }
 
     /// One-line description of what the goal trains for (used in pickers/onboarding).
     public var summary: String {
         switch self {
-        case .strength:    return "Lift heavier — maximal force in low reps."
-        case .hypertrophy: return "Build muscle — moderate reps near failure."
-        case .endurance:   return "Last longer — higher reps, lighter loads."
+        case .strength:    return String(localized: "Lift heavier — maximal force in low reps.", bundle: .module)
+        case .hypertrophy: return String(localized: "Build muscle — moderate reps near failure.", bundle: .module)
+        case .endurance:   return String(localized: "Last longer — higher reps, lighter loads.", bundle: .module)
         }
     }
 

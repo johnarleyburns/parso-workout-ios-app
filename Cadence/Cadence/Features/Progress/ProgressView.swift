@@ -214,7 +214,7 @@ struct TrainingProgressView: View {
     // MARK: - Strength over time
 
     @ViewBuilder private var strengthCard: some View {
-        card(title: "Strength over time", subtitle: "estimated 1RM \u{00b7} last 12 weeks",
+        card(title: String(localized: "Strength over time"), subtitle: "estimated 1RM \u{00b7} last 12 weeks",
              citation: CitationRegistry.oneRMEstimation, tint: .blue) {
             if let preparedStrengthData {
                 VStack(alignment: .leading, spacing: 8) {
@@ -237,7 +237,7 @@ struct TrainingProgressView: View {
 
     private func addLift(_ name: String) {
         addLiftPlan = EditablePlan(
-            title: "\(name) plan",
+            title: String(localized: "\(name) plan"),
             warmupMinutes: 0,
             cooldownMinutes: 0,
             exercises: [EditableExercise(name: name,
@@ -271,7 +271,7 @@ struct TrainingProgressView: View {
     // MARK: - §4 Load intensity
 
     @ViewBuilder private var intensityCard: some View {
-        card(title: "Load intensity",
+        card(title: String(localized: "Load intensity"),
              subtitle: "vs. your goal \u{2014} \(settings.trainingGoal.displayName.lowercased())",
              citation: CitationRegistry.schoenfeld2021, tint: .blue) {
             if let i = facts?.intensity, i.sampleCount > 0 {
@@ -295,7 +295,7 @@ struct TrainingProgressView: View {
                 Text(intensityRead(i, goal: settings.trainingGoal))
                     .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
             } else {
-                emptyNote("Log the weight on your sets and we'll show how your work splits across heavy, moderate, and light loads \u{2014} and whether that matches your goal's rep range.")
+                emptyNote(String(localized: "Log the weight on your sets and we'll show how your work splits across heavy, moderate, and light loads \u{2014} and whether that matches your goal's rep range."))
             }
         }
     }
@@ -309,7 +309,7 @@ struct TrainingProgressView: View {
     // MARK: - §5 Effort + Frequency
 
     @ViewBuilder private var effortCard: some View {
-        card(title: "Effort", citation: CitationRegistry.rpeAutoregulation, compact: true, tint: .orange, equalHeight: true) {
+        card(title: String(localized: "Effort"), citation: CitationRegistry.rpeAutoregulation, compact: true, tint: .orange, equalHeight: true) {
             if let rir = facts?.avgRIR {
                 HStack(spacing: 0) {
                     Text(String(format: "%.1f", rir)).font(.title2.weight(.semibold))
@@ -318,7 +318,7 @@ struct TrainingProgressView: View {
                 Text(effortRead(rir, goal: settings.trainingGoal))
                     .font(.caption2).foregroundStyle(.secondary).padding(.top, 3)
             } else {
-                emptyNote("Log RPE on your sets to track how close to failure you train.")
+                emptyNote(String(localized: "Log RPE on your sets to track how close to failure you train."))
             }
         }
         .accessibilityIdentifier("progress.effortCard")
@@ -331,10 +331,10 @@ struct TrainingProgressView: View {
     // MARK: - §6 Test results
 
     @ViewBuilder private var testResultsCard: some View {
-        card(title: "Test results", citation: nil, tint: .blue) {
+        card(title: String(localized: "Test results"), citation: nil, tint: .blue) {
             if let facts {
                 if facts.assessments.isEmpty {
-                    emptyNote("Run a test from the Tests tab \u{2014} strength, push-ups, plank, or a VO\u{2082}max field test \u{2014} and your results trend here, noise-guarded.")
+                    emptyNote(String(localized: "Run a test from the Tests tab \u{2014} strength, push-ups, plank, or a VO\u{2082}max field test \u{2014} and your results trend here, noise-guarded."))
                 } else {
                     VStack(spacing: 0) {
                         ForEach(Array(facts.assessments.enumerated()), id: \.element.id) { idx, s in
@@ -355,7 +355,7 @@ struct TrainingProgressView: View {
                         .padding(.top, 8)
                     }
                     Divider().padding(.top, 12).padding(.bottom, 8)
-                    CitationLink(citation: CitationRegistry.oneRMEstimation, context: "Test methods & validity", compact: true)
+                    CitationLink(citation: CitationRegistry.oneRMEstimation, context: String(localized: "Test methods & validity"), compact: true)
                 }
             } else {
                 ProgressView("Preparing test results")

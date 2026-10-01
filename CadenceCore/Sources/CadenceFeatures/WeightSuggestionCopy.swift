@@ -9,6 +9,6 @@ public enum WeightSuggestionCopy {
         } else {
             subject = "your"
         }
-        return "Estimated from \(subject) previous \(exercise) sets · rounded to a loadable increment"
+        return String(localized: "Estimated from \(subject) previous \(exercise) sets · rounded to a loadable increment", bundle: .module)
     }
 }

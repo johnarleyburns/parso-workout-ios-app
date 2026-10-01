@@ -13,9 +13,9 @@ struct CadenceTodayWidgetProvider: TimelineProvider {
     func placeholder(in context: Context) -> CadenceTodayWidgetEntry {
         CadenceTodayWidgetEntry(
             date: Date(),
-            snapshot: CadenceTodaySnapshot(dayKey: "preview", planTitle: "Today's plan",
-                                            sessionTitles: ["Strength session", "Mobility"],
-                                            readinessLabel: "Recovery looks good"))
+            snapshot: CadenceTodaySnapshot(dayKey: "preview", planTitle: String(localized: "Today's plan"),
+                                            sessionTitles: [String(localized: "Strength session"), String(localized: "Mobility")],
+                                            readinessLabel: String(localized: "Recovery looks good")))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CadenceTodayWidgetEntry) -> Void) {
@@ -66,11 +66,11 @@ struct CadenceTodayWidgetView: View {
                     }
                     if family == .systemMedium {
                         HStack(spacing: 10) {
-                            widgetRing("Sets", value: snapshot.setsCompleted,
+                            widgetRing(String(localized: "Sets"), value: snapshot.setsCompleted,
                                        target: snapshot.setsTarget, symbol: "circle")
                             widgetRing("Cardio", value: snapshot.cardioMinutes,
                                        target: snapshot.cardioTarget, symbol: "heart")
-                            widgetRing("Sessions", value: snapshot.sessionsCompleted,
+                            widgetRing(String(localized: "Sessions"), value: snapshot.sessionsCompleted,
                                        target: snapshot.sessionsTarget,
                                        symbol: "figure.strengthtraining.traditional")
                         }
@@ -140,11 +140,11 @@ struct CadenceTodayWidgetView: View {
     }
 
     private var accessibilityLabel: String {
-        guard let snapshot = entry.snapshot else { return "Open Cladiron to load today's plan" }
+        guard let snapshot = entry.snapshot else { return String(localized: "Open Cladiron to load today's plan") }
         let sessions = snapshot.sessionTitles.isEmpty
             ? "rest or no sessions"
             : snapshot.sessionTitles.joined(separator: ", ")
-        return "Today's plan: \(snapshot.planTitle). \(sessions)."
+        return String(localized: "Today's plan: \(snapshot.planTitle). \(sessions).")
     }
 }
 
@@ -214,7 +214,7 @@ struct CadenceWorkoutLiveActivity: Widget {
                 Image(systemName: context.state.restEndsAt == nil ? "figure.strengthtraining.traditional" : "timer")
                     .foregroundStyle(.green)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(context.state.restEndsAt == nil ? context.attributes.workoutTitle : "Rest")
+                    Text(context.state.restEndsAt == nil ? context.attributes.workoutTitle : String(localized: "Rest"))
                         .font(.headline)
                         .foregroundStyle(.white)
                     if let end = context.state.restEndsAt {

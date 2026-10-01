@@ -10,26 +10,26 @@ struct CoachAboutView: View {
             }
 
             Section("What it analyzes") {
-                row("calendar.badge.clock", "Rolling 72 hours",
-                    "Exact recovery windows per exercise, movement pattern, and muscle group — unlike calendar-week snapshots, these don't shift at midnight Monday.")
-                row("clock.arrow.circlepath", "Rolling 7 days",
-                    "Weekly dose: strength days, pattern coverage, moderate-equivalent aerobic minutes vs the 150 min public-health floor.")
-                row("tray.full", "Rolling 28 days",
-                    "Multi-week trends for volume, per-lift performance, and VO₂max (same protocol only — cross-protocol values are not combined).")
-                row("heart.text.square", "Recovery + readiness",
-                    "Optional daily readiness check-in (soreness, energy, sleep, stress). Missing readiness keeps conservative default time gates.")
+                row("calendar.badge.clock", String(localized: "Rolling 72 hours"),
+                    String(localized: "Exact recovery windows per exercise, movement pattern, and muscle group — unlike calendar-week snapshots, these don't shift at midnight Monday."))
+                row("clock.arrow.circlepath", String(localized: "Rolling 7 days"),
+                    String(localized: "Weekly dose: strength days, pattern coverage, moderate-equivalent aerobic minutes vs the 150 min public-health floor."))
+                row("tray.full", String(localized: "Rolling 28 days"),
+                    String(localized: "Multi-week trends for volume, per-lift performance, and VO₂max (same protocol only — cross-protocol values are not combined)."))
+                row("heart.text.square", String(localized: "Recovery + readiness"),
+                    String(localized: "Optional daily readiness check-in (soreness, energy, sleep, stress). Missing readiness keeps conservative default time gates."))
             }
 
             Section("How it decides") {
-                row("shield.checkered", "Hard eligibility gates",
-                    "Before scoring, Coach checks: same lift in 24h? Same pattern in 48h? High fatigue? Lower-body collision with hard cardio? Pain concern? Ineligible sessions are deferred with a cited reason.")
-                row("scalemass", "Balanced weekly scoring",
-                    "Coach closes the largest fitness gap first: strength below the 2-day floor vs aerobic below the 150-minute floor. Hard/easy rhythm and recovery are preserved.")
-                row("book.pages", "Conservative defaults",
-                    "Recovery times are coach policy (\"Coach's conservative recovery window\"), not claims that every muscle recovers in exactly 48 hours.")
+                row("shield.checkered", String(localized: "Hard eligibility gates"),
+                    String(localized: "Before scoring, Coach checks: same lift in 24h? Same pattern in 48h? High fatigue? Lower-body collision with hard cardio? Pain concern? Ineligible sessions are deferred with a cited reason."))
+                row("scalemass", String(localized: "Balanced weekly scoring"),
+                    String(localized: "Coach closes the largest fitness gap first: strength below the 2-day floor vs aerobic below the 150-minute floor. Hard/easy rhythm and recovery are preserved."))
+                row("book.pages", String(localized: "Conservative defaults"),
+                    String(localized: "Recovery times are coach policy (\"Coach's conservative recovery window\"), not claims that every muscle recovers in exactly 48 hours."))
                 VStack(alignment: .leading, spacing: 8) {
-                    row("cross.case", "Safety-first guardrails",
-                        "Coach references published evidence on exercise-based injury prevention to inform its pain/illness gates, warm-up recommendations, and progressive-overload pacing. It never claims any single exercise or modality prevents all injuries — only that the overall approach is grounded in the evidence.")
+                    row("cross.case", String(localized: "Safety-first guardrails"),
+                        String(localized: "Coach references published evidence on exercise-based injury prevention to inform its pain/illness gates, warm-up recommendations, and progressive-overload pacing. It never claims any single exercise or modality prevents all injuries — only that the overall approach is grounded in the evidence."))
                     ForEach(CitationRegistry.injuryPreventionPool.citationIds.compactMap {
                         CitationRegistry.citation(forId: $0)
                     }) { citation in
@@ -42,17 +42,17 @@ struct CoachAboutView: View {
             }
 
             Section("When it updates") {
-                row("bolt", "Live",
-                    "The coach recomputes from scratch every time the Home screen renders. There is no cache — it always reflects the current state of your data.")
-                row("flag.checkered", "Finish a workout",
-                    "The new session is included right away. Coach may switch from strength to easy aerobic if recovery gates apply.")
+                row("bolt", String(localized: "Live"),
+                    String(localized: "The coach recomputes from scratch every time the Home screen renders. There is no cache — it always reflects the current state of your data."))
+                row("flag.checkered", String(localized: "Finish a workout"),
+                    String(localized: "The new session is included right away. Coach may switch from strength to easy aerobic if recovery gates apply."))
             }
 
             Section("How your settings affect it") {
-                row("target", "Training goal",
-                    "Strength: favors heavy loads (>=80% e1RM). Hypertrophy: targets moderate loads with controlled RIR. Endurance: flags excessive heavy work.")
-                row("person.fill", "Experience level",
-                    "Scales weekly starting volume ranges per muscle group. Beginners usually need fewer sets; advanced lifters often tolerate more.")
+                row("target", String(localized: "Training goal"),
+                    String(localized: "Strength: favors heavy loads (>=80% e1RM). Hypertrophy: targets moderate loads with controlled RIR. Endurance: flags excessive heavy work."))
+                row("person.fill", String(localized: "Experience level"),
+                    String(localized: "Scales weekly starting volume ranges per muscle group. Beginners usually need fewer sets; advanced lifters often tolerate more."))
             }
 
             Section {

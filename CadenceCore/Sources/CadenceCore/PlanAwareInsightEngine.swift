@@ -195,9 +195,9 @@ public enum PlanAwareInsightEngine {
             id: "volume.\(group.rawValue)",
             kind: .volume,
             group: group,
-            title: "\(name) volume is projected low",
-            message: "\(name): \(Format.sets(completedSets)) done + \(Format.sets(plannedSets)) planned = \(Format.progress(done: projectedSets, target: bands.mev, unit: "sets")) this week.",
-            detail: "\(name) is projected for \(Format.sets(projectedSets)) sets this week after planned remaining work. Coach's starting range for your experience is ~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week, so the plan likely needs more \(name.lowercased()) work.",
+            title: String(localized: "\(name) volume is projected low", bundle: .module),
+            message: String(localized: "\(name): \(Format.sets(completedSets)) done + \(Format.sets(plannedSets)) planned = \(Format.progress(done: projectedSets, target: bands.mev, unit: "sets")) this week.", bundle: .module),
+            detail: String(localized: "\(name) is projected for \(Format.sets(projectedSets)) sets this week after planned remaining work. Coach's starting range for your experience is ~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week, so the plan likely needs more \(name.lowercased()) work.", bundle: .module),
             citation: CitationRegistry.volumeDoseResponse,
             severity: .attention)
     }
@@ -223,8 +223,8 @@ public enum PlanAwareInsightEngine {
                 kind: .volume,
                 group: group,
                 title: "\(name) is behind plan",
-                message: "\(name): \(Format.sets(completed)) done this week, \(Format.sets(planned)) planned remaining — do the planned sets to stay on target.",
-                detail: "The plan still projects enough \(name.lowercased()) work by week-end, but adherence is behind late in the week. Treat the remaining planned \(name.lowercased()) work as the priority before adding extra volume elsewhere.",
+                message: String(localized: "\(name): \(Format.sets(completed)) done this week, \(Format.sets(planned)) planned remaining — do the planned sets to stay on target.", bundle: .module),
+                detail: String(localized: "The plan still projects enough \(name.lowercased()) work by week-end, but adherence is behind late in the week. Treat the remaining planned \(name.lowercased()) work as the priority before adding extra volume elsewhere.", bundle: .module),
                 citation: CitationRegistry.volumeDoseResponse,
                 severity: .attention))
         }
@@ -257,14 +257,14 @@ public enum PlanAwareInsightEngine {
             let reason = diagnosticReason(diagnostics)
             let ranges = ordered.map { group, _ -> String in
                 let bands = VolumeLandmarks.bands(for: group, experience: experience)
-                return "\(group.displayName) starts around \(Format.sets(bands.mev)) sets/week"
+                return String(localized: "\(group.displayName) starts around \(Format.sets(bands.mev)) sets/week", bundle: .module)
             }.joined(separator: "; ")
 
             return [Insight(
                 id: "planning.partialResolved",
                 kind: .volume,
-                title: "Some volume still needs attention",
-                message: "Sets per muscle group in deficit: \(short).",
+                title: String(localized: "Some volume still needs attention", bundle: .module),
+                message: String(localized: "Sets per muscle group in deficit: \(short).", bundle: .module),
                 detail: "\(reason) \(ranges). Coach added what fits safely; the remaining gap needs another eligible slot or a schedule adjustment.",
                 citation: CitationRegistry.volumeDoseResponse,
                 severity: .attention,
@@ -283,14 +283,14 @@ public enum PlanAwareInsightEngine {
         let reason = diagnosticReason(diagnostics)
         let ranges = ordered.map { group, _ -> String in
             let bands = VolumeLandmarks.bands(for: group, experience: experience)
-            return "\(group.displayName) starts around \(Format.sets(bands.mev)) sets/week"
+            return String(localized: "\(group.displayName) starts around \(Format.sets(bands.mev)) sets/week", bundle: .module)
         }.joined(separator: "; ")
 
         return [Insight(
             id: "planning.unresolvedVolume",
             kind: .volume,
-            title: "Some volume still needs attention",
-            message: "Sets per muscle group in deficit: \(summary).",
+            title: String(localized: "Some volume still needs attention", bundle: .module),
+            message: String(localized: "Sets per muscle group in deficit: \(summary).", bundle: .module),
             detail: "\(reason) \(ranges). Keep the planned work as the priority, then adjust the schedule or add another eligible strength slot if recovery allows.",
             citation: CitationRegistry.volumeDoseResponse,
             severity: .attention,
@@ -304,11 +304,11 @@ public enum PlanAwareInsightEngine {
 
     private static func diagnosticReason(_ diagnostics: [PlanningDiagnostic]) -> String {
         if diagnostics.contains(where: { $0.kind == .recoveryBlocked }) {
-            return "Some remaining hard work is blocked by recovery eligibility."
+            return String(localized: "Some remaining hard work is blocked by recovery eligibility.", bundle: .module)
         } else if diagnostics.contains(where: { $0.kind == .noStrengthSlots }) {
-            return "There are no eligible remaining strength slots in the current week."
+            return String(localized: "There are no eligible remaining strength slots in the current week.", bundle: .module)
         } else {
-            return "The remaining scheduled strength work cannot close every target without exceeding conservative session volume."
+            return String(localized: "The remaining scheduled strength work cannot close every target without exceeding conservative session volume.", bundle: .module)
         }
     }
 
@@ -332,9 +332,9 @@ public enum PlanAwareInsightEngine {
         Insight(
             id: "planning.overrideActive",
             kind: .volume,
-            title: "Planning past safe guardrails this week",
-            message: "At your request, Coach is planning past recovery eligibility and session-size limits until Sunday. Watch for performance drops.",
-            detail: "The productive-volume targets are evidence-informed starting points, not fixed laws. Individual response varies, and you always have the final say. But persistent overload without recovery impairs adaptation.",
+            title: String(localized: "Planning past safe guardrails this week", bundle: .module),
+            message: String(localized: "At your request, Coach is planning past recovery eligibility and session-size limits until Sunday. Watch for performance drops.", bundle: .module),
+            detail: String(localized: "The productive-volume targets are evidence-informed starting points, not fixed laws. Individual response varies, and you always have the final say. But persistent overload without recovery impairs adaptation.", bundle: .module),
             citation: CitationRegistry.volumeDoseResponse,
             severity: .info,
             action: .revertToSafePlan)

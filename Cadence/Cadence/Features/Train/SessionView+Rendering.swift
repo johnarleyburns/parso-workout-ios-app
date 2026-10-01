@@ -23,14 +23,14 @@ extension SessionView {
                              onComplete: {
                                  Haptics.restComplete()
                                  UIAccessibility.post(notification: .announcement,
-                                                      argument: "Rest complete. Ready for the next set.")
+                                                      argument: String(localized: "Rest complete. Ready for the next set."))
                              },
                              onChange: { syncRestAlarm(to: $0) })
             }
             if let plan { planBanner(plan) }
             partnerBar
             if isEmptySession {
-                CadenceActionButton(title: "Use Previous Workout",
+                CadenceActionButton(title: String(localized: "Use Previous Workout"),
                                     systemImage: "clock.arrow.circlepath",
                                     tint: .accentColor) {
                     usePreviousPresented = true
@@ -49,7 +49,7 @@ extension SessionView {
                 plannedCard(name)
             }
             VStack(alignment: .leading, spacing: 16) {
-                CadenceActionButton(title: "Add Exercise",
+                CadenceActionButton(title: String(localized: "Add Exercise"),
                                     systemImage: "plus.circle.fill",
                                     emphasis: .secondary) {
                     pickerPresented = true
@@ -64,10 +64,10 @@ extension SessionView {
                         onPauseToggle: togglePause,
                         onEnd: endWorkout,
                         onCoolDown: { coolDownConfirm = true },
-                        confirmMessage: "This finishes and saves your workout."
+                        confirmMessage: String(localized: "This finishes and saves your workout.")
                     )
                 } else if isManualLog {
-                    CadenceActionButton(title: "Done", systemImage: "checkmark") {
+                    CadenceActionButton(title: String(localized: "Done"), systemImage: "checkmark") {
                         finishManualLog()
                     }
                     .accessibilityIdentifier("log.done")

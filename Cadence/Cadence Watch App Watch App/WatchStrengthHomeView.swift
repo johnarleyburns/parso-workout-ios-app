@@ -31,7 +31,7 @@ struct WatchStrengthHomeView: View {
                                     }
                                 }
                                 if item.setCount > 0 {
-                                    Text("\(item.setCount) set\(item.setCount == 1 ? "" : "s")")
+                                    Text("\(item.setCount) sets")
                                         .font(.caption2).foregroundStyle(.secondary)
                                 }
                             }

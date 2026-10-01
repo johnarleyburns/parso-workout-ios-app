@@ -122,8 +122,8 @@ extension SessionView {
             performerDefaults: defaults,
             weightSourceText: own?.weightSourceText,
             exerciseName: exercise.name,
-            setNumberText: isEditing ? "Editing set \(number)" : "Set \(number) of \(max(number, session.plannedRepLadder.count))",
-            recordedText: isEditing ? "Recorded" : nil,
+            setNumberText: isEditing ? String(localized: "Editing set \(number)") : String(localized: "Set \(number) of \(max(number, session.plannedRepLadder.count))"),
+            recordedText: isEditing ? String(localized: "Recorded") : nil,
             effortMode: lastEffortMode
         )
     }
@@ -222,7 +222,7 @@ extension SessionView {
                 let person = performerID.flatMap(people(for:))
                 let sets = WorkoutRepository.lastTimeSets(for: exercise, performedBy: person, excluding: session)
                 guard !sets.isEmpty else { return nil }
-                let label = performerID == nil ? "Me" : (person?.name ?? "Partner")
+                let label = performerID == nil ? String(localized: "Me") : (person?.name ?? String(localized: "Partner"))
                 return "\(label): " + sets.map { SessionRenderModel.setLineText(
                     SessionRenderModel.SetDisplay(setID: $0.id, weight: $0.weight, reps: $0.reps,
                                                   rpe: $0.rpe, isWarmup: $0.isWarmup,
@@ -303,19 +303,24 @@ extension SessionView {
         let performer = performerID.flatMap(people(for:))?.name
         switch basis {
         case .explicitPlan:
-            return performerID == nil ? "From your workout plan" : "From \(performer ?? "your")'s workout plan"
+            guard performerID != nil, let performer else { return String(localized: "From your workout plan") }
+            return String(localized: "From \(performer)’s workout plan")
         case .ownerPlan:
-            return "From the workout plan"
+            return String(localized: "From the workout plan")
         case .currentSession:
-            return "Same load as your previous set today"
+            return String(localized: "Same load as your previous set today")
         case .exactHistory:
-            let subject = performer ?? "your"
-            return "Matched \(subject)'s previous \(exerciseName) set · exact historical load"
+            guard let performer else {
+                return String(localized: "Matched your previous \(exerciseName) set · exact historical load")
+            }
+            return String(localized: "Matched \(performer)’s previous \(exerciseName) set · exact historical load")
         case .estimatedHistory:
             return WeightSuggestionCopy.source(performerName: performer, exercise: exerciseName)
         case .priorHistory:
-            let subject = performer ?? "your"
-            return "From \(subject)'s previous \(exerciseName) history · exact historical load"
+            guard let performer else {
+                return String(localized: "From your previous \(exerciseName) history · exact historical load")
+            }
+            return String(localized: "From \(performer)’s previous \(exerciseName) history · exact historical load")
         case .none:
             return nil
         }

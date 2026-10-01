@@ -82,8 +82,8 @@ public enum OneRepMaxFormula: String, CaseIterable, Codable, Sendable, Identifia
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .epley: return "Epley"
-        case .brzycki: return "Brzycki"
+        case .epley: return String(localized: "Epley", bundle: .module)
+        case .brzycki: return String(localized: "Brzycki", bundle: .module)
         }
     }
 }
@@ -100,8 +100,8 @@ public enum MeasurementUnitPreference: String, CaseIterable, Codable, Sendable, 
     }
     public var displayName: String {
         switch self {
-        case .kilograms: return "Kilograms (kg)"
-        case .pounds: return "Pounds (lb)"
+        case .kilograms: return String(localized: "Kilograms (kg)", bundle: .module)
+        case .pounds: return String(localized: "Pounds (lb)", bundle: .module)
         }
     }
 }
@@ -118,8 +118,8 @@ public enum DistanceUnitPreference: String, CaseIterable, Codable, Sendable, Ide
     }
     public var displayName: String {
         switch self {
-        case .kilometers: return "Kilometers (km)"
-        case .miles: return "Miles (mi)"
+        case .kilometers: return String(localized: "Kilometers (km)", bundle: .module)
+        case .miles: return String(localized: "Miles (mi)", bundle: .module)
         }
     }
 
@@ -136,9 +136,9 @@ public enum PRRule: String, CaseIterable, Codable, Sendable, Identifiable {
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .topWeight: return "Heaviest weight"
-        case .estimated1RM: return "Best estimated 1RM"
-        case .topVolume: return "Best set volume"
+        case .topWeight: return String(localized: "Heaviest weight", bundle: .module)
+        case .estimated1RM: return String(localized: "Best estimated 1RM", bundle: .module)
+        case .topVolume: return String(localized: "Best set volume", bundle: .module)
         }
     }
 }

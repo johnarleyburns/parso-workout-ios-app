@@ -21,12 +21,12 @@ struct BackupRestoreCenterView: View {
                     autoSaveHealth: settings.autoSaveHealth,
                     pendingHealthItems: model.healthBackup.lastReport.remaining,
                     lastHealthError: model.healthBackup.lastReport.lastError)
-                statusRow("Apple Health", systemImage: "heart.text.square",
+                statusRow(String(localized: "Apple Health"), systemImage: "heart.text.square",
                           title: status.healthTitle, detail: status.healthDetail)
-                statusRow("Cladiron archive", systemImage: "externaldrive",
-                          title: "Ready to export",
-                          detail: "\(localCounts.sessions) strength · \(localCounts.cardio) cardio · \(localCounts.assessments) fitness tests")
-                statusRow("Restore", systemImage: "arrow.down.heart",
+                statusRow(String(localized: "Cladiron archive"), systemImage: "externaldrive",
+                          title: String(localized: "Ready to export"),
+                          detail: String(localized: "\(localCounts.sessions) strength · \(localCounts.cardio) cardio · \(localCounts.assessments) fitness tests"))
+                statusRow(String(localized: "Restore"), systemImage: "arrow.down.heart",
                           title: restoreTitle, detail: restoreDetail)
             }
 
@@ -134,17 +134,17 @@ struct BackupRestoreCenterView: View {
 
     private var restoreTitle: String {
         switch model.healthRestoreStatus {
-        case .idle: return "Not run this launch"
-        case .restoring: return "In progress"
-        case .completed: return "Complete"
-        case .failed: return "Needs attention"
+        case .idle: return String(localized: "Not run this launch")
+        case .restoring: return String(localized: "In progress")
+        case .completed: return String(localized: "Complete")
+        case .failed: return String(localized: "Needs attention")
         }
     }
 
     private var restoreDetail: String {
         switch model.healthRestoreStatus {
-        case .idle: return "Restore is safe to repeat after Health finishes syncing."
-        case .restoring: return "Reading Cladiron-authored objects from Apple Health."
+        case .idle: return String(localized: "Restore is safe to repeat after Health finishes syncing.")
+        case .restoring: return String(localized: "Reading Cladiron-authored objects from Apple Health.")
         case .completed(_, let report):
             return BackupCenterPresenter.restoreSummary(inserted: report.inserted,
                                                         replaced: report.replaced,

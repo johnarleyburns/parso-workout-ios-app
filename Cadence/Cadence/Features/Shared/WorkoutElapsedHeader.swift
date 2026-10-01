@@ -63,8 +63,8 @@ struct WorkoutElapsedHeader: View {
     /// other); tapping the active mode stops it. Each shows its running total.
     private var workRestControl: some View {
         HStack(spacing: 6) {
-            timerButton(.work, label: "Work", symbol: "figure.strengthtraining.traditional")
-            timerButton(.rest, label: "Rest", symbol: "pause.circle")
+            timerButton(.work, label: String(localized: "Work"), symbol: "figure.strengthtraining.traditional")
+            timerButton(.rest, label: String(localized: "Rest"), symbol: "pause.circle")
         }
     }
 

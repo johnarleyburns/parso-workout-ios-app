@@ -1,0 +1,264 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Log a set in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Log a set in ${applicationName}",
+              "Record a set in ${applicationName}"
+            ]
+          }
+        },
+        "de" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Satz in ${applicationName} protokollieren",
+              "Satz in ${applicationName} erfassen"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Registrar una serie en ${applicationName}",
+              "Anotar una serie en ${applicationName}"
+            ]
+          }
+        },
+        "fr" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Enregistrer une série dans ${applicationName}",
+              "Noter une série dans ${applicationName}"
+            ]
+          }
+        },
+        "nl" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Log een set in ${applicationName}",
+              "Leg een set vast in ${applicationName}"
+            ]
+          }
+        },
+        "pt-BR" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Registrar uma série no ${applicationName}",
+              "Anotar uma série no ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "在${applicationName}中记录一组",
+              "用${applicationName}记一组"
+            ]
+          }
+        },
+        "zh-Hant" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "在${applicationName}中記錄一組",
+              "用${applicationName}記一組"
+            ]
+          }
+        },
+        "en-GB" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Log a set in ${applicationName}",
+              "Record a set in ${applicationName}"
+            ]
+          }
+        }
+      }
+    },
+    "Show today's plan in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Show today's plan in ${applicationName}",
+              "What's my plan today in ${applicationName}"
+            ]
+          }
+        },
+        "de" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Heutigen Plan in ${applicationName} anzeigen",
+              "Was ist heute mein Plan in ${applicationName}"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Mostrar el plan de hoy en ${applicationName}",
+              "Cuál es mi plan de hoy en ${applicationName}"
+            ]
+          }
+        },
+        "fr" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Afficher le plan du jour dans ${applicationName}",
+              "Quel est mon plan aujourd’hui dans ${applicationName}"
+            ]
+          }
+        },
+        "nl" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Toon het plan van vandaag in ${applicationName}",
+              "Wat is mijn plan vandaag in ${applicationName}"
+            ]
+          }
+        },
+        "pt-BR" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Mostrar o plano de hoje no ${applicationName}",
+              "Qual é meu plano hoje no ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "在${applicationName}中显示今天的计划",
+              "${applicationName}今天的计划是什么"
+            ]
+          }
+        },
+        "zh-Hant" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "在${applicationName}中顯示今天的計畫",
+              "${applicationName}今天的計畫是什麼"
+            ]
+          }
+        },
+        "en-GB" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Show today's plan in ${applicationName}",
+              "What's my plan today in ${applicationName}"
+            ]
+          }
+        }
+      }
+    },
+    "Start today's workout in ${applicationName}" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Start today's workout in ${applicationName}",
+              "Start my workout in ${applicationName}"
+            ]
+          }
+        },
+        "de" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Heutiges Training in ${applicationName} starten",
+              "Mein Training in ${applicationName} starten"
+            ]
+          }
+        },
+        "es" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Empezar el entrenamiento de hoy en ${applicationName}",
+              "Empezar mi entrenamiento en ${applicationName}"
+            ]
+          }
+        },
+        "fr" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Démarrer l’entraînement du jour dans ${applicationName}",
+              "Démarrer mon entraînement dans ${applicationName}"
+            ]
+          }
+        },
+        "nl" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Start de training van vandaag in ${applicationName}",
+              "Start mijn training in ${applicationName}"
+            ]
+          }
+        },
+        "pt-BR" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Começar o treino de hoje no ${applicationName}",
+              "Começar meu treino no ${applicationName}"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "在${applicationName}中开始今天的训练",
+              "在${applicationName}中开始我的训练"
+            ]
+          }
+        },
+        "zh-Hant" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "在${applicationName}中開始今天的訓練",
+              "在${applicationName}中開始我的訓練"
+            ]
+          }
+        },
+        "en-GB" : {
+          "stringSet" : {
+            "state" : "needs_review",
+            "values" : [
+              "Start today's workout in ${applicationName}",
+              "Start my workout in ${applicationName}"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

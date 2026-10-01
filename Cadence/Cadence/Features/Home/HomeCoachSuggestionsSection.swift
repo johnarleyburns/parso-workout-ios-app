@@ -8,9 +8,9 @@ struct HomeCoachSuggestionsSection: View {
     let focusGroup: MuscleGroup
     @Binding var expanded: Bool
 
-    /// The heading reserves the artwork's width so it cannot slide under the
-    /// floating illustration at large Dynamic Type.
-    private static let illustrationSize = HomeCoachIllustrationView.compactSize
+    /// The heading reserves the thumbnail's width so it cannot slide under the
+    /// floating artwork at large Dynamic Type.
+    private static let illustrationSize = MuscleFocusThumbnail.size
     private static let illustrationInset: CGFloat = 12
 
     var body: some View {

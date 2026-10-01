@@ -21,9 +21,9 @@ public enum CelebrationStyle: String, Codable, CaseIterable, Sendable, Identifia
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .full: return "Full"
-        case .quiet: return "Quiet (haptics only)"
-        case .off: return "Off"
+        case .full: return String(localized: "Full", bundle: .module)
+        case .quiet: return String(localized: "Quiet (haptics only)", bundle: .module)
+        case .off: return String(localized: "Off", bundle: .module)
         }
     }
 }

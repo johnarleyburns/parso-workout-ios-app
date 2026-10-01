@@ -49,7 +49,7 @@ struct ImportView: View {
 
             if let result {
                 Section("Preview") {
-                    Text("\(result.sessions.count) session\(result.sessions.count == 1 ? "" : "s") · \(result.totalSets) sets")
+                    Text("Sessions: \(result.sessions.count) · Sets: \(result.totalSets)")
                         .font(.headline)
                         .accessibilityIdentifier("import.preview")
                     ForEach(Array(result.sessions.enumerated()), id: \.offset) { _, s in
@@ -60,7 +60,7 @@ struct ImportView: View {
                         }
                     }
                     if !result.issues.isEmpty {
-                        Text("\(result.issues.count) line\(result.issues.count == 1 ? "" : "s") couldn’t be parsed and will be skipped.")
+                        Text("\(result.issues.count) lines couldn’t be parsed and will be skipped.")
                             .font(.caption).foregroundStyle(.orange)
                             .accessibilityIdentifier("import.issues")
                     }
@@ -68,7 +68,7 @@ struct ImportView: View {
 
                 if importedCount == nil {
                     Section {
-                        Button("Import \(result.sessions.count) Session\(result.sessions.count == 1 ? "" : "s")") {
+                        Button("Import \(result.sessions.count) Sessions") {
                             let n = (try? WorkoutRepository.apply(result.sessions, in: context)) ?? 0
                             importedCount = n
                         }
@@ -80,7 +80,7 @@ struct ImportView: View {
 
             if let importedCount {
                 Section {
-                    Label("Imported \(importedCount) session\(importedCount == 1 ? "" : "s")",
+                    Label("Imported \(importedCount) sessions",
                           systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .accessibilityIdentifier("import.done")

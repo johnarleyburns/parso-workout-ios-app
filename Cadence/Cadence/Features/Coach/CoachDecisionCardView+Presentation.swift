@@ -31,7 +31,7 @@ extension CoachDecisionCardView {
         switch decision.primary.kind {
         case .rest: return "RECOVERY"
         case .recovery: return "RECOVERY"
-        case .easyAerobic: return hasRecentStrength ? "RECOVERY" : "AEROBIC"
+        case .easyAerobic: return hasRecentStrength ? String(localized: "RECOVERY") : String(localized: "AEROBIC")
         case .moderateAerobic: return "AEROBIC"
         case .vo2Intervals: return "AEROBIC"
         default: return "TRAIN"
@@ -109,9 +109,9 @@ extension CoachDecisionCardView {
         // workout's setup surface first (never an active recorder). Only rest /
         // recovery keep bespoke copy because they aren't a workout launch.
         switch decision.primary.kind {
-        case .rest: return "Take a rest day"
-        case .recovery: return "Start recovery"
-        default: return "Start"
+        case .rest: return String(localized: "Take a rest day")
+        case .recovery: return String(localized: "Start recovery")
+        default: return String(localized: "Start")
         }
     }
 

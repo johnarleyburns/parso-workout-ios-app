@@ -126,10 +126,10 @@ struct HomeWeekDashboardSection: View {
     private var volumeDetail: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                legendItem("Below", color: .blue)
-                legendItem("Building", color: .yellow)
-                legendItem("Productive", color: .green)
-                legendItem("Above", color: .red)
+                legendItem(String(localized: "Below"), color: .blue)
+                legendItem(String(localized: "Building"), color: .yellow)
+                legendItem(String(localized: "Productive"), color: .green)
+                legendItem(String(localized: "Above"), color: .red)
             }
             .font(.caption2)
             .foregroundStyle(.secondary)

@@ -143,8 +143,10 @@ extension HomeView {
             } message: {
                 Text(active.liveWorkout.active.map { descriptor in
                     let sets = active.strengthSession?.orderedSets.count ?? 0
-                    return "\(descriptor.name) is active\(sets > 0 ? " with \(sets) logged sets" : ""). Resume it or cancel it before starting another workout."
-                } ?? "Finish or discard the current workout before starting another.")
+                    return sets > 0
+                        ? String(localized: "\(descriptor.name) is active with \(sets) logged sets. Resume it or cancel it before starting another workout.")
+                        : String(localized: "\(descriptor.name) is active. Resume it or cancel it before starting another workout.")
+                } ?? String(localized: "Finish or discard the current workout before starting another."))
             }
             .alert("Discard this workout?", isPresented: $confirmCancelPrevious) {
                 Button("Discard Workout", role: .destructive) {

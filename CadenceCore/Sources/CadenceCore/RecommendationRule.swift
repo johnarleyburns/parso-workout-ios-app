@@ -63,18 +63,18 @@ public extension KnowledgeBase {
                         let nextLoad = min(goalLoad, incrementLoad)
                         target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
                                            loadKg: nextLoad, rir: rir)
-                        action = "Your assessed 1RM supports building load, but keep the jump conservative — try \(SetTarget.trimmed(nextLoad)) kg and reassess from there."
+                        action = String(localized: "Your assessed 1RM supports building load, but keep the jump conservative — try \(SetTarget.trimmed(nextLoad)) kg and reassess from there.", bundle: .module)
                     } else {
                         let nextReps = snap.topSetReps + 1
                         target = SetTarget(sets: nil, repsLow: nextReps, repsHigh: nextReps,
                                            loadKg: snap.topSetWeightKg, rir: rir)
-                        action = "Add a rep on your top set at the same load — keep going until you reach \(range.upperBound)."
+                        action = String(localized: "Add a rep on your top set at the same load — keep going until you reach \(range.upperBound).", bundle: .module)
                     }
                 } else {
                     let nextReps = snap.topSetReps + 1
                     target = SetTarget(sets: nil, repsLow: nextReps, repsHigh: nextReps,
                                        loadKg: snap.topSetWeightKg, rir: rir)
-                    action = "Add a rep on your top set at the same load — keep going until you reach \(range.upperBound)."
+                    action = String(localized: "Add a rep on your top set at the same load — keep going until you reach \(range.upperBound).", bundle: .module)
                 }
             } else {
                 if let e1rm = assessedE1RM {
@@ -83,20 +83,21 @@ public extension KnowledgeBase {
                     let nextLoad = goalLoad > snap.topSetWeightKg ? min(goalLoad, incrementLoad) : incrementLoad
                     target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
                                        loadKg: nextLoad, rir: rir)
-                    action = "You hit \(range.upperBound) reps — add a small load jump to \(SetTarget.trimmed(nextLoad)) kg and reset to \(range.lowerBound)."
+                    action = String(localized: "You hit \(range.upperBound) reps — add a small load jump to \(SetTarget.trimmed(nextLoad)) kg and reset to \(range.lowerBound).", bundle: .module)
                 } else {
                     let nextLoad = PrescriptionMath.roundLoad(snap.topSetWeightKg + loadIncrementKg)
                     target = SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.lowerBound,
                                        loadKg: nextLoad, rir: rir)
-                    action = "You hit \(range.upperBound) reps — add a little load and drop back to \(range.lowerBound)."
+                    action = String(localized: "You hit \(range.upperBound) reps — add a little load and drop back to \(range.lowerBound).", bundle: .module)
                 }
             }
             out.append(Recommendation(
                 id: "progression.\(lift)",
                 kind: .progression, group: snap.group, exercise: lift,
-                title: "Progress your \(lift.lowercased())",
+                title: String(localized: "Progress your \(lift.lowercased())", bundle: .module),
                 action: action,
-                detail: "Progressive overload drives strength and size: within a rep range, add reps to the top of the range first, then add load and reset — autoregulated by reps in reserve (RIR). Your \(facts.goal.displayName.lowercased()) range is \(range.lowerBound)–\(range.upperBound) reps at about \(rir) RIR.\(assessedE1RM != nil ? " Your assessed 1RM informs the load, but Coach still limits the jump so the next session confirms it." : "")",
+                detail: String(localized: "Progressive overload drives strength and size: within a rep range, add reps to the top of the range first, then add load and reset — autoregulated by reps in reserve (RIR). Your \(facts.goal.displayName.lowercased()) range is \(range.lowerBound)–\(range.upperBound) reps at about \(rir) RIR.", bundle: .module)
+                    + (assessedE1RM != nil ? " " + String(localized: "Your assessed 1RM informs the load, but Coach still limits the jump so the next session confirms it.", bundle: .module) : ""),
                 citation: CitationRegistry.rpeAutoregulation,
                 citationIds: assessedE1RM != nil ? ["oneRMEstimation", "currierResistancePrescription2023"] : ["currierResistancePrescription2023"],
                 target: target,
@@ -125,8 +126,8 @@ public extension KnowledgeBase {
             out.append(Recommendation(
                 id: "deload.\(lift)",
                 kind: .deload, group: snap.group, exercise: lift,
-                title: "\(lift) trending down — monitor recovery",
-                action: "Your estimated 1RM is slightly lower this week. This could be fatigue, or it could be noise. If it drops again next week, take a lighter session.",
+                title: String(localized: "\(lift) trending down — monitor recovery", bundle: .module),
+                action: String(localized: "Your estimated 1RM is slightly lower this week. This could be fatigue, or it could be noise. If it drops again next week, take a lighter session.", bundle: .module),
                 detail: "A single-week decline can be normal variation — sleep, exercise order, technique, and measurement noise can all cause it. Coach flags this for monitoring. A deload is suggested only if the decline repeats or readiness is poor. This is a coaching cue, not a medical one.",
                 citation: CitationRegistry.rpeAutoregulation,
                 target: target,
@@ -151,9 +152,9 @@ public extension KnowledgeBase {
             out.append(Recommendation(
                 id: "addVolume.\(group.rawValue)",
                 kind: .addVolume, group: group,
-                title: "Add \(name.lowercased()) volume",
-                action: "\(name): \(Format.progress(done: current, target: bands.mev, unit: "sets")) this week. Add ~\(toAdd) set\(toAdd == 1 ? "" : "s") to start closing it.",
-                detail: "Weekly sets per muscle drive growth in a graded dose-response, but the exact useful dose varies by person. \(name) is on the low side of the starting range for your experience level (~\(PrescriptionMath.sets(bands.mev)) sets/week); add a couple of sets, then judge by performance and recovery.",
+                title: String(localized: "Add \(name.lowercased()) volume", bundle: .module),
+                action: String(localized: "\(name): \(Format.progress(done: current, target: bands.mev, unit: "sets")) this week. Add about \(toAdd) sets to start closing it.", bundle: .module),
+                detail: String(localized: "Weekly sets per muscle drive growth in a graded dose-response, but the exact useful dose varies by person. \(name) is on the low side of the starting range for your experience level (~\(PrescriptionMath.sets(bands.mev)) sets/week); add a couple of sets, then judge by performance and recovery.", bundle: .module),
                 citation: CitationRegistry.volumeDoseResponse,
                 target: SetTarget(sets: toAdd, repsLow: range.lowerBound, repsHigh: range.upperBound,
                                   loadKg: nil, rir: rir),
@@ -172,9 +173,9 @@ public extension KnowledgeBase {
         return Recommendation(
             id: "starter",
             kind: .starter,
-            title: "Start with a full-body session",
-            action: "New here? Try alternating full-body sessions: Session A (squat, push, pull, carry) and Session B (hinge, press, pull, core). 2–3 sets per movement, \(range.lowerBound)–\(range.upperBound) reps, leaving ~\(rir) in reserve.",
-            detail: "With no history yet, alternating full-body sessions are a well-supported starting point informed by dose-response meta-analyses. This approach trains each muscle often, keeps volume manageable, and gives the coach data to work from. Log a few sessions and the recommendations get specific to your lifts.",
+            title: String(localized: "Start with a full-body session", bundle: .module),
+            action: String(localized: "New here? Try alternating full-body sessions: Session A (squat, push, pull, carry) and Session B (hinge, press, pull, core). 2–3 sets per movement, \(range.lowerBound)–\(range.upperBound) reps, leaving ~\(rir) in reserve.", bundle: .module),
+            detail: String(localized: "With no history yet, alternating full-body sessions are a well-supported starting point informed by dose-response meta-analyses. This approach trains each muscle often, keeps volume manageable, and gives the coach data to work from. Log a few sessions and the recommendations get specific to your lifts.", bundle: .module),
             citation: CitationRegistry.schoenfeld2021,
             target: SetTarget(sets: 3, repsLow: range.lowerBound, repsHigh: range.upperBound, loadKg: nil, rir: rir),
             confidence: .moderate,
@@ -192,12 +193,12 @@ public extension KnowledgeBase {
     static let cardioModerate = RecommendationRule(id: "cardio.moderate", priority: 70) { facts in
         guard facts.totalWorkingSets >= 3 else { return [] }
         let action = facts.experience == .beginner
-            ? "Build your aerobic base: try 20–30 min of moderate work (brisk walk, light cycle, or easy swim) 2–3 times a week. Progress duration before intensity."
-            : "Accumulate moderate aerobic work toward the 150 min/week floor: brisk walking, easy cycling, swimming, or any steady-effort activity."
+            ? String(localized: "Build your aerobic base: try 20–30 min of moderate work (brisk walk, light cycle, or easy swim) 2–3 times a week. Progress duration before intensity.", bundle: .module)
+            : String(localized: "Accumulate moderate aerobic work toward the 150 min/week floor: brisk walking, easy cycling, swimming, or any steady-effort activity.", bundle: .module)
         return [Recommendation(
             id: "cardio.moderate",
             kind: .starter,
-            title: "Build your aerobic fitness",
+            title: String(localized: "Build your aerobic fitness", bundle: .module),
             action: action,
             detail: "A harmonised meta-analysis of over 1 million adults found a graded dose-response between physical activity volume and reduced mortality. Coach starts you with tolerable moderate work and progresses from adherence — no aggressive HIIT prescription without an established base.",
             citation: CitationRegistry.ekelundActivityMortality2016,
@@ -216,12 +217,12 @@ public extension KnowledgeBase {
             out.append(Recommendation(
                 id: "cardio.hiit.vo2max",
                 kind: .cardioHIIT,
-                title: "Boost your aerobic fitness",
-                action: "Consider interval work: options include a Norwegian 4×4 session (4×4 min hard / 3 min recovery) or shorter long-interval protocols, paired with your usual training.",
-                detail: "High-intensity intervals can improve VO₂max, but they are one option among many. Your \(label.lowercased()) is declining. If recovery and preference support it, 1–2 interval sessions/week can help. Moderate continuous work remains effective and may be more sustainable.",
+                title: String(localized: "Boost your aerobic fitness", bundle: .module),
+                action: String(localized: "Consider interval work: options include a Norwegian 4×4 session (4×4 min hard / 3 min recovery) or shorter long-interval protocols, paired with your usual training.", bundle: .module),
+                detail: String(localized: "High-intensity intervals can improve VO₂max, but they are one option among many. Your \(label.lowercased()) is declining. If recovery and preference support it, 1–2 interval sessions/week can help. Moderate continuous work remains effective and may be more sustainable.", bundle: .module),
                 citation: CitationRegistry.crowleyVO2Intensity2022,
                 citationIds: ["poonHIIT2024"],
-                cardioPrescription: "Long intervals (e.g. 4×4)",
+                cardioPrescription: String(localized: "Long intervals (e.g. 4×4)", bundle: .module),
                 confidence: .moderate,
                 priority: 75))
         }
@@ -241,9 +242,9 @@ public extension KnowledgeBase {
         return [Recommendation(
             id: "missingBaseline.strength",
             kind: .starter,
-            title: "Add a strength test baseline",
-            action: "Run an Estimated 1RM test on your main lifts so the coach can prescribe specific loads.",
-            detail: "Your logged workouts are enough for habit, volume, and lift-history trends. A separate e1RM or rep-max test gives Coach a measured strength baseline for percentage-based load targets.",
+            title: String(localized: "Add a strength test baseline", bundle: .module),
+            action: String(localized: "Run an Estimated 1RM test on your main lifts so the coach can prescribe specific loads.", bundle: .module),
+            detail: String(localized: "Your logged workouts are enough for habit, volume, and lift-history trends. A separate e1RM or rep-max test gives Coach a measured strength baseline for percentage-based load targets.", bundle: .module),
             citation: CitationRegistry.oneRMEstimation,
             confidence: .low,
             priority: 50)]

@@ -103,9 +103,9 @@ struct CardioIntensitySettingsView: View {
     }
 
     private var currentMaximumText: String {
-        if let value = settings.cardioMaximumHROverride { return "\(Int(value.rounded())) bpm · entered" }
-        if let age = settings.userAge { return "\(Int(HeartRateMaximum.tanaka(age: age).rounded())) bpm · age-estimated" }
-        return "Unavailable"
+        if let value = settings.cardioMaximumHROverride { return String(localized: "\(Int(value.rounded())) bpm · entered") }
+        if let age = settings.userAge { return String(localized: "\(Int(HeartRateMaximum.tanaka(age: age).rounded())) bpm · age-estimated") }
+        return String(localized: "Unavailable")
     }
 }
 

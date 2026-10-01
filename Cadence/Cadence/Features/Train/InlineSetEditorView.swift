@@ -49,9 +49,9 @@ struct InlineSetEditorView: View {
     }
     private var effortValues: [Double] { Array(1...10).map(Double.init) }
     private var effortDescription: String {
-        guard let value = draft.effort else { return draft.effortMode == .rpe ? "How hard did the set feel?" : "How many good reps remained?" }
-        if draft.effortMode == .rir { return value == 1 ? "1 good rep remained" : "\(Int(value)) good reps remained" }
-        switch value { case 10: return "Maximum effort · no reps left"; case 9: return "Very hard · about 1 rep left"; case 8: return "Hard · about 2 reps left"; case 7: return "Challenging · about 3 reps left"; default: return "Comfortable effort" }
+        guard let value = draft.effort else { return draft.effortMode == .rpe ? String(localized: "How hard did the set feel?") : String(localized: "How many good reps remained?") }
+        if draft.effortMode == .rir { return String(localized: "\(Int(value)) good reps remained") }
+        switch value { case 10: return String(localized: "Maximum effort · no reps left"); case 9: return String(localized: "Very hard · about 1 rep left"); case 8: return String(localized: "Hard · about 2 reps left"); case 7: return String(localized: "Challenging · about 3 reps left"); default: return String(localized: "Comfortable effort") }
     }
     private var isPR: Bool { wouldBePR?(draft.canonicalWeightKg, draft.reps) ?? false }
 
@@ -134,7 +134,7 @@ struct InlineSetEditorView: View {
 
     private var selectedPerformerName: String {
         guard let performerID else { return "Me" }
-        return config.roster.first(where: { $0.personID == performerID })?.name ?? "Partner"
+        return config.roster.first(where: { $0.personID == performerID })?.name ?? String(localized: "Partner")
     }
 
     private var performerSection: some View {
@@ -216,7 +216,7 @@ struct InlineSetEditorView: View {
             if isPR { Label("Would be a PR", systemImage: "trophy.fill").foregroundStyle(.orange).font(.subheadline.weight(.semibold)) }
             if selectedDefault?.weightSourceText != nil || config.weightSourceText != nil {
                 CitationLink(citation: CitationRegistry.oneRMEstimation,
-                             context: "How suggested loads are estimated", compact: true)
+                             context: String(localized: "How suggested loads are estimated"), compact: true)
             }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }

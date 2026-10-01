@@ -24,15 +24,15 @@ public enum Equipment: String, CaseIterable, Codable, Sendable, Identifiable {
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .barbell: return "Barbell"
-        case .dumbbell: return "Dumbbell"
-        case .cable: return "Cable"
-        case .machine: return "Machine"
-        case .bodyweight: return "Bodyweight"
-        case .plyometric: return "Plyometric"
-        case .kettlebell: return "Kettlebell"
-        case .band: return "Band"
-        case .smith: return "Smith Machine"
+        case .barbell: return String(localized: "Barbell", bundle: .module)
+        case .dumbbell: return String(localized: "Dumbbell", bundle: .module)
+        case .cable: return String(localized: "Cable", bundle: .module)
+        case .machine: return String(localized: "Machine", bundle: .module)
+        case .bodyweight: return String(localized: "Bodyweight", bundle: .module)
+        case .plyometric: return String(localized: "Plyometric", bundle: .module)
+        case .kettlebell: return String(localized: "Kettlebell", bundle: .module)
+        case .band: return String(localized: "Band", bundle: .module)
+        case .smith: return String(localized: "Smith Machine", bundle: .module)
         }
     }
 }
@@ -76,14 +76,14 @@ public enum ExerciseTrainingType: String, CaseIterable, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .strength: "Strength"
-        case .powerlifting: "Powerlifting"
-        case .olympicWeightlifting: "Olympic Weightlifting"
-        case .strongman: "Strongman"
-        case .plyometrics: "Plyometrics"
-        case .cardio: "Cardio"
-        case .stretching: "Stretching"
-        case .mobility: "Mobility"
+        case .strength: String(localized: "Strength", bundle: .module)
+        case .powerlifting: String(localized: "Powerlifting", bundle: .module)
+        case .olympicWeightlifting: String(localized: "Olympic Weightlifting", bundle: .module)
+        case .strongman: String(localized: "Strongman", bundle: .module)
+        case .plyometrics: String(localized: "Plyometrics", bundle: .module)
+        case .cardio: String(localized: "Cardio", bundle: .module)
+        case .stretching: String(localized: "Stretching", bundle: .module)
+        case .mobility: String(localized: "Mobility", bundle: .module)
         }
     }
 
@@ -126,18 +126,18 @@ public enum ExerciseModality: String, CaseIterable, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .bodyweight: "Bodyweight"
-        case .freeWeight: "Free Weight"
-        case .machine: "Machine"
-        case .cable: "Cable"
-        case .band: "Band"
-        case .kettlebell: "Kettlebell"
-        case .medicineBall: "Medicine Ball"
-        case .loadedObject: "Loaded Object"
-        case .sled: "Sled"
-        case .rope: "Rope"
-        case .foamRoll: "Foam Roll"
-        case .other: "Other"
+        case .bodyweight: String(localized: "Bodyweight", bundle: .module)
+        case .freeWeight: String(localized: "Free Weight", bundle: .module)
+        case .machine: String(localized: "Machine", bundle: .module)
+        case .cable: String(localized: "Cable", bundle: .module)
+        case .band: String(localized: "Band", bundle: .module)
+        case .kettlebell: String(localized: "Kettlebell", bundle: .module)
+        case .medicineBall: String(localized: "Medicine Ball", bundle: .module)
+        case .loadedObject: String(localized: "Loaded Object", bundle: .module)
+        case .sled: String(localized: "Sled", bundle: .module)
+        case .rope: String(localized: "Rope", bundle: .module)
+        case .foamRoll: String(localized: "Foam Roll", bundle: .module)
+        case .other: String(localized: "Other", bundle: .module)
         }
     }
 
@@ -172,12 +172,12 @@ public enum ExerciseSportContext: String, CaseIterable, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .powerlifting: "Powerlifting"
-        case .weightlifting: "Weightlifting"
-        case .strongman: "Strongman"
+        case .powerlifting: String(localized: "Powerlifting", bundle: .module)
+        case .weightlifting: String(localized: "Weightlifting", bundle: .module)
+        case .strongman: String(localized: "Strongman", bundle: .module)
         case .crossfit: "CrossFit"
-        case .gymnastics: "Gymnastics"
-        case .generalFitness: "General Fitness"
+        case .gymnastics: String(localized: "Gymnastics", bundle: .module)
+        case .generalFitness: String(localized: "General Fitness", bundle: .module)
         }
     }
 
@@ -193,9 +193,9 @@ public enum AnnotationConfidence: String, CaseIterable, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .high: "High"
-        case .medium: "Medium"
-        case .low: "Low"
+        case .high: String(localized: "High", bundle: .module)
+        case .medium: String(localized: "Medium", bundle: .module)
+        case .low: String(localized: "Low", bundle: .module)
         }
     }
 }

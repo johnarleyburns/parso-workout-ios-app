@@ -69,21 +69,21 @@ public enum PlanExecutionBoundary: Equatable, Sendable {
     public var userFacingDescription: String {
         switch self {
         case .empty:
-            return "Add an item before starting this session."
+            return String(localized: "Add an item before starting this session.", bundle: .module)
         case .strengthOnly:
-            return "Starting now opens the strength runner."
+            return String(localized: "Starting now opens the strength runner.", bundle: .module)
         case .cardioOnly:
-            return "Cardio plans sync to Watch for the planned cardio runner."
+            return String(localized: "Cardio plans sync to Watch for the planned cardio runner.", bundle: .module)
         case .mobilityOnly:
-            return "Starting now opens the cardio and mobility runner."
+            return String(localized: "Starting now opens the cardio and mobility runner.", bundle: .module)
         case .instructionOnly:
-            return "Instructions are saved as a plan note and are not executable yet."
+            return String(localized: "Instructions are saved as a plan note and are not executable yet.", bundle: .module)
         case let .mixed(modalities):
             let names = modalities.map { $0.rawValue }.joined(separator: ", ")
             if canStartCombinedRunner {
-                return "Starting now opens the cardio and mobility runner."
+                return String(localized: "Starting now opens the cardio and mobility runner.", bundle: .module)
             }
-            return "Mixed \(names) sessions are saved; a combined runner is coming next."
+            return String(localized: "Mixed \(names) sessions are saved; a combined runner is coming next.", bundle: .module)
         }
     }
 }

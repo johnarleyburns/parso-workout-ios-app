@@ -71,8 +71,8 @@ struct SuggestedCardioPreviewView: View {
                 Label(suggestion.type.displayName, systemImage: suggestion.type.symbol)
                     .font(.title2.weight(.bold))
                 HStack(spacing: 12) {
-                    metric("Duration", "\(suggestion.durationMinutes) min")
-                    metric("Intensity", suggestion.intensity.displayName)
+                    metric(String(localized: "Duration"), "\(suggestion.durationMinutes) min")
+                    metric(String(localized: "Intensity"), suggestion.intensity.displayName)
                 }
                 HStack {
                     Label(suggestion.indoor ? "Indoor by default" : "Outdoor by default",
@@ -93,7 +93,7 @@ struct SuggestedCardioPreviewView: View {
                     .foregroundStyle(.secondary)
 
                 if let citation = suggestion.citationIDs.first.flatMap(CitationRegistry.citation(forId:)) {
-                    CitationLink(citation: citation, context: "How this cardio suggestion is selected", compact: true)
+                    CitationLink(citation: citation, context: String(localized: "How this cardio suggestion is selected"), compact: true)
                 }
 
                 Button {

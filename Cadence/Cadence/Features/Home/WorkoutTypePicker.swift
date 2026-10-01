@@ -9,7 +9,7 @@ struct WorkoutTypePicker: View {
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     var onSuggestedWorkout: ((SuggestedWorkoutModality) -> Void)? = nil
     var types: [WorkoutType] = WorkoutType.allCases
-    var title: String = "Start Workout"
+    var title: String = String(localized: "Start Workout")
     @Environment(\.dismiss) private var dismiss
 
     private let columns = [GridItem(.flexible(), spacing: 16),

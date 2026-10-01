@@ -40,9 +40,12 @@ are implemented. DB++ exercise-name localization now has a versioned sidecar,
 launch-locale coverage tests/guardrails, and the new raise-to-talk preference is
 portable with settings export/import.
 
-The D1 app icon is intentionally not changed in this pass: it is a manual
-designer commission. The exact source/asset package is specified in
-`docs/brand/app-icon-designer-brief.md`. Final device screenshots, preview
+The D1 app icon has shipped: the Fe-mark `AppIcon.icon` (Icon Composer
+layered asset, brief in `docs/brand/app-icon-designer-brief.md`) is in the
+project, and the stock coach cartoons are retired in favour of the muscle-map
+thumbnails. The app UI ships in English, English (UK), German, Spanish, French,
+Dutch, Portuguese (Brazil), Simplified Chinese and Traditional Chinese; all
+non-English strings are `needs_review` until a native-speaker pass. Final device screenshots, preview
 video, App Store Connect nomination fields, human translation review, and
 real-device AX5/HealthKit/Watch validation remain release gates; this file does
 not claim those external outcomes.

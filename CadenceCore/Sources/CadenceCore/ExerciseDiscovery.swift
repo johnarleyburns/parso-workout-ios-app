@@ -107,7 +107,7 @@ public enum ExerciseFacetTagBuilder {
         var tags: [String] = []
         if let level { tags.append(level.capitalized) }
         if let equipment { tags.append(equipment.displayName) }
-        if let mechanics { tags.append(mechanics == .compound ? "Compound" : "Isolation") }
+        if let mechanics { tags.append(mechanics == .compound ? String(localized: "Compound", bundle: .module) : String(localized: "Isolation", bundle: .module)) }
         if let force { tags.append(force.rawValue.capitalized) }
         if let category { tags.append(category.displayName) }
         var seen = Set<String>()

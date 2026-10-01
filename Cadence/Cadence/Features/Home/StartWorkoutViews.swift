@@ -19,8 +19,8 @@ struct StartWorkoutView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 actionSection(
-                    title: "Pick Your Own Workout",
-                    subtitle: "Choose exactly how you want to train today.") {
+                    title: String(localized: "Pick Your Own Workout"),
+                    subtitle: String(localized: "Choose exactly how you want to train today.")) {
                         NavigationLink {
                             PickWorkoutView(
                                 onEditorStart: onEditorStart,
@@ -48,7 +48,7 @@ struct StartWorkoutView: View {
                         NavigationLink {
                             TemplatesView(onStart: onEditorStart)
                         } label: {
-                            startActionLabel("Saved workouts", symbol: "bookmark.fill", tint: .secondary)
+                            startActionLabel(String(localized: "Saved workouts"), symbol: "bookmark.fill", tint: .secondary)
                         }
                         .buttonStyle(.bordered)
                         .accessibilityIdentifier("startWorkout.pick.saved")
@@ -104,7 +104,7 @@ struct PickWorkoutView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
-                pickAction("Custom Workout", symbol: "slider.horizontal.3") {
+                pickAction(String(localized: "Custom Workout"), symbol: "slider.horizontal.3") {
                     WorkoutPlanEditor(
                         plan: .empty(warmup: settings.warmupMinutes,
                                      cooldown: settings.cooldownMinutes),
@@ -116,7 +116,7 @@ struct PickWorkoutView: View {
                 NavigationLink {
                     PreviousWorkoutsView(onEditorStart: onEditorStart)
                 } label: {
-                    pickActionLabel("Do a Previous Workout", symbol: "clock.arrow.circlepath")
+                    pickActionLabel(String(localized: "Do a Previous Workout"), symbol: "clock.arrow.circlepath")
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("pickWorkout.previous")
@@ -125,7 +125,7 @@ struct PickWorkoutView: View {
                     dismiss()
                     onScheduleStrength()
                 } label: {
-                    pickActionLabel("Schedule Workout", symbol: "calendar.badge.plus")
+                    pickActionLabel(String(localized: "Schedule Workout"), symbol: "calendar.badge.plus")
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("pickWorkout.schedule")
@@ -134,7 +134,7 @@ struct PickWorkoutView: View {
                     dismiss()
                     onLogWorkout()
                 } label: {
-                    pickActionLabel("Log Workout", symbol: "square.and.pencil")
+                    pickActionLabel(String(localized: "Log Workout"), symbol: "square.and.pencil")
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("pickWorkout.log")

@@ -29,7 +29,7 @@ struct ScheduleWorkoutSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Text(title.isEmpty ? "Workout" : title)
+                    Text(title.isEmpty ? String(localized: "Workout") : title)
                         .font(.headline)
                         .accessibilityIdentifier("scheduleWorkout.title")
                     DatePicker("Date", selection: $date,
@@ -90,7 +90,7 @@ struct ScheduleWorkoutSheet: View {
 
     private func save() {
         guard date > Date() else {
-            errorMessage = "Choose a time later than now. Scheduled workouts must be in the future."
+            errorMessage = String(localized: "Choose a time later than now. Scheduled workouts must be in the future.")
             return
         }
         isSaving = true

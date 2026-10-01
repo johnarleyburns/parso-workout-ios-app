@@ -65,9 +65,9 @@ extension HomeView {
         let deficits = dashboard.volume.filter { $0.isTracked && $0.sets < 12 }
             .sorted { $0.sets < $1.sets }
             .prefix(2)
-            .map { "\($0.displayName.lowercased()) \(WeeklySetProgress.formattedSets($0.sets)) / 12" }
-        let reason = deficits.isEmpty ? "Why today: keep your weekly strength habit moving." :
-            "Why today: \(deficits.joined(separator: " and ")) sets this week."
+            .map { String(localized: "\($0.displayName) \(WeeklySetProgress.formattedSets($0.sets)) / 12") }
+        let reason = deficits.isEmpty ? String(localized: "Why today: keep your weekly strength habit moving.") :
+            String(localized: "Why today: \(deficits.formatted(.list(type: .and))) sets this week.")
         let coachRecommendsStrength = coachSnapshotReady && coachDecision.primary.kind == .strength
         let suggested = coachRecommendsStrength ? todaySuggestedPlan.map { plan in
             TodayHero(kind: .suggested, title: plan.title,
@@ -113,7 +113,7 @@ extension HomeView {
         }
         let inProgress = activeSession.map {
             TodayHero(kind: .inProgress,
-                      title: $0.title.isEmpty ? "Resume your workout" : $0.title,
+                      title: $0.title.isEmpty ? String(localized: "Resume your workout") : $0.title,
                       estimatedMinutes: Int(max(0, $0.duration) / 60),
                       exercises: heroLines(EditablePlan.from(session: $0)),
                       reason: nil)
@@ -131,7 +131,7 @@ extension HomeView {
             .sorted { $0.scheduledDate < $1.scheduledDate }
             .first
         let completedSummary = completedToday.map {
-            DaySummary(title: $0.title.isEmpty ? "Workout complete" : $0.title,
+            DaySummary(title: $0.title.isEmpty ? String(localized: "Workout complete") : $0.title,
                        setCount: $0.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet }.count,
                        volumeKg: $0.totalVolume,
                        durationMinutes: $0.duration > 0 ? Int(($0.duration / 60).rounded()) : nil,
@@ -149,13 +149,13 @@ extension HomeView {
                                            remainingScheduledToday: remainingScheduledToday,
                                            recommendationReady: coachSnapshotReady)
         let tag: String = switch hero.kind {
-        case .inProgress: "In progress"
-        case .scheduled: "Scheduled for you"
-        case .doneToday: "Done for today"
-        case .needsHistory: "Build your history"
-        case .restDay: "Recovery day"
-        case .suggested: "Suggested for you"
-        case .loading: "Loading"
+        case .inProgress: String(localized: "In progress")
+        case .scheduled: String(localized: "Scheduled for you")
+        case .doneToday: String(localized: "Done for today")
+        case .needsHistory: String(localized: "Build your history")
+        case .restDay: String(localized: "Recovery day")
+        case .suggested: String(localized: "Suggested for you")
+        case .loading: String(localized: "Loading")
         }
         return HomeTodayHeroCard(title: hero.title, tag: tag,
                                  estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,
@@ -206,8 +206,8 @@ extension HomeView {
     @ViewBuilder
     var dashboardBottomContent: some View {
         homeDetailDisclosure(
-            title: "Observations",
-            subtitle: dashboard.suggestions.isEmpty ? "No new suggestions" : "Coach guidance and rationale",
+            title: String(localized: "Observations"),
+            subtitle: dashboard.suggestions.isEmpty ? String(localized: "No new suggestions") : String(localized: "Coach guidance and rationale"),
             expanded: $observationsExpanded,
             identifier: "home.observations.show")
         if observationsExpanded {

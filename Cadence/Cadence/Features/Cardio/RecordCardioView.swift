@@ -108,8 +108,8 @@ struct RecordCardioView: View {
 
             if recorder.usesGPS {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                    metric("Distance", Format.distance(recorder.distanceMeters), id: "record.distance")
-                    metric("Pace", CardioMath.formatPace(secPerKm: recorder.pace), id: "record.pace")
+                    metric(String(localized: "Distance"), Format.distance(recorder.distanceMeters), id: "record.distance")
+                    metric(String(localized: "Pace"), CardioMath.formatPace(secPerKm: recorder.pace), id: "record.pace")
                 }
             }
             LiveHRBigView(bpm: recorder.currentBPM, zone: recorder.zone, avgHR: recorder.avgHR,

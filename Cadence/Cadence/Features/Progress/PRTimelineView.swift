@@ -58,7 +58,7 @@ struct PRTimelineView: View {
             }
             Divider().padding(.top, 12).padding(.bottom, 8)
             CitationLink(citation: CitationRegistry.oneRMEstimation,
-                         context: "How PRs & estimated 1RM are computed", compact: true)
+                         context: String(localized: "How PRs & estimated 1RM are computed"), compact: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

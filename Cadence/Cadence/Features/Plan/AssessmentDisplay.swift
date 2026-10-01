@@ -23,10 +23,10 @@ extension AssessmentTrend {
     }
     var label: String {
         switch self {
-        case .improved: return "Improving"
-        case .declined: return "Down"
-        case .unchanged: return "Holding"
-        case .single: return "Baseline"
+        case .improved: return String(localized: "Improving")
+        case .declined: return String(localized: "Down")
+        case .unchanged: return String(localized: "Holding")
+        case .single: return String(localized: "Baseline")
         }
     }
 }

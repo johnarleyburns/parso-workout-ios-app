@@ -54,7 +54,8 @@ final class ConsistencyHeatmapPresenterTests: XCTestCase {
         let d = ConsistencyHeatmapPresenter.display(sessionDates: sessions,
                                                     range: DateInterval(start: start, end: end),
                                                     calendar: cal)
-        XCTAssertEqual(d.summary, "1 day trained")
+        XCTAssertTrue(CatalogPlural.renderings("%lld days trained", 1).contains(d.summary), d.summary)
+        XCTAssertEqual(CatalogPlural.english("%lld days trained", 1), "1 day trained")
     }
 
     func testAccessibilityLabelForRestAndTrained() {

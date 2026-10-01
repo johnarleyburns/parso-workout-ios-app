@@ -65,10 +65,9 @@ public enum ConsistencyHeatmapPresenter {
     }
 
     static func summary(trainedDays: Int, currentStreak: Int) -> String {
-        let dayWord = trainedDays == 1 ? "day" : "days"
-        let base = "\(trainedDays) \(dayWord) trained"
+        let base = String(localized: "\(trainedDays) days trained", bundle: .module)
         guard currentStreak >= 2 else { return base }
-        return "\(base) \u{00b7} \(currentStreak)-day streak"
+        return base + " \u{00b7} " + String(localized: "\(currentStreak)-day streak", bundle: .module)
     }
 
     static func cell(for day: HeatmapDay, calendar: Calendar) -> Cell {
@@ -88,7 +87,7 @@ public enum ConsistencyHeatmapPresenter {
         switch day.sessionCount {
         case 0: return "\(dateStr): rest day"
         case 1: return "\(dateStr): 1 session"
-        default: return "\(dateStr): \(day.sessionCount) sessions"
+        default: return String(localized: "\(dateStr): \(day.sessionCount) sessions", bundle: .module)
         }
     }
 }

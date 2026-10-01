@@ -53,23 +53,23 @@ struct IntervalSetupView: View {
     private var presets: [Preset] {
         if type == .boxing { return [] }
         return [
-            Preset(id: "tabata", title: "Tabata", subtitle: "8 × 20s / 10s",
-                   description: "Developed by Prof. Izumi Tabata for Olympic speed skaters. 20 s of all-out work alternates with 10 s of rest across 8 rounds — just 4 minutes of high-intensity intervals that improve both anaerobic capacity and VO₂max.",
+            Preset(id: "tabata", title: String(localized: "Tabata"), subtitle: "8 × 20s / 10s",
+                   description: String(localized: "Developed by Prof. Izumi Tabata for Olympic speed skaters. 20 s of all-out work alternates with 10 s of rest across 8 rounds — just 4 minutes of high-intensity intervals that improve both anaerobic capacity and VO₂max."),
                    citationIds: ["tabata1996"]) { .tabata() },
-            Preset(id: "norwegian", title: "Norwegian 4×4", subtitle: "4 × 4min / 3min",
-                   description: "Four 4-minute work intervals at ~90–95 % HRmax separated by 3-minute active recovery periods. This protocol is one of the best-researched methods for improving VO₂max in healthy adults.",
+            Preset(id: "norwegian", title: String(localized: "Norwegian 4×4"), subtitle: "4 × 4min / 3min",
+                   description: String(localized: "Four 4-minute work intervals at ~90–95 % HRmax separated by 3-minute active recovery periods. This protocol is one of the best-researched methods for improving VO₂max in healthy adults."),
                    citationIds: ["hiitVo2max"]) { .norwegian4x4() },
-            Preset(id: "gibala", title: "Gibala", subtitle: "8 × 60s / 60s · ~20 min",
-                   description: "Named after Martin Gibala's sprint-interval research. 60 s of hard work alternates with 60 s of recovery for 8 rounds, totalling ~20 min. Produces metabolic adaptations comparable to much longer moderate-intensity training.",
+            Preset(id: "gibala", title: String(localized: "Gibala"), subtitle: "8 × 60s / 60s · ~20 min",
+                   description: String(localized: "Named after Martin Gibala's sprint-interval research. 60 s of hard work alternates with 60 s of recovery for 8 rounds, totalling ~20 min. Produces metabolic adaptations comparable to much longer moderate-intensity training."),
                    citationIds: ["gibala2006"]) { .gibala() },
             Preset(id: "sit", title: "SIT (Wingate)", subtitle: "4 × 30s all-out / 4 min",
-                   description: "Four 30 s all-out Wingate sprints with 4-minute passive recovery per round. Sprint-interval training (SIT) is a potent but demanding protocol — best reserved for experienced exercisers comfortable with maximal effort.",
+                   description: String(localized: "Four 30 s all-out Wingate sprints with 4-minute passive recovery per round. Sprint-interval training (SIT) is a potent but demanding protocol — best reserved for experienced exercisers comfortable with maximal effort."),
                    citationIds: ["wingateTest", "slothSIT2013"]) { .sit() },
             Preset(id: "ten", title: "10-20-30", subtitle: "5 × (30/20/10), 3 sets",
                    description: "30 s low / 20 s moderate / 10 s sprint — 5 cycles per set across 3 sets with recovery between. This stepping pattern reduced training volume by ~50 % while improving 5 km race performance and cardiovascular health markers.",
                    citationIds: ["gunnarsson1020302012"]) { .tenTwentyThirty() },
             Preset(id: "rehit", title: "REHIT", subtitle: "2 × 20s sprint / 3 min",
-                   description: "Reduced-Exertion HIIT — just 2 all-out 20 s sprints in a single 10-minute session. One of the lowest time-commitment protocols shown to improve insulin sensitivity and VO₂max in previously inactive adults.",
+                   description: String(localized: "Reduced-Exertion HIIT — just 2 all-out 20 s sprints in a single 10-minute session. One of the lowest time-commitment protocols shown to improve insulin sensitivity and VO₂max in previously inactive adults."),
                    citationIds: ["metcalfeREHIT2012"]) { .rehit() },
         ]
     }
@@ -105,7 +105,7 @@ struct IntervalSetupView: View {
                         Stepper("Rest: \(restSec) sec", value: $restSec, in: 0...300, step: stepSize)
                         Stepper("Cool-down: \(cooldownMin) min", value: $cooldownMin, in: 0...20)
                         if type == .hiit {
-                            rowLabel("custom", "Custom", "your settings")
+                            rowLabel("custom", String(localized: "Custom"), "your settings")
                         }
                     }
 
@@ -214,7 +214,7 @@ struct IntervalSetupView: View {
         dismiss()
     }
 
-    private var sectionTitle: String { type == .boxing ? "Details" : "Custom" }
+    private var sectionTitle: String { type == .boxing ? String(localized: "Details") : String(localized: "Custom") }
     private var stepSize: Int { type == .boxing ? 30 : 5 }
 
     private func formatMinSec(_ totalSec: Int) -> String {
@@ -334,7 +334,7 @@ struct IntervalSetupView: View {
 
     private func outlineDuration(_ seconds: TimeInterval) -> String {
         let rounded = Int(seconds.rounded())
-        return rounded < 60 ? "\(rounded) sec" : Format.duration(seconds)
+        return rounded < 60 ? String(localized: "\(rounded) sec") : Format.duration(seconds)
     }
 
     private func phaseSymbol(for kind: IntervalPhaseKind) -> String {

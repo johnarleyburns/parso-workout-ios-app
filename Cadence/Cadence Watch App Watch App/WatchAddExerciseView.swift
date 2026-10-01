@@ -39,7 +39,7 @@ struct WatchAddExerciseView: View {
                 picker
             }
         }
-        .navigationTitle(showingCustomExercise ? "Custom Exercise" : selectedExercise?.name ?? selectedGroup?.displayName ?? "Add Exercise")
+        .navigationTitle(showingCustomExercise ? String(localized: "Custom Exercise") : selectedExercise?.name ?? selectedGroup?.displayName ?? String(localized: "Add Exercise"))
         .task(id: newestExercise.first?.updatedAt) {
             catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 12)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -208,7 +208,7 @@ struct WatchAddExerciseView: View {
 
     private var customNameLabel: String {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Add Custom Exercise" : "Add Custom “\(trimmed)”"
+        return trimmed.isEmpty ? String(localized: "Add Custom Exercise") : String(localized: "Add Custom “\(trimmed)”")
     }
 
     private var customExerciseForm: some View {

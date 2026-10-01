@@ -31,16 +31,16 @@ public struct PRTakeover: Equatable, Sendable {
 public enum PRMomentPresenter {
     public static func takeover(for event: PREvent, unit: MeasurementUnitPreference,
                                 performerName: String? = nil) -> PRTakeover {
-        let headline = performerName.map { "\($0)'s new personal record" } ?? "New personal record"
+        let headline = performerName.map { "\($0)'s new personal record" } ?? String(localized: "New personal record", bundle: .module)
         let previous = event.previous.map { valueLabel($0, kind: event.kind, unit: unit) }
         let improvement = event.previous.map {
             deltaLabel(event.value - $0, kind: event.kind, unit: unit)
         }
         let ruleLabel: String
         switch event.kind {
-        case .weight: ruleLabel = "Heaviest weight"
-        case .e1RM: ruleLabel = "Estimated one-rep max"
-        case .volume: ruleLabel = "Single-set volume"
+        case .weight: ruleLabel = String(localized: "Heaviest weight", bundle: .module)
+        case .e1RM: ruleLabel = String(localized: "Estimated one-rep max", bundle: .module)
+        case .volume: ruleLabel = String(localized: "Single-set volume", bundle: .module)
         }
         return PRTakeover(headline: headline, exerciseName: event.exerciseName,
                           newValue: valueLabel(event.value, kind: event.kind, unit: unit),
@@ -52,7 +52,7 @@ public enum PRMomentPresenter {
                               isNewPR: Bool, isWarmup: Bool, isPartnerSet: Bool,
                               performerName: String? = nil) -> PRMoment? {
         guard isNewPR, !isWarmup else { return nil }
-        let headline = isPartnerSet ? "\(performerName ?? "Partner")'s new personal record" : "New personal record"
+        let headline = isPartnerSet ? "\(performerName ?? "Partner")'s new personal record" : String(localized: "New personal record", bundle: .module)
         return PRMoment(headline: headline, context: "\(exercise) \(loadText) · \(changeText)",
                         performerName: performerName)
     }

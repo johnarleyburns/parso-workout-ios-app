@@ -19,7 +19,7 @@ struct CardioGoalSheet: View {
     @State private var schedulePresented = false
 
     private let presets: [(label: String, meters: Double)] = [
-        ("5K", 5000), ("10K", 10000), ("Half Marathon", 21097), ("Marathon", 42195),
+        ("5K", 5000), ("10K", 10000), (String(localized: "Half Marathon"), 21097), (String(localized: "Marathon"), 42195),
     ]
 
     init(type: CardioType,

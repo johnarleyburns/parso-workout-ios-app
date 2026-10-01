@@ -38,8 +38,8 @@ struct WatchSetKeypadView: View {
                     Text(hint).font(.caption).foregroundStyle(.secondary)
                 }
 
-                setHistorySection(title: "This Workout", lines: model.currentWorkoutHistoryLines, allowsDelete: true)
-                setHistorySection(title: "Last Time", lines: model.previousWorkoutHistoryLines)
+                setHistorySection(title: String(localized: "This Workout"), lines: model.currentWorkoutHistoryLines, allowsDelete: true)
+                setHistorySection(title: String(localized: "Last Time"), lines: model.previousWorkoutHistoryLines)
 
                 performerSelector
 
@@ -63,7 +63,7 @@ struct WatchSetKeypadView: View {
                     logSet(last: false)
                 } label: {
                     loggingLabel(isLogging: isLoggingSet,
-                                 title: "Log Set",
+                                 title: String(localized: "Log Set"),
                                  systemImage: "checkmark.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
@@ -77,7 +77,7 @@ struct WatchSetKeypadView: View {
                     logSet(last: true)
                 } label: {
                     loggingLabel(isLogging: isLoggingLastSet,
-                                 title: "Last Set",
+                                 title: String(localized: "Last Set"),
                                  systemImage: "checkmark.circle")
                         .frame(maxWidth: .infinity)
                 }

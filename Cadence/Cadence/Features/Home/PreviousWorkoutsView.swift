@@ -23,7 +23,7 @@ struct PreviousWorkoutsView: View {
                         WorkoutPlanEditor(plan: .from(session: session), onStart: onEditorStart)
                     } label: {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(session.title.isEmpty ? "Previous Workout" : session.title)
+                            Text(session.title.isEmpty ? String(localized: "Previous Workout") : session.title)
                                 .font(.headline)
                             Text("\(session.date.formatted(date: .abbreviated, time: .omitted)) · \(session.exercisesInOrder.count) exercises · \(session.orderedSets.count) sets")
                                 .font(.caption)

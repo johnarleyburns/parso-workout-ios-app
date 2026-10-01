@@ -122,19 +122,19 @@ struct WatchIntervalView: View {
 
     private func controlsToolbar(controlSize: CGFloat) -> some View {
         HStack(spacing: 7) {
-            toolbarButton(accessibilityLabel: runner.isPaused ? "Resume" : "Pause", controlSize: controlSize) {
+            toolbarButton(accessibilityLabel: runner.isPaused ? String(localized: "Resume") : String(localized: "Pause"), controlSize: controlSize) {
                 togglePause()
             } label: {
                 Image(systemName: runner.isPaused ? "play.fill" : "pause.fill")
             }
 
-            toolbarButton(accessibilityLabel: "Skip phase", controlSize: controlSize) {
+            toolbarButton(accessibilityLabel: String(localized: "Skip phase"), controlSize: controlSize) {
                 skipPhase()
             } label: {
                 Image(systemName: "forward.end.fill")
             }
 
-            toolbarButton(accessibilityLabel: "Add one minute", controlSize: controlSize) {
+            toolbarButton(accessibilityLabel: String(localized: "Add one minute"), controlSize: controlSize) {
                 addOneMinute()
             } label: {
                 Text("+1m")
@@ -143,7 +143,7 @@ struct WatchIntervalView: View {
                     .minimumScaleFactor(0.75)
             }
 
-            toolbarButton(accessibilityLabel: "End workout", controlSize: controlSize, foreground: .red) {
+            toolbarButton(accessibilityLabel: String(localized: "End workout"), controlSize: controlSize, foreground: .red) {
                 isShowingConfirmEnd = true
             } label: {
                 Image(systemName: "stop.fill")
@@ -180,9 +180,9 @@ struct WatchIntervalView: View {
 
             let sum = watchManager.savedSummary
             if let s = sum {
-                summaryRow("Duration", formatTime(s.duration))
+                summaryRow(String(localized: "Duration"), formatTime(s.duration))
                 if let avg = s.avgHR {
-                    summaryRow("Avg HR", "\(Int(avg))")
+                    summaryRow(String(localized: "Avg HR"), "\(Int(avg))")
                 }
             }
 
@@ -245,14 +245,14 @@ struct WatchIntervalView: View {
     }
 
     private var roundLabel: String {
-        guard let kind = runner.phaseKind else { return "Complete" }
+        guard let kind = runner.phaseKind else { return String(localized: "Complete") }
         let workRounds = plan.workRounds
         let currentRound = plan.currentWorkRound(atElapsed: runner.elapsed)
         switch kind {
-        case .work: return "Round \(currentRound)/\(workRounds)"
-        case .rest: return "Rest (\(currentRound)/\(workRounds))"
-        case .warmup: return "Warm-up"
-        case .cooldown: return "Cool-down"
+        case .work: return String(localized: "Round \(currentRound)/\(workRounds)")
+        case .rest: return String(localized: "Rest (\(currentRound)/\(workRounds))")
+        case .warmup: return String(localized: "Warm-up")
+        case .cooldown: return String(localized: "Cool-down")
         }
     }
 

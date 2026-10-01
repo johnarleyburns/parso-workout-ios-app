@@ -61,11 +61,11 @@ struct ExerciseProgressView: View {
 
     private var summary: some View {
         HStack(spacing: 10) {
-            metric("Latest", value: progressSummary.latest.map {
+            metric(String(localized: "Latest"), value: progressSummary.latest.map {
                 "\($0.date.formatted(date: .abbreviated, time: .omitted)) · \(displayText($0.value))"
             } ?? "—")
-            metric("Best", value: progressSummary.best.map(displayText) ?? "—")
-            metric("Sessions", value: String(progressSummary.sessionCount))
+            metric(String(localized: "Best"), value: progressSummary.best.map(displayText) ?? "—")
+            metric(String(localized: "Sessions"), value: String(progressSummary.sessionCount))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -90,7 +90,7 @@ struct ExerciseProgressView: View {
     }
 
     private var accessibilitySummary: String {
-        guard let latest = progressSummary.latest else { return "No logged history." }
-        return "Latest \(displayText(latest.value)); best \(progressSummary.best.map(displayText) ?? "unknown"); \(progressSummary.sessionCount) training days."
+        guard let latest = progressSummary.latest else { return String(localized: "No logged history.") }
+        return String(localized: "Latest \(displayText(latest.value)); best \(progressSummary.best.map(displayText) ?? "unknown"); \(progressSummary.sessionCount) training days.")
     }
 }

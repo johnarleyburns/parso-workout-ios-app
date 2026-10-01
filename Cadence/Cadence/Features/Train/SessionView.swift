@@ -200,7 +200,7 @@ struct PreviousWorkoutPicker: View {
                         onPick(s); dismiss()
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(s.title.isEmpty ? "Workout" : s.title)
+                            Text(s.title.isEmpty ? String(localized: "Workout") : s.title)
                             Text(s.date.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption).foregroundStyle(.secondary)
                             Text("\(s.exercisesInOrder.count) exercises · \(s.orderedSets.count) sets")

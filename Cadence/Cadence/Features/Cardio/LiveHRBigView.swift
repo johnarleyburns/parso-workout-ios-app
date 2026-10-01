@@ -36,7 +36,7 @@ struct LiveHRBigView: View {
     let idPrefix: String
     var intensityProfile: CardioIntensityProfile? = nil
     /// Accessibility fallback label when no BPM has arrived yet.
-    var label: String = "Heart Rate"
+    var label: String = String(localized: "Heart Rate")
 
     var body: some View {
         VStack(spacing: 6) {
@@ -85,7 +85,7 @@ struct LiveHRBigView: View {
 
     private var accessibilityText: String {
         guard let bpm else { return "\(label), no reading yet" }
-        var text = "\(Int(bpm.rounded())) beats per minute, zone \(zone)"
+        var text = String(localized: "\(Int(bpm.rounded())) beats per minute, zone \(zone)")
         if let profile = intensityProfile {
             text += ", \(CardioIntensityClassifier.classify(heartRate: bpm, profile: profile).relativeIntensity.displayName.lowercased())"
         }

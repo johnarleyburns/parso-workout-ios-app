@@ -161,14 +161,14 @@ private extension BodyRegion {
     static var allCases: [BodyRegion] { [.chest, .back, .shoulders, .arms, .core, .legs, .glutes] }
     var displayName: String {
         switch self {
-        case .chest: "Chest"
-        case .back: "Back"
-        case .shoulders: "Shoulders"
-        case .arms: "Arms"
-        case .core: "Core"
-        case .legs: "Legs"
-        case .glutes: "Glutes"
-        case .fullBody: "Full Body"
+        case .chest: String(localized: "Chest")
+        case .back: String(localized: "Back")
+        case .shoulders: String(localized: "Shoulders")
+        case .arms: String(localized: "Arms")
+        case .core: String(localized: "Core")
+        case .legs: String(localized: "Legs")
+        case .glutes: String(localized: "Glutes")
+        case .fullBody: String(localized: "Full Body")
         }
     }
 }

@@ -69,7 +69,7 @@ struct ExerciseSuggestionExclusionSheet: View {
             onExcluded?()
             dismiss()
         } catch {
-            errorMessage = "Could not save this preference: \(error.localizedDescription)"
+            errorMessage = String(localized: "Could not save this preference: \(error.localizedDescription)")
         }
     }
 }

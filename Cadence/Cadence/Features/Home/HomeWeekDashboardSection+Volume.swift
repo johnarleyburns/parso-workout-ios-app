@@ -44,7 +44,7 @@ extension HomeWeekDashboardSection {
         switch row.zone {
         case .belowMinimum:
             let remaining = max(0, WeeklySetProgress.minimum - row.sets)
-            return "\(row.displayName) is \(formattedSets(remaining)) sets below the current minimum. You can add work if that fits your recovery and plan."
+            return String(localized: "\(row.displayName) is \(formattedSets(remaining)) sets below the current minimum. You can add work if that fits your recovery and plan.")
         case .aboveMaximum:
             return "\(row.displayName) is above the 12-set maximum for this week. Consider reducing volume or allowing more recovery before adding more work."
         case .building, .productive:

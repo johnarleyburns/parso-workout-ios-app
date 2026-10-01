@@ -21,23 +21,22 @@ public struct SuggestedWorkoutChoice: Equatable, Sendable, Identifiable {
 }
 
 public enum SuggestedWorkoutPresenter {
-    public static let navigationTitle = "View Suggested Workout"
-    public static let calculatingTitle = "Calculating suggested workouts…"
-    public static let aboutAccessibilityLabel = "About suggested workouts"
-    public static let chooserIntro = "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting."
-    public static let choosingAPlan = "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track, under one \(suggestedWorkoutPlannedSetCap)-set safety cap, so a capped plan can still show remaining gaps. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself."
+    public static let navigationTitle = String(localized: "View Suggested Workout", bundle: .module)
+    public static let calculatingTitle = String(localized: "Calculating suggested workouts…", bundle: .module)
+    public static let aboutAccessibilityLabel = String(localized: "About suggested workouts", bundle: .module)
+    public static let chooserIntro = String(localized: "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting.", bundle: .module)
+    public static let choosingAPlan = String(localized: "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track, under one \(suggestedWorkoutPlannedSetCap)-set safety cap, so a capped plan can still show remaining gaps. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself.", bundle: .module)
 
     public static func historyNotice(for quality: SuggestedWorkoutHistoryQuality) -> String? {
         switch quality {
         case .sufficient:
             return nil
         case .unavailable:
-            return "No completed strength history was available. This suggestion uses your onboarding preferences and the exercise catalog; future suggestions can become more specific after you log a workout."
+            return String(localized: "No completed strength history was available. This suggestion uses your onboarding preferences and the exercise catalog; future suggestions can become more specific after you log a workout.", bundle: .module)
         case .limited(let workoutCount, let workingSetCount):
-            return "Limited history: " + String(workoutCount) + " workout" +
-                (workoutCount == 1 ? "" : "s") + ", " + String(workingSetCount) +
-                " working set" + (workingSetCount == 1 ? "" : "s") +
-                ". This suggestion also uses your onboarding preferences, so review it before starting."
+            return String(localized: "Limited history: \(workoutCount) workouts", bundle: .module) + ", "
+                + String(localized: "\(workingSetCount) working sets", bundle: .module) + ". "
+                + String(localized: "This suggestion also uses your onboarding preferences, so review it before starting.", bundle: .module)
         }
     }
 
@@ -62,7 +61,7 @@ public enum SuggestedWorkoutPresenter {
                 option: option,
                 title: style.displayName,
                 styleDescription: style.subtitle,
-                subtitle: "Need at least \(SuggestedWorkoutGenerator.minimumPersonalizedWorkouts) completed workouts; you have \(personalizedHistoryWorkoutCount).",
+                subtitle: String(localized: "Need at least \(SuggestedWorkoutGenerator.minimumPersonalizedWorkouts) completed workouts; you have \(personalizedHistoryWorkoutCount).", bundle: .module),
                 isDisabled: true)
         }
         if !option.isLaunchable {
@@ -71,8 +70,8 @@ public enum SuggestedWorkoutPresenter {
                 title: style.displayName,
                 styleDescription: style.subtitle,
                 subtitle: style == .personalized
-                    ? "No exercises from your history cover this week's gaps."
-                    : "No available \(style.displayName.lowercased()) exercises cover this week's gaps.",
+                    ? String(localized: "No exercises from your history cover this week's gaps.", bundle: .module)
+                    : String(localized: "No available \(style.displayName.lowercased()) exercises cover this week's gaps.", bundle: .module),
                 isDisabled: true)
         }
         return SuggestedWorkoutChoice(
@@ -93,15 +92,15 @@ public enum SuggestedWorkoutPresenter {
         guard total > 0 else { return "no movements" }
         return inStyle == total
             ? "all \(name) movements"
-            : "\(inStyle) of \(total) \(name) movements"
+            : String(localized: "\(inStyle) of \(total) \(name) movements", bundle: .module)
     }
 
     public static func remainingGapText(_ option: SuggestedWorkoutOption) -> String {
         let gaps = option.unresolvedDeficits
-        guard !gaps.isEmpty else { return "All current gaps covered" }
+        guard !gaps.isEmpty else { return String(localized: "All current gaps covered", bundle: .module) }
         let names = gaps.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
             .map(displayName)
-        return "Remaining gaps: \(names.joined(separator: ", "))"
+        return String(localized: "Remaining gaps: \(names.formatted(.list(type: .and)))", bundle: .module)
     }
 
     public static func editablePlan(for option: SuggestedWorkoutOption,
@@ -122,13 +121,13 @@ public enum SuggestedWorkoutPresenter {
     /// Plain-language algorithm steps for the About sheet. Kept here so tests
     /// prevent the explanation and engine contract from drifting apart.
     public static let aboutSteps = [
-        "Starts with this week's completed sets, credited from published movement analyses: a set counts once for a muscle the movement trains directly, half for one it trains indirectly, and not at all for one that only stabilises.",
-        "Calculates a \(suggestedWorkoutTargetSetsPerGroup)-set weekly gap for every muscle group you track.",
-        "Considers the largest remaining gap first; equal gaps use a fixed largest-to-smallest muscle order.",
-        "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles.",
-        "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement.",
-        "Adds each winning movement with your set preference, then trims from the end to a \(suggestedWorkoutPlannedSetCap)-set safety cap and recomputes what is still uncovered.",
-        "Produces a deterministic suggestion to review and edit, not a medical prescription or guarantee of an individualized optimum."
+        String(localized: "Starts with this week's completed sets, credited from published movement analyses: a set counts once for a muscle the movement trains directly, half for one it trains indirectly, and not at all for one that only stabilises.", bundle: .module),
+        String(localized: "Calculates a \(suggestedWorkoutTargetSetsPerGroup)-set weekly gap for every muscle group you track.", bundle: .module),
+        String(localized: "Considers the largest remaining gap first; equal gaps use a fixed largest-to-smallest muscle order.", bundle: .module),
+        String(localized: "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles.", bundle: .module),
+        String(localized: "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement.", bundle: .module),
+        String(localized: "Adds each winning movement with your set preference, then trims from the end to a \(suggestedWorkoutPlannedSetCap)-set safety cap and recomputes what is still uncovered.", bundle: .module),
+        String(localized: "Produces a deterministic suggestion to review and edit, not a medical prescription or guarantee of an individualized optimum.", bundle: .module)
     ]
 
     public static let pseudocode = [

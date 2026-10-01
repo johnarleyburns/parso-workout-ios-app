@@ -84,20 +84,20 @@ public enum CoachRecommendationEngine {
         switch facts.goal {
         case .strength:
             system = .maximalStrength
-            action = "Run a 4–8 week strength block: heavy main lifts at \(range.lowerBound)–\(range.upperBound) reps, ~\(rir) RIR, with lower-volume accessories. Add load week to week, then take a lighter week."
+            action = String(localized: "Run a 4–8 week strength block: heavy main lifts at \(range.lowerBound)–\(range.upperBound) reps, ~\(rir) RIR, with lower-volume accessories. Add load week to week, then take a lighter week.", bundle: .module)
         case .hypertrophy:
             system = .hypertrophy
-            action = "Run a 4–8 week hypertrophy block: progress weekly sets at \(range.lowerBound)–\(range.upperBound) reps, ~\(rir) RIR, then deload before pushing volume again."
+            action = String(localized: "Run a 4–8 week hypertrophy block: progress weekly sets at \(range.lowerBound)–\(range.upperBound) reps, ~\(rir) RIR, then deload before pushing volume again.", bundle: .module)
         case .endurance:
             system = .strengthEndurance
-            action = "Run a 4–8 week block: higher-rep local-endurance work (\(range.lowerBound)–\(range.upperBound) reps) plus easy aerobic support."
+            action = String(localized: "Run a 4–8 week block: higher-rep local-endurance work (\(range.lowerBound)–\(range.upperBound) reps) plus easy aerobic support.", bundle: .module)
         }
         return [Recommendation(
             id: "strengthBlock",
             kind: .strengthBlock,
-            title: "Plan a \(facts.goal.displayName.lowercased()) block",
+            title: String(localized: "Plan a \(facts.goal.displayName.lowercased()) block", bundle: .module),
             action: action,
-            detail: "Organizing training into blocks (periodization) produces greater strength gains than unstructured training, and the load/rep emphasis follows the repetition continuum for your goal. Effort is autoregulated by reps in reserve.",
+            detail: String(localized: "Organizing training into blocks (periodization) produces greater strength gains than unstructured training, and the load/rep emphasis follows the repetition continuum for your goal. Effort is autoregulated by reps in reserve.", bundle: .module),
             citation: cite("williamsLinearPeriodization"),
             citationIds: ["currierResistancePrescription2023", "schoenfeld2021", "rpeAutoregulation"],
             target: SetTarget(sets: nil, repsLow: range.lowerBound, repsHigh: range.upperBound, loadKg: nil, rir: rir),
@@ -105,8 +105,8 @@ public enum CoachRecommendationEngine {
             priority: 60,
             system: system,
             evidenceCategory: .periodization,
-            whyNowFacts: ["\(strengthWeeks(facts)) week(s) of strength logged"],
-            minimumEligibility: ["2+ weeks of strength history or a strength baseline"])]
+            whyNowFacts: [String(localized: "\(strengthWeeks(facts)) weeks of strength logged", bundle: .module)],
+            minimumEligibility: [String(localized: "2+ weeks of strength history or a strength baseline", bundle: .module)])]
     }
 
     // MARK: - C2 Volume personalization
@@ -124,31 +124,31 @@ public enum CoachRecommendationEngine {
                 out.append(Recommendation(
                     id: "volumeAdjust.add.\(group.rawValue)",
                     kind: .volumeAdjust, group: group,
-                    title: "Add \(name.lowercased()) volume",
-                    action: "\(name): \(Format.progress(done: sets, target: bands.mev, unit: "sets")) this week. Add ~\(toAdd) set\(toAdd == 1 ? "" : "s"), ideally spread across 2 sessions, and judge by your own response.",
-                    detail: "Weekly sets per muscle drive growth in a graded dose-response. Start from a productive range and personalize from your own progress rather than fixed cutoffs. Spreading volume across at least two sessions a week helps you fit and recover it — frequency mainly distributes volume, it is not an independent dose.",
+                    title: String(localized: "Add \(name.lowercased()) volume", bundle: .module),
+                    action: String(localized: "\(name): \(Format.progress(done: sets, target: bands.mev, unit: "sets")) this week. Add about \(toAdd) sets, ideally spread across 2 sessions, and judge by your own response.", bundle: .module),
+                    detail: String(localized: "Weekly sets per muscle drive growth in a graded dose-response. Start from a productive range and personalize from your own progress rather than fixed cutoffs. Spreading volume across at least two sessions a week helps you fit and recover it — frequency mainly distributes volume, it is not an independent dose.", bundle: .module),
                     citation: cite("volumeDoseResponse"),
                     citationIds: ["pellandDoseResponse2026", "frequencyMeta"],
                     confidence: .moderate,
                     priority: 55,
                     system: .hypertrophy,
                     evidenceCategory: .strengthVolume,
-                    whyNowFacts: ["\(name): \(PrescriptionMath.sets(sets)) sets/week"]))
+                    whyNowFacts: [String(localized: "\(name): \(PrescriptionMath.sets(sets)) sets/week", bundle: .module)]))
             case .overMRV:
                 if readinessPoor {
                     out.append(Recommendation(
                         id: "volumeAdjust.reduce.\(group.rawValue)",
                         kind: .volumeAdjust, group: group,
-                        title: "Hold or trim \(name.lowercased()) volume",
-                        action: "\(name): \(PrescriptionMath.sets(sets))/\(PrescriptionMath.sets(bands.mrv)) sets this week · \(PrescriptionMath.sets(sets - bands.mrv)) over the high end, and readiness is down. Hold steady or trim ~\(max(1, Int((sets - bands.mrv).rounded(.up)))) set\(max(1, Int((sets - bands.mrv).rounded(.up))) == 1 ? "" : "s") and reassess next week.",
-                        detail: "More volume helps with diminishing returns, and adaptation depends on recovering the work you do. When self-reported readiness is poor, holding or slightly reducing volume is the conservative choice — this is a coaching cue, not a diagnosis.",
+                        title: String(localized: "Hold or trim \(name.lowercased()) volume", bundle: .module),
+                        action: String(localized: "\(name): \(PrescriptionMath.sets(sets))/\(PrescriptionMath.sets(bands.mrv)) sets this week · \(PrescriptionMath.sets(sets - bands.mrv)) over the high end, and readiness is down. Hold steady or trim about \(max(1, Int((sets - bands.mrv).rounded(.up)))) sets and reassess next week.", bundle: .module),
+                        detail: String(localized: "More volume helps with diminishing returns, and adaptation depends on recovering the work you do. When self-reported readiness is poor, holding or slightly reducing volume is the conservative choice — this is a coaching cue, not a diagnosis.", bundle: .module),
                         citation: cite("pellandDoseResponse2026"),
                         citationIds: ["volumeDoseResponse"],
                         confidence: .moderate,
                         priority: 56,
                         system: .hypertrophy,
                         evidenceCategory: .strengthVolume,
-                        whyNowFacts: ["\(name): \(PrescriptionMath.sets(sets)) sets/week", "readiness down"]))
+                        whyNowFacts: [String(localized: "\(name): \(PrescriptionMath.sets(sets)) sets/week", bundle: .module), "readiness down"]))
                 }
             default:
                 break
@@ -165,21 +165,21 @@ public enum CoachRecommendationEngine {
         guard stale || easyMod <= 0 else { return [] }
 
         let action = facts.experience == .beginner
-            ? "Build an aerobic base: 20–30 min of easy-to-moderate work (brisk walk, light cycle, easy swim) a couple of times a week. Progress duration before intensity."
-            : "Add easy-to-moderate aerobic work: 20–45 min of steady effort. Build the habit and the duration first; intensity can come later."
+            ? String(localized: "Build an aerobic base: 20–30 min of easy-to-moderate work (brisk walk, light cycle, easy swim) a couple of times a week. Progress duration before intensity.", bundle: .module)
+            : String(localized: "Add easy-to-moderate aerobic work: 20–45 min of steady effort. Build the habit and the duration first; intensity can come later.", bundle: .module)
         return [Recommendation(
             id: "aerobicBase",
             kind: .aerobicBase,
-            title: "Build your aerobic base",
+            title: String(localized: "Build your aerobic base", bundle: .module),
             action: action,
-            detail: "Large pooled cohorts link more regular physical activity with better long-term health, with the biggest gains for people doing little now. There is no single best dose — steady, sustainable easy-to-moderate work builds the base that harder sessions later sit on top of.",
+            detail: String(localized: "Large pooled cohorts link more regular physical activity with better long-term health, with the biggest gains for people doing little now. There is no single best dose — steady, sustainable easy-to-moderate work builds the base that harder sessions later sit on top of.", bundle: .module),
             citation: cite("ekelundActivityMortality2016"),
             citationIds: ["mooreLeisureActivity2012", "aremDoseResponse2015"],
             confidence: .moderate,
             priority: 50,
             system: .aerobicBase,
             evidenceCategory: .aerobicBase,
-            whyNowFacts: ["No easy/moderate aerobic work logged this week"],
+            whyNowFacts: [String(localized: "No easy/moderate aerobic work logged this week", bundle: .module)],
             minimumEligibility: facts.experience == .beginner ? ["progress duration before intensity"] : [])]
     }
 
@@ -198,17 +198,17 @@ public enum CoachRecommendationEngine {
         return [Recommendation(
             id: "vo2Intervals",
             kind: .vo2Intervals,
-            title: "Add a VO₂ interval session",
-            action: "Try one session of long intervals — e.g. 4×4 min hard / 3 min easy, or 3×5 min — once a week. Add a second only if load and recovery clearly support it.",
-            detail: "Interval training improves VO₂max; both intervals and steady continuous work help, with a small edge to higher intensity. One quality session a week is plenty for most people.",
+            title: String(localized: "Add a VO₂ interval session", bundle: .module),
+            action: String(localized: "Try one session of long intervals — e.g. 4×4 min hard / 3 min easy, or 3×5 min — once a week. Add a second only if load and recovery clearly support it.", bundle: .module),
+            detail: String(localized: "Interval training improves VO₂max; both intervals and steady continuous work help, with a small edge to higher intensity. One quality session a week is plenty for most people.", bundle: .module),
             citation: cite("crowleyVO2Intensity2022"),
             citationIds: ["poonHIIT2024", "milanovicHIIT2015"],
-            cardioPrescription: "Long intervals (e.g. 4×4)",
+            cardioPrescription: String(localized: "Long intervals (e.g. 4×4)", bundle: .module),
             confidence: .moderate,
             priority: 45,
             system: .vo2max,
             evidenceCategory: .vo2Training,
-            whyNowFacts: vo2Declined ? ["VO₂ assessment trending down"] : ["No VO₂ work logged this week"],
+            whyNowFacts: vo2Declined ? ["VO₂ assessment trending down"] : [String(localized: "No VO₂ work logged this week", bundle: .module)],
             minimumEligibility: ["aerobic base", "intermediate or advanced"])]
     }
 
@@ -226,21 +226,21 @@ public enum CoachRecommendationEngine {
         if estimatedHR { citationIds.append("tanakaMaxHR2001") }
         var risk: [String] = []
         if estimatedHR {
-            risk.append("Your heart-rate zones use an age-estimated max, which varies a lot between people — go by feel (comfortably hard) as well as HR.")
+            risk.append(String(localized: "Your heart-rate zones use an age-estimated max, which varies a lot between people — go by feel (comfortably hard) as well as HR.", bundle: .module))
         }
         return [Recommendation(
             id: "thresholdTempo",
             kind: .thresholdTempo,
-            title: "Add a threshold/tempo session",
-            action: "Add a steady-hard effort: e.g. 2×10 min or 20 min continuous at a 'comfortably hard' pace you could just hold a few words at.",
-            detail: "Threshold work develops the pace you can sustain. Heart-rate, ventilatory, and lactate thresholds agree on average but vary between individuals, so prescriptions are approximate — anchor to perceived effort, not just a number.",
+            title: String(localized: "Add a threshold/tempo session", bundle: .module),
+            action: String(localized: "Add a steady-hard effort: e.g. 2×10 min or 20 min continuous at a 'comfortably hard' pace you could just hold a few words at.", bundle: .module),
+            detail: String(localized: "Threshold work develops the pace you can sustain. Heart-rate, ventilatory, and lactate thresholds agree on average but vary between individuals, so prescriptions are approximate — anchor to perceived effort, not just a number.", bundle: .module),
             citation: cite("kaufmannThreshold2023"),
             citationIds: citationIds,
             confidence: confidence,
             priority: 40,
             system: .threshold,
             evidenceCategory: .thresholdTraining,
-            whyNowFacts: ["No threshold work logged this week"],
+            whyNowFacts: [String(localized: "No threshold work logged this week", bundle: .module)],
             riskNotes: risk,
             uncertainty: estimatedHR ? .low : .moderate)]
     }
@@ -261,18 +261,18 @@ public enum CoachRecommendationEngine {
         return [Recommendation(
             id: "anaerobicOptIn",
             kind: .anaerobicOptIn,
-            title: "Short sprint intervals",
-            action: "Add short all-out efforts only if you feel ready today: e.g. 4–6 × 20–30 s sprints with full recovery.",
-            detail: "Sprint-interval training can improve fitness in little time, but it is very fatiguing and high-effort. Coach keeps it in the plan when you are eligible, then learns from your choices: if you keep skipping it or choosing easier work, it will rank lower over time.",
+            title: String(localized: "Short sprint intervals", bundle: .module),
+            action: String(localized: "Add short all-out efforts only if you feel ready today: e.g. 4–6 × 20–30 s sprints with full recovery.", bundle: .module),
+            detail: String(localized: "Sprint-interval training can improve fitness in little time, but it is very fatiguing and high-effort. Coach keeps it in the plan when you are eligible, then learns from your choices: if you keep skipping it or choosing easier work, it will rank lower over time.", bundle: .module),
             citation: cite("slothSIT2013"),
             citationIds: ["wingateTest", "buchheitLaursenHIIT2013"],
             confidence: .moderate,
             priority: priority,
             system: .anaerobicPower,
             evidenceCategory: .anaerobicTraining,
-            riskNotes: ["High fatigue and high effort.",
-                        "Stop for pain, chest discomfort, or dizziness.",
-                        "If you usually choose easier alternatives, Coach will lower this in the future."],
+            riskNotes: [String(localized: "High fatigue and high effort.", bundle: .module),
+                        String(localized: "Stop for pain, chest discomfort, or dizziness.", bundle: .module),
+                        String(localized: "If you usually choose easier alternatives, Coach will lower this in the future.", bundle: .module)],
             minimumEligibility: ["aerobic base", "intermediate or advanced"])]
     }
 
@@ -284,16 +284,16 @@ public enum CoachRecommendationEngine {
         return [Recommendation(
             id: "flexibility",
             kind: .flexibility,
-            title: "Add some mobility work",
-            action: "Spend 10–20 min on stretching or mobility for tight areas. Easy to fit on a rest or recovery day.",
-            detail: "Regular stretching reliably increases range of motion over time. The benefit here is flexibility and ROM. Coach makes no broad injury-prevention claim for stretching alone.",
+            title: String(localized: "Add some mobility work", bundle: .module),
+            action: String(localized: "Spend 10–20 min on stretching or mobility for tight areas. Easy to fit on a rest or recovery day.", bundle: .module),
+            detail: String(localized: "Regular stretching reliably increases range of motion over time. The benefit here is flexibility and ROM. Coach makes no broad injury-prevention claim for stretching alone.", bundle: .module),
             citation: cite("konradStretchROM2024"),
             citationIds: ["behmStretching2016"],
             confidence: .moderate,
             priority: 35,
             system: .flexibility,
             evidenceCategory: .flexibilityROM,
-            whyNowFacts: ["No mobility/flexibility work logged this week"])]
+            whyNowFacts: [String(localized: "No mobility/flexibility work logged this week", bundle: .module)])]
     }
 
     // MARK: - C8 Recovery & readiness
@@ -306,18 +306,18 @@ public enum CoachRecommendationEngine {
         guard readinessPoor || consec >= 3 || spike || pain else { return [] }
 
         var why: [String] = []
-        if readinessPoor { why.append("Readiness is low") }
-        if consec >= 3 { why.append("\(consec) hard days in a row") }
-        if spike { why.append("Training load jumped recently") }
+        if readinessPoor { why.append(String(localized: "Readiness is low", bundle: .module)) }
+        if consec >= 3 { why.append(String(localized: "\(consec) hard days in a row", bundle: .module)) }
+        if spike { why.append(String(localized: "Training load jumped recently", bundle: .module)) }
 
         return [Recommendation(
             id: "recoveryReadiness",
             kind: .recoveryReadiness,
-            title: "Consider an easier day",
+            title: String(localized: "Consider an easier day", bundle: .module),
             action: pain
-                ? "You flagged pain or illness — choose rest or gentle movement, and seek qualified advice if it persists."
-                : "Today looks like a good day to back off: rest, an easy walk, mobility, or a lighter reduced-load session.",
-            detail: "Self-reported soreness, sleep, stress, and energy track training load well and respond more consistently than most objective markers. Recovering the work you do is what lets it pay off. This is a conservative coaching cue based on your inputs — not a diagnosis.",
+                ? String(localized: "You flagged pain or illness — choose rest or gentle movement, and seek qualified advice if it persists.", bundle: .module)
+                : String(localized: "Today looks like a good day to back off: rest, an easy walk, mobility, or a lighter reduced-load session.", bundle: .module),
+            detail: String(localized: "Self-reported soreness, sleep, stress, and energy track training load well and respond more consistently than most objective markers. Recovering the work you do is what lets it pay off. This is a conservative coaching cue based on your inputs — not a diagnosis.", bundle: .module),
             citation: cite("sawMonitoring2016"),
             citationIds: ["halsonRecovery2014", "dupuyFatigue2018", "meeusenOvertraining2013"],
             confidence: .moderate,
@@ -342,30 +342,30 @@ public enum CoachRecommendationEngine {
             out.append(Recommendation(
                 id: "assessmentPrompt.vo2max",
                 kind: .assessmentPrompt,
-                title: "Add a VO₂ test baseline",
-                action: "Run a Cooper 12-minute run (or 1.5-mile run / Rockport walk) so Coach can track VO₂max and tailor cardio.",
-                detail: "Your workout history and assessment baselines are different things. Logged workouts let Coach see training habits; one standardized VO₂ field test gives Coach a measured aerobic baseline for trend checks and interval recommendations.",
+                title: String(localized: "Add a VO₂ test baseline", bundle: .module),
+                action: String(localized: "Run a Cooper 12-minute run (or 1.5-mile run / Rockport walk) so Coach can track VO₂max and tailor cardio.", bundle: .module),
+                detail: String(localized: "Your workout history and assessment baselines are different things. Logged workouts let Coach see training habits; one standardized VO₂ field test gives Coach a measured aerobic baseline for trend checks and interval recommendations.", bundle: .module),
                 citation: cite("cooperVo2max"),
                 confidence: .low,
                 priority: 30,
                 system: .vo2max,
                 evidenceCategory: .fieldTestValidity,
-                whyNowFacts: ["Need 1 standardized VO₂ field test; logged workouts do not replace this test baseline"]))
+                whyNowFacts: [String(localized: "Need 1 standardized VO₂ field test; logged workouts do not replace this test baseline", bundle: .module)]))
         }
 
         if missing(.maximalStrength), strengthWeeks(facts) >= 1 {
             out.append(Recommendation(
                 id: "assessmentPrompt.strength",
                 kind: .assessmentPrompt,
-                title: "Add a strength test baseline",
-                action: "Run an Estimated 1RM test on your main lifts so Coach can prescribe specific loads.",
-                detail: "Your logged workouts are enough for volume and habit trends. A separate e1RM or rep-max test gives Coach a measured strength baseline, which unlocks percentage-based load targets and cleaner retest comparisons.",
+                title: String(localized: "Add a strength test baseline", bundle: .module),
+                action: String(localized: "Run an Estimated 1RM test on your main lifts so Coach can prescribe specific loads.", bundle: .module),
+                detail: String(localized: "Your logged workouts are enough for volume and habit trends. A separate e1RM or rep-max test gives Coach a measured strength baseline, which unlocks percentage-based load targets and cleaner retest comparisons.", bundle: .module),
                 citation: cite("oneRMEstimation"),
                 confidence: .low,
                 priority: 31,
                 system: .maximalStrength,
                 evidenceCategory: .fieldTestValidity,
-                whyNowFacts: ["Need 1 e1RM or rep-max test for a main lift; workout count alone does not create this assessment baseline"]))
+                whyNowFacts: [String(localized: "Need 1 e1RM or rep-max test for a main lift; workout count alone does not create this assessment baseline", bundle: .module)]))
         }
 
         return out

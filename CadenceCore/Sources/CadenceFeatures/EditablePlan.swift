@@ -109,7 +109,7 @@ public struct EditablePlan: Hashable, Identifiable {
             let id = performer.performerID.flatMap(UUID.init(uuidString:))
             return EditablePerformerPlan(
                 performerID: id,
-                name: id == nil ? "Me" : (names[performer.performerID ?? ""] ?? "Partner"),
+                name: id == nil ? String(localized: "Me", bundle: .module) : (names[performer.performerID ?? ""] ?? String(localized: "Partner", bundle: .module)),
                 sets: prescription.sets.map { EditableSet(targetReps: $0.targetReps,
                                                           targetWeight: $0.targetWeightKg,
                                                           loadMode: EditableLoadMode(rawValue: $0.targetLoadMode ?? "straight") ?? .straight,
@@ -253,7 +253,7 @@ public struct EditablePlan: Hashable, Identifiable {
                             targetWeight: ex.loadKg
                         )
                     },
-                    notes: ex.rir.map { "Target ≤\($0) RIR" } ?? ""
+                    notes: ex.rir.map { String(localized: "Target ≤\($0) RIR", bundle: .module) } ?? ""
                 )
             },
             partnerIDs: []
@@ -276,8 +276,8 @@ public struct EditablePlan: Hashable, Identifiable {
         return from(coach: CoachSession(
             id: "strength.userAnyway",
             kind: .strength,
-            title: "Strength session",
-            subtitle: "\(range.lowerBound)–\(range.upperBound) reps · ≤\(rir) RIR",
+            title: String(localized: "Strength session", bundle: .module),
+            subtitle: String(localized: "\(range.lowerBound)–\(range.upperBound) reps · ≤\(rir) RIR", bundle: .module),
             durationMinutes: 45,
             exercises: exercises,
             trainingLoadTags: ["strength"],

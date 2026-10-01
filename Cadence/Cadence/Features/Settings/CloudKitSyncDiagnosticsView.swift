@@ -22,8 +22,8 @@ struct CloudKitSyncDiagnosticsView: View {
         Form {
             Section("This iPhone") {
                 if let snapshot {
-                    diagnosticRow("Workout records", value: "\(snapshot.localWorkoutCount)")
-                    diagnosticRow("Newest local workout", value: dateText(snapshot.localLatestWorkoutDate))
+                    diagnosticRow(String(localized: "Workout records"), value: "\(snapshot.localWorkoutCount)")
+                    diagnosticRow(String(localized: "Newest local workout"), value: dateText(snapshot.localLatestWorkoutDate))
                 } else {
                     HStack {
                         ProgressView()
@@ -34,13 +34,13 @@ struct CloudKitSyncDiagnosticsView: View {
 
             Section("iCloud") {
                 if let snapshot {
-                    diagnosticRow("Account", value: snapshot.account.displayName)
-                    diagnosticRow("Container", value: CadenceStore.activeCloudKitContainerID())
-                    diagnosticRow("Sync mode", value: "Automatic · incremental")
-                    diagnosticRow("Legacy backup", value: snapshot.legacyBackupFound ? "Found" : "Not found")
+                    diagnosticRow(String(localized: "Account"), value: snapshot.account.displayName)
+                    diagnosticRow(String(localized: "Container"), value: CadenceStore.activeCloudKitContainerID())
+                    diagnosticRow(String(localized: "Sync mode"), value: String(localized: "Automatic · incremental"))
+                    diagnosticRow(String(localized: "Legacy backup"), value: snapshot.legacyBackupFound ? String(localized: "Found") : String(localized: "Not found"))
                     if snapshot.legacyBackupFound {
-                        diagnosticRow("Backup date", value: dateText(snapshot.legacyBackupDate))
-                        diagnosticRow("Backup workouts", value: snapshot.legacyBackupSessionCount.map(String.init) ?? "Unknown")
+                        diagnosticRow(String(localized: "Backup date"), value: dateText(snapshot.legacyBackupDate))
+                        diagnosticRow(String(localized: "Backup workouts"), value: snapshot.legacyBackupSessionCount.map(String.init) ?? String(localized: "Unknown"))
                     }
                     if let remoteError = snapshot.remoteError {
                         Text(remoteError)
@@ -57,10 +57,10 @@ struct CloudKitSyncDiagnosticsView: View {
             }
 
             Section("Local store") {
-                diagnosticRow("Cladiron data", value: storageUsage.appDataText)
-                diagnosticRow("Workout database", value: storageUsage.workoutStoreText)
-                diagnosticRow("Free iPhone storage", value: storageUsage.deviceFreeText)
-                diagnosticRow("iCloud storage used", value: "Not exposed by Apple")
+                diagnosticRow(String(localized: "Cladiron data"), value: storageUsage.appDataText)
+                diagnosticRow(String(localized: "Workout database"), value: storageUsage.workoutStoreText)
+                diagnosticRow(String(localized: "Free iPhone storage"), value: storageUsage.deviceFreeText)
+                diagnosticRow("iCloud storage used", value: String(localized: "Not exposed by Apple"))
             }
 
             Section {
@@ -117,7 +117,7 @@ struct CloudKitSyncDiagnosticsView: View {
         isRefreshing = true
         message = nil
         guard let container else {
-            message = "The local data store is unavailable."
+            message = String(localized: "The local data store is unavailable.")
             isRefreshing = false
             return
         }
@@ -131,18 +131,18 @@ struct CloudKitSyncDiagnosticsView: View {
         isRecovering = true
         message = nil
         guard let container else {
-            message = "The local data store is unavailable."
+            message = String(localized: "The local data store is unavailable.")
             isRecovering = false
             return
         }
         do {
             let added = try await CloudKitRecoveryService(container: container).recoverLegacyBackup()
             message = added == 0
-                ? "Recovery completed; no new workouts were needed."
-                : "Recovery merged \(added) workout\(added == 1 ? "" : "s")."
+                ? String(localized: "Recovery completed; no new workouts were needed.")
+                : String(localized: "Recovery merged \(added) workouts.")
             snapshot = await CloudKitRecoveryService(container: container).inspect()
         } catch {
-            message = "Recovery failed: \(error.localizedDescription)"
+            message = String(localized: "Recovery failed: \(error.localizedDescription)")
         }
         isRecovering = false
     }
@@ -159,7 +159,7 @@ struct CloudKitSyncDiagnosticsView: View {
     }
 
     private func dateText(_ date: Date?) -> String {
-        guard let date else { return "None" }
+        guard let date else { return String(localized: "None") }
         return date.formatted(date: .abbreviated, time: .shortened)
     }
 }
@@ -190,7 +190,7 @@ final class CloudKitRecoveryService {
             return CloudKitRecoverySnapshot(localWorkoutCount: local.count,
                                              localLatestWorkoutDate: local.latest,
                                              account: .temporarilyUnavailable,
-                                             remoteError: "Could not check iCloud: \(error.localizedDescription)")
+                                             remoteError: String(localized: "Could not check iCloud: \(error.localizedDescription)"))
         }
 
         guard account == .available else {
@@ -218,7 +218,7 @@ final class CloudKitRecoveryService {
             return CloudKitRecoverySnapshot(localWorkoutCount: local.count,
                                              localLatestWorkoutDate: local.latest,
                                              account: account,
-                                             remoteError: "Could not inspect the legacy backup: \(error.localizedDescription)")
+                                             remoteError: String(localized: "Could not inspect the legacy backup: \(error.localizedDescription)"))
         }
     }
 
@@ -292,7 +292,7 @@ enum CloudKitRecoveryError: LocalizedError {
         case .iCloudUnavailable:
             return "iCloud is not currently available to Cladiron."
         case .backupPayloadMissing:
-            return "The legacy iCloud backup record has no recoverable payload."
+            return String(localized: "The legacy iCloud backup record has no recoverable payload.")
         }
     }
 }

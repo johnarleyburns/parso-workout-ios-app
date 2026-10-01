@@ -70,7 +70,7 @@ struct WeightKeypadSheet: View {
     private var weightKg: Double { WorkoutMath.canonical(parse(entry) ?? 0, from: unit) }
     private var displayWeight: String {
         if !entry.isEmpty { return entry }
-        return usesBodyweight ? "BW" : ""
+        return usesBodyweight ? String(localized: "BW") : ""
     }
     /// Opposite-unit read-out, auto-converted; "—" until a positive weight is typed.
     private var altText: String {
@@ -84,7 +84,7 @@ struct WeightKeypadSheet: View {
     private var wouldBePR: Bool { canSave && prCheck(weightKg, reps) }
     private var partners: [Person] { people.filter { !$0.isMe } }
     private var selectedPerson: Person? { people.first { $0.id == performedByID } }
-    private var weightLabel: String { usesBodyweight ? "Added" : "Weight" }
+    private var weightLabel: String { usesBodyweight ? String(localized: "Added") : String(localized: "Weight") }
 
     var body: some View {
         NavigationStack {

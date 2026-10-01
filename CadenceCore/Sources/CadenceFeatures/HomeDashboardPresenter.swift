@@ -103,32 +103,29 @@ public struct HomeDashboardState: Sendable, Equatable {
             let logged = Self.format(loggedMinutes)
             let equivalent = Self.format(moderateEquivalentMinutes)
             guard vigorousMinutes > 0 || easyMinutes > 0 else {
-                return "\(logged) min logged this week."
+                return String(localized: "\(logged) min logged this week.", bundle: .module)
             }
-            return "\(logged) min exercised produces \(equivalent) moderate-equivalent guideline credit."
+            return String(localized: "\(logged) min exercised produces \(equivalent) moderate-equivalent guideline credit.", bundle: .module)
         }
 
         public var explanation: String {
-            "Public-health guidance counts 150 moderate-equivalent minutes a week. "
-                + "Vigorous work counts double. With resting HR, moderate is 40–<60% heart-rate reserve; "
-                + "without it, the app uses 50–<70% of maximum HR so its Z2 time receives moderate credit. "
-                + "Below-moderate activity receives no guideline credit."
+            String(localized: "Public-health guidance counts 150 moderate-equivalent minutes a week. Vigorous work counts double. With resting HR, moderate is 40–<60% heart-rate reserve; without it, the app uses 50–<70% of maximum HR so its Z2 time receives moderate credit. Below-moderate activity receives no guideline credit.", bundle: .module)
         }
 
         /// One row per intensity actually trained, for the expanded card.
         public var lines: [(label: String, minutes: String, credit: String)] {
             var rows: [(String, String, String)] = []
             if belowModerateMinutes > 0 {
-                rows.append(("Below moderate", "\(Self.format(belowModerateMinutes)) min",
+                rows.append((String(localized: "Below moderate", bundle: .module), "\(Self.format(belowModerateMinutes)) min",
                              "0 min credited"))
             }
             if moderateMinutes > 0 {
-                rows.append(("Moderate", "\(Self.format(moderateMinutes)) min",
-                             "\(Self.format(moderateMinutes)) min credited"))
+                rows.append((String(localized: "Moderate", bundle: .module), "\(Self.format(moderateMinutes)) min",
+                             String(localized: "\(Self.format(moderateMinutes)) min credited", bundle: .module)))
             }
             if vigorousMinutes > 0 {
-                rows.append(("Vigorous", "\(Self.format(vigorousMinutes)) min",
-                             "\(Self.format(vigorousMinutes * 2)) min credited"))
+                rows.append((String(localized: "Vigorous", bundle: .module), "\(Self.format(vigorousMinutes)) min",
+                             String(localized: "\(Self.format(vigorousMinutes * 2)) min credited", bundle: .module)))
             }
             return rows
         }
@@ -199,12 +196,12 @@ public enum HomeDashboardPresenter {
         let balance = snapshot.decision.weeklyBalance
         let strengthTarget = Double(max(1, schedule.strengthDaysPerWeek))
         let strength = HomeDashboardState.Progress(completed: Double(balance.strengthDays), target: strengthTarget,
-            displayText: "\(balance.strengthDays) of \(schedule.strengthDaysPerWeek) days",
+            displayText: String(localized: "\(balance.strengthDays) of \(schedule.strengthDaysPerWeek) days", bundle: .module),
             normalized: min(1, Double(balance.strengthDays) / strengthTarget))
         let cardioCredit = weeklyCardio?.moderateEquivalentMinutes ?? balance.moderateEquivalentMinutes
         let cardioTarget = weeklyCardio?.guidelineTarget ?? 150
         let cardio = HomeDashboardState.Progress(completed: cardioCredit, target: cardioTarget,
-            displayText: "\(Int(cardioCredit.rounded())) of \(Int(cardioTarget)) min credit",
+            displayText: String(localized: "\(Int(cardioCredit.rounded())) of \(Int(cardioTarget)) min credit", bundle: .module),
             normalized: min(1, max(0, cardioCredit / cardioTarget)))
         // Home's visible volume must use the same explicit Monday-to-now
         // boundary as the Strength and Cardio rows. DB++'s observation is still
@@ -222,7 +219,7 @@ public enum HomeDashboardPresenter {
         let averageSets = averageCappedSets(volume.filter(\.isTracked).map(\.sets))
         let volumeCoverage = HomeDashboardState.Progress(
             completed: averageSets, target: WeeklySetProgress.maximum,
-            displayText: "\(format(averageSets)) sets",
+            displayText: String(localized: "\(format(averageSets)) sets", bundle: .module),
             normalized: WeeklySetProgress.normalized(averageSets))
         let cardioDetail = HomeDashboardState.CardioDetail(
             loggedMinutes: weeklyCardio?.actualMinutes ?? balance.loggedAerobicMinutes,
@@ -243,7 +240,7 @@ public enum HomeDashboardPresenter {
             zoneMinutes: weeklyCardio?.zoneMinutes ?? [:],
             algorithmVersion: weeklyCardio?.algorithmVersion ?? .legacy)
         return .init(profileContext: .init(goal: goal.displayName, experience: experience.displayName,
-                                           ageText: userAge.map(String.init) ?? "Age not set"),
+                                           ageText: userAge.map(String.init) ?? String(localized: "Age not set", bundle: .module)),
                      strength: strength, cardio: cardio, volumeCoverage: volumeCoverage,
                      volume: volume,
                      cardioDetail: cardioDetail, activityDose: activityDose,
@@ -317,7 +314,7 @@ public enum HomeDashboardPresenter {
 
     private static func suggestions(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences) -> [HomeSuggestion] {
         var candidates: [HomeSuggestion] = snapshot.decision.warnings.map {
-            .init(id: $0.id, category: .safety, title: "Recovery note", message: $0.message,
+            .init(id: $0.id, category: .safety, title: String(localized: "Recovery note", bundle: .module), message: $0.message,
                   citationID: $0.citationIds.first, sourceClaimKey: "warning:\($0.id)", priority: 100, confidence: 100)
         }
         // Keep Home suggestions to evidence-backed warnings. The selected

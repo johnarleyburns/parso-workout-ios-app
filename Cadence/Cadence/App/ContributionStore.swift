@@ -48,7 +48,7 @@ final class ContributionStore {
             switch try await product.purchase() {
             case .success(let verification):
                 guard case .verified(let transaction) = verification else {
-                    lastError = "Couldn't verify the purchase."
+                    lastError = String(localized: "Couldn't verify the purchase.")
                     return false
                 }
                 markContributed()

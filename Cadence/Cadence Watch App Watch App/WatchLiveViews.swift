@@ -154,11 +154,11 @@ struct HRSettingsView: View {
     }
 
     private var bleText: String {
-        guard let state = watchManager.bleState else { return "Not active" }
+        guard let state = watchManager.bleState else { return String(localized: "Not active") }
         switch state {
-        case .scanning: return "Scanning..."
-        case .connected: return "Connected"
-        case .disconnected: return "Disconnected"
+        case .scanning: return String(localized: "Scanning...")
+        case .connected: return String(localized: "Connected")
+        case .disconnected: return String(localized: "Disconnected")
         }
     }
 }

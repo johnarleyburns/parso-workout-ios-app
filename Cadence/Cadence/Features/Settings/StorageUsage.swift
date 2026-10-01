@@ -14,7 +14,7 @@ struct StorageUsageSnapshot: Equatable {
     var appDataText: String { Self.fileSizeText(appDataBytes) }
     var workoutStoreText: String { Self.fileSizeText(workoutStoreBytes) }
     var deviceFreeText: String {
-        guard let deviceFreeBytes else { return "Unavailable" }
+        guard let deviceFreeBytes else { return String(localized: "Unavailable") }
         return Self.fileSizeText(deviceFreeBytes)
     }
 

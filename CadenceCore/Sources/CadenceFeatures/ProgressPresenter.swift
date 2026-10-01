@@ -28,31 +28,31 @@ public enum ProgressPresenter {
     public static func strengthTrendSummary(series: [E1RMSeries],
                                             unit: MeasurementUnitPreference) -> String {
         let tracked = series.filter { $0.points.count >= 2 }
-        guard !tracked.isEmpty else { return "No lifts tracked yet." }
+        guard !tracked.isEmpty else { return String(localized: "No lifts tracked yet.", bundle: .module) }
         let parts = tracked.map { "\($0.exercise) \(trendLabel($0.trend, delta: $0.delta, unit: unit))" }
-        return "\(tracked.count) lifts tracked. " + parts.joined(separator: ", ")
+        return String(localized: "\(tracked.count) lifts tracked. ", bundle: .module) + parts.joined(separator: ", ")
     }
 
     /// Goal-relative read of the heavy/moderate/light load split.
     public static func intensityRead(_ i: IntensityDistribution, goal: TrainingGoal) -> String {
         switch goal {
         case .strength:
-            return i.heavy >= 0.5 ? "Skewed to heavy loads \u{2014} aligned with a strength goal."
-                                  : "Lighter than a strength goal usually calls for."
+            return i.heavy >= 0.5 ? String(localized: "Skewed to heavy loads \u{2014} aligned with a strength goal.", bundle: .module)
+                                  : String(localized: "Lighter than a strength goal usually calls for.", bundle: .module)
         case .hypertrophy:
-            return i.moderate >= 0.5 ? "Mostly moderate-load work \u{2014} matched to the hypertrophy rep range."
-                                     : "Spread across loads \u{2014} hypertrophy favors more moderate-rep work."
+            return i.moderate >= 0.5 ? String(localized: "Mostly moderate-load work \u{2014} matched to the hypertrophy rep range.", bundle: .module)
+                                     : String(localized: "Spread across loads \u{2014} hypertrophy favors more moderate-rep work.", bundle: .module)
         case .endurance:
-            return i.light >= 0.4 ? "Plenty of higher-rep work \u{2014} aligned with an endurance goal."
-                                  : "Heavier than an endurance goal usually calls for."
+            return i.light >= 0.4 ? String(localized: "Plenty of higher-rep work \u{2014} aligned with an endurance goal.", bundle: .module)
+                                  : String(localized: "Heavier than an endurance goal usually calls for.", bundle: .module)
         }
     }
 
     /// Goal-relative read of average reps-in-reserve.
     public static func effortRead(_ rir: Double, goal: TrainingGoal) -> String {
         let target = Double(goal.targetRIR)
-        if rir <= target + 0.5 && rir >= target - 0.5 { return "In the effective range for \(goal.displayName.lowercased())." }
+        if rir <= target + 0.5 && rir >= target - 0.5 { return String(localized: "In the effective range for \(goal.displayName.lowercased()).", bundle: .module) }
         return rir > target ? "A little further from failure than \(goal.displayName.lowercased()) calls for."
-                            : "Closer to failure than \(goal.displayName.lowercased()) usually needs."
+                            : String(localized: "Closer to failure than \(goal.displayName.lowercased()) usually needs.", bundle: .module)
     }
 }

@@ -70,9 +70,9 @@ public enum KnowledgeBase {
                 out.append(Insight(
                     id: "volume.\(group.rawValue)",
                     kind: .volume, group: group,
-                    title: "\(name) volume is low",
-                    message: "\(name): \(Format.progress(done: 0, target: bands.mev, unit: "sets")) this week to reach Coach's starting range.",
-                    detail: "\(name) has not been trained this week. Meta-analyses show a graded dose-response between weekly sets per muscle and growth; Coach's starting range is ~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week for your experience. This may be intentional (a rest week or a focused block), but if it isn't, add 1–2 sets and adjust by feel and performance.",
+                    title: String(localized: "\(name) volume is low", bundle: .module),
+                    message: String(localized: "\(name): \(Format.progress(done: 0, target: bands.mev, unit: "sets")) this week to reach Coach's starting range.", bundle: .module),
+                    detail: String(localized: "\(name) has not been trained this week. Meta-analyses show a graded dose-response between weekly sets per muscle and growth; Coach's starting range is ~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week for your experience. This may be intentional (a rest week or a focused block), but if it isn't, add 1–2 sets and adjust by feel and performance.", bundle: .module),
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
                 continue
@@ -84,9 +84,9 @@ public enum KnowledgeBase {
                 out.append(Insight(
                     id: "volume.\(group.rawValue)",
                     kind: .volume, group: group,
-                    title: "\(name) volume is low",
-                    message: "\(name): \(Format.progress(done: sets, target: bands.mev, unit: "sets")) this week to reach the starting range.",
-                    detail: "Meta-analyses show a graded dose-response between weekly sets per muscle and growth, but the exact useful dose varies by person. \(name) is below Coach's starting range (~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week); add a set or two and judge by performance and recovery.",
+                    title: String(localized: "\(name) volume is low", bundle: .module),
+                    message: String(localized: "\(name): \(Format.progress(done: sets, target: bands.mev, unit: "sets")) this week to reach the starting range.", bundle: .module),
+                    detail: String(localized: "Meta-analyses show a graded dose-response between weekly sets per muscle and growth, but the exact useful dose varies by person. \(name) is below Coach's starting range (~\(Format.sets(bands.mev))–\(Format.sets(bands.mav)) sets/week); add a set or two and judge by performance and recovery.", bundle: .module),
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
             case .productive:
@@ -98,18 +98,18 @@ public enum KnowledgeBase {
                 out.append(Insight(
                     id: "volume.\(group.rawValue)",
                     kind: .volume, group: group,
-                    title: "\(name) volume is high",
-                    message: "\(name): \(setsText) sets this week — approaching the high end.",
-                    detail: "\(name) is above Coach's starting range and approaching the high end (~\(Format.sets(bands.mrv)) sets/week). It may still be useful if performance is improving, but watch recovery and session quality before adding more.",
+                    title: String(localized: "\(name) volume is high", bundle: .module),
+                    message: String(localized: "\(name): \(setsText) sets this week — approaching the high end.", bundle: .module),
+                    detail: String(localized: "\(name) is above Coach's starting range and approaching the high end (~\(Format.sets(bands.mrv)) sets/week). It may still be useful if performance is improving, but watch recovery and session quality before adding more.", bundle: .module),
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .info))
             case .overMRV:
                 out.append(Insight(
                     id: "volume.\(group.rawValue)",
                     kind: .volume, group: group,
-                    title: "\(name) volume may be too high",
-                    message: "\(name): \(setsText)/\(Format.sets(bands.mrv)) sets this week · \(Format.sets(sets - bands.mrv)) over the high end.",
-                    detail: "\(name) is above Coach's high-end starting point (~\(Format.sets(bands.mrv)) sets/week). More sets have diminishing returns and only help if you recover from them; consider holding or taking a lighter week.",
+                    title: String(localized: "\(name) volume may be too high", bundle: .module),
+                    message: String(localized: "\(name): \(setsText)/\(Format.sets(bands.mrv)) sets this week · \(Format.sets(sets - bands.mrv)) over the high end.", bundle: .module),
+                    detail: String(localized: "\(name) is above Coach's high-end starting point (~\(Format.sets(bands.mrv)) sets/week). More sets have diminishing returns and only help if you recover from them; consider holding or taking a lighter week.", bundle: .module),
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
             }
@@ -129,16 +129,16 @@ public enum KnowledgeBase {
                     kind: .trend, exercise: lift,
                     title: "\(lift) is trending down",
                     message: "\(lift): estimated 1RM is lower than the prior week.",
-                    detail: "Your best estimated 1RM on \(lift) (from logged load × reps) has dropped versus last week. A short-term dip is normal, but a sustained decline can signal accumulated fatigue or too little recovery — worth watching.",
+                    detail: String(localized: "Your best estimated 1RM on \(lift) (from logged load × reps) has dropped versus last week. A short-term dip is normal, but a sustained decline can signal accumulated fatigue or too little recovery — worth watching.", bundle: .module),
                     citation: CitationRegistry.schoenfeld2021,
                     severity: .attention))
             case .flat:
                 out.append(Insight(
                     id: "trend.\(lift)",
                     kind: .trend, exercise: lift,
-                    title: "\(lift) has stalled",
+                    title: String(localized: "\(lift) has stalled", bundle: .module),
                     message: "\(lift): estimated 1RM is flat versus last week.",
-                    detail: "Your estimated 1RM on \(lift) is roughly unchanged. Progressive overload — adding reps within your range, then load — is what drives strength over time; a plateau is the cue to nudge one of them up.",
+                    detail: String(localized: "Your estimated 1RM on \(lift) is roughly unchanged. Progressive overload — adding reps within your range, then load — is what drives strength over time; a plateau is the cue to nudge one of them up.", bundle: .module),
                     citation: CitationRegistry.schoenfeld2021,
                     severity: .info))
             case .rising:
@@ -147,7 +147,7 @@ public enum KnowledgeBase {
                     kind: .trend, exercise: lift,
                     title: "\(lift) is progressing",
                     message: "\(lift): estimated 1RM is up versus last week — nice work.",
-                    detail: "Your best estimated 1RM on \(lift) rose versus last week. That's progressive overload working; keep the progression going while it holds.",
+                    detail: String(localized: "Your best estimated 1RM on \(lift) rose versus last week. That's progressive overload working; keep the progression going while it holds.", bundle: .module),
                     citation: CitationRegistry.schoenfeld2021,
                     severity: .info))
             }
@@ -169,9 +169,9 @@ public enum KnowledgeBase {
             out.append(Insight(
                 id: "frequency.\(group.rawValue)",
                 kind: .frequency, group: group,
-                title: "Split your \(name.lowercased()) volume",
-                message: "\(name): \(Format.sets(sets)) sets in a single day this week.",
-                detail: "When weekly volume is high, spreading it across two or more sessions tends to produce at least as much growth as cramming it into one — likely through better per-set quality. Consider training \(name.lowercased()) on a second day.",
+                title: String(localized: "Split your \(name.lowercased()) volume", bundle: .module),
+                message: String(localized: "\(name): \(Format.sets(sets)) sets in a single day this week.", bundle: .module),
+                detail: String(localized: "When weekly volume is high, spreading it across two or more sessions tends to produce at least as much growth as cramming it into one — likely through better per-set quality. Consider training \(name.lowercased()) on a second day.", bundle: .module),
                 citation: CitationRegistry.frequencyMeta,
                 severity: .info))
         }
@@ -189,9 +189,9 @@ public enum KnowledgeBase {
             return [Insight(
                 id: "intensity.strength",
                 kind: .intensity,
-                title: "Lift heavier for strength",
-                message: "Most of your sets are lighter than ~80% 1RM.",
-                detail: "For a strength goal there's a clear dose-response favouring heavy loads: roughly 1–5 reps at ~80–100% of 1RM best builds maximal strength. Only \(Format.percent(dist.heavy)) of your loaded sets this week were in that heavy range.",
+                title: String(localized: "Lift heavier for strength", bundle: .module),
+                message: String(localized: "Most of your sets are lighter than ~80% 1RM.", bundle: .module),
+                detail: String(localized: "For a strength goal there's a clear dose-response favouring heavy loads: roughly 1–5 reps at ~80–100% of 1RM best builds maximal strength. Only \(Format.percent(dist.heavy)) of your loaded sets this week were in that heavy range.", bundle: .module),
                 citation: CitationRegistry.schoenfeld2021,
                 severity: .attention)]
         case .endurance:
@@ -199,9 +199,9 @@ public enum KnowledgeBase {
             return [Insight(
                 id: "intensity.endurance",
                 kind: .intensity,
-                title: "Lighter loads suit endurance",
-                message: "Your sets skew heavy for an endurance goal.",
-                detail: "Local muscular endurance tends to favour higher reps at lighter loads, though the evidence here is more equivocal than for strength or hypertrophy — treat this as a lower-confidence nudge. \(Format.percent(dist.heavy)) of your loaded sets this week were heavy (≥80% 1RM).",
+                title: String(localized: "Lighter loads suit endurance", bundle: .module),
+                message: String(localized: "Your sets skew heavy for an endurance goal.", bundle: .module),
+                detail: String(localized: "Local muscular endurance tends to favour higher reps at lighter loads, though the evidence here is more equivocal than for strength or hypertrophy — treat this as a lower-confidence nudge. \(Format.percent(dist.heavy)) of your loaded sets this week were heavy (≥80% 1RM).", bundle: .module),
                 citation: CitationRegistry.schoenfeld2021,
                 severity: .info)]
         case .hypertrophy:
@@ -211,9 +211,9 @@ public enum KnowledgeBase {
             return [Insight(
                 id: "intensity.hypertrophy",
                 kind: .intensity,
-                title: "Train closer to failure",
-                message: "Your sets average about \(Format.oneDecimal(rir)) reps in reserve.",
-                detail: "For hypertrophy, growth is similar across a wide load range as long as sets are taken near failure — proximity to failure, not the load itself, is the main driver. Averaging ~\(Format.oneDecimal(rir)) RIR suggests leaving several reps in the tank; pushing closer (0–3 RIR) would likely add stimulus.",
+                title: String(localized: "Train closer to failure", bundle: .module),
+                message: String(localized: "Your sets average about \(Format.oneDecimal(rir)) reps in reserve.", bundle: .module),
+                detail: String(localized: "For hypertrophy, growth is similar across a wide load range as long as sets are taken near failure — proximity to failure, not the load itself, is the main driver. Averaging ~\(Format.oneDecimal(rir)) RIR suggests leaving several reps in the tank; pushing closer (0–3 RIR) would likely add stimulus.", bundle: .module),
                 citation: CitationRegistry.schoenfeld2021,
                 severity: .info)]
         }
@@ -231,13 +231,13 @@ public enum KnowledgeBase {
             let examples = names.prefix(3).map { "'\($0)'" }.joined(separator: ", ")
             let message = count == 1
                 ? "\(examples) is missing muscle data — the coach can't track volume for it."
-                : "\(count) exercises (\(examples)) are missing muscle data — the coach can't track volume for them."
+                : String(localized: "\(count) exercises (\(examples)) are missing muscle data — the coach can't track volume for them.", bundle: .module)
             return [Insight(
                 id: "exerciseDefinition.incomplete",
                 kind: .exerciseDefinition,
-                title: "Custom exercises need muscle definitions",
+                title: String(localized: "Custom exercises need muscle definitions", bundle: .module),
                 message: message,
-                detail: "Accurate exercise classification is essential for quantifying training loads and informing programming decisions (Brennan et al., 2025). Tap to open Custom Exercises in Settings to edit or merge them.",
+                detail: String(localized: "Accurate exercise classification is essential for quantifying training loads and informing programming decisions (Brennan et al., 2025). Tap to open Custom Exercises in Settings to edit or merge them.", bundle: .module),
                 citation: CitationRegistry.citation(forId: "brennanExerciseClassification2025") ?? CitationRegistry.schoenfeld2021,
                 severity: .attention)]
         }
@@ -261,17 +261,17 @@ public enum KnowledgeBase {
                     id: "assessment.\(s.id)",
                     kind: .assessment, exercise: s.exerciseName,
                     title: "\(label) is improving",
-                    message: "\(label): \(change) since your first test.",
-                    detail: "Re-testing the same standardized protocol is how you separate real progress from day-to-day noise. Your \(label.lowercased()) is up \(change) versus baseline — beyond the margin we'd write off as measurement error — so the training is working. Keep the block going, then re-test.",
+                    message: String(localized: "\(label): \(change) since your first test.", bundle: .module),
+                    detail: String(localized: "Re-testing the same standardized protocol is how you separate real progress from day-to-day noise. Your \(label.lowercased()) is up \(change) versus baseline — beyond the margin we'd write off as measurement error — so the training is working. Keep the block going, then re-test.", bundle: .module),
                     citation: cite,
                     severity: .info))
             case .declined:
                 out.append(Insight(
                     id: "assessment.\(s.id)",
                     kind: .assessment, exercise: s.exerciseName,
-                    title: "\(label) has dropped",
-                    message: "\(label): \(change) since your first test.",
-                    detail: "Your \(label.lowercased()) has fallen \(change) versus baseline — past what measurement noise alone explains. A single dip can be fatigue or a bad test day, but a real decline is a cue to check recovery, then re-test before changing the plan.",
+                    title: String(localized: "\(label) has dropped", bundle: .module),
+                    message: String(localized: "\(label): \(change) since your first test.", bundle: .module),
+                    detail: String(localized: "Your \(label.lowercased()) has fallen \(change) versus baseline — past what measurement noise alone explains. A single dip can be fatigue or a bad test day, but a real decline is a cue to check recovery, then re-test before changing the plan.", bundle: .module),
                     citation: cite,
                     severity: .attention))
             case .unchanged, .single:
@@ -289,9 +289,9 @@ public enum KnowledgeBase {
             return Insight(
                 id: "assessment.retest.\(s.id)",
                 kind: .assessment, exercise: s.exerciseName,
-                title: "Time to re-test \(label.lowercased())",
-                message: "It's been over six weeks since your last \(label.lowercased()) test.",
-                detail: "Assessments are most useful as a pre/post pair: test, train a block, then re-test on the same protocol to measure the change. It's been a full training block (~6–8 weeks) since you last tested \(label.lowercased()) — a good time to re-run it and see where you stand.",
+                title: String(localized: "Time to re-test \(label.lowercased())", bundle: .module),
+                message: String(localized: "It's been over six weeks since your last \(label.lowercased()) test.", bundle: .module),
+                detail: String(localized: "Assessments are most useful as a pre/post pair: test, train a block, then re-test on the same protocol to measure the change. It's been a full training block (~6–8 weeks) since you last tested \(label.lowercased()) — a good time to re-run it and see where you stand.", bundle: .module),
                 citation: CitationRegistry.schoenfeld2021,
                 severity: .info)
         }
@@ -316,17 +316,17 @@ public enum KnowledgeBase {
                     id: "assessment.cardio.\(s.id)",
                     kind: .assessment,
                     title: "\(label) is improving",
-                    message: "\(label): \(change) since your baseline.",
-                    detail: "Your \(label.lowercased()) is up \(change) versus baseline — beyond what measurement noise would explain. The current training block is working; keep it going and re-test at the end of the next cycle.",
+                    message: String(localized: "\(label): \(change) since your baseline.", bundle: .module),
+                    detail: String(localized: "Your \(label.lowercased()) is up \(change) versus baseline — beyond what measurement noise would explain. The current training block is working; keep it going and re-test at the end of the next cycle.", bundle: .module),
                     citation: cite,
                     severity: .info))
             case .declined:
                 out.append(Insight(
                     id: "assessment.cardio.\(s.id)",
                     kind: .assessment,
-                    title: "\(label) has dropped",
-                    message: "\(label): \(change) since your baseline.",
-                    detail: "Your \(label.lowercased()) has fallen \(change) versus baseline — past what measurement noise alone explains. A single dip can be fatigue or a bad test day, but a decline over two tests is a cue to check your conditioning focus.",
+                    title: String(localized: "\(label) has dropped", bundle: .module),
+                    message: String(localized: "\(label): \(change) since your baseline.", bundle: .module),
+                    detail: String(localized: "Your \(label.lowercased()) has fallen \(change) versus baseline — past what measurement noise alone explains. A single dip can be fatigue or a bad test day, but a decline over two tests is a cue to check your conditioning focus.", bundle: .module),
                     citation: cite,
                     severity: .attention))
             case .unchanged, .single: continue
@@ -344,9 +344,9 @@ public enum KnowledgeBase {
                 return Insight(
                     id: "assessment.cardio.retest.\(s.id)",
                     kind: .assessment,
-                    title: "Time to re-test \(label.lowercased())",
-                    message: "It's been over six weeks since your last \(label.lowercased()) test.",
-                    detail: "Assessments work best as a pre/post pair. It's been a full training block (~6–8 weeks) since your last \(label.lowercased()) — a good time to re-run it and see where you stand.",
+                    title: String(localized: "Time to re-test \(label.lowercased())", bundle: .module),
+                    message: String(localized: "It's been over six weeks since your last \(label.lowercased()) test.", bundle: .module),
+                    detail: String(localized: "Assessments work best as a pre/post pair. It's been a full training block (~6–8 weeks) since your last \(label.lowercased()) — a good time to re-run it and see where you stand.", bundle: .module),
                     citation: CitationRegistry.schoenfeld2021,
                     severity: .info)
             }
@@ -360,7 +360,7 @@ enum AssessmentFormat {
         if s.kind.concernsLift, let lift = s.exerciseName, !lift.isEmpty {
             switch s.kind {
             case .e1RM:  return "\(lift) 1RM"
-            case .repMax: return "\(lift) rep-max"
+            case .repMax: return String(localized: "\(lift) rep-max", bundle: .module)
             default: return s.kind.displayName
             }
         }
@@ -375,7 +375,7 @@ enum AssessmentFormat {
         let mag = abs(d)
         switch s.kind.unit {
         case .weightKg: return "\(sign)\(Format.sets((mag * 10).rounded() / 10)) kg"
-        case .reps:     return "\(sign)\(Int(mag.rounded())) reps"
+        case .reps:     return String(localized: "\(sign)\(Int(mag.rounded())) reps", bundle: .module)
         case .seconds:  return "\(sign)\(Int(mag.rounded())) s"
         case .mlKgMin:  return "\(sign)\(String(format: "%.1f", mag)) mL/kg/min"
         case .watts:    return "\(sign)\(Int(mag.rounded())) W"

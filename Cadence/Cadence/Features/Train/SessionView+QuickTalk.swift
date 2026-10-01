@@ -50,8 +50,8 @@ extension SessionView {
             quickTalkUndoSetID = after?.id
             heard.append(HeardVoiceEntry(transcript: phrase, confidence: parsed.confidence,
                                          appliedAutomatically: true))
-            quickTalkChipText = after.map { "Logged \(Format.weight($0.weight, unit: settings.unit)) × \($0.reps)" }
-                ?? "Set logged"
+            quickTalkChipText = after.map { String(localized: "Logged \(Format.weight($0.weight, unit: settings.unit)) × \($0.reps)") }
+                ?? String(localized: "Set logged")
             quickTalkChipVisible = true
             quickTalkFollowUp = QuickTalkFollowUpWindow(startedAt: Date())
         } else {

@@ -77,7 +77,7 @@ extension SessionView {
         let partners = attributablePartners.map(\.name).joined(separator: ", ")
         return HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(session.title.isEmpty ? "Workout" : session.title)
+                Text(session.title.isEmpty ? String(localized: "Workout") : session.title)
                     .font(.title3.weight(.bold))
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(2)

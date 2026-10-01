@@ -54,9 +54,9 @@ public enum PassiveReadinessPresenter {
 
         let lead: String
         switch passive.level {
-        case .stronglySuppressed: lead = "Recovery looks well below your baseline"
-        case .suppressed: lead = "Recovery looks a bit below your baseline"
-        default: lead = "Recovery"
+        case .stronglySuppressed: lead = String(localized: "Recovery looks well below your baseline", bundle: .module)
+        case .suppressed: lead = String(localized: "Recovery looks a bit below your baseline", bundle: .module)
+        default: lead = String(localized: "Recovery", bundle: .module)
         }
 
         guard !parts.isEmpty else { return "\(lead)." }

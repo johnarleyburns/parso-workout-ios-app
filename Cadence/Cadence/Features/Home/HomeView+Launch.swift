@@ -68,7 +68,7 @@ extension HomeView {
            let work = suggestion.intervalWorkSeconds,
            let rest = suggestion.intervalRestSeconds {
             let plan = IntervalPlan.custom(
-                name: "\(suggestion.type.displayName) for You",
+                name: String(localized: "\(suggestion.type.displayName) for You"),
                 warmup: TimeInterval(suggestion.warmupMinutes * 60),
                 rounds: rounds,
                 work: TimeInterval(work),
@@ -140,7 +140,7 @@ extension HomeView {
             if let plan = pendingPlan {
                 pendingPlan = nil
                 startStrengthAfterLease(startCue: startCue) { try? materializePlan(plan) }
-            } else { startStrengthAfterLease(startCue: startCue) { try? WorkoutRepository.createSession(title: "Workout", in: context) } }
+            } else { startStrengthAfterLease(startCue: startCue) { try? WorkoutRepository.createSession(title: String(localized: "Workout"), in: context) } }
         case .plan(let plan, let ladder):
             startStrengthAfterLease(startCue: startCue) { try? WorkoutRepository.startSession(from: plan, repLadder: ladder, in: context) }
         case .reuse(let past):
@@ -163,7 +163,7 @@ extension HomeView {
                                              routePayload: "strength",
                                              origin: .finalCommit)
         guard case .granted(let lease) = active.liveWorkout.requestStart(intent: intent,
-                                                                            descriptorName: "Workout") else {
+                                                                            descriptorName: String(localized: "Workout")) else {
             showWorkoutConflict = true
             return
         }
@@ -180,8 +180,8 @@ extension HomeView {
         switch kind {
         case .outdoorCardio(_, let type), .timerCardio(_, let type), .interval(_, let type): name = type.displayName
         case .swim: name = "Swim"
-        case .combinedPlan: name = "Plan session"
-        case .strength: name = "Workout"
+        case .combinedPlan: name = String(localized: "Plan session")
+        case .strength: name = String(localized: "Workout")
         }
         let intent = LiveWorkoutStartIntent(kind: kind, routePayload: kindName(kind), origin: .homeStart)
         guard case .granted = active.liveWorkout.requestStart(intent: intent, descriptorName: name) else {

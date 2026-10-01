@@ -18,11 +18,11 @@ public enum WorkoutSummaryPresenter {
     /// Spoken summary of an HR series for VoiceOver (the chart itself is opaque).
     public static func hrChartAXSummary(_ bpms: [Double]) -> String {
         let valid = bpms.filter { $0 > 0 }
-        guard !valid.isEmpty else { return "No heart rate samples" }
+        guard !valid.isEmpty else { return String(localized: "No heart rate samples", bundle: .module) }
         let lo = Int(valid.min() ?? 0)
         let hi = Int(valid.max() ?? 0)
         let avg = Int(valid.reduce(0, +) / Double(valid.count))
-        return "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples"
+        return String(localized: "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples", bundle: .module)
     }
 
     // MARK: Read-only exercise detail (field test 2026-08-18 #1)
@@ -48,7 +48,7 @@ public enum WorkoutSummaryPresenter {
                                    unit: MeasurementUnitPreference) -> String? {
         let performers = orderedPerformers(line)
         guard !performers.isEmpty else { return nil }
-        return "Done: " + performers.map {
+        return String(localized: "Done: ", bundle: .module) + performers.map {
             "\($0.name): \(performerSetsText($0, unit: unit))"
         }.joined(separator: "; ")
     }

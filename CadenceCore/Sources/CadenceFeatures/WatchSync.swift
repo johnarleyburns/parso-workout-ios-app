@@ -144,11 +144,16 @@ public enum WatchSync {
             /// Rich, versioned plan data. Legacy fields above remain populated
             /// so an older Watch can still launch the workout.
             public var planPayload: WatchPlanPayload?
+            /// Watch redesign T1/T3: the coach's advice for the day ("Consider a lighter session…")
+            /// and the citations behind it, shown with "The science ›" on the watch (HARD RULE).
+            public var adviceNote: String?
+            public var adviceCitationIDs: [String]
 
             public init(id: String, kind: Kind, label: String,
                         exerciseNames: [String] = [], repLadder: [Int] = [],
                         cardioType: String? = nil, durationMinutes: Int? = nil,
-                        zone: Int? = nil, planPayload: WatchPlanPayload? = nil) {
+                        zone: Int? = nil, planPayload: WatchPlanPayload? = nil,
+                        adviceNote: String? = nil, adviceCitationIDs: [String] = []) {
                 self.id = id
                 self.kind = kind
                 self.label = label
@@ -158,7 +163,13 @@ public enum WatchSync {
                 self.durationMinutes = durationMinutes
                 self.zone = zone
                 self.planPayload = planPayload
+                self.adviceNote = adviceNote
+                self.adviceCitationIDs = adviceNote == nil ? [] : adviceCitationIDs
             }
+
+            /// The citations behind `WeeklyPlan`'s advice notes: hard-day streaks and rest days
+            /// (`meeusenOvertraining2013`) and readiness-driven recovery (`sawMonitoring2016`).
+            public static let adviceCitations = ["meeusenOvertraining2013", "sawMonitoring2016"]
 
             public var isStrength: Bool { kind == .strength }
             public var isRest: Bool { kind == .rest }
@@ -191,14 +202,18 @@ public enum WatchSync {
                         kind: .strength,
                         label: session.label.isEmpty ? "Strength" : session.label,
                         exerciseNames: exercises,
-                        repLadder: ladder
+                        repLadder: ladder,
+                        adviceNote: session.adviceNote,
+                        adviceCitationIDs: Session.adviceCitations
                     )
                 }
                 if session.kind == .rest || session.isRest {
                     return Session(
                         id: session.id.isEmpty ? "rest-\(idx)" : session.id,
                         kind: .rest,
-                        label: session.label.isEmpty ? "Rest" : session.label
+                        label: session.label.isEmpty ? "Rest" : session.label,
+                        adviceNote: session.adviceNote,
+                        adviceCitationIDs: Session.adviceCitations
                     )
                 }
                 return Session(
@@ -208,7 +223,9 @@ public enum WatchSync {
                     cardioType: cardioTypeHint(for: session),
                     durationMinutes: session.cardioDurationMinutes,
                     zone: session.cardioZone,
-                    planPayload: nil
+                    planPayload: nil,
+                    adviceNote: session.adviceNote,
+                    adviceCitationIDs: Session.adviceCitations
                 )
             }
             return TodayPlan(sessions: sessions, updatedAt: updatedAt)
@@ -228,6 +245,10 @@ public enum WatchSync {
                     if let cardioType = session.cardioType { dict["cardioType"] = cardioType }
                     if let duration = session.durationMinutes { dict["durationMinutes"] = duration }
                     if let zone = session.zone { dict["zone"] = zone }
+                    if let advice = session.adviceNote {
+                        dict["adviceNote"] = advice
+                        dict["adviceCitationIDs"] = session.adviceCitationIDs
+                    }
                     if let payload = session.planPayload {
                         let propertyList = payload.propertyList
                         if !propertyList.isEmpty { dict[WatchPlanPayload.transportKey] = propertyList }
@@ -253,7 +274,9 @@ public enum WatchSync {
                     cardioType: row["cardioType"] as? String,
                     durationMinutes: row["durationMinutes"] as? Int,
                     zone: row["zone"] as? Int,
-                    planPayload: (row[WatchPlanPayload.transportKey] as? [String: Any]).flatMap(WatchPlanPayload.init(propertyList:))
+                    planPayload: (row[WatchPlanPayload.transportKey] as? [String: Any]).flatMap(WatchPlanPayload.init(propertyList:)),
+                    adviceNote: row["adviceNote"] as? String,
+                    adviceCitationIDs: row["adviceCitationIDs"] as? [String] ?? []
                 )
             }
             let updatedAt = (context[Key.todayPlanUpdatedAt] as? Date) ?? Date()

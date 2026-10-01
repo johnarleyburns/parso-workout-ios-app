@@ -67,6 +67,15 @@ public final class WatchStrengthFlowModel {
     public private(set) var volume: Double = 0
     public private(set) var setCount: Int = 0
     public private(set) var exerciseCount: Int = 0
+    /// What the Set Card was pre-filled with (canonical kg / reps), so it can echo a change
+    /// ("Log 100 × 4") and explain a planned value (watch redesign S1/S2/S5).
+    public private(set) var prefillWeightKg: Double = 0
+    public private(set) var prefillReps: Double = 0
+    /// Set when the last logged set beat this lifter's previous best (watch redesign M2).
+    public private(set) var lastLoggedSetWasPR = false
+    /// The user's PR rule and 1RM formula (Settings), so the watch's PR moment agrees with Progress.
+    public var prRule: PRRule = SettingsDefault.prRule
+    public var prFormula: OneRepMaxFormula = SettingsDefault.oneRepMaxFormula
 
     public var discardPayload: [String: Any]?
     public var lastSyncPayload: [String: Any]?
@@ -187,7 +196,7 @@ public final class WatchStrengthFlowModel {
         return resolved
     }
 
-    private func priorSets(for exercise: Exercise) -> [SetEntry] {
+    func priorSets(for exercise: Exercise) -> [SetEntry] {
         let performer = currentPerformer
         let key = exercise.id.uuidString + "|" + (performer?.id.uuidString ?? "owner")
         if let cached = priorSetsByExerciseAndPerformer[key] { return cached }
@@ -277,6 +286,12 @@ public final class WatchStrengthFlowModel {
         } else {
             currentWeight = unit == .pounds ? WorkoutMath.canonical(45, from: .pounds) : 20
         }
+        if let plannedReps = plannedWorkingSets(for: exercise)[watchSafe: completedWorkingSets(for: exercise)]?.targetReps,
+           plannedReps > 0 {
+            currentReps = Double(plannedReps)
+        }
+        prefillWeightKg = currentWeight
+        prefillReps = currentReps
         stage = .keypad(exercise)
     }
 
@@ -310,6 +325,9 @@ public final class WatchStrengthFlowModel {
             )
 
             let isOwner = set.isOwnerSet
+            lastLoggedSetWasPR = isOwner && !isWarmupSet && WorkoutRepository.wouldBePR(
+                exercise: exercise, weightKg: set.effectiveLoadKg, reps: set.reps, isWarmup: false,
+                rule: prRule, formula: prFormula, excluding: session)
             syncLogSet(session: session, exercise: exercise, set: set)
             if !partners.isEmpty { advancePerformer() }
             if isOwner, !isWarmupSet {
@@ -319,7 +337,10 @@ public final class WatchStrengthFlowModel {
             updateExerciseListAfterLogging(exercise)
             if goToRest {
                 exercisePendingAfterRest = exercise
-                restTimer.start(seconds: restDefault)
+                // Watch redesign R1: the plan's own rest for the next set wins over the default.
+                let planned = plannedWorkingSets(for: exercise)[watchSafe: completedWorkingSets(for: exercise) - 1]?.restSeconds
+                plannedRestApplied = (planned ?? 0) > 0
+                restTimer.start(seconds: plannedRestApplied ? (planned ?? restDefault) : restDefault)
                 stage = .rest
             } else {
                 exercisePendingAfterRest = nil
@@ -592,7 +613,10 @@ public final class WatchStrengthFlowModel {
         return exercise(named: trimmed)?.name ?? trimmed
     }
 
-    private var currentPerformer: Person? {
+    /// True when the running rest came from the plan rather than the default (R1 label).
+    public private(set) var plannedRestApplied = false
+
+    var currentPerformer: Person? {
         guard !partners.isEmpty, currentPerformerIndex > 0 else { return nil }
         let partnerIndex = currentPerformerIndex - 1
         guard partnerIndex < partners.count else { return nil }
@@ -738,7 +762,7 @@ public final class WatchStrengthFlowModel {
         }
     }
 
-    private func belongsToCurrentPerformer(_ set: SetEntry) -> Bool {
+    func belongsToCurrentPerformer(_ set: SetEntry) -> Bool {
         if let performer = currentPerformer {
             return set.performedBy?.id == performer.id
         }

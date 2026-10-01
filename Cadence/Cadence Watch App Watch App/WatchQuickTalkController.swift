@@ -122,16 +122,16 @@ final class WatchQuickTalkController {
             WatchSync.Key.quickTalkAudio: data,
             WatchSync.Key.quickTalkFileExtension: "m4a"
         ]
-        WCSession.default.sendMessage(message, replyHandler: { reply in
+        WCSession.default.sendMessage(message, replyHandler: { [weak self] reply in
             let transcript = reply[WatchSync.Key.quickTalkTranscript] as? String
             let error = reply[WatchSync.Key.quickTalkError] as? String
-            Task { @MainActor [weak self] in
+            Task { @MainActor in
                 if let transcript { self?.handle(transcript: transcript, source: .iPhone) }
                 else { self?.phase = .failed(code: error ?? "noTranscript") }
             }
-        }, errorHandler: { error in
+        }, errorHandler: { [weak self] error in
             let ns = error as NSError
-            Task { @MainActor [weak self] in self?.phase = .failed(code: "wc-\(ns.code)") }
+            Task { @MainActor in self?.phase = .failed(code: "wc-\(ns.code)") }
         })
     }
 
@@ -147,8 +147,8 @@ final class WatchQuickTalkController {
     }
 
     func requestPermission() {
-        AVAudioApplication.requestRecordPermission { granted in
-            Task { @MainActor [weak self] in self?.phase = granted ? .idle : .failed(code: "micDenied") }
+        AVAudioApplication.requestRecordPermission { [weak self] granted in
+            Task { @MainActor in self?.phase = granted ? .idle : .failed(code: "micDenied") }
         }
     }
 

@@ -96,6 +96,7 @@ struct WatchCardioPickerView: View {
     let types: [CardioType]
     let destination: (CardioType) -> AnyView
     private static let countsKey = "watch.cardio.startCounts"
+    @State private var selected: CardioType?
 
     var body: some View {
         let order = WatchCardioTileOrder.ordered(types.map(\.rawValue), counts: Self.counts())
@@ -103,16 +104,18 @@ struct WatchCardioPickerView: View {
         let more = order.more.compactMap(CardioType.init(rawValue:))
         List {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                // Buttons, not NavigationLinks: several links in one List row activate together.
                 ForEach(tiles, id: \.self) { type in
-                    NavigationLink { destination(type).onAppear { Self.record(type) } } label: {
+                    Button { selected = type } label: {
                         VStack(spacing: 3) {
                             Image(systemName: type.symbol).font(.title3)
                             Text(type.displayName).font(.caption2.weight(.semibold)).lineLimit(1)
                         }
+                        .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity, minHeight: 54)
                         .background(RoundedRectangle(cornerRadius: 14).fill(WatchTone.surface))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
                     .accessibilityIdentifier("watch.cardio.\(type.rawValue)")
                 }
             }
@@ -131,6 +134,7 @@ struct WatchCardioPickerView: View {
         }
         .listStyle(.plain)
         .navigationTitle("Cardio")
+        .navigationDestination(item: $selected) { type in destination(type).onAppear { Self.record(type) } }
     }
 
     private static func counts() -> [String: Int] {

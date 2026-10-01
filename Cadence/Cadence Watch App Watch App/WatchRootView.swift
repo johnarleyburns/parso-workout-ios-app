@@ -27,6 +27,7 @@ struct WatchRootView: View {
     @State private var resumingSession: WorkoutSession?
     @State private var confirmDiscardResume = false
     @State private var startingQuickLift = false
+    @State private var showingCardio = false
     private let launchRequests = WatchLaunchRequests.shared
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
@@ -109,15 +110,15 @@ struct WatchRootView: View {
                 heroCard
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
+                // Two tiles in one row: plain Buttons with their own destinations, because a List row
+                // with two NavigationLinks activates as one (tapping Quick lift opened Cardio).
                 HStack(spacing: 6) {
-                    NavigationLink { WatchStrengthStartView() } label: {
+                    Button { startingQuickLift = true } label: {
                         tile(title: "Quick lift", systemImage: "dumbbell.fill")
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("watch.startStrength")
-                    NavigationLink {
-                        WatchCardioPickerView(types: cardioTypes) { ct in AnyView(cardioSetupView(for: ct)) }
-                    } label: {
+                    Button { showingCardio = true } label: {
                         tile(title: "Cardio", systemImage: "figure.run")
                     }
                     .buttonStyle(.plain)
@@ -138,6 +139,9 @@ struct WatchRootView: View {
             .navigationDestination(isPresented: $startingPlanned) { plannedStrengthDestination }
             .navigationDestination(item: $resumingSession) { session in WatchStrengthView(resuming: session) }
             .navigationDestination(isPresented: $startingQuickLift) { WatchStrengthStartView() }
+            .navigationDestination(isPresented: $showingCardio) {
+                WatchCardioPickerView(types: cardioTypes) { ct in AnyView(cardioSetupView(for: ct)) }
+            }
             .alert("Discard this workout?", isPresented: $confirmDiscardResume) {
                 Button("Discard", role: .destructive) {
                     if let resume = resumableStrengthSession { discardResumable(resume) }
@@ -249,6 +253,7 @@ struct WatchRootView: View {
             Image(systemName: systemImage).font(.title3)
             Text(title).font(.caption2.weight(.semibold))
         }
+        .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, minHeight: 56)
         .background(RoundedRectangle(cornerRadius: 14).fill(WatchTone.surface))
     }

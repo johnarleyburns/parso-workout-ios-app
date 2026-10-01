@@ -29,20 +29,25 @@ struct WatchSetKeypadView: View {
 
     var body: some View {
         if let card = model.setCardState {
-            VStack(spacing: 4) {
-                if let lifter = card.lifterText {
-                    Button { showingLifters = true } label: {
-                        Label(lifter, systemImage: "person.fill")
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(Capsule().fill(WatchTone.accentSoft))
-                            .foregroundStyle(WatchTone.accent)
+            VStack(spacing: 3) {
+                // Dots and (with partners) who is lifting share one row, so the card fits under the title.
+                HStack(spacing: 6) {
+                    WatchSetDots(dots: card.dots)
+                    if let lifter = card.lifterText {
+                        Spacer(minLength: 0)
+                        Button { showingLifters = true } label: {
+                            Label(lifter, systemImage: "person.fill")
+                                .font(.caption2.weight(.semibold))
+                                .lineLimit(1)
+                                .padding(.horizontal, 7).padding(.vertical, 1)
+                                .background(Capsule().fill(WatchTone.accentSoft))
+                                .foregroundStyle(WatchTone.accent)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("watchStrength.lifterChip")
+                        .accessibilityHint(Text("Choose who lifts next"))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("watchStrength.lifterChip")
-                    .accessibilityHint(Text("Choose who lifts next"))
                 }
-                WatchSetDots(dots: card.dots)
                 fields(card)
                 if !isLuminanceReduced {
                     if let last = card.lastTimeText {
@@ -51,9 +56,13 @@ struct WatchSetKeypadView: View {
                     if let line = card.planLine { WatchCoachLineView(line: line) }
                     secondaryRow(card)
                     logButton(card)
-                    Text(talk.isPhoneReachable ? "Hold to talk" : "iPhone not nearby — dictate in ⋯")
-                        .font(.caption2).foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
+                    // The teaching hint gives way to the lifter row when partners take the space.
+                    if card.lifterText == nil {
+                        Text(talk.isPhoneReachable ? "Hold to talk" : "iPhone not nearby — dictate in ⋯")
+                            .font(.caption2).foregroundStyle(.secondary)
+                            .lineLimit(1).minimumScaleFactor(0.7)
+                            .accessibilityHidden(true)
+                    }
                 }
             }
             .padding(.horizontal, 4)
@@ -174,6 +183,7 @@ struct WatchSetMoreView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var plate: Double = 0
     @State private var dictation = ""
+    @State private var confirmRemove = false
 
     private var increment: WeightIncrement { WeightIncrement(unit: model.unit) }
 
@@ -245,9 +255,38 @@ struct WatchSetMoreView: View {
                 }
                 .accessibilityIdentifier("lastSetButton")
             }
+
+            if case .keypad(let exercise) = model.stage {
+                Section {
+                    Button(role: .destructive) { confirmRemove = true } label: {
+                        Label("Remove exercise", systemImage: "trash")
+                    }
+                    .accessibilityIdentifier("watchStrength.deleteExercise.\(exercise.name)")
+                }
+            }
         }
         .navigationTitle("More")
-        .onAppear { plate = increment.plateOptions.first(where: { $0 >= 2.5 }) ?? increment.plateOptions.first ?? 2.5 }
+        .alert("Remove \(removableExercise?.name ?? "")?", isPresented: $confirmRemove, presenting: removableExercise) { exercise in
+            Button("Remove", role: .destructive) {
+                WatchHaptics.delete()
+                dismiss()
+                if let payload = model.deleteExercise(exercise) { WatchSyncSender.send(payload) }
+                model.goBackToHome()
+            }
+            .accessibilityIdentifier("watchStrength.deleteExercise.confirm")
+            Button("Keep", role: .cancel) {}
+        } message: { _ in
+            Text("Its sets in this workout are removed too.")
+        }
+        .onAppear {
+            // The smallest real plate step (2.5 kg / 5 lb), not the first option in the list.
+            plate = increment.plateOptions.filter { $0 >= 2.5 }.min() ?? increment.plateOptions.min() ?? 2.5
+        }
+    }
+
+    private var removableExercise: Exercise? {
+        if case .keypad(let exercise) = model.stage { return exercise }
+        return nil
     }
 
     private func adjust(_ delta: Double) {

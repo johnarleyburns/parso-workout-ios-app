@@ -3,7 +3,8 @@ import CadenceCore
 import CadenceFeatures
 
 /// Watch redesign §5 P3 — the Plan page (swipe left): today's exercises with their progress, tap to
-/// jump to one, swipe to delete (with the existing confirmation semantics), and Add exercise.
+/// jump to one, and Add exercise. Removing an exercise lives in the Set Card's More: row swipe
+/// actions can't be reached on a page of a horizontal pager (the swipe turns the page).
 struct WatchStrengthHomeView: View {
     let model: WatchStrengthFlowModel
     let onSelect: () -> Void
@@ -26,15 +27,6 @@ struct WatchStrengthHomeView: View {
                 .buttonStyle(.plain)
                 .listRowBackground(RoundedRectangle(cornerRadius: 12).fill(isCurrent(item.exercise) ? WatchTone.accentSoft : WatchTone.surface))
                 .accessibilityIdentifier("watchStrength.exercise.\(item.exercise.name)")
-                .swipeActions(edge: .trailing) {
-                    Button(role: .destructive) {
-                        WatchHaptics.delete()
-                        if let payload = model.deleteExercise(item.exercise) { WatchSyncSender.send(payload) }
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                    .accessibilityIdentifier("watchStrength.deleteExercise.\(item.exercise.name)")
-                }
             }
 
             Button {

@@ -16,7 +16,6 @@ struct WatchRestView: View {
     @State private var timer: Timer?
     @State private var cues = WatchIntervalCuePlayer()
     @State private var total: Int = 1
-    @State private var dictation = ""
 
     private var remaining: Int { model.restTimer.remaining }
     private var isOver: Bool { !model.restTimer.isRunning && remaining == 0 }
@@ -25,7 +24,7 @@ struct WatchRestView: View {
         VStack(spacing: 4) {
             ring
             if let next = nextSetText {
-                Text(next).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                Text("Next · \(next)").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }
             if model.plannedRestApplied && !isOver {
                 Text("Planned rest").font(.caption2).foregroundStyle(WatchTone.accent)
@@ -101,6 +100,8 @@ struct WatchRestView: View {
                 .handGestureShortcut(.primaryAction)
                 .accessibilityIdentifier("watchRest.nextSet")
         } else {
+            // R1 toolbar (mockup): +30 s · Talk · Next set. With the iPhone away, Talk is the system
+            // dictation sheet (Quick Talk C) behind the same mic button.
             HStack(spacing: 6) {
                 Button("+30") {
                     WatchHaptics.tap()
@@ -118,17 +119,23 @@ struct WatchRestView: View {
                         .accessibilityIdentifier("watchRest.talk")
                         .simultaneousGesture(DragGesture(minimumDistance: 0).onEnded { _ in talk.finishListening() })
                 } else {
-                    TextField("Dictate", text: $dictation)
-                        .onSubmit {
-                            let text = dictation
-                            dictation = ""
-                            talk.handle(transcript: text, source: .dictation)
-                        }
-                        .accessibilityIdentifier("watchRest.dictate")
+                    TextFieldLink(prompt: Text("Dictate a set")) {
+                        Image(systemName: "mic.fill")
+                            .font(.footnote.weight(.bold))
+                            .foregroundStyle(.black)
+                            .frame(maxWidth: .infinity, minHeight: 34)
+                            .background(Capsule().fill(.white))
+                    } onSubmit: { text in
+                        talk.handle(transcript: text, source: .dictation)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("Dictate a set"))
+                    .accessibilityIdentifier("watchRest.dictate")
                 }
-                Button("Next set") { startNext() }
+                Button { startNext() } label: { Image(systemName: "forward.end.fill") }
                     .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
                     .handGestureShortcut(.primaryAction)
+                    .accessibilityLabel(Text("Next set"))
                     .accessibilityIdentifier("watchRest.nextSet")
             }
         }
@@ -136,7 +143,9 @@ struct WatchRestView: View {
 
     private var nextSetText: String? {
         guard let name = model.currentExerciseName else { return nil }
-        return String(localized: "Next · \(name)")
+        // R1: the numbers first, so the bar can be loaded even when a long name truncates.
+        let set = "\(model.currentWeightText) \(model.unit.abbreviation) × \(Int(model.currentReps))"
+        return "\(set) · \(name)"
     }
 
     private func startNext() {

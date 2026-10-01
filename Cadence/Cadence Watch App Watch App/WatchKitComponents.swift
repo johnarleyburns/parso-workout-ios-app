@@ -8,7 +8,7 @@ import CadenceFeatures
 
 enum WatchTone {
     /// Cladiron AccentColor (dark) `#3DDC83`.
-    static let accent = Color("AccentColor")
+    static let accent = Color(red: 0x3D / 255, green: 0xDC / 255, blue: 0x83 / 255)
     static let accentInk = Color(red: 0x04 / 255, green: 0x14 / 255, blue: 0x0B / 255)
     static let accentSoft = Color(red: 0x0F / 255, green: 0x2E / 255, blue: 0x1D / 255)
     /// `CadenceTheme.achievement` — PRs only.
@@ -37,7 +37,7 @@ struct WatchMetricField: View {
                     .minimumScaleFactor(0.6)
                 Text(unit).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, minHeight: 50)
+            .frame(maxWidth: .infinity, minHeight: 46)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(isFocused ? WatchTone.accentSoft : Color.clear))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)

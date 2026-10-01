@@ -35,6 +35,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         guard activationState == .activated else { return }
+        Task { @MainActor in WatchSyncSender.flushOutbox() }
         let applicationContext = UncheckedWatchPayload(value: session.receivedApplicationContext)
         guard !applicationContext.value.isEmpty else { return }
         Task { @MainActor [weak self] in

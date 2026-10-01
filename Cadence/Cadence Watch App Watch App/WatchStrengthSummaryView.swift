@@ -22,7 +22,8 @@ struct WatchStrengthSummaryView: View {
                     Text("Saved").font(.headline)
                         .accessibilityIdentifier("watchSummary.saved")
                 }
-                Text(verbatim: "\(model.durationText) · \(model.setCount) · \(model.weightValue(model.volume)) \(model.unit.abbreviation)")
+                (Text(verbatim: "\(model.durationText) · ") + Text("\(model.setCount) sets")
+                    + Text(verbatim: " · \(model.weightValue(model.volume)) \(model.unit.abbreviation)"))
                     .font(.caption2).foregroundStyle(.secondary)
                     .accessibilityLabel(Text("Duration \(model.durationText)") + Text(verbatim: ", ") + Text("\(model.setCount) sets"))
                 WatchReceiptRow(title: "Saved on watch", state: receipt.watch)
